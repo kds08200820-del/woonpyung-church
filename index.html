@@ -7,7 +7,7 @@
   <meta name="description" content="1964년부터 이어온 믿음의 공동체, 운평장로교회입니다. 주님의 말씀 위에 세워진 교회로 여러분을 초대합니다." />
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json?v=20260625a" />
+  <link rel="manifest" href="manifest.json?v=20260625c" />
   <meta name="theme-color" content="#032257" />
   <link rel="icon" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260625a" />
+  <link rel="stylesheet" href="css/style.css?v=20260625c" />
 </head>
 <body>
 
@@ -454,8 +454,8 @@
     <button class="install-close" id="installClose" aria-label="닫기">&times;</button>
   </div>
 
-  <script src="js/bulletins.js?v=20260625a"></script>
-  <script src="js/main.js?v=20260625a"></script>
+  <script src="js/bulletins.js?v=20260625c"></script>
+  <script src="js/main.js?v=20260625c"></script>
   <script>
     // 서비스 워커 등록
     if ("serviceWorker" in navigator) {
@@ -466,7 +466,7 @@
   </script>
 
   <!-- 푸시 알림(OneSignal) — App ID가 설정된 경우에만 로드 -->
-  <script src="js/config.js?v=20260625a"></script>
+  <script src="js/config.js?v=20260625c"></script>
   <script>
     (function () {
       if (!window.ONESIGNAL_APP_ID) return; // 미설정 시 아무것도 하지 않음
@@ -476,6 +476,7 @@
       s.defer = true;
       document.head.appendChild(s);
       window.OneSignalDeferred.push(async function (OneSignal) {
+        try {
         await OneSignal.init({
           appId: window.ONESIGNAL_APP_ID,
           serviceWorkerPath: "OneSignalSDKWorker.js",
@@ -501,6 +502,9 @@
             },
           },
         });
+        } catch (e) {
+          /* OneSignal 대시보드의 Web 플랫폼 설정 완료 전에는 조용히 무시 */
+        }
       });
     })();
   </script>
