@@ -2,15 +2,17 @@
 //  운평장로교회 홈페이지 스크립트
 // ============================================================
 
-// ===== 1. 말씀(설교) 탭: 이번 주 / 지난 주 =====
-const sermonFeature = document.getElementById("sermonFeature");
+// ===== 1. 말씀(설교) 카드 덱: 최대 4주 · 3D 회전 전환 =====
+const WEEKS = BULLETINS.slice(0, 4); // 최근 4주만 표기
+const sermonDeck = document.getElementById("sermonDeck");
 const sermonSide = document.getElementById("sermonSide");
-const sermonTabs = document.getElementById("sermonTabs");
+const sermonDots = document.getElementById("sermonDots");
+const sermonNewer = document.getElementById("sermonNewer");
+const sermonOlder = document.getElementById("sermonOlder");
+let active = 0; // 0 = 이번 주(최신)
 
-function renderSermon(idx) {
-  const b = BULLETINS[idx];
-  if (!b) return;
-  sermonFeature.innerHTML = `
+function cardInner(b) {
+  return `
     <div class="sermon-meta">
       <span class="sermon-date">${b.dateLabel} · 주일 낮 예배</span>
       <h3 class="sermon-title">${b.title}</h3>
@@ -18,6 +20,9 @@ function renderSermon(idx) {
       <p class="sermon-preacher">설교 · ${b.preacher}</p>
     </div>
     <blockquote class="sermon-quote">${b.quote}</blockquote>`;
+}
+
+function renderSide(b) {
   sermonSide.innerHTML = `
     <div class="side-card">
       <span class="side-tag">수요기도회</span>
@@ -29,15 +34,64 @@ function renderSermon(idx) {
     </div>`;
 }
 
-if (sermonTabs) {
-  sermonTabs.addEventListener("click", (e) => {
-    const btn = e.target.closest(".sermon-tab");
-    if (!btn) return;
-    sermonTabs.querySelectorAll(".sermon-tab").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    renderSermon(Number(btn.dataset.idx));
+function layoutDeck() {
+  [...sermonDeck.children].forEach((card) => {
+    const i = Number(card.dataset.i);
+    const d = i - active; // d>0: 지나간(과거) 주, d<0: 이후 주
+    const ad = Math.abs(d);
+    card.style.zIndex = String(50 - ad);
+    if (d === 0) {
+      card.style.transform = "translate(0,0) scale(1) rotateY(0deg)";
+      card.style.opacity = "1";
+      card.classList.add("is-active");
+    } else {
+      const dir = d > 0 ? 1 : -1;
+      card.style.transform =
+        `translateX(${dir * (30 + (ad - 1) * 10)}px) translateY(${ad * 16}px) ` +
+        `scale(${1 - ad * 0.05}) rotateY(${dir * -14}deg)`;
+      card.style.opacity = String(Math.max(0.06, 0.32 - (ad - 1) * 0.11));
+      card.classList.remove("is-active");
+    }
   });
-  renderSermon(0); // 기본: 이번 주
+  [...sermonDots.children].forEach((dot, i) => dot.classList.toggle("active", i === active));
+  sermonNewer.classList.toggle("disabled", active <= 0);
+  sermonOlder.classList.toggle("disabled", active >= WEEKS.length - 1);
+  renderSide(WEEKS[active]);
+}
+
+function buildDeck() {
+  sermonDeck.innerHTML = WEEKS.map(
+    (b, i) => `<article class="sermon-feature deck-card" data-i="${i}">${cardInner(b)}</article>`
+  ).join("");
+  sermonDots.innerHTML = WEEKS.map(
+    (_, i) => `<button class="sdot" data-i="${i}" aria-label="${i + 1}주 전 말씀"></button>`
+  ).join("");
+  layoutDeck();
+}
+
+function goSermon(delta) {
+  const n = Math.min(WEEKS.length - 1, Math.max(0, active + delta));
+  if (n === active) return;
+  active = n;
+  layoutDeck();
+}
+
+if (sermonDeck) {
+  buildDeck();
+  sermonNewer.addEventListener("click", () => goSermon(-1)); // 이번 주 방향
+  sermonOlder.addEventListener("click", () => goSermon(1)); // 지난 주 방향
+  sermonDots.addEventListener("click", (e) => {
+    const dot = e.target.closest(".sdot");
+    if (dot) { active = Number(dot.dataset.i); layoutDeck(); }
+  });
+  // 뒤에 투명하게 겹친 지난 카드를 클릭하면 앞으로 가져오기
+  sermonDeck.addEventListener("click", (e) => {
+    const card = e.target.closest(".deck-card");
+    if (card && !card.classList.contains("is-active")) {
+      active = Number(card.dataset.i);
+      layoutDeck();
+    }
+  });
 }
 
 // ===== 2. 주보 보관함: 월 필터 + 검색 =====
@@ -175,7 +229,7 @@ navMenu.querySelectorAll("a").forEach((a) =>
 
 // ===== 6. 스크롤 등장 애니메이션 =====
 const revealTargets = document.querySelectorAll(
-  ".about-intro, .servants, .worship-card, .sermon-feature, .sermon-side, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid"
+  ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid"
 );
 revealTargets.forEach((el) => el.classList.add("reveal"));
 

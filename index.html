@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260624b" />
+  <link rel="stylesheet" href="css/style.css?v=20260624c" />
 </head>
 <body>
 
@@ -200,12 +200,13 @@
         <h2>말씀</h2>
       </div>
 
-      <div class="sermon-tabs" id="sermonTabs">
-        <button class="sermon-tab active" data-idx="0">이번 주 말씀</button>
-        <button class="sermon-tab" data-idx="1">지난 주 말씀</button>
+      <div class="sermon-nav">
+        <button class="sermon-btn" id="sermonNewer">← 이번 주 말씀</button>
+        <div class="sermon-dots" id="sermonDots"></div>
+        <button class="sermon-btn" id="sermonOlder">지난 주 말씀 →</button>
       </div>
 
-      <div class="sermon-feature" id="sermonFeature"></div>
+      <div class="sermon-deck" id="sermonDeck"></div>
       <div class="sermon-side" id="sermonSide"></div>
     </div>
   </section>
@@ -366,7 +367,7 @@
     </div>
   </footer>
 
-  <script src="js/bulletins.js?v=20260624b"></script>
-  <script src="js/main.js?v=20260624b"></script>
+  <script src="js/bulletins.js?v=20260624c"></script>
+  <script src="js/main.js?v=20260624c"></script>
 </body>
 </html>
