@@ -109,7 +109,25 @@ function openBulletin(idx) {
       <li>${b.dawn}</li>
       <li>${b.qt}</li>
     </ul>
-    <p class="m-note">* 헌금 내역은 교회 내부 자료로 별도 관리되어 홈페이지에 게시하지 않습니다.</p>`;
+
+    <h4 class="m-head">한 주의 소식</h4>
+    <ol class="m-news">
+      ${(b.news || []).map((n) => `<li><strong>${n.title}</strong><span>${n.detail}</span></li>`).join("")}
+    </ol>
+
+    <h4 class="m-head">향기로운 예물</h4>
+    <div class="m-offering">
+      ${(b.offering || []).map((o) => `<div class="m-off-row"><span class="m-off-cat">${o.cat}</span><span class="m-off-names">${o.names}</span></div>`).join("")}
+    </div>
+
+    ${b.book ? `
+    <h4 class="m-head">Faith &amp; Books</h4>
+    <div class="m-book">
+      <p class="m-book-title">「${b.book.title}」 · ${b.book.author} <span>(${b.book.publisher})</span></p>
+      <p class="m-book-text">${b.book.text}</p>
+    </div>` : ""}
+
+    <p class="m-note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>`;
   modal.hidden = false;
   document.body.style.overflow = "hidden";
 }
