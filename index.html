@@ -7,7 +7,7 @@
   <meta name="description" content="1964년부터 이어온 믿음의 공동체, 운평장로교회입니다. 주님의 말씀 위에 세워진 교회로 여러분을 초대합니다." />
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json?v=20260624i" />
+  <link rel="manifest" href="manifest.json?v=20260625a" />
   <meta name="theme-color" content="#032257" />
   <link rel="icon" href="images/favicon-32.png" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260624i" />
+  <link rel="stylesheet" href="css/style.css?v=20260625a" />
 </head>
 <body>
 
@@ -30,11 +30,11 @@
         <span class="logo-en">UNPYEONG CHURCH</span>
       </a>
       <nav class="nav-menu" id="navMenu">
+        <a href="#qt">QT</a>
         <a href="#about">교회소개</a>
         <a href="#worship">예배안내</a>
         <a href="#education">교육안내</a>
         <a href="#sermon">말씀</a>
-        <a href="#qt">QT</a>
         <a href="#bulletin">주보</a>
         <a href="#news">교회소식</a>
         <a href="#mission">선교</a>
@@ -58,6 +58,19 @@
       </div>
     </div>
     <a href="#about" class="hero-scroll" aria-label="아래로">↓</a>
+  </section>
+
+  <!-- ===== QT (매일 말씀 묵상) ===== -->
+  <section id="qt" class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">DAILY QT</span>
+        <h2>오늘의 말씀</h2>
+      </div>
+      <div class="qt-today" id="qtToday">
+        <p class="qt-loading">오늘의 말씀을 불러오는 중입니다…</p>
+      </div>
+    </div>
   </section>
 
   <!-- ===== About ===== -->
@@ -262,17 +275,6 @@
     </div>
   </section>
 
-  <!-- ===== QT (매일 말씀 묵상) ===== -->
-  <section id="qt" class="section section-dark">
-    <div class="container">
-      <div class="section-head">
-        <span class="eyebrow light">DAILY QT</span>
-        <h2>매일 말씀 묵상</h2>
-      </div>
-      <div class="qt-wrap" id="qtWrap"></div>
-    </div>
-  </section>
-
   <!-- ===== Bulletin ===== -->
   <section id="bulletin" class="section">
     <div class="container">
@@ -414,6 +416,18 @@
     </div>
   </div>
 
+  <!-- ===== QT Modal ===== -->
+  <div class="modal" id="qtModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box modal-box-qt" role="dialog" aria-modal="true" aria-label="매일 말씀 묵상">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="qt-modal-layout">
+        <aside class="qt-datelist" id="qtDateList"></aside>
+        <div class="qt-detail" id="qtDetail"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== Footer ===== -->
   <footer class="footer">
     <div class="container footer-inner">
@@ -440,8 +454,8 @@
     <button class="install-close" id="installClose" aria-label="닫기">&times;</button>
   </div>
 
-  <script src="js/bulletins.js?v=20260624i"></script>
-  <script src="js/main.js?v=20260624i"></script>
+  <script src="js/bulletins.js?v=20260625a"></script>
+  <script src="js/main.js?v=20260625a"></script>
   <script>
     // 서비스 워커 등록
     if ("serviceWorker" in navigator) {

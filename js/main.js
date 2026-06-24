@@ -112,28 +112,133 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     </div>`;
 }
 
-// ===== 1-3. 매일 말씀 묵상(QT) — 최신 주보 기준 자동 표시 =====
-const qtWrap = document.getElementById("qtWrap");
-if (qtWrap && typeof BULLETINS !== "undefined" && BULLETINS.length) {
-  const b = BULLETINS[0];
-  const reading = b.qt.replace(/^매일 말씀 묵상 · /, "");
-  const dawn = b.dawn.replace(/^새벽기도회 · /, "").replace(/\s*\(화~금[^)]*\)/, "");
-  qtWrap.innerHTML = `
-    <p class="qt-lead">하루를 말씀으로 시작하세요. 이번 주 온 교회가 함께 읽는 본문입니다.</p>
-    <div class="qt-cards">
-      <div class="qt-card">
-        <span class="qt-label">이번 주 묵상 본문</span>
-        <p class="qt-main">${reading}</p>
-        <span class="qt-sub">${b.dateLabel} · ${b.week}</span>
-      </div>
-      <div class="qt-card">
-        <span class="qt-label">새벽기도회 강해</span>
-        <p class="qt-main">${dawn}</p>
-        <span class="qt-sub">화~금 오전 5시 · 본당</span>
-      </div>
-    </div>
-    <p class="qt-foot">“주의 말씀은 내 발에 등이요 내 길에 빛이니이다” — 시편 119:105</p>`;
-}
+// ===== 1-3. 매일 말씀 묵상(QT) — 구글 시트 연동(오늘 날짜 자동) =====
+(function () {
+  const todayBox = document.getElementById("qtToday");
+  const modal = document.getElementById("qtModal");
+  if (!todayBox || !modal) return;
+  const dateListEl = document.getElementById("qtDateList");
+  const detailEl = document.getElementById("qtDetail");
+
+  // 구글 시트(공유: 링크가 있는 모든 사용자) CSV 내보내기
+  const SHEET_CSV =
+    "https://docs.google.com/spreadsheets/d/1Yg0dPnZEj18e9K5t-CC8ESwoXp1hP9Ro9AdTEhFSb0w/gviz/tq?tqx=out:csv";
+
+  let entries = []; // [{date, content, title, ref}] (최신 → 과거)
+
+  function parseCSV(text) {
+    const rows = []; let row = []; let field = ""; let inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQ) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; }
+        else field += c;
+      } else {
+        if (c === '"') inQ = true;
+        else if (c === ",") { row.push(field); field = ""; }
+        else if (c === "\r") { /* skip */ }
+        else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+        else field += c;
+      }
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  function digest(content) {
+    const lines = content.split("\n").map((s) => s.trim()).filter(Boolean);
+    const meaningful = lines.filter((l) => !/^📖|^📅|^샬롬|오늘의 QT/.test(l));
+    const ref = meaningful.find((l) => /\d+\s*[:：]\s*\d+/.test(l) && l.length < 30) || "";
+    const title = meaningful.find((l) => l !== ref) || meaningful[0] || "오늘의 말씀 묵상";
+    return { title, ref };
+  }
+
+  function todayStr() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
+  }
+
+  function renderToday() {
+    if (!entries.length) {
+      todayBox.innerHTML = `<p class="qt-loading">아직 등록된 QT 말씀이 없습니다.</p>`;
+      return;
+    }
+    const ts = todayStr();
+    const todayEntry = entries.find((e) => e.date === ts);
+    const entry = todayEntry || entries[0];
+    const isToday = !!todayEntry;
+    todayBox.innerHTML = `
+      <button class="qt-card-today" id="qtOpen">
+        <span class="qt-badge">${isToday ? "오늘의 QT" : "최근 QT"} · ${entry.date}</span>
+        <h3 class="qt-card-title">${entry.title}</h3>
+        ${entry.ref ? `<p class="qt-card-ref">${entry.ref}</p>` : ""}
+        <span class="qt-card-more">묵상 전문 읽기 →</span>
+      </button>`;
+    document.getElementById("qtOpen").addEventListener("click", () => openModal(entry.date));
+  }
+
+  function buildDateList(activeDate) {
+    dateListEl.innerHTML =
+      `<h4 class="qt-dl-head">묵상 보기</h4>` +
+      entries.map((e) => `<button class="qt-dl-item${e.date === activeDate ? " active" : ""}" data-date="${e.date}">${e.date}</button>`).join("");
+  }
+
+  function showDetail(date) {
+    const e = entries.find((x) => x.date === date);
+    if (!e) return;
+    detailEl.innerHTML = "";
+    const h = document.createElement("p");
+    h.className = "qt-detail-date";
+    h.textContent = e.date;
+    const body = document.createElement("div");
+    body.className = "qt-detail-body";
+    body.textContent = e.content; // 텍스트로 출력(줄바꿈은 CSS pre-line)
+    detailEl.appendChild(h);
+    detailEl.appendChild(body);
+    [...dateListEl.querySelectorAll(".qt-dl-item")].forEach((b) => b.classList.toggle("active", b.dataset.date === date));
+    detailEl.scrollTop = 0;
+  }
+
+  function openModal(date) {
+    buildDateList(date);
+    showDetail(date);
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+  function closeModal() {
+    modal.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  dateListEl.addEventListener("click", (e) => {
+    const b = e.target.closest(".qt-dl-item");
+    if (b) showDetail(b.dataset.date);
+  });
+  modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
+
+  fetch(SHEET_CSV)
+    .then((r) => r.text())
+    .then((txt) => {
+      const rows = parseCSV(txt);
+      if (!rows.length) throw new Error("empty");
+      const header = rows[0].map((h) => h.trim());
+      const di = header.findIndex((h) => h.includes("날짜"));
+      const ci = header.findIndex((h) => h.includes("내용") || h.toUpperCase().includes("QT"));
+      const dIdx = di >= 0 ? di : 1;
+      const cIdx = ci >= 0 ? ci : 2;
+      entries = rows.slice(1)
+        .map((r) => ({ date: (r[dIdx] || "").trim(), content: (r[cIdx] || "").replace(/\r\n?/g, "\n").trim() }))
+        .filter((e) => e.date && e.content)
+        .map((e) => ({ ...e, ...digest(e.content) }));
+      entries.sort((a, b) => (a.date < b.date ? 1 : -1));
+      renderToday();
+    })
+    .catch(() => {
+      todayBox.innerHTML = `<p class="qt-loading">오늘의 말씀을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>`;
+    });
+})();
 
 // ===== 2. 주보 보관함: 월 필터 + 검색 =====
 const bulletinList = document.getElementById("bulletinList");
@@ -317,7 +422,7 @@ navMenu.querySelectorAll("a").forEach((a) =>
 
 // ===== 6. 스크롤 등장 애니메이션 =====
 const revealTargets = document.querySelectorAll(
-  ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .qt-card, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid"
+  ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .qt-today, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid"
 );
 revealTargets.forEach((el) => el.classList.add("reveal"));
 
