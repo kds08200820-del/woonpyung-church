@@ -234,6 +234,14 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
         .map((e) => ({ ...e, ...digest(e.content) }));
       entries.sort((a, b) => (a.date < b.date ? 1 : -1));
       renderToday();
+      // 푸시 알림 클릭(?qt=open 또는 #qt-open)으로 진입 시 모달 자동 열기
+      const wantOpen =
+        location.hash === "#qt-open" ||
+        new URLSearchParams(location.search).get("qt") === "open";
+      if (wantOpen && entries.length) {
+        const ts = todayStr();
+        openModal(entries.find((e) => e.date === ts) ? ts : entries[0].date);
+      }
     })
     .catch(() => {
       todayBox.innerHTML = `<p class="qt-loading">오늘의 말씀을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>`;

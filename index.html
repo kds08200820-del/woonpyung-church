@@ -464,5 +464,45 @@
       );
     }
   </script>
+
+  <!-- 푸시 알림(OneSignal) — App ID가 설정된 경우에만 로드 -->
+  <script src="js/config.js?v=20260625a"></script>
+  <script>
+    (function () {
+      if (!window.ONESIGNAL_APP_ID) return; // 미설정 시 아무것도 하지 않음
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      var s = document.createElement("script");
+      s.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+      s.defer = true;
+      document.head.appendChild(s);
+      window.OneSignalDeferred.push(async function (OneSignal) {
+        await OneSignal.init({
+          appId: window.ONESIGNAL_APP_ID,
+          serviceWorkerPath: "OneSignalSDKWorker.js",
+          serviceWorkerParam: { scope: "/woonpyung-church/onesignal/" },
+          allowLocalhostAsSecureOrigin: true,
+          notifyButton: {
+            enable: true,
+            size: "medium",
+            position: "bottom-right",
+            text: {
+              "tip.state.unsubscribed": "매일 QT 알림 받기",
+              "tip.state.subscribed": "QT 알림을 받고 있습니다",
+              "tip.state.blocked": "알림이 차단되어 있습니다",
+              "message.prenotify": "클릭하여 매일 아침 QT 알림을 받으세요",
+              "message.action.subscribed": "이제 매일 아침 QT를 받습니다 🙏",
+              "message.action.resubscribed": "QT 알림을 다시 받습니다 🙏",
+              "message.action.unsubscribed": "QT 알림을 끕니다",
+              "dialog.main.title": "운평장로교회 QT 알림",
+              "dialog.main.button.subscribe": "알림 받기",
+              "dialog.main.button.unsubscribe": "알림 끄기",
+              "dialog.blocked.title": "알림 차단 해제",
+              "dialog.blocked.message": "브라우저 설정에서 알림을 허용해 주세요.",
+            },
+          },
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
