@@ -112,6 +112,29 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     </div>`;
 }
 
+// ===== 1-3. 매일 말씀 묵상(QT) — 최신 주보 기준 자동 표시 =====
+const qtWrap = document.getElementById("qtWrap");
+if (qtWrap && typeof BULLETINS !== "undefined" && BULLETINS.length) {
+  const b = BULLETINS[0];
+  const reading = b.qt.replace(/^매일 말씀 묵상 · /, "");
+  const dawn = b.dawn.replace(/^새벽기도회 · /, "").replace(/\s*\(화~금[^)]*\)/, "");
+  qtWrap.innerHTML = `
+    <p class="qt-lead">하루를 말씀으로 시작하세요. 이번 주 온 교회가 함께 읽는 본문입니다.</p>
+    <div class="qt-cards">
+      <div class="qt-card">
+        <span class="qt-label">이번 주 묵상 본문</span>
+        <p class="qt-main">${reading}</p>
+        <span class="qt-sub">${b.dateLabel} · ${b.week}</span>
+      </div>
+      <div class="qt-card">
+        <span class="qt-label">새벽기도회 강해</span>
+        <p class="qt-main">${dawn}</p>
+        <span class="qt-sub">화~금 오전 5시 · 본당</span>
+      </div>
+    </div>
+    <p class="qt-foot">“주의 말씀은 내 발에 등이요 내 길에 빛이니이다” — 시편 119:105</p>`;
+}
+
 // ===== 2. 주보 보관함: 월 필터 + 검색 =====
 const bulletinList = document.getElementById("bulletinList");
 const bulletinMonth = document.getElementById("bulletinMonth");
@@ -294,7 +317,7 @@ navMenu.querySelectorAll("a").forEach((a) =>
 
 // ===== 6. 스크롤 등장 애니메이션 =====
 const revealTargets = document.querySelectorAll(
-  ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid"
+  ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .qt-card, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid"
 );
 revealTargets.forEach((el) => el.classList.add("reveal"));
 
