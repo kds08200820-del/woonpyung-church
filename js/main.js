@@ -222,6 +222,53 @@ if (modal) {
   });
 }
 
+// ===== 3-2. 앱 설치 안내 배너 (PWA) =====
+(function () {
+  const bar = document.getElementById("installBar");
+  if (!bar) return;
+  const goBtn = document.getElementById("installGo");
+  const closeBtn = document.getElementById("installClose");
+  const msg = document.getElementById("installMsg");
+
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+  const dismissed = localStorage.getItem("installDismissed") === "1";
+  if (isStandalone || dismissed) return; // 이미 설치했거나 닫았으면 표시 안 함
+
+  let deferredPrompt = null;
+
+  // 안드로이드/크롬: 설치 프롬프트 가로채기
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    bar.hidden = false;
+  });
+
+  goBtn.addEventListener("click", async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      bar.hidden = true;
+    }
+  });
+
+  closeBtn.addEventListener("click", () => {
+    bar.hidden = true;
+    localStorage.setItem("installDismissed", "1");
+  });
+
+  // iOS(사파리): beforeinstallprompt 미지원 → 안내 문구로 표시
+  const ua = window.navigator.userAgent;
+  const isIOS = /iphone|ipad|ipod/i.test(ua);
+  if (isIOS && !isStandalone) {
+    msg.textContent = "공유 버튼(↑) → ‘홈 화면에 추가’를 눌러 설치하세요.";
+    goBtn.hidden = true;
+    bar.hidden = false;
+  }
+})();
+
 // ===== 4. 헤더 스크롤 상태 =====
 const header = document.getElementById("header");
 const onScroll = () => {
