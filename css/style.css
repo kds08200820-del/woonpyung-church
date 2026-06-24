@@ -343,7 +343,14 @@ ul { list-style: none; }
 .m-offering { display: flex; flex-direction: column; gap: 2px; }
 .m-off-row { display: grid; grid-template-columns: 84px 1fr; gap: 14px; padding: 11px 0; border-bottom: 1px dashed var(--line); align-items: baseline; }
 .m-off-cat { font-weight: 700; color: var(--accent); font-size: .88rem; }
-.m-off-names { font-size: .9rem; color: var(--ink-soft); font-weight: 300; line-height: 1.7; word-break: keep-all; }
+.m-off-names {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  column-gap: 8px; row-gap: 7px;
+}
+.m-off-names span {
+  font-size: .88rem; color: var(--ink-soft); font-weight: 300;
+  white-space: nowrap; word-break: keep-all;
+}
 
 /* Faith & Books */
 .m-book-title { font-family: "Noto Serif KR", serif; font-weight: 700; color: var(--accent); margin-bottom: 12px; }

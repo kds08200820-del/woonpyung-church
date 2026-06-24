@@ -117,7 +117,7 @@ function openBulletin(idx) {
 
     <h4 class="m-head">향기로운 예물</h4>
     <div class="m-offering">
-      ${(b.offering || []).map((o) => `<div class="m-off-row"><span class="m-off-cat">${o.cat}</span><span class="m-off-names">${o.names}</span></div>`).join("")}
+      ${(b.offering || []).map((o) => `<div class="m-off-row"><span class="m-off-cat">${o.cat}</span><span class="m-off-names">${o.names.split(" · ").map((n) => `<span>${n}</span>`).join("")}</span></div>`).join("")}
     </div>
 
     ${b.book ? `
