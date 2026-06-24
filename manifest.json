@@ -1,6 +1,6 @@
 {
   "name": "운평장로교회",
-  "short_name": "운평교회",
+  "short_name": "운평장로교회",
   "description": "운평장로교회 — 주보, 말씀, 예배 안내",
   "lang": "ko",
   "start_url": "./index.html?source=pwa",
