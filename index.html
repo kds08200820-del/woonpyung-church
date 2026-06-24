@@ -24,6 +24,7 @@
         <a href="#worship">예배안내</a>
         <a href="#education">교육안내</a>
         <a href="#sermon">말씀</a>
+        <a href="#bulletin">주보</a>
         <a href="#news">교회소식</a>
         <a href="#mission">선교</a>
         <a href="#location">오시는 길</a>
@@ -196,37 +197,45 @@
     <div class="container">
       <div class="section-head">
         <span class="eyebrow">SERMON</span>
-        <h2>이번 주 말씀</h2>
+        <h2>말씀</h2>
       </div>
 
-      <div class="sermon-feature">
-        <div class="sermon-meta">
-          <span class="sermon-date">2026. 06. 28 · 주일 낮 예배</span>
-          <h3 class="sermon-title">나는 씨앗입니다</h3>
-          <p class="sermon-ref">고린도전서 15:35–38</p>
-          <p class="sermon-preacher">설교 · 김동석 목사</p>
-        </div>
-        <blockquote class="sermon-quote">
-          “어리석은 자여 네가 뿌리는 씨가 죽지 아니하면 살아나지 못하겠고…
-          하나님이 그 뜻대로 그에게 형체를 주시되 각 종자에게 그 형체를 주시느니라.”
-        </blockquote>
+      <div class="sermon-tabs" id="sermonTabs">
+        <button class="sermon-tab active" data-idx="0">이번 주 말씀</button>
+        <button class="sermon-tab" data-idx="1">지난 주 말씀</button>
       </div>
 
-      <div class="sermon-side">
-        <div class="side-card">
-          <span class="side-tag">수요기도회</span>
-          <p>하이델베르크 교리문답 강해 (48강) — 로마서 11:33–36</p>
-        </div>
-        <div class="side-card">
-          <span class="side-tag">새벽기도회</span>
-          <p>요나·나훔서 강해 (화~금 오전 5시)</p>
-        </div>
+      <div class="sermon-feature" id="sermonFeature"></div>
+      <div class="sermon-side" id="sermonSide"></div>
+    </div>
+  </section>
+
+  <!-- ===== Bulletin ===== -->
+  <section id="bulletin" class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">BULLETIN</span>
+        <h2>주보</h2>
       </div>
+
+      <div class="bulletin-controls">
+        <label class="ctrl">
+          <span>월 선택</span>
+          <select id="bulletinMonth"></select>
+        </label>
+        <label class="ctrl ctrl-search">
+          <span>검색</span>
+          <input id="bulletinSearch" type="search" placeholder="설교 제목 · 본문 · 날짜 검색" />
+        </label>
+      </div>
+
+      <div class="bulletin-list" id="bulletinList"></div>
+      <p class="bulletin-empty" id="bulletinEmpty" hidden>검색 결과가 없습니다.</p>
     </div>
   </section>
 
   <!-- ===== News ===== -->
-  <section id="news" class="section">
+  <section id="news" class="section section-alt">
     <div class="container">
       <div class="section-head">
         <span class="eyebrow">NEWS</span>
@@ -267,7 +276,7 @@
   </section>
 
   <!-- ===== Mission ===== -->
-  <section id="mission" class="section section-alt">
+  <section id="mission" class="section">
     <div class="container">
       <div class="section-head">
         <span class="eyebrow">MISSION</span>
@@ -333,6 +342,15 @@
     </div>
   </section>
 
+  <!-- ===== Bulletin Modal ===== -->
+  <div class="modal" id="bulletinModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
   <!-- ===== Footer ===== -->
   <footer class="footer">
     <div class="container footer-inner">
@@ -348,6 +366,7 @@
     </div>
   </footer>
 
+  <script src="js/bulletins.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
