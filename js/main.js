@@ -94,6 +94,24 @@ if (sermonDeck) {
   });
 }
 
+// ===== 1-2. 이 달의 봉사위원 (현재 달 기준 자동 표시) =====
+const committeeBox = document.getElementById("committee");
+if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  // 현재 달과 일치하는 항목, 없으면 현재 달 이하 중 가장 최근, 그래도 없으면 첫 항목
+  const sorted = [...COMMITTEES].sort((a, b) => (a.month < b.month ? 1 : -1));
+  const c = sorted.find((x) => x.month === ym) || sorted.find((x) => x.month <= ym) || sorted[0];
+  committeeBox.innerHTML = `
+    <div class="committee-head">
+      <span class="w-en light">SERVICE TEAM</span>
+      <h4>${c.label} 봉사위원</h4>
+    </div>
+    <div class="committee-rows">
+      ${c.roles.map((r) => `<div class="committee-item"><span class="c-role">${r.role}</span><p class="c-names">${r.names}</p></div>`).join("")}
+    </div>`;
+}
+
 // ===== 2. 주보 보관함: 월 필터 + 검색 =====
 const bulletinList = document.getElementById("bulletinList");
 const bulletinMonth = document.getElementById("bulletinMonth");

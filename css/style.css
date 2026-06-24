@@ -181,11 +181,37 @@ ul { list-style: none; }
 
 .servant-rows { max-width: 760px; margin: 0 auto; }
 .servant-row {
-  display: grid; grid-template-columns: 120px 1fr; gap: 18px;
+  display: grid; grid-template-columns: 132px 1fr; gap: 18px;
   padding: 16px 4px; border-bottom: 1px solid var(--line); align-items: baseline;
 }
 .row-label { font-weight: 700; color: var(--accent); font-size: .95rem; }
 .row-names { color: var(--ink-soft); font-size: .95rem; font-weight: 300; }
+
+.servant-subgroup {
+  max-width: 760px; margin: 46px auto 8px; text-align: center;
+  font-family: "Noto Serif KR", serif; font-size: 1.05rem; color: var(--accent-soft);
+  letter-spacing: .03em;
+}
+
+/* 이 달의 봉사위원 */
+.committee {
+  max-width: 760px; margin: 44px auto 0; background: var(--accent); color: #fff;
+  border-radius: 16px; padding: 34px 40px;
+}
+.committee-head { text-align: center; margin-bottom: 22px; }
+.committee-head .w-en { display: block; }
+.committee-head h4 { font-family: "Noto Serif KR", serif; font-size: 1.35rem; font-weight: 700; margin-top: 4px; }
+.committee-rows { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.committee-item {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16);
+  border-radius: 12px; padding: 18px 20px; text-align: center;
+}
+.c-role { display: block; font-size: .82rem; color: var(--gold); margin-bottom: 7px; letter-spacing: .03em; }
+.c-names { font-size: .98rem; font-weight: 500; line-height: 1.6; word-break: keep-all; }
+@media (max-width: 680px) {
+  .committee-rows { grid-template-columns: 1fr; }
+  .committee { padding: 28px 24px; }
+}
 
 /* ===== Worship ===== */
 .worship-grid {
