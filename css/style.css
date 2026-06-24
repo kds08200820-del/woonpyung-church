@@ -205,29 +205,16 @@ ul { list-style: none; }
 .worship-card ul li span { color: var(--ink-soft); }
 .worship-card ul li strong { color: var(--ink); font-weight: 700; }
 .worship-card ul li.w-note { display: block; color: var(--accent-soft); font-size: .82rem; padding-top: 12px; }
-/* 제자훈련 양육반 배너 */
-.edu-banner {
-  margin-top: 40px; background: var(--accent); color: #fff;
-  border-radius: 16px; padding: 40px 48px;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 36px; flex-wrap: wrap;
-}
-.edu-head h3 { font-family: "Noto Serif KR", serif; font-size: 1.6rem; font-weight: 700; margin: 6px 0 8px; }
-.edu-head p { color: rgba(255,255,255,.8); font-weight: 300; font-size: .95rem; }
-.w-en.light { color: var(--gold); }
-.edu-times { display: flex; gap: 14px; flex-wrap: wrap; }
-.edu-times li {
-  background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
-  border-radius: 12px; padding: 16px 26px; text-align: center; min-width: 110px;
-}
-.edu-times li span { display: block; font-size: .85rem; color: rgba(255,255,255,.7); margin-bottom: 4px; }
-.edu-times li strong { font-size: 1.15rem; font-weight: 700; }
-
 .worship-foot { text-align: center; margin-top: 40px; color: var(--muted); font-size: .9rem; }
 
-@media (max-width: 680px) {
-  .edu-banner { flex-direction: column; text-align: center; padding: 34px 28px; }
-  .edu-times { justify-content: center; }
+/* ===== Education ===== */
+.edu-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 320px));
+  gap: 24px; justify-content: center;
+}
+.card-note {
+  margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line);
+  color: var(--accent-soft); font-size: .85rem; font-weight: 300; line-height: 1.6;
 }
 
 /* ===== Sermon ===== */
