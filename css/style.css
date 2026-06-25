@@ -737,6 +737,9 @@ ul { list-style: none; }
 .region-card .rc-tag { display:inline-block; font-size:.78rem; font-weight:700; color:#fff; background:var(--accent-soft); border-radius:20px; padding:4px 12px; margin-bottom:12px; }
 .region-card h3 { font-family:"Noto Serif KR",serif; font-size:1.3rem; margin-bottom:10px; }
 .region-card p { color:var(--ink-soft); font-weight:300; }
+.region-card-link { display:block; transition:border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.region-card-link:hover { border-left-color:var(--accent-soft); box-shadow:0 12px 28px rgba(0,0,0,.07); transform:translateY(-2px); }
+.region-card-link .rc-go { display:inline-block; margin-top:14px; font-size:.9rem; font-weight:600; color:var(--accent); }
 
 /* 함께 섬기기 */
 .serve-list { display:grid; gap:14px; }
