@@ -202,25 +202,62 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     document.getElementById("qtOpen").addEventListener("click", () => openModal(entry.date));
   }
 
+  const escQt = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  // QT 본문(시트 텍스트)을 제목·본문·섹션으로 구조화
+  function parseQt(raw) {
+    const lines = (raw || "").split("\n").map((s) => s.replace(/\s+$/g, ""));
+    let date = "", title = "", ref = "";
+    const sections = []; let cur = null;
+    for (const ln of lines) {
+      const t = ln.trim();
+      if (!t) { if (cur) cur.body.push(""); continue; }
+      if (/^📖/.test(t) && /(샬롬|오늘의\s*QT)/.test(t)) continue;           // 인사말 제거
+      const dm = t.match(/^📅\s*날짜\s*[:：]?\s*(.+)$/);
+      if (dm) { date = dm[1].trim(); continue; }                             // 날짜(한 번만)
+      const hm = t.match(/^(?:📖|📝|🙏|💡|✏️|🕊️|✨|🌱|📌|✝️?)\s*(.+)$/);  // 섹션 헤더
+      if (hm) { cur = { head: hm[1].trim(), body: [] }; sections.push(cur); continue; }
+      if (!cur) {
+        if (!title) { title = t; continue; }
+        if (!ref && /\d/.test(t) && /[:：~∼\-장절,\s]/.test(t) && t.length <= 32) { ref = t; continue; }
+        title += " " + t; continue;
+      }
+      cur.body.push(t);
+    }
+    return { date, title, ref, sections };
+  }
+
+  function qtParas(lines) {
+    const out = []; let buf = [];
+    for (const l of lines) { if (l === "") { if (buf.length) { out.push(buf.join("\n")); buf = []; } } else buf.push(l); }
+    if (buf.length) out.push(buf.join("\n"));
+    return out;
+  }
+
   function buildDateList(activeDate) {
-    dateListEl.innerHTML =
-      `<h4 class="qt-dl-head">묵상 보기</h4>` +
-      entries.map((e) => `<button class="qt-dl-item${e.date === activeDate ? " active" : ""}" data-date="${e.date}">${e.date}</button>`).join("");
+    dateListEl.innerHTML = entries
+      .map((e) => `<button class="qt-dl-item${e.date === activeDate ? " active" : ""}" data-date="${e.date}">${e.date}</button>`)
+      .join("");
   }
 
   function showDetail(date) {
     const e = entries.find((x) => x.date === date);
     if (!e) return;
-    detailEl.innerHTML = "";
-    const h = document.createElement("p");
-    h.className = "qt-detail-date";
-    h.textContent = e.date;
-    const body = document.createElement("div");
-    body.className = "qt-detail-body";
-    body.textContent = e.content; // 텍스트로 출력(줄바꿈은 CSS pre-line)
-    detailEl.appendChild(h);
-    detailEl.appendChild(body);
-    [...dateListEl.querySelectorAll(".qt-dl-item")].forEach((b) => b.classList.toggle("active", b.dataset.date === date));
+    const p = parseQt(e.content);
+    const secHtml = p.sections.map((s) => `
+      <h4 class="qt-d-head">${escQt(s.head)}</h4>
+      <div class="qt-d-sec">${qtParas(s.body).map((par) => `<p>${escQt(par)}</p>`).join("")}</div>`).join("");
+    detailEl.innerHTML = `
+      <div class="qt-d-top">
+        <span class="qt-d-date">${escQt(p.date || e.date)}</span>
+        ${p.title ? `<h3 class="qt-d-title">${escQt(p.title)}</h3>` : ""}
+        ${p.ref ? `<p class="qt-d-ref">${escQt(p.ref)}</p>` : ""}
+      </div>
+      ${secHtml || `<div class="qt-d-sec"><p>${escQt(e.content)}</p></div>`}`;
+    const items = [...dateListEl.querySelectorAll(".qt-dl-item")];
+    items.forEach((b) => b.classList.toggle("active", b.dataset.date === date));
+    const act = dateListEl.querySelector(".qt-dl-item.active");
+    if (act && act.scrollIntoView) act.scrollIntoView({ inline: "center", block: "nearest" });
     detailEl.scrollTop = 0;
   }
 

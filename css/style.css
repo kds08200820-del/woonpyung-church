@@ -331,27 +331,39 @@ ul { list-style: none; }
 .qt-card-ref { color: var(--accent); font-size: 1.05rem; font-weight: 500; }
 .qt-card-more { margin-top: 24px; font-size: .9rem; font-weight: 500; color: var(--accent-soft); }
 
-/* QT 모달 */
-.modal-box-qt { max-width: 780px; padding: 0; overflow: hidden; }
-.qt-modal-layout { display: grid; grid-template-columns: 184px 1fr; max-height: 86vh; }
-.qt-datelist { background: var(--paper-alt); border-right: 1px solid var(--line); padding: 30px 16px; overflow-y: auto; }
-.qt-dl-head { font-family: "Noto Serif KR", serif; font-size: .95rem; color: var(--accent); margin-bottom: 14px; padding-left: 6px; }
-.qt-dl-item {
-  display: block; width: 100%; text-align: left; background: none; border: 0;
-  font-family: "Cormorant Garamond", serif; letter-spacing: .04em; font-size: 1.02rem;
-  color: var(--ink-soft); padding: 9px 12px; border-radius: 8px; cursor: pointer; transition: all .2s ease;
+/* QT 모달 (상단 날짜 스트립 + 넓은 본문) */
+.modal-box-qt { max-width: 760px; padding: 0; overflow: hidden; display: flex; flex-direction: column; max-height: 88vh; }
+.qt-modal-v2 { display: flex; flex-direction: column; min-height: 0; }
+/* 상단 날짜 가로 스트립 — 손으로 밀어 넘기며 지난 묵상 탐색 */
+.qt-datebar {
+  display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding: 16px 20px; border-bottom: 1px solid var(--line); background: var(--paper-alt);
+  flex: 0 0 auto; scroll-padding: 20px;
 }
-.qt-dl-item:hover { background: rgba(0,0,0,.04); }
-.qt-dl-item.active { background: var(--accent); color: #fff; }
-.qt-detail { padding: 46px 42px; overflow-y: auto; }
-.qt-detail-date { font-family: "Cormorant Garamond", serif; letter-spacing: .1em; color: var(--gold); font-size: 1.15rem; margin-bottom: 18px; }
-.qt-detail-body { white-space: pre-line; font-size: .96rem; line-height: 1.95; color: var(--ink-soft); word-break: keep-all; }
+.qt-dl-item {
+  flex: 0 0 auto; white-space: nowrap; background: #fff; border: 1px solid var(--line);
+  font-family: "Noto Sans KR", sans-serif; font-size: .92rem; color: var(--ink-soft);
+  padding: 9px 16px; border-radius: 22px; cursor: pointer; transition: all .2s ease;
+}
+.qt-dl-item:hover { border-color: var(--accent-soft); }
+.qt-dl-item.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* 본문 — 한 면 전체로 넓게, 본문체로 크게 */
+.qt-detail { padding: 32px 40px; overflow-y: auto; }
+.qt-d-top { padding-bottom: 18px; margin-bottom: 22px; border-bottom: 1px solid var(--line); }
+.qt-d-date { font-family: "Cormorant Garamond", serif; letter-spacing: .1em; color: var(--gold); font-size: 1.05rem; }
+.qt-d-title { font-family: "Noto Serif KR", serif; font-size: 1.7rem; line-height: 1.45; color: var(--ink); margin: 10px 0 8px; word-break: keep-all; }
+.qt-d-ref { color: var(--accent); font-size: 1.08rem; font-weight: 600; }
+.qt-d-head {
+  font-family: "Noto Serif KR", serif; font-size: 1.2rem; color: var(--accent);
+  margin: 28px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+}
+.qt-d-sec p { font-family: "Noto Sans KR", sans-serif; font-size: 1.06rem; line-height: 2; color: var(--ink); word-break: keep-all; white-space: pre-line; }
+.qt-d-sec p + p { margin-top: 14px; }
 @media (max-width: 680px) {
-  .qt-modal-layout { grid-template-columns: 1fr; max-height: 88vh; }
-  .qt-datelist { border-right: 0; border-bottom: 1px solid var(--line); display: flex; gap: 8px; overflow-x: auto; padding: 14px; }
-  .qt-dl-head { display: none; }
-  .qt-dl-item { white-space: nowrap; }
-  .qt-detail { padding: 30px 24px; }
+  .qt-detail { padding: 24px 20px; }
+  .qt-datebar { padding: 13px 14px; }
+  .qt-d-title { font-size: 1.4rem; }
+  .qt-d-sec p { font-size: 1rem; line-height: 1.92; }
 }
 
 /* ===== Bulletin archive ===== */
