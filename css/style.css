@@ -806,3 +806,13 @@ ul { list-style: none; }
   .auth-slot { margin-left: 8px; }
   .modal-box-auth { padding: 34px 24px; }
 }
+
+/* 회원 관리 표 */
+.member-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+.member-table { width: 100%; border-collapse: collapse; min-width: 520px; background: #fff; }
+.member-table th, .member-table td { text-align: left; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: .92rem; }
+.member-table th { background: var(--paper-alt); color: var(--accent); font-weight: 700; font-size: .85rem; }
+.member-table tr:last-child td { border-bottom: 0; }
+.prov-tag { font-size: .78rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.prov-kakao { background: #FEE500; color: #3A1D1D; }
+.prov-email { background: var(--paper-alt); color: var(--ink-soft); border: 1px solid var(--line); }
