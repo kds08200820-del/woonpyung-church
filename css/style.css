@@ -780,6 +780,8 @@ ul { list-style: none; }
 .qna-q .qna-mark { color:var(--gold); font-family:"Noto Serif KR",serif; }
 .qna-a { padding:0 24px; max-height:0; overflow:hidden; transition: max-height .35s ease, padding .35s ease; color:var(--ink-soft); font-weight:300; font-size:.93rem; }
 .qna-item.open .qna-a { max-height:500px; padding:0 24px 22px; }
+.qna-cat { font-family:"Noto Serif KR",serif; font-size:1.2rem; color:var(--accent); margin:30px 0 14px; padding-bottom:8px; border-bottom:2px solid var(--accent); }
+.qna-cat:first-child { margin-top:0; }
 
 /* 앨범 */
 .album-grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap:14px; }
