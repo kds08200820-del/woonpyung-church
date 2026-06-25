@@ -84,8 +84,27 @@ if (sermonDeck) {
     const dot = e.target.closest(".sdot");
     if (dot) { active = Number(dot.dataset.i); layoutDeck(); }
   });
-  // 뒤에 투명하게 겹친 지난 카드를 클릭하면 앞으로 가져오기
+
+  // 모바일: 좌우 스와이프(손으로 밀기)로 카드 넘기기
+  let touchStartX = 0, touchStartY = 0, swiped = false;
+  sermonDeck.addEventListener("touchstart", (e) => {
+    const t = e.changedTouches[0];
+    touchStartX = t.clientX; touchStartY = t.clientY; swiped = false;
+  }, { passive: true });
+  sermonDeck.addEventListener("touchend", (e) => {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    // 가로 이동이 충분하고 세로(스크롤)보다 클 때만 카드 전환
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+      swiped = true;
+      goSermon(dx < 0 ? 1 : -1); // 왼쪽으로 밀면 지난 주, 오른쪽으로 밀면 이번 주
+    }
+  }, { passive: true });
+
+  // 뒤에 투명하게 겹친 지난 카드를 클릭(탭)하면 앞으로 가져오기
   sermonDeck.addEventListener("click", (e) => {
+    if (swiped) { swiped = false; return; } // 스와이프 동작은 탭으로 처리하지 않음
     const card = e.target.closest(".deck-card");
     if (card && !card.classList.contains("is-active")) {
       active = Number(card.dataset.i);
