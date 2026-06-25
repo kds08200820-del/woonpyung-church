@@ -591,6 +591,9 @@ document.querySelectorAll(".qna-q").forEach((btn) => {
   if (search) search.addEventListener("input", () => { query = search.value; listView(); });
   modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeModal(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
+
+  // 다른 페이지(히어로 등)에서 ?hc=open 으로 진입하면 모달 자동 열기
+  if (new URLSearchParams(location.search).get("hc") === "open") openModal();
 })();
 
 // ===== 5-4. 목사님의 글(칼럼) — 카드 렌더 + 전문 모달 =====
@@ -639,6 +642,36 @@ document.querySelectorAll(".qna-q").forEach((btn) => {
   });
   modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeCol(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeCol(); });
+})();
+
+// ===== 5-5. 히어로 제목 회전(서서히 반복 전환) =====
+(function () {
+  const rot = document.getElementById("heroRotator");
+  if (!rot) return;
+  const slides = [...rot.querySelectorAll(".hero-slide")];
+  if (slides.length < 2) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let i = 0;
+  setInterval(() => {
+    slides[i].classList.remove("is-active");
+    i = (i + 1) % slides.length;
+    slides[i].classList.add("is-active");
+  }, 5200);
+})();
+
+// ===== 5-6. 함께 드리는 기도(prayer.html) — 이번 주 기도 제목 =====
+(function () {
+  const box = document.getElementById("prayerThisWeek");
+  if (!box || typeof BULLETINS === "undefined" || !BULLETINS.length) return;
+  const b = BULLETINS[0];
+  const news = (b.news || []).map((n) => `<div class="pr-item"><h4>${n.title}</h4><p>${n.detail}</p></div>`).join("");
+  box.innerHTML = `
+    <div class="pr-meet">
+      <div class="side-card"><span class="side-tag">수요기도회</span><p>${(b.wed || "").replace(/^수요기도회 · /, "")}</p></div>
+      <div class="side-card"><span class="side-tag">새벽기도회</span><p>${(b.dawn || "").replace(/^새벽기도회 · /, "")}</p></div>
+    </div>
+    ${news ? `<div class="pr-news">${news}</div>` : ""}
+    <p class="pr-source">${b.dateLabel} 주보 기준</p>`;
 })();
 
 // ===== 6. 스크롤 등장 애니메이션 =====

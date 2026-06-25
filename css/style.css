@@ -127,6 +127,28 @@ ul { list-style: none; }
   animation: bounce 2s infinite;
 }
 
+/* 히어로 제목 회전(슬라이드) */
+.hero-rotator { position: relative; min-height: 340px; margin-bottom: 6px; }
+.hero-slide {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; transition: opacity 1.1s ease, visibility 1.1s ease;
+}
+.hero-slide.is-active { opacity: 1; visibility: visible; }
+.hero-slide .hero-title, .hero-slide .hero-sub { margin-bottom: 0; }
+.hero-slide .hero-sub { margin-top: 18px; }
+.hero-cta {
+  display: inline-block; margin-top: 30px; padding: 14px 30px;
+  border: 1px solid rgba(255,255,255,.6); border-radius: 32px;
+  color: #fff; font-size: 1rem; font-weight: 500; letter-spacing: .01em;
+  transition: background .25s ease, color .25s ease, border-color .25s ease;
+}
+.hero-cta:hover { background: #fff; color: var(--accent); border-color: #fff; }
+@media (max-width: 760px) {
+  .hero-rotator { min-height: 300px; }
+  .hero-cta { padding: 12px 24px; font-size: .94rem; }
+}
+
 @keyframes fadeUp { from{opacity:0; transform:translateY(24px);} to{opacity:1; transform:translateY(0);} }
 @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(8px);} }
 
@@ -952,4 +974,27 @@ ul { list-style: none; }
 
 @media (max-width: 760px) {
   .column-text p { font-size: .98rem; line-height: 1.95; }
+}
+
+/* ============================================================
+   함께 드리는 기도 (prayer.html)
+   ============================================================ */
+.prayer-week { max-width: 880px; }
+.pr-meet { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
+.pr-news { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.pr-item { background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--accent-soft); border-radius: 12px; padding: 18px 20px; }
+.pr-item h4 { font-family: "Noto Serif KR", serif; font-size: 1.02rem; color: var(--accent); margin-bottom: 6px; }
+.pr-item p { font-size: .92rem; color: var(--ink-soft); line-height: 1.7; word-break: keep-all; }
+.pr-source { margin-top: 16px; font-size: .82rem; color: var(--muted); text-align: right; }
+
+.prayer-request { max-width: 720px; margin: 0 auto; text-align: center; }
+.prayer-request .eyebrow2 { font-family: "Cormorant Garamond", serif; letter-spacing: .25em; font-size: .8rem; color: var(--accent-soft); }
+.prayer-request h2 { font-family: "Noto Serif KR", serif; font-size: clamp(1.5rem, 3.4vw, 2.1rem); margin: 8px 0 14px; }
+.prayer-request > p { color: var(--ink-soft); font-weight: 300; line-height: 1.9; margin-bottom: 26px; word-break: keep-all; }
+.prayer-request .cta-btns { justify-content: center; }
+.prayer-note { margin-top: 22px; font-size: .9rem; color: var(--muted); }
+.prayer-note a { color: var(--accent); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .pr-meet, .pr-news { grid-template-columns: 1fr; }
 }
