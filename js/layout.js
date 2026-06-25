@@ -22,7 +22,7 @@
     <header id="header">
       <div class="nav-inner">
         <a href="index.html" class="logo">
-          <img src="images/icon-192.png" alt="" class="logo-mark" />
+          <img src="images/icon-192.png?v=20260625e" alt="" class="logo-mark" />
           <span class="logo-txt">
             <span class="logo-kr">운평장로교회</span>
             <span class="logo-en">UNPYEONG CHURCH</span>
@@ -51,7 +51,7 @@
       </div>
     </footer>
     <div class="install-bar" id="installBar" hidden>
-      <img src="images/icon-192.png" alt="운평교회" class="install-icon" />
+      <img src="images/icon-192.png?v=20260625e" alt="운평교회" class="install-icon" />
       <div class="install-text">
         <strong>운평장로교회 앱 설치</strong>
         <span id="installMsg">홈 화면에 추가하여 앱처럼 사용하세요.</span>
