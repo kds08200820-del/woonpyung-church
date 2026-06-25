@@ -820,3 +820,33 @@ ul { list-style: none; }
 /* 카카오톡 채널 추가 버튼 (푸터) */
 .kakao-channel-btn { display: inline-flex; align-items: center; gap: 7px; background: #FEE500; color: #3A1D1D; font-size: .9rem; font-weight: 700; padding: 11px 20px; border-radius: 24px; transition: filter .2s ease; }
 .kakao-channel-btn:hover { filter: brightness(.95); color: #3A1D1D; }
+
+/* ============================================================
+   교회 정관 (bylaws.html)
+   ============================================================ */
+.bylaws { max-width: 880px; }
+.by-revised { text-align: center; font-size: .86rem; color: var(--muted); letter-spacing: .02em; padding-bottom: 22px; margin-bottom: 30px; border-bottom: 1px solid var(--line); }
+.by-preamble { margin-bottom: 30px; }
+.by-chapter { margin-bottom: 14px; }
+.by-ch {
+  font-family: "Noto Serif KR", serif; font-weight: 700;
+  font-size: 1.32rem; color: var(--accent);
+  margin: 38px 0 16px; padding-bottom: 10px;
+  border-bottom: 2px solid var(--accent);
+  display: flex; align-items: baseline; gap: 12px;
+}
+.by-ch span { font-weight: 600; color: var(--ink); font-size: 1.12rem; }
+.by-art { padding: 14px 0 16px; border-bottom: 1px solid var(--line); }
+.by-art:last-child { border-bottom: 0; }
+.by-art-h {
+  font-family: "Noto Serif KR", serif; font-size: 1.02rem; font-weight: 700;
+  color: var(--accent-soft); margin-bottom: 8px;
+  display: flex; align-items: baseline; gap: 10px;
+}
+.by-art-h span { color: var(--ink); font-weight: 600; }
+.by-p { font-size: .95rem; line-height: 1.85; color: var(--ink-soft); margin: 3px 0; word-break: keep-all; }
+@media (max-width: 760px) {
+  .by-ch { font-size: 1.18rem; }
+  .by-ch span { font-size: 1rem; }
+  .by-p { font-size: .92rem; }
+}
