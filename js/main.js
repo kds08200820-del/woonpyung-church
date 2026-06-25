@@ -711,6 +711,30 @@ document.querySelectorAll(".qna-q").forEach((btn) => {
     <p class="pr-source">${b.dateLabel} 주보 기준</p>`;
 })();
 
+// ===== 5-7. 지도 모달 (선교지 등 주소 카드 클릭 시) =====
+(function () {
+  const modal = document.getElementById("mapModal");
+  if (!modal) return;
+  const frame = document.getElementById("mapFrame");
+  const titleEl = document.getElementById("mapTitle");
+  const addrEl = document.getElementById("mapAddr");
+  const kakao = document.getElementById("mapKakao");
+  function openMap(name, addr) {
+    titleEl.textContent = name || "지도";
+    addrEl.textContent = addr;
+    frame.src = "https://www.google.com/maps?q=" + encodeURIComponent(addr) + "&hl=ko&z=15&output=embed";
+    kakao.href = "https://map.kakao.com/?q=" + encodeURIComponent(addr);
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+  function closeMap() { modal.hidden = true; document.body.style.overflow = ""; frame.src = "about:blank"; }
+  document.querySelectorAll("[data-map]").forEach((el) => {
+    el.addEventListener("click", () => openMap(el.dataset.name, el.dataset.map));
+  });
+  modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeMap(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeMap(); });
+})();
+
 // ===== 6. 스크롤 등장 애니메이션 =====
 const revealTargets = document.querySelectorAll(
   ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .qt-today, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid, .entry-card, .home-sermon, .info-card, .roadmap-step, .community-card, .group-card, .story-card, .qna-item, .timeline-item, .region-card, .cta-flow"

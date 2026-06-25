@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>지역과 세상 속에서 | 운평장로교회</title>
   <meta name="description" content="운평장로교회의 지역 사역, 연합과 섬김, 국내외 선교 이야기. 교회 안에만 머물지 않습니다." />
-  <link rel="manifest" href="manifest.json?v=20260626l" />
+  <link rel="manifest" href="manifest.json?v=20260626m" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260626l" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260626l" />
+  <link rel="icon" href="images/favicon-32.png?v=20260626m" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260626m" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260626l" />
+  <link rel="stylesheet" href="css/style.css?v=20260626m" />
 </head>
 <body>
 
@@ -92,7 +92,7 @@
         <p>국내 작은 교회와 개척 현장을 기도와 물질로 후원합니다.</p>
       </div>
       <div class="mission-grid">
-        <div class="mission-card"><h4>삽시벧엘교회</h4><p class="m-region">충청도 섬마을 작은 교회</p><p class="m-name">김제현 목사</p></div>
+        <button type="button" class="mission-card mission-card-btn" data-map="충남 보령시 오천면 삽시도3길 97" data-name="삽시벧엘교회"><h4>삽시벧엘교회</h4><p class="m-region">충청도 섬마을 작은 교회</p><p class="m-name">김제현 목사</p><span class="m-go">📍 지도 보기 →</span></button>
         <div class="mission-card"><h4>용연교회</h4><p class="m-region">전북 산간 지역 작은 교회</p><p class="m-name">차재용 목사</p></div>
         <div class="mission-card"><h4>청전교회</h4><p class="m-region">제천 작은 교회</p><p class="m-name">고노엘 목사</p></div>
         <div class="mission-card"><h4>아름다운숲교회</h4><p class="m-region">동탄 도심 속 개척 교회</p><p class="m-name">장정훈 목사</p></div>
@@ -111,9 +111,23 @@
     </div>
   </section>
 
-  <script src="js/config.js?v=20260626l"></script>
-  <script src="js/bulletins.js?v=20260626l"></script>
-  <script src="js/layout.js?v=20260626l"></script>
-  <script src="js/main.js?v=20260626l"></script>
+  <!-- ===== 지도 Modal ===== -->
+  <div class="modal" id="mapModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box modal-box-map" role="dialog" aria-modal="true" aria-label="지도">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="map-head">
+        <h3 class="map-title" id="mapTitle"></h3>
+        <p class="map-addr" id="mapAddr"></p>
+      </div>
+      <div class="map-frame"><iframe id="mapFrame" title="지도" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
+      <a class="btn btn-line map-open" id="mapKakao" href="#" target="_blank" rel="noopener">카카오맵에서 열기 →</a>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=20260626m"></script>
+  <script src="js/bulletins.js?v=20260626m"></script>
+  <script src="js/layout.js?v=20260626m"></script>
+  <script src="js/main.js?v=20260626m"></script>
 </body>
 </html>
