@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>말씀으로 | 운평장로교회</title>
   <meta name="description" content="운평장로교회의 주일 설교, 설교 아카이브, 하이델베르크 요리문답 강해와 목사님의 글." />
-  <link rel="manifest" href="manifest.json?v=20260626f" />
+  <link rel="manifest" href="manifest.json?v=20260626g" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260626f" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260626f" />
+  <link rel="icon" href="images/favicon-32.png?v=20260626g" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260626g" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260626f" />
+  <link rel="stylesheet" href="css/style.css?v=20260626g" />
 </head>
 <body>
 
@@ -102,13 +102,9 @@
       <div class="block-head">
         <span class="eyebrow2">PASTOR'S COLUMN</span>
         <h2>목사님의 글</h2>
-        <p>인문과 신앙이 만나는 묵상 칼럼. <span class="placeholder-note">콘텐츠 준비 중</span></p>
+        <p>인문과 신앙이 만나는 묵상 칼럼. 카드를 누르면 전문을 읽을 수 있습니다.</p>
       </div>
-      <div class="story-grid">
-        <article class="story-card"><div class="sc-body"><span class="sc-tag">칼럼</span><h3>고난이라는 박넝쿨</h3><p>요나의 박넝쿨 이야기에서 읽는, 우리를 향하신 하나님의 마음. (예정)</p></div></article>
-        <article class="story-card"><div class="sc-body"><span class="sc-tag">칼럼</span><h3>버티는 것이 실력이다</h3><p>“은혜는 버티는 것입니다.” 열매가 보이지 않을 때를 위한 글. (예정)</p></div></article>
-        <article class="story-card"><div class="sc-body"><span class="sc-tag">칼럼</span><h3>사랑은 계산하지 않는다</h3><p>고린도전서 13장이 오늘 우리의 관계에 던지는 질문. (예정)</p></div></article>
-      </div>
+      <div class="story-grid" id="columnGrid"></div>
     </div>
   </section>
 
@@ -144,6 +140,15 @@
     </div>
   </div>
 
+  <!-- ===== 칼럼(목사님의 글) Modal ===== -->
+  <div class="modal" id="columnModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box modal-box-column" role="dialog" aria-modal="true" aria-label="칼럼">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="column-body" id="columnBody"></div>
+    </div>
+  </div>
+
   <!-- ===== 하이델베르크 요리문답 Modal ===== -->
   <div class="modal" id="hcModal" hidden>
     <div class="modal-backdrop" data-close></div>
@@ -159,10 +164,11 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=20260626f"></script>
-  <script src="js/bulletins.js?v=20260626f"></script>
-  <script src="js/heidelberg.js?v=20260626f"></script>
-  <script src="js/layout.js?v=20260626f"></script>
-  <script src="js/main.js?v=20260626f"></script>
+  <script src="js/config.js?v=20260626g"></script>
+  <script src="js/bulletins.js?v=20260626g"></script>
+  <script src="js/heidelberg.js?v=20260626g"></script>
+  <script src="js/columns.js?v=20260626g"></script>
+  <script src="js/layout.js?v=20260626g"></script>
+  <script src="js/main.js?v=20260626g"></script>
 </body>
 </html>

@@ -593,6 +593,54 @@ document.querySelectorAll(".qna-q").forEach((btn) => {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
 })();
 
+// ===== 5-4. 목사님의 글(칼럼) — 카드 렌더 + 전문 모달 =====
+(function () {
+  const grid = document.getElementById("columnGrid");
+  const modal = document.getElementById("columnModal");
+  if (!grid || !modal || !window.COLUMNS) return;
+  const body = document.getElementById("columnBody");
+  const COLS = window.COLUMNS;
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  grid.innerHTML = COLS.map((c, i) => {
+    const open = !c.coming && Array.isArray(c.body) && c.body.length;
+    return `
+      <article class="story-card column-card${open ? " is-open" : " is-coming"}"${open ? ` data-col="${i}" role="button" tabindex="0"` : ""}>
+        <div class="sc-body">
+          <span class="sc-tag">${esc(c.tag || "칼럼")}</span>
+          <h3>${esc(c.title)}</h3>
+          <p>${esc(c.teaser || "")}${c.coming ? " <span class=\"placeholder-note\">준비 중</span>" : ""}</p>
+          ${open ? `<span class="column-go">전문 읽기 →</span>` : ""}
+        </div>
+      </article>`;
+  }).join("");
+
+  function openCol(i) {
+    const c = COLS[i];
+    if (!c || !c.body) return;
+    body.innerHTML = `
+      <span class="m-eyebrow">PASTOR'S COLUMN${c.scripture ? " · " + esc(c.scripture) : ""}</span>
+      <h3 class="column-title">${esc(c.title)}</h3>
+      ${c.author ? `<p class="column-author">${esc(c.author)}</p>` : ""}
+      <div class="column-text">${c.body.map((p) => `<p>${esc(p)}</p>`).join("")}</div>`;
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    body.scrollTop = 0;
+  }
+  function closeCol() { modal.hidden = true; document.body.style.overflow = ""; }
+
+  grid.addEventListener("click", (e) => {
+    const card = e.target.closest("[data-col]");
+    if (card) openCol(Number(card.dataset.col));
+  });
+  grid.addEventListener("keydown", (e) => {
+    const card = e.target.closest("[data-col]");
+    if (card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openCol(Number(card.dataset.col)); }
+  });
+  modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeCol(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeCol(); });
+})();
+
 // ===== 6. 스크롤 등장 애니메이션 =====
 const revealTargets = document.querySelectorAll(
   ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .qt-today, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid, .entry-card, .home-sermon, .info-card, .roadmap-step, .community-card, .group-card, .story-card, .qna-item, .timeline-item, .region-card, .cta-flow"

@@ -935,3 +935,21 @@ ul { list-style: none; }
   .hc-body { padding: 16px 22px 26px; }
   .hc-d-q { font-size: 1.14rem; }
 }
+
+/* ============================================================
+   목사님의 글 (칼럼) — 카드 + 전문 모달
+   ============================================================ */
+.column-card.is-open { cursor: pointer; }
+.column-card.is-coming { opacity: .85; }
+.column-go { display: inline-block; margin-top: 14px; font-size: .9rem; font-weight: 600; color: var(--accent); }
+
+.modal-box-column { max-width: 720px; }
+.column-body .m-eyebrow { display: block; }
+.column-title { font-family: "Noto Serif KR", serif; font-size: clamp(1.6rem, 3.6vw, 2.1rem); color: var(--ink); margin: 10px 0 6px; line-height: 1.4; word-break: keep-all; }
+.column-author { font-size: .9rem; color: var(--accent-soft); font-weight: 600; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.column-text p { font-family: "Noto Serif KR", serif; font-size: 1.04rem; line-height: 2.05; color: var(--ink); word-break: keep-all; }
+.column-text p + p { margin-top: 18px; }
+
+@media (max-width: 760px) {
+  .column-text p { font-size: .98rem; line-height: 1.95; }
+}
