@@ -405,32 +405,44 @@ if (modal) {
   }
 })();
 
-// ===== 4. 헤더 스크롤 상태 =====
-const header = document.getElementById("header");
-const onScroll = () => {
-  if (window.scrollY > 60) header.classList.add("scrolled");
-  else header.classList.remove("scrolled");
-};
-window.addEventListener("scroll", onScroll, { passive: true });
-onScroll();
+// (헤더 스크롤·모바일 메뉴 로직은 js/layout.js로 이관됨)
 
-// ===== 5. 모바일 메뉴 토글 =====
-const navToggle = document.getElementById("navToggle");
-const navMenu = document.getElementById("navMenu");
-navToggle.addEventListener("click", () => {
-  navMenu.classList.toggle("open");
-  header.classList.toggle("menu-open");
+// ===== 4. 홈 '이번 주 말씀' 하이라이트 =====
+const homeSermon = document.getElementById("homeSermon");
+if (homeSermon && typeof BULLETINS !== "undefined" && BULLETINS.length) {
+  const b = BULLETINS[0];
+  homeSermon.innerHTML = `
+    <span class="hs-date">${b.dateLabel} · 주일 낮 예배</span>
+    <h3 class="hs-title">${b.title}</h3>
+    <p class="hs-ref">${b.scripture} · ${b.preacher}</p>
+    <blockquote class="hs-quote">${b.quote}</blockquote>
+    <a class="btn btn-line" href="word.html">설교 더 보기 →</a>`;
+}
+
+// ===== 5. 새가족 등록 폼 (welcome) =====
+const newcomerForm = document.getElementById("newcomerForm");
+if (newcomerForm) {
+  newcomerForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    newcomerForm.hidden = true;
+    const done = document.getElementById("newcomerDone");
+    if (done) done.hidden = false;
+  });
+}
+
+// ===== 5-2. 삶의 질문 Q&A 아코디언 =====
+document.querySelectorAll(".qna-q").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const item = btn.closest(".qna-item");
+    const open = item.classList.toggle("open");
+    const mark = btn.querySelector(".qna-mark");
+    if (mark) mark.textContent = open ? "−" : "+";
+  });
 });
-navMenu.querySelectorAll("a").forEach((a) =>
-  a.addEventListener("click", () => {
-    navMenu.classList.remove("open");
-    header.classList.remove("menu-open");
-  })
-);
 
 // ===== 6. 스크롤 등장 애니메이션 =====
 const revealTargets = document.querySelectorAll(
-  ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .qt-today, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid"
+  ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .qt-today, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid, .entry-card, .home-sermon, .info-card, .roadmap-step, .community-card, .group-card, .story-card, .qna-item, .timeline-item, .region-card, .cta-flow"
 );
 revealTargets.forEach((el) => el.classList.add("reveal"));
 

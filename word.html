@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>말씀으로 | 운평장로교회</title>
+  <meta name="description" content="운평장로교회의 주일 설교, 설교 아카이브, 하이델베르크 요리문답 강해와 목사님의 글." />
+  <link rel="manifest" href="manifest.json?v=20260625d" />
+  <meta name="theme-color" content="#032257" />
+  <link rel="icon" href="images/favicon-32.png" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-title" content="운평장로교회" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260625d" />
+</head>
+<body>
+
+  <section class="page-hero">
+    <p class="ph-eyebrow">THE WORD</p>
+    <h1>말씀으로</h1>
+    <p>신앙의 뿌리. 설교와 교리, 매일의 묵상이 차곡차곡 쌓이는 공간입니다.</p>
+  </section>
+
+  <!-- ===== 이번 주 말씀 ===== -->
+  <section class="block">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">SERMON</span>
+        <h2>이번 주 말씀</h2>
+        <p>이번 주와 지난 주 설교를 카드로 넘겨 보세요.</p>
+      </div>
+      <div class="sermon-nav">
+        <button class="sermon-btn" id="sermonNewer">← 이번 주 말씀</button>
+        <div class="sermon-dots" id="sermonDots"></div>
+        <button class="sermon-btn" id="sermonOlder">지난 주 말씀 →</button>
+      </div>
+      <div class="sermon-deck" id="sermonDeck"></div>
+      <div class="sermon-side" id="sermonSide"></div>
+    </div>
+  </section>
+
+  <!-- ===== 매일 묵상 QT ===== -->
+  <section class="block block-alt">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">DAILY QT</span>
+        <h2>매일 말씀 묵상</h2>
+        <p>오늘 온 교회가 함께 읽는 본문입니다. 카드를 누르면 전문과 지난 묵상을 볼 수 있습니다.</p>
+      </div>
+      <div class="qt-today" id="qtToday"><p class="qt-loading">오늘의 말씀을 불러오는 중입니다…</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 설교 아카이브 ===== -->
+  <section class="block">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">ARCHIVE</span>
+        <h2>설교 아카이브</h2>
+        <p>본문·제목·날짜로 검색하세요. 나훔서 새벽기도, 고린도전서 강해 등이 쌓여 갑니다.</p>
+      </div>
+      <div class="bulletin-controls">
+        <label class="ctrl"><span>월 선택</span><select id="bulletinMonth"></select></label>
+        <label class="ctrl ctrl-search"><span>검색</span><input id="bulletinSearch" type="search" placeholder="설교 제목 · 본문 · 날짜 검색" /></label>
+      </div>
+      <div class="bulletin-list" id="bulletinList"></div>
+      <p class="bulletin-empty" id="bulletinEmpty" hidden>검색 결과가 없습니다.</p>
+    </div>
+  </section>
+
+  <!-- ===== 우리가 믿는 것 ===== -->
+  <section class="block block-alt">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">WHAT WE BELIEVE</span>
+        <h2>우리가 믿는 것</h2>
+        <p>“구원은 내 노력이 아니라 하나님의 은혜입니다.” 어렵지 않게, 차근차근 배웁니다.</p>
+      </div>
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>하이델베르크 요리문답</h3>
+          <p>수요기도회에서 한 문답씩 함께 배우고 있습니다. 신앙의 핵심을 묻고 답하며 정리하는 시간입니다. (현재 강해 진행 중)</p>
+        </div>
+        <div class="info-card">
+          <h3>신앙고백 해설</h3>
+          <p>사도신경과 개혁주의 신앙고백을 쉬운 말로 풀어, 우리가 무엇을 왜 믿는지 함께 정리합니다.</p>
+        </div>
+        <div class="info-card">
+          <h3>왜 개혁주의인가</h3>
+          <p>“오직 성경, 오직 은혜, 오직 믿음.” 사람의 공로가 아니라 하나님의 은혜를 높이는 신앙 — 그래서 더 겸손하고 감사하게 살아갑니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 목사님의 글 ===== -->
+  <section class="block">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">PASTOR'S COLUMN</span>
+        <h2>목사님의 글</h2>
+        <p>인문과 신앙이 만나는 묵상 칼럼. <span class="placeholder-note">콘텐츠 준비 중</span></p>
+      </div>
+      <div class="story-grid">
+        <article class="story-card"><div class="sc-body"><span class="sc-tag">칼럼</span><h3>고난이라는 박넝쿨</h3><p>요나의 박넝쿨 이야기에서 읽는, 우리를 향하신 하나님의 마음. (예정)</p></div></article>
+        <article class="story-card"><div class="sc-body"><span class="sc-tag">칼럼</span><h3>버티는 것이 실력이다</h3><p>“은혜는 버티는 것입니다.” 열매가 보이지 않을 때를 위한 글. (예정)</p></div></article>
+        <article class="story-card"><div class="sc-body"><span class="sc-tag">칼럼</span><h3>사랑은 계산하지 않는다</h3><p>고린도전서 13장이 오늘 우리의 관계에 던지는 질문. (예정)</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 이동 유도 ===== -->
+  <section class="block block-alt">
+    <div class="container">
+      <div class="cta-flow">
+        <span class="cta-eyebrow">NEXT STEP</span>
+        <h3>직접 배우고 싶다면</h3>
+        <div class="cta-btns"><a class="btn btn-line" href="grow.html">함께 자라기로 →</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Bulletin Modal ===== -->
+  <div class="modal" id="bulletinModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== QT Modal ===== -->
+  <div class="modal" id="qtModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box modal-box-qt" role="dialog" aria-modal="true" aria-label="매일 말씀 묵상">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="qt-modal-layout">
+        <aside class="qt-datelist" id="qtDateList"></aside>
+        <div class="qt-detail" id="qtDetail"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=20260625d"></script>
+  <script src="js/bulletins.js?v=20260625d"></script>
+  <script src="js/layout.js?v=20260625d"></script>
+  <script src="js/main.js?v=20260625d"></script>
+</body>
+</html>
