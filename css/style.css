@@ -874,3 +874,64 @@ ul { list-style: none; }
 .sm-apply-tag { display: inline-block; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
 .sm-apply p { font-size: .96rem; line-height: 1.9; color: var(--ink); word-break: keep-all; }
 .sm-apply-ref { display: block; margin-top: 12px; text-align: right; font-size: .88rem; color: var(--accent-soft); font-weight: 600; }
+
+/* ============================================================
+   하이델베르크 요리문답 (카드 클릭 → 문답 탐색 모달)
+   ============================================================ */
+.info-card-link { cursor: pointer; transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.info-card-link:hover { border-color: var(--accent-soft); box-shadow: 0 12px 30px rgba(0,0,0,.07); transform: translateY(-3px); }
+.info-card-go { display: inline-block; margin-top: 14px; font-size: .9rem; font-weight: 600; color: var(--accent); }
+
+.modal-box-hc { max-width: 760px; padding: 0; overflow: hidden; display: flex; flex-direction: column; max-height: 88vh; }
+.hc-head { padding: 34px 36px 12px; }
+.hc-head .hc-sub { color: var(--ink-soft); font-size: .92rem; margin-top: 8px; }
+.hc-search { padding: 8px 36px 14px; border-bottom: 1px solid var(--line); }
+.hc-search input { width: 100%; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; font-family: inherit; font-size: .95rem; }
+.hc-search input:focus { outline: none; border-color: var(--accent-soft); }
+.hc-body { padding: 18px 36px 30px; overflow-y: auto; }
+
+.hc-section-t { font-size: .82rem; font-weight: 700; color: var(--accent-soft); letter-spacing: .04em; margin-bottom: 12px; }
+.hc-curated { margin-bottom: 24px; }
+.hc-chips { display: flex; flex-direction: column; gap: 8px; }
+.hc-chip {
+  text-align: left; background: var(--paper-alt); border: 1px solid var(--line);
+  border-radius: 12px; padding: 13px 16px; font-family: inherit; font-size: .94rem;
+  color: var(--ink); cursor: pointer; transition: .2s; line-height: 1.5;
+}
+.hc-chip:hover { border-color: var(--accent-soft); background: #fff; color: var(--accent); }
+
+.hc-filters { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.hc-tab { font-family: inherit; font-size: .86rem; font-weight: 600; padding: 7px 16px; border-radius: 20px; border: 1px solid var(--line); background: #fff; color: var(--ink-soft); cursor: pointer; transition: .2s; }
+.hc-tab:hover { border-color: var(--accent-soft); }
+.hc-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hc-count { margin-left: auto; font-size: .8rem; color: var(--muted); }
+
+.hc-list { display: flex; flex-direction: column; gap: 8px; }
+.hc-item {
+  display: grid; grid-template-columns: auto 1fr; grid-template-areas: "num q" "num ld";
+  column-gap: 12px; text-align: left; width: 100%; background: #fff; border: 1px solid var(--line);
+  border-radius: 12px; padding: 14px 16px; font-family: inherit; cursor: pointer; transition: .2s;
+}
+.hc-item:hover { border-color: var(--accent-soft); box-shadow: 0 8px 20px rgba(0,0,0,.05); }
+.hc-num { grid-area: num; align-self: start; font-size: .78rem; font-weight: 700; color: #fff; background: var(--accent-soft); padding: 3px 9px; border-radius: 14px; white-space: nowrap; }
+.hc-q { grid-area: q; font-size: .96rem; font-weight: 500; color: var(--ink); line-height: 1.5; }
+.hc-ld { grid-area: ld; font-size: .8rem; color: var(--muted); margin-top: 3px; }
+.hc-empty { text-align: center; color: var(--muted); padding: 40px 0; }
+
+.hc-back { background: none; border: 0; font-family: inherit; font-size: .9rem; font-weight: 600; color: var(--accent-soft); cursor: pointer; padding: 0; margin-bottom: 16px; }
+.hc-back:hover { color: var(--accent); }
+.hc-detail .hc-d-meta { display: inline-block; font-size: .82rem; font-weight: 600; color: #fff; background: var(--accent); padding: 5px 14px; border-radius: 20px; }
+.hc-d-q { font-family: "Noto Serif KR", serif; font-size: 1.3rem; color: var(--ink); margin: 16px 0 18px; line-height: 1.5; word-break: keep-all; }
+.hc-d-a { background: var(--paper-alt); border-radius: 14px; padding: 22px 24px; }
+.hc-d-a p { font-size: .98rem; line-height: 1.95; color: var(--ink); word-break: keep-all; }
+.hc-d-a p + p { margin-top: 12px; }
+.hc-d-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 22px; }
+.hc-navbtn { font-family: inherit; font-size: .88rem; font-weight: 600; padding: 9px 16px; border-radius: 22px; border: 1px solid var(--line); background: #fff; color: var(--ink-soft); cursor: pointer; transition: .2s; }
+.hc-navbtn:hover { border-color: var(--accent-soft); color: var(--accent); }
+
+@media (max-width: 760px) {
+  .hc-head { padding: 28px 22px 10px; }
+  .hc-search { padding: 8px 22px 12px; }
+  .hc-body { padding: 16px 22px 26px; }
+  .hc-d-q { font-size: 1.14rem; }
+}

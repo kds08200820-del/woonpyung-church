@@ -488,6 +488,111 @@ document.querySelectorAll(".qna-q").forEach((btn) => {
   });
 });
 
+// ===== 5-3. 하이델베르크 요리문답 — 카드 클릭 시 문답 탐색 =====
+(function () {
+  const card = document.getElementById("hcCard");
+  const modal = document.getElementById("hcModal");
+  if (!card || !modal || !window.HEIDELBERG) return;
+  const body = document.getElementById("hcBody");
+  const search = document.getElementById("hcSearch");
+  const HC = window.HEIDELBERG;
+
+  // 자주 묻는 신앙의 궁금증 → 해당 문답 번호
+  const CURATED = [
+    { n: 3, label: "내 죄와 비참함은 무엇을 통해 알 수 있나요?" },
+    { n: 8, label: "사람은 정말 선을 조금도 행할 수 없나요?" },
+    { n: 11, label: "하나님은 자비로우신데 왜 죄를 그냥 넘기지 않으시나요?" },
+    { n: 16, label: "중보자는 왜 참 하나님이면서 참 사람이어야 했나요?" },
+    { n: 21, label: "‘참된 믿음’이란 정확히 무엇인가요?" },
+    { n: 38, label: "사도신경의 ‘본디오 빌라도에게 고난을 받으사’는 왜 들어 있나요?" },
+    { n: 44, label: "예수님이 ‘음부에 내려가셨다’는 건 무슨 뜻인가요?" },
+    { n: 60, label: "나는 어떻게 하나님 앞에서 의롭다 함을 받나요?" },
+    { n: 72, label: "세례의 물 자체가 죄를 씻어 주는 건가요?" },
+    { n: 78, label: "성찬의 떡과 포도주가 실제로 살과 피로 변하나요?" },
+    { n: 86, label: "구원은 은혜로 받았는데 왜 선을 행해야 하나요?" },
+    { n: 99, label: "십계명에서 하나님의 이름을 ‘망령되이 일컫지 말라’는 것의 의미는?" },
+    { n: 103, label: "제4계명, 주일은 꼭 지켜야 하나요?" },
+    { n: 105, label: "‘살인하지 말라’가 마음의 미움까지 포함하나요?" },
+    { n: 116, label: "하나님은 다 아시는데 왜 기도해야 하나요?" },
+    { n: 125, label: "‘일용할 양식을 주옵시고’는 무엇을 구하는 기도인가요?" },
+    { n: 129, label: "기도 끝의 ‘아멘’은 무슨 뜻인가요?" },
+  ];
+
+  let part = "전체", query = "";
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const get = (n) => HC.find((x) => x.n === n);
+
+  function listView() {
+    const q = query.trim().toLowerCase();
+    let items = HC;
+    if (part !== "전체") items = items.filter((x) => x.part === part);
+    if (q) items = items.filter((x) => `문 ${x.n} ${x.q} ${x.a} ${x.ldTitle}`.toLowerCase().includes(q));
+
+    const curated = !q ? `
+      <div class="hc-curated">
+        <p class="hc-section-t">이런 것이 궁금하셨나요?</p>
+        <div class="hc-chips">
+          ${CURATED.map((c) => `<button class="hc-chip" data-n="${c.n}">${esc(c.label)}</button>`).join("")}
+        </div>
+      </div>` : "";
+
+    const tabs = `
+      <div class="hc-filters">
+        ${["전체", "비참", "구원", "감사"].map((p) => `<button class="hc-tab${p === part ? " active" : ""}" data-part="${p}">${p}</button>`).join("")}
+        <span class="hc-count">${items.length}문항</span>
+      </div>`;
+
+    const list = items.length
+      ? `<div class="hc-list">${items.map((x) => `
+          <button class="hc-item" data-n="${x.n}">
+            <span class="hc-num">문 ${x.n}</span>
+            <span class="hc-q">${esc(x.q)}</span>
+            <span class="hc-ld">${x.part} · ${esc(x.ldTitle)}</span>
+          </button>`).join("")}</div>`
+      : `<p class="hc-empty">검색 결과가 없습니다.</p>`;
+
+    body.innerHTML = curated + tabs + list;
+    body.scrollTop = 0;
+  }
+
+  function detailView(n) {
+    const it = get(n);
+    if (!it) return;
+    const ans = esc(it.a).split("\n").map((p) => `<p>${p}</p>`).join("");
+    const prev = get(n - 1), next = get(n + 1);
+    body.innerHTML = `
+      <button class="hc-back" data-back>← 목록으로</button>
+      <div class="hc-detail">
+        <span class="hc-d-meta">제${it.n}문 · 제${it.ld}주일 ${esc(it.ldTitle)} · ${it.part}</span>
+        <h4 class="hc-d-q">${esc(it.q)}</h4>
+        <div class="hc-d-a">${ans}</div>
+        <div class="hc-d-nav">
+          ${prev ? `<button class="hc-navbtn" data-n="${prev.n}">← 제${prev.n}문</button>` : `<span></span>`}
+          ${next ? `<button class="hc-navbtn" data-n="${next.n}">제${next.n}문 →</button>` : `<span></span>`}
+        </div>
+      </div>`;
+    body.scrollTop = 0;
+  }
+
+  function openModal() { listView(); modal.hidden = false; document.body.style.overflow = "hidden"; }
+  function closeModal() { modal.hidden = true; document.body.style.overflow = ""; if (search) search.value = ""; query = ""; part = "전체"; }
+
+  card.addEventListener("click", openModal);
+  card.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(); } });
+
+  body.addEventListener("click", (e) => {
+    if (e.target.closest("[data-back]")) { listView(); return; }
+    const tab = e.target.closest(".hc-tab");
+    if (tab) { part = tab.dataset.part; listView(); return; }
+    const el = e.target.closest("[data-n]");
+    if (el) { detailView(Number(el.dataset.n)); return; }
+  });
+
+  if (search) search.addEventListener("input", () => { query = search.value; listView(); });
+  modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
+})();
+
 // ===== 6. 스크롤 등장 애니메이션 =====
 const revealTargets = document.querySelectorAll(
   ".about-intro, .servants, .worship-card, .sermon-nav, .sermon-side, .qt-today, .bulletin-controls, .bulletin-card, .news-item, .mission-card, .location-grid, .entry-card, .home-sermon, .info-card, .roadmap-step, .community-card, .group-card, .story-card, .qna-item, .timeline-item, .region-card, .cta-flow"

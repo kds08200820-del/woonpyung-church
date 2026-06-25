@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>말씀으로 | 운평장로교회</title>
   <meta name="description" content="운평장로교회의 주일 설교, 설교 아카이브, 하이델베르크 요리문답 강해와 목사님의 글." />
-  <link rel="manifest" href="manifest.json?v=20260626e" />
+  <link rel="manifest" href="manifest.json?v=20260626f" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260626e" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260626e" />
+  <link rel="icon" href="images/favicon-32.png?v=20260626f" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260626f" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260626e" />
+  <link rel="stylesheet" href="css/style.css?v=20260626f" />
 </head>
 <body>
 
@@ -79,9 +79,10 @@
         <p>“구원은 내 노력이 아니라 하나님의 은혜입니다.” 어렵지 않게, 차근차근 배웁니다.</p>
       </div>
       <div class="info-grid">
-        <div class="info-card">
+        <div class="info-card info-card-link" id="hcCard" role="button" tabindex="0" aria-label="하이델베르크 요리문답 문답 보기">
           <h3>하이델베르크 요리문답</h3>
-          <p>수요기도회에서 한 문답씩 함께 배우고 있습니다. 신앙의 핵심을 묻고 답하며 정리하는 시간입니다. (현재 강해 진행 중)</p>
+          <p>수요기도회에서 한 문답씩 함께 배우고 있습니다. 신앙의 핵심을 묻고 답하며 정리하는 시간입니다. (제1문~제129문 전문)</p>
+          <span class="info-card-go">궁금한 것을 눌러 문답 보기 →</span>
         </div>
         <div class="info-card">
           <h3>신앙고백 해설</h3>
@@ -143,9 +144,25 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=20260626e"></script>
-  <script src="js/bulletins.js?v=20260626e"></script>
-  <script src="js/layout.js?v=20260626e"></script>
-  <script src="js/main.js?v=20260626e"></script>
+  <!-- ===== 하이델베르크 요리문답 Modal ===== -->
+  <div class="modal" id="hcModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box modal-box-hc" role="dialog" aria-modal="true" aria-label="하이델베르크 요리문답">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="hc-head">
+        <span class="m-eyebrow">HEIDELBERG CATECHISM</span>
+        <h3 class="m-title">하이델베르크 요리문답</h3>
+        <p class="hc-sub">궁금한 것을 누르면 해당 문답의 답을 볼 수 있습니다. 제1문~제129문 전문.</p>
+      </div>
+      <div class="hc-search"><input type="search" id="hcSearch" placeholder="궁금한 내용·단어로 검색 (예: 세례, 기도, 십계명)" /></div>
+      <div class="hc-body" id="hcBody"></div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=20260626f"></script>
+  <script src="js/bulletins.js?v=20260626f"></script>
+  <script src="js/heidelberg.js?v=20260626f"></script>
+  <script src="js/layout.js?v=20260626f"></script>
+  <script src="js/main.js?v=20260626f"></script>
 </body>
 </html>
