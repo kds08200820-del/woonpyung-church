@@ -9,6 +9,7 @@
     { href: "grow.html", label: "함께 자라기" },
     { href: "world.html", label: "지역과 세상" },
     { href: "story.html", label: "우리 이야기" },
+    { href: "community.html", label: "나눔터" },
   ];
 
   const path = location.pathname.split("/").pop() || "index.html";
@@ -29,6 +30,7 @@
           </span>
         </a>
         <nav class="nav-menu" id="navMenu">${navLinks}</nav>
+        <div class="auth-slot" id="authSlot"></div>
         <button class="nav-toggle" id="navToggle" aria-label="메뉴 열기"><span></span><span></span><span></span></button>
       </div>
     </header>`;
@@ -58,6 +60,29 @@
       </div>
       <button class="install-go" id="installGo">설치</button>
       <button class="install-close" id="installClose" aria-label="닫기">&times;</button>
+    </div>
+
+    <!-- 로그인/회원가입 모달 -->
+    <div class="modal" id="authModal" hidden>
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-box modal-box-auth" role="dialog" aria-modal="true" aria-label="로그인">
+        <button class="modal-close" data-close aria-label="닫기">&times;</button>
+        <div class="auth-head">
+          <img src="images/icon-192.png?v=20260625e" alt="" class="auth-logo" />
+          <h3 id="authTitle">로그인</h3>
+          <p id="authSubtitle">운평장로교회 나눔터에 오신 것을 환영합니다.</p>
+        </div>
+        <button class="kakao-btn" id="kakaoLogin"><span>💬</span> 카카오로 시작하기</button>
+        <div class="auth-divider"><span>또는 이메일로</span></div>
+        <form id="authForm" class="auth-form">
+          <div class="form-field" id="nameField" hidden><label>이름</label><input type="text" name="name" placeholder="홍길동" /></div>
+          <div class="form-field"><label>이메일</label><input type="email" name="email" required placeholder="name@example.com" /></div>
+          <div class="form-field"><label>비밀번호</label><input type="password" name="password" required minlength="6" placeholder="6자 이상" /></div>
+          <p class="auth-msg" id="authMsg" hidden></p>
+          <button type="submit" class="btn btn-solid auth-submit" id="authSubmit">로그인</button>
+        </form>
+        <p class="auth-switch">처음이신가요? <button type="button" id="authToggle">회원가입</button></p>
+      </div>
     </div>`;
   document.body.insertAdjacentHTML("beforeend", footerHTML);
 
@@ -128,5 +153,21 @@
         /* 대시보드 Web 설정 완료 전에는 조용히 무시 */
       }
     });
+  }
+
+  // ===== 회원/로그인(Supabase) — 키 설정 시에만 로드 =====
+  if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+    const sdk = document.createElement("script");
+    sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+    sdk.onload = function () {
+      const auth = document.createElement("script");
+      auth.src = "js/auth.js?v=20260625f";
+      document.body.appendChild(auth);
+    };
+    document.head.appendChild(sdk);
+  } else {
+    // 미설정: 헤더에 "로그인(준비 중)" 안내만 표시
+    const slot = document.getElementById("authSlot");
+    if (slot) slot.innerHTML = '<span class="auth-pending" title="로그인 기능 준비 중">로그인</span>';
   }
 })();

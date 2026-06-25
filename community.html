@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>나눔터 | 운평장로교회</title>
+  <meta name="description" content="운평장로교회 성도들이 글로 마음을 나누는 공간, 나눔터입니다." />
+  <link rel="manifest" href="manifest.json?v=20260625f" />
+  <meta name="theme-color" content="#032257" />
+  <link rel="icon" href="images/favicon-32.png?v=20260625f" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260625f" />
+  <meta name="apple-mobile-web-app-title" content="운평장로교회" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260625f" />
+</head>
+<body>
+
+  <section class="page-hero">
+    <p class="ph-eyebrow">COMMUNITY</p>
+    <h1>나눔터</h1>
+    <p>성도들이 글로 마음을 나누는 공간입니다. 기도 제목, 감사, 일상의 이야기를 함께 나눠요.</p>
+  </section>
+
+  <section class="block">
+    <div class="container">
+      <div class="board-top">
+        <div class="block-head" style="margin-bottom:0;">
+          <span class="eyebrow2">BOARD</span>
+          <h2>함께 나누는 글</h2>
+        </div>
+        <button class="btn btn-solid" id="boardWriteBtn">글쓰기</button>
+      </div>
+
+      <!-- Supabase 미설정 시 안내 -->
+      <div class="member-lock" id="boardNotice" hidden style="margin-top:30px;">
+        <div class="lock-icon">🛠️</div>
+        <h3>나눔터 준비 중</h3>
+        <p>로그인·게시판 기능 연결(Supabase·카카오)이 완료되면 이곳에서 글을 나눌 수 있습니다.</p>
+        <p class="placeholder-note">* 설정값 입력 후 자동으로 활성화됩니다.</p>
+      </div>
+
+      <!-- 글쓰기 폼 -->
+      <form class="form-card board-form" id="boardForm" hidden style="margin-top:24px;">
+        <div class="form-field"><label>제목</label><input type="text" name="title" required maxlength="100" placeholder="제목을 입력하세요" /></div>
+        <div class="form-field full"><label>내용</label><textarea name="content" rows="6" required placeholder="나누고 싶은 이야기를 적어주세요."></textarea></div>
+        <div class="form-actions" style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-solid">등록</button>
+          <button type="button" class="btn btn-line" id="boardCancel">취소</button>
+        </div>
+      </form>
+
+      <div class="board-list" id="boardList" style="margin-top:30px;">
+        <p class="qt-loading" id="boardLoading" hidden>글을 불러오는 중입니다…</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 게시글 상세 모달 -->
+  <div class="modal" id="postModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-label="게시글">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="post-detail" id="postDetail"></div>
+      <div class="comments" id="commentsBox">
+        <h4 class="m-head">댓글</h4>
+        <div class="comment-list" id="commentList"></div>
+        <form class="comment-form" id="commentForm" hidden>
+          <input type="text" name="comment" required placeholder="따뜻한 댓글을 남겨주세요" />
+          <button type="submit" class="btn btn-solid">등록</button>
+        </form>
+        <p class="comment-login" id="commentLogin" hidden>댓글을 쓰려면 로그인해 주세요.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=20260625f"></script>
+  <script src="js/bulletins.js?v=20260625f"></script>
+  <script src="js/layout.js?v=20260625f"></script>
+  <script src="js/main.js?v=20260625f"></script>
+  <script src="js/community.js?v=20260625f"></script>
+</body>
+</html>

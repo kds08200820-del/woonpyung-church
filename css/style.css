@@ -747,3 +747,62 @@ ul { list-style: none; }
   .page-hero { padding: 128px 20px 54px; }
   .block { padding: 60px 0; }
 }
+
+/* ============================================================
+   인증(로그인) + 나눔터(게시판)
+   ============================================================ */
+.auth-slot { display: flex; align-items: center; gap: 10px; margin-left: 18px; }
+.auth-btn { font-family: inherit; font-size: .85rem; font-weight: 500; padding: 7px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,.5); background: transparent; color: #fff; cursor: pointer; transition: .2s; white-space: nowrap; }
+.auth-btn:hover { background: #fff; color: var(--accent); }
+#header.scrolled .auth-btn { border-color: var(--accent-soft); color: var(--accent); }
+#header.scrolled .auth-btn:hover { background: var(--accent); color: #fff; }
+.auth-name { font-size: .85rem; color: #fff; }
+#header.scrolled .auth-name { color: var(--ink); }
+.auth-pending { font-size: .85rem; color: rgba(255,255,255,.6); cursor: default; }
+#header.scrolled .auth-pending { color: var(--muted); }
+
+.modal-box-auth { max-width: 420px; padding: 40px 36px; text-align: center; }
+.auth-head { margin-bottom: 22px; }
+.auth-logo { width: 54px; height: 54px; border-radius: 12px; }
+.auth-head h3 { font-family: "Noto Serif KR", serif; font-size: 1.4rem; margin: 12px 0 6px; }
+.auth-head p { font-size: .88rem; color: var(--ink-soft); }
+.kakao-btn { width: 100%; background: #FEE500; color: #3A1D1D; border: 0; border-radius: 12px; padding: 13px; font-family: inherit; font-size: .98rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: .2s; }
+.kakao-btn:hover { filter: brightness(.96); }
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--muted); font-size: .8rem; }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.auth-form { text-align: left; display: flex; flex-direction: column; gap: 14px; }
+.auth-form .form-field input { width: 100%; }
+.auth-submit { width: 100%; margin-top: 4px; }
+.auth-msg { font-size: .85rem; padding: 6px 0; }
+.auth-msg.err { color: #c0392b; }
+.auth-msg.ok { color: var(--accent); }
+.auth-switch { margin-top: 18px; font-size: .88rem; color: var(--ink-soft); }
+.auth-switch button { background: none; border: 0; color: var(--accent); font-weight: 700; cursor: pointer; font-family: inherit; }
+
+.board-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.board-list { display: flex; flex-direction: column; gap: 12px; }
+.board-item { text-align: left; width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 20px 24px; cursor: pointer; font-family: inherit; transition: .25s; }
+.board-item:hover { border-color: var(--accent-soft); box-shadow: 0 10px 26px rgba(0,0,0,.06); transform: translateY(-2px); }
+.board-item h3 { font-family: "Noto Serif KR", serif; font-size: 1.15rem; margin-bottom: 6px; }
+.bi-meta { display: flex; gap: 14px; font-size: .82rem; color: var(--muted); }
+.board-form textarea { width: 100%; resize: vertical; }
+
+.post-detail .post-body { margin: 18px 0; line-height: 1.9; color: var(--ink-soft); }
+.post-actions { text-align: right; margin-bottom: 10px; }
+.comments { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
+.comment-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.comment-item { background: var(--paper-alt); border-radius: 10px; padding: 14px 16px; position: relative; }
+.ci-head { display: flex; gap: 10px; margin-bottom: 4px; }
+.ci-name { font-weight: 700; font-size: .88rem; }
+.ci-date { font-size: .78rem; color: var(--muted); }
+.comment-item p { font-size: .92rem; color: var(--ink-soft); }
+.ci-del { position: absolute; top: 12px; right: 12px; background: none; border: 0; color: var(--muted); font-size: .78rem; cursor: pointer; }
+.comment-empty { color: var(--muted); font-size: .9rem; }
+.comment-form { display: flex; gap: 10px; }
+.comment-form input { flex: 1; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px; font-family: inherit; }
+.comment-login { color: var(--muted); font-size: .88rem; }
+
+@media (max-width: 760px) {
+  .auth-slot { margin-left: 8px; }
+  .modal-box-auth { padding: 34px 24px; }
+}

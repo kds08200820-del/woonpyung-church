@@ -1,6 +1,6 @@
 /* 운평장로교회 PWA 서비스 워커
    네트워크 우선(online 시 항상 최신) + 오프라인 시 캐시 폴백 */
-const CACHE = "unpyeong-v4";
+const CACHE = "unpyeong-v5";
 const CORE = [
   "./",
   "./index.html",
