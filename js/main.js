@@ -19,7 +19,8 @@ function cardInner(b) {
       <p class="sermon-ref">${b.scripture}</p>
       <p class="sermon-preacher">설교 · ${b.preacher}</p>
     </div>
-    <blockquote class="sermon-quote">${b.quote}</blockquote>`;
+    <blockquote class="sermon-quote">${b.quote}</blockquote>
+    ${b.summary ? `<span class="sermon-more">설교 요약 보기 →</span>` : ""}`;
 }
 
 function renderSide(b) {
@@ -102,12 +103,16 @@ if (sermonDeck) {
     }
   }, { passive: true });
 
-  // 뒤에 투명하게 겹친 지난 카드를 클릭(탭)하면 앞으로 가져오기
+  // 카드 클릭(탭): 활성 카드 → 설교 요약 열기 / 뒤 카드 → 앞으로 가져오기
   sermonDeck.addEventListener("click", (e) => {
     if (swiped) { swiped = false; return; } // 스와이프 동작은 탭으로 처리하지 않음
     const card = e.target.closest(".deck-card");
-    if (card && !card.classList.contains("is-active")) {
-      active = Number(card.dataset.i);
+    if (!card) return;
+    const i = Number(card.dataset.i);
+    if (card.classList.contains("is-active")) {
+      openSermonSummary(i);
+    } else {
+      active = i;
       layoutDeck();
     }
   });
@@ -355,6 +360,30 @@ function openBulletin(idx) {
     </div>` : ""}
 
     <p class="m-note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>`;
+  modal.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+// 설교 카드 클릭 시: 요약 설교 보기
+function openSermonSummary(idx) {
+  const b = BULLETINS[idx];
+  if (!b || !b.summary || !modal || !modalBody) return;
+  const s = b.summary;
+  modalBody.innerHTML = `
+    <span class="m-eyebrow">${b.dateLabel} · 주일 낮 예배 · 설교 요약</span>
+    <h3 id="modalTitle" class="m-title">${s.heading}</h3>
+    <p class="m-sub">${b.scripture} · ${b.preacher}</p>
+
+    <h4 class="m-head">${s.sectionTitle}</h4>
+    <div class="sm-points">
+      ${s.points.map((p) => `<div class="sm-point"><strong>${p.lead}</strong><p>${p.text}</p></div>`).join("")}
+    </div>
+
+    <div class="sm-apply">
+      <span class="sm-apply-tag">🌱 적용 및 결단</span>
+      <p>${s.apply}</p>
+      ${s.applyRef ? `<span class="sm-apply-ref">${s.applyRef}</span>` : ""}
+    </div>`;
   modal.hidden = false;
   document.body.style.overflow = "hidden";
 }

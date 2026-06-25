@@ -850,3 +850,27 @@ ul { list-style: none; }
   .by-ch span { font-size: 1rem; }
   .by-p { font-size: .92rem; }
 }
+
+/* ============================================================
+   설교 카드 클릭 → 요약 보기
+   ============================================================ */
+.sermon-more {
+  display: inline-block; margin-top: 22px;
+  font-size: .92rem; font-weight: 500; color: var(--gold);
+  letter-spacing: .02em; cursor: pointer;
+}
+.sermon-feature.is-active { cursor: pointer; }
+.sermon-feature:not(.is-active) .sermon-more { display: none; }
+
+/* 요약 모달 본문 */
+.sm-points { display: flex; flex-direction: column; gap: 16px; margin: 4px 0 8px; }
+.sm-point { padding-left: 16px; border-left: 3px solid var(--accent-soft); }
+.sm-point strong { display: block; font-family: "Noto Serif KR", serif; font-size: 1.02rem; color: var(--accent); margin-bottom: 5px; }
+.sm-point p { font-size: .95rem; line-height: 1.85; color: var(--ink-soft); word-break: keep-all; }
+.sm-apply {
+  margin-top: 26px; background: var(--paper-alt); border: 1px solid var(--line);
+  border-radius: 14px; padding: 22px 24px;
+}
+.sm-apply-tag { display: inline-block; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+.sm-apply p { font-size: .96rem; line-height: 1.9; color: var(--ink); word-break: keep-all; }
+.sm-apply-ref { display: block; margin-top: 12px; text-align: right; font-size: .88rem; color: var(--accent-soft); font-weight: 600; }
