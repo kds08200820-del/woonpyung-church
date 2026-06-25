@@ -45,6 +45,7 @@
           <span class="logo-en">UNPYEONG PRESBYTERIAN CHURCH · SINCE 1964</span>
         </div>
         <nav class="footer-nav">${NAV.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}</nav>
+        <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">💬 카카오톡 채널 추가</a>
         <div class="footer-meta">
           <p>담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</p>
           <p>화성특례시 만세구 우정읍 운평길 47 · T. <a href="tel:010-4032-2903">010-4032-2903</a></p>
@@ -161,7 +162,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260625g";
+      auth.src = "js/auth.js?v=20260625h";
       document.body.appendChild(auth);
     };
     document.head.appendChild(sdk);

@@ -816,3 +816,7 @@ ul { list-style: none; }
 .prov-tag { font-size: .78rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
 .prov-kakao { background: #FEE500; color: #3A1D1D; }
 .prov-email { background: var(--paper-alt); color: var(--ink-soft); border: 1px solid var(--line); }
+
+/* 카카오톡 채널 추가 버튼 (푸터) */
+.kakao-channel-btn { display: inline-flex; align-items: center; gap: 7px; background: #FEE500; color: #3A1D1D; font-size: .9rem; font-weight: 700; padding: 11px 20px; border-radius: 24px; transition: filter .2s ease; }
+.kakao-channel-btn:hover { filter: brightness(.95); color: #3A1D1D; }
