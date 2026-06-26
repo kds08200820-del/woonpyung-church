@@ -881,6 +881,8 @@ a.resource-item:hover { border-color: var(--accent-soft); box-shadow: 0 4px 14px
 .resource-item.is-empty { background: var(--paper-alt); }
 .resource-item.is-empty .ri-name { color: var(--ink-soft); }
 .resource-item.is-empty .ri-go { color: var(--ink-soft); font-weight: 400; }
+.res-upload { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.res-upmsg { font-size: .9rem; }
 .comments { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
 .comment-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .comment-item { background: var(--paper-alt); border-radius: 10px; padding: 14px 16px; position: relative; }
