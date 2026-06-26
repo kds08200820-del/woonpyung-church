@@ -897,6 +897,8 @@ ul { list-style: none; }
 .prov-email { background: var(--paper-alt); color: var(--ink-soft); border: 1px solid var(--line); }
 .member-role-note { color: var(--accent-soft); font-size: .9rem; margin-bottom: 14px; }
 .profile-msg { font-size: .9rem; }
+.role-input { width: 110px; max-width: 100%; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: .88rem; background: var(--paper-alt); }
+.role-input:focus { outline: none; border-color: var(--accent); background: #fff; }
 
 /* 헤더: 로그인 이름 + 호버 카드 */
 .auth-wrap { position: relative; display: inline-block; }

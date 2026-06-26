@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>회원 관리 | 운평장로교회</title>
   <meta name="robots" content="noindex" />
-  <link rel="manifest" href="manifest.json?v=20260627a" />
+  <link rel="manifest" href="manifest.json?v=20260627b" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260627a" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260627a" />
+  <link rel="icon" href="images/favicon-32.png?v=20260627b" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260627b" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260627a" />
+  <link rel="stylesheet" href="css/style.css?v=20260627b" />
 </head>
 <body>
 
@@ -38,11 +38,14 @@
       </div>
 
       <!-- 내 정보 수정 폼 (로그인 시에만 표시) -->
-      <form class="form-card profile-form" id="profileForm" hidden style="max-width:600px;margin-bottom:34px;">
+      <form class="form-card profile-form" id="profileForm" hidden style="max-width:640px;margin-bottom:28px;">
         <h3 class="sub-title" style="text-align:left;margin-bottom:18px;">내 정보 수정</h3>
         <div class="form-grid">
           <div class="form-field"><label>이름 / 닉네임</label><input type="text" name="name" maxlength="40" placeholder="홍길동" /></div>
-          <div class="form-field"><label>연락처 (선택)</label><input type="tel" name="phone" maxlength="20" placeholder="010-0000-0000" /></div>
+          <div class="form-field"><label>직책</label><input type="text" name="role" placeholder="관리자가 지정합니다" readonly /></div>
+          <div class="form-field"><label>연락처</label><input type="tel" name="phone" maxlength="20" placeholder="010-0000-0000" /></div>
+          <div class="form-field"><label>생년월일</label><input type="text" name="birth" maxlength="10" placeholder="예: 1981-08-19" /></div>
+          <div class="form-field full"><label>주소</label><input type="text" name="address" maxlength="120" placeholder="예: 화성시 우정읍 ..." /></div>
           <div class="form-field full"><label>한 줄 소개 (선택)</label><input type="text" name="bio" maxlength="120" placeholder="예: 청년부, 새가족반 수강 중" /></div>
         </div>
         <div class="form-actions" style="margin-top:18px;display:flex;gap:10px;align-items:center;">
@@ -51,14 +54,42 @@
         </div>
       </form>
 
+      <!-- 연말정산 신청 (로그인 시에만 표시) -->
+      <div class="form-card" id="taxBox" hidden style="max-width:640px;margin-bottom:34px;background:var(--paper-alt);">
+        <h3 class="sub-title" style="text-align:left;margin-bottom:6px;">연말정산(기부금 영수증) 신청</h3>
+        <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:16px;">아래 정보로 신청하시면 교회에서 기부금 영수증 발급을 도와드립니다.</p>
+        <button type="button" class="btn btn-line" id="taxOpenBtn">연말정산 신청하기</button>
+        <form id="taxForm" hidden style="margin-top:18px;">
+          <div class="form-grid">
+            <div class="form-field"><label>이름</label><input type="text" name="name" required maxlength="40" /></div>
+            <div class="form-field"><label>전화번호</label><input type="tel" name="phone" required maxlength="20" placeholder="010-0000-0000" /></div>
+            <div class="form-field"><label>생년월일</label><input type="text" name="birth" required maxlength="10" placeholder="1981-08-19" /></div>
+            <div class="form-field"><label>주민번호 앞자리</label><input type="text" name="rrn_front" required maxlength="6" inputmode="numeric" placeholder="앞 6자리" /></div>
+            <div class="form-field full"><label>주소</label><input type="text" name="address" required maxlength="120" /></div>
+          </div>
+          <p style="color:var(--accent-soft);font-size:.8rem;margin-top:10px;">🔒 주민번호 등 민감정보는 영수증 발급 목적에만 사용되며, 본인과 관리자만 열람할 수 있습니다.</p>
+          <div class="form-actions" style="margin-top:14px;display:flex;gap:10px;align-items:center;">
+            <button type="submit" class="btn btn-solid">신청 제출</button>
+            <button type="button" class="btn btn-line" id="taxCancelBtn">취소</button>
+            <span class="profile-msg" id="taxMsg"></span>
+          </div>
+        </form>
+      </div>
+
       <div id="memberList"><p class="qt-loading">확인 중입니다…</p></div>
+
+      <!-- 관리자: 연말정산 신청 목록 -->
+      <div id="taxAdmin" hidden style="margin-top:40px;">
+        <h3 class="sub-title" style="text-align:left;margin-bottom:14px;">연말정산 신청 내역 <span id="taxCount"></span></h3>
+        <div id="taxList"></div>
+      </div>
     </div>
   </section>
 
-  <script src="js/config.js?v=20260627a"></script>
-  <script src="js/bulletins.js?v=20260627a"></script>
-  <script src="js/layout.js?v=20260627a"></script>
-  <script src="js/main.js?v=20260627a"></script>
-  <script src="js/admin.js?v=20260627a"></script>
+  <script src="js/config.js?v=20260627b"></script>
+  <script src="js/bulletins.js?v=20260627b"></script>
+  <script src="js/layout.js?v=20260627b"></script>
+  <script src="js/main.js?v=20260627b"></script>
+  <script src="js/admin.js?v=20260627b"></script>
 </body>
 </html>
