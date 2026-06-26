@@ -78,10 +78,14 @@
   }
 
   async function loadPosts() {
-    const { data, error } = await sb.from("posts").select("*").order("created_at", { ascending: false });
+    let data, error;
+    try {
+      const res = await sb.from("posts").select("*").order("created_at", { ascending: false });
+      data = res.data; error = res.error;
+    } catch (e) { error = e; }
     if (loading) loading.hidden = true;
-    if (error) { list.innerHTML = `<p class="qt-loading">목록을 불러오지 못했습니다.</p>`; return; }
-    if (!data.length) { list.innerHTML = `<p class="qt-loading">아직 글이 없습니다. 첫 글을 남겨보세요!</p>`; return; }
+    if (error) { list.innerHTML = `<p class="qt-loading">목록을 불러오지 못했습니다. 새로고침(Ctrl+Shift+R) 해 주세요.</p>`; return; }
+    if (!data || !data.length) { list.innerHTML = `<p class="qt-loading">아직 글이 없습니다. 첫 글을 남겨보세요!</p>`; return; }
     list.innerHTML = data.map((p) => `
       <button class="board-item" data-id="${p.id}">
         <h3>${esc(p.title)}</h3>
@@ -103,8 +107,11 @@
       <span class="m-eyebrow">${fmtDate(p.created_at)} · ${esc(p.author_name)}</span>
       <h3 class="m-title">${esc(p.title)}</h3>
       <div class="post-body">${esc(p.content).replace(/\n/g, "<br>")}</div>
-      ${mine ? `<div class="post-actions"><button class="auth-btn" id="postDelete">삭제</button></div>` : ""}`;
-    if (mine) document.getElementById("postDelete").addEventListener("click", () => deletePost(id));
+      ${mine ? `<div class="post-actions"><button class="auth-btn" id="postEdit">수정</button><button class="auth-btn" id="postDelete">삭제</button></div>` : ""}`;
+    if (mine) {
+      document.getElementById("postDelete").addEventListener("click", () => deletePost(id));
+      document.getElementById("postEdit").addEventListener("click", () => editPost(p));
+    }
     await loadComments(id);
     commentForm.hidden = !me;
     commentLogin.hidden = !!me;
@@ -113,6 +120,27 @@
   }
 
   function closePost() { postModal.hidden = true; document.body.style.overflow = ""; openPostId = null; }
+
+  function editPost(p) {
+    postDetail.innerHTML = `
+      <span class="m-eyebrow">글 수정</span>
+      <div class="form-field" style="margin:14px 0 12px"><label>제목</label><input type="text" id="editTitle" maxlength="100" value="${esc(p.title)}" /></div>
+      <div class="form-field" style="margin:12px 0"><label>내용</label><textarea id="editContent" rows="7">${esc(p.content)}</textarea></div>
+      <div class="post-actions" style="display:flex;gap:10px">
+        <button class="btn btn-solid" id="editSave">저장</button>
+        <button class="btn btn-line" id="editCancel">취소</button>
+      </div>`;
+    document.getElementById("editSave").addEventListener("click", async () => {
+      const title = document.getElementById("editTitle").value.trim();
+      const content = document.getElementById("editContent").value.trim();
+      if (!title || !content) { alert("제목과 내용을 입력해 주세요."); return; }
+      const { error } = await sb.from("posts").update({ title, content }).eq("id", p.id);
+      if (error) { alert("수정 오류: " + error.message); return; }
+      await openPost(p.id);
+      loadPosts();
+    });
+    document.getElementById("editCancel").addEventListener("click", () => openPost(p.id));
+  }
 
   async function deletePost(id) {
     if (!confirm("이 글을 삭제할까요?")) return;
