@@ -121,6 +121,16 @@
     }
   }
 
-  if (window.__sb) start(window.__sb);
-  else window.addEventListener("sb-ready", (e) => start(e.detail.sb), { once: true });
+  let started = false;
+  function go(client) { if (started) return; started = true; start(client); }
+  if (window.__sb) go(window.__sb);
+  else {
+    window.addEventListener("sb-ready", (e) => go(e.detail.sb), { once: true });
+    // 7초 내 SDK 준비 안 되면 안내(무한 '확인 중' 방지)
+    setTimeout(() => {
+      if (started) return;
+      if (window.__sb) go(window.__sb);
+      else box.innerHTML = '<p class="qt-loading">로그인 정보를 불러오지 못했습니다. 잠시 후 새로고침(Ctrl+Shift+R) 해주세요.</p>';
+    }, 7000);
+  }
 })();
