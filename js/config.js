@@ -15,8 +15,7 @@ window.SUPABASE_URL = "https://cetacttsdwzxjzkyozgd.supabase.co";
 window.SUPABASE_ANON_KEY = "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G";
 
 /* --- 연말정산 신청 알림 이메일(FormSubmit) ---
-   계정/키 없이 이 이메일로 알림이 발송됩니다(민감정보는 제외).
-   ※ 최초 1회: 첫 신청이 접수되면 이 주소로 FormSubmit '활성화(Activate)' 메일이 옵니다.
-     메일의 'Activate Form' 버튼을 한 번 눌러야 이후 알림이 수신됩니다.
+   계정/키 없이 관리자 이메일(kds08200820@gmail.com)로 알림이 발송됩니다(민감정보 제외).
+   아래 값은 실제 이메일을 숨기는 FormSubmit '별칭(alias)'으로, 이미 활성화 완료됨.
    비어 있으면 이메일 알림만 꺼지고, 신청·관리자 조회는 정상 동작합니다. */
-window.FORMSUBMIT_EMAIL = "kds08200820@gmail.com";
+window.FORMSUBMIT_EMAIL = "a1f1dbcdaacadfa2efd1e9872a575b67";
