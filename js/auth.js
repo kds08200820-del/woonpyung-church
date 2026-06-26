@@ -71,7 +71,10 @@
     kakaoBtn.addEventListener("click", async () => {
       const { error } = await sb.auth.signInWithOAuth({
         provider: "kakao",
-        options: { redirectTo: location.origin + location.pathname },
+        options: {
+          redirectTo: location.origin + location.pathname,
+          scopes: "profile_nickname", // 닉네임만 요청 (이메일은 검수 필요해 제외, KOE205 방지)
+        },
       });
       if (error) showMsg("카카오 로그인 오류: " + error.message, false);
     });
