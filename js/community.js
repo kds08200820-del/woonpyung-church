@@ -44,13 +44,13 @@
   function start(client) {
     sb = client;
     if (loading) loading.hidden = false;
-    sb.auth.getUser().then(({ data }) => { me = data && data.user; });
+    sb.auth.getSession().then(({ data }) => { me = data && data.session && data.session.user; });
     sb.auth.onAuthStateChange((_e, session) => { me = session ? session.user : null; });
     loadPosts();
 
     writeBtn.addEventListener("click", async () => {
-      const { data } = await sb.auth.getUser();
-      me = data && data.user;
+      const { data } = await sb.auth.getSession();
+      me = data && data.session && data.session.user;
       if (!me) { alert("글을 쓰려면 먼저 로그인해 주세요."); const b = document.getElementById("loginBtn"); if (b) b.click(); return; }
       form.hidden = false;
       form.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -100,8 +100,8 @@
     openPostId = id;
     const { data: p } = await sb.from("posts").select("*").eq("id", id).single();
     if (!p) return;
-    const { data: u } = await sb.auth.getUser();
-    me = u && u.user;
+    const { data: u } = await sb.auth.getSession();
+    me = u && u.session && u.session.user;
     const mine = me && me.id === p.user_id;
     postDetail.innerHTML = `
       <span class="m-eyebrow">${fmtDate(p.created_at)} · ${esc(p.author_name)}</span>

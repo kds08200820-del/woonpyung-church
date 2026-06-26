@@ -26,8 +26,8 @@
   }
 
   async function start(sb) {
-    const { data } = await sb.auth.getUser();
-    const me = data && data.user;
+    const { data } = await sb.auth.getSession();
+    const me = data && data.session && data.session.user;
     if (!me) {
       lock('로그인 후 이용할 수 있습니다. 우측 상단 "로그인"을 눌러 주세요.');
       return;

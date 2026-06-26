@@ -44,8 +44,8 @@
 
   // 헤더 로그인 상태 표시
   async function renderAuth() {
-    const { data } = await sb.auth.getUser();
-    const user = data && data.user;
+    const { data } = await sb.auth.getSession();
+    const user = data && data.session && data.session.user;
     if (!slot) return;
     if (user) {
       const name =
