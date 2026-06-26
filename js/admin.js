@@ -33,19 +33,18 @@
       return;
     }
     const { data: adm } = await sb.from("admins").select("uid").eq("uid", me.id).maybeSingle();
-    if (!adm) {
-      lock("이 페이지는 교회 관리자만 볼 수 있습니다. (관리자 등록이 필요하면 안내를 참고해 주세요.)");
-      return;
-    }
+    const isAdmin = !!adm;
+
+    // RLS: 관리자는 전체, 일반 회원은 본인 행만 조회됩니다.
     const { data: rows, error } = await sb.from("profiles").select("*").order("created_at", { ascending: false });
     if (error) { box.innerHTML = `<p class="qt-loading">불러오기 오류: ${esc(error.message)}</p>`; return; }
-    if (countEl) countEl.textContent = `(${rows.length}명)`;
-    box.innerHTML = `
+
+    const tableHTML = (list) => `
       <div class="member-table-wrap">
         <table class="member-table">
           <thead><tr><th>이름/닉네임</th><th>가입 방식</th><th>이메일</th><th>가입일</th></tr></thead>
           <tbody>
-            ${rows.map((r) => `<tr>
+            ${list.map((r) => `<tr>
               <td>${esc(r.name) || "-"}</td>
               <td><span class="prov-tag prov-${esc(r.provider)}">${provLabel(r.provider)}</span></td>
               <td>${esc(r.email) || "-"}</td>
@@ -54,6 +53,17 @@
           </tbody>
         </table>
       </div>`;
+
+    if (isAdmin) {
+      // 관리자: 전체 회원 목록
+      if (countEl) countEl.textContent = `(${rows.length}명)`;
+      box.innerHTML = `<p class="member-role-note">관리자 모드 — 전체 회원을 볼 수 있습니다.</p>` + tableHTML(rows);
+    } else {
+      // 일반 회원: 본인 정보만
+      if (countEl) countEl.textContent = "";
+      const mine = (rows || []).filter((r) => r.id === me.id);
+      box.innerHTML = `<p class="member-role-note">내 정보입니다.</p>` + tableHTML(mine.length ? mine : [{ name: (me.user_metadata && me.user_metadata.name) || (me.email ? me.email.split("@")[0] : "성도"), provider: (me.app_metadata && me.app_metadata.provider) || "email", email: me.email, created_at: me.created_at }]);
+    }
   }
 
   if (window.__sb) start(window.__sb);

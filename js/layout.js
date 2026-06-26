@@ -158,16 +158,25 @@
 
   // ===== 회원/로그인(Supabase) — 키 설정 시에만 로드 =====
   if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+    // SDK 로딩 전에도 로그인 버튼이 항상 보이도록 즉시 표시(아래 auth.js가 업그레이드)
+    const slot0 = document.getElementById("authSlot");
+    if (slot0) {
+      slot0.innerHTML = '<button class="auth-btn" id="loginBtnInit">로그인</button>';
+      document.getElementById("loginBtnInit").addEventListener("click", () => {
+        const m = document.getElementById("authModal");
+        if (m) { m.hidden = false; document.body.style.overflow = "hidden"; }
+      });
+    }
     const sdk = document.createElement("script");
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260626t";
+      auth.src = "js/auth.js?v=20260626u";
       document.body.appendChild(auth);
     };
+    // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)
     document.head.appendChild(sdk);
   } else {
-    // 미설정: 헤더에 "로그인(준비 중)" 안내만 표시
     const slot = document.getElementById("authSlot");
     if (slot) slot.innerHTML = '<span class="auth-pending" title="로그인 기능 준비 중">로그인</span>';
   }

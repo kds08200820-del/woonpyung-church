@@ -51,7 +51,7 @@
       const name =
         (user.user_metadata && (user.user_metadata.name || user.user_metadata.full_name)) ||
         (user.email ? user.email.split("@")[0] : "성도");
-      slot.innerHTML = `<span class="auth-name">${name}님</span><button class="auth-btn" id="logoutBtn">로그아웃</button>`;
+      slot.innerHTML = `<a class="auth-name" href="admin.html" title="내 정보 · 회원관리">${name}님</a><button class="auth-btn" id="logoutBtn">로그아웃</button>`;
       document.getElementById("logoutBtn").addEventListener("click", async () => {
         await sb.auth.signOut();
         location.reload();
