@@ -111,9 +111,20 @@
     })
   );
 
-  // ===== 서비스 워커(PWA) =====
+  // ===== 서비스 워커(PWA) — 오래된 캐시 워커 자동 교체 =====
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    let reloadedForSW = false;
+    // 새 서비스워커가 제어권을 잡으면(옛 캐시 워커 교체) 한 번만 새로고침
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadedForSW) return;
+      reloadedForSW = true;
+      location.reload();
+    });
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").then((reg) => {
+        try { reg.update(); } catch (e) {}
+      }).catch(() => {});
+    });
   }
 
   // ===== 푸시 알림(OneSignal) — App ID 설정 시에만 =====
@@ -218,7 +229,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260627d";
+      auth.src = "js/auth.js?v=20260627e";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)

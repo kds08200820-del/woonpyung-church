@@ -45,47 +45,56 @@
       new Promise((_, rej) => setTimeout(() => rej(new Error((label || "요청") + " 응답이 지연됩니다")), ms)),
     ]);
 
-  // ── Supabase REST 직접 호출 ──
+  // ── Supabase REST 직접 호출 (요청 전체에 타임아웃) ──
   async function api(method, path, body, extraHeaders) {
     const sess = localSession();
     const token = sess && sess.access_token;
     const headers = { apikey: window.SUPABASE_ANON_KEY, "Content-Type": "application/json" };
     if (token) headers.Authorization = "Bearer " + token;
     if (extraHeaders) Object.assign(headers, extraHeaders);
-    const res = await withTimeout(
-      fetch(window.SUPABASE_URL + "/rest/v1/" + path, {
+    return withTimeout((async () => {
+      const res = await fetch(window.SUPABASE_URL + "/rest/v1/" + path, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
-      }),
-      8000,
-      "서버"
-    );
-    const txt = await res.text();
-    let data = null;
-    try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
-    if (!res.ok) {
-      const msg = (data && (data.message || data.hint || data.error)) || ("HTTP " + res.status);
-      const err = new Error(msg); err.status = res.status; throw err;
-    }
-    return data;
+      });
+      const txt = await res.text();
+      let data = null;
+      try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+      if (!res.ok) {
+        const msg = (data && (data.message || data.hint || data.error)) || ("HTTP " + res.status);
+        const err = new Error(msg); err.status = res.status; throw err;
+      }
+      return data;
+    })(), 8000, "서버");
   }
   const first = (arr) => (Array.isArray(arr) && arr.length ? arr[0] : null);
 
+  function retryBox(html) {
+    box.innerHTML = html + `<p style="text-align:center;margin-top:14px;"><button type="button" class="btn btn-line" id="adminRetry">다시 시도</button></p>`;
+    const rb = document.getElementById("adminRetry");
+    if (rb) rb.addEventListener("click", () => { box.innerHTML = '<p class="qt-loading">확인 중입니다…</p>'; start(); });
+  }
+
   async function start() {
-    try { await run(); }
-    catch (e) {
+    console.log("[admin.js] v20260627e REST");
+    // 어떤 경우에도 무한 "확인 중"이 남지 않도록 감시(캐시된 옛 코드/지연 대비)
+    const watchdog = setTimeout(() => {
+      if (/확인 중/.test(box.textContent || "")) retryBox('<p class="qt-loading">응답이 지연되고 있습니다.</p>');
+    }, 11000);
+    try {
+      await run();
+    } catch (e) {
       const msg = String((e && e.message) || e);
       if (e && e.status === 401) {
         box.innerHTML = `<div class="member-lock"><div class="lock-icon">🔑</div><h3>다시 로그인이 필요합니다</h3><p>로그인 정보가 만료되었습니다. 우측 상단 "로그아웃" 후 다시 로그인해 주세요.</p></div>`;
       } else if (/profiles|schema cache|does not exist|relation/i.test(msg)) {
         box.innerHTML = `<div class="member-lock"><div class="lock-icon">🛠️</div><h3>회원 정보 테이블 준비 필요</h3><p>관리자가 Supabase에서 회원 프로필 테이블(profiles)을 생성하면 이용할 수 있습니다.</p></div>`;
       } else {
-        box.innerHTML = `<p class="qt-loading">불러오기 오류: ${esc(msg)}</p>
-          <p style="text-align:center;margin-top:14px;"><button type="button" class="btn btn-line" id="adminRetry">다시 시도</button></p>`;
-        const rb = document.getElementById("adminRetry");
-        if (rb) rb.addEventListener("click", () => { box.innerHTML = '<p class="qt-loading">확인 중입니다…</p>'; start(); });
+        retryBox(`<p class="qt-loading">불러오기 오류: ${esc(msg)}</p>`);
       }
+    } finally {
+      clearTimeout(watchdog);
     }
   }
 
