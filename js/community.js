@@ -84,6 +84,14 @@
     return _isAdmin;
   }
 
+  // 반응(이모지) 종류
+  const REACTIONS = [
+    { type: "좋아요", emoji: "👍" },
+    { type: "응원해요", emoji: "🙌" },
+    { type: "기도할게요", emoji: "🙏" },
+    { type: "사랑해요", emoji: "❤️" },
+  ];
+
   // 모달
   const postModal = document.getElementById("postModal");
   const postDetail = document.getElementById("postDetail");
@@ -94,7 +102,7 @@
   let openPostId = null;
 
   function init() {
-    console.log("[community.js] v20260627w REST");
+    console.log("[community.js] v20260627x REST");
     loadPosts();
 
     writeBtn.addEventListener("click", () => {
@@ -102,7 +110,15 @@
       form.hidden = false;
       form.scrollIntoView({ behavior: "smooth", block: "center" });
     });
-    cancelBtn.addEventListener("click", () => { form.hidden = true; form.reset(); });
+    cancelBtn.addEventListener("click", () => { form.hidden = true; form.reset(); syncCategoryEtc(); });
+
+    // 글 성격에서 '기타' 선택 시 직접 입력란 표시
+    const catSel = document.getElementById("boardCategory");
+    function syncCategoryEtc() {
+      const wrap = document.getElementById("boardCategoryEtcWrap");
+      if (catSel && wrap) wrap.hidden = catSel.value !== "기타";
+    }
+    if (catSel) catSel.addEventListener("change", syncCategoryEtc);
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -111,12 +127,14 @@
       const fd = new FormData(form);
       const title = (fd.get("title") || "").trim();
       const content = (fd.get("content") || "").trim();
+      let category = (fd.get("category") || "").trim();
+      if (category === "기타") category = (fd.get("category_etc") || "").trim() || "기타";
       if (!title || !content) { alert("제목과 내용을 입력해 주세요."); return; }
       const submitBtn = form.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.disabled = true;
       try {
-        await api("POST", "posts", { user_id: me.id, author_name: displayName(me), title, content }, { Prefer: "return=minimal" });
-        form.reset(); form.hidden = true;
+        await api("POST", "posts", { user_id: me.id, author_name: displayName(me), title, content, category: category || null }, { Prefer: "return=minimal" });
+        form.reset(); syncCategoryEtc(); form.hidden = true;
         loadPosts();
       } catch (err) {
         alert("등록 오류: " + err.message);
@@ -147,7 +165,10 @@
     if (!data || !data.length) { list.innerHTML = `<p class="qt-loading">아직 글이 없습니다. 첫 글을 남겨보세요!</p>`; return; }
     list.innerHTML = data.map((p) => `
       <button class="board-item" data-id="${p.id}">
-        <h3>${esc(p.title)}</h3>
+        <div class="bi-top">
+          <h3>${esc(p.title)}</h3>
+          ${p.category ? `<span class="board-tag">${esc(p.category)}</span>` : ""}
+        </div>
         <div class="bi-meta"><span>${esc(p.author_name)}</span><span>${fmtDate(p.created_at)}</span></div>
       </button>`).join("");
     list.querySelectorAll(".board-item").forEach((b) =>
@@ -165,15 +186,17 @@
     const mine = !!(me && p.user_id && me.id === p.user_id);
     const canDelete = mine || admin;
     postDetail.innerHTML = `
-      <span class="m-eyebrow">${fmtDate(p.created_at)} · ${esc(p.author_name)}</span>
+      <span class="m-eyebrow">${fmtDate(p.created_at)} · ${esc(p.author_name)}${p.category ? ` · <span class="board-tag">${esc(p.category)}</span>` : ""}</span>
       <h3 class="m-title">${esc(p.title)}</h3>
       <div class="post-body">${esc(p.content).replace(/\n/g, "<br>")}</div>
+      <div class="reactions" id="postReactions"></div>
       ${(mine || canDelete) ? `<div class="post-actions">
           ${mine ? `<button class="btn btn-line post-edit" id="postEdit">수정</button>` : ""}
           ${canDelete ? `<button class="btn post-del" id="postDelete">삭제${admin && !mine ? " (관리자)" : ""}</button>` : ""}
         </div>` : ""}`;
     if (mine) document.getElementById("postEdit").addEventListener("click", () => editPost(p));
     if (canDelete) document.getElementById("postDelete").addEventListener("click", () => deletePost(id));
+    loadReactions(id);
     await loadComments(id);
     commentForm.hidden = !me;
     commentLogin.hidden = !!me;
@@ -233,6 +256,49 @@
         loadComments(postId);
       })
     );
+  }
+
+  // ===== 반응(좋아요·응원·기도 등) =====
+  async function loadReactions(postId) {
+    const box = document.getElementById("postReactions");
+    if (!box) return;
+    const me = currentUser();
+    let rows = [];
+    try { rows = await api("GET", `post_reactions?post_id=eq.${postId}&select=type,user_id`); }
+    catch (e) {
+      // 테이블 미생성 등 — 조용히 숨김
+      box.innerHTML = "";
+      return;
+    }
+    rows = rows || [];
+    box.innerHTML = REACTIONS.map((r) => {
+      const list = rows.filter((x) => x.type === r.type);
+      const mineOn = !!(me && list.some((x) => x.user_id === me.id));
+      return `<button type="button" class="reaction-btn${mineOn ? " on" : ""}" data-type="${esc(r.type)}">
+        <span class="re-emoji">${r.emoji}</span><span class="re-label">${r.type}</span>${list.length ? `<span class="re-count">${list.length}</span>` : ""}
+      </button>`;
+    }).join("");
+    box.querySelectorAll(".reaction-btn").forEach((btn) => {
+      btn.addEventListener("click", () => toggleReaction(postId, btn.getAttribute("data-type")));
+    });
+  }
+  async function toggleReaction(postId, type) {
+    const me = currentUser();
+    if (!me || !me.id) { alert("반응을 남기려면 로그인해 주세요."); openLogin(); return; }
+    // 현재 내가 눌렀는지 확인
+    let mine = [];
+    try { mine = await api("GET", `post_reactions?post_id=eq.${postId}&user_id=eq.${me.id}&type=eq.${encodeURIComponent(type)}&select=id`); } catch (e) {}
+    try {
+      if (mine && mine.length) {
+        await api("DELETE", `post_reactions?post_id=eq.${postId}&user_id=eq.${me.id}&type=eq.${encodeURIComponent(type)}`, null, { Prefer: "return=minimal" });
+      } else {
+        await api("POST", "post_reactions", { post_id: postId, user_id: me.id, type }, { Prefer: "return=minimal" });
+      }
+    } catch (err) {
+      if (/post_reactions|relation|does not exist|schema cache/i.test(err.message)) { alert("반응 기능 준비 중입니다. 관리자에게 문의해 주세요."); return; }
+      alert("오류: " + err.message); return;
+    }
+    loadReactions(postId);
   }
 
   async function addComment(e) {
