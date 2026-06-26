@@ -10,6 +10,7 @@
     { href: "world.html", label: "지역과 세상" },
     { href: "story.html", label: "우리 이야기" },
     { href: "community.html", label: "나눔터" },
+    { href: "admin.html#tax", label: "연말정산" },
   ];
 
   const path = location.pathname.split("/").pop() || "index.html";
@@ -44,7 +45,7 @@
           <span class="logo-kr">운평장로교회</span>
           <span class="logo-en">UNPYEONG PRESBYTERIAN CHURCH · SINCE 1964</span>
         </div>
-        <nav class="footer-nav">${NAV.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="prayer.html">기도</a><a href="bylaws.html">정관</a><a href="privacy.html">개인정보처리방침</a></nav>
+        <nav class="footer-nav">${NAV.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="prayer.html">기도</a><a href="bylaws.html">정관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
         <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">💬 카카오톡 채널 추가</a>
         <div class="footer-meta">
           <p>담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</p>
@@ -79,6 +80,7 @@
           <div class="form-field" id="nameField" hidden><label>이름</label><input type="text" name="name" placeholder="홍길동" /></div>
           <div class="form-field"><label>이메일</label><input type="email" name="email" required placeholder="name@example.com" /></div>
           <div class="form-field"><label>비밀번호</label><input type="password" name="password" required minlength="6" placeholder="6자 이상" /></div>
+          <label class="auth-check" id="channelField" hidden><input type="checkbox" name="channel" id="channelConsent" checked /> <span>카카오톡 채널 추가에 동의합니다 (소식·QT 알림 받기)</span></label>
           <p class="auth-msg" id="authMsg" hidden></p>
           <button type="submit" class="btn btn-solid auth-submit" id="authSubmit">로그인</button>
         </form>
@@ -262,7 +264,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260627g";
+      auth.src = "js/auth.js?v=20260627h";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)

@@ -120,7 +120,7 @@
   }
 
   async function start() {
-    console.log("[admin.js] v20260627g REST");
+    console.log("[admin.js] v20260627h REST");
     // 어떤 경우에도 무한 "확인 중"이 남지 않도록 감시(캐시된 옛 코드/지연 대비)
     const watchdog = setTimeout(() => {
       if (/확인 중/.test(box.textContent || "")) retryBox('<p class="qt-loading">응답이 지연되고 있습니다.</p>');
@@ -288,6 +288,13 @@
       taxForm.hidden = true;
       openBtn.textContent = "연말정산 신청하기";
     };
+
+    // 상단 메뉴 '연말정산'(admin.html#tax)으로 들어오면 신청서 자동 열기
+    if (location.hash === "#tax") {
+      taxForm.hidden = false;
+      openBtn.textContent = "신청서 닫기";
+      try { taxBox.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
+    }
 
     taxForm.onsubmit = async (e) => {
       e.preventDefault();

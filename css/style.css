@@ -908,6 +908,16 @@ ul { list-style: none; }
 .postcode-close { background: none; border: 0; font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--ink-soft); }
 .postcode-embed { flex: 1; min-height: 0; }
 
+/* 회원가입 채널 동의 체크 */
+.auth-check { display: flex; align-items: flex-start; gap: 8px; font-size: .86rem; color: var(--ink-soft); margin: -4px 0 4px; cursor: pointer; line-height: 1.4; }
+.auth-check input { margin-top: 2px; width: 16px; height: 16px; flex-shrink: 0; }
+
+/* 회원탈퇴 안내 박스 */
+.withdraw-box { max-width: 560px; margin: 0 auto; }
+.withdraw-warn { background: #fff4f3; border: 1px solid #f3c7c2; color: #a13b30; border-radius: 12px; padding: 16px 18px; font-size: .92rem; line-height: 1.6; margin-bottom: 22px; }
+.btn-danger { background: #c0392b; color: #fff; border: 0; }
+.btn-danger:hover { background: #a5301f; }
+
 /* 헤더: 로그인 이름 + 호버 카드 */
 .auth-wrap { position: relative; display: inline-block; }
 a.auth-name {

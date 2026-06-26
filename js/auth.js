@@ -16,7 +16,9 @@
   const titleEl = document.getElementById("authTitle");
   const subEl = document.getElementById("authSubtitle");
   const nameField = document.getElementById("nameField");
+  const channelField = document.getElementById("channelField");
   const submitBtn = document.getElementById("authSubmit");
+  const KAKAO_CHANNEL = "_xkdNxfX"; // 카카오톡 채널 공개 ID
   const toggleBtn = document.getElementById("authToggle");
   const kakaoBtn = document.getElementById("kakaoLogin");
 
@@ -30,6 +32,7 @@
     titleEl.textContent = m === "login" ? "로그인" : "회원가입";
     submitBtn.textContent = m === "login" ? "로그인" : "회원가입";
     nameField.hidden = m === "login";
+    if (channelField) channelField.hidden = m === "login";
     toggleBtn.textContent = m === "login" ? "회원가입" : "로그인하기";
     document.querySelector(".auth-switch").firstChild.textContent =
       m === "login" ? "처음이신가요? " : "이미 회원이신가요? ";
@@ -109,11 +112,16 @@
       submitBtn.disabled = true;
       try {
         if (mode === "signup") {
+          const wantChannel = !!fd.get("channel");
           const { error } = await sb.auth.signUp({
             email, password, options: { data: { name: name || email.split("@")[0] } },
           });
           if (error) throw error;
-          showMsg("가입 확인 메일을 보냈습니다. 메일의 링크를 눌러 인증해 주세요.", true);
+          // 채널 추가 동의 시 카카오톡 채널 추가 페이지 열기
+          if (wantChannel) {
+            try { window.open("https://pf.kakao.com/" + KAKAO_CHANNEL + "/friend", "_blank", "noopener"); } catch (e) {}
+          }
+          showMsg("가입 확인 메일을 보냈습니다. 메일의 링크를 눌러 인증해 주세요." + (wantChannel ? " 카카오톡 채널 추가 창도 함께 열었습니다." : ""), true);
         } else {
           const { error } = await sb.auth.signInWithPassword({ email, password });
           if (error) throw error;
