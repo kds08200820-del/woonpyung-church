@@ -77,7 +77,7 @@
   }
 
   async function start() {
-    console.log("[admin.js] v20260627e REST");
+    console.log("[admin.js] v20260627f REST");
     // 어떤 경우에도 무한 "확인 중"이 남지 않도록 감시(캐시된 옛 코드/지연 대비)
     const watchdog = setTimeout(() => {
       if (/확인 중/.test(box.textContent || "")) retryBox('<p class="qt-loading">응답이 지연되고 있습니다.</p>');

@@ -87,6 +87,24 @@
     </div>`;
   document.body.insertAdjacentHTML("beforeend", footerHTML);
 
+  // ===== 토스트 메시지(로그아웃 등 안내) =====
+  function showFlash(msg) {
+    try {
+      const t = document.createElement("div");
+      t.className = "flash-toast";
+      t.textContent = msg;
+      t.setAttribute("style", "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(3,34,87,.96);color:#fff;padding:12px 22px;border-radius:30px;font-size:.95rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999;opacity:0;transition:opacity .25s;");
+      document.body.appendChild(t);
+      requestAnimationFrame(() => { t.style.opacity = "1"; });
+      setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 2600);
+    } catch (e) {}
+  }
+  // 다른 페이지로 이동한 뒤에도 안내가 보이도록(예: 로그아웃 후 홈)
+  try {
+    const fm = sessionStorage.getItem("flashMsg");
+    if (fm) { sessionStorage.removeItem("flashMsg"); showFlash(fm); }
+  } catch (e) {}
+
   // ===== 헤더 스크롤 상태 =====
   const header = document.getElementById("header");
   const hasHero = !!document.querySelector(".hero, .page-hero");
@@ -209,13 +227,28 @@
             </div>
           </div>
           <button class="auth-btn" id="logoutBtnInit">로그아웃</button>`;
-        document.getElementById("logoutBtnInit").addEventListener("click", async () => {
+        document.getElementById("logoutBtnInit").addEventListener("click", (ev) => {
+          const lb = ev.currentTarget;
+          lb.disabled = true;
+          lb.textContent = "로그아웃 중…";
+          // 1) 로그인 토큰을 즉시 삭제(우리 UI의 기준값) — 관련 sb-* 키 모두 정리
           try {
             const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
             localStorage.removeItem(`sb-${ref}-auth-token`);
           } catch (e) {}
-          if (window.__sb) { try { await window.__sb.auth.signOut(); } catch (e) {} }
-          location.href = "index.html";
+          try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+              const k = localStorage.key(i);
+              if (k && k.indexOf("sb-") === 0 && k.indexOf("-auth-token") !== -1) localStorage.removeItem(k);
+            }
+          } catch (e) {}
+          // 2) SDK signOut은 잠금으로 멈출 수 있으니 기다리지 않고 백그라운드로만 시도
+          if (window.__sb) { try { window.__sb.auth.signOut().catch(() => {}); } catch (e) {} }
+          // 3) 헤더 즉시 갱신 + 안내 후 홈으로 이동
+          try { slot0.innerHTML = '<button class="auth-btn">로그인</button>'; } catch (e) {}
+          try { sessionStorage.setItem("flashMsg", "로그아웃되었습니다."); } catch (e) {}
+          showFlash("로그아웃되었습니다.");
+          setTimeout(() => { location.href = "index.html"; }, 700);
         });
       } else {
         slot0.innerHTML = '<button class="auth-btn" id="loginBtnInit">로그인</button>';
@@ -229,7 +262,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260627e";
+      auth.src = "js/auth.js?v=20260627f";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)
