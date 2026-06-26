@@ -871,6 +871,16 @@ ul { list-style: none; }
 .post-actions .btn { padding: 7px 18px; font-size: .85rem; }
 .post-actions .post-del { background: #c0392b; color: #fff; border: 0; }
 .post-actions .post-del:hover { background: #a5301f; }
+
+/* 양육 자료실 — 외부 링크 목록 */
+.resource-list { display: grid; gap: 10px; max-width: 640px; }
+.resource-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: #fff; text-decoration: none; transition: .15s; }
+a.resource-item:hover { border-color: var(--accent-soft); box-shadow: 0 4px 14px rgba(0,0,0,.06); }
+.resource-item .ri-name { color: var(--ink); font-weight: 500; }
+.resource-item .ri-go { color: var(--accent); font-size: .88rem; font-weight: 600; white-space: nowrap; }
+.resource-item.is-empty { background: var(--paper-alt); }
+.resource-item.is-empty .ri-name { color: var(--ink-soft); }
+.resource-item.is-empty .ri-go { color: var(--ink-soft); font-weight: 400; }
 .comments { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
 .comment-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .comment-item { background: var(--paper-alt); border-radius: 10px; padding: 14px 16px; position: relative; }
