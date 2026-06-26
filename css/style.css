@@ -896,9 +896,44 @@ ul { list-style: none; }
 .prov-kakao { background: #FEE500; color: #3A1D1D; }
 .prov-email { background: var(--paper-alt); color: var(--ink-soft); border: 1px solid var(--line); }
 .member-role-note { color: var(--accent-soft); font-size: .9rem; margin-bottom: 14px; }
-a.auth-name { cursor: pointer; text-decoration: none; color: inherit; }
-a.auth-name:hover { color: var(--gold); }
 .profile-msg { font-size: .9rem; }
+
+/* 헤더: 로그인 이름 + 호버 카드 */
+.auth-wrap { position: relative; display: inline-block; }
+a.auth-name {
+  display: inline-block; cursor: pointer; text-decoration: none;
+  color: #fff; font-size: .92rem; font-weight: 700; letter-spacing: .02em;
+  padding: 7px 12px; border-radius: 18px; transition: background .2s ease, color .2s ease;
+}
+a.auth-name:hover { background: rgba(255,255,255,.14); color: var(--gold); }
+#header.scrolled a.auth-name { color: var(--accent); }
+#header.scrolled a.auth-name:hover { background: rgba(0,0,0,.05); color: var(--accent); }
+
+/* 호버 카드 (마우스를 갔다 대면 회원정보 표시) */
+.auth-card {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 280px; background: #fff; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(0,0,0,.18);
+  padding: 18px; opacity: 0; visibility: hidden; transform: translateY(-6px);
+  transition: opacity .2s ease, transform .2s ease, visibility .2s ease;
+  z-index: 120;
+}
+.auth-wrap:hover .auth-card,
+.auth-wrap:focus-within .auth-card { opacity: 1; visibility: visible; transform: translateY(0); }
+.ac-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.ac-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: var(--paper-alt); flex-shrink: 0; }
+.ac-avatar-default { display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: var(--muted); }
+.ac-meta { min-width: 0; }
+.ac-name { font-family: "Noto Serif KR", serif; font-weight: 700; font-size: 1rem; color: var(--ink); }
+.ac-email { font-size: .8rem; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-rows { padding: 10px 0; }
+.ac-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: .85rem; color: var(--ink-soft); }
+.ac-row strong { color: var(--ink); }
+.ac-go { display: block; text-align: center; margin-top: 6px; padding: 9px 18px; font-size: .85rem; }
+@media (max-width: 760px) {
+  .auth-card { right: -10px; width: 250px; }
+}
 
 /* 카카오톡 채널 추가 버튼 (푸터) */
 .kakao-channel-btn { display: inline-flex; align-items: center; gap: 7px; background: #FEE500; color: #3A1D1D; font-size: .9rem; font-weight: 700; padding: 11px 20px; border-radius: 24px; transition: filter .2s ease; }

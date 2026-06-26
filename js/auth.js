@@ -48,10 +48,33 @@
     const user = data && data.session && data.session.user;
     if (!slot) return;
     if (user) {
-      const name =
-        (user.user_metadata && (user.user_metadata.name || user.user_metadata.full_name)) ||
-        (user.email ? user.email.split("@")[0] : "성도");
-      slot.innerHTML = `<a class="auth-name" href="admin.html" title="내 정보 · 회원관리">${name}님</a><button class="auth-btn" id="logoutBtn">로그아웃</button>`;
+      const meta = user.user_metadata || {};
+      const name = meta.name || meta.full_name || meta.nickname || (user.email ? user.email.split("@")[0] : "성도");
+      const email = user.email || "";
+      const provider = (user.app_metadata && user.app_metadata.provider) || "email";
+      const providerLabel = provider === "kakao" ? "카카오" : provider === "email" ? "이메일" : provider;
+      const created = user.created_at ? new Date(user.created_at) : null;
+      const joined = created ? `${created.getFullYear()}.${String(created.getMonth() + 1).padStart(2, "0")}.${String(created.getDate()).padStart(2, "0")}` : "";
+      const avatar = meta.avatar_url || meta.picture || "";
+      slot.innerHTML = `
+        <div class="auth-wrap">
+          <a class="auth-name" href="admin.html" title="내 정보 보기">${name}님 ▾</a>
+          <div class="auth-card" role="menu">
+            <div class="ac-head">
+              ${avatar ? `<img class="ac-avatar" src="${avatar}" alt="" />` : '<div class="ac-avatar ac-avatar-default">👤</div>'}
+              <div class="ac-meta">
+                <div class="ac-name">${name}</div>
+                ${email ? `<div class="ac-email">${email}</div>` : ""}
+              </div>
+            </div>
+            <div class="ac-rows">
+              <div class="ac-row"><span>가입 방식</span><strong class="prov-tag prov-${provider}">${providerLabel}</strong></div>
+              ${joined ? `<div class="ac-row"><span>가입일</span><strong>${joined}</strong></div>` : ""}
+            </div>
+            <a class="btn btn-line ac-go" href="admin.html">내 정보 · 수정</a>
+          </div>
+        </div>
+        <button class="auth-btn" id="logoutBtn">로그아웃</button>`;
       document.getElementById("logoutBtn").addEventListener("click", async () => {
         await sb.auth.signOut();
         location.reload();

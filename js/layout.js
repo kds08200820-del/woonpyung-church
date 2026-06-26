@@ -171,10 +171,33 @@
     } catch (e) {}
     if (slot0) {
       if (cachedUser) {
-        const name =
-          (cachedUser.user_metadata && (cachedUser.user_metadata.name || cachedUser.user_metadata.full_name)) ||
-          (cachedUser.email ? cachedUser.email.split("@")[0] : "성도");
-        slot0.innerHTML = `<a class="auth-name" href="admin.html">${name}님</a><button class="auth-btn" id="logoutBtnInit">로그아웃</button>`;
+        const meta = cachedUser.user_metadata || {};
+        const name = meta.name || meta.full_name || meta.nickname || (cachedUser.email ? cachedUser.email.split("@")[0] : "성도");
+        const email = cachedUser.email || "";
+        const provider = (cachedUser.app_metadata && cachedUser.app_metadata.provider) || "email";
+        const providerLabel = provider === "kakao" ? "카카오" : provider === "email" ? "이메일" : provider;
+        const created = cachedUser.created_at ? new Date(cachedUser.created_at) : null;
+        const joined = created ? `${created.getFullYear()}.${String(created.getMonth() + 1).padStart(2, "0")}.${String(created.getDate()).padStart(2, "0")}` : "";
+        const avatar = meta.avatar_url || meta.picture || "";
+        slot0.innerHTML = `
+          <div class="auth-wrap">
+            <a class="auth-name" href="admin.html" title="내 정보 보기">${name}님 ▾</a>
+            <div class="auth-card" role="menu">
+              <div class="ac-head">
+                ${avatar ? `<img class="ac-avatar" src="${avatar}" alt="" />` : '<div class="ac-avatar ac-avatar-default">👤</div>'}
+                <div class="ac-meta">
+                  <div class="ac-name">${name}</div>
+                  ${email ? `<div class="ac-email">${email}</div>` : ""}
+                </div>
+              </div>
+              <div class="ac-rows">
+                <div class="ac-row"><span>가입 방식</span><strong class="prov-tag prov-${provider}">${providerLabel}</strong></div>
+                ${joined ? `<div class="ac-row"><span>가입일</span><strong>${joined}</strong></div>` : ""}
+              </div>
+              <a class="btn btn-line ac-go" href="admin.html">내 정보 · 수정</a>
+            </div>
+          </div>
+          <button class="auth-btn" id="logoutBtnInit">로그아웃</button>`;
         document.getElementById("logoutBtnInit").addEventListener("click", async () => {
           try {
             const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
@@ -195,7 +218,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260626w";
+      auth.src = "js/auth.js?v=20260626x";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)
