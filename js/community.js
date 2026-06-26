@@ -49,8 +49,20 @@
     loadPosts();
 
     writeBtn.addEventListener("click", async () => {
+      // 동기적으로 즉시 폼을 열고, 세션은 백그라운드에서 확인
       const { data } = await sb.auth.getSession();
       me = data && data.session && data.session.user;
+      if (!me) {
+        // localStorage 백업 확인 (SDK 초기화 지연 시)
+        try {
+          const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
+          const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+          if (raw) {
+            const sess = JSON.parse(raw);
+            me = (sess && (sess.user || (sess.currentSession && sess.currentSession.user))) || null;
+          }
+        } catch (e) {}
+      }
       if (!me) { alert("글을 쓰려면 먼저 로그인해 주세요."); const b = document.getElementById("loginBtn"); if (b) b.click(); return; }
       form.hidden = false;
       form.scrollIntoView({ behavior: "smooth", block: "center" });

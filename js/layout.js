@@ -158,20 +158,44 @@
 
   // ===== 회원/로그인(Supabase) — 키 설정 시에만 로드 =====
   if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
-    // SDK 로딩 전에도 로그인 버튼이 항상 보이도록 즉시 표시(아래 auth.js가 업그레이드)
+    // localStorage의 Supabase 세션을 즉시 읽어 헤더에 반영(페이지 이동 시에도 깜빡임 없음)
     const slot0 = document.getElementById("authSlot");
+    let cachedUser = null;
+    try {
+      const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
+      const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+      if (raw) {
+        const sess = JSON.parse(raw);
+        cachedUser = (sess && (sess.user || (sess.currentSession && sess.currentSession.user))) || null;
+      }
+    } catch (e) {}
     if (slot0) {
-      slot0.innerHTML = '<button class="auth-btn" id="loginBtnInit">로그인</button>';
-      document.getElementById("loginBtnInit").addEventListener("click", () => {
-        const m = document.getElementById("authModal");
-        if (m) { m.hidden = false; document.body.style.overflow = "hidden"; }
-      });
+      if (cachedUser) {
+        const name =
+          (cachedUser.user_metadata && (cachedUser.user_metadata.name || cachedUser.user_metadata.full_name)) ||
+          (cachedUser.email ? cachedUser.email.split("@")[0] : "성도");
+        slot0.innerHTML = `<a class="auth-name" href="admin.html">${name}님</a><button class="auth-btn" id="logoutBtnInit">로그아웃</button>`;
+        document.getElementById("logoutBtnInit").addEventListener("click", async () => {
+          try {
+            const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
+            localStorage.removeItem(`sb-${ref}-auth-token`);
+          } catch (e) {}
+          if (window.__sb) { try { await window.__sb.auth.signOut(); } catch (e) {} }
+          location.href = "index.html";
+        });
+      } else {
+        slot0.innerHTML = '<button class="auth-btn" id="loginBtnInit">로그인</button>';
+        document.getElementById("loginBtnInit").addEventListener("click", () => {
+          const m = document.getElementById("authModal");
+          if (m) { m.hidden = false; document.body.style.overflow = "hidden"; }
+        });
+      }
     }
     const sdk = document.createElement("script");
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260626v";
+      auth.src = "js/auth.js?v=20260626w";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)

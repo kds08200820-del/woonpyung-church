@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>회원 관리 | 운평장로교회</title>
   <meta name="robots" content="noindex" />
-  <link rel="manifest" href="manifest.json?v=20260626v" />
+  <link rel="manifest" href="manifest.json?v=20260626w" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260626v" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260626v" />
+  <link rel="icon" href="images/favicon-32.png?v=20260626w" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260626w" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260626v" />
+  <link rel="stylesheet" href="css/style.css?v=20260626w" />
 </head>
 <body>
 
@@ -37,14 +37,28 @@
         <p>로그인 기능(Supabase) 연결 후 이용할 수 있습니다.</p>
       </div>
 
+      <!-- 내 정보 수정 폼 (로그인 시에만 표시) -->
+      <form class="form-card profile-form" id="profileForm" hidden style="max-width:600px;margin-bottom:34px;">
+        <h3 class="sub-title" style="text-align:left;margin-bottom:18px;">내 정보 수정</h3>
+        <div class="form-grid">
+          <div class="form-field"><label>이름 / 닉네임</label><input type="text" name="name" maxlength="40" placeholder="홍길동" /></div>
+          <div class="form-field"><label>연락처 (선택)</label><input type="tel" name="phone" maxlength="20" placeholder="010-0000-0000" /></div>
+          <div class="form-field full"><label>한 줄 소개 (선택)</label><input type="text" name="bio" maxlength="120" placeholder="예: 청년부, 새가족반 수강 중" /></div>
+        </div>
+        <div class="form-actions" style="margin-top:18px;display:flex;gap:10px;align-items:center;">
+          <button type="submit" class="btn btn-solid">저장</button>
+          <span class="profile-msg" id="profileMsg"></span>
+        </div>
+      </form>
+
       <div id="memberList"><p class="qt-loading">확인 중입니다…</p></div>
     </div>
   </section>
 
-  <script src="js/config.js?v=20260626v"></script>
-  <script src="js/bulletins.js?v=20260626v"></script>
-  <script src="js/layout.js?v=20260626v"></script>
-  <script src="js/main.js?v=20260626v"></script>
-  <script src="js/admin.js?v=20260626v"></script>
+  <script src="js/config.js?v=20260626w"></script>
+  <script src="js/bulletins.js?v=20260626w"></script>
+  <script src="js/layout.js?v=20260626w"></script>
+  <script src="js/main.js?v=20260626w"></script>
+  <script src="js/admin.js?v=20260626w"></script>
 </body>
 </html>
