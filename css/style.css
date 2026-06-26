@@ -882,7 +882,22 @@ a.resource-item:hover { border-color: var(--accent-soft); box-shadow: 0 4px 14px
 .resource-item.is-empty .ri-name { color: var(--ink-soft); }
 .resource-item.is-empty .ri-go { color: var(--ink-soft); font-weight: 400; }
 .res-upload { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-.res-upmsg { font-size: .9rem; }
+.res-upmsg { font-size: .9rem; display: inline-block; margin-top: 8px; }
+
+/* 자료실 카테고리 아코디언 */
+.res-cats { display: grid; gap: 12px; max-width: 680px; }
+.res-cat { border: 1px solid var(--line); border-radius: 14px; background: #fff; overflow: hidden; }
+.res-cat-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; background: none; border: 0; cursor: pointer; font: inherit; text-align: left; }
+.res-cat-head:hover { background: var(--paper-alt); }
+.res-cat .rc-label { font-size: 1.05rem; font-weight: 600; color: var(--accent); }
+.res-cat .rc-right { display: flex; align-items: center; gap: 12px; }
+.res-cat .rc-count { background: var(--paper-alt); color: var(--ink-soft); font-size: .8rem; font-weight: 600; min-width: 22px; height: 22px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; padding: 0 7px; }
+.res-cat .rc-chevron { transition: transform .2s; color: var(--ink-soft); }
+.res-cat.open .rc-chevron { transform: rotate(180deg); }
+.res-cat-body { padding: 4px 20px 20px; display: grid; gap: 14px; }
+.res-drop { border: 1.5px dashed var(--line); border-radius: 12px; padding: 18px; text-align: center; color: var(--ink-soft); font-size: .92rem; transition: .15s; }
+.res-drop.drag { border-color: var(--accent); background: var(--paper-alt); }
+.res-drop p { margin: 0 0 4px; }
 .comments { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
 .comment-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .comment-item { background: var(--paper-alt); border-radius: 10px; padding: 14px 16px; position: relative; }
