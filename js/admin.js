@@ -120,7 +120,7 @@
   }
 
   async function start() {
-    console.log("[admin.js] v20260627l REST");
+    console.log("[admin.js] v20260627n REST");
     // 어떤 경우에도 무한 "확인 중"이 남지 않도록 감시(캐시된 옛 코드/지연 대비)
     const watchdog = setTimeout(() => {
       if (/확인 중/.test(box.textContent || "")) retryBox('<p class="qt-loading">응답이 지연되고 있습니다.</p>');
@@ -187,7 +187,7 @@
           pMsg.textContent = "저장되었습니다 ✓";
           pMsg.style.color = "var(--accent)";
           const slotName = document.querySelector(".auth-name");
-          if (slotName && name) slotName.textContent = name + "님 ▾";
+          if (slotName && name) slotName.textContent = name + (role ? " " + role : "") + "님 ▾";
         } catch (err) {
           pMsg.textContent = "오류: " + err.message;
           pMsg.style.color = "#c0392b";

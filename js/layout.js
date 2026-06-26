@@ -192,14 +192,46 @@
     // localStorage의 Supabase 세션을 즉시 읽어 헤더에 반영(페이지 이동 시에도 깜빡임 없음)
     const slot0 = document.getElementById("authSlot");
     let cachedUser = null;
+    let cachedToken = null;
     try {
       const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
       const raw = localStorage.getItem(`sb-${ref}-auth-token`);
       if (raw) {
         const sess = JSON.parse(raw);
-        cachedUser = (sess && (sess.user || (sess.currentSession && sess.currentSession.user))) || null;
+        const s = (sess && sess.currentSession) ? sess.currentSession : sess;
+        cachedUser = (s && s.user) || null;
+        cachedToken = (s && s.access_token) || null;
       }
     } catch (e) {}
+
+    // 직분(profiles.role)을 읽어 헤더 이름을 "홍길동 담임목사님" 형태로 보강
+    function enhanceHeaderWithRole(uid, baseName) {
+      if (!uid) return;
+      try {
+        let token = cachedToken;
+        try {
+          const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
+          const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+          if (raw) { const s0 = JSON.parse(raw); const s = s0 && s0.currentSession ? s0.currentSession : s0; token = (s && s.access_token) || token; }
+        } catch (e) {}
+        const headers = { apikey: window.SUPABASE_ANON_KEY };
+        if (token) headers.Authorization = "Bearer " + token;
+        fetch(window.SUPABASE_URL + "/rest/v1/profiles?id=eq." + uid + "&select=name,role", { headers })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((rows) => {
+            const row = rows && rows[0];
+            if (!row) return;
+            const nm = row.name || baseName;
+            const disp = row.role ? nm + " " + row.role : nm;
+            const nameEl = document.querySelector(".auth-name");
+            if (nameEl) nameEl.textContent = disp + "님 ▾";
+            const acName = document.querySelector(".ac-name");
+            if (acName) acName.textContent = disp;
+          })
+          .catch(() => {});
+      } catch (e) {}
+    }
+    window.__enhanceHeaderRole = enhanceHeaderWithRole;
     if (slot0) {
       if (cachedUser) {
         const meta = cachedUser.user_metadata || {};
@@ -252,6 +284,8 @@
           showFlash("로그아웃되었습니다.");
           setTimeout(() => { location.href = "index.html"; }, 700);
         });
+        // 직분이 지정돼 있으면 이름 옆에 붙여 표시
+        enhanceHeaderWithRole(cachedUser.id, name);
       } else {
         slot0.innerHTML = '<button class="auth-btn" id="loginBtnInit">로그인</button>';
         document.getElementById("loginBtnInit").addEventListener("click", () => {
@@ -264,7 +298,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260627m";
+      auth.src = "js/auth.js?v=20260627n";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)

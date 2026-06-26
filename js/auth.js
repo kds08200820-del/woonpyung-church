@@ -82,6 +82,8 @@
         await sb.auth.signOut();
         location.reload();
       });
+      // 직분이 지정돼 있으면 이름 옆에 붙여 표시(레이아웃의 헬퍼 재사용)
+      if (window.__enhanceHeaderRole) window.__enhanceHeaderRole(user.id, name);
     } else {
       slot.innerHTML = `<button class="auth-btn" id="loginBtn">로그인</button>`;
       document.getElementById("loginBtn").addEventListener("click", () => { setMode("login"); openModal(); });
