@@ -52,7 +52,7 @@ ul { list-style: none; }
   letter-spacing: .28em; color: rgba(255,255,255,.7);
   transition: color .4s ease;
 }
-.nav-menu { display: flex; gap: 38px; }
+.nav-menu { display: flex; gap: 28px; }
 .nav-menu a {
   font-size: .92rem; font-weight: 500; color: rgba(255,255,255,.92);
   position: relative; transition: color .3s ease;
