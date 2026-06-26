@@ -120,7 +120,7 @@
   }
 
   async function start() {
-    console.log("[admin.js] v20260627j REST");
+    console.log("[admin.js] v20260627k REST");
     // 어떤 경우에도 무한 "확인 중"이 남지 않도록 감시(캐시된 옛 코드/지연 대비)
     const watchdog = setTimeout(() => {
       if (/확인 중/.test(box.textContent || "")) retryBox('<p class="qt-loading">응답이 지연되고 있습니다.</p>');
@@ -341,25 +341,21 @@
     };
   }
 
-  // ===== 관리자 이메일 알림(Web3Forms) — 민감정보는 보내지 않음 =====
+  // ===== 관리자 이메일 알림(FormSubmit) — 민감정보는 보내지 않음 =====
   function notifyAdminEmail(name) {
-    const key = window.WEB3FORMS_KEY;
-    if (!key) return;
+    const to = window.FORMSUBMIT_EMAIL;
+    if (!to) return;
     const when = fmtT(new Date().toISOString());
     const body = {
-      access_key: key,
-      subject: "[운평장로교회] 새 연말정산 신청 접수",
-      from_name: "운평장로교회 홈페이지",
-      message:
-        "새 연말정산(기부금 영수증) 신청이 접수되었습니다.\n\n" +
-        "· 신청자: " + (name || "(이름 미상)") + "\n" +
-        "· 접수 시각: " + when + "\n\n" +
-        "전화번호·주소·주민번호 앞자리 등 자세한 내용은 홈페이지\n" +
-        "'내 정보 · 회원 관리' 페이지의 [연말정산 신청 내역]에서 확인해 주세요.\n" +
-        "(민감정보 보호를 위해 이메일에는 포함하지 않습니다.)",
+      _subject: "[운평장로교회] 새 연말정산 신청 접수",
+      _template: "table",
+      _captcha: "false",
+      신청자: name || "(이름 미상)",
+      접수시각: when,
+      안내: "전화·주소·주민번호 등 자세한 내용은 홈페이지 '내 정보 · 회원 관리' 페이지의 [연말정산 신청 내역]에서 확인해 주세요. (민감정보 보호를 위해 이메일에는 포함하지 않습니다.)",
     };
     try {
-      fetch("https://api.web3forms.com/submit", {
+      fetch("https://formsubmit.co/ajax/" + encodeURIComponent(to), {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(body),

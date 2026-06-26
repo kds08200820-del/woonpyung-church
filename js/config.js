@@ -14,8 +14,9 @@ window.ONESIGNAL_APP_ID = "a22a1ff9-5a05-4915-b70f-b0c6df6ccd71";
 window.SUPABASE_URL = "https://cetacttsdwzxjzkyozgd.supabase.co";
 window.SUPABASE_ANON_KEY = "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G";
 
-/* --- 연말정산 신청 알림 이메일(Web3Forms) ---
-   https://web3forms.com 에서 관리자 이메일로 무료 Access Key를 발급받아 붙여넣으세요.
-   신청이 접수되면 그 이메일로 "새 신청 알림"이 발송됩니다(민감정보는 제외).
-   비어 있으면 이메일 알림만 꺼지고, 신청 자체와 관리자 페이지 조회는 정상 동작합니다. */
-window.WEB3FORMS_KEY = "";
+/* --- 연말정산 신청 알림 이메일(FormSubmit) ---
+   계정/키 없이 이 이메일로 알림이 발송됩니다(민감정보는 제외).
+   ※ 최초 1회: 첫 신청이 접수되면 이 주소로 FormSubmit '활성화(Activate)' 메일이 옵니다.
+     메일의 'Activate Form' 버튼을 한 번 눌러야 이후 알림이 수신됩니다.
+   비어 있으면 이메일 알림만 꺼지고, 신청·관리자 조회는 정상 동작합니다. */
+window.FORMSUBMIT_EMAIL = "kds08200820@gmail.com";
