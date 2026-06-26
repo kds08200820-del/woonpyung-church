@@ -13,3 +13,9 @@ window.ONESIGNAL_APP_ID = "a22a1ff9-5a05-4915-b70f-b0c6df6ccd71";
    비어 있으면 로그인·게시판 기능은 "준비 중"으로 표시되고 사이트는 정상 동작합니다. */
 window.SUPABASE_URL = "https://cetacttsdwzxjzkyozgd.supabase.co";
 window.SUPABASE_ANON_KEY = "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G";
+
+/* --- 연말정산 신청 알림 이메일(Web3Forms) ---
+   https://web3forms.com 에서 관리자 이메일로 무료 Access Key를 발급받아 붙여넣으세요.
+   신청이 접수되면 그 이메일로 "새 신청 알림"이 발송됩니다(민감정보는 제외).
+   비어 있으면 이메일 알림만 꺼지고, 신청 자체와 관리자 페이지 조회는 정상 동작합니다. */
+window.WEB3FORMS_KEY = "";

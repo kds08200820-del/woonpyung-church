@@ -219,6 +219,8 @@
         taxMsg.style.color = "#c0392b";
         return;
       }
+      // 관리자에게 이메일 알림(민감정보 제외, 실패해도 신청은 정상 처리)
+      notifyAdminEmail(payload.name);
       taxMsg.textContent = "신청이 접수되었습니다. 감사합니다 🙏";
       taxMsg.style.color = "var(--accent)";
       taxForm.reset();
@@ -228,6 +230,33 @@
         taxMsg.textContent = "";
       }, 2500);
     });
+  }
+
+  // ===== 관리자 이메일 알림(Web3Forms) — 민감정보는 보내지 않음 =====
+  function notifyAdminEmail(name) {
+    const key = window.WEB3FORMS_KEY;
+    if (!key) return; // 키 미설정 시 조용히 건너뜀
+    const when = fmtT(new Date().toISOString());
+    const body = {
+      access_key: key,
+      subject: "[운평장로교회] 새 연말정산 신청 접수",
+      from_name: "운평장로교회 홈페이지",
+      // 민감정보(전화·주소·주민번호)는 이메일에 포함하지 않습니다.
+      message:
+        "새 연말정산(기부금 영수증) 신청이 접수되었습니다.\n\n" +
+        "· 신청자: " + (name || "(이름 미상)") + "\n" +
+        "· 접수 시각: " + when + "\n\n" +
+        "전화번호·주소·주민번호 앞자리 등 자세한 내용은 홈페이지\n" +
+        "'내 정보 · 회원 관리' 페이지의 [연말정산 신청 내역]에서 확인해 주세요.\n" +
+        "(민감정보 보호를 위해 이메일에는 포함하지 않습니다.)",
+    };
+    try {
+      fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(body),
+      }).catch(() => {});
+    } catch (e) {}
   }
 
   // ===== 관리자: 연말정산 신청 내역 =====
