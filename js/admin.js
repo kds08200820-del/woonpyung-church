@@ -26,6 +26,18 @@
   }
 
   async function start(sb) {
+    try { await run(sb); }
+    catch (e) {
+      const msg = String((e && e.message) || e);
+      if (/profiles|schema cache|does not exist/i.test(msg)) {
+        box.innerHTML = `<div class="member-lock"><div class="lock-icon">🛠️</div><h3>회원 정보 테이블 준비 필요</h3><p>관리자가 Supabase에서 회원 프로필 테이블(profiles)을 생성하면 이용할 수 있습니다.</p></div>`;
+      } else {
+        box.innerHTML = `<p class="qt-loading">불러오기 오류: ${esc(msg)}</p>`;
+      }
+    }
+  }
+
+  async function run(sb) {
     const { data } = await sb.auth.getSession();
     const me = data && data.session && data.session.user;
     if (!me) {
@@ -37,7 +49,8 @@
     const pForm = document.getElementById("profileForm");
     const pMsg = document.getElementById("profileMsg");
     if (pForm) {
-      const { data: mineRow } = await sb.from("profiles").select("*").eq("id", me.id).maybeSingle();
+      const { data: mineRow, error: mErr } = await sb.from("profiles").select("*").eq("id", me.id).maybeSingle();
+      if (mErr) throw mErr;
       pForm.elements.name.value =
         (mineRow && mineRow.name) ||
         (me.user_metadata && (me.user_metadata.name || me.user_metadata.full_name)) ||
@@ -79,7 +92,7 @@
 
     // RLS: 관리자는 전체, 일반 회원은 본인 행만 조회됩니다.
     const { data: rows, error } = await sb.from("profiles").select("*").order("created_at", { ascending: false });
-    if (error) { box.innerHTML = `<p class="qt-loading">불러오기 오류: ${esc(error.message)}</p>`; return; }
+    if (error) throw error;
 
     const tableHTML = (list) => `
       <div class="member-table-wrap">
