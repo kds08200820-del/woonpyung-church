@@ -122,6 +122,11 @@ ul { list-style: none; }
   opacity: 0; animation: fadeUp 1s ease .8s forwards;
 }
 .hero-verse span { display: block; font-size: .8rem; color: var(--gold); margin-top: 6px; letter-spacing: .1em; }
+/* 히어로 슬라이드 인디케이터(바) */
+.hero-dots { display: flex; gap: 12px; justify-content: center; margin-top: 32px; }
+.hero-dot { width: 26px; height: 4px; padding: 0; border: 0; border-radius: 4px; background: rgba(255,255,255,.3); cursor: pointer; transition: background .3s, width .3s; }
+.hero-dot:hover { background: rgba(255,255,255,.55); }
+.hero-dot.active { background: var(--gold); width: 44px; }
 .hero-scroll {
   position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%);
   z-index: 2; font-size: 1.4rem; color: #fff; opacity: .7;

@@ -7,10 +7,10 @@
   <meta name="description" content="1964년부터 이어온 믿음의 공동체, 운평장로교회입니다. 성경을 따라, 은혜로 살아가는 공동체로 여러분을 환영합니다." />
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json?v=20260628e" />
+  <link rel="manifest" href="manifest.json?v=20260628f" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260628e" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260628e" />
+  <link rel="icon" href="images/favicon-32.png?v=20260628f" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260628f" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260628e" />
+  <link rel="stylesheet" href="css/style.css?v=20260628f" />
 </head>
 <body>
 
@@ -44,6 +44,7 @@
       <div class="hero-verse">
         “주의 말씀은 내 발에 등이요 내 길에 빛이니이다” <span>— 시편 119:105</span>
       </div>
+      <div class="hero-dots" id="heroDots" aria-label="슬라이드 이동"></div>
     </div>
     <a href="#qt" class="hero-scroll" aria-label="아래로">↓</a>
   </section>
@@ -94,29 +95,41 @@
           <p>주일 설교와 교리, 매일 묵상. 신앙의 뿌리를 내리는 공간입니다.</p>
           <span class="entry-go">말씀 보기 →</span>
         </a>
-        <a class="entry-card" href="library.html">
-          <span class="entry-num">03</span>
-          <h3>자료실</h3>
-          <p>새가족·양육반·제자훈련 등 교육 자료를 한곳에서 내려받습니다. (로그인 교인 전용)</p>
-          <span class="entry-go">자료 보기 →</span>
-        </a>
-        <a class="entry-card" href="world.html">
-          <span class="entry-num">04</span>
-          <h3>지역과 세상 속에서</h3>
-          <p>교회 안에만 머물지 않습니다. 지역과 열방을 섬기는 이야기.</p>
-          <span class="entry-go">섬김 보기 →</span>
-        </a>
         <a class="entry-card" href="story.html">
-          <span class="entry-num">05</span>
+          <span class="entry-num">03</span>
           <h3>우리 이야기</h3>
           <p>성도들의 삶과 간증, 공동체의 온기가 담긴 이야기들.</p>
           <span class="entry-go">이야기 →</span>
         </a>
-        <a class="entry-card" href="word.html#archive">
+        <a class="entry-card" href="community.html">
+          <span class="entry-num">04</span>
+          <h3>나눔터</h3>
+          <p>성도들이 글로 마음을 나누는 공간. 기도요청·간증·일상을 함께 나눠요.</p>
+          <span class="entry-go">나누러 가기 →</span>
+        </a>
+        <a class="entry-card" href="prayer.html">
+          <span class="entry-num">05</span>
+          <h3>기도나눔</h3>
+          <p>이번 주 기도 제목을 한마음으로. 공동체가 함께 기도합니다.</p>
+          <span class="entry-go">기도하기 →</span>
+        </a>
+        <a class="entry-card" href="world.html">
           <span class="entry-num">06</span>
-          <h3>주보</h3>
-          <p>이번 주 주보와 지난 주보 보관함. 예배 순서·소식·향기로운 예물을 한눈에.</p>
-          <span class="entry-go">주보 보기 →</span>
+          <h3>지역과 세상 속에서</h3>
+          <p>교회 안에만 머물지 않습니다. 지역과 열방을 섬기는 이야기.</p>
+          <span class="entry-go">섬김 보기 →</span>
+        </a>
+        <a class="entry-card" href="library.html">
+          <span class="entry-num">07</span>
+          <h3>자료실</h3>
+          <p>새가족·양육반·제자훈련 등 교육 자료를 한곳에서 내려받습니다. (로그인 교인 전용)</p>
+          <span class="entry-go">자료 보기 →</span>
+        </a>
+        <a class="entry-card" href="admin.html#tax">
+          <span class="entry-num">08</span>
+          <h3>연말정산</h3>
+          <p>기부금 영수증(연말정산)을 온라인으로 간편하게 신청하세요.</p>
+          <span class="entry-go">신청하기 →</span>
         </a>
       </div>
     </div>
@@ -148,9 +161,9 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=20260628e"></script>
-  <script src="js/bulletins.js?v=20260628e"></script>
-  <script src="js/layout.js?v=20260628e"></script>
-  <script src="js/main.js?v=20260628e"></script>
+  <script src="js/config.js?v=20260628f"></script>
+  <script src="js/bulletins.js?v=20260628f"></script>
+  <script src="js/layout.js?v=20260628f"></script>
+  <script src="js/main.js?v=20260628f"></script>
 </body>
 </html>

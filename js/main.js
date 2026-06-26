@@ -721,19 +721,49 @@ document.querySelectorAll(".qna-q").forEach((btn) => {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeCol(); });
 })();
 
-// ===== 5-5. 히어로 제목 회전(서서히 반복 전환) =====
+// ===== 5-5. 히어로 제목 회전 + 점 인디케이터 + 손가락 스와이프 =====
 (function () {
   const rot = document.getElementById("heroRotator");
   if (!rot) return;
   const slides = [...rot.querySelectorAll(".hero-slide")];
   if (slides.length < 2) return;
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  let i = 0;
-  setInterval(() => {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const dotsBox = document.getElementById("heroDots");
+  let i = 0, timer = null;
+
+  // 점(바) 생성
+  let dots = [];
+  if (dotsBox) {
+    dotsBox.innerHTML = slides
+      .map((_, n) => `<button type="button" class="hero-dot${n === 0 ? " active" : ""}" aria-label="${n + 1}번째 슬라이드"></button>`)
+      .join("");
+    dots = [...dotsBox.querySelectorAll(".hero-dot")];
+  }
+
+  function go(n) {
     slides[i].classList.remove("is-active");
-    i = (i + 1) % slides.length;
+    if (dots[i]) dots[i].classList.remove("active");
+    i = (n + slides.length) % slides.length;
     slides[i].classList.add("is-active");
-  }, 5200);
+    if (dots[i]) dots[i].classList.add("active");
+  }
+  function start() { stop(); if (!reduce) timer = setInterval(() => go(i + 1), 5200); }
+  function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+  dots.forEach((d, n) => d.addEventListener("click", () => { go(n); start(); }));
+
+  // 손가락 스와이프(좌/우)
+  let x0 = null;
+  const surface = rot.closest(".hero") || rot;
+  surface.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+  surface.addEventListener("touchend", (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 40) { go(dx < 0 ? i + 1 : i - 1); start(); }
+    x0 = null;
+  }, { passive: true });
+
+  start();
 })();
 
 // ===== 5-6. 함께 드리는 기도(prayer.html) — 이번 주 기도 제목 =====
