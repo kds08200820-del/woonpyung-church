@@ -6,10 +6,10 @@
   const NAV = [
     { href: "welcome.html", label: "처음 오셨나요" },
     { href: "word.html", label: "말씀으로" },
-    { href: "grow.html", label: "함께 자라기" },
     { href: "world.html", label: "지역과 세상" },
     { href: "story.html", label: "우리 이야기" },
     { href: "community.html", label: "나눔터" },
+    { href: "library.html", label: "자료실" },
     { href: "admin.html#tax", label: "연말정산" },
   ];
 
@@ -298,7 +298,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260627u";
+      auth.src = "js/auth.js?v=20260627v";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)
