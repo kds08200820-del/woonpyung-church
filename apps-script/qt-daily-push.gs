@@ -19,7 +19,7 @@ const CONFIG = {
   SHEET_ID: "1Yg0dPnZEj18e9K5t-CC8ESwoXp1hP9Ro9AdTEhFSb0w",
   DATE_HEADER: "날짜",          // 날짜가 들어있는 열 머리글
   CONTENT_HEADER: "QT 내용",     // QT 본문이 들어있는 열 머리글
-  SITE_URL: "https://kds08200820-del.github.io/woonpyung-church/",
+  SITE_URL: "https://k-logos.com/",
   ONESIGNAL_APP_ID: "여기에_OneSignal_App_ID",
   ONESIGNAL_REST_KEY: "여기에_OneSignal_REST_API_KEY",
 };

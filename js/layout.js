@@ -160,7 +160,7 @@
         await OneSignal.init({
           appId: window.ONESIGNAL_APP_ID,
           serviceWorkerPath: "OneSignalSDKWorker.js",
-          serviceWorkerParam: { scope: "/woonpyung-church/onesignal/" },
+          serviceWorkerParam: { scope: "/onesignal/" },
           allowLocalhostAsSecureOrigin: true,
           notifyButton: {
             enable: true,
@@ -299,7 +299,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260628f";
+      auth.src = "js/auth.js?v=20260628g";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)
