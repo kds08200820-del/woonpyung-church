@@ -1,6 +1,8 @@
 /* ============================================================
-   운평장로교회 — 회원 관리(관리자 전용) + 내 정보 + 연말정산
-   profiles 조회. RLS로 관리자만 전체 조회/수정 가능.
+   운평장로교회 — 회원 관리(관리자) + 내 정보 + 연말정산
+   ※ supabase-js SDK의 getSession() 잠금(navigator lock)으로 인한
+     "확인 중" 무한 대기를 피하기 위해, localStorage의 로그인 토큰으로
+     Supabase REST API를 직접 호출합니다. (모든 요청에 타임아웃 적용)
    ============================================================ */
 (function () {
   const box = document.getElementById("memberList");
@@ -26,22 +28,71 @@
     box.innerHTML = `<div class="member-lock"><div class="lock-icon">🔒</div><h3>관리자 전용</h3><p>${msg}</p></div>`;
   }
 
-  async function start(sb) {
-    try { await run(sb); }
+  // ── localStorage에 저장된 Supabase 세션 읽기(getSession 미사용) ──
+  function localSession() {
+    try {
+      const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
+      const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      return s && s.currentSession ? s.currentSession : s;
+    } catch (e) { return null; }
+  }
+
+  const withTimeout = (p, ms, label) =>
+    Promise.race([
+      p,
+      new Promise((_, rej) => setTimeout(() => rej(new Error((label || "요청") + " 응답이 지연됩니다")), ms)),
+    ]);
+
+  // ── Supabase REST 직접 호출 ──
+  async function api(method, path, body, extraHeaders) {
+    const sess = localSession();
+    const token = sess && sess.access_token;
+    const headers = { apikey: window.SUPABASE_ANON_KEY, "Content-Type": "application/json" };
+    if (token) headers.Authorization = "Bearer " + token;
+    if (extraHeaders) Object.assign(headers, extraHeaders);
+    const res = await withTimeout(
+      fetch(window.SUPABASE_URL + "/rest/v1/" + path, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      }),
+      8000,
+      "서버"
+    );
+    const txt = await res.text();
+    let data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+    if (!res.ok) {
+      const msg = (data && (data.message || data.hint || data.error)) || ("HTTP " + res.status);
+      const err = new Error(msg); err.status = res.status; throw err;
+    }
+    return data;
+  }
+  const first = (arr) => (Array.isArray(arr) && arr.length ? arr[0] : null);
+
+  async function start() {
+    try { await run(); }
     catch (e) {
       const msg = String((e && e.message) || e);
-      if (/profiles|schema cache|does not exist/i.test(msg)) {
+      if (e && e.status === 401) {
+        box.innerHTML = `<div class="member-lock"><div class="lock-icon">🔑</div><h3>다시 로그인이 필요합니다</h3><p>로그인 정보가 만료되었습니다. 우측 상단 "로그아웃" 후 다시 로그인해 주세요.</p></div>`;
+      } else if (/profiles|schema cache|does not exist|relation/i.test(msg)) {
         box.innerHTML = `<div class="member-lock"><div class="lock-icon">🛠️</div><h3>회원 정보 테이블 준비 필요</h3><p>관리자가 Supabase에서 회원 프로필 테이블(profiles)을 생성하면 이용할 수 있습니다.</p></div>`;
       } else {
-        box.innerHTML = `<p class="qt-loading">불러오기 오류: ${esc(msg)}</p>`;
+        box.innerHTML = `<p class="qt-loading">불러오기 오류: ${esc(msg)}</p>
+          <p style="text-align:center;margin-top:14px;"><button type="button" class="btn btn-line" id="adminRetry">다시 시도</button></p>`;
+        const rb = document.getElementById("adminRetry");
+        if (rb) rb.addEventListener("click", () => { box.innerHTML = '<p class="qt-loading">확인 중입니다…</p>'; start(); });
       }
     }
   }
 
-  async function run(sb) {
-    const { data } = await sb.auth.getSession();
-    const me = data && data.session && data.session.user;
-    if (!me) {
+  async function run() {
+    const sess = localSession();
+    const me = sess && sess.user;
+    if (!me || !me.id) {
       lock('로그인 후 이용할 수 있습니다. 우측 상단 "로그인"을 눌러 주세요.');
       return;
     }
@@ -51,9 +102,7 @@
     const pMsg = document.getElementById("profileMsg");
     let mineRow = null;
     if (pForm) {
-      const { data: row, error: mErr } = await sb.from("profiles").select("*").eq("id", me.id).maybeSingle();
-      if (mErr) throw mErr;
-      mineRow = row;
+      mineRow = first(await api("GET", `profiles?id=eq.${me.id}&select=*`));
       pForm.elements.name.value =
         (mineRow && mineRow.name) ||
         (me.user_metadata && (me.user_metadata.name || me.user_metadata.full_name)) ||
@@ -64,7 +113,7 @@
       if (pForm.elements.address && mineRow && mineRow.address) pForm.elements.address.value = mineRow.address;
       if (mineRow && mineRow.bio) pForm.elements.bio.value = mineRow.bio;
       pForm.hidden = false;
-      pForm.addEventListener("submit", async (e) => {
+      pForm.onsubmit = async (e) => {
         e.preventDefault();
         const name = pForm.elements.name.value.trim();
         const phone = pForm.elements.phone.value.trim();
@@ -77,43 +126,36 @@
         if (birth) payload.birth = birth;
         if (address) payload.address = address;
         if (bio) payload.bio = bio;
-        const { error } = await sb.from("profiles").upsert(payload);
-        if (error) {
-          if (/column .* does not exist|phone|bio|birth|address/i.test(error.message)) {
-            pMsg.textContent = "이름은 저장됐어요. (일부 컬럼은 관리자가 활성화하면 사용 가능합니다.)";
-            pMsg.style.color = "var(--accent-soft)";
-            await sb.from("profiles").upsert({ id: me.id, name: name || null, email: me.email || null });
-          } else {
-            pMsg.textContent = "오류: " + error.message;
-            pMsg.style.color = "#c0392b";
-          }
-        } else {
+        try {
+          await api("POST", "profiles?on_conflict=id", payload, { Prefer: "resolution=merge-duplicates,return=minimal" });
           pMsg.textContent = "저장되었습니다 ✓";
           pMsg.style.color = "var(--accent)";
+          const slotName = document.querySelector(".auth-name");
+          if (slotName && name) slotName.textContent = name + "님 ▾";
+        } catch (err) {
+          pMsg.textContent = "오류: " + err.message;
+          pMsg.style.color = "#c0392b";
         }
-        const slotName = document.querySelector(".auth-name");
-        if (slotName && name) slotName.textContent = name + "님";
         setTimeout(() => { pMsg.textContent = ""; }, 3000);
-      });
+      };
     }
 
-    const { data: adm } = await sb.from("admins").select("uid").eq("uid", me.id).maybeSingle();
-    const isAdmin = !!adm;
+    const adminRows = await api("GET", `admins?uid=eq.${me.id}&select=uid`);
+    const isAdmin = Array.isArray(adminRows) && adminRows.length > 0;
 
     // ===== 연말정산 신청 폼 =====
-    setupTaxForm(sb, me, mineRow);
+    setupTaxForm(me, mineRow);
 
-    // RLS: 관리자는 전체, 일반 회원은 본인 행만 조회됩니다.
-    const { data: rows, error } = await sb.from("profiles").select("*").order("created_at", { ascending: false });
-    if (error) throw error;
+    // RLS: 관리자는 전체, 일반 회원은 본인 행만 반환됩니다.
+    const rows = (await api("GET", "profiles?select=*&order=created_at.desc")) || [];
 
     if (isAdmin) {
-      renderAdminTable(sb, rows);
+      renderAdminTable(rows);
       if (countEl) countEl.textContent = `(${rows.length}명)`;
-      loadTaxAdmin(sb);
+      loadTaxAdmin();
     } else {
       if (countEl) countEl.textContent = "";
-      const mine = (rows || []).filter((r) => r.id === me.id);
+      const mine = rows.filter((r) => r.id === me.id);
       box.innerHTML = `<p class="member-role-note">내 정보입니다.</p>` + memberTable(mine.length ? mine : [{ name: (me.user_metadata && me.user_metadata.name) || (me.email ? me.email.split("@")[0] : "성도"), provider: (me.app_metadata && me.app_metadata.provider) || "email", email: me.email, created_at: me.created_at }], false);
     }
   }
@@ -140,7 +182,7 @@
       </div>`;
   }
 
-  function renderAdminTable(sb, rows) {
+  function renderAdminTable(rows) {
     box.innerHTML = `<p class="member-role-note">관리자 모드 — 전체 회원을 볼 수 있고, 각 회원의 직책을 수정할 수 있습니다.</p>` + memberTable(rows, true);
     box.querySelectorAll("tr[data-uid]").forEach((tr) => {
       const uid = tr.getAttribute("data-uid");
@@ -152,22 +194,21 @@
         btn.disabled = true;
         const old = btn.textContent;
         btn.textContent = "저장 중…";
-        const { error } = await sb.from("profiles").update({ role: role || null }).eq("id", uid);
-        btn.disabled = false;
-        if (error) {
+        try {
+          await api("PATCH", `profiles?id=eq.${uid}`, { role: role || null }, { Prefer: "return=minimal" });
+          btn.textContent = "저장됨 ✓";
+          setTimeout(() => { btn.textContent = old; btn.disabled = false; }, 2000);
+        } catch (err) {
           btn.textContent = "오류";
           btn.style.color = "#c0392b";
-          setTimeout(() => { btn.textContent = old; btn.style.color = ""; }, 2500);
-        } else {
-          btn.textContent = "저장됨 ✓";
-          setTimeout(() => { btn.textContent = old; }, 2000);
+          setTimeout(() => { btn.textContent = old; btn.style.color = ""; btn.disabled = false; }, 2500);
         }
       });
     });
   }
 
   // ===== 연말정산 신청 폼 =====
-  function setupTaxForm(sb, me, mineRow) {
+  function setupTaxForm(me, mineRow) {
     const taxBox = document.getElementById("taxBox");
     const openBtn = document.getElementById("taxOpenBtn");
     const taxForm = document.getElementById("taxForm");
@@ -176,23 +217,22 @@
     if (!taxBox || !openBtn || !taxForm) return;
     taxBox.hidden = false;
 
-    // 프로필 정보로 미리 채우기
     const meta = me.user_metadata || {};
     taxForm.elements.name.value = (mineRow && mineRow.name) || meta.name || meta.full_name || "";
     if (mineRow && mineRow.phone) taxForm.elements.phone.value = mineRow.phone;
     if (mineRow && mineRow.birth) taxForm.elements.birth.value = mineRow.birth;
     if (mineRow && mineRow.address) taxForm.elements.address.value = mineRow.address;
 
-    openBtn.addEventListener("click", () => {
+    openBtn.onclick = () => {
       taxForm.hidden = !taxForm.hidden;
       openBtn.textContent = taxForm.hidden ? "연말정산 신청하기" : "신청서 닫기";
-    });
-    if (cancelBtn) cancelBtn.addEventListener("click", () => {
+    };
+    if (cancelBtn) cancelBtn.onclick = () => {
       taxForm.hidden = true;
       openBtn.textContent = "연말정산 신청하기";
-    });
+    };
 
-    taxForm.addEventListener("submit", async (e) => {
+    taxForm.onsubmit = async (e) => {
       e.preventDefault();
       const payload = {
         user_id: me.id,
@@ -209,17 +249,15 @@
       }
       taxMsg.textContent = "제출 중…";
       taxMsg.style.color = "var(--ink-soft)";
-      const { error } = await sb.from("tax_requests").insert(payload);
-      if (error) {
-        if (/tax_requests|does not exist|schema cache/i.test(error.message)) {
-          taxMsg.textContent = "신청 테이블이 아직 준비되지 않았습니다. 관리자에게 문의해 주세요.";
-        } else {
-          taxMsg.textContent = "오류: " + error.message;
-        }
+      try {
+        await api("POST", "tax_requests", payload, { Prefer: "return=minimal" });
+      } catch (err) {
+        taxMsg.textContent = /tax_requests|does not exist|relation|schema cache/i.test(err.message)
+          ? "신청 테이블이 아직 준비되지 않았습니다. 관리자에게 문의해 주세요."
+          : "오류: " + err.message;
         taxMsg.style.color = "#c0392b";
         return;
       }
-      // 관리자에게 이메일 알림(민감정보 제외, 실패해도 신청은 정상 처리)
       notifyAdminEmail(payload.name);
       taxMsg.textContent = "신청이 접수되었습니다. 감사합니다 🙏";
       taxMsg.style.color = "var(--accent)";
@@ -229,19 +267,18 @@
         openBtn.textContent = "연말정산 신청하기";
         taxMsg.textContent = "";
       }, 2500);
-    });
+    };
   }
 
   // ===== 관리자 이메일 알림(Web3Forms) — 민감정보는 보내지 않음 =====
   function notifyAdminEmail(name) {
     const key = window.WEB3FORMS_KEY;
-    if (!key) return; // 키 미설정 시 조용히 건너뜀
+    if (!key) return;
     const when = fmtT(new Date().toISOString());
     const body = {
       access_key: key,
       subject: "[운평장로교회] 새 연말정산 신청 접수",
       from_name: "운평장로교회 홈페이지",
-      // 민감정보(전화·주소·주민번호)는 이메일에 포함하지 않습니다.
       message:
         "새 연말정산(기부금 영수증) 신청이 접수되었습니다.\n\n" +
         "· 신청자: " + (name || "(이름 미상)") + "\n" +
@@ -260,21 +297,23 @@
   }
 
   // ===== 관리자: 연말정산 신청 내역 =====
-  async function loadTaxAdmin(sb) {
+  async function loadTaxAdmin() {
     const wrap = document.getElementById("taxAdmin");
     const listEl = document.getElementById("taxList");
     const cntEl = document.getElementById("taxCount");
     if (!wrap || !listEl) return;
     wrap.hidden = false;
-    const { data: reqs, error } = await sb.from("tax_requests").select("*").order("created_at", { ascending: false });
-    if (error) {
-      listEl.innerHTML = /tax_requests|does not exist|schema cache/i.test(error.message)
+    let reqs;
+    try {
+      reqs = (await api("GET", "tax_requests?select=*&order=created_at.desc")) || [];
+    } catch (err) {
+      listEl.innerHTML = /tax_requests|does not exist|relation|schema cache/i.test(err.message)
         ? `<p class="member-role-note">연말정산 테이블(tax_requests)이 아직 생성되지 않았습니다.</p>`
-        : `<p class="qt-loading">불러오기 오류: ${esc(error.message)}</p>`;
+        : `<p class="qt-loading">불러오기 오류: ${esc(err.message)}</p>`;
       return;
     }
-    if (cntEl) cntEl.textContent = `(${(reqs || []).length}건)`;
-    if (!reqs || !reqs.length) {
+    if (cntEl) cntEl.textContent = `(${reqs.length}건)`;
+    if (!reqs.length) {
       listEl.innerHTML = `<p class="member-role-note">아직 접수된 신청이 없습니다.</p>`;
       return;
     }
@@ -303,26 +342,17 @@
       btn.addEventListener("click", async () => {
         if (!confirm("이 신청 내역을 삭제할까요?")) return;
         btn.disabled = true;
-        const { error: dErr } = await sb.from("tax_requests").delete().eq("id", id);
-        if (dErr) { btn.disabled = false; btn.textContent = "오류"; return; }
-        tr.remove();
-        if (cntEl) {
-          const left = listEl.querySelectorAll("tr[data-id]").length;
-          cntEl.textContent = `(${left}건)`;
+        try {
+          await api("DELETE", `tax_requests?id=eq.${id}`, null, { Prefer: "return=minimal" });
+          tr.remove();
+          if (cntEl) cntEl.textContent = `(${listEl.querySelectorAll("tr[data-id]").length}건)`;
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = "오류";
         }
       });
     });
   }
 
-  let started = false;
-  function go(client) { if (started) return; started = true; start(client); }
-  if (window.__sb) go(window.__sb);
-  else {
-    window.addEventListener("sb-ready", (e) => go(e.detail.sb), { once: true });
-    setTimeout(() => {
-      if (started) return;
-      if (window.__sb) go(window.__sb);
-      else box.innerHTML = '<p class="qt-loading">로그인 정보를 불러오지 못했습니다. 잠시 후 새로고침(Ctrl+Shift+R) 해주세요.</p>';
-    }, 7000);
-  }
+  start();
 })();
