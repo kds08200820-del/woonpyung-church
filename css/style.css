@@ -867,7 +867,10 @@ ul { list-style: none; }
 .board-form textarea { width: 100%; resize: vertical; }
 
 .post-detail .post-body { margin: 18px 0; line-height: 1.9; color: var(--ink-soft); }
-.post-actions { text-align: right; margin-bottom: 10px; }
+.post-actions { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; }
+.post-actions .btn { padding: 7px 18px; font-size: .85rem; }
+.post-actions .post-del { background: #c0392b; color: #fff; border: 0; }
+.post-actions .post-del:hover { background: #a5301f; }
 .comments { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
 .comment-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .comment-item { background: var(--paper-alt); border-radius: 10px; padding: 14px 16px; position: relative; }

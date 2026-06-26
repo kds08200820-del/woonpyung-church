@@ -71,6 +71,18 @@
     const m = document.getElementById("authModal");
     if (m) { m.hidden = false; document.body.style.overflow = "hidden"; }
   }
+  // 관리자 여부(1회 조회 후 캐시)
+  let _isAdmin = null;
+  async function isAdminUser() {
+    if (_isAdmin !== null) return _isAdmin;
+    const me = currentUser();
+    if (!me || !me.id) { _isAdmin = false; return false; }
+    try {
+      const rows = await api("GET", `admins?uid=eq.${me.id}&select=uid`);
+      _isAdmin = Array.isArray(rows) && rows.length > 0;
+    } catch (e) { _isAdmin = false; }
+    return _isAdmin;
+  }
 
   // 모달
   const postModal = document.getElementById("postModal");
@@ -82,7 +94,7 @@
   let openPostId = null;
 
   function init() {
-    console.log("[community.js] v20260627n REST");
+    console.log("[community.js] v20260627o REST");
     loadPosts();
 
     writeBtn.addEventListener("click", () => {
@@ -149,16 +161,19 @@
     try { p = first(await api("GET", `posts?id=eq.${id}&select=*`)); } catch (e) { alert("불러오기 오류: " + e.message); return; }
     if (!p) return;
     const me = currentUser();
-    const mine = me && me.id === p.user_id;
+    const admin = await isAdminUser();
+    const mine = !!(me && p.user_id && me.id === p.user_id);
+    const canDelete = mine || admin;
     postDetail.innerHTML = `
       <span class="m-eyebrow">${fmtDate(p.created_at)} · ${esc(p.author_name)}</span>
       <h3 class="m-title">${esc(p.title)}</h3>
       <div class="post-body">${esc(p.content).replace(/\n/g, "<br>")}</div>
-      ${mine ? `<div class="post-actions"><button class="auth-btn" id="postEdit">수정</button><button class="auth-btn" id="postDelete">삭제</button></div>` : ""}`;
-    if (mine) {
-      document.getElementById("postDelete").addEventListener("click", () => deletePost(id));
-      document.getElementById("postEdit").addEventListener("click", () => editPost(p));
-    }
+      ${(mine || canDelete) ? `<div class="post-actions">
+          ${mine ? `<button class="btn btn-line post-edit" id="postEdit">수정</button>` : ""}
+          ${canDelete ? `<button class="btn post-del" id="postDelete">삭제${admin && !mine ? " (관리자)" : ""}</button>` : ""}
+        </div>` : ""}`;
+    if (mine) document.getElementById("postEdit").addEventListener("click", () => editPost(p));
+    if (canDelete) document.getElementById("postDelete").addEventListener("click", () => deletePost(id));
     await loadComments(id);
     commentForm.hidden = !me;
     commentLogin.hidden = !!me;
@@ -202,9 +217,10 @@
     try { data = await api("GET", `comments?post_id=eq.${postId}&select=*&order=created_at.asc`); }
     catch (e) { commentList.innerHTML = `<p class="comment-empty">댓글을 불러오지 못했습니다.</p>`; return; }
     const me = currentUser();
+    const admin = await isAdminUser();
     if (!data || !data.length) { commentList.innerHTML = `<p class="comment-empty">첫 댓글을 남겨보세요.</p>`; return; }
     commentList.innerHTML = data.map((c) => {
-      const mine = me && me.id === c.user_id;
+      const mine = (me && me.id === c.user_id) || admin;
       return `<div class="comment-item">
         <div class="ci-head"><span class="ci-name">${esc(c.author_name)}</span><span class="ci-date">${fmtDate(c.created_at)}</span></div>
         <p>${esc(c.content)}</p>
