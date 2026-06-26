@@ -902,12 +902,16 @@ ul { list-style: none; }
 .auth-wrap { position: relative; display: inline-block; }
 a.auth-name {
   display: inline-block; cursor: pointer; text-decoration: none;
-  color: #fff; font-size: .92rem; font-weight: 700; letter-spacing: .02em;
-  padding: 7px 12px; border-radius: 18px; transition: background .2s ease, color .2s ease;
+  color: #fff !important; font-size: 1rem; font-weight: 700; letter-spacing: .02em;
+  padding: 8px 14px; border-radius: 20px;
+  background: rgba(0,0,0,.18); /* 어두운 배경에서도 흰 글자가 또렷이 보이도록 */
+  border: 1px solid rgba(255,255,255,.18);
+  text-shadow: 0 1px 2px rgba(0,0,0,.4);
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
 }
-a.auth-name:hover { background: rgba(255,255,255,.14); color: var(--gold); }
-#header.scrolled a.auth-name { color: var(--accent); }
-#header.scrolled a.auth-name:hover { background: rgba(0,0,0,.05); color: var(--accent); }
+a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.35); color: var(--gold) !important; }
+#header.scrolled a.auth-name { color: var(--accent) !important; background: var(--paper-alt); border-color: var(--line); text-shadow: none; }
+#header.scrolled a.auth-name:hover { background: var(--accent); color: #fff !important; border-color: var(--accent); }
 
 /* 호버 카드 (마우스를 갔다 대면 회원정보 표시) */
 .auth-card {
