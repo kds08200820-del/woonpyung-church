@@ -507,11 +507,41 @@ if (homeSermon && typeof BULLETINS !== "undefined" && BULLETINS.length) {
 // ===== 5. 새가족 등록 폼 (welcome) =====
 const newcomerForm = document.getElementById("newcomerForm");
 if (newcomerForm) {
-  newcomerForm.addEventListener("submit", (e) => {
+  newcomerForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    newcomerForm.hidden = true;
-    const done = document.getElementById("newcomerDone");
-    if (done) done.hidden = false;
+    const fd = new FormData(newcomerForm);
+    const name = (fd.get("name") || "").trim();
+    const phone = (fd.get("phone") || "").trim();
+    if (!name || !phone) { alert("이름과 연락처를 입력해 주세요."); return; }
+    const to = window.FORMSUBMIT_EMAIL;
+    if (!to) { alert("접수 이메일이 아직 설정되지 않았습니다. 관리자에게 문의해 주세요."); return; }
+    const btn = newcomerForm.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = "보내는 중…"; }
+    try {
+      const res = await fetch("https://formsubmit.co/ajax/" + encodeURIComponent(to), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          _subject: "[운평장로교회] 새가족 등록 신청",
+          _template: "table",
+          _captcha: "false",
+          이름: name,
+          연락처: phone,
+          방문예정일: (fd.get("visit") || "").trim() || "-",
+          함께오는가족: (fd.get("family") || "").trim() || "-",
+          남기실말씀: (fd.get("message") || "").trim() || "-",
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (j && (j.success === "true" || j.success === true)) {
+        newcomerForm.innerHTML = '<div style="text-align:center;padding:24px 0;"><p style="font-size:1.1rem;font-weight:600;color:var(--accent);">등록 신청이 접수되었습니다 🙏</p><p style="color:var(--ink-soft);margin-top:8px;">새가족 담당자가 따뜻하게 연락드리겠습니다.</p></div>';
+      } else {
+        throw new Error((j && j.message) || "전송에 실패했습니다");
+      }
+    } catch (err) {
+      if (btn) { btn.disabled = false; btn.textContent = "등록 신청"; }
+      alert("전송 오류: " + err.message + "\n잠시 후 다시 시도해 주세요.");
+    }
   });
 }
 
