@@ -182,6 +182,15 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     const p = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
   }
+  // 날짜 문자열 → 비교용 숫자(YYYYMMDD). 미래 QT 숨김에 사용
+  function dateNum(s) {
+    const m = String(s).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    return m ? Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3]) : 0;
+  }
+  function todayNum() {
+    const d = new Date();
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }
 
   function renderToday() {
     if (!entries.length) {
@@ -292,6 +301,7 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
       entries = rows.slice(1)
         .map((r) => ({ date: (r[dIdx] || "").trim(), content: (r[cIdx] || "").replace(/\r\n?/g, "\n").trim() }))
         .filter((e) => e.date && e.content)
+        .filter((e) => dateNum(e.date) <= todayNum()) // 오늘 이후(미래) QT는 당일이 되기 전까지 숨김
         .map((e) => ({ ...e, ...digest(e.content) }));
       entries.sort((a, b) => (a.date < b.date ? 1 : -1));
       renderToday();
