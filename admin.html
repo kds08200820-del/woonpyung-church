@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>회원 관리 | 운평장로교회</title>
   <meta name="robots" content="noindex" />
-  <link rel="manifest" href="manifest.json?v=20260627i" />
+  <link rel="manifest" href="manifest.json?v=20260627j" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260627i" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260627i" />
+  <link rel="icon" href="images/favicon-32.png?v=20260627j" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260627j" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260627i" />
+  <link rel="stylesheet" href="css/style.css?v=20260627j" />
 </head>
 <body>
 
@@ -72,7 +72,9 @@
             <div class="form-field"><label>이름</label><input type="text" name="name" required maxlength="40" /></div>
             <div class="form-field"><label>전화번호</label><input type="tel" name="phone" required maxlength="20" placeholder="010-0000-0000" /></div>
             <div class="form-field"><label>생년월일</label><input type="text" name="birth" required maxlength="10" placeholder="1981-08-19" /></div>
-            <div class="form-field"><label>주민번호 앞자리</label><input type="text" name="rrn_front" required maxlength="6" inputmode="numeric" placeholder="앞 6자리" /></div>
+            <div class="form-field"><label>주민번호 뒤 첫자리</label>
+              <div class="rrn-wrap"><input type="text" name="rrn_front" required maxlength="1" inputmode="numeric" pattern="[0-9]" placeholder="●" /><span class="rrn-mask">******</span></div>
+            </div>
             <div class="form-field full"><label>주소</label><input type="text" name="address" required maxlength="160" placeholder="클릭하여 도로명 주소 검색" readonly style="cursor:pointer;background:#fff;" /></div>
             <div class="form-field full"><label>상세주소</label><input type="text" name="address_detail" maxlength="80" placeholder="동·호수 등 상세주소를 입력하세요" /></div>
           </div>
@@ -95,10 +97,10 @@
     </div>
   </section>
 
-  <script src="js/config.js?v=20260627i"></script>
-  <script src="js/bulletins.js?v=20260627i"></script>
-  <script src="js/layout.js?v=20260627i"></script>
-  <script src="js/main.js?v=20260627i"></script>
-  <script src="js/admin.js?v=20260627i"></script>
+  <script src="js/config.js?v=20260627j"></script>
+  <script src="js/bulletins.js?v=20260627j"></script>
+  <script src="js/layout.js?v=20260627j"></script>
+  <script src="js/main.js?v=20260627j"></script>
+  <script src="js/admin.js?v=20260627j"></script>
 </body>
 </html>

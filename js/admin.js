@@ -120,7 +120,7 @@
   }
 
   async function start() {
-    console.log("[admin.js] v20260627i REST");
+    console.log("[admin.js] v20260627j REST");
     // 어떤 경우에도 무한 "확인 중"이 남지 않도록 감시(캐시된 옛 코드/지연 대비)
     const watchdog = setTimeout(() => {
       if (/확인 중/.test(box.textContent || "")) retryBox('<p class="qt-loading">응답이 지연되고 있습니다.</p>');
@@ -280,6 +280,10 @@
     if (mineRow && mineRow.address) taxForm.elements.address.value = mineRow.address;
     wireAddressSearch(taxForm.elements.address, taxForm.elements.address_detail);
 
+    // 주민번호 뒤 첫자리: 숫자 1개만 입력 허용
+    const rrnEl = taxForm.elements.rrn_front;
+    if (rrnEl) rrnEl.addEventListener("input", () => { rrnEl.value = rrnEl.value.replace(/\D/g, "").slice(0, 1); });
+
     openBtn.onclick = () => {
       taxForm.hidden = !taxForm.hidden;
       openBtn.textContent = taxForm.hidden ? "연말정산 신청하기" : "신청서 닫기";
@@ -303,7 +307,7 @@
         name: taxForm.elements.name.value.trim(),
         phone: taxForm.elements.phone.value.trim(),
         birth: taxForm.elements.birth.value.trim(),
-        rrn_front: taxForm.elements.rrn_front.value.trim(),
+        rrn_front: (function () { const d = taxForm.elements.rrn_front.value.trim(); return d ? d + "******" : ""; })(),
         address: joinAddr(
           taxForm.elements.address.value,
           taxForm.elements.address_detail ? taxForm.elements.address_detail.value : ""
@@ -387,7 +391,7 @@
     listEl.innerHTML = `
       <div class="member-table-wrap">
         <table class="member-table">
-          <thead><tr><th>신청일</th><th>이름</th><th>전화번호</th><th>생년월일</th><th>주민번호 앞</th><th>주소</th><th></th></tr></thead>
+          <thead><tr><th>신청일</th><th>이름</th><th>전화번호</th><th>생년월일</th><th>주민번호 뒤</th><th>주소</th><th></th></tr></thead>
           <tbody>
             ${reqs.map((r) => `<tr data-id="${r.id}">
               <td>${fmtT(r.created_at)}</td>

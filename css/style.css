@@ -918,6 +918,11 @@ ul { list-style: none; }
 .btn-danger { background: #c0392b; color: #fff; border: 0; }
 .btn-danger:hover { background: #a5301f; }
 
+/* 주민번호 뒤 첫자리 입력 + 별표 마스크 */
+.rrn-wrap { display: flex; align-items: center; gap: 10px; }
+.rrn-wrap input { width: 64px; text-align: center; }
+.rrn-mask { letter-spacing: 4px; color: var(--ink-soft); font-size: 1.2rem; user-select: none; }
+
 /* 헤더: 로그인 이름 + 호버 카드 */
 .auth-wrap { position: relative; display: inline-block; }
 a.auth-name {
