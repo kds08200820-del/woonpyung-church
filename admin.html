@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>회원 관리 | 운평장로교회</title>
   <meta name="robots" content="noindex" />
-  <link rel="manifest" href="manifest.json?v=20260627f" />
+  <link rel="manifest" href="manifest.json?v=20260627g" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260627f" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260627f" />
+  <link rel="icon" href="images/favicon-32.png?v=20260627g" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260627g" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260627f" />
+  <link rel="stylesheet" href="css/style.css?v=20260627g" />
 </head>
 <body>
 
@@ -42,10 +42,18 @@
         <h3 class="sub-title" style="text-align:left;margin-bottom:18px;">내 정보 수정</h3>
         <div class="form-grid">
           <div class="form-field"><label>이름 / 닉네임</label><input type="text" name="name" maxlength="40" placeholder="홍길동" /></div>
-          <div class="form-field"><label>직책</label><input type="text" name="role" placeholder="관리자가 지정합니다" readonly /></div>
+          <div class="form-field"><label>직분</label>
+            <select name="role">
+              <option value="">선택</option>
+              <option>담임목사</option><option>원로목사</option><option>장로</option><option>원로장로</option>
+              <option>안수집사</option><option>권사</option><option>명예권사</option><option>은퇴권사</option>
+              <option>집사</option><option>성도</option><option>청년</option><option>학생</option><option>어린이</option>
+            </select>
+          </div>
           <div class="form-field"><label>연락처</label><input type="tel" name="phone" maxlength="20" placeholder="010-0000-0000" /></div>
           <div class="form-field"><label>생년월일</label><input type="text" name="birth" maxlength="10" placeholder="예: 1981-08-19" /></div>
-          <div class="form-field full"><label>주소</label><input type="text" name="address" maxlength="120" placeholder="예: 화성시 우정읍 ..." /></div>
+          <div class="form-field full"><label>주소</label><input type="text" name="address" maxlength="160" placeholder="클릭하여 도로명 주소 검색" readonly style="cursor:pointer;background:#fff;" /></div>
+          <div class="form-field full"><label>상세주소</label><input type="text" name="address_detail" maxlength="80" placeholder="동·호수 등 상세주소를 입력하세요" /></div>
           <div class="form-field full"><label>한 줄 소개 (선택)</label><input type="text" name="bio" maxlength="120" placeholder="예: 청년부, 새가족반 수강 중" /></div>
         </div>
         <div class="form-actions" style="margin-top:18px;display:flex;gap:10px;align-items:center;">
@@ -65,7 +73,8 @@
             <div class="form-field"><label>전화번호</label><input type="tel" name="phone" required maxlength="20" placeholder="010-0000-0000" /></div>
             <div class="form-field"><label>생년월일</label><input type="text" name="birth" required maxlength="10" placeholder="1981-08-19" /></div>
             <div class="form-field"><label>주민번호 앞자리</label><input type="text" name="rrn_front" required maxlength="6" inputmode="numeric" placeholder="앞 6자리" /></div>
-            <div class="form-field full"><label>주소</label><input type="text" name="address" required maxlength="120" /></div>
+            <div class="form-field full"><label>주소</label><input type="text" name="address" required maxlength="160" placeholder="클릭하여 도로명 주소 검색" readonly style="cursor:pointer;background:#fff;" /></div>
+            <div class="form-field full"><label>상세주소</label><input type="text" name="address_detail" maxlength="80" placeholder="동·호수 등 상세주소를 입력하세요" /></div>
           </div>
           <p style="color:var(--accent-soft);font-size:.8rem;margin-top:10px;">🔒 주민번호 등 민감정보는 영수증 발급 목적에만 사용되며, 본인과 관리자만 열람할 수 있습니다.</p>
           <div class="form-actions" style="margin-top:14px;display:flex;gap:10px;align-items:center;">
@@ -86,10 +95,10 @@
     </div>
   </section>
 
-  <script src="js/config.js?v=20260627f"></script>
-  <script src="js/bulletins.js?v=20260627f"></script>
-  <script src="js/layout.js?v=20260627f"></script>
-  <script src="js/main.js?v=20260627f"></script>
-  <script src="js/admin.js?v=20260627f"></script>
+  <script src="js/config.js?v=20260627g"></script>
+  <script src="js/bulletins.js?v=20260627g"></script>
+  <script src="js/layout.js?v=20260627g"></script>
+  <script src="js/main.js?v=20260627g"></script>
+  <script src="js/admin.js?v=20260627g"></script>
 </body>
 </html>

@@ -899,6 +899,14 @@ ul { list-style: none; }
 .profile-msg { font-size: .9rem; }
 .role-input { width: 110px; max-width: 100%; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: .88rem; background: var(--paper-alt); }
 .role-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+.role-select { width: 130px; font-family: inherit; }
+
+/* 도로명 주소 검색 모달 */
+.postcode-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.postcode-box { background: #fff; width: 100%; max-width: 480px; height: 540px; max-height: 88vh; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.postcode-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-bottom: 1px solid var(--line); color: var(--accent); font-size: .95rem; }
+.postcode-close { background: none; border: 0; font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--ink-soft); }
+.postcode-embed { flex: 1; min-height: 0; }
 
 /* 헤더: 로그인 이름 + 호버 카드 */
 .auth-wrap { position: relative; display: inline-block; }

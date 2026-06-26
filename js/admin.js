@@ -24,6 +24,49 @@
   const fmtT = (iso) => { try { const d = new Date(iso); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; } catch (e) { return ""; } };
   const provLabel = (p) => (p === "kakao" ? "카카오" : p === "email" ? "이메일" : p || "-");
 
+  // 직분 목록
+  const ROLES = ["담임목사", "원로목사", "장로", "원로장로", "안수집사", "권사", "명예권사", "은퇴권사", "집사", "성도", "청년", "학생", "어린이"];
+  const roleOptions = (sel) =>
+    `<option value="">선택</option>` + ROLES.map((r) => `<option${r === sel ? " selected" : ""}>${r}</option>`).join("");
+
+  // ── 도로명 주소 검색(다음 우편번호 서비스) ──
+  function loadDaumPostcode() {
+    return new Promise((res, rej) => {
+      if (window.daum && window.daum.Postcode) return res();
+      const s = document.createElement("script");
+      s.src = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+      s.onload = () => res();
+      s.onerror = () => rej(new Error("우편번호 스크립트 로드 실패"));
+      document.head.appendChild(s);
+    });
+  }
+  function openPostcode(onPick) {
+    if (document.querySelector(".postcode-overlay")) return; // 중복 열림 방지(focus+click)
+    loadDaumPostcode().then(() => {
+      const ov = document.createElement("div");
+      ov.className = "postcode-overlay";
+      ov.innerHTML = `<div class="postcode-box"><div class="postcode-head"><strong>도로명 주소 검색</strong><button type="button" class="postcode-close" aria-label="닫기">&times;</button></div><div class="postcode-embed"></div></div>`;
+      document.body.appendChild(ov);
+      const close = () => ov.remove();
+      ov.querySelector(".postcode-close").onclick = close;
+      ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+      new window.daum.Postcode({
+        oncomplete: (data) => { onPick(data.roadAddress || data.jibunAddress || data.address || ""); close(); },
+        width: "100%",
+        height: "100%",
+      }).embed(ov.querySelector(".postcode-embed"));
+    }).catch(() => alert("주소 검색 도구를 불러오지 못했습니다. 네트워크 상태를 확인해 주세요."));
+  }
+  // 읽기전용 주소칸 클릭 시 검색창 열기 → 선택 후 상세주소로 포커스 이동
+  function wireAddressSearch(addrInput, detailInput) {
+    if (!addrInput) return;
+    const open = () => openPostcode((addr) => { addrInput.value = addr; if (detailInput) detailInput.focus(); });
+    addrInput.addEventListener("click", open);
+    addrInput.addEventListener("focus", open);
+  }
+  // 주소 + 상세주소를 한 문자열로 합치기
+  const joinAddr = (addr, detail) => [(addr || "").trim(), (detail || "").trim()].filter(Boolean).join(" ");
+
   function lock(msg) {
     box.innerHTML = `<div class="member-lock"><div class="lock-icon">🔒</div><h3>관리자 전용</h3><p>${msg}</p></div>`;
   }
@@ -77,7 +120,7 @@
   }
 
   async function start() {
-    console.log("[admin.js] v20260627f REST");
+    console.log("[admin.js] v20260627g REST");
     // 어떤 경우에도 무한 "확인 중"이 남지 않도록 감시(캐시된 옛 코드/지연 대비)
     const watchdog = setTimeout(() => {
       if (/확인 중/.test(box.textContent || "")) retryBox('<p class="qt-loading">응답이 지연되고 있습니다.</p>');
@@ -121,16 +164,20 @@
       if (pForm.elements.birth && mineRow && mineRow.birth) pForm.elements.birth.value = mineRow.birth;
       if (pForm.elements.address && mineRow && mineRow.address) pForm.elements.address.value = mineRow.address;
       if (mineRow && mineRow.bio) pForm.elements.bio.value = mineRow.bio;
+      wireAddressSearch(pForm.elements.address, pForm.elements.address_detail);
       pForm.hidden = false;
       pForm.onsubmit = async (e) => {
         e.preventDefault();
         const name = pForm.elements.name.value.trim();
+        const role = pForm.elements.role ? pForm.elements.role.value : "";
         const phone = pForm.elements.phone.value.trim();
         const birth = pForm.elements.birth ? pForm.elements.birth.value.trim() : "";
-        const address = pForm.elements.address ? pForm.elements.address.value.trim() : "";
+        const address = joinAddr(
+          pForm.elements.address ? pForm.elements.address.value : "",
+          pForm.elements.address_detail ? pForm.elements.address_detail.value : ""
+        );
         const bio = pForm.elements.bio.value.trim();
-        // 직책(role)은 본인이 수정 불가(관리자 전용) — 저장에서 제외
-        const payload = { id: me.id, name: name || null, email: me.email || null };
+        const payload = { id: me.id, name: name || null, email: me.email || null, role: role || null };
         if (phone) payload.phone = phone;
         if (birth) payload.birth = birth;
         if (address) payload.address = address;
@@ -174,17 +221,17 @@
     return `
       <div class="member-table-wrap">
         <table class="member-table">
-          <thead><tr><th>이름/닉네임</th><th>직책</th><th>가입 방식</th><th>이메일</th><th>가입일</th>${admin ? "<th></th>" : ""}</tr></thead>
+          <thead><tr><th>이름/닉네임</th><th>직분</th><th>가입 방식</th><th>이메일</th><th>가입일</th>${admin ? "<th></th>" : ""}</tr></thead>
           <tbody>
             ${list.map((r) => `<tr data-uid="${esc(r.id)}">
               <td>${esc(r.name) || "-"}</td>
               <td>${admin
-                ? `<input type="text" class="role-input" value="${esc(r.role) || ""}" placeholder="직책" maxlength="30" />`
+                ? `<select class="role-input role-select">${roleOptions(r.role)}</select>`
                 : (esc(r.role) || "-")}</td>
               <td><span class="prov-tag prov-${esc(r.provider)}">${provLabel(r.provider)}</span></td>
               <td>${esc(r.email) || "-"}</td>
               <td>${fmt(r.created_at)}</td>
-              ${admin ? `<td><button type="button" class="btn btn-line role-save" style="padding:4px 12px;font-size:.8rem;">직책 저장</button></td>` : ""}
+              ${admin ? `<td><button type="button" class="btn btn-line role-save" style="padding:4px 12px;font-size:.8rem;">직분 저장</button></td>` : ""}
             </tr>`).join("")}
           </tbody>
         </table>
@@ -192,7 +239,7 @@
   }
 
   function renderAdminTable(rows) {
-    box.innerHTML = `<p class="member-role-note">관리자 모드 — 전체 회원을 볼 수 있고, 각 회원의 직책을 수정할 수 있습니다.</p>` + memberTable(rows, true);
+    box.innerHTML = `<p class="member-role-note">관리자 모드 — 전체 회원을 볼 수 있고, 각 회원의 직분을 수정할 수 있습니다.</p>` + memberTable(rows, true);
     box.querySelectorAll("tr[data-uid]").forEach((tr) => {
       const uid = tr.getAttribute("data-uid");
       const input = tr.querySelector(".role-input");
@@ -231,6 +278,7 @@
     if (mineRow && mineRow.phone) taxForm.elements.phone.value = mineRow.phone;
     if (mineRow && mineRow.birth) taxForm.elements.birth.value = mineRow.birth;
     if (mineRow && mineRow.address) taxForm.elements.address.value = mineRow.address;
+    wireAddressSearch(taxForm.elements.address, taxForm.elements.address_detail);
 
     openBtn.onclick = () => {
       taxForm.hidden = !taxForm.hidden;
@@ -249,7 +297,10 @@
         phone: taxForm.elements.phone.value.trim(),
         birth: taxForm.elements.birth.value.trim(),
         rrn_front: taxForm.elements.rrn_front.value.trim(),
-        address: taxForm.elements.address.value.trim(),
+        address: joinAddr(
+          taxForm.elements.address.value,
+          taxForm.elements.address_detail ? taxForm.elements.address_detail.value : ""
+        ),
       };
       if (!payload.name || !payload.phone || !payload.birth || !payload.rrn_front || !payload.address) {
         taxMsg.textContent = "모든 항목을 입력해 주세요.";
