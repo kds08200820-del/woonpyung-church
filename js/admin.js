@@ -25,7 +25,7 @@
   const provLabel = (p) => (p === "kakao" ? "카카오" : p === "email" ? "이메일" : p || "-");
 
   // 직분 목록
-  const ROLES = ["담임목사", "원로목사", "장로", "원로장로", "안수집사", "권사", "명예권사", "은퇴권사", "집사", "성도", "청년", "학생", "어린이"];
+  const ROLES = ["담임목사", "원로목사", "사모", "장로", "원로장로", "안수집사", "권사", "명예권사", "은퇴권사", "집사", "성도", "청년", "학생", "어린이"];
   const roleOptions = (sel) =>
     `<option value="">선택</option>` + ROLES.map((r) => `<option${r === sel ? " selected" : ""}>${r}</option>`).join("");
 
@@ -120,7 +120,7 @@
   }
 
   async function start() {
-    console.log("[admin.js] v20260627h REST");
+    console.log("[admin.js] v20260627i REST");
     // 어떤 경우에도 무한 "확인 중"이 남지 않도록 감시(캐시된 옛 코드/지연 대비)
     const watchdog = setTimeout(() => {
       if (/확인 중/.test(box.textContent || "")) retryBox('<p class="qt-loading">응답이 지연되고 있습니다.</p>');
