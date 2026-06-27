@@ -1,15 +1,20 @@
 // ============================================================
 //  운평장로교회 — 상담 AI(말씀 도우미) Edge Function
-//  로그인한 교인만 호출 가능 · Claude API 안전 중계 · 위기 대응 가드레일
+//  로그인한 교인만 호출 가능 · Gemini/Claude 안전 중계 · 위기 대응 가드레일
 //  배포: supabase functions deploy counsel --no-verify-jwt
-//  비밀키 설정: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+//  비밀키(둘 중 하나만 넣으면 자동 선택):
+//    - 구글:   supabase secrets set GEMINI_API_KEY=AIza... (또는 AQ....)
+//    - 앤트로픽: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 // ============================================================
 
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-// 비용/품질 균형: 기본 Sonnet. 더 저렴하게는 claude-haiku-4-5-20251001 로 교체 가능.
-const MODEL = Deno.env.get("COUNSEL_MODEL") ?? "claude-sonnet-4-6";
+// 제공자: GEMINI_API_KEY 가 있으면 구글, 아니면 앤트로픽. COUNSEL_MODEL 로 모델 지정 가능.
+const PROVIDER = GEMINI_API_KEY ? "gemini" : "anthropic";
+const MODEL = Deno.env.get("COUNSEL_MODEL") ??
+  (PROVIDER === "gemini" ? "gemini-2.5-flash" : "claude-sonnet-4-6");
 
 // 허용 출처(우리 사이트만)
 const ALLOW_ORIGINS = [
@@ -136,42 +141,65 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!ANTHROPIC_API_KEY) {
+    if (!GEMINI_API_KEY && !ANTHROPIC_API_KEY) {
       return new Response(JSON.stringify({ error: "AI 키가 설정되지 않았습니다. 관리자에게 문의해 주세요." }), {
         status: 500, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
 
-    // 4) Claude 호출
-    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages,
-      }),
-    });
-
-    if (!aiRes.ok) {
-      const detail = await aiRes.text();
-      console.error("Anthropic error:", aiRes.status, detail);
-      return new Response(JSON.stringify({ error: "답변 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요." }), {
-        status: 502, headers: { ...cors, "Content-Type": "application/json" },
+    // 4) AI 호출 (제공자 자동 선택)
+    let reply = "";
+    if (PROVIDER === "gemini") {
+      // 구글 Gemini (Generative Language API)
+      const contents = messages.map((m: any) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+      const aiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+        {
+          method: "POST",
+          headers: { "x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents,
+            generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
+          }),
+        },
+      );
+      if (!aiRes.ok) {
+        const detail = await aiRes.text();
+        console.error("Gemini error:", aiRes.status, detail);
+        return new Response(JSON.stringify({ error: "답변 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요." }), {
+          status: 502, headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      const data = await aiRes.json();
+      reply = (data?.candidates?.[0]?.content?.parts ?? [])
+        .map((p: any) => p?.text || "").join("").trim();
+    } else {
+      // 앤트로픽 Claude (Messages API)
+      const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ model: MODEL, max_tokens: 1024, system: SYSTEM_PROMPT, messages }),
       });
+      if (!aiRes.ok) {
+        const detail = await aiRes.text();
+        console.error("Anthropic error:", aiRes.status, detail);
+        return new Response(JSON.stringify({ error: "답변 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요." }), {
+          status: 502, headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      const data = await aiRes.json();
+      reply = (data?.content ?? []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n").trim();
     }
 
-    const data = await aiRes.json();
-    const reply = (data?.content ?? [])
-      .filter((b: any) => b.type === "text")
-      .map((b: any) => b.text)
-      .join("\n")
-      .trim() || "죄송합니다. 답변을 만들지 못했어요. 다시 한 번 말씀해 주시겠어요?";
+    if (!reply) reply = "죄송합니다. 답변을 만들지 못했어요. 다시 한 번 말씀해 주시겠어요?";
 
     return new Response(JSON.stringify({ reply }), {
       headers: { ...cors, "Content-Type": "application/json" },

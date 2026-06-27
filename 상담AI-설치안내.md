@@ -7,13 +7,21 @@
 
 ---
 
-## 1단계 — Anthropic(클로드) API 키 발급
-1. https://console.anthropic.com 가입/로그인
-2. **Billing**에서 결제수단 등록 + 소액 충전(예: $5~$10면 한동안 충분)
-3. **API Keys → Create Key** → 생성된 키(`sk-ant-...`) 복사
+## 1단계 — AI API 키 발급 (둘 중 하나만 선택)
 
-> 비용: 메시지 1건당 보통 수원~수십원. 사용량 기반이라 트래픽이 적으면 월 몇천 원 수준.
-> 콘솔에서 **월 사용 한도(usage limit)** 를 걸어두면 과금 폭주를 막을 수 있습니다.
+함수는 **구글 Gemini**와 **앤트로픽 Claude** 둘 다 지원합니다. 넣은 키에 따라 자동으로 선택됩니다.
+
+**(가) 구글 Gemini — 무료 한도 넉넉, 권장**
+1. https://aistudio.google.com/apikey 접속
+2. **API 키 만들기** → 생성된 키 복사 (`AIza...` 또는 `AQ....`)
+3. 비용: 무료 한도가 큼. ⚠️ 단 **무료 등급은 구글이 데이터를 서비스 개선에 사용**할 수 있으니, 운영 본격화 시 유료 등급(데이터 미사용) 권장.
+
+**(나) 앤트로픽 Claude**
+1. https://console.anthropic.com → Billing 결제수단 등록 + 소액 충전
+2. **API Keys → Create Key** → `sk-ant-...` 복사
+
+> ⚠️ 키는 절대 화면 캡처·채팅에 통째로 올리지 마세요. 노출되면 즉시 삭제 후 재발급하세요.
+> 콘솔에서 **사용 한도(usage limit)** 를 걸어두면 과금/남용 폭주를 막을 수 있습니다.
 
 ## 2단계 — Supabase에 함수 배포 (웹 대시보드, CLI 불필요) ★권장
 
@@ -28,11 +36,12 @@
 
 ### 2-2. AI 키(비밀값) 등록
 1. **Edge Functions → (좌측) Secrets** (또는 Project Settings → Edge Functions → Secrets)
-2. **Add new secret** →
-   - Name: `ANTHROPIC_API_KEY`
-   - Value: 1단계에서 복사한 키(`sk-ant-...`)
+2. **Add new secret** → 1단계에서 고른 것에 맞춰 **하나만** 등록:
+   - 구글 Gemini: Name `GEMINI_API_KEY` / Value `AIza...`(또는 `AQ....`)
+   - 또는 Claude: Name `ANTHROPIC_API_KEY` / Value `sk-ant-...`
 3. 저장. (※ `SUPABASE_URL`, `SUPABASE_ANON_KEY`는 자동 제공되어 따로 넣지 않아도 됩니다.)
-4. (선택) 더 저렴한 모델을 쓰려면 Secret 하나 더: Name `COUNSEL_MODEL`, Value `claude-haiku-4-5-20251001`
+4. (선택) 모델 지정 Secret: Name `COUNSEL_MODEL` /
+   Value `gemini-2.5-flash`(구글, 기본) 또는 `gemini-2.5-pro`(더 똑똑) / Claude면 `claude-haiku-4-5-20251001` 등
 
 > CLI에 익숙하시면 대신 이렇게도 됩니다:
 > ```bash
