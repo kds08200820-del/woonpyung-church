@@ -1377,9 +1377,10 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
   .nav-item.open .nav-caret { transform: translateY(-50%) rotate(180deg); }
   .nav-dropdown {
     position: static; transform: none; opacity: 1; visibility: visible; pointer-events: auto;
-    padding-top: 0; min-width: 0; max-height: 0; overflow: hidden; transition: max-height .32s ease;
+    padding-top: 0; min-width: 0; overflow: hidden; transition: none;
+    display: none;
   }
-  .nav-item.open .nav-dropdown { max-height: 640px; }
+  .nav-item.open .nav-dropdown { display: block; max-height: none; }
   .nav-dropdown-inner { background: transparent; border: 0; box-shadow: none; padding: 0 0 6px 14px; gap: 0; }
   .nav-dropdown-inner a {
     color: var(--muted) !important; font-size: .95rem !important; font-weight: 400 !important;
