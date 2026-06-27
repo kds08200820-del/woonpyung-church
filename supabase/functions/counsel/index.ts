@@ -14,7 +14,7 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 // 제공자: GEMINI_API_KEY 가 있으면 구글, 아니면 앤트로픽. COUNSEL_MODEL 로 모델 지정 가능.
 const PROVIDER = GEMINI_API_KEY ? "gemini" : "anthropic";
 const MODEL = Deno.env.get("COUNSEL_MODEL") ??
-  (PROVIDER === "gemini" ? "gemini-2.5-flash" : "claude-sonnet-4-6");
+  (PROVIDER === "gemini" ? "gemini-2.0-flash" : "claude-haiku-4-5-20251001");
 
 // 허용 출처(우리 사이트만)
 const ALLOW_ORIGINS = [
@@ -193,25 +193,35 @@ Deno.serve(async (req) => {
         });
       }
     } else {
-      // 앤트로픽 Claude (Messages API)
-      const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ model: MODEL, max_tokens: 1024, system: SYSTEM_PROMPT, messages }),
-      });
-      if (!aiRes.ok) {
-        const detail = await aiRes.text();
-        console.error("Anthropic error:", aiRes.status, detail);
-        return new Response(JSON.stringify({ error: "답변 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.", detail: `[anthropic/${MODEL}] ${aiRes.status} ${detail.slice(0, 200)}` }), {
+      // 앤트로픽 Claude (Messages API) — 일시적 혼잡(429/500/503/529) 시 재시도
+      const reqBody = JSON.stringify({ model: MODEL, max_tokens: 1024, system: SYSTEM_PROMPT, messages });
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      let lastErr = "";
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: reqBody,
+        });
+        if (aiRes.ok) {
+          const data = await aiRes.json();
+          reply = (data?.content ?? []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n").trim();
+          break;
+        }
+        lastErr = `${aiRes.status} ${(await aiRes.text()).slice(0, 200)}`;
+        if ([429, 500, 503, 529].includes(aiRes.status)) { await sleep(900); continue; } // 혼잡 → 재시도
+        break; // 그 외(401/400/404 등)는 재시도 무의미
+      }
+      if (!reply) {
+        console.error("Anthropic error:", lastErr);
+        return new Response(JSON.stringify({ error: "지금 잠시 응답이 어렵네요. 잠깐 후 다시 한 번 물어봐 주세요. 🙏", detail: `[anthropic/${MODEL}] ${lastErr}` }), {
           status: 502, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
-      const data = await aiRes.json();
-      reply = (data?.content ?? []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n").trim();
     }
 
     if (!reply) reply = "죄송합니다. 답변을 만들지 못했어요. 다시 한 번 말씀해 주시겠어요?";
