@@ -26,7 +26,7 @@ const ALLOW_ORIGINS = [
   "http://localhost:5500",
   "http://127.0.0.1:5500",
 ];
-const MAX_BYTES = 25 * 1024 * 1024; // 1건 최대 25MB
+const MAX_BYTES = 100 * 1024 * 1024; // 1건 최대 100MB (Cloudflare 무료 플랜 요청 본문 상한)
 
 function corsHeaders(req) {
   const origin = req.headers.get("Origin") || "";
@@ -102,12 +102,15 @@ export default {
       let origName = req.headers.get("x-filename") || "file";
       try { origName = decodeURIComponent(origName); } catch (e) {}
       const ext = safeExt(origName);
-      const buf = await req.arrayBuffer();
-      if (!buf || buf.byteLength === 0) return json({ error: "빈 파일입니다." }, 400, req);
-      if (buf.byteLength > MAX_BYTES) return json({ error: "파일이 너무 큽니다(최대 25MB)." }, 413, req);
       const ct = req.headers.get("Content-Type") || "application/octet-stream";
+      const lenHeader = req.headers.get("Content-Length");
+      const len = lenHeader ? parseInt(lenHeader, 10) : 0;
+      const maxMB = Math.round(MAX_BYTES / 1024 / 1024);
+      if (len > MAX_BYTES) return json({ error: "파일이 너무 큽니다(최대 " + maxMB + "MB)." }, 413, req);
+      if (!req.body || len === 0) return json({ error: "빈 파일입니다." }, 400, req);
       const key = `${folder}/${user.id}/${Date.now()}-${rand()}${ext}`;
-      await env.BUCKET.put(key, buf, { httpMetadata: { contentType: ct } });
+      // 메모리에 담지 않고 R2로 바로 스트리밍(큰 파일 안전)
+      await env.BUCKET.put(key, req.body, { httpMetadata: { contentType: ct } });
       const fileUrl = `${url.origin}/f/${key.split("/").map(encodeURIComponent).join("/")}`;
       return json({ url: fileUrl, key }, 200, req);
     }
