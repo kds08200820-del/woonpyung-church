@@ -122,6 +122,19 @@ ul { list-style: none; }
   opacity: 0; animation: fadeUp 1s ease .8s forwards;
 }
 .hero-verse span { display: block; font-size: .8rem; color: var(--gold); margin-top: 6px; letter-spacing: .1em; }
+/* 김동석 목사 저서 */
+.book-feature { display: flex; gap: 44px; align-items: center; max-width: 860px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
+.book-cover { position: relative; flex-shrink: 0; }
+.book-cover img { width: 260px; max-width: 72vw; border-radius: 8px; box-shadow: 0 18px 44px rgba(0,0,0,.18); display: block; }
+.book-badge { position: absolute; top: 14px; right: -8px; background: var(--gold); color: #1f1f1f; font-size: .72rem; font-weight: 700; letter-spacing: .08em; padding: 6px 13px; border-radius: 20px; box-shadow: 0 6px 16px rgba(0,0,0,.22); }
+.book-info { flex: 1; min-width: 240px; }
+.book-info .book-eyebrow { font-size: .72rem; letter-spacing: .22em; color: var(--gold); margin-bottom: 12px; }
+.book-info .book-title { font-family: "Noto Serif KR", serif; font-size: 1.85rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; line-height: 1.3; }
+.book-info .book-sub { color: var(--ink-soft); margin-bottom: 16px; line-height: 1.6; }
+.book-info .book-author { color: var(--ink); margin-bottom: 20px; }
+.book-info .book-note { display: inline-block; background: var(--paper-alt); border: 1px solid var(--line); border-radius: 22px; padding: 9px 18px; font-size: .9rem; color: var(--accent-soft); }
+@media (max-width: 680px) { .book-feature { gap: 26px; } .book-info { text-align: center; } }
+
 /* 히어로 슬라이드 인디케이터(바) */
 .hero-dots { display: flex; gap: 12px; justify-content: center; margin-top: 32px; }
 .hero-dot { width: 26px; height: 4px; padding: 0; border: 0; border-radius: 4px; background: rgba(255,255,255,.3); cursor: pointer; transition: background .3s, width .3s; }
