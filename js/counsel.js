@@ -131,10 +131,17 @@
     );
   }
 
-  async function getToken() {
-    if (!sb) return null;
-    try { const { data } = await sb.auth.getSession(); return data?.session?.access_token ?? null; }
-    catch { return null; }
+  // ※ sb.auth.getSession()은 LockManager 잠금으로 멈출 수 있어 사용 금지.
+  //   다른 페이지들과 동일하게 localStorage 토큰을 직접 읽습니다.
+  function getToken() {
+    try {
+      const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
+      const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      const sess = s && s.currentSession ? s.currentSession : s;
+      return (sess && sess.access_token) || null;
+    } catch (e) { return null; }
   }
 
   async function ask() {
