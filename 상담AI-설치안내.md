@@ -15,28 +15,36 @@
 > 비용: 메시지 1건당 보통 수원~수십원. 사용량 기반이라 트래픽이 적으면 월 몇천 원 수준.
 > 콘솔에서 **월 사용 한도(usage limit)** 를 걸어두면 과금 폭주를 막을 수 있습니다.
 
-## 2단계 — Supabase에 함수 배포 + 키 등록
-컴퓨터에 [Supabase CLI](https://supabase.com/docs/guides/cli) 설치 후, 이 저장소 폴더에서:
+## 2단계 — Supabase에 함수 배포 (웹 대시보드, CLI 불필요) ★권장
 
-```bash
-# (최초 1회) 로그인 & 프로젝트 연결
-supabase login
-supabase link --project-ref cetacttsdwzxjzkyozgd
+1. https://supabase.com 로그인 → 프로젝트 **cetacttsdwzxjzkyozgd** 선택
+2. 왼쪽 메뉴 **Edge Functions** → **Deploy a new function** → **Via Editor**(에디터로 작성) 선택
+3. 함수 이름(Name)에 정확히 **`counsel`** 입력 (※ 반드시 소문자 counsel)
+4. 에디터의 기본 코드를 모두 지우고, 아래 파일 내용을 **전체 복사해 붙여넣기**:
+   `https://github.com/kds08200820-del/woonpyung-church/blob/main/supabase/functions/counsel/index.ts`
+   (위 링크에서 우측 **Copy raw file** 아이콘으로 전체 복사)
+5. **Verify JWT** 옵션을 **끄기(OFF)** — 함수가 자체적으로 회원 로그인을 검증하기 때문입니다.
+6. **Deploy** 클릭
 
-# AI 키를 비밀값으로 등록 (sk-ant-... 자리에 1단계 키)
-supabase secrets set ANTHROPIC_API_KEY=sk-ant-여기에붙여넣기
+### 2-2. AI 키(비밀값) 등록
+1. **Edge Functions → (좌측) Secrets** (또는 Project Settings → Edge Functions → Secrets)
+2. **Add new secret** →
+   - Name: `ANTHROPIC_API_KEY`
+   - Value: 1단계에서 복사한 키(`sk-ant-...`)
+3. 저장. (※ `SUPABASE_URL`, `SUPABASE_ANON_KEY`는 자동 제공되어 따로 넣지 않아도 됩니다.)
+4. (선택) 더 저렴한 모델을 쓰려면 Secret 하나 더: Name `COUNSEL_MODEL`, Value `claude-haiku-4-5-20251001`
 
-# 상담 함수 배포
-supabase functions deploy counsel --no-verify-jwt
-```
-
-> `--no-verify-jwt` : 함수 안에서 자체적으로 로그인(회원) 검증을 하므로 이렇게 배포합니다.
-> (CLI가 어려우시면 알려주세요 — Supabase 대시보드로 하는 방법도 안내해 드리겠습니다.)
+> CLI에 익숙하시면 대신 이렇게도 됩니다:
+> ```bash
+> supabase login && supabase link --project-ref cetacttsdwzxjzkyozgd
+> supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+> supabase functions deploy counsel --no-verify-jwt
+> ```
 
 ## 3단계 — 확인
 1. 홈페이지에서 **로그인**
-2. 우측 하단 **💬 말씀 상담** 버튼 클릭
-3. 질문 입력 → 답변이 오면 성공 🎉
+2. **오늘의 말씀(QT)** 아래 **‘말씀, 더 궁금한 점이 있나요?’** 칸에 질문 입력 (또는 추천 질문 클릭)
+3. 답변이 오면 성공 🎉  (안 되면 화면을 캡처해 알려주세요)
 
 ---
 
