@@ -4,22 +4,57 @@
    ============================================================ */
 (function () {
   const NAV = [
-    { href: "welcome.html", label: "처음 오셨나요" },
-    { href: "word.html", label: "말씀으로" },
-    { href: "story.html", label: "우리 이야기" },
-    { href: "community.html", label: "나눔터" },
-    { href: "prayer.html", label: "기도나눔" },
-    { href: "world.html", label: "지역과 세상" },
-    { href: "library.html", label: "자료실" },
+    { href: "welcome.html", label: "처음 오셨나요", sub: [
+      { href: "welcome.html#worship", label: "예배 안내" },
+      { href: "welcome.html#directions", label: "교회 가는 길" },
+      { href: "welcome.html#about", label: "우리 교회는 어떤 곳" },
+      { href: "welcome.html#newfamily", label: "새가족 등록" },
+    ] },
+    { href: "word.html", label: "말씀으로", sub: [
+      { href: "word.html#sermon", label: "이번 주 말씀" },
+      { href: "word.html#qt", label: "매일 말씀 묵상" },
+      { href: "word.html#archive", label: "주보" },
+      { href: "word.html#believe", label: "우리가 믿는 것" },
+      { href: "word.html#column", label: "목사님의 글" },
+    ] },
+    { href: "story.html", label: "우리 이야기", sub: [
+      { href: "story.html#communities", label: "그리스도의 몸 된 지체들" },
+      { href: "story.html#groups", label: "섬김 부서" },
+      { href: "story.html#history", label: "교회 연혁" },
+    ] },
+    { href: "community.html", label: "나눔터", sub: [
+      { href: "community.html#board", label: "함께 나누는 글" },
+      { href: "community.html#qna", label: "삶의 질문" },
+      { href: "community.html#album", label: "교회 앨범·소식" },
+    ] },
+    { href: "prayer.html", label: "기도나눔", sub: [
+      { href: "prayer.html#thisweek", label: "이번 주 기도 제목" },
+      { href: "prayer.html#howpray", label: "이렇게 기도합니다" },
+      { href: "prayer.html#request", label: "기도 부탁" },
+    ] },
+    { href: "world.html", label: "지역과 세상", sub: [
+      { href: "world.html#local", label: "지역 연합사역" },
+      { href: "world.html#mission", label: "선교" },
+    ] },
+    { href: "library.html", label: "자료실", sub: [
+      { href: "library.html#edu", label: "교육 자료실" },
+      { href: "library.html#praise", label: "찬양 자료실" },
+    ] },
     { href: "admin.html#tax", label: "연말정산" },
   ];
 
   const path = location.pathname.split("/").pop() || "index.html";
 
   // ===== 헤더 =====
-  const navLinks = NAV.map(
-    (n) => `<a href="${n.href}"${path === n.href ? ' class="active"' : ""}>${n.label}</a>`
-  ).join("");
+  const navLinks = NAV.map((n) => {
+    const active = path === n.href.split("#")[0] ? ' class="active"' : "";
+    if (!n.sub) return `<div class="nav-item"><a href="${n.href}"${active}>${n.label}</a></div>`;
+    const subs = n.sub.map((s) => `<a href="${s.href}">${s.label}</a>`).join("");
+    return `<div class="nav-item has-sub">
+        <a href="${n.href}"${active}>${n.label}<span class="nav-caret" aria-hidden="true">⌄</span></a>
+        <div class="nav-dropdown"><div class="nav-dropdown-inner">${subs}</div></div>
+      </div>`;
+  }).join("");
 
   const headerHTML = `
     <header id="header">
@@ -130,6 +165,16 @@
     a.addEventListener("click", () => {
       navMenu.classList.remove("open");
       header.classList.remove("menu-open");
+    })
+  );
+  // 모바일: 상위 메뉴의 ⌄ 캐럿을 누르면 하위 메뉴 펼침/접힘 (텍스트는 그대로 이동)
+  navMenu.querySelectorAll(".nav-item.has-sub > a .nav-caret").forEach((c) =>
+    c.addEventListener("click", (e) => {
+      if (window.matchMedia("(max-width: 760px)").matches) {
+        e.preventDefault();
+        e.stopPropagation();
+        c.closest(".nav-item").classList.toggle("open");
+      }
     })
   );
 
