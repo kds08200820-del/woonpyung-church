@@ -38,7 +38,7 @@
     ] },
     { href: "library.html", label: "자료실", sub: [
       { href: "library.html#edu", label: "교육 자료실" },
-      { href: "library.html#praise", label: "찬양 자료실" },
+      { href: "library.html#worship", label: "예배 자료실" },
     ] },
     { href: "admin.html#tax", label: "연말정산" },
   ];
@@ -364,7 +364,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260629t";
+      auth.src = "js/auth.js?v=20260629u";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)

@@ -22,10 +22,12 @@
       ],
     },
     {
-      el: document.getElementById("resourceAreaPraise"),
+      el: document.getElementById("resourceAreaWorship"),
       cats: [
-        { id: "choir", label: "성가대" },
-        { id: "worship-praise", label: "경배와 찬양" },
+        { id: "worship-sunday", label: "주일예배" },
+        { id: "worship-weekday", label: "수요·새벽예배" },
+        { id: "worship-special", label: "절기·특별예배" },
+        { id: "worship-etc", label: "기타 예배 자료" },
       ],
     },
   ].filter((g) => g.el);
