@@ -102,7 +102,7 @@
   let openPostId = null;
 
   function init() {
-    console.log("[community.js] v20260628i REST");
+    console.log("[community.js] v20260628j REST");
     loadPosts();
 
     writeBtn.addEventListener("click", () => {
