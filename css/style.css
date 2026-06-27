@@ -600,7 +600,7 @@ ul { list-style: none; }
   .nav-menu.open { right: 0; }
   /* 배경 딤 */
   .nav-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 104;
+    position: fixed; inset: 0; background: rgba(0,0,0,.58); z-index: 104;
     opacity: 0; visibility: hidden; transition: opacity .35s ease, visibility .35s ease;
   }
   .nav-backdrop.show { opacity: 1; visibility: visible; }

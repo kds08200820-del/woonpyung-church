@@ -25,9 +25,8 @@
       el: document.getElementById("resourceAreaWorship"),
       cats: [
         { id: "worship-sunday", label: "주일예배" },
-        { id: "worship-weekday", label: "수요·새벽예배" },
-        { id: "worship-special", label: "절기·특별예배" },
-        { id: "worship-etc", label: "기타 예배 자료" },
+        { id: "praise", label: "찬양 자료" },
+        { id: "choir", label: "성가대 자료" },
       ],
     },
   ].filter((g) => g.el);
@@ -95,7 +94,19 @@
     }, 10000);
     return window.SUPABASE_URL + "/storage/v1" + d.signedURL + "&download=" + encodeURIComponent(title || "");
   }
+  const r2Ready = () => !!(window.ChurchUpload && window.ChurchUpload.isReady());
+  const isR2Path = (p) => /^https?:\/\//.test(String(p || ""));
+
   async function uploadOne(catId, file) {
+    // R2 사용 가능하면 Cloudflare R2에 저장(자료실은 원본 화질 유지: 압축 끔)
+    if (r2Ready()) {
+      const r = await window.ChurchUpload.upload(file, { folder: "resources", compress: false });
+      await jsonFetch(window.SUPABASE_URL + "/rest/v1/resources", {
+        method: "POST", headers: authHeaders({ "Content-Type": "application/json", Prefer: "return=minimal" }),
+        body: JSON.stringify({ category: catId, title: file.name, path: r.url, size: file.size }),
+      }, 10000);
+      return;
+    }
     const ext = (file.name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     const key = catId + "/" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + (ext ? "." + ext : "");
     const res = await withTimeout(fetch(window.SUPABASE_URL + "/storage/v1/object/" + BUCKET + "/" + encPath(key), {
@@ -107,8 +118,25 @@
       body: JSON.stringify({ category: catId, title: file.name, path: key, size: file.size }),
     }, 10000);
   }
+  // R2에 저장된 파일을 원본 파일명으로 내려받기(인라인 표시 대신 다운로드)
+  async function downloadR2(url, title) {
+    const res = await withTimeout(fetch(url), 30000);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const blob = await res.blob();
+    const obj = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = obj; a.download = title || "download";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(obj), 5000);
+  }
+
   async function deleteRow(row) {
-    try { await withTimeout(fetch(window.SUPABASE_URL + "/storage/v1/object/" + BUCKET + "/" + encPath(row.path), { method: "DELETE", headers: authHeaders() }), 10000); } catch (e) {}
+    if (isR2Path(row.path)) {
+      // Cloudflare R2: 키를 뽑아 삭제(best-effort)
+      try { const m = String(row.path).match(/\/f\/(.+)$/); if (m && window.ChurchUpload) await window.ChurchUpload.remove(decodeURIComponent(m[1])); } catch (e) {}
+    } else {
+      try { await withTimeout(fetch(window.SUPABASE_URL + "/storage/v1/object/" + BUCKET + "/" + encPath(row.path), { method: "DELETE", headers: authHeaders() }), 10000); } catch (e) {}
+    }
     await jsonFetch(window.SUPABASE_URL + "/rest/v1/resources?id=eq." + row.id, { method: "DELETE", headers: authHeaders({ Prefer: "return=minimal" }) }, 10000);
   }
 
@@ -173,7 +201,10 @@
       const del = el.querySelector(".res-del");
       if (dl && row) dl.addEventListener("click", async () => {
         const old = dl.textContent; dl.textContent = "준비 중…"; dl.disabled = true;
-        try { window.open(await signedUrl(row.path, row.title), "_blank"); } catch (e) { alert("다운로드 오류: " + e.message); }
+        try {
+          if (isR2Path(row.path)) await downloadR2(row.path, row.title);
+          else window.open(await signedUrl(row.path, row.title), "_blank");
+        } catch (e) { alert("다운로드 오류: " + e.message); }
         dl.textContent = old; dl.disabled = false;
       });
       if (del && row) del.addEventListener("click", async () => {
