@@ -1,25 +1,38 @@
 /* ============================================================
-   운평장로교회 — 양육 자료실 (Supabase Storage + resources 테이블)
+   운평장로교회 — 자료실 (Supabase Storage + resources 테이블)
+   - 교육 자료실 + 찬양 자료실(여러 구역) 지원
    - 카테고리 카드(아코디언): 클릭하면 펼쳐짐
    - 로그인 교인: 목록·다운로드 / 관리자: 드래그&드롭 업로드·삭제
    - 파일은 영문 안전키로 저장, 한글 원본명은 resources 테이블에 보관
    ============================================================ */
 (function () {
-  const area = document.getElementById("resourceArea");
-  if (!area) return;
   const BUCKET = "resources";
-  const CATEGORIES = [
-    { id: "newcomer", label: "새가족" },
-    { id: "nurture", label: "양육반" },
-    { id: "discipleship", label: "제자훈련" },
-    { id: "sunday-school", label: "주일학교" },
-    { id: "middle", label: "중등부" },
-    { id: "youth", label: "청년부" },
-    { id: "faith-edu", label: "신앙교육" },
-  ];
+  // 자료실 구역들(페이지에 해당 컨테이너가 있을 때만 렌더)
+  const GROUPS = [
+    {
+      el: document.getElementById("resourceArea"),
+      cats: [
+        { id: "newcomer", label: "새가족" },
+        { id: "nurture", label: "양육반" },
+        { id: "discipleship", label: "제자훈련" },
+        { id: "sunday-school", label: "주일학교" },
+        { id: "middle", label: "중등부" },
+        { id: "youth", label: "청년부" },
+        { id: "faith-edu", label: "신앙교육" },
+      ],
+    },
+    {
+      el: document.getElementById("resourceAreaPraise"),
+      cats: [
+        { id: "choir", label: "성가대" },
+        { id: "worship-praise", label: "경배와 찬양" },
+      ],
+    },
+  ].filter((g) => g.el);
+  if (!GROUPS.length) return;
 
   if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
-    area.innerHTML = '<p class="placeholder-note">로그인 기능 연결 후 이용할 수 있습니다.</p>';
+    GROUPS.forEach((g) => (g.el.innerHTML = '<p class="placeholder-note">로그인 기능 연결 후 이용할 수 있습니다.</p>'));
     return;
   }
 
@@ -33,6 +46,8 @@
     if (["xls", "xlsx", "csv"].includes(e)) return "📊";
     if (["ppt", "pptx"].includes(e)) return "📙";
     if (["png", "jpg", "jpeg", "gif", "webp"].includes(e)) return "🖼️";
+    if (["mp3", "wav", "m4a", "flac", "aac", "ogg"].includes(e)) return "🎵";
+    if (["mp4", "mov", "avi", "mkv"].includes(e)) return "🎬";
     if (["zip", "7z", "rar"].includes(e)) return "🗜️";
     return "📎";
   };
@@ -96,11 +111,14 @@
   }
 
   function loginPrompt() {
-    area.innerHTML = `<div class="member-lock"><div class="lock-icon">🔒</div><h3>회원 전용 자료실</h3>
-      <p>로그인한 등록 교인만 자료를 보고 내려받을 수 있습니다.</p>
-      <button type="button" class="btn btn-line" id="resLogin" style="margin-top:12px;">로그인</button></div>`;
-    const b = document.getElementById("resLogin");
-    if (b) b.addEventListener("click", () => { const m = document.getElementById("authModal"); if (m) { m.hidden = false; document.body.style.overflow = "hidden"; } });
+    GROUPS.forEach((g) => {
+      g.el.innerHTML = `<div class="member-lock"><div class="lock-icon">🔒</div><h3>회원 전용 자료실</h3>
+        <p>로그인한 등록 교인만 자료를 보고 내려받을 수 있습니다.</p>
+        <button type="button" class="btn btn-line res-login" style="margin-top:12px;">로그인</button></div>`;
+    });
+    document.querySelectorAll(".res-login").forEach((b) =>
+      b.addEventListener("click", () => { const m = document.getElementById("authModal"); if (m) { m.hidden = false; document.body.style.overflow = "hidden"; } })
+    );
   }
 
   let admin = false;
@@ -115,12 +133,12 @@
     </div>`;
   }
 
-  function render(rows) {
+  function renderGroup(areaEl, cats, rows) {
     const byCat = {};
-    CATEGORIES.forEach((c) => (byCat[c.id] = []));
-    (rows || []).forEach((r) => { if (byCat[r.category]) byCat[r.category].push(r); else (byCat[r.category] = [r]); });
+    cats.forEach((c) => (byCat[c.id] = []));
+    (rows || []).forEach((r) => { if (byCat[r.category]) byCat[r.category].push(r); });
 
-    area.innerHTML = `<div class="res-cats">` + CATEGORIES.map((c) => {
+    areaEl.innerHTML = `<div class="res-cats">` + cats.map((c) => {
       const items = byCat[c.id] || [];
       const filesHTML = items.length ? `<div class="resource-list">${items.map(fileRowHTML).join("")}</div>` : `<p class="placeholder-note" style="margin:0;">등록된 자료가 없습니다.</p>`;
       const dropHTML = admin ? `
@@ -139,14 +157,14 @@
     }).join("") + `</div>`;
 
     // 아코디언 토글
-    area.querySelectorAll(".res-cat").forEach((card) => {
+    areaEl.querySelectorAll(".res-cat").forEach((card) => {
       const head = card.querySelector(".res-cat-head");
       const body = card.querySelector(".res-cat-body");
       head.addEventListener("click", () => { card.classList.toggle("open"); body.hidden = !body.hidden; });
     });
 
     // 다운로드 / 삭제
-    area.querySelectorAll(".resource-item").forEach((el) => {
+    areaEl.querySelectorAll(".resource-item").forEach((el) => {
       const id = el.getAttribute("data-id");
       const row = (rows || []).find((r) => String(r.id) === String(id));
       const dl = el.querySelector(".res-dl");
@@ -164,7 +182,7 @@
     });
 
     // 업로드(드래그&드롭 + 선택)
-    if (admin) area.querySelectorAll(".res-drop").forEach((zone) => {
+    if (admin) areaEl.querySelectorAll(".res-drop").forEach((zone) => {
       const cat = zone.getAttribute("data-cat");
       const input = zone.querySelector(".res-input");
       const pick = zone.querySelector(".res-pick");
@@ -190,17 +208,16 @@
   async function load() {
     const me = currentUser();
     if (!me || !me.id) { loginPrompt(); return; }
-    area.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
+    GROUPS.forEach((g) => (g.el.innerHTML = '<p class="qt-loading">불러오는 중…</p>'));
     admin = await isAdminUser(me.id);
     try {
       const rows = await listRows();
-      render(rows);
+      GROUPS.forEach((g) => renderGroup(g.el, g.cats, rows));
     } catch (e) {
-      if (/resources|relation|does not exist|schema cache|404/i.test(e.message) || e.status === 404) {
-        area.innerHTML = `<p class="placeholder-note">자료실이 아직 준비되지 않았습니다. (관리자가 Supabase에서 resources 테이블·버킷을 생성하면 이용 가능합니다.)</p>`;
-      } else {
-        area.innerHTML = `<p class="qt-loading">불러오기 오류: ${esc(e.message)}</p>`;
-      }
+      const msg = /resources|relation|does not exist|schema cache|404/i.test(e.message) || e.status === 404
+        ? `<p class="placeholder-note">자료실이 아직 준비되지 않았습니다. (관리자가 Supabase에서 resources 테이블·버킷을 생성하면 이용 가능합니다.)</p>`
+        : `<p class="qt-loading">불러오기 오류: ${esc(e.message)}</p>`;
+      GROUPS.forEach((g) => (g.el.innerHTML = msg));
     }
   }
 
