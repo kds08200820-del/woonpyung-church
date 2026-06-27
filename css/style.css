@@ -1398,9 +1398,14 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 .askai-form button:hover { background: #32493e; transform: translateY(-1px); }
 .askai-form button:disabled { opacity: .55; cursor: default; transform: none; }
 
-/* 추천 질문 칩 */
-.askai-suggest { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
-.askai-suggest-label { width: 100%; font-size: .82rem; color: var(--muted); letter-spacing: .02em; margin-bottom: 2px; }
+/* 추천 질문 칩 (그룹형: 주일 말씀 / 오늘 큐티 / 신앙과 신학 교리) */
+.askai-suggest { margin-top: 22px; }
+.askai-suggest-head { display: block; font-size: .82rem; color: var(--muted); letter-spacing: .02em; margin-bottom: 14px; }
+.askai-suggest-group { margin-bottom: 16px; }
+.askai-suggest-group:last-child { margin-bottom: 0; }
+.askai-suggest-label { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 700; color: var(--accent); margin-bottom: 9px; }
+.askai-grp-no { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .74rem; font-weight: 700; }
+.askai-chip-row { display: flex; flex-wrap: wrap; gap: 9px; }
 .askai-chip {
   background: var(--paper-alt); border: 1px solid var(--line); border-radius: 22px;
   padding: 9px 16px; font-family: inherit; font-size: .88rem; color: var(--ink-soft); cursor: pointer;
