@@ -1318,3 +1318,12 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 }
 .qt-listen-btn:hover { background: #32493e; transform: translateY(-2px); box-shadow: 0 14px 32px rgba(61,90,76,.34); }
 .qt-listen-note { margin-top: 10px; font-size: .85rem; color: var(--muted); }
+
+/* 모달 안 '이 본문 듣기' 링크 */
+.qt-d-listen {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
+  font-size: .9rem; font-weight: 600; color: var(--accent);
+  background: var(--paper-alt); border: 1px solid var(--line); border-radius: 22px;
+  padding: 8px 16px; transition: background .2s ease, border-color .2s ease;
+}
+.qt-d-listen:hover { background: #fff; border-color: var(--accent-soft); }
