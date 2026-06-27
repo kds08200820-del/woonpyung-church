@@ -843,6 +843,26 @@ ul { list-style: none; }
 /* 앨범 */
 .album-grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap:14px; }
 .album-item { aspect-ratio:1; background:var(--paper-alt); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.82rem; text-align:center; padding:10px; border:1px dashed var(--line); }
+/* 앨범 카드(사진 업로드/보기) */
+.album-hint { color: var(--muted); font-size: .9rem; margin: -6px 0 18px; }
+.album-card { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); cursor: pointer; background: var(--paper-alt); transition: .2s; }
+.album-card:hover { box-shadow: 0 10px 26px rgba(0,0,0,.10); transform: translateY(-2px); }
+.album-card.drag { outline: 3px dashed var(--accent); outline-offset: -3px; }
+.album-thumb { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: var(--muted); background-size: cover; background-position: center; }
+.album-card.has-photo .album-thumb { color: transparent; }
+.album-cap { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; font-size: .9rem; font-weight: 600; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.55)); }
+.album-card:not(.has-photo) .album-cap { color: var(--ink); background: none; }
+.album-count { font-size: .72rem; font-weight: 700; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 12px; background: var(--accent); color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.album-add { position: absolute; top: 8px; right: 8px; z-index: 2; font-family: inherit; font-size: .76rem; font-weight: 600; padding: 5px 10px; border-radius: 16px; border: 0; background: rgba(255,255,255,.92); color: var(--accent); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+.album-add:hover { background: #fff; }
+.album-droplay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(3,34,87,.55); color: #fff; font-weight: 600; font-size: .85rem; pointer-events: none; }
+.album-card.drag .album-droplay { display: flex; }
+/* 갤러리 모달 */
+.modal-box-album { max-width: 760px; width: 100%; }
+.album-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 16px; max-height: 70vh; overflow-y: auto; }
+.album-gallery .gal-item { position: relative; margin: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+.album-gallery .gal-item img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.album-gallery .gal-del { position: absolute; top: 6px; right: 6px; font-size: .72rem; padding: 4px 9px; border: 0; border-radius: 14px; background: rgba(192,57,43,.92); color: #fff; cursor: pointer; }
 
 /* 연혁 타임라인 */
 .timeline { position:relative; max-width:760px; margin:0 auto; padding-left:30px; }

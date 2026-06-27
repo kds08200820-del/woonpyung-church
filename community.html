@@ -16,15 +16,15 @@
   <meta property="og:image:height" content="512" />
   <meta property="og:url" content="https://k-logos.com/" />
   <meta name="twitter:card" content="summary" />
-  <link rel="manifest" href="manifest.json?v=20260630e" />
+  <link rel="manifest" href="manifest.json?v=20260630f" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260630e" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260630e" />
+  <link rel="icon" href="images/favicon-32.png?v=20260630f" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260630f" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260630e" />
+  <link rel="stylesheet" href="css/style.css?v=20260630f" />
 </head>
 <body>
 
@@ -150,13 +150,9 @@
         <p>사진과 짧은 글로 전하는 공동체의 일상.</p>
       </div>
 
-      <div class="album-grid" style="margin-bottom:44px;">
-        <div class="album-item">📷 주일 예배</div>
-        <div class="album-item">📷 여름성경학교</div>
-        <div class="album-item">📷 수련회</div>
-        <div class="album-item">📷 지역 섬김</div>
-        <div class="album-item">📷 전 성도 식사</div>
-        <div class="album-item">📷 연합예배</div>
+      <p class="album-hint" id="albumHint">로그인하시면 카드에 사진을 끌어다 놓거나 ‘＋ 사진’으로 올릴 수 있어요. 카드를 누르면 사진을 모아 볼 수 있습니다.</p>
+      <div class="album-grid" id="albumGrid" style="margin-bottom:44px;">
+        <p class="qt-loading">앨범을 불러오는 중…</p>
       </div>
 
       <div class="news-list">
@@ -166,6 +162,16 @@
       </div>
     </div>
   </section>
+
+  <!-- 앨범 갤러리 모달 -->
+  <div class="modal" id="albumModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box modal-box-album" role="dialog" aria-modal="true" aria-label="교회 앨범">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <h3 class="m-title" id="albumModalTitle">앨범</h3>
+      <div class="album-gallery" id="albumGallery"></div>
+    </div>
+  </div>
 
   <!-- 게시글 상세 모달 -->
   <div class="modal" id="postModal" hidden>
@@ -185,12 +191,13 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=20260630e"></script>
-  <script src="js/bulletins.js?v=20260630e"></script>
-  <script src="js/layout.js?v=20260630e"></script>
-  <script src="js/counsel.js?v=20260630e"></script>
-  <script src="js/main.js?v=20260630e"></script>
-  <script src="js/upload.js?v=20260630e"></script>
-  <script src="js/community.js?v=20260630e"></script>
+  <script src="js/config.js?v=20260630f"></script>
+  <script src="js/bulletins.js?v=20260630f"></script>
+  <script src="js/layout.js?v=20260630f"></script>
+  <script src="js/counsel.js?v=20260630f"></script>
+  <script src="js/main.js?v=20260630f"></script>
+  <script src="js/upload.js?v=20260630f"></script>
+  <script src="js/community.js?v=20260630f"></script>
+  <script src="js/album.js?v=20260630f"></script>
 </body>
 </html>
