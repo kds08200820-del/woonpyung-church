@@ -824,3 +824,33 @@ const io = new IntersectionObserver(
   { threshold: 0.12 }
 );
 revealTargets.forEach((el) => io.observe(el));
+
+// ===== 7. 김동석 목사 저서 — 책 미리보기 모달 =====
+(function () {
+  const modal = document.getElementById("bookModal");
+  if (!modal) return;
+  const box = modal.querySelector(".book-read");
+  const openers = [
+    document.getElementById("bookPreviewOpen"),
+    document.getElementById("bookPreviewOpen2"),
+  ].filter(Boolean);
+
+  function open() {
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    if (box) box.scrollTop = 0;
+  }
+  function close() {
+    modal.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  openers.forEach((el) => {
+    el.addEventListener("click", open);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+    });
+  });
+  modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-bclose")) close(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) close(); });
+})();
