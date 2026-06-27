@@ -1375,14 +1375,21 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
   .nav-item > a { display: block; position: relative; }
   .nav-caret { position: absolute; right: 0; top: 50%; transform: translateY(-50%); margin: 0; padding: 6px 10px; font-size: 1.05em; opacity: .8; }
   .nav-item.open .nav-caret { transform: translateY(-50%) rotate(180deg); }
+  /* 데스크톱 절대배치(absolute/left/transform)가 실기기에서 새지 않도록 강제 리셋 */
   .nav-dropdown {
-    position: static; transform: none; opacity: 1; visibility: visible; pointer-events: auto;
-    padding-top: 0; min-width: 0; overflow: hidden; transition: none;
+    position: static !important; left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
+    transform: none !important; width: 100% !important; min-width: 0 !important; max-width: none !important;
+    margin: 0 !important; padding-top: 0; overflow: hidden; transition: none;
+    opacity: 1 !important; visibility: visible !important; pointer-events: auto !important;
     display: none;
   }
-  .nav-item.open .nav-dropdown { display: block; max-height: none; }
-  .nav-dropdown-inner { background: transparent; border: 0; box-shadow: none; padding: 0 0 6px 14px; gap: 0; }
+  .nav-item.open > .nav-dropdown { display: block !important; max-height: none !important; }
+  .nav-dropdown-inner {
+    position: static !important; transform: none !important; width: 100% !important; min-width: 0 !important;
+    background: transparent; border: 0; box-shadow: none; padding: 0 0 6px 14px; gap: 0;
+  }
   .nav-dropdown-inner a {
+    display: block !important; white-space: normal !important; text-align: left !important;
     color: var(--muted) !important; font-size: .95rem !important; font-weight: 400 !important;
     padding: 12px 0 !important; border-bottom: 1px solid var(--line); border-radius: 0;
   }
