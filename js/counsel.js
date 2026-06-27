@@ -144,6 +144,18 @@
     } catch (e) { return null; }
   }
 
+  // 이번 주 설교 전문(bulletins.js의 manuscript)을 참고자료로 함께 전송
+  function sermonContext() {
+    try {
+      const list = (typeof BULLETINS !== "undefined") ? BULLETINS : (window.BULLETINS || null);
+      const b = list && list[0];
+      if (b && b.manuscript) {
+        return `[이번 주(${b.dateLabel || ""}) 설교 — ${b.title || ""} / ${b.scripture || ""}]\n${b.manuscript}`;
+      }
+    } catch (e) {}
+    return "";
+  }
+
   async function ask() {
     const msg = (input.value || "").trim();
     if (!msg || busy) return;
@@ -171,7 +183,7 @@
           "Authorization": "Bearer " + token,
           "apikey": window.SUPABASE_ANON_KEY || "",
         },
-        body: JSON.stringify({ messages: history.slice(-12) }),
+        body: JSON.stringify({ messages: history.slice(-12), context: sermonContext() }),
         signal: ctrl.signal,
       });
       const ct = res.headers.get("content-type") || "";

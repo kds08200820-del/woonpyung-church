@@ -133,6 +133,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 2-2) 이번 주 설교 전문(클라이언트가 보낸 참고자료)을 시스템 프롬프트에 주입
+    const rawContext = typeof body.context === "string" ? body.context.slice(0, 16000) : "";
+    const effSystem = rawContext
+      ? SYSTEM_PROMPT +
+        "\n\n[이번 주 설교 전문 — 아래는 김동석 목사님의 이번 주 실제 주일 설교입니다. " +
+        "본문·설교 관련 질문에는 이 내용을 최우선 근거로 삼아 목사님의 해석·예화·강조점을 반영해 답하세요. " +
+        "설교에 없는 내용을 지어내지 말고, 설교 흐름과 다른 일반 질문에는 평소대로 답하세요.]\n" +
+        rawContext
+      : SYSTEM_PROMPT;
+
     // 3) 위기 신호 → 즉시 안전 안내(LLM 미호출)
     const lastUser = messages[messages.length - 1].content;
     if (CRISIS_RE.test(lastUser)) {
@@ -178,7 +188,7 @@ Deno.serve(async (req) => {
         parts: [{ text: m.content }],
       }));
       const reqBody = JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        system_instruction: { parts: [{ text: effSystem }] },
         contents,
         generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
       });
@@ -220,7 +230,7 @@ Deno.serve(async (req) => {
       });
     } else {
       // 앤트로픽 Claude (Messages API) — 스트리밍 + 일시적 혼잡(429/500/503/529) 재시도
-      const reqBody = JSON.stringify({ model: MODEL, max_tokens: 1024, system: SYSTEM_PROMPT, messages, stream: true });
+      const reqBody = JSON.stringify({ model: MODEL, max_tokens: 1024, system: effSystem, messages, stream: true });
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
       let upstream: Response | null = null;
       let lastErr = "";
