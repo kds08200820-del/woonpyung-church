@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
     }
 
     if (!GEMINI_API_KEY && !ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ error: "AI 키가 설정되지 않았습니다. 관리자에게 문의해 주세요." }), {
+      return new Response(JSON.stringify({ error: "AI 키가 설정되지 않았습니다. 관리자에게 문의해 주세요.", detail: "no_api_key (GEMINI/ANTHROPIC 둘 다 없음)" }), {
         status: 500, headers: { ...cors, "Content-Type": "application/json" },
       });
     }
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
       }
       if (!reply) {
         console.error("Gemini error:", lastErr);
-        return new Response(JSON.stringify({ error: "지금 잠시 응답이 어렵네요. 잠깐 후 다시 한 번 물어봐 주세요. 🙏" }), {
+        return new Response(JSON.stringify({ error: "지금 잠시 응답이 어렵네요. 잠깐 후 다시 한 번 물어봐 주세요. 🙏", detail: `[gemini/${MODEL}] ${lastErr}` }), {
           status: 502, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
       if (!aiRes.ok) {
         const detail = await aiRes.text();
         console.error("Anthropic error:", aiRes.status, detail);
-        return new Response(JSON.stringify({ error: "답변 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요." }), {
+        return new Response(JSON.stringify({ error: "답변 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.", detail: `[anthropic/${MODEL}] ${aiRes.status} ${detail.slice(0, 200)}` }), {
           status: 502, headers: { ...cors, "Content-Type": "application/json" },
         });
       }

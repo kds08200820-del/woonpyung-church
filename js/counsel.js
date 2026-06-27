@@ -128,7 +128,7 @@
       const data = await res.json().catch(() => ({}));
       typing.remove();
       if (!res.ok) {
-        addMsg("ai", data.error || "잠시 후 다시 시도해 주세요.");
+        addMsg("ai", (data.error || "잠시 후 다시 시도해 주세요.") + (data.detail ? "\n\n🔧 " + data.detail : ""));
       } else {
         addMsg("ai", data.reply);
         history.push({ role: "assistant", content: data.reply });
