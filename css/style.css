@@ -1434,3 +1434,14 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
   .askai-form button { padding: 0 18px; }
   .askai-bubble { max-width: 90%; }
 }
+
+/* 상담 답변 내 서식(마크다운 변환 결과) */
+.askai-bubble strong { font-weight: 700; }
+.askai-bubble .askai-h { display: block; margin: 12px 0 4px; color: var(--accent); font-size: 1.0rem; }
+.askai-msg.me .askai-bubble .askai-h { color: #fff; }
+.askai-bubble .askai-q {
+  border-left: 3px solid var(--accent-soft); padding: 6px 12px; margin: 8px 0;
+  background: rgba(0,0,0,.04); color: var(--ink-soft); border-radius: 0 6px 6px 0; font-style: normal;
+}
+.askai-bubble .askai-ul { margin: 6px 0 6px 4px; padding-left: 18px; }
+.askai-bubble .askai-ul li { margin: 3px 0; list-style: disc; }

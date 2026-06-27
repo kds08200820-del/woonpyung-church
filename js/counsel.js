@@ -21,11 +21,50 @@
   const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const fmt = (s) => esc(s).replace(/\n/g, "<br/>");
 
+  // 마크다운 기호(**굵게**, > 인용, - 목록, # 제목)를 실제 서식으로 변환
+  function inlineMd(t) {
+    return t
+      .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>")
+      .replace(/_([^_\n]+)_/g, "<em>$1</em>")
+      .replace(/`([^`\n]+)`/g, "$1");
+  }
+  function mdToHtml(src) {
+    const lines = esc(src).split("\n");
+    let html = "", inList = false, inQuote = false;
+    const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
+    const closeQuote = () => { if (inQuote) { html += "</blockquote>"; inQuote = false; } };
+    for (const raw of lines) {
+      const line = raw.replace(/\s+$/, "");
+      if (/^\s*&gt;\s?/.test(line)) { // 인용( > )
+        closeList();
+        if (!inQuote) { html += '<blockquote class="askai-q">'; inQuote = true; }
+        html += inlineMd(line.replace(/^\s*&gt;\s?/, "")) + "<br/>";
+        continue;
+      }
+      closeQuote();
+      const li = line.match(/^\s*(?:[-*•]|\d+\.)\s+(.+)/); // 목록( - * 1. )
+      if (li) {
+        if (!inList) { html += '<ul class="askai-ul">'; inList = true; }
+        html += "<li>" + inlineMd(li[1]) + "</li>";
+        continue;
+      }
+      closeList();
+      const h = line.match(/^\s*#{1,6}\s+(.+)/); // 제목( # )
+      if (h) { html += '<strong class="askai-h">' + inlineMd(h[1]) + "</strong>"; continue; }
+      if (line.trim() === "") { html += "<br/>"; continue; }
+      html += inlineMd(line) + "<br/>";
+    }
+    closeList(); closeQuote();
+    return html;
+  }
+
   function addMsg(role, text) {
     thread.hidden = false;
     const el = document.createElement("div");
     el.className = "askai-msg " + (role === "user" ? "me" : "ai");
-    el.innerHTML = `<div class="askai-bubble">${fmt(text)}</div>`;
+    const body = role === "user" ? fmt(text) : mdToHtml(text);
+    el.innerHTML = `<div class="askai-bubble">${body}</div>`;
     thread.appendChild(el);
     el.scrollIntoView({ block: "nearest", behavior: "smooth" });
     return el;
@@ -146,7 +185,7 @@
           const { done, value } = await reader.read();
           if (done) break;
           full += decoder.decode(value, { stream: true });
-          bubble.innerHTML = fmt(full);
+          bubble.innerHTML = mdToHtml(full);
           el.scrollIntoView({ block: "nearest" });
         }
         full = full.trim();
