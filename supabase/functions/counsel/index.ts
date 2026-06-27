@@ -141,6 +141,28 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 3-2) 1인 1일 질문 한도 (위기 안내는 위에서 이미 통과 → 한도 영향 없음)
+    //   counsel-usage.sql 미설치 시에는 자동으로 무제한 통과(서비스 중단 방지)
+    const DAILY_LIMIT = Number(Deno.env.get("COUNSEL_DAILY_LIMIT") ?? "20");
+    if (DAILY_LIMIT > 0) {
+      try {
+        const rl = await fetch(`${SUPABASE_URL}/rest/v1/rpc/counsel_check_and_bump`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ p_limit: DAILY_LIMIT }),
+        });
+        if (rl.ok) {
+          const u = await rl.json();
+          if (u && u.allowed === false) {
+            return new Response(JSON.stringify({
+              reply: `오늘은 질문을 ${DAILY_LIMIT}번까지 나눌 수 있어요. 충분히 묵상하시고 내일 다시 이어가요. 🙂\n급한 일이나 더 깊은 상담이 필요하시면 김동석 목사님(010-4032-2903)께 직접 연락 주세요.`,
+              limited: true,
+            }), { headers: { ...cors, "Content-Type": "application/json" } });
+          }
+        }
+      } catch (_) { /* 한도 확인 실패 시에도 답변은 제공 */ }
+    }
+
     if (!GEMINI_API_KEY && !ANTHROPIC_API_KEY) {
       return new Response(JSON.stringify({ error: "AI 키가 설정되지 않았습니다. 관리자에게 문의해 주세요.", detail: "no_api_key (GEMINI/ANTHROPIC 둘 다 없음)" }), {
         status: 500, headers: { ...cors, "Content-Type": "application/json" },
