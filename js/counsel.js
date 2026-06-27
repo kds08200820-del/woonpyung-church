@@ -115,6 +115,8 @@
       busy = false; sendBtn.disabled = false; return;
     }
 
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 45000); // 45초 지나면 무한 대기 방지
     try {
       const res = await fetch(ENDPOINT, {
         method: "POST",
@@ -124,6 +126,7 @@
           "apikey": window.SUPABASE_ANON_KEY || "",
         },
         body: JSON.stringify({ messages: history.slice(-12) }),
+        signal: ctrl.signal,
       });
       const data = await res.json().catch(() => ({}));
       typing.remove();
@@ -133,10 +136,13 @@
         addMsg("ai", data.reply);
         history.push({ role: "assistant", content: data.reply });
       }
-    } catch {
+    } catch (err) {
       typing.remove();
-      addMsg("ai", "연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.");
+      addMsg("ai", err && err.name === "AbortError"
+        ? "응답이 평소보다 오래 걸리고 있어요. 잠시 후 다시 한 번 물어봐 주세요. 🙏"
+        : "연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.");
     } finally {
+      clearTimeout(timer);
       busy = false; sendBtn.disabled = false; input.focus();
     }
   }
