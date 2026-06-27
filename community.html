@@ -16,15 +16,15 @@
   <meta property="og:image:height" content="512" />
   <meta property="og:url" content="https://k-logos.com/" />
   <meta name="twitter:card" content="summary" />
-  <link rel="manifest" href="manifest.json?v=20260629u" />
+  <link rel="manifest" href="manifest.json?v=20260629y" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260629u" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260629u" />
+  <link rel="icon" href="images/favicon-32.png?v=20260629y" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260629y" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260629u" />
+  <link rel="stylesheet" href="css/style.css?v=20260629y" />
 </head>
 <body>
 
@@ -68,6 +68,11 @@
         <div class="form-field" id="boardCategoryEtcWrap" hidden><label>기타 (직접 입력)</label><input type="text" name="category_etc" id="boardCategoryEtc" maxlength="20" placeholder="예: 추천, 공지 등" /></div>
         <div class="form-field"><label>제목</label><input type="text" name="title" required maxlength="100" placeholder="제목을 입력하세요" /></div>
         <div class="form-field full"><label>내용</label><textarea name="content" rows="6" required placeholder="나누고 싶은 이야기를 적어주세요."></textarea></div>
+        <div class="form-field full" id="boardImageField" hidden>
+          <label>사진 첨부 <span style="font-weight:400;color:var(--muted)">(선택 · 자동으로 용량을 줄여 올립니다)</span></label>
+          <input type="file" id="boardImages" accept="image/*" multiple />
+          <div class="board-img-preview" id="boardImgPreview"></div>
+        </div>
         <div class="form-actions" style="display:flex;gap:10px;">
           <button type="submit" class="btn btn-solid">등록</button>
           <button type="button" class="btn btn-line" id="boardCancel">취소</button>
@@ -180,11 +185,12 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=20260629u"></script>
-  <script src="js/bulletins.js?v=20260629u"></script>
-  <script src="js/layout.js?v=20260629u"></script>
-  <script src="js/counsel.js?v=20260629u"></script>
-  <script src="js/main.js?v=20260629u"></script>
-  <script src="js/community.js?v=20260629u"></script>
+  <script src="js/config.js?v=20260629y"></script>
+  <script src="js/bulletins.js?v=20260629y"></script>
+  <script src="js/layout.js?v=20260629y"></script>
+  <script src="js/counsel.js?v=20260629y"></script>
+  <script src="js/main.js?v=20260629y"></script>
+  <script src="js/upload.js?v=20260629y"></script>
+  <script src="js/community.js?v=20260629y"></script>
 </body>
 </html>

@@ -101,16 +101,35 @@
 
   let openPostId = null;
 
+  // ── 사진 첨부 (Cloudflare R2) ──
+  const imgField = document.getElementById("boardImageField");
+  const imgInput = document.getElementById("boardImages");
+  const imgPreview = document.getElementById("boardImgPreview");
+  const uploadReady = () => !!(window.ChurchUpload && window.ChurchUpload.isReady());
+  function renderImgPreview() {
+    if (!imgPreview) return;
+    const files = imgInput && imgInput.files ? Array.from(imgInput.files) : [];
+    imgPreview.innerHTML = files.map((f) =>
+      `<span class="bip-item">📷 ${esc(f.name)} <em>(${Math.round(f.size / 1024)}KB)</em></span>`
+    ).join("");
+  }
+
   function init() {
-    console.log("[community.js] v20260628s REST");
+    console.log("[community.js] v20260629y REST + R2");
     loadPosts();
+
+    // 업로드 서버가 설정된 경우에만 사진 첨부 칸 노출
+    if (imgField && uploadReady()) {
+      imgField.hidden = false;
+      if (imgInput) imgInput.addEventListener("change", renderImgPreview);
+    }
 
     writeBtn.addEventListener("click", () => {
       if (!currentUser()) { alert("글을 쓰려면 먼저 로그인해 주세요."); openLogin(); return; }
       form.hidden = false;
       form.scrollIntoView({ behavior: "smooth", block: "center" });
     });
-    cancelBtn.addEventListener("click", () => { form.hidden = true; form.reset(); syncCategoryEtc(); });
+    cancelBtn.addEventListener("click", () => { form.hidden = true; form.reset(); syncCategoryEtc(); if (imgPreview) imgPreview.innerHTML = ""; });
 
     // 글 성격에서 '기타' 선택 시 직접 입력란 표시
     const catSel = document.getElementById("boardCategory");
@@ -132,14 +151,28 @@
       if (!title || !content) { alert("제목과 내용을 입력해 주세요."); return; }
       const submitBtn = form.querySelector('button[type="submit"]');
       if (submitBtn) submitBtn.disabled = true;
+      const origBtnText = submitBtn ? submitBtn.textContent : "";
       try {
-        await api("POST", "posts", { user_id: me.id, author_name: displayName(me), title, content, category: category || null }, { Prefer: "return=minimal" });
+        // 1) 사진이 있으면 자동 압축 후 R2 업로드 → URL 수집
+        let images = [];
+        const files = imgInput && imgInput.files ? Array.from(imgInput.files) : [];
+        if (files.length && uploadReady()) {
+          for (let i = 0; i < files.length; i++) {
+            if (submitBtn) submitBtn.textContent = `사진 올리는 중… (${i + 1}/${files.length})`;
+            const r = await window.ChurchUpload.upload(files[i], { folder: "community" });
+            if (r && r.url) images.push(r.url);
+          }
+        }
+        if (submitBtn) submitBtn.textContent = "등록 중…";
+        // 2) 글 등록 (images 포함)
+        await api("POST", "posts", { user_id: me.id, author_name: displayName(me), title, content, category: category || null, images }, { Prefer: "return=minimal" });
         form.reset(); syncCategoryEtc(); form.hidden = true;
+        if (imgPreview) imgPreview.innerHTML = "";
         loadPosts();
       } catch (err) {
         alert("등록 오류: " + err.message);
       } finally {
-        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origBtnText; }
       }
     });
 
@@ -185,17 +218,22 @@
     const admin = await isAdminUser();
     const mine = !!(me && p.user_id && me.id === p.user_id);
     const canDelete = mine || admin;
+    const imgs = Array.isArray(p.images) ? p.images : [];
+    const imgHtml = imgs.length
+      ? `<div class="post-images">${imgs.map((u) => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="첨부 사진" loading="lazy" /></a>`).join("")}</div>`
+      : "";
     postDetail.innerHTML = `
       <span class="m-eyebrow">${fmtDate(p.created_at)} · ${esc(p.author_name)}${p.category ? ` · <span class="board-tag">${esc(p.category)}</span>` : ""}</span>
       <h3 class="m-title">${esc(p.title)}</h3>
       <div class="post-body">${esc(p.content).replace(/\n/g, "<br>")}</div>
+      ${imgHtml}
       <div class="reactions" id="postReactions"></div>
       ${(mine || canDelete) ? `<div class="post-actions">
           ${mine ? `<button class="btn btn-line post-edit" id="postEdit">수정</button>` : ""}
           ${canDelete ? `<button class="btn post-del" id="postDelete">삭제${admin && !mine ? " (관리자)" : ""}</button>` : ""}
         </div>` : ""}`;
     if (mine) document.getElementById("postEdit").addEventListener("click", () => editPost(p));
-    if (canDelete) document.getElementById("postDelete").addEventListener("click", () => deletePost(id));
+    if (canDelete) document.getElementById("postDelete").addEventListener("click", () => deletePost(p));
     loadReactions(id);
     await loadComments(id);
     commentForm.hidden = !me;
@@ -228,10 +266,21 @@
     document.getElementById("editCancel").addEventListener("click", () => openPost(p.id));
   }
 
-  async function deletePost(id) {
+  async function deletePost(post) {
+    const id = (post && typeof post === "object") ? post.id : post;
     if (!confirm("이 글을 삭제할까요?")) return;
     try { await api("DELETE", `posts?id=eq.${id}`, null, { Prefer: "return=minimal" }); }
     catch (err) { alert("삭제 오류: " + err.message); return; }
+    // 첨부 사진도 R2에서 정리(있으면, best-effort)
+    try {
+      const imgs = (post && typeof post === "object" && Array.isArray(post.images)) ? post.images : [];
+      if (imgs.length && window.ChurchUpload) {
+        imgs.forEach((u) => {
+          const m = String(u).match(/\/f\/(.+)$/);
+          if (m) window.ChurchUpload.remove(decodeURIComponent(m[1]));
+        });
+      }
+    } catch (e) {}
     closePost(); loadPosts();
   }
 

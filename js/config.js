@@ -18,7 +18,7 @@ window.SUPABASE_ANON_KEY = "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G";
    Cloudflare에서 Worker를 배포한 뒤 받은 주소를 넣으세요.
    예: "https://church-files.<계정>.workers.dev"
    비어 있으면 사진/파일 업로드 기능은 자동으로 숨겨집니다(사이트는 정상). */
-window.R2_UPLOAD_URL = "";
+window.R2_UPLOAD_URL = "https://church-files.kds08200820.workers.dev";
 
 /* --- 연말정산 신청 알림 이메일(FormSubmit) ---
    계정/키 없이 관리자 이메일(kds08200820@gmail.com)로 알림이 발송됩니다(민감정보 제외).

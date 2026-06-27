@@ -922,6 +922,15 @@ ul { list-style: none; }
 .board-form textarea { width: 100%; resize: vertical; }
 
 .post-detail .post-body { margin: 18px 0; line-height: 1.9; color: var(--ink-soft); }
+/* 게시글 첨부 사진 */
+.post-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 4px 0 18px; }
+.post-images a { display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.post-images img { display: block; width: 100%; height: 100%; object-fit: cover; aspect-ratio: 1 / 1; transition: transform .25s; }
+.post-images a:hover img { transform: scale(1.04); }
+/* 글쓰기 사진 미리보기 */
+.board-img-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.board-img-preview .bip-item { font-size: .82rem; background: var(--paper-alt); border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; color: var(--ink-soft); }
+.board-img-preview .bip-item em { color: var(--muted); font-style: normal; }
 .post-actions { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; }
 .post-actions .btn { padding: 7px 18px; font-size: .85rem; }
 .post-actions .post-del { background: #c0392b; color: #fff; border: 0; }
