@@ -1,93 +1,68 @@
 /* ============================================================
-   운평장로교회 — 상담 AI(말씀 도우미) 위젯
-   로그인한 교인에게만 노출 · Supabase Edge Function(counsel) 호출
+   운평장로교회 — 운평 말씀지기 (페이지 내장 AI 질문창)
+   #askForm 이 있는 페이지에서만 작동 · Supabase Edge Function(counsel) 호출
+   추천 질문은 '이번 주 말씀'(BULLETINS)에 맞춰 자동 생성
    ============================================================ */
 (function () {
-  if (!window.SUPABASE_URL) return; // 백엔드 미설정 시 비활성
+  const form = document.getElementById("askForm");
+  if (!form) return; // 질문창이 있는 페이지에서만
+  if (!window.SUPABASE_URL) return;
+
   const ENDPOINT = window.SUPABASE_URL.replace(/\/$/, "") + "/functions/v1/counsel";
+  const input = document.getElementById("askInput");
+  const sendBtn = document.getElementById("askSend");
+  const thread = document.getElementById("askThread");
+  const suggest = document.getElementById("askSuggest");
 
   let sb = null;
-  let signedIn = false;
-  let history = []; // [{role, content}]
+  let history = [];
   let busy = false;
-
-  const WELCOME =
-    "안녕하세요, 운평 말씀지기예요. 🙏\n마음에 담긴 이야기나 신앙의 질문을 편하게 들려주세요. 함께 말씀 안에서 답을 찾아가겠습니다.";
-
-  // ── UI 주입 ──
-  const wrap = document.createElement("div");
-  wrap.id = "counselWidget";
-  wrap.hidden = true;
-  wrap.innerHTML = `
-    <button class="counsel-fab" id="counselFab" type="button" aria-label="말씀 상담 열기">
-      <span class="counsel-fab-ico">💬</span><span class="counsel-fab-txt">말씀 상담</span>
-    </button>
-    <div class="counsel-panel" id="counselPanel" hidden role="dialog" aria-label="말씀 상담">
-      <div class="counsel-head">
-        <div>
-          <strong>운평 말씀지기</strong>
-          <span class="counsel-sub">김동석 목사님의 가르침을 학습한 AI 도우미</span>
-        </div>
-        <button class="counsel-x" id="counselClose" aria-label="닫기">&times;</button>
-      </div>
-      <div class="counsel-disclaimer">⚠️ 저는 목사님 본인이 아닌 AI예요. 위급하거나 중대한 일은 목사님(010-4032-2903)께 직접 연락해 주세요.</div>
-      <div class="counsel-body" id="counselBody"></div>
-      <form class="counsel-input" id="counselForm">
-        <textarea id="counselText" rows="1" placeholder="마음에 있는 이야기를 들려주세요…" maxlength="1500"></textarea>
-        <button type="submit" id="counselSend" aria-label="보내기">↑</button>
-      </form>
-    </div>`;
-  document.body.appendChild(wrap);
-
-  const fab = wrap.querySelector("#counselFab");
-  const panel = wrap.querySelector("#counselPanel");
-  const bodyEl = wrap.querySelector("#counselBody");
-  const form = wrap.querySelector("#counselForm");
-  const textEl = wrap.querySelector("#counselText");
-  const sendBtn = wrap.querySelector("#counselSend");
 
   const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const fmt = (s) => esc(s).replace(/\n/g, "<br/>");
 
   function addMsg(role, text) {
+    thread.hidden = false;
     const el = document.createElement("div");
-    el.className = "counsel-msg " + (role === "user" ? "me" : "ai");
-    el.innerHTML = `<div class="counsel-bubble">${fmt(text)}</div>`;
-    bodyEl.appendChild(el);
-    bodyEl.scrollTop = bodyEl.scrollHeight;
+    el.className = "askai-msg " + (role === "user" ? "me" : "ai");
+    el.innerHTML = `<div class="askai-bubble">${fmt(text)}</div>`;
+    thread.appendChild(el);
+    el.scrollIntoView({ block: "nearest", behavior: "smooth" });
     return el;
   }
   function addTyping() {
+    thread.hidden = false;
     const el = document.createElement("div");
-    el.className = "counsel-msg ai";
-    el.innerHTML = `<div class="counsel-bubble counsel-typing"><span></span><span></span><span></span></div>`;
-    bodyEl.appendChild(el);
-    bodyEl.scrollTop = bodyEl.scrollHeight;
+    el.className = "askai-msg ai";
+    el.innerHTML = `<div class="askai-bubble askai-typing"><span></span><span></span><span></span></div>`;
+    thread.appendChild(el);
+    el.scrollIntoView({ block: "nearest", behavior: "smooth" });
     return el;
   }
 
-  let opened = false;
-  function openPanel() {
-    panel.hidden = false;
-    fab.classList.add("hide");
-    if (!opened) { opened = true; addMsg("ai", WELCOME); }
-    setTimeout(() => textEl.focus(), 60);
-  }
-  function closePanel() {
-    panel.hidden = true;
-    fab.classList.remove("hide");
-  }
-  fab.addEventListener("click", openPanel);
-  wrap.querySelector("#counselClose").addEventListener("click", closePanel);
+  // ── 추천 질문(이번 주 말씀 기반 + 일반) ──
+  function buildSuggestions() {
+    const chips = [];
+    try {
+      const list = (typeof BULLETINS !== "undefined") ? BULLETINS : (window.BULLETINS || null);
+      const b = (list && list[0]) || null;
+      if (b) {
+        if (b.scripture) chips.push(`이번 주 본문 「${b.scripture}」은 어떤 내용인가요?`);
+        if (b.title) chips.push(`설교 「${b.title}」을 쉽게 풀어 설명해 주세요`);
+        if (b.scripture) chips.push(`「${b.scripture}」에서 어려운 단어를 풀어 주세요`);
+      }
+    } catch (e) {}
+    chips.push("요즘 마음이 많이 힘든데, 위로가 되는 말씀이 있을까요?");
+    chips.push("오늘 QT 본문은 어떻게 묵상하면 좋을까요?");
+    chips.push("개혁주의 신앙이 무엇인지 쉽게 알려주세요");
 
-  // textarea 자동 높이
-  textEl.addEventListener("input", () => {
-    textEl.style.height = "auto";
-    textEl.style.height = Math.min(textEl.scrollHeight, 120) + "px";
-  });
-  textEl.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
-  });
+    suggest.innerHTML =
+      '<span class="askai-suggest-label">이런 걸 물어볼 수 있어요</span>' +
+      chips.slice(0, 6).map((c) => `<button type="button" class="askai-chip">${esc(c)}</button>`).join("");
+    suggest.querySelectorAll(".askai-chip").forEach((btn) =>
+      btn.addEventListener("click", () => { input.value = btn.textContent; ask(); })
+    );
+  }
 
   async function getToken() {
     if (!sb) return null;
@@ -95,12 +70,11 @@
     catch { return null; }
   }
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const msg = textEl.value.trim();
+  async function ask() {
+    const msg = (input.value || "").trim();
     if (!msg || busy) return;
     busy = true; sendBtn.disabled = true;
-    textEl.value = ""; textEl.style.height = "auto";
+    input.value = "";
     addMsg("user", msg);
     history.push({ role: "user", content: msg });
     const typing = addTyping();
@@ -108,7 +82,8 @@
     const token = await getToken();
     if (!token) {
       typing.remove();
-      addMsg("ai", "로그인이 필요해요. 상단의 ‘로그인’ 후 다시 이용해 주세요. 🙏");
+      addMsg("ai", "이 기능은 로그인한 교인만 이용할 수 있어요. 우측 상단에서 로그인하신 뒤 다시 물어봐 주세요. 🙏");
+      try { document.getElementById("loginBtnInit")?.click(); } catch (e) {}
       busy = false; sendBtn.disabled = false; return;
     }
 
@@ -134,27 +109,15 @@
       typing.remove();
       addMsg("ai", "연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.");
     } finally {
-      busy = false; sendBtn.disabled = false; textEl.focus();
+      busy = false; sendBtn.disabled = false; input.focus();
     }
-  });
-
-  // ── 로그인 상태에 따라 위젯 표시 ──
-  async function refresh() {
-    if (!sb) return;
-    try {
-      const { data } = await sb.auth.getSession();
-      signedIn = !!data?.session;
-    } catch { signedIn = false; }
-    wrap.hidden = !signedIn;
-    if (!signedIn) closePanel();
   }
 
-  function bind(client) {
-    sb = client;
-    refresh();
-    try { sb.auth.onAuthStateChange(() => refresh()); } catch (e) {}
-  }
+  form.addEventListener("submit", (e) => { e.preventDefault(); ask(); });
 
-  if (window.__sb) bind(window.__sb);
-  else window.addEventListener("sb-ready", (e) => bind((e.detail && e.detail.sb) || window.__sb), { once: true });
+  buildSuggestions();
+
+  // Supabase 클라이언트 연결(로그인 여부 확인용)
+  if (window.__sb) sb = window.__sb;
+  else window.addEventListener("sb-ready", (e) => { sb = (e.detail && e.detail.sb) || window.__sb; }, { once: true });
 })();
