@@ -24,10 +24,10 @@
   <meta name="twitter:card" content="summary" />
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json?v=20260629e" />
+  <link rel="manifest" href="manifest.json?v=20260629f" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260629e" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260629e" />
+  <link rel="icon" href="images/favicon-32.png?v=20260629f" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260629f" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -35,7 +35,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260629e" />
+  <link rel="stylesheet" href="css/style.css?v=20260629f" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <script type="application/ld+json">
   {
@@ -87,26 +87,6 @@
     <a href="#qt" class="hero-scroll" aria-label="아래로">↓</a>
   </section>
 
-  <!-- ===== 운평 말씀지기 (AI 질문창) ===== -->
-  <section id="askai" class="section askai">
-    <div class="container">
-      <div class="section-head">
-        <span class="eyebrow">ASK · 말씀지기</span>
-        <h2>무엇이든 물어보세요</h2>
-        <p>이번 주 말씀의 용어·의미가 궁금하면 ‘운평 말씀지기’에게 물어보세요.<br class="askai-br" />김동석 목사님의 가르침을 학습한 AI가 함께 답을 찾아드립니다.</p>
-      </div>
-      <div class="askai-box">
-        <form class="askai-form" id="askForm" autocomplete="off">
-          <input type="text" id="askInput" placeholder="예: 이번 주 본문은 어떤 뜻인가요?" maxlength="300" aria-label="질문 입력" />
-          <button type="submit" id="askSend">물어보기</button>
-        </form>
-        <div class="askai-thread" id="askThread" hidden></div>
-        <div class="askai-suggest" id="askSuggest" aria-label="추천 질문"></div>
-        <p class="askai-note">⚠️ ‘운평 말씀지기’는 목사님 본인이 아닌 AI 도우미예요. 위급하거나 중대한 일은 목사님(010-4032-2903)께 직접 연락해 주세요.</p>
-      </div>
-    </div>
-  </section>
-
   <!-- ===== 오늘의 QT ===== -->
   <section id="qt" class="section section-alt">
     <div class="container">
@@ -126,6 +106,26 @@
     </div>
   </section>
 
+  <!-- ===== 운평 말씀지기 (AI 질문창) — 묵상 후 질문 ===== -->
+  <section id="askai" class="section askai">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">ASK · 말씀지기</span>
+        <h2>말씀, 더 궁금한 점이 있나요?</h2>
+        <p>오늘 묵상하며 궁금했던 용어나 의미를 ‘운평 말씀지기’에게 물어보세요.<br class="askai-br" />김동석 목사님의 가르침을 학습한 AI가 함께 답을 찾아드립니다.</p>
+      </div>
+      <div class="askai-box">
+        <form class="askai-form" id="askForm" autocomplete="off">
+          <input type="text" id="askInput" placeholder="예: 이번 주 본문은 어떤 뜻인가요?" maxlength="300" aria-label="질문 입력" />
+          <button type="submit" id="askSend">물어보기</button>
+        </form>
+        <div class="askai-thread" id="askThread" hidden></div>
+        <div class="askai-suggest" id="askSuggest" aria-label="추천 질문"></div>
+        <p class="askai-note">⚠️ ‘운평 말씀지기’는 목사님 본인이 아닌 AI 도우미예요. 위급하거나 중대한 일은 목사님(010-4032-2903)께 직접 연락해 주세요.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== 김동석 목사 저서 ===== -->
   <section class="section">
     <div class="container">
@@ -136,7 +136,7 @@
       <div class="book-feature">
         <div class="book-cover book-cover-clickable" id="bookPreviewOpen" role="button" tabindex="0"
              aria-label="레위기에서 만난 예수 그리스도 — 미리보기 열기">
-          <img src="images/book-leviticus.png?v=20260629e" alt="레위기에서 만난 예수그리스도 — 김동석 지음" loading="lazy" />
+          <img src="images/book-leviticus.png?v=20260629f" alt="레위기에서 만난 예수그리스도 — 김동석 지음" loading="lazy" />
           <span class="book-badge">COMING SOON</span>
           <span class="book-peek">📖 미리보기</span>
         </div>
@@ -435,10 +435,10 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=20260629e"></script>
-  <script src="js/bulletins.js?v=20260629e"></script>
-  <script src="js/layout.js?v=20260629e"></script>
-  <script src="js/counsel.js?v=20260629e"></script>
-  <script src="js/main.js?v=20260629e"></script>
+  <script src="js/config.js?v=20260629f"></script>
+  <script src="js/bulletins.js?v=20260629f"></script>
+  <script src="js/layout.js?v=20260629f"></script>
+  <script src="js/counsel.js?v=20260629f"></script>
+  <script src="js/main.js?v=20260629f"></script>
 </body>
 </html>
