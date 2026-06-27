@@ -52,10 +52,10 @@ ul { list-style: none; }
   letter-spacing: .28em; color: rgba(255,255,255,.7);
   transition: color .4s ease;
 }
-.nav-menu { display: flex; gap: 28px; }
+.nav-menu { display: flex; gap: 22px; flex-wrap: nowrap; }
 .nav-menu a {
   font-size: .92rem; font-weight: 500; color: rgba(255,255,255,.92);
-  position: relative; transition: color .3s ease;
+  position: relative; transition: color .3s ease; white-space: nowrap;
 }
 .nav-menu a::after {
   content: ""; position: absolute; left: 0; bottom: -6px; width: 0; height: 1.5px;
@@ -583,6 +583,13 @@ ul { list-style: none; }
   .location-grid { grid-template-columns: 1fr; }
   .servant-grid { grid-template-columns: 1fr; max-width: 340px; }
 }
+/* 중간 폭(좁은 노트북·태블릿 가로): 메뉴가 한 줄에 들어가도록 간격·글자 축소 */
+@media (max-width: 1180px) and (min-width: 761px) {
+  .nav-inner { padding: 0 20px; }
+  .nav-menu { gap: 16px; }
+  .nav-menu a { font-size: .85rem; }
+}
+
 @media (max-width: 760px) {
   .nav-menu {
     position: fixed; top: 0; right: -100%; width: 72%; max-width: 320px; height: 100vh;
