@@ -214,13 +214,18 @@ Deno.serve(async (req) => {
           status: 502, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
+      if (!reply) reply = "죄송합니다. 답변을 만들지 못했어요. 다시 한 번 말씀해 주시겠어요?";
+      return new Response(JSON.stringify({ reply }), {
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
     } else {
-      // 앤트로픽 Claude (Messages API) — 일시적 혼잡(429/500/503/529) 시 재시도
-      const reqBody = JSON.stringify({ model: MODEL, max_tokens: 1024, system: SYSTEM_PROMPT, messages });
+      // 앤트로픽 Claude (Messages API) — 스트리밍 + 일시적 혼잡(429/500/503/529) 재시도
+      const reqBody = JSON.stringify({ model: MODEL, max_tokens: 1024, system: SYSTEM_PROMPT, messages, stream: true });
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      let upstream: Response | null = null;
       let lastErr = "";
       for (let attempt = 0; attempt < 3; attempt++) {
-        const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
             "x-api-key": ANTHROPIC_API_KEY,
@@ -229,28 +234,53 @@ Deno.serve(async (req) => {
           },
           body: reqBody,
         });
-        if (aiRes.ok) {
-          const data = await aiRes.json();
-          reply = (data?.content ?? []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n").trim();
-          break;
-        }
-        lastErr = `${aiRes.status} ${(await aiRes.text()).slice(0, 200)}`;
-        if ([429, 500, 503, 529].includes(aiRes.status)) { await sleep(900); continue; } // 혼잡 → 재시도
+        if (r.ok && r.body) { upstream = r; break; }
+        lastErr = `${r.status} ${(await r.text()).slice(0, 200)}`;
+        if ([429, 500, 503, 529].includes(r.status)) { await sleep(900); continue; } // 혼잡 → 재시도
         break; // 그 외(401/400/404 등)는 재시도 무의미
       }
-      if (!reply) {
+      if (!upstream || !upstream.body) {
         console.error("Anthropic error:", lastErr);
         return new Response(JSON.stringify({ error: "지금 잠시 응답이 어렵네요. 잠깐 후 다시 한 번 물어봐 주세요. 🙏", detail: `[anthropic/${MODEL}] ${lastErr}` }), {
           status: 502, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
+      // Anthropic SSE → 텍스트 델타만 뽑아 평문으로 스트리밍 전달
+      const src = upstream.body;
+      const stream = new ReadableStream({
+        async start(controller) {
+          const reader = src.getReader();
+          const decoder = new TextDecoder();
+          const encoder = new TextEncoder();
+          let buf = "";
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += decoder.decode(value, { stream: true });
+              let nl;
+              while ((nl = buf.indexOf("\n")) >= 0) {
+                const line = buf.slice(0, nl).trim(); buf = buf.slice(nl + 1);
+                if (!line.startsWith("data:")) continue;
+                const payload = line.slice(5).trim();
+                if (!payload || payload === "[DONE]") continue;
+                try {
+                  const ev = JSON.parse(payload);
+                  if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") {
+                    controller.enqueue(encoder.encode(ev.delta.text));
+                  }
+                } catch (_) { /* 부분 청크 무시 */ }
+              }
+            }
+          } catch (_) { /* 업스트림 끊김 */ } finally {
+            controller.close();
+          }
+        },
+      });
+      return new Response(stream, {
+        headers: { ...cors, "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache" },
+      });
     }
-
-    if (!reply) reply = "죄송합니다. 답변을 만들지 못했어요. 다시 한 번 말씀해 주시겠어요?";
-
-    return new Response(JSON.stringify({ reply }), {
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
   } catch (e) {
     console.error(e);
     return new Response(JSON.stringify({ error: "일시적인 오류가 발생했습니다." }), {

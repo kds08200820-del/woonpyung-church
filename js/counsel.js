@@ -116,7 +116,7 @@
     }
 
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 45000); // 45초 지나면 무한 대기 방지
+    const timer = setTimeout(() => ctrl.abort(), 60000); // 60초 지나면 무한 대기 방지
     try {
       const res = await fetch(ENDPOINT, {
         method: "POST",
@@ -128,13 +128,36 @@
         body: JSON.stringify({ messages: history.slice(-12) }),
         signal: ctrl.signal,
       });
-      const data = await res.json().catch(() => ({}));
-      typing.remove();
+      const ct = res.headers.get("content-type") || "";
+
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        typing.remove();
         addMsg("ai", (data.error || "잠시 후 다시 시도해 주세요.") + (data.detail ? "\n\n🔧 " + data.detail : ""));
+      } else if (res.body && ct.includes("text/plain")) {
+        // 스트리밍: 한 글자씩 실시간 표시
+        typing.remove();
+        const el = addMsg("ai", "");
+        const bubble = el.querySelector(".askai-bubble");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let full = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          full += decoder.decode(value, { stream: true });
+          bubble.innerHTML = fmt(full);
+          el.scrollIntoView({ block: "nearest" });
+        }
+        full = full.trim();
+        if (!full) { bubble.innerHTML = fmt("죄송해요, 답변을 만들지 못했어요. 다시 한 번 물어봐 주세요."); }
+        else { history.push({ role: "assistant", content: full }); }
       } else {
-        addMsg("ai", data.reply);
-        history.push({ role: "assistant", content: data.reply });
+        // JSON (위기 안내 / 일일 한도 / 일반 응답)
+        const data = await res.json().catch(() => ({}));
+        typing.remove();
+        addMsg("ai", data.reply || data.error || "잠시 후 다시 시도해 주세요.");
+        if (data.reply) history.push({ role: "assistant", content: data.reply });
       }
     } catch (err) {
       typing.remove();
