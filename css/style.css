@@ -707,6 +707,7 @@ ul { list-style: none; }
 /* 인사말 */
 .greeting { display:grid; grid-template-columns:220px 1fr; gap:40px; align-items:start; }
 .greeting .pastor-photo { background:var(--paper-alt); border-radius:14px; aspect-ratio:3/4; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.85rem; text-align:center; border:1px dashed var(--line); }
+.greeting img.pastor-photo { width:100%; height:auto; object-fit:cover; border:0; box-shadow:0 14px 36px rgba(0,0,0,.16); }
 .greeting .greeting-text p { color:var(--ink-soft); margin-bottom:14px; }
 .greeting .greeting-sign { font-family:"Noto Serif KR",serif; color:var(--accent); margin-top:8px; }
 
