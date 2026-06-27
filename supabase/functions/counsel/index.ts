@@ -155,28 +155,43 @@ Deno.serve(async (req) => {
         role: m.role === "assistant" ? "model" : "user",
         parts: [{ text: m.content }],
       }));
-      const aiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-        {
-          method: "POST",
-          headers: { "x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
-          }),
-        },
-      );
-      if (!aiRes.ok) {
-        const detail = await aiRes.text();
-        console.error("Gemini error:", aiRes.status, detail);
-        return new Response(JSON.stringify({ error: "답변 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요." }), {
+      const reqBody = JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents,
+        generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
+      });
+      // 일시적 혼잡(503/429)에 대비: 모델별로 재시도 + 예비 모델 전환
+      const models = [...new Set([MODEL, "gemini-2.0-flash", "gemini-2.5-flash-lite"])];
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      let lastErr = "";
+      outer:
+      for (const mdl of models) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const aiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent`,
+            {
+              method: "POST",
+              headers: { "x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json" },
+              body: reqBody,
+            },
+          );
+          if (aiRes.ok) {
+            const data = await aiRes.json();
+            reply = (data?.candidates?.[0]?.content?.parts ?? [])
+              .map((p: any) => p?.text || "").join("").trim();
+            break outer;
+          }
+          lastErr = `${aiRes.status} ${(await aiRes.text()).slice(0, 200)}`;
+          if (aiRes.status === 503 || aiRes.status === 429) { await sleep(800); continue; } // 혼잡 → 재시도
+          break; // 그 외 오류 → 다음 예비 모델로
+        }
+      }
+      if (!reply) {
+        console.error("Gemini error:", lastErr);
+        return new Response(JSON.stringify({ error: "지금 잠시 응답이 어렵네요. 잠깐 후 다시 한 번 물어봐 주세요. 🙏" }), {
           status: 502, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
-      const data = await aiRes.json();
-      reply = (data?.candidates?.[0]?.content?.parts ?? [])
-        .map((p: any) => p?.text || "").join("").trim();
     } else {
       // 앤트로픽 Claude (Messages API)
       const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
