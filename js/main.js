@@ -518,10 +518,21 @@ if (modal) {
 
   let deferredPrompt = null;
 
-  // 안드로이드/크롬: 설치 프롬프트 가로채기
+  // 기기 판별: iOS(아이폰·아이패드)는 프로그램 설치 미지원 → 안내만 가능
+  const ua = window.navigator.userAgent;
+  const isIOS =
+    /iphone|ipad|ipod/i.test(ua) ||
+    // 아이패드OS 사파리는 UA가 'Macintosh'로 보고됨 → 터치 지원으로 보정
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isIOSNonSafari = isIOS && /crios|fxios|edgios|naver|kakaotalk|daum/i.test(ua);
+
+  // 안드로이드/크롬·엣지(데스크톱): 설치 프롬프트 가로채기
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredPrompt = e;
+    msg.textContent = "홈 화면에 추가하여 앱처럼 사용하세요.";
+    goBtn.textContent = "설치";
+    goBtn.hidden = false;
     bar.hidden = false;
   });
 
@@ -531,6 +542,8 @@ if (modal) {
       await deferredPrompt.userChoice;
       deferredPrompt = null;
       bar.hidden = true;
+    } else if (isIOS) {
+      showIosGuide(); // iOS는 설치 API가 없으므로 수동 추가 방법을 안내
     }
   });
 
@@ -539,13 +552,49 @@ if (modal) {
     localStorage.setItem("installDismissed", "1");
   });
 
-  // iOS(사파리): beforeinstallprompt 미지원 → 안내 문구로 표시
-  const ua = window.navigator.userAgent;
-  const isIOS = /iphone|ipad|ipod/i.test(ua);
+  // iOS: beforeinstallprompt 미지원 → '방법' 버튼으로 안내 모달 제공
   if (isIOS && !isStandalone) {
-    msg.textContent = "공유 버튼(↑) → ‘홈 화면에 추가’를 눌러 설치하세요.";
-    goBtn.hidden = true;
+    msg.textContent = isIOSNonSafari
+      ? "Safari에서 ‘홈 화면에 추가’로 설치할 수 있어요."
+      : "공유 → ‘홈 화면에 추가’로 설치하세요.";
+    goBtn.textContent = "방법 보기";
+    goBtn.hidden = false;
     bar.hidden = false;
+  }
+
+  function showIosGuide() {
+    let m = document.getElementById("iosGuideModal");
+    if (!m) {
+      const shareSvg =
+        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#032257" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="M8.5 7.5 12 4l3.5 3.5"/><rect x="5" y="11" width="14" height="9" rx="2"/></svg>';
+      const safariSteps =
+        '<li><span class="ios-step-no">1</span><div>화면 아래(아이패드는 위)의 <b>공유 버튼</b> <span class="ios-share">' + shareSvg + '</span> 을 누릅니다.</div></li>' +
+        '<li><span class="ios-step-no">2</span><div>메뉴를 내려 <b>‘홈 화면에 추가’</b> 를 누릅니다.</div></li>' +
+        '<li><span class="ios-step-no">3</span><div>오른쪽 위 <b>‘추가’</b> 를 누르면 홈 화면에 운평교회 앱이 생깁니다.</div></li>';
+      const note = isIOSNonSafari
+        ? '<p class="ios-note">※ 지금 브라우저(크롬 등)에서는 설치가 제한될 수 있어요. <b>Safari</b>로 <b>k-logos.com</b>을 연 뒤 위 방법으로 진행해 주세요.</p>'
+        : '<p class="ios-note">※ 아이폰·아이패드는 이렇게 ‘홈 화면에 추가’ 방식으로만 앱을 설치할 수 있어요(애플 정책).</p>';
+      m = document.createElement("div");
+      m.id = "iosGuideModal";
+      m.className = "modal";
+      m.hidden = true;
+      m.innerHTML =
+        '<div class="modal-backdrop" data-iclose></div>' +
+        '<div class="modal-box modal-box-ios" role="dialog" aria-modal="true" aria-label="앱 설치 방법">' +
+          '<button class="modal-close" data-iclose aria-label="닫기">&times;</button>' +
+          '<div class="ios-guide">' +
+            '<img src="images/icon-192.png?v=20260629a" class="ios-guide-icon" alt="" />' +
+            '<h3>홈 화면에 앱 추가하기</h3>' +
+            '<p class="ios-guide-sub">아이폰·아이패드는 아래 방법으로 설치합니다.</p>' +
+            '<ol class="ios-steps">' + safariSteps + '</ol>' +
+            note +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(m);
+      m.addEventListener("click", (e) => { if (e.target.hasAttribute("data-iclose")) m.hidden = true; });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !m.hidden) m.hidden = true; });
+    }
+    m.hidden = false;
   }
 })();
 
