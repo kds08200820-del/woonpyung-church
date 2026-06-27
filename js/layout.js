@@ -161,7 +161,8 @@
   const navBackdrop = document.createElement("div");
   navBackdrop.className = "nav-backdrop";
   navBackdrop.id = "navBackdrop";
-  document.body.appendChild(navBackdrop);
+  // 헤더 안에 넣어야 메뉴(z-index 106)가 딤(104) 위에 와서 클릭됨
+  header.appendChild(navBackdrop);
 
   function openMenu() {
     navMenu.classList.add("open");

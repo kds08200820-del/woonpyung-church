@@ -605,7 +605,7 @@ ul { list-style: none; }
   }
   .nav-backdrop.show { opacity: 1; visibility: visible; }
   /* 메뉴 열렸을 때 본문 스크롤 잠금 */
-  body.menu-lock { overflow: hidden; touch-action: none; }
+  body.menu-lock { overflow: hidden; }
   .nav-menu a { color: var(--ink) !important; padding: 16px 0; border-bottom: 1px solid var(--line); font-size: 1.05rem; }
   .nav-menu a::after { display: none; }
   .nav-toggle { display: block; z-index: 110; }
