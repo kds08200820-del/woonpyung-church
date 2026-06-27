@@ -592,11 +592,20 @@ ul { list-style: none; }
 
 @media (max-width: 760px) {
   .nav-menu {
-    position: fixed; top: 0; right: -100%; width: 72%; max-width: 320px; height: 100vh;
-    background: #fff; flex-direction: column; gap: 0; padding: 100px 36px;
+    position: fixed; top: 0; right: -100%; width: 80%; max-width: 330px; height: 100vh; height: 100dvh;
+    background: #fff; flex-direction: column; gap: 0; padding: 92px 32px 150px;
     box-shadow: -10px 0 40px rgba(0,0,0,.12); transition: right .4s ease;
+    z-index: 106; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
   }
   .nav-menu.open { right: 0; }
+  /* 배경 딤 */
+  .nav-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.42); z-index: 104;
+    opacity: 0; visibility: hidden; transition: opacity .35s ease, visibility .35s ease;
+  }
+  .nav-backdrop.show { opacity: 1; visibility: visible; }
+  /* 메뉴 열렸을 때 본문 스크롤 잠금 */
+  body.menu-lock { overflow: hidden; touch-action: none; }
   .nav-menu a { color: var(--ink) !important; padding: 16px 0; border-bottom: 1px solid var(--line); font-size: 1.05rem; }
   .nav-menu a::after { display: none; }
   .nav-toggle { display: block; z-index: 110; }
@@ -960,10 +969,11 @@ a.resource-item:hover { border-color: var(--accent-soft); box-shadow: 0 4px 14px
 @media (max-width: 760px) {
   /* 로그인 영역(이름·로그아웃)을 햄버거(선3개) 메뉴 패널 안 아래쪽으로 이동 */
   .auth-slot {
-    position: fixed; right: -100%; bottom: 40px;
-    width: 72%; max-width: 320px; margin: 0; padding: 0 36px; box-sizing: border-box;
+    position: fixed; right: -100%; bottom: 0;
+    width: 80%; max-width: 330px; margin: 0; padding: 18px 32px calc(18px + env(safe-area-inset-bottom)); box-sizing: border-box;
     flex-direction: column; align-items: stretch; gap: 12px;
-    z-index: 105; transition: right .4s ease;
+    background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -6px 18px rgba(0,0,0,.06);
+    z-index: 107; transition: right .4s ease;
   }
   #header.menu-open .auth-slot { right: 0; }
   .auth-slot .auth-wrap { width: 100%; display: block; }

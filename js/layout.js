@@ -157,15 +157,30 @@
   // ===== 모바일 메뉴 =====
   const navToggle = document.getElementById("navToggle");
   const navMenu = document.getElementById("navMenu");
+  // 배경 딤(backdrop): 메뉴 열리면 본문 위를 덮어 비침/오작동 방지 + 탭하면 닫힘
+  const navBackdrop = document.createElement("div");
+  navBackdrop.className = "nav-backdrop";
+  navBackdrop.id = "navBackdrop";
+  document.body.appendChild(navBackdrop);
+
+  function openMenu() {
+    navMenu.classList.add("open");
+    header.classList.add("menu-open");
+    navBackdrop.classList.add("show");
+    document.body.classList.add("menu-lock");   // 뒤 본문 스크롤 잠금
+  }
+  function closeMenu() {
+    navMenu.classList.remove("open");
+    header.classList.remove("menu-open");
+    navBackdrop.classList.remove("show");
+    document.body.classList.remove("menu-lock");
+  }
   navToggle.addEventListener("click", () => {
-    navMenu.classList.toggle("open");
-    header.classList.toggle("menu-open");
+    if (header.classList.contains("menu-open")) closeMenu(); else openMenu();
   });
+  navBackdrop.addEventListener("click", closeMenu);
   navMenu.querySelectorAll("a").forEach((a) =>
-    a.addEventListener("click", () => {
-      navMenu.classList.remove("open");
-      header.classList.remove("menu-open");
-    })
+    a.addEventListener("click", closeMenu)
   );
   // 모바일: 상위 메뉴의 ⌄ 캐럿을 누르면 하위 메뉴 펼침/접힘 (텍스트는 그대로 이동)
   navMenu.querySelectorAll(".nav-item.has-sub > a .nav-caret").forEach((c) =>
