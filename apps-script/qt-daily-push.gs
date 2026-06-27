@@ -23,7 +23,7 @@ const CONFIG = {
   DATE_HEADER: "날짜",          // 날짜가 들어있는 열 머리글
   CONTENT_HEADER: "QT 내용",     // QT 본문이 들어있는 열 머리글
   SITE_URL: "https://k-logos.com/",
-  ONESIGNAL_APP_ID: "여기에_OneSignal_App_ID",
+  ONESIGNAL_APP_ID: "a22a1ff9-5a05-4915-b70f-b0c6df6ccd71",
   ONESIGNAL_REST_KEY: "여기에_OneSignal_REST_API_KEY",
 };
 

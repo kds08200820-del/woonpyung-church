@@ -25,7 +25,7 @@ const POST_CONFIG = {
   SUPABASE_URL: "https://cetacttsdwzxjzkyozgd.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G", // 공개키(안전)
   SITE_URL: "https://k-logos.com/",
-  ONESIGNAL_APP_ID: "여기에_OneSignal_App_ID",
+  ONESIGNAL_APP_ID: "a22a1ff9-5a05-4915-b70f-b0c6df6ccd71",
   ONESIGNAL_REST_KEY: "여기에_OneSignal_REST_API_KEY",
   POLL_MINUTES: 5,   // 새 글 확인 주기(분) — 1/5/10/15/30 중 하나
   MAX_PUSH: 5,       // 한 번에 보낼 최대 개수(이보다 많으면 요약 1건)
