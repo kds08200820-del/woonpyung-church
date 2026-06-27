@@ -115,7 +115,7 @@
   }
 
   function init() {
-    console.log("[community.js] v20260629z REST + R2");
+    console.log("[community.js] v20260630a REST + R2");
     loadPosts();
 
     // 업로드 서버가 설정된 경우에만 사진 첨부 칸 노출
@@ -164,8 +164,10 @@
           }
         }
         if (submitBtn) submitBtn.textContent = "등록 중…";
-        // 2) 글 등록 (images 포함)
-        await api("POST", "posts", { user_id: me.id, author_name: displayName(me), title, content, category: category || null, images }, { Prefer: "return=minimal" });
+        // 2) 글 등록 (사진이 있을 때만 images 포함 → images 컬럼 없어도 일반 글은 정상)
+        const postBody = { user_id: me.id, author_name: displayName(me), title, content, category: category || null };
+        if (images.length) postBody.images = images;
+        await api("POST", "posts", postBody, { Prefer: "return=minimal" });
         form.reset(); syncCategoryEtc(); form.hidden = true;
         if (imgPreview) imgPreview.innerHTML = "";
         loadPosts();
