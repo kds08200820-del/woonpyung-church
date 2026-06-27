@@ -16,15 +16,15 @@
   <meta property="og:image:height" content="512" />
   <meta property="og:url" content="https://k-logos.com/" />
   <meta name="twitter:card" content="summary" />
-  <link rel="manifest" href="manifest.json?v=20260629m" />
+  <link rel="manifest" href="manifest.json?v=20260629n" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260629m" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260629m" />
+  <link rel="icon" href="images/favicon-32.png?v=20260629n" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260629n" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260629m" />
+  <link rel="stylesheet" href="css/style.css?v=20260629n" />
 </head>
 <body>
 
@@ -58,6 +58,22 @@
     </div>
   </section>
 
+  <!-- ===== 운평교회 앱 (설치 / 최신화) ===== -->
+  <section id="app" class="block">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">APP</span>
+        <h2>운평교회 앱</h2>
+        <p>홈 화면에 앱으로 추가하면 더 빠르게 이용할 수 있습니다.<br class="askai-br" />혹시 화면이 옛날 버전으로 보이면 <strong>‘최신 버전으로 업데이트’</strong>를 눌러 주세요.</p>
+      </div>
+      <div class="app-actions">
+        <button type="button" class="btn btn-solid" id="appInstallBtn">📲 앱 설치하기</button>
+        <button type="button" class="btn btn-line" id="appUpdateBtn">🔄 최신 버전으로 업데이트</button>
+      </div>
+      <p class="app-hint" id="appHint">아이폰은 Safari에서 ‘공유 → 홈 화면에 추가’, 안드로이드는 브라우저 메뉴(⋮)에서 ‘앱 설치/홈 화면에 추가’로 설치됩니다.</p>
+    </div>
+  </section>
+
   <!-- ===== 이동 유도 ===== -->
   <section class="block block-alt">
     <div class="container">
@@ -69,11 +85,52 @@
     </div>
   </section>
 
-  <script src="js/config.js?v=20260629m"></script>
-  <script src="js/bulletins.js?v=20260629m"></script>
-  <script src="js/layout.js?v=20260629m"></script>
-  <script src="js/counsel.js?v=20260629m"></script>
-  <script src="js/main.js?v=20260629m"></script>
-  <script src="js/resources.js?v=20260629m"></script>
+  <script>
+  (function () {
+    var dp = null;
+    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); dp = e; });
+    var ua = navigator.userAgent;
+    var isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    var hint = document.getElementById("appHint");
+    var installBtn = document.getElementById("appInstallBtn");
+    var updateBtn = document.getElementById("appUpdateBtn");
+
+    if (standalone && installBtn) {
+      installBtn.style.display = "none";
+      hint.textContent = "이미 앱으로 사용 중입니다. 화면이 옛 버전이면 ‘최신 버전으로 업데이트’를 눌러 주세요.";
+    }
+
+    if (installBtn) installBtn.addEventListener("click", async function () {
+      if (dp) { dp.prompt(); try { await dp.userChoice; } catch (e) {} dp = null; }
+      else if (isIOS) { hint.textContent = "아이폰·아이패드: Safari 화면 아래 ‘공유’ 버튼 → ‘홈 화면에 추가’ 를 누르면 설치됩니다."; }
+      else { hint.textContent = "브라우저 메뉴(⋮)에서 ‘앱 설치’ 또는 ‘홈 화면에 추가’ 를 누르면 설치됩니다."; }
+    });
+
+    if (updateBtn) updateBtn.addEventListener("click", async function () {
+      updateBtn.disabled = true;
+      var orig = updateBtn.textContent;
+      updateBtn.textContent = "업데이트 중…";
+      try {
+        if ("serviceWorker" in navigator) {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(function (r) { return r.unregister().catch(function () {}); }));
+        }
+        if (window.caches) {
+          var keys = await caches.keys();
+          await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }
+      } catch (e) {}
+      location.replace("index.html?fresh=" + Date.now());
+    });
+  })();
+  </script>
+
+  <script src="js/config.js?v=20260629n"></script>
+  <script src="js/bulletins.js?v=20260629n"></script>
+  <script src="js/layout.js?v=20260629n"></script>
+  <script src="js/counsel.js?v=20260629n"></script>
+  <script src="js/main.js?v=20260629n"></script>
+  <script src="js/resources.js?v=20260629n"></script>
 </body>
 </html>

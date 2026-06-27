@@ -1445,3 +1445,7 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 }
 .askai-bubble .askai-ul { margin: 6px 0 6px 4px; padding-left: 18px; }
 .askai-bubble .askai-ul li { margin: 3px 0; list-style: disc; }
+
+/* 자료실 — 앱 설치/업데이트 */
+.app-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 8px; }
+.app-hint { margin-top: 16px; text-align: center; color: var(--muted); font-size: .9rem; line-height: 1.6; }
