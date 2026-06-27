@@ -1,9 +1,12 @@
 /****************************************************************
  * 운평장로교회 — 매일 아침 QT 푸시 자동 발송 (Google Apps Script)
  * --------------------------------------------------------------
- * 동작: 매일 새벽 6시에 구글 시트의 "오늘 날짜" QT를 읽어
- *       OneSignal로 푸시 알림(제목=QT 제목, 본문=성경 구절)을 보냅니다.
+ * 동작: 매일 아침 06:30(한국시간)에 구글 시트에서 "오늘 날짜" QT가
+ *       올라와 있으면 OneSignal로 푸시 알림을 보냅니다.
+ *         제목 : 새로운 QT가 올라왔습니다 🙏
+ *         본문 : 말씀과 기도로 하루를 시작하세요!
  *       알림을 탭하면 홈페이지의 오늘 QT 전문이 열립니다.
+ *       (그날 QT가 비어 있으면 보내지 않습니다.)
  *
  * ▼ 설정 방법 (한 번만)
  *   1) 이 QT 구글 시트에서  확장 프로그램 ▸ Apps Script  열기
@@ -11,7 +14,7 @@
  *   3) 아래 CONFIG 4줄을 본인 값으로 채우기
  *        - ONESIGNAL_APP_ID, ONESIGNAL_REST_KEY : OneSignal 대시보드에서 발급
  *   4) 함수 목록에서 createDailyTrigger 를 한 번 실행 (권한 승인)
- *        → 매일 06:00(한국시간) 자동 발송이 등록됩니다.
+ *        → 매일 06:30(한국시간) 자동 발송이 등록됩니다.
  *   5) (테스트) sendTodayQT 를 직접 실행하면 즉시 한 번 발송됩니다.
  ****************************************************************/
 
@@ -24,14 +27,14 @@ const CONFIG = {
   ONESIGNAL_REST_KEY: "여기에_OneSignal_REST_API_KEY",
 };
 
-/** 매일 06:00 트리거 등록 (한 번만 실행) */
+/** 매일 06:30 트리거 등록 (한 번만 실행) */
 function createDailyTrigger() {
   // 기존 동일 트리거 제거(중복 방지)
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === "sendTodayQT") ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger("sendTodayQT").timeBased().atHour(6).everyDays(1).create();
-  Logger.log("매일 06시 발송 트리거가 등록되었습니다.");
+  ScriptApp.newTrigger("sendTodayQT").timeBased().atHour(6).nearMinute(30).everyDays(1).create();
+  Logger.log("매일 06:30 발송 트리거가 등록되었습니다.");
 }
 
 /** 오늘 날짜 QT를 찾아 푸시 발송 */
@@ -53,9 +56,9 @@ function sendTodayQT() {
   }
   if (!content) { Logger.log("오늘(" + today + ") QT 내용이 비어 있어 발송하지 않습니다."); return; }
 
-  const info = digest(content);
-  const title = info.title || "오늘의 QT 말씀";
-  const body = info.ref ? info.ref : "탭하여 오늘의 묵상을 읽어 보세요.";
+  // 새 QT가 올라와 있으면 고정 메시지로 발송
+  const title = "새로운 QT가 올라왔습니다 🙏";
+  const body = "말씀과 기도로 하루를 시작하세요!";
 
   sendPush(title, body);
   Logger.log("발송 완료: " + title + " / " + body);
