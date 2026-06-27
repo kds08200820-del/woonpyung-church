@@ -1,6 +1,6 @@
-/* 운평장로교회 서비스 워커 — 네트워크 전용(항상 최신 파일)
-   기존 캐시를 모두 비우고, 더 이상 앱 파일을 캐시하지 않습니다.
-   (잦은 업데이트 중 옛 파일이 남는 문제를 방지) */
+/* 운평장로교회 서비스 워커 — 항상 최신 파일 강제
+   HTML/CSS/JS는 브라우저 HTTP 캐시까지 우회(no-store)해 항상 새로 받습니다.
+   (업데이트 후 옛 화면이 남는 캐시 문제 방지) */
 self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (e) => {
@@ -13,5 +13,19 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
-  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  let url;
+  try { url = new URL(e.request.url); } catch (_) { return; }
+
+  // 페이지·스크립트·스타일은 항상 네트워크에서 새로(브라우저 캐시 우회)
+  const freshNeeded =
+    e.request.mode === "navigate" ||
+    (url.origin === self.location.origin && /\.(?:html|js|css)(?:\?|$)/.test(url.pathname + url.search));
+
+  if (freshNeeded) {
+    e.respondWith(
+      fetch(e.request.url, { cache: "no-store" }).catch(() => caches.match(e.request))
+    );
+  } else {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  }
 });
