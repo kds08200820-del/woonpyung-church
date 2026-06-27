@@ -32,6 +32,7 @@
           </span>
         </a>
         <nav class="nav-menu" id="navMenu">${navLinks}</nav>
+        <button class="notify-btn" id="notifyBtn" type="button" title="알림 설정" aria-label="알림 설정">🔔</button>
         <div class="auth-slot" id="authSlot"></div>
         <button class="nav-toggle" id="navToggle" aria-label="메뉴 열기"><span></span><span></span><span></span></button>
       </div>
@@ -131,6 +132,34 @@
       header.classList.remove("menu-open");
     })
   );
+
+  // ===== 알림 설정 버튼(🔔) — 클릭 시 휴대폰/브라우저 알림 권한 요청 =====
+  const notifyBtn = document.getElementById("notifyBtn");
+  if (notifyBtn) {
+    function markNotifyState() {
+      try { notifyBtn.classList.toggle("on", "Notification" in window && Notification.permission === "granted"); } catch (e) {}
+    }
+    markNotifyState();
+    notifyBtn.addEventListener("click", function () {
+      if (!window.ONESIGNAL_APP_ID) { alert("알림 기능이 아직 준비 중입니다."); return; }
+      if (!("Notification" in window)) { alert("이 브라우저는 알림을 지원하지 않습니다."); return; }
+      if (Notification.permission === "granted") { alert("이미 알림을 받고 있습니다 🔔"); return; }
+      if (Notification.permission === "denied") {
+        alert("브라우저에서 알림이 차단되어 있습니다.\n주소창 왼쪽 자물쇠(🔒) → 사이트 설정 → 알림을 '허용'으로 바꿔 주세요.");
+        return;
+      }
+      // 기본(미결정) 상태 → 권한 팝업 띄우기
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function (OneSignal) {
+        try {
+          await OneSignal.Notifications.requestPermission();
+        } catch (e) {
+          try { await OneSignal.Slidedown.promptPush(); } catch (e2) {}
+        }
+        setTimeout(markNotifyState, 800);
+      });
+    });
+  }
 
   // ===== 서비스 워커(PWA) — 등록만(자동 새로고침 없음: 새로고침 루프 방지) =====
   if ("serviceWorker" in navigator) {
@@ -290,7 +319,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260628q";
+      auth.src = "js/auth.js?v=20260628r";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)
