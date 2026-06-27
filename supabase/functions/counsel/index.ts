@@ -1,0 +1,169 @@
+// ============================================================
+//  운평장로교회 — 상담 AI(말씀 도우미) Edge Function
+//  로그인한 교인만 호출 가능 · Claude API 안전 중계 · 위기 대응 가드레일
+//  배포: supabase functions deploy counsel --no-verify-jwt
+//  비밀키 설정: supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+// ============================================================
+
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+// 비용/품질 균형: 기본 Sonnet. 더 저렴하게는 claude-haiku-4-5-20251001 로 교체 가능.
+const MODEL = Deno.env.get("COUNSEL_MODEL") ?? "claude-sonnet-4-6";
+
+// 허용 출처(우리 사이트만)
+const ALLOW_ORIGINS = [
+  "https://k-logos.com",
+  "https://www.k-logos.com",
+  "http://localhost:8099",
+  "http://127.0.0.1:8099",
+];
+
+function corsHeaders(origin: string) {
+  const allow = ALLOW_ORIGINS.includes(origin) ? origin : ALLOW_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
+
+// ── 김동석 목사 페르소나 + 개혁주의 신학 + 목회적 가드레일 ──
+const SYSTEM_PROMPT = `당신은 대한민국 화성시 운평장로교회 담임 김동석 목사님의 신학과 목회 철학을 바탕으로 성도들을 돕는 AI 말씀 도우미 '운평 말씀지기'입니다.
+
+[정체성]
+- 당신은 김동석 목사님 '본인'이 아니라, 그분의 가르침을 학습한 AI 도우미입니다. 사용자가 목사님 본인으로 오해할 만하면 부드럽게 "저는 목사님의 가르침을 바탕으로 돕는 AI이며, 목사님 본인은 아닙니다"라고 밝히세요.
+- 운평장로교회는 1964년 설립된 장로교회이며, 지치고 상한 마음이 말씀 안에서 쉼과 회복을 얻는 공동체를 지향합니다.
+
+[신학 노선 — 한국 개혁주의(장로교, 총신·합신 전통)]
+- 성경은 하나님의 무오한 말씀이며 신앙과 삶의 유일한 최종 권위입니다.
+- 웨스트민스터 신앙고백서와 하이델베르크 교리문답의 가르침을 따릅니다.
+- 구원은 인간의 공로가 아니라 전적인 하나님의 은혜이며, 오직 믿음으로 의롭다 함을 받습니다(이신칭의).
+- 그리스도 중심으로 성경을 해석합니다(구약의 제사·율법도 그리스도를 가리킴 — 예: 레위기에서 만난 예수 그리스도).
+
+[말투와 태도]
+- 따뜻하고 겸손하며, 정죄하지 않습니다. 낮은 자리로 찾아오신 예수님처럼 온유하게 대합니다.
+- 먼저 그 마음을 충분히 공감하고 위로한 뒤, 말씀으로 소망을 전합니다.
+- 성경 구절을 인용할 때는 정확한 본문만 사용하고, 출처(책 장:절)를 밝힙니다. 기억이 불확실하면 지어내지 말고 "정확한 본문은 성경에서 확인해 보시길 권합니다"라고 안내합니다.
+- 답변은 너무 길지 않게, 따뜻한 편지처럼. 필요하면 짧은 기도문이나 권면으로 마무리할 수 있습니다.
+
+[반드시 지킬 안전 수칙]
+- 의료·법률·재정·정신과적 전문 진단이나 처방은 하지 않습니다. 전문가 상담이나 실제 목회 상담을 권합니다.
+- 자살·자해·학대·폭력·심각한 우울 등 위기 신호가 보이면, 절대 혼자 해결하려 하지 말고 즉시 공감과 함께 다음을 안내합니다: ①자살예방 상담전화 109(24시간) ②정신건강 상담 1577-0199 ③긴급 시 112/119 ④그리고 김동석 목사님께 직접 연락(010-4032-2903) 또는 교회로 연락하시도록 강하게 권합니다.
+- 다른 교단·교회·타 종교를 비방하지 않으며, 정치적으로 중립을 지킵니다.
+- 개인정보(주민번호·계좌·비밀번호 등)를 묻지 않습니다.
+- 중대하거나 민감한 문제(가정·이혼·중독·법적 분쟁 등)는 AI 답변으로 끝내지 말고 반드시 목사님과의 직접 상담을 권합니다.
+- 확실하지 않은 것은 솔직히 모른다고 말합니다.
+
+당신의 목적은 정답을 주는 것이 아니라, 지친 영혼이 말씀 안에서 위로받고 다시 한 걸음 내딛도록 돕는 것입니다.`;
+
+// 위기 신호 감지(하드 세이프티 넷) — 감지되면 LLM 호출 없이 안전 안내 우선 제공
+const CRISIS_RE = /(죽고\s*싶|자살|자살할|목숨\s*을?\s*끊|죽어\s*버리|뛰어내리|살기\s*싫|사라지고\s*싶|자해|손목을?\s*긋|약을?\s*먹고\s*죽|폭행|학대|성폭|때려요|맞고\s*있)/i;
+
+const CRISIS_REPLY =
+  "지금 많이 힘드시군요. 그 마음을 혼자 견디지 않으셨으면 합니다. 당신은 소중한 사람이고, 도움을 받을 자격이 있습니다.\n\n" +
+  "지금 바로 연결할 수 있는 곳입니다:\n" +
+  "• 자살예방 상담전화 ☎ 109 (24시간, 무료)\n" +
+  "• 정신건강 상담 ☎ 1577-0199\n" +
+  "• 긴급 상황이면 ☎ 112 / 119\n\n" +
+  "그리고 김동석 목사님께 꼭 직접 연락해 주세요. ☎ 010-4032-2903\n" +
+  "교회 공동체가 당신과 함께 있겠습니다. 혼자가 아닙니다. 🙏";
+
+Deno.serve(async (req) => {
+  const origin = req.headers.get("Origin") ?? "";
+  const cors = corsHeaders(origin);
+
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "POST만 허용됩니다." }), {
+      status: 405, headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
+
+  try {
+    // 1) 로그인한 교인 검증 (Supabase JWT)
+    const auth = req.headers.get("Authorization") ?? "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    if (!token) {
+      return new Response(JSON.stringify({ error: "로그인이 필요합니다.", code: "login_required" }), {
+        status: 401, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { Authorization: `Bearer ${token}`, apikey: SUPABASE_ANON_KEY },
+    });
+    if (!userRes.ok) {
+      return new Response(JSON.stringify({ error: "로그인이 만료되었습니다. 다시 로그인해 주세요.", code: "login_required" }), {
+        status: 401, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    // 2) 입력 파싱 + 길이/개수 제한 (남용 방지)
+    const body = await req.json().catch(() => ({}));
+    let messages = Array.isArray(body.messages) ? body.messages : [];
+    messages = messages
+      .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .slice(-12)
+      .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 2000) }));
+    if (!messages.length || messages[messages.length - 1].role !== "user") {
+      return new Response(JSON.stringify({ error: "질문 내용이 비어 있습니다." }), {
+        status: 400, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    // 3) 위기 신호 → 즉시 안전 안내(LLM 미호출)
+    const lastUser = messages[messages.length - 1].content;
+    if (CRISIS_RE.test(lastUser)) {
+      return new Response(JSON.stringify({ reply: CRISIS_REPLY, crisis: true }), {
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(JSON.stringify({ error: "AI 키가 설정되지 않았습니다. 관리자에게 문의해 주세요." }), {
+        status: 500, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    // 4) Claude 호출
+    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages,
+      }),
+    });
+
+    if (!aiRes.ok) {
+      const detail = await aiRes.text();
+      console.error("Anthropic error:", aiRes.status, detail);
+      return new Response(JSON.stringify({ error: "답변 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요." }), {
+        status: 502, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    const data = await aiRes.json();
+    const reply = (data?.content ?? [])
+      .filter((b: any) => b.type === "text")
+      .map((b: any) => b.text)
+      .join("\n")
+      .trim() || "죄송합니다. 답변을 만들지 못했어요. 다시 한 번 말씀해 주시겠어요?";
+
+    return new Response(JSON.stringify({ reply }), {
+      headers: { ...cors, "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    console.error(e);
+    return new Response(JSON.stringify({ error: "일시적인 오류가 발생했습니다." }), {
+      status: 500, headers: { ...cors, "Content-Type": "application/json" },
+    });
+  }
+});
