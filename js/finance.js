@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260630n
+ * 콘솔: [finance.js] v20260630p
  */
-console.log('[finance.js] v20260630n');
+console.log('[finance.js] v20260630p');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -115,7 +115,7 @@ console.log('[finance.js] v20260630n');
       hidden.value = ''; var q = input.value.trim().toLowerCase(); close(); if (!q) return;
       matches = M.members.filter(function (m) { return (m.name || '').toLowerCase().indexOf(q) >= 0; }).slice(0, 8); if (!matches.length) return;
       pop = document.createElement('div'); pop.className = 'fin-sugg';
-      matches.forEach(function (m) { var d = document.createElement('div'); d.innerHTML = esc(m.name) + ' <span style="color:#9aa5b1;font-size:.78rem">' + esc(m.birth || '') + ' · ' + esc(m.group || '') + '</span>'; d.onclick = function () { pick(m); }; pop.appendChild(d); });
+      matches.forEach(function (m) { var bd = (String(m.key || '').split('|')[1]) || ''; var bs = bd.length === 8 ? bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8) : String(m.birth || '').slice(0, 10); var d = document.createElement('div'); d.innerHTML = esc(m.name) + ' <span style="color:#9aa5b1;font-size:.78rem">' + esc(bs) + ' · ' + esc(m.group || '') + '</span>'; d.onclick = function () { pick(m); }; pop.appendChild(d); });
       input.parentElement.appendChild(pop);
     });
     input.addEventListener('keydown', function (e) { if (!pop) return; var rows = pop.querySelectorAll('div'); if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); } else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); } else if (e.key === 'Enter' && hi >= 0) { e.preventDefault(); pick(matches[hi]); return; } else return; Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); }); });
