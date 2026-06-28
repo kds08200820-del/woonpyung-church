@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>회원 관리 | 운평장로교회</title>
   <meta name="robots" content="noindex" />
-  <link rel="manifest" href="manifest.json?v=20260630s" />
+  <link rel="manifest" href="manifest.json?v=20260630t" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260630s" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260630s" />
+  <link rel="icon" href="images/favicon-32.png?v=20260630t" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260630t" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260630s" />
+  <link rel="stylesheet" href="css/style.css?v=20260630t" />
 </head>
 <body>
 
@@ -55,6 +55,12 @@
           <div class="form-field full"><label>주소</label><input type="text" name="address" maxlength="160" placeholder="클릭하여 도로명 주소 검색" readonly style="cursor:pointer;background:#fff;" /></div>
           <div class="form-field full"><label>상세주소</label><input type="text" name="address_detail" maxlength="80" placeholder="동·호수 등 상세주소를 입력하세요" /></div>
           <div class="form-field full"><label>한 줄 소개 (선택)</label><input type="text" name="bio" maxlength="120" placeholder="예: 청년부, 새가족반 수강 중" /></div>
+          <div class="form-field full" id="familyField">
+            <label>가족 <span style="font-weight:400;color:var(--ink-soft);font-size:.85rem;">— 관계를 선택하고 이름을 적은 뒤 ＋로 추가</span></label>
+            <div id="familyRows"></div>
+            <button type="button" class="btn btn-line" id="familyAdd" style="margin-top:6px;padding:6px 14px;font-size:.85rem;">＋ 가족 추가</button>
+            <p style="color:var(--ink-soft);font-size:.82rem;margin-top:8px;">※ 부부 헌금은 교적의 배우자 정보로 자동 합산됩니다. 이 칸은 가족 현황 기록용입니다.</p>
+          </div>
         </div>
         <div class="form-actions" style="margin-top:18px;display:flex;gap:10px;align-items:center;">
           <button type="submit" class="btn btn-solid">저장</button>
@@ -67,13 +73,6 @@
         <h3 class="sub-title" style="text-align:left;margin-bottom:6px;">교적 인증 · 내 헌금 조회</h3>
         <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:14px;">이름과 생년월일을 교적과 대조해 본인 인증을 하면, <b>본인 헌금 내역만</b> 조회할 수 있습니다.</p>
         <div id="offeringBody"><p class="qt-loading">확인 중입니다…</p></div>
-      </div>
-
-      <!-- 내 가족 (로그인 시에만 표시) -->
-      <div class="form-card" id="familyBox" hidden style="max-width:640px;margin-bottom:34px;">
-        <h3 class="sub-title" style="text-align:left;margin-bottom:6px;">내 가족</h3>
-        <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:14px;">함께 신앙생활 하는 가족을 자유롭게 적어 주세요. (예: <i>배우자 신은주 / 자녀 김가엘·김주영</i>)<br>※ 부부 헌금은 교적의 배우자 정보로 자동 합산되며, 이 칸은 가족 현황 기록용입니다.</p>
-        <div id="familyBody"><p class="qt-loading">확인 중입니다…</p></div>
       </div>
 
       <!-- 연말정산 신청 (로그인 시에만 표시) -->
@@ -111,13 +110,13 @@
     </div>
   </section>
 
-  <script src="js/config.js?v=20260630s"></script>
-  <script src="js/bulletins.js?v=20260630s"></script>
-  <script src="js/layout.js?v=20260630s"></script>
-  <script src="js/counsel.js?v=20260630s"></script>
-  <script src="js/main.js?v=20260630s"></script>
-  <script src="js/admin.js?v=20260630s"></script>
-  <script src="js/finance-api.js?v=20260630s"></script>
-  <script src="js/finance-member.js?v=20260630s"></script>
+  <script src="js/config.js?v=20260630t"></script>
+  <script src="js/bulletins.js?v=20260630t"></script>
+  <script src="js/layout.js?v=20260630t"></script>
+  <script src="js/counsel.js?v=20260630t"></script>
+  <script src="js/main.js?v=20260630t"></script>
+  <script src="js/admin.js?v=20260630t"></script>
+  <script src="js/finance-api.js?v=20260630t"></script>
+  <script src="js/finance-member.js?v=20260630t"></script>
 </body>
 </html>

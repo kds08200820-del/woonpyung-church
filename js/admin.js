@@ -165,6 +165,38 @@
       if (pForm.elements.address && mineRow && mineRow.address) pForm.elements.address.value = mineRow.address;
       if (mineRow && mineRow.bio) pForm.elements.bio.value = mineRow.bio;
       wireAddressSearch(pForm.elements.address, pForm.elements.address_detail);
+
+      // ── 가족(관계 선택 + 이름, ＋로 행 추가) ──
+      const REL_OPTS = ["배우자", "부", "모", "장남", "차남", "삼남", "아들", "장녀", "차녀", "삼녀", "딸", "형", "오빠", "누나", "언니", "남동생", "여동생", "동생", "조부", "조모", "손자", "손녀", "사위", "며느리", "기타"];
+      const famRows = document.getElementById("familyRows");
+      const famAdd = document.getElementById("familyAdd");
+      function addFamRow(rel, nm) {
+        const row = document.createElement("div");
+        row.className = "fam-row";
+        row.style.cssText = "display:flex;gap:8px;margin-bottom:8px;align-items:center;";
+        const sel = document.createElement("select");
+        sel.className = "fam-rel";
+        sel.style.cssText = "flex:0 0 130px;padding:9px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;background:#fff;";
+        sel.innerHTML = '<option value="">관계 선택</option>' + REL_OPTS.map((o) => "<option" + (o === rel ? " selected" : "") + ">" + o + "</option>").join("");
+        const inp = document.createElement("input");
+        inp.type = "text"; inp.className = "fam-name"; inp.maxLength = 40; inp.placeholder = "이름";
+        inp.value = nm || ""; inp.style.cssText = "flex:1;min-width:0;padding:9px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;";
+        const del = document.createElement("button");
+        del.type = "button"; del.className = "btn btn-line"; del.textContent = "✕";
+        del.style.cssText = "flex:0 0 auto;padding:8px 12px;";
+        del.onclick = () => row.remove();
+        row.appendChild(sel); row.appendChild(inp); row.appendChild(del);
+        famRows.appendChild(row);
+        return row;
+      }
+      if (famRows && famAdd) {
+        let fam0 = [];
+        try { fam0 = mineRow && mineRow.family ? JSON.parse(mineRow.family) : []; } catch (e) { fam0 = []; }
+        if (!Array.isArray(fam0)) fam0 = [];
+        fam0.forEach((f) => addFamRow(f.rel, f.name));
+        famAdd.onclick = () => { const r = addFamRow("", ""); const nm = r.querySelector(".fam-name"); if (nm) nm.focus(); };
+      }
+
       pForm.hidden = false;
       pForm.onsubmit = async (e) => {
         e.preventDefault();
@@ -182,6 +214,15 @@
         if (birth) payload.birth = birth;
         if (address) payload.address = address;
         if (bio) payload.bio = bio;
+        if (famRows) {
+          const fam = [];
+          famRows.querySelectorAll(".fam-row").forEach((r) => {
+            const rel = r.querySelector(".fam-rel").value;
+            const nm = r.querySelector(".fam-name").value.trim();
+            if (rel || nm) fam.push({ rel: rel, name: nm });
+          });
+          payload.family = fam.length ? JSON.stringify(fam) : null;
+        }
         try {
           await api("POST", "profiles?on_conflict=id", payload, { Prefer: "resolution=merge-duplicates,return=minimal" });
           pMsg.textContent = "저장되었습니다 ✓";
