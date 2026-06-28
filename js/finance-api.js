@@ -1,49 +1,170 @@
-/* finance-api.js — 재정 API(Apps Script) 공통 클라이언트
- * 기존 사이트 패턴 그대로: supabase-js 멈춤(getSession 잠금) 회피 위해
- * localStorage의 세션 토큰을 직접 읽어 Apps Script 웹앱을 호출.
- * 콘솔 확인용: [finance-api.js] v20260701j
+/* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
+ * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
+ * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
+ * 콘솔: [finance-api.js] v20260701k (Supabase)
  */
-console.log('[finance-api.js] v20260701j');
+console.log('[finance-api.js] v20260701k (Supabase)');
 
 window.WPF = (function () {
-  function ref() {
-    try { return (window.SUPABASE_URL || '').match(/https:\/\/([^.]+)\./)[1]; }
-    catch (e) { return ''; }
-  }
-  // 로그인 세션(access_token) 직접 읽기
+  var SB = function () { return window.SUPABASE_URL || ''; };
+  var AK = function () { return window.SUPABASE_ANON_KEY || ''; };
+  function ref() { try { return SB().match(/https:\/\/([^.]+)\./)[1]; } catch (e) { return ''; } }
   function token() {
     try {
-      const raw = localStorage.getItem('sb-' + ref() + '-auth-token');
+      var raw = localStorage.getItem('sb-' + ref() + '-auth-token');
       if (!raw) return null;
-      const s = JSON.parse(raw);
+      var s = JSON.parse(raw);
       return (s && (s.access_token || (s.currentSession && s.currentSession.access_token))) || null;
     } catch (e) { return null; }
   }
   function loggedIn() { return !!token(); }
+  function num(x) { return Number(String(x == null ? '' : x).replace(/[^\d.-]/g, '')) || 0; }
 
-  // Apps Script 호출. action + 파라미터 → JSON 결과.
-  // Content-Type을 text/plain 으로 보내 CORS 프리플라이트를 피함.
-  async function call(action, params) {
-    const url = window.FINANCE_API_URL;
-    if (!url) throw new Error('재정 API가 설정되지 않았습니다.');
-    const body = Object.assign({ action: action, token: token() }, params || {});
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 12000);
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(body),
-        redirect: 'follow',
-        signal: ctrl.signal,
+  // ── Supabase REST / RPC ──
+  function headers(prefer) {
+    var h = { apikey: AK(), 'Content-Type': 'application/json' };
+    var t = token(); if (t) h.Authorization = 'Bearer ' + t;
+    if (prefer) h.Prefer = prefer;
+    return h;
+  }
+  function rest(method, path, body, prefer) {
+    var opt = { method: method, headers: headers(prefer) };
+    if (body != null) opt.body = JSON.stringify(body);
+    return fetch(SB() + '/rest/v1/' + path, opt).then(function (r) {
+      if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); });
+      return (r.status === 204) ? null : r.text().then(function (t) { return t ? JSON.parse(t) : null; });
+    });
+  }
+  function rpc(fn, params) {
+    return fetch(SB() + '/rest/v1/rpc/' + fn, { method: 'POST', headers: headers(), body: JSON.stringify(params || {}) })
+      .then(function (r) {
+        if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); });
+        return r.text().then(function (t) { return t ? JSON.parse(t) : null; });
       });
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); }
-      catch (e) { throw new Error('서버 응답을 해석할 수 없습니다.'); }
-      if (data && data.ok === false) throw new Error(data.error || '요청이 거부되었습니다.');
-      return data;
-    } finally { clearTimeout(timer); }
+  }
+
+  // ── 매핑 헬퍼 (Supabase 컬럼 ↔ 기존 한글 키) ──
+  function gjOut(r) {
+    return {
+      '교적ID': r.gyojeok_id, '이름': r.name, '생년월일': r.birth, '매칭키': r.member_key,
+      '세대주': r.head, '관계': r.relation, '배우자': r.spouse, '배우자매칭키': r.spouse_key,
+      '그룹': r.groups, '직책': r.role, '신급': r.grade, '성별': r.sex, '휴대폰': r.phone,
+      '주소': r.address, '회원상태': r.status, '사진': r.photo, '세례일': r.baptism_date,
+      '임직일': r.ordination_date, '소속그룹': r.belong_groups
+    };
+  }
+  var GJ_MAP = { '이름': 'name', '생년월일': 'birth', '매칭키': 'member_key', '세대주': 'head', '관계': 'relation', '배우자': 'spouse', '배우자매칭키': 'spouse_key', '그룹': 'groups', '직책': 'role', '신급': 'grade', '성별': 'sex', '휴대폰': 'phone', '주소': 'address', '회원상태': 'status', '사진': 'photo', '세례일': 'baptism_date', '임직일': 'ordination_date', '소속그룹': 'belong_groups' };
+  var GJ_DATECOLS = { birth: 1, baptism_date: 1, ordination_date: 1 };
+  function memOut(r) { return { name: r.name, key: r.member_key, birth: r.birth, group: r.groups, role: r.role, spouse: r.spouse, spouseKey: r.spouse_key, head: r.head, rel: r.relation }; }
+  function accOut(r) { return { '구분': r.atype, '분류': (r.atype === '수입' ? '헌금' : (r.category || '')), '계정명': r.name, '계정코드': r.code, '상위': r.category }; }
+  function offOut(r) { return { '전표ID': 'O' + r.id, '일자': r.offer_date, '구분': '수입', '종류': '헌금', '계정': r.category || '', '예배': r.service || '', '헌금자': r.giver || '', '매칭키': r.member_key || '', '금액': r.amount, '수단': r.method || '', '적요': r.memo || '' }; }
+  function expOut(r) { return { '전표ID': 'E' + r.id, '일자': r.exp_date, '구분': '지출', '종류': '일반', '계정': r.account || '', '예배': '', '헌금자': r.payee || '', '매칭키': '', '금액': r.amount, '수단': r.method || '', '적요': r.memo || '' }; }
+  function budOut(r) { return { '계정코드': r.code, '계정이름': r.name, '구분': r.atype, '예산': r.budget, '전년예산': r.prev_budget, '전년결산': r.prev_actual }; }
+  function toOffering(v) { return { offer_date: v.date || null, category: v.account || null, service: v.service || null, giver: v.payer || null, member_key: v.memberKey || null, amount: num(v.amount), method: v.method || null, memo: v.memo || null }; }
+  function toExpense(v) { return { exp_date: v.date || null, account: v.account || null, category: null, payee: v.payer || null, amount: num(v.amount), method: v.method || null, memo: v.memo || null }; }
+
+  // ── 액션 라우팅 (Apps Script 호환) ──
+  function call(action, params) {
+    params = params || {};
+    switch (action) {
+      case 'me':
+        return rpc('my_profile').then(function (m) { m = m || {}; m.ok = true; return m; });
+      case 'match':
+        return rpc('match_member', { p_name: params.name, p_birth: params.birth });
+      case 'myOfferings':
+        return rpc('my_profile').then(function (me) {
+          me = me || {};
+          var keys = [me.memberKey, me.spouseKey].filter(Boolean);
+          if (!keys.length) return { ok: true, offerings: [], total: 0, spouse: me.spouse || '' };
+          var inlist = keys.map(function (k) { return '"' + encodeURIComponent(k) + '"'; }).join(',');
+          return rest('GET', 'offerings?select=offer_date,category,service,giver,member_key,amount&member_key=in.(' + inlist + ')&order=offer_date.desc&limit=5000').then(function (rows) {
+            var list = (rows || []).map(function (o) { return { date: o.offer_date, account: o.category || '', service: o.service || '', amount: o.amount, giver: o.giver || '', who: (me.spouseKey && o.member_key === me.spouseKey) ? 'spouse' : 'self' }; });
+            return { ok: true, offerings: list, total: list.reduce(function (s, o) { return s + (Number(o.amount) || 0); }, 0), spouse: me.spouse || '' };
+          });
+        });
+      case 'masters':
+        return Promise.all([
+          rest('GET', 'gyojeok?select=*&order=name&limit=20000'),
+          rest('GET', 'accounts?select=*&order=code&limit=5000'),
+          rest('GET', 'services?select=*&order=sort&limit=500')
+        ]).then(function (res) {
+          return {
+            ok: true,
+            members: (res[0] || []).map(memOut),
+            accounts: (res[1] || []).map(accOut),
+            services: (res[2] || []).filter(function (s) { return s.active !== false; }).map(function (s) { return { '예배명': s.name }; })
+          };
+        });
+      case 'listGyojeok':
+        return rest('GET', 'gyojeok?select=*&order=name&limit=20000').then(function (rows) { return { ok: true, members: (rows || []).map(gjOut) }; });
+      case 'addGyojeok': {
+        var nm = String(params.name || '').trim();
+        var bd = String(params.birth || '').replace(/[^0-9]/g, '');
+        var ins = { name: nm, member_key: nm + '|' + bd, status: '정회원후보' };
+        if (bd.length === 8) ins.birth = bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8);
+        return rest('POST', 'gyojeok', ins, 'return=minimal').then(function () { return { ok: true, key: nm + '|' + bd, name: nm }; });
+      }
+      case 'updateGyojeok': {
+        var f = params.fields || {}, patch = {};
+        Object.keys(f).forEach(function (k) {
+          var col = GJ_MAP[k]; if (!col) return;
+          var val = f[k];
+          if (GJ_DATECOLS[col] && (val === '' || val == null)) val = null;
+          patch[col] = val;
+        });
+        if (f['이름'] && f['생년월일']) patch.member_key = f['이름'] + '|' + String(f['생년월일']).replace(/[^0-9]/g, '').slice(0, 8);
+        return rest('PATCH', 'gyojeok?gyojeok_id=eq.' + encodeURIComponent(params.id), patch, 'return=minimal').then(function () { return { ok: true }; });
+      }
+      case 'listVouchers':
+        return Promise.all([
+          rest('GET', 'offerings?select=*&order=offer_date.desc&limit=50000'),
+          rest('GET', 'expenses?select=*&order=exp_date.desc&limit=50000')
+        ]).then(function (res) { return { ok: true, vouchers: (res[0] || []).map(offOut).concat((res[1] || []).map(expOut)) }; });
+      case 'addVoucher': {
+        var v = params.voucher || {};
+        if (v.type === '지출') return rest('POST', 'expenses', toExpense(v), 'return=minimal').then(function () { return { ok: true }; });
+        return rest('POST', 'offerings', toOffering(v), 'return=minimal').then(function () { return { ok: true }; });
+      }
+      case 'addVouchersBulk': {
+        var vs = params.vouchers || [];
+        var offs = vs.filter(function (v) { return v.type !== '지출'; }).map(toOffering);
+        var exps = vs.filter(function (v) { return v.type === '지출'; }).map(toExpense);
+        var tasks = [];
+        if (offs.length) tasks.push(rest('POST', 'offerings', offs, 'return=minimal'));
+        if (exps.length) tasks.push(rest('POST', 'expenses', exps, 'return=minimal'));
+        return Promise.all(tasks).then(function () { return { ok: true, count: vs.length }; });
+      }
+      case 'updateVoucher': {
+        var id = String(params.id || ''), vv = params.voucher || {};
+        if (id.charAt(0) === 'E') return rest('PATCH', 'expenses?id=eq.' + id.slice(1), toExpense(vv), 'return=minimal').then(function () { return { ok: true }; });
+        return rest('PATCH', 'offerings?id=eq.' + id.slice(1), toOffering(vv), 'return=minimal').then(function () { return { ok: true }; });
+      }
+      case 'deleteVoucher': {
+        var did = String(params.id || '');
+        var tbl = did.charAt(0) === 'E' ? 'expenses' : 'offerings';
+        return rest('DELETE', tbl + '?id=eq.' + did.slice(1), null, 'return=minimal').then(function () { return { ok: true }; });
+      }
+      case 'clearVouchers': {
+        var tbl2 = params.type === '지출' ? 'expenses' : 'offerings';
+        return fetch(SB() + '/rest/v1/' + tbl2 + '?id=gt.0', { method: 'DELETE', headers: headers('return=representation') })
+          .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t); }); return r.text().then(function (t) { return t ? JSON.parse(t) : []; }); })
+          .then(function (rows) { return { ok: true, deleted: (rows || []).length }; });
+      }
+      case 'budget':
+        return rest('GET', 'budget?select=*&order=code&limit=5000').then(function (rows) { return { ok: true, budget: (rows || []).map(budOut) }; });
+      case 'updateBudget':
+        return rest('PATCH', 'budget?code=eq.' + encodeURIComponent(params.code), { budget: num(params.amount) }, 'return=minimal').then(function () { return { ok: true }; });
+      case 'listAccess':
+        return rpc('list_access').then(function (arr) { return { ok: true, users: arr || [] }; });
+      case 'setAccess':
+        return rpc('set_access', {
+          p_uid: params.targetUid,
+          p_is_admin: (typeof params.isAdmin === 'boolean') ? params.isAdmin : null,
+          p_can_finance: (typeof params.canFinance === 'boolean') ? params.canFinance : null
+        });
+      default:
+        return Promise.reject(new Error('unknown action: ' + action));
+    }
   }
 
   return { token: token, loggedIn: loggedIn, call: call };
