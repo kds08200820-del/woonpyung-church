@@ -320,13 +320,24 @@ function actionUpdateGyojeok_(req) {
       Object.keys(fields).forEach(function (k) { var c = head.indexOf(k); if (c >= 0) sh.getRange(i + 1, c + 1).setValue(fields[k] == null ? '' : fields[k]); });
       // 이름/생년월일 바뀌면 매칭키 재계산
       var keyCol = head.indexOf('매칭키'), nameCol = head.indexOf('이름'), birthCol = head.indexOf('생년월일');
+      var finalKey = keyCol >= 0 ? data[i][keyCol] : '';
       if (keyCol >= 0 && (('이름' in fields) || ('생년월일' in fields))) {
         var nm = ('이름' in fields) ? fields['이름'] : data[i][nameCol];
         var bdRaw = ('생년월일' in fields) ? fields['생년월일'] : ymd_(data[i][birthCol]);
         var bstr = String(bdRaw || '').replace(/[^0-9]/g, '').slice(0, 8);
-        sh.getRange(i + 1, keyCol + 1).setValue(String(nm).trim() + '|' + bstr);
+        finalKey = String(nm).trim() + '|' + bstr;
+        sh.getRange(i + 1, keyCol + 1).setValue(finalKey);
       }
-      return { ok: true };
+      // 회원상태=정회원이면 연결된 홈페이지 계정도 정회원으로 자동 승격
+      var promoted = false;
+      if (String(fields['회원상태'] || '') === '정회원' && finalKey) {
+        try {
+          sbAdmin_('patch', '/rest/v1/member_links?member_key=eq.' + encodeURIComponent(finalKey),
+            { member_status: '정회원', updated_at: new Date().toISOString() }, { 'Prefer': 'return=minimal' });
+          promoted = true;
+        } catch (e) { /* 연결 계정 없으면 무시 */ }
+      }
+      return { ok: true, promoted: promoted };
     }
   }
   return { ok: false, error: '교적을 찾을 수 없습니다: ' + id };

@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701e
+ * 콘솔: [gyojeok.js] v20260701f
  */
-console.log('[gyojeok.js] v20260701e');
+console.log('[gyojeok.js] v20260701f');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -94,12 +94,15 @@ console.log('[gyojeok.js] v20260701e');
   // 수정 가능한 항목(라벨 → 교적 열 이름)
   var EDIT_FIELDS = [
     ['이름', '이름', 'text'], ['생년월일', '생년월일', 'birth'], ['성별', '성별', 'sex'],
-    ['휴대폰', '휴대폰', 'tel'], ['신급', '신급', 'text'], ['직책', '직책', 'text'],
+    ['휴대폰', '휴대폰', 'tel'], ['신급', '신급', 'grade'], ['직책', '직책', 'text'],
     ['세례일', '세례일', 'date'], ['임직일', '임직일', 'date'],
     ['세대주', '세대주', 'text'], ['세대주와 관계', '관계', 'text'], ['배우자', '배우자', 'text'],
-    ['구역/부서', '그룹', 'text'], ['회원상태', '회원상태', 'text'], ['주소', '주소', 'text']
+    ['구역/부서', '그룹', 'text'], ['회원상태', '회원상태', 'status'], ['주소', '주소', 'text']
   ];
+  var GRADE_OPTS = ['원입', '학습', '세례', '입교', '유아세례', '안수'];
+  var STATUS_OPTS = ['준회원', '정회원후보', '정회원'];
   var GROUP_PRESET = ['여전도회', '권사회', '남전도회', '구제선교위원회', '성가대', '찬양대'];
+  function selOpts(opts, v) { var has = opts.indexOf(v) >= 0; return '<option value=""></option>' + (v && !has ? '<option selected>' + esc(v) + '</option>' : '') + opts.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); }
   function groupsOf(m) { return String(m['소속그룹'] || '').split(/[,·]/).map(function (s) { return s.trim(); }).filter(Boolean); }
   function photoUrl(m) { return m['사진'] || ''; }
   function avatar(m, size) {
@@ -145,13 +148,15 @@ console.log('[gyojeok.js] v20260701e');
         var v = (col === '생년월일') ? birthOf(cur) : (cur[col] == null ? '' : cur[col]);
         var ctrl;
         if (type === 'sex') ctrl = '<select data-col="' + col + '"><option value=""></option><option' + (v === '남' ? ' selected' : '') + '>남</option><option' + (v === '여' ? ' selected' : '') + '>여</option></select>';
-        else ctrl = '<input type="text" data-col="' + col + '" value="' + esc(v) + '"' + (type === 'tel' ? ' inputmode="numeric"' : '') + (type === 'birth' ? ' placeholder="예: 1981-08-19"' : '') + '>';
+        else if (type === 'grade') ctrl = '<select data-col="' + col + '">' + selOpts(GRADE_OPTS, v) + '</select>';
+        else if (type === 'status') ctrl = '<select data-col="' + col + '">' + selOpts(STATUS_OPTS, v) + '</select>';
+        else ctrl = '<input type="text" data-col="' + col + '" value="' + esc(v) + '"' + (type === 'tel' ? ' inputmode="numeric"' : '') + (type === 'birth' ? ' placeholder="예: 1981-08-19"' : '') + (type === 'date' ? ' placeholder="예: 2010-03-21"' : '') + '>';
         return '<div class="af-field"><label>' + esc(label) + '</label>' + ctrl + '</div>';
       }
       box.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="margin:0;color:var(--accent,#032257)">교적 수정 — ' + esc(cur['이름']) + '</h3><button class="btn btn-line" id="gd_cancel" style="padding:4px 12px">취소</button></div>' +
         '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px">' +
-        '<div style="text-align:center"><div id="gd_photo">' + avatar(cur, 96) + '</div><div style="margin-top:8px"><input type="file" id="gd_file" accept="image/*" style="display:none"><button type="button" class="btn btn-line" id="gd_upbtn" style="padding:4px 10px;font-size:.8rem">📷 사진 선택</button></div><input type="hidden" data-col="사진" id="gd_photourl" value="' + esc(photoUrl(cur)) + '"><div id="gd_upmsg" style="font-size:.76rem;color:#7b8794;margin-top:4px"></div></div>' +
+        '<div style="text-align:center"><div id="gd_drop" style="border:2px dashed #cdd7e3;border-radius:14px;padding:10px;cursor:pointer;transition:.15s"><div id="gd_photo">' + avatar(cur, 96) + '</div><div style="font-size:.7rem;color:#9aa5b1;margin-top:6px;line-height:1.4">사진을 여기로<br>드래그하세요</div></div><div style="margin-top:8px"><input type="file" id="gd_file" accept="image/*" style="display:none"><button type="button" class="btn btn-line" id="gd_upbtn" style="padding:4px 10px;font-size:.8rem">📷 사진 선택</button></div><input type="hidden" data-col="사진" id="gd_photourl" value="' + esc(photoUrl(cur)) + '"><div id="gd_upmsg" style="font-size:.76rem;color:#7b8794;margin-top:4px"></div></div>' +
         '<div class="fin-grid" style="flex:1;min-width:260px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">' +
         EDIT_FIELDS.map(function (f) { return inp(f[0], f[1], f[2]); }).join('') +
         '</div></div>' +
@@ -161,15 +166,21 @@ console.log('[gyojeok.js] v20260701e');
         '<div style="display:flex;gap:10px;align-items:center;margin-top:6px"><button class="btn btn-solid" id="gd_save">저장</button><span class="fin-msg" id="gd_msg"></span></div>' +
         '<p class="help" style="margin-top:8px">※ 이름·생년월일을 바꾸면 매칭키가 갱신됩니다(이전에 입력된 헌금 연결은 그대로 유지).</p>';
       box.querySelector('#gd_cancel').onclick = function () { viewMode(cur); };
-      // 사진 업로드
-      var fileInp = box.querySelector('#gd_file'), upmsg = box.querySelector('#gd_upmsg'), purl = box.querySelector('#gd_photourl');
-      box.querySelector('#gd_upbtn').onclick = function () { fileInp.click(); };
-      fileInp.onchange = function () {
-        var f = fileInp.files && fileInp.files[0]; if (!f) return;
-        if (!window.ChurchUpload || !ChurchUpload.isReady()) { upmsg.style.color = '#c0392b'; upmsg.textContent = '업로드 서버 미설정 — URL 직접 입력은 추후 지원'; return; }
+      // 사진 업로드(버튼 + 드래그&드롭)
+      var fileInp = box.querySelector('#gd_file'), upmsg = box.querySelector('#gd_upmsg'), purl = box.querySelector('#gd_photourl'), drop = box.querySelector('#gd_drop');
+      function doUpload(f) {
+        if (!f) return;
+        if (!/^image\//.test(f.type)) { upmsg.style.color = '#c0392b'; upmsg.textContent = '이미지 파일만 가능합니다.'; return; }
+        if (!window.ChurchUpload || !ChurchUpload.isReady()) { upmsg.style.color = '#c0392b'; upmsg.textContent = '업로드 서버가 설정되지 않았습니다.'; return; }
         upmsg.style.color = '#7b8794'; upmsg.textContent = '업로드 중…';
         ChurchUpload.upload(f, { folder: 'gyojeok' }).then(function (r) { purl.value = r.url; box.querySelector('#gd_photo').innerHTML = '<img src="' + esc(r.url) + '" style="width:96px;height:96px;border-radius:12px;object-fit:cover;border:1px solid #e3e7ee">'; upmsg.style.color = 'green'; upmsg.textContent = '✓ 사진 업로드됨'; }).catch(function (e) { upmsg.style.color = '#c0392b'; upmsg.textContent = '업로드 실패: ' + e.message; });
-      };
+      }
+      box.querySelector('#gd_upbtn').onclick = function () { fileInp.click(); };
+      drop.onclick = function () { fileInp.click(); };
+      fileInp.onchange = function () { doUpload(fileInp.files && fileInp.files[0]); };
+      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.borderColor = '#1e874b'; drop.style.background = '#f0faf3'; }); });
+      ['dragleave', 'dragend'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = '#cdd7e3'; drop.style.background = ''; }); });
+      drop.addEventListener('drop', function (e) { e.preventDefault(); e.stopPropagation(); drop.style.borderColor = '#cdd7e3'; drop.style.background = ''; var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; doUpload(f); });
       box.querySelector('#gd_save').onclick = function () {
         var fields = {};
         Array.prototype.forEach.call(box.querySelectorAll('[data-col]'), function (el) { fields[el.dataset.col] = el.value.trim(); });
@@ -181,11 +192,11 @@ console.log('[gyojeok.js] v20260701e');
         var msg = box.querySelector('#gd_msg');
         if (!fields['이름']) { msg.style.color = '#c0392b'; msg.textContent = '이름은 필수입니다.'; return; }
         msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-        WPF.call('updateGyojeok', { id: cur['교적ID'], fields: fields }).then(function () {
+        WPF.call('updateGyojeok', { id: cur['교적ID'], fields: fields }).then(function (r) {
           // 로컬 갱신
           Object.keys(fields).forEach(function (k) { cur[k] = fields[k]; });
           if (fields['이름'] || fields['생년월일']) { var b = String(fields['생년월일'] || birthOf(cur)).replace(/[^0-9]/g, '').slice(0, 8); cur['매칭키'] = String(fields['이름'] || cur['이름']).trim() + '|' + b; }
-          msg.style.color = 'green'; msg.textContent = '✓ 저장되었습니다';
+          msg.style.color = 'green'; msg.textContent = '✓ 저장되었습니다' + (r && r.promoted ? ' · 홈페이지 계정 정회원 승격됨' : '');
           setTimeout(function () { renderMembers(document.getElementById('gjPanel')); viewMode(cur); }, 500);
         }).catch(function (e) {
           if (/unknown action/i.test(e.message)) { msg.style.color = '#c0392b'; msg.textContent = '교적 수정은 Apps Script 재배포 후 가능합니다.'; }
