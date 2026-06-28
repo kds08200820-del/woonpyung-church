@@ -1,9 +1,9 @@
 /* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
  * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
- * 콘솔: [finance-api.js] v20260701q (Supabase)
+ * 콘솔: [finance-api.js] v20260701r (Supabase)
  */
-console.log('[finance-api.js] v20260701q (Supabase)');
+console.log('[finance-api.js] v20260701r (Supabase)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -97,16 +97,29 @@ window.WPF = (function () {
       case 'masters':
         return Promise.all([
           rest('GET', 'gyojeok?select=*&order=name&limit=20000'),
-          rest('GET', 'accounts?select=*&order=code&limit=5000'),
+          rest('GET', 'budget?select=code,name,atype&order=code&limit=5000'),
           rest('GET', 'services?select=*&order=sort&limit=500')
         ]).then(function (res) {
+          // 계정과목(드롭다운)은 budget 테이블 단일 소스에서 파생: 0000(항) 제외, 목만.
+          var bud = res[1] || [], nameByCode = {};
+          bud.forEach(function (b) { nameByCode[b.code] = b.name; });
+          var accounts = bud.filter(function (b) { return String(b.code || '').slice(-4) !== '0000'; }).map(function (b) {
+            var parent = String(b.code || '').slice(0, 3) + '0000';
+            return { '구분': b.atype, '분류': (b.atype === '수입' ? '헌금' : (nameByCode[parent] || '')), '계정명': b.name, '계정코드': b.code, '상위': nameByCode[parent] || '' };
+          });
           return {
             ok: true,
             members: (res[0] || []).map(memOut),
-            accounts: (res[1] || []).map(accOut),
+            accounts: accounts,
             services: (res[2] || []).filter(function (s) { return s.active !== false; }).map(function (s) { return { '예배명': s.name }; })
           };
         });
+      case 'addAccount':
+        return rest('POST', 'budget', { code: params.code, name: params.name, atype: params.atype, budget: num(params.budget), prev_budget: 0, prev_actual: 0 }, 'return=minimal').then(function () { return { ok: true }; });
+      case 'updateAccount':
+        return rest('PATCH', 'budget?code=eq.' + encodeURIComponent(params.code), params.fields || {}, 'return=minimal').then(function () { return { ok: true }; });
+      case 'deleteAccount':
+        return rest('DELETE', 'budget?code=eq.' + encodeURIComponent(params.code), null, 'return=minimal').then(function () { return { ok: true }; });
       case 'listGyojeok':
         return rest('GET', 'gyojeok?select=*&order=name&limit=20000').then(function (rows) { return { ok: true, members: (rows || []).map(gjOut) }; });
       case 'addGyojeok': {

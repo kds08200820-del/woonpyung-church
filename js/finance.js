@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701q
+ * 콘솔: [finance.js] v20260701r
  */
-console.log('[finance.js] v20260701q');
+console.log('[finance.js] v20260701r');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -771,49 +771,92 @@ console.log('[finance.js] v20260701q');
 
   /* ── 예산(앱 내 직접 편집 → 구글시트 저장) ── */
   function renderBudget(panel) {
-    loading(panel);
-    ensureBudget().then(function () {
-      if (!M.budget.length) { panel.innerHTML = msgCard('예산 없음', '예산 데이터를 불러오지 못했습니다. Apps Script에 budget 액션이 배포됐는지 확인하세요.'); return; }
+    var editing = false;
+    function pad2(n) { return ('0' + n).slice(-2); }
+    function isGroup(c) { return String(c || '').slice(-4) === '0000'; }      // 항(상위)
+    function parentOf(c) { return String(c || '').slice(0, 3) + '0000'; }
+    function reload() { M._b = false; ensureBudget().then(draw); }
+    function nextGroup(prefix, g) {
+      var codes = M.budget.filter(function (b) { return String(b['구분']) === g && isGroup(b['계정코드']) && String(b['계정코드']).charAt(0) === prefix; }).map(function (b) { return parseInt(String(b['계정코드']).slice(1, 3), 10) || 0; });
+      return prefix + pad2((codes.length ? Math.max.apply(null, codes) : 0) + 1) + '0000';
+    }
+    function nextDetail(groupCode, g) {
+      var base3 = String(groupCode).slice(0, 3);
+      var codes = M.budget.filter(function (b) { return String(b['구분']) === g && !isGroup(b['계정코드']) && String(b['계정코드']).slice(0, 3) === base3; }).map(function (b) { return parseInt(String(b['계정코드']).slice(3, 5), 10) || 0; });
+      return base3 + pad2((codes.length ? Math.max.apply(null, codes) : 0) + 1) + '00';
+    }
+    function draw() {
       panel.innerHTML = '';
-      var info = document.createElement('div'); info.className = 'fin-card'; info.style.marginBottom = '14px';
-      info.innerHTML = '<p style="margin:0;color:var(--ink-soft);font-size:.88rem">금년예산 칸을 클릭해 직접 수정하면 <b>구글시트(운평재정_예산)에 자동 저장</b>됩니다. 소계(코드 끝 0000)는 하위 항목 합계로 자동 계산됩니다.</p>';
-      panel.appendChild(info);
+      var bar = document.createElement('div'); bar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px';
+      bar.innerHTML = '<span id="bud_msg" style="font-size:.85rem;color:var(--ink-soft)"></span><button class="btn ' + (editing ? 'btn-solid' : 'btn-line') + '" id="bud_edit">' + (editing ? '✓ 편집 완료' : '✏️ 계정·예산 수정') + '</button>';
+      panel.appendChild(bar);
+      var msg = bar.querySelector('#bud_msg');
+      function flash(t, ok) { msg.textContent = t; msg.style.color = ok === false ? '#c0392b' : (ok ? 'green' : 'var(--ink-soft)'); }
+      bar.querySelector('#bud_edit').onclick = function () { editing = !editing; draw(); };
+      if (editing) { var hint = document.createElement('p'); hint.className = 'help'; hint.style.marginBottom = '12px'; hint.textContent = '편집 모드: 항(분류)·목(계정)을 추가·이름수정·삭제할 수 있습니다. 금년예산 칸은 언제든 클릭해 바로 저장됩니다.'; panel.appendChild(hint); }
+
       ['수입', '지출'].forEach(function (g) {
-        var rows = M.budget.filter(function (b) { return String(b['구분']) === g; });
-        if (!rows.length) return;
+        var prefix = g === '수입' ? '1' : '2';
+        var all = M.budget.filter(function (b) { return String(b['구분']) === g; });
+        var groups = all.filter(function (b) { return isGroup(b['계정코드']); }).sort(function (a, b) { return String(a['계정코드']).localeCompare(String(b['계정코드'])); });
+        var byParent = {}; all.filter(function (b) { return !isGroup(b['계정코드']); }).forEach(function (b) { var p = parentOf(b['계정코드']); (byParent[p] = byParent[p] || []).push(b); });
+        function total() { return all.filter(function (b) { return !isGroup(b['계정코드']); }).reduce(function (s, b) { return s + (Number(b['예산']) || 0); }, 0); }
         var card = document.createElement('div'); card.className = 'fin-card'; card.style.marginBottom = '16px';
-        function sumOf() { return rows.filter(function (b) { return String(b['계정코드'] || '').slice(-4) !== '0000'; }).reduce(function (s, b) { return s + (Number(b['예산']) || 0); }, 0); }
-        var head = document.createElement('div'); head.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:8px'; head.innerHTML = '<b>' + g + ' 예산</b><b class="bud-sum">' + won(sumOf()) + '원</b>';
+        var head = document.createElement('div'); head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px';
+        head.innerHTML = '<b>' + g + ' 예산</b><b class="g-total">' + won(total()) + '원</b>';
+        card.appendChild(head);
         var wrap = document.createElement('div'); wrap.style.overflow = 'auto';
         var tbl = document.createElement('table'); tbl.className = 'fin-table';
-        tbl.innerHTML = '<thead><tr><th>코드</th><th>계정</th><th class="num">전년예산</th><th class="num">전년결산</th><th class="num">금년예산</th></tr></thead><tbody></tbody>';
+        tbl.innerHTML = '<thead><tr><th>코드</th><th>계정(항/목)</th><th class="num">전년예산</th><th class="num">전년결산</th><th class="num">금년예산</th>' + (editing ? '<th>관리</th>' : '') + '</tr></thead><tbody></tbody>';
         var tb = tbl.querySelector('tbody');
-        rows.forEach(function (b) {
-          var top = String(b['계정코드'] || '').slice(-4) === '0000';
-          var tr = document.createElement('tr'); if (top) tr.style.cssText = 'font-weight:700;background:#f5f8fc';
-          tr.innerHTML = '<td>' + esc(b['계정코드']) + '</td><td>' + esc(b['계정이름']) + '</td><td class="num">' + won(b['전년예산']) + '</td><td class="num">' + won(b['전년결산']) + '</td>';
-          var td = document.createElement('td'); td.className = 'num';
-          if (top) { td.innerHTML = '<b>' + won(b['예산']) + '</b>'; }
-          else {
-            var inp = document.createElement('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.value = won(b['예산']);
-            inp.style.cssText = 'width:120px;text-align:right;border:1px solid #dfe5ee;border-radius:6px;padding:4px 7px;font:inherit';
-            inp.addEventListener('input', function () { var n = parseNum(inp.value); inp.value = n ? won(n) : ''; });
-            inp.addEventListener('change', function () {
-              var n = parseNum(inp.value); var prev = Number(b['예산']) || 0; if (n === prev) return;
-              inp.style.borderColor = '#9aa5b1';
-              WPF.call('updateBudget', { code: b['계정코드'], amount: n }).then(function () {
-                b['예산'] = n; M._b = false; // 결산보고서 재집계용 캐시 무효화
-                inp.style.borderColor = '#1e874b'; head.querySelector('.bud-sum').textContent = won(sumOf()) + '원';
-                setTimeout(function () { inp.style.borderColor = '#dfe5ee'; }, 1200);
-              }).catch(function (e) { inp.style.borderColor = '#c0392b'; inp.value = won(prev); alert('저장 실패: ' + e.message); });
-            });
-            td.appendChild(inp);
-          }
-          tr.appendChild(td); tb.appendChild(tr);
+        function budgetInput(b) {
+          var inp = document.createElement('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.value = won(b['예산']);
+          inp.style.cssText = 'width:120px;text-align:right;border:1px solid #dfe5ee;border-radius:6px;padding:4px 7px;font:inherit';
+          inp.addEventListener('input', function () { var n = parseNum(inp.value); inp.value = n ? won(n) : ''; });
+          inp.addEventListener('change', function () {
+            var n = parseNum(inp.value), prev = Number(b['예산']) || 0; if (n === prev) return;
+            WPF.call('updateBudget', { code: b['계정코드'], amount: n }).then(function () { b['예산'] = n; M._b = false; inp.style.borderColor = '#1e874b'; head.querySelector('.g-total').textContent = won(total()) + '원'; flash('✓ 저장됨', true); setTimeout(function () { inp.style.borderColor = '#dfe5ee'; }, 1000); })
+              .catch(function (e) { inp.style.borderColor = '#c0392b'; inp.value = won(prev); flash('저장 실패: ' + e.message, false); });
+          });
+          return inp;
+        }
+        function mng(actions) { var td = document.createElement('td'); td.style.whiteSpace = 'nowrap'; actions.forEach(function (a) { var x = document.createElement('button'); x.className = 'btn btn-line'; x.style.cssText = 'padding:2px 8px;font-size:.75rem;margin-right:4px'; x.textContent = a.label; x.onclick = a.fn; td.appendChild(x); }); return td; }
+        function detailRows(parentCode) {
+          (byParent[parentCode] || []).sort(function (a, b) { return String(a['계정코드']).localeCompare(String(b['계정코드'])); }).forEach(function (b) {
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td style="color:#9aa5b1">' + esc(b['계정코드']) + '</td><td>' + esc(b['계정이름']) + '</td><td class="num">' + won(b['전년예산']) + '</td><td class="num">' + won(b['전년결산']) + '</td>';
+            var td = document.createElement('td'); td.className = 'num'; td.appendChild(budgetInput(b)); tr.appendChild(td);
+            if (editing) tr.appendChild(mng([
+              { label: '이름', fn: function () { var nm = prompt('목(계정) 이름', b['계정이름']); if (nm && nm.trim()) WPF.call('updateAccount', { code: b['계정코드'], fields: { name: nm.trim() } }).then(reload).catch(function (e) { flash(e.message, false); }); } },
+              { label: '삭제', fn: function () { if (confirm('「' + b['계정이름'] + '」 계정을 삭제할까요?')) WPF.call('deleteAccount', { code: b['계정코드'] }).then(reload).catch(function (e) { flash(e.message, false); }); } }
+            ]));
+            tb.appendChild(tr);
+          });
+        }
+        groups.forEach(function (gr) {
+          var sub = (byParent[gr['계정코드']] || []).reduce(function (s, b) { return s + (Number(b['예산']) || 0); }, 0);
+          var tr = document.createElement('tr'); tr.style.cssText = 'font-weight:700;background:#f5f8fc';
+          tr.innerHTML = '<td>' + esc(gr['계정코드']) + '</td><td>' + esc(gr['계정이름']) + ' <span style="color:#9aa5b1;font-weight:400">(항)</span></td><td class="num"></td><td class="num"></td><td class="num">' + won(sub) + '</td>';
+          if (editing) tr.appendChild(mng([
+            { label: '+목', fn: function () { var nm = prompt('「' + gr['계정이름'] + '」에 추가할 목(계정) 이름'); if (nm && nm.trim()) WPF.call('addAccount', { code: nextDetail(gr['계정코드'], g), atype: g, name: nm.trim(), budget: 0 }).then(reload).catch(function (e) { flash(e.message, false); }); } },
+            { label: '이름', fn: function () { var nm = prompt('항(분류) 이름', gr['계정이름']); if (nm && nm.trim()) WPF.call('updateAccount', { code: gr['계정코드'], fields: { name: nm.trim() } }).then(reload).catch(function (e) { flash(e.message, false); }); } },
+            { label: '삭제', fn: function () { if ((byParent[gr['계정코드']] || []).length) { alert('하위 목(계정)을 먼저 삭제하세요.'); return; } if (confirm('「' + gr['계정이름'] + '」 항을 삭제할까요?')) WPF.call('deleteAccount', { code: gr['계정코드'] }).then(reload).catch(function (e) { flash(e.message, false); }); } }
+          ]));
+          tb.appendChild(tr);
+          detailRows(gr['계정코드']);
         });
-        wrap.appendChild(tbl); card.appendChild(head); card.appendChild(wrap); panel.appendChild(card);
+        Object.keys(byParent).filter(function (p) { return !groups.some(function (gr) { return gr['계정코드'] === p; }); }).forEach(detailRows);
+        wrap.appendChild(tbl); card.appendChild(wrap);
+        if (editing) {
+          var addG = document.createElement('button'); addG.className = 'btn btn-line'; addG.style.marginTop = '10px'; addG.textContent = '＋ ' + g + ' 항(분류) 추가';
+          addG.onclick = function () { var nm = prompt('새 ' + g + ' 항(분류) 이름'); if (nm && nm.trim()) WPF.call('addAccount', { code: nextGroup(prefix, g), atype: g, name: nm.trim(), budget: 0 }).then(reload).catch(function (e) { flash(e.message, false); }); };
+          card.appendChild(addG);
+        }
+        panel.appendChild(card);
       });
-    }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
+    }
+    loading(panel);
+    ensureBudget().then(draw).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
   }
 
   /* ── 설정(회계연도 시작 월) ── */
