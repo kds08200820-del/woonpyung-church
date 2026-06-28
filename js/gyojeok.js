@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701d
+ * 콘솔: [gyojeok.js] v20260701e
  */
-console.log('[gyojeok.js] v20260701d');
+console.log('[gyojeok.js] v20260701e');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -95,9 +95,12 @@ console.log('[gyojeok.js] v20260701d');
   var EDIT_FIELDS = [
     ['이름', '이름', 'text'], ['생년월일', '생년월일', 'birth'], ['성별', '성별', 'sex'],
     ['휴대폰', '휴대폰', 'tel'], ['신급', '신급', 'text'], ['직책', '직책', 'text'],
+    ['세례일', '세례일', 'date'], ['임직일', '임직일', 'date'],
     ['세대주', '세대주', 'text'], ['세대주와 관계', '관계', 'text'], ['배우자', '배우자', 'text'],
-    ['그룹', '그룹', 'text'], ['회원상태', '회원상태', 'text'], ['주소', '주소', 'text']
+    ['구역/부서', '그룹', 'text'], ['회원상태', '회원상태', 'text'], ['주소', '주소', 'text']
   ];
+  var GROUP_PRESET = ['여전도회', '권사회', '남전도회', '구제선교위원회', '성가대', '찬양대'];
+  function groupsOf(m) { return String(m['소속그룹'] || '').split(/[,·]/).map(function (s) { return s.trim(); }).filter(Boolean); }
   function photoUrl(m) { return m['사진'] || ''; }
   function avatar(m, size) {
     var u = photoUrl(m); size = size || 84;
@@ -125,10 +128,10 @@ console.log('[gyojeok.js] v20260701d');
         '<div style="display:flex;gap:14px;align-items:center">' + avatar(cur, 84) + '<div><h3 style="margin:0;color:var(--accent,#032257)">' + esc(cur['이름']) + (cur['직책'] ? ' <span style="font-size:.8rem;color:#7b8794">' + esc(cur['직책']) + '</span>' : '') + '</h3><div style="color:#7b8794;font-size:.85rem;margin-top:3px">' + esc(cur['그룹'] || '') + (cur['세대주'] ? ' · ' + esc(cur['세대주']) + '의 가정' : '') + '</div></div></div>' +
         '<div style="display:flex;gap:6px"><button class="btn btn-solid" id="gd_edit" style="padding:4px 14px">수정</button><button class="btn btn-line" id="gd_close" style="padding:4px 12px">닫기</button></div></div>' +
         '<div style="display:flex;gap:18px;flex-wrap:wrap"><div style="flex:1;min-width:240px">' +
-        row('생년월일', birthOf(cur) + (age ? ' (' + age + ')' : '')) + row('성별', cur['성별']) + row('휴대폰', fmtPhone(cur['휴대폰'])) + row('신급', cur['신급']) +
+        row('생년월일', birthOf(cur) + (age ? ' (' + age + ')' : '')) + row('성별', cur['성별']) + row('휴대폰', fmtPhone(cur['휴대폰'])) + row('신급', cur['신급']) + row('세례일', cur['세례일']) +
         '</div><div style="flex:1;min-width:240px">' +
-        row('세대주', cur['세대주']) + row('세대주와 관계', cur['관계']) + row('배우자', cur['배우자']) + row('회원상태', cur['회원상태']) +
-        '</div></div>' + (cur['주소'] ? row('주소', cur['주소']) : '') +
+        row('세대주', cur['세대주']) + row('세대주와 관계', cur['관계']) + row('배우자', cur['배우자']) + row('회원상태', cur['회원상태']) + row('임직일', cur['임직일']) +
+        '</div></div>' + (cur['주소'] ? row('주소', cur['주소']) : '') + (groupsOf(cur).length ? '<div style="margin-top:12px"><div style="color:#7b8794;font-size:.85rem;margin-bottom:5px">소속 그룹</div>' + groupsOf(cur).map(function (g) { return '<span class="fin-pill" style="background:#e8f0fb;color:#2b5797;margin:0 6px 6px 0;display:inline-block">' + esc(g) + '</span>'; }).join('') + '</div>' : '') +
         '<div style="margin-top:16px"><b style="color:var(--accent,#032257)">가족 관계</b><div style="overflow:auto;margin-top:6px"><table class="fin-table" style="font-size:.86rem"><thead><tr><th>이름</th><th>관계</th><th>생년월일</th><th>직책</th></tr></thead><tbody>' + famRows + '</tbody></table></div></div>';
       box.querySelector('#gd_close').onclick = close;
       box.querySelector('#gd_edit').onclick = function () { editMode(cur); };
@@ -136,6 +139,8 @@ console.log('[gyojeok.js] v20260701d');
     }
 
     function editMode(cur) {
+      var curGroups = groupsOf(cur);
+      var extraGroups = curGroups.filter(function (g) { return GROUP_PRESET.indexOf(g) < 0; }).join(', ');
       function inp(label, col, type) {
         var v = (col === '생년월일') ? birthOf(cur) : (cur[col] == null ? '' : cur[col]);
         var ctrl;
@@ -150,6 +155,9 @@ console.log('[gyojeok.js] v20260701d');
         '<div class="fin-grid" style="flex:1;min-width:260px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">' +
         EDIT_FIELDS.map(function (f) { return inp(f[0], f[1], f[2]); }).join('') +
         '</div></div>' +
+        '<div style="margin-bottom:12px;border-top:1px solid #eef1f5;padding-top:12px"><label style="display:block;font-size:.8rem;color:#7b8794;margin-bottom:7px">소속 그룹 (여러 개 선택 가능)</label><div style="display:flex;flex-wrap:wrap;gap:8px 16px">' +
+        GROUP_PRESET.map(function (g) { return '<label class="sw"><input type="checkbox" class="gd-grp" value="' + esc(g) + '"' + (curGroups.indexOf(g) >= 0 ? ' checked' : '') + '> ' + esc(g) + '</label>'; }).join('') +
+        '</div><input type="text" id="gd_grp_extra" placeholder="기타 그룹 추가 (쉼표로 구분)" value="' + esc(extraGroups) + '" style="margin-top:9px;width:100%;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"></div>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:6px"><button class="btn btn-solid" id="gd_save">저장</button><span class="fin-msg" id="gd_msg"></span></div>' +
         '<p class="help" style="margin-top:8px">※ 이름·생년월일을 바꾸면 매칭키가 갱신됩니다(이전에 입력된 헌금 연결은 그대로 유지).</p>';
       box.querySelector('#gd_cancel').onclick = function () { viewMode(cur); };
@@ -165,6 +173,11 @@ console.log('[gyojeok.js] v20260701d');
       box.querySelector('#gd_save').onclick = function () {
         var fields = {};
         Array.prototype.forEach.call(box.querySelectorAll('[data-col]'), function (el) { fields[el.dataset.col] = el.value.trim(); });
+        // 소속 그룹: 체크된 프리셋 + 기타입력 병합(중복 제거)
+        var gset = [];
+        Array.prototype.forEach.call(box.querySelectorAll('.gd-grp:checked'), function (c) { if (gset.indexOf(c.value) < 0) gset.push(c.value); });
+        (box.querySelector('#gd_grp_extra').value || '').split(/[,·]/).forEach(function (s) { s = s.trim(); if (s && gset.indexOf(s) < 0) gset.push(s); });
+        fields['소속그룹'] = gset.join(', ');
         var msg = box.querySelector('#gd_msg');
         if (!fields['이름']) { msg.style.color = '#c0392b'; msg.textContent = '이름은 필수입니다.'; return; }
         msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
