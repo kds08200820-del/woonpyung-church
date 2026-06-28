@@ -1,9 +1,9 @@
 /* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
  * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
- * 콘솔: [finance-api.js] v20260701k (Supabase)
+ * 콘솔: [finance-api.js] v20260701l (Supabase)
  */
-console.log('[finance-api.js] v20260701k (Supabase)');
+console.log('[finance-api.js] v20260701l (Supabase)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -42,6 +42,18 @@ window.WPF = (function () {
         return r.text().then(function (t) { return t ? JSON.parse(t) : null; });
       });
   }
+  // PostgREST는 요청당 최대 1000행 → offset 으로 전부 가져옴(안정 정렬: order=id 필요)
+  function restAll(path) {
+    var PAGE = 1000, all = [];
+    function next(off) {
+      var sep = path.indexOf('?') >= 0 ? '&' : '?';
+      return rest('GET', path + sep + 'limit=' + PAGE + '&offset=' + off).then(function (rows) {
+        rows = rows || []; all = all.concat(rows);
+        return rows.length < PAGE ? all : next(off + PAGE);
+      });
+    }
+    return next(0);
+  }
 
   // ── 매핑 헬퍼 (Supabase 컬럼 ↔ 기존 한글 키) ──
   function gjOut(r) {
@@ -77,7 +89,7 @@ window.WPF = (function () {
           var keys = [me.memberKey, me.spouseKey].filter(Boolean);
           if (!keys.length) return { ok: true, offerings: [], total: 0, spouse: me.spouse || '' };
           var inlist = keys.map(function (k) { return '"' + encodeURIComponent(k) + '"'; }).join(',');
-          return rest('GET', 'offerings?select=offer_date,category,service,giver,member_key,amount&member_key=in.(' + inlist + ')&order=offer_date.desc&limit=5000').then(function (rows) {
+          return restAll('offerings?select=offer_date,category,service,giver,member_key,amount&member_key=in.(' + inlist + ')&order=id').then(function (rows) {
             var list = (rows || []).map(function (o) { return { date: o.offer_date, account: o.category || '', service: o.service || '', amount: o.amount, giver: o.giver || '', who: (me.spouseKey && o.member_key === me.spouseKey) ? 'spouse' : 'self' }; });
             return { ok: true, offerings: list, total: list.reduce(function (s, o) { return s + (Number(o.amount) || 0); }, 0), spouse: me.spouse || '' };
           });
@@ -117,8 +129,8 @@ window.WPF = (function () {
       }
       case 'listVouchers':
         return Promise.all([
-          rest('GET', 'offerings?select=*&order=offer_date.desc&limit=50000'),
-          rest('GET', 'expenses?select=*&order=exp_date.desc&limit=50000')
+          restAll('offerings?select=*&order=id'),
+          restAll('expenses?select=*&order=id')
         ]).then(function (res) { return { ok: true, vouchers: (res[0] || []).map(offOut).concat((res[1] || []).map(expOut)) }; });
       case 'addVoucher': {
         var v = params.voucher || {};
