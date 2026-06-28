@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701aa
+ * 콘솔: [finance.js] v20260701ab
  */
-console.log('[finance.js] v20260701aa');
+console.log('[finance.js] v20260701ab');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -299,6 +299,13 @@ console.log('[finance.js] v20260701aa');
       function wkRight(l, t) { return '<span style="color:#9aa5b1">지난주</span> <b>' + won(l) + '</b> <span style="color:#9aa5b1">· 이번주</span> <b>' + won(t) + '</b>'; }
       function cardHead(title, color, right) { return '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px"><b style="color:' + color + '">' + title + '</b><span style="font-size:.85rem">' + right + '</span></div>'; }
       panel.innerHTML =
+        // 월별 차트 + 도넛 (상단)
+        '<div class="fin-card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:24px">' +
+          '<div><b>📊 월별 수입·지출</b> <span style="font-size:.76rem"><span style="color:#10b981">● 수입</span> <span style="color:#ef4444">● 지출</span> <span style="color:#9aa5b1">· 막대+추세선</span></span>' +
+            '<div id="mcWrap" style="position:relative;margin-top:14px">' + monthChart() + '<div id="mcTip" style="position:absolute;display:none;background:#032257;color:#fff;font-size:.76rem;line-height:1.45;padding:6px 9px;border-radius:7px;pointer-events:none;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.25)"></div></div></div>' +
+          '<div><b>🍩 헌금 항목별 (연간)</b>' + donut(incFY) + '</div>' +
+        '</div></div>' +
+        // KPI 요약
         '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">' + stat('전기 이월금', carry, '#7b8794') + stat('당기 수입', ti, '#1e874b') + stat('당기 지출', te, '#c0392b') + stat('현재 잔액', bal, '#032257') + '</div>' +
         // 주간 수입/지출 현황
         '<h3 style="margin:6px 0 10px;color:var(--accent,#032257)">주간 현황 <span style="font-size:.8rem;font-weight:400;color:#9aa5b1">지난주 ' + esc(lastWk.from) + '~' + esc(lastWk.to) + ' · 이번주 ' + esc(thisWk.from) + '~' + esc(thisWk.to) + '</span></h3>' +
@@ -311,13 +318,7 @@ console.log('[finance.js] v20260701aa');
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">' +
           '<div class="fin-card">' + cardHead('수입 (연간 누계)', '#1e874b', '<b style="color:#1e874b">' + won(incFYt) + '원</b>') + statusTable('수입', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
           '<div class="fin-card">' + cardHead('지출 (연간 누계)', '#c0392b', '<b style="color:#c0392b">' + won(expFYt) + '원</b>') + statusTable('지출', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
-        '</div>' +
-        // 월별 차트 + 도넛 (한 박스 2단)
-        '<div class="fin-card" style="margin-top:16px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:24px">' +
-          '<div><b>📊 월별 수입·지출</b> <span style="font-size:.76rem"><span style="color:#10b981">● 수입</span> <span style="color:#ef4444">● 지출</span> <span style="color:#9aa5b1">· 막대+추세선</span></span>' +
-            '<div id="mcWrap" style="position:relative;margin-top:14px">' + monthChart() + '<div id="mcTip" style="position:absolute;display:none;background:#032257;color:#fff;font-size:.76rem;line-height:1.45;padding:6px 9px;border-radius:7px;pointer-events:none;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.25)"></div></div></div>' +
-          '<div><b>🍩 헌금 항목별 (연간)</b>' + donut(incFY) + '</div>' +
-        '</div></div>';
+        '</div>';
       var mcWrap = panel.querySelector('#mcWrap'), mcTip = panel.querySelector('#mcTip');
       if (mcWrap && mcTip) Array.prototype.forEach.call(mcWrap.querySelectorAll('.mc-hit'), function (h) {
         function show(e) {
