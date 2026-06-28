@@ -109,6 +109,7 @@ function doPost(e) {
     if (action === 'setAccess') return json_(actionSetAccess_(req));
     if (action === 'listGyojeok') return json_(actionListGyojeok_(req));
     if (action === 'addGyojeok') return json_(actionAddGyojeok_(req));
+    if (action === 'updateGyojeok') return json_(actionUpdateGyojeok_(req));
     if (action === 'listVouchers') return json_(actionListVouchers_(req));
     if (action === 'addVoucher') return json_(actionAddVoucher_(req));
     if (action === 'updateVoucher') return json_(actionUpdateVoucher_(req));
@@ -295,6 +296,40 @@ function actionAddGyojeok_(req) {
   });
   sh.appendRow(row);
   return { ok: true, key: key, name: name, added: true };
+}
+
+// 교적 수정(관리자만) — 교적ID로 행을 찾아 지정 항목 수정. 사진 열 없으면 자동 생성.
+function actionUpdateGyojeok_(req) {
+  var user = verifyUser_(req.token);
+  requireAdmin_(user.id);
+  var id = String(req.id || '');
+  var fields = req.fields || {};
+  if (!id) return { ok: false, error: '교적ID가 없습니다.' };
+  var sh = SpreadsheetApp.openById(GYOJEOK_SHEET_ID).getSheetByName('교적');
+  if (!sh) return { ok: false, error: '교적 시트를 찾을 수 없습니다.' };
+  var data = sh.getDataRange().getValues();
+  var head = data[0];
+  // 들어온 필드 중 헤더에 없는 열(예: 사진)은 끝에 추가
+  Object.keys(fields).forEach(function (k) {
+    if (head.indexOf(k) < 0) { head.push(k); sh.getRange(1, head.length).setValue(k); }
+  });
+  var idCol = head.indexOf('교적ID');
+  if (idCol < 0) return { ok: false, error: '교적 시트에 교적ID 열이 없습니다.' };
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][idCol]) === id) {
+      Object.keys(fields).forEach(function (k) { var c = head.indexOf(k); if (c >= 0) sh.getRange(i + 1, c + 1).setValue(fields[k] == null ? '' : fields[k]); });
+      // 이름/생년월일 바뀌면 매칭키 재계산
+      var keyCol = head.indexOf('매칭키'), nameCol = head.indexOf('이름'), birthCol = head.indexOf('생년월일');
+      if (keyCol >= 0 && (('이름' in fields) || ('생년월일' in fields))) {
+        var nm = ('이름' in fields) ? fields['이름'] : data[i][nameCol];
+        var bdRaw = ('생년월일' in fields) ? fields['생년월일'] : ymd_(data[i][birthCol]);
+        var bstr = String(bdRaw || '').replace(/[^0-9]/g, '').slice(0, 8);
+        sh.getRange(i + 1, keyCol + 1).setValue(String(nm).trim() + '|' + bstr);
+      }
+      return { ok: true };
+    }
+  }
+  return { ok: false, error: '교적을 찾을 수 없습니다: ' + id };
 }
 
 // 전표 목록(권한자만)
