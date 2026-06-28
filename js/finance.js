@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701x
+ * 콘솔: [finance.js] v20260701y
  */
-console.log('[finance.js] v20260701x');
+console.log('[finance.js] v20260701y');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -231,13 +231,20 @@ console.log('[finance.js] v20260701x');
         var body = groups.map(function (gr) {
           var kids = (byParent[gr['계정코드']] || []).sort(function (a, b) { return String(a['계정코드']).localeCompare(String(b['계정코드'])); });
           var gs = cols.map(function () { return 0; });
-          var kidRows = kids.map(function (k) { var nm = k['계정이름']; seen[nm] = 1; var cells = maps.map(function (mp, i) { var v = mp[nm] || 0; gs[i] += v; return '<td class="num">' + won(v) + '</td>'; }).join(''); return '<tr><td style="padding-left:20px;color:#48576b">' + esc(nm) + '</td>' + cells + '</tr>'; }).join('');
+          var kidRows = kids.map(function (k) {
+            var nm = k['계정이름']; seen[nm] = 1;
+            var vals = maps.map(function (mp, i) { var v = mp[nm] || 0; gs[i] += v; return v; });
+            if (vals.every(function (v) { return !v; })) return '';   // 빈(0) 목 숨김
+            return '<tr><td style="padding-left:20px;color:#48576b">' + esc(nm) + '</td>' + vals.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>';
+          }).join('');
           gs.forEach(function (v, i) { totals[i] += v; });
+          if (gs.every(function (v) { return !v; })) return '';      // 빈(0) 항 숨김
           return '<tr style="font-weight:700;background:#f5f8fc"><td>' + esc(gr['계정이름']) + '</td>' + gs.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>' + kidRows;
         }).join('');
         var others = cols.map(function () { return 0; }), hasOther = false;
         maps.forEach(function (mp, i) { Object.keys(mp).forEach(function (nm) { if (!seen[nm]) { others[i] += mp[nm]; if (mp[nm]) hasOther = true; } }); });
         if (hasOther) { totals = totals.map(function (v, i) { return v + others[i]; }); body += '<tr><td style="padding-left:20px;color:#9aa5b1">기타</td>' + others.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>'; }
+        if (!body) body = '<tr><td colspan="' + (cols.length + 1) + '" style="color:#9aa5b1;padding:14px;text-align:center">내역 없음</td></tr>';
         return '<div style="overflow:auto;max-height:430px;margin-top:10px"><table class="fin-table"><thead><tr><th>' + gubun + ' 항목</th>' + cols.map(function (c) { return '<th class="num">' + c.label + '</th>'; }).join('') + '</tr></thead>' +
           '<tbody><tr style="font-weight:700;color:' + (gubun === '수입' ? '#1e874b' : '#c0392b') + '"><td>' + gubun + ' 합계</td>' + totals.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>' + body + '</tbody></table></div>';
       }
