@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260630i
+ * 콘솔: [gyojeok.js] v20260630j
  */
-console.log('[gyojeok.js] v20260630i');
+console.log('[gyojeok.js] v20260630j');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -56,7 +56,9 @@ console.log('[gyojeok.js] v20260630i');
         ckF.addEventListener('change', function () { save('canFinance', ckF.checked, function () { ckF.checked = !ckF.checked; }); });
       });
     }).catch(function (e) {
-      root.innerHTML = msgCard('접근 권한이 없습니다', e.message.indexOf('관리자') >= 0 ? '교적관리는 관리자만 이용할 수 있습니다.' : e.message);
+      if (/unknown action/i.test(e.message)) root.innerHTML = msgCard('백엔드 업데이트 필요', 'Apps Script를 최신본으로 다시 배포해 주세요. (관리·교적관리 기능이 추가됨)');
+      else if (e.message.indexOf('관리자') >= 0) root.innerHTML = msgCard('접근 권한이 없습니다', '교적관리는 관리자만 이용할 수 있습니다.');
+      else root.innerHTML = msgCard('오류', e.message);
     });
   }
 
