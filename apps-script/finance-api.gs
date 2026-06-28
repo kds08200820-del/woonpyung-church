@@ -115,6 +115,7 @@ function doPost(e) {
     if (action === 'addVouchersBulk') return json_(actionAddVouchersBulk_(req));
     if (action === 'updateVoucher') return json_(actionUpdateVoucher_(req));
     if (action === 'deleteVoucher') return json_(actionDeleteVoucher_(req));
+    if (action === 'clearVouchers') return json_(actionClearVouchers_(req));
     return json_({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
@@ -150,15 +151,26 @@ function actionMatch_(req) {
   }
 }
 
-// 내 상태(정/준회원, 재정권한)
+// 내 상태(정/준회원, 재정권한) + 본인/배우자 매칭키
 function actionMe_(req) {
   var user = verifyUser_(req.token);
   var link = getLink_(user.id);
+  var memberKey = link && link.member_key ? String(link.member_key) : '';
+  var spouse = '', spouseKey = '';
+  if (link && link.member_status === '정회원' && memberKey) {
+    var meRow = findGyojeokByKey_(memberKey);
+    if (meRow && meRow['배우자매칭키']) { spouseKey = String(meRow['배우자매칭키']); spouse = meRow['배우자'] || ''; }
+    // Supabase 헌금 RLS(본인+배우자 합산)용 spouse_key 동기화
+    try { upsertLink_(user.id, { spouse_key: spouseKey, updated_at: new Date().toISOString() }); } catch (e) {}
+  }
   return {
     ok: true,
     email: user.email,
     status: link ? link.member_status : '준회원',
     memberName: link ? link.member_name : '',
+    memberKey: memberKey,
+    spouse: spouse,
+    spouseKey: spouseKey,
     canFinance: isAdmin_(user.id) || (link ? !!link.can_finance : false)
   };
 }
@@ -393,6 +405,29 @@ function actionAddVouchersBulk_(req) {
   });
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
   return { ok: true, count: rows.length, ids: rows.map(function (r) { return r[0]; }) };
+}
+
+// 전표 일괄 삭제(권한자만) — 구분(수입/지출)별 전체 비우기. type 미지정이면 전체.
+//  · 헤더와 미일치 행은 보존하고 시트를 다시 써서 안전하게 처리.
+function actionClearVouchers_(req) {
+  var user = verifyUser_(req.token);
+  requireFinance_(user.id);
+  var type = req.type ? String(req.type) : ''; // '수입' | '지출' | ''(전체)
+  var sh = SpreadsheetApp.openById(JAEJEONG_SHEET_ID).getSheetByName('전표');
+  if (!sh) return { ok: false, error: '전표 시트를 찾을 수 없습니다.' };
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return { ok: true, deleted: 0 };
+  var head = data[0];
+  var gi = head.indexOf('구분');
+  if (type && gi < 0) return { ok: false, error: '전표 시트에 "구분" 열이 없습니다.' };
+  var kept = [head], deleted = 0;
+  for (var i = 1; i < data.length; i++) {
+    var match = type ? (String(data[i][gi]) === type) : true;
+    if (match) deleted++; else kept.push(data[i]);
+  }
+  sh.getRange(1, 1, data.length, head.length).clearContent();
+  if (kept.length) sh.getRange(1, 1, kept.length, head.length).setValues(kept);
+  return { ok: true, deleted: deleted, kept: kept.length - 1 };
 }
 
 // 전표 수정(권한자만)

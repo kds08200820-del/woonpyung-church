@@ -1,9 +1,9 @@
 /* finance-api.js — 재정 API(Apps Script) 공통 클라이언트
  * 기존 사이트 패턴 그대로: supabase-js 멈춤(getSession 잠금) 회피 위해
  * localStorage의 세션 토큰을 직접 읽어 Apps Script 웹앱을 호출.
- * 콘솔 확인용: [finance-api.js] v20260701i
+ * 콘솔 확인용: [finance-api.js] v20260701j
  */
-console.log('[finance-api.js] v20260701i');
+console.log('[finance-api.js] v20260701j');
 
 window.WPF = (function () {
   function ref() {

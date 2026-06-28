@@ -1,8 +1,8 @@
 /* finance-member.js — 내 정보(admin.html)의 "교적 인증 · 내 헌금" 섹션
  * 로그인한 회원이 이름+생년월일로 교적 인증(정/준회원) 후 본인 헌금만 조회.
- * 콘솔: [finance-member.js] v20260701i
+ * 콘솔: [finance-member.js] v20260701j
  */
-console.log('[finance-member.js] v20260701i');
+console.log('[finance-member.js] v20260701j');
 
 (function () {
   var box = document.getElementById('offeringBox');
@@ -78,15 +78,45 @@ console.log('[finance-member.js] v20260701i');
       a.style.marginTop = '16px'; a.style.display = 'inline-block';
       body.appendChild(a);
     }
-    WPF.call('myOfferings').then(function (r) {
-      var el = document.getElementById('offeringList');
-      var spouseNote = r.spouse ? '<p style="background:#e8f6ee;border:1px solid #bfe3cd;color:#1e874b;padding:8px 12px;border-radius:8px;font-size:.85rem;margin-bottom:14px;">💑 배우자 <b>' + esc(r.spouse) + '</b>님과 <b>가정 헌금</b>이 합산되어 표시됩니다.</p>' : '';
-      var list = r.offerings || [];
-      if (!list.length) { el.innerHTML = spouseNote + '<p style="color:var(--ink-soft);font-size:.9rem;">조회된 헌금 내역이 없습니다.</p>'; return; }
-      renderWithFilter(el, list, r, me, spouseNote);
-    }).catch(function (e) {
-      var el = document.getElementById('offeringList');
-      if (el) el.innerHTML = '<p style="color:var(--accent-soft);font-size:.9rem;">헌금 조회 실패: ' + esc(e.message) + '</p>';
+    loadOfferings(me);
+  }
+
+  function spouseBanner(name) {
+    return name ? '<p style="background:#e8f6ee;border:1px solid #bfe3cd;color:#1e874b;padding:8px 12px;border-radius:8px;font-size:.85rem;margin-bottom:14px;">💑 배우자 <b>' + esc(name) + '</b>님과 <b>가정 헌금</b>이 합산되어 표시됩니다.</p>' : '';
+  }
+
+  // Supabase offerings 직접 조회(빠름). 본인+배우자 매칭키로 필터(권한자도 개인뷰는 본인 것만).
+  function offeringsFromSupabase(me) {
+    var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, tok = (window.WPF && WPF.token && WPF.token());
+    var keys = [me.memberKey, me.spouseKey].filter(Boolean);
+    if (!url || !ak || !tok || !keys.length) return Promise.reject(new Error('no-supabase'));
+    var inlist = keys.map(function (k) { return '"' + encodeURIComponent(k) + '"'; }).join(',');
+    var q = url + '/rest/v1/offerings?select=offer_date,category,service,giver,member_key,amount&member_key=in.(' + inlist + ')&order=offer_date.desc&limit=5000';
+    return fetch(q, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
+      .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); }); return r.json(); });
+  }
+
+  function loadOfferings(me) {
+    var el = document.getElementById('offeringList');
+    offeringsFromSupabase(me).then(function (rows) {
+      var note = spouseBanner(me.spouse);
+      var list = (rows || []).map(function (o) {
+        return { date: o.offer_date, account: o.category || '', service: o.service || '', amount: o.amount, giver: o.giver || '',
+                 who: (me.spouseKey && String(o.member_key) === String(me.spouseKey)) ? 'spouse' : 'self' };
+      });
+      if (!list.length) { el.innerHTML = note + '<p style="color:var(--ink-soft);font-size:.9rem;">조회된 헌금 내역이 없습니다.</p>'; return; }
+      var r = { spouse: me.spouse || '', total: list.reduce(function (s, o) { return s + (Number(o.amount) || 0); }, 0) };
+      renderWithFilter(el, list, r, me, note);
+    }).catch(function () {
+      // 폴백: 구버전 'me'(매칭키 없음)이거나 Supabase 실패 → 기존 Apps Script 경로
+      WPF.call('myOfferings').then(function (r) {
+        var note = spouseBanner(r.spouse);
+        var list = r.offerings || [];
+        if (!list.length) { el.innerHTML = note + '<p style="color:var(--ink-soft);font-size:.9rem;">조회된 헌금 내역이 없습니다.</p>'; return; }
+        renderWithFilter(el, list, r, me, note);
+      }).catch(function (e) {
+        if (el) el.innerHTML = '<p style="color:var(--accent-soft);font-size:.9rem;">헌금 조회 실패: ' + esc(e.message) + '</p>';
+      });
     });
   }
 

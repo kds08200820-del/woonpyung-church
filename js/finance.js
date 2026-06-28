@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701i
+ * 콘솔: [finance.js] v20260701j
  */
-console.log('[finance.js] v20260701i');
+console.log('[finance.js] v20260701j');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -336,7 +336,13 @@ console.log('[finance.js] v20260701i');
       '<textarea id="b_text" style="width:100%;min-height:190px;padding:10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;white-space:pre;overflow:auto" placeholder="십일조&#9;&#10;신용화(차영선)&#9;100000&#9;임수만(정춘란)&#9;50000&#10;감사헌금&#10;구성호&#9;50000&#9;김가엘&#9;5000 ..."></textarea></div>' +
       '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap"><button class="btn btn-line" id="b_prev">미리보기 · 교적매칭</button><button class="btn btn-solid" id="b_save" disabled>일괄 저장</button><span class="fin-msg" id="b_msg"></span></div>' +
       '<p class="help" style="margin-top:8px">· 항목명만 있는 줄(예: 십일조, 감사헌금)은 <b>항목 구분</b>으로 인식하고, 그 아래 「이름〔탭〕금액」들을 해당 항목 헌금으로 읽습니다.<br>· 「신용화(차영선)」처럼 괄호가 있으면 <b>부부 합산</b>으로 보고 대표자(신용화)로 교적 매칭합니다. · 제목·기간·누계·합계 줄은 자동 무시됩니다.</p>' +
-      '</div><div id="b_out"></div>';
+      '</div>' +
+      '<div class="fin-card" style="border-color:#f1c9c4;background:#fffaf9">' +
+      '<details><summary style="cursor:pointer;color:#c0392b;font-weight:700">⚠ 기존 수입(헌금) 전표 전체 삭제</summary>' +
+      '<p class="help" style="margin-top:8px">새 명단을 넣기 전에 <b>기존에 입력된 모든 수입(헌금) 전표를 한 번에 삭제</b>합니다. 지출 내역은 보존됩니다. <b>되돌릴 수 없습니다.</b></p>' +
+      '<button class="btn btn-line" id="b_clear" style="color:#c0392b;border-color:#e0a39c">수입 전표 전체 삭제</button> <span class="fin-msg" id="b_clearmsg"></span>' +
+      '</details></div>' +
+      '<div id="b_out"></div>';
 
     var parsed = [];
     function parse() {
@@ -427,6 +433,24 @@ console.log('[finance.js] v20260701i');
     panel.querySelector('#b_prev').onclick = preview;
     panel.querySelector('#b_save').onclick = save;
     panel.querySelector('#b_text').addEventListener('input', function () { panel.querySelector('#b_save').disabled = true; });
+
+    // 기존 수입(헌금) 전표 전체 삭제 — 이중 확인
+    var clearBtn = panel.querySelector('#b_clear');
+    if (clearBtn) clearBtn.onclick = function () {
+      var cm = panel.querySelector('#b_clearmsg');
+      if (!confirm('기존 수입(헌금) 전표를 전부 삭제합니다.\n지출 내역은 보존됩니다. 계속할까요?')) return;
+      var t = prompt('정말 삭제하려면 "삭제" 라고 입력하세요.');
+      if (t !== '삭제') { cm.style.color = '#7b8794'; cm.textContent = '취소되었습니다.'; return; }
+      clearBtn.disabled = true; cm.style.color = '#7b8794'; cm.textContent = '삭제 중…';
+      WPF.call('clearVouchers', { type: '수입' }).then(function (r) {
+        cm.style.color = 'green'; cm.textContent = '✓ 수입 전표 ' + (r.deleted || 0) + '건 삭제됨' + (r.kept != null ? ' (지출 ' + r.kept + '건 보존)' : '');
+        M.loaded = false; clearBtn.disabled = false;
+      }).catch(function (e) {
+        clearBtn.disabled = false;
+        if (/unknown action/i.test(e.message)) { cm.style.color = '#c0392b'; cm.textContent = '이 기능은 Apps Script 새 버전에 있습니다. 재배포 후 사용하세요.'; }
+        else { cm.style.color = '#c0392b'; cm.textContent = '삭제 실패: ' + e.message; }
+      });
+    };
   }
 
   /* ── 지출입력 ── */

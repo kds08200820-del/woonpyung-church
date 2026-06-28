@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>행정관리 | 운평장로교회</title>
   <meta name="robots" content="noindex" />
-  <link rel="manifest" href="manifest.json?v=20260701i" />
+  <link rel="manifest" href="manifest.json?v=20260701j" />
   <meta name="theme-color" content="#032257" />
-  <link rel="icon" href="images/favicon-32.png?v=20260701i" />
-  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260701i" />
+  <link rel="icon" href="images/favicon-32.png?v=20260701j" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260701j" />
   <meta name="apple-mobile-web-app-title" content="운평장로교회" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260701i" />
+  <link rel="stylesheet" href="css/style.css?v=20260701j" />
   <style>
     .fin-wrap{max-width:1000px}
     .fin-tabs{display:flex;gap:6px;border-bottom:2px solid var(--line,#e3e7ee);margin:8px 0 20px;flex-wrap:wrap}
@@ -28,6 +28,10 @@
     .af-field label{display:block;font-size:.82rem;color:var(--ink-soft,#7b8794);margin-bottom:5px}
     .af-field input,.af-field select,.af-field textarea{width:100%;padding:9px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit}
     .af-field textarea{min-height:74px;resize:vertical}
+    .fin-sugg{position:absolute;left:0;right:0;top:100%;margin-top:2px;background:#fff;border:1px solid #e3e7ee;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12);max-height:240px;overflow:auto;z-index:30}
+    .fin-sugg div{padding:8px 11px;cursor:pointer;font-size:.88rem;border-bottom:1px solid #f0f0f0}
+    .fin-sugg div:last-child{border-bottom:none}
+    .fin-sugg div:hover,.fin-sugg div.hi{background:#f5f8fc}
   </style>
 </head>
 <body>
@@ -43,10 +47,11 @@
     </div>
   </section>
 
-  <script src="js/config.js?v=20260701i"></script>
-  <script src="js/bulletins.js?v=20260701i"></script>
-  <script src="js/layout.js?v=20260701i"></script>
-  <script src="js/main.js?v=20260701i"></script>
-  <script src="js/affairs.js?v=20260701i"></script>
+  <script src="js/config.js?v=20260701j"></script>
+  <script src="js/bulletins.js?v=20260701j"></script>
+  <script src="js/layout.js?v=20260701j"></script>
+  <script src="js/main.js?v=20260701j"></script>
+  <script src="js/finance-api.js?v=20260701j"></script>
+  <script src="js/affairs.js?v=20260701j"></script>
 </body>
 </html>

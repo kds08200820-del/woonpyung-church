@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701i
+ * 콘솔: [affairs.js] v20260701j
  */
-console.log('[affairs.js] v20260701i');
+console.log('[affairs.js] v20260701j');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -15,6 +15,32 @@ console.log('[affairs.js] v20260701i');
   var fmtD = function (d) { return String(d == null ? '' : d).slice(0, 10); };
   var nl2br = function (s) { return esc(s).replace(/\n/g, '<br>'); };
   function msgCard(t, x) { return '<div class="fin-card" style="text-align:center;padding:40px 18px;"><h3 style="margin:0 0 8px;color:var(--accent,#032257);">' + esc(t) + '</h3><p style="color:var(--ink-soft,#7b8794);">' + esc(x) + '</p></div>'; }
+
+  // ── 교적 연동(대상자 자동완성·관계 표시) ──
+  var MEMBERS = [], membersLoaded = false;
+  function ymd(v) { return String(v == null ? '' : v).slice(0, 10); }
+  function findMember(key) { if (!key) return null; for (var i = 0; i < MEMBERS.length; i++) if (String(MEMBERS[i].key) === String(key)) return MEMBERS[i]; return null; }
+  // 교적은 구글시트에만 있으므로 Apps Script API(listGyojeok, 관리자 권한)로 1회 로드
+  function loadMembers() {
+    if (membersLoaded || !window.WPF || !window.FINANCE_API_URL) return;
+    WPF.call('listGyojeok').then(function (r) {
+      MEMBERS = (r.members || []).map(function (m) {
+        return { name: m['이름'], key: m['매칭키'], birth: ymd(m['생년월일']),
+                 role: m['직책'] || '', group: m['그룹'] || m['소속그룹'] || '', head: m['세대주'] || '', rel: m['관계'] || '', spouse: m['배우자'] || '' };
+      }).filter(function (m) { return m.name; });
+      membersLoaded = true;
+    }).catch(function () { /* 연동 실패 시 자동완성만 비활성, 이름 직접입력은 정상 동작 */ });
+  }
+  // 교적 매칭 정보를 한 줄로 요약(직책·구역·세대)
+  function memberLine(m) {
+    if (!m) return '';
+    var bits = [];
+    if (m.role) bits.push(m.role);
+    if (m.group) bits.push(m.group);
+    if (m.head && m.head !== m.name) bits.push(m.head + '의 가정');
+    if (m.birth) bits.push(m.birth);
+    return bits.join(' · ');
+  }
 
   function sess() {
     try {
@@ -97,6 +123,61 @@ console.log('[affairs.js] v20260701i');
     return rec;
   }
 
+  // 대상자 입력에 교적 자동완성 + 매칭키(관계) 연결을 부착
+  function setupMemberLink(form) {
+    var input = form.querySelector('[data-k="member_name"]');
+    if (!input) return { clear: function () {}, setByKey: function () {} };
+    input.setAttribute('autocomplete', 'off');
+    var field = input.closest('.af-field'); if (field) field.style.position = 'relative';
+    var hint = document.createElement('div');
+    hint.style.cssText = 'font-size:.78rem;margin-top:5px;min-height:1.1em;';
+    if (field) field.appendChild(hint);
+    var pop = null, hi = -1, matches = [];
+    function close() { if (pop) { pop.remove(); pop = null; hi = -1; } }
+    function showHint(m) {
+      if (m) { var line = memberLine(m); hint.style.color = '#1e874b'; hint.innerHTML = '🔗 교적 연결: <b>' + esc(m.name) + '</b>' + (line ? ' <span style="color:#5b6b7d">· ' + esc(line) + '</span>' : ''); }
+      else if (input.value.trim()) { hint.style.color = '#9aa5b1'; hint.innerHTML = '교적 미연결 — 이름만 저장됩니다(검색해서 연결 권장).'; }
+      else { hint.innerHTML = ''; }
+    }
+    function setKey(m) { input.dataset.memberKey = (m && m.key) || ''; showHint(m); }
+    function pick(m) { input.value = m.name; close(); setKey(m); }
+    input.addEventListener('input', function () {
+      input.dataset.memberKey = ''; var q = input.value.trim().toLowerCase(); close(); showHint(null);
+      if (!q || !MEMBERS.length) return;
+      matches = MEMBERS.filter(function (m) { return (m.name || '').toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
+      if (!matches.length) return;
+      pop = document.createElement('div'); pop.className = 'fin-sugg';
+      matches.forEach(function (m) {
+        var d = document.createElement('div'); var line = memberLine(m);
+        d.innerHTML = esc(m.name) + (line ? ' <span style="color:#9aa5b1;font-size:.78rem">' + esc(line) + '</span>' : '');
+        d.onclick = function () { pick(m); };
+        pop.appendChild(d);
+      });
+      if (field) field.appendChild(pop);
+    });
+    input.addEventListener('keydown', function (e) {
+      if (!pop) return; var rows = pop.querySelectorAll('div');
+      if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); }
+      else if (e.key === 'Enter' && hi >= 0) { e.preventDefault(); pick(matches[hi]); return; }
+      else if (e.key === 'Escape') { close(); return; }
+      else return;
+      Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); });
+    });
+    input.addEventListener('blur', function () { setTimeout(close, 180); });
+    return {
+      clear: function () { input.dataset.memberKey = ''; hint.innerHTML = ''; close(); },
+      setByKey: function (key, name) {
+        if (name != null) input.value = name;
+        input.dataset.memberKey = key || '';
+        var m = findMember(key);
+        if (m) showHint(m);
+        else if (key) { hint.style.color = '#1e874b'; hint.innerHTML = '🔗 교적 연결됨'; }
+        else showHint(null);
+      }
+    };
+  }
+
   function renderManager(panel, type) {
     panel.innerHTML =
       '<div class="fin-card"><h3 style="margin:0 0 12px;color:var(--accent,#032257)">' + type.name + ' 기록 추가</h3>' +
@@ -107,15 +188,19 @@ console.log('[affairs.js] v20260701i');
     var form = panel.querySelector('#afForm');
     var msg = panel.querySelector('#af_msg');
     var resetBtn = panel.querySelector('#af_reset');
+    var linkCtl = setupMemberLink(form);
     var editId = null;
     function clearForm() {
       editId = null; resetBtn.style.display = 'none'; panel.querySelector('#af_save').textContent = '＋ 추가';
       type.fields.forEach(function (f) { var el = form.querySelector('[data-k="' + f.k + '"]'); if (!el) return; if (f.type === 'check') el.checked = false; else el.value = (f.type === 'date') ? today() : ''; });
+      linkCtl.clear();
     }
     resetBtn.onclick = clearForm;
     form.onsubmit = function (e) {
       e.preventDefault();
       var rec = collect(form, type);
+      var nme = form.querySelector('[data-k="member_name"]');
+      rec.member_key = (nme && nme.dataset.memberKey) ? nme.dataset.memberKey : null; // 교적 매칭키(관계 연결)
       if (!rec[type.dateCol] || !rec.member_name) { msg.style.color = '#c0392b'; msg.textContent = '일자와 대상자는 필수입니다.'; return; }
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
       var p = editId
@@ -138,6 +223,7 @@ console.log('[affairs.js] v20260701i');
               type.cols.map(function (c) {
                 var k = c[0], val = r[k];
                 if (k === type.dateCol) return '<td style="white-space:nowrap">' + esc(fmtD(val)) + '</td>';
+                if (k === 'member_name') { var mm = findMember(r.member_key); var badge = mm ? ' <span class="fin-pill" style="background:#e8f6ee;color:#1e874b">🔗 ' + esc(mm.role || mm.group || '교적') + '</span>' : (r.member_key ? ' <span class="fin-pill" style="background:#e8f6ee;color:#1e874b">🔗</span>' : ''); return '<td style="white-space:nowrap">' + esc(val || '') + badge + '</td>'; }
                 if (k === 'category') return '<td><span class="fin-pill">' + esc(val || '') + '</span></td>';
                 if (k === 'content') return '<td style="max-width:320px;white-space:normal;color:#48576b">' + nl2br(String(val || '').slice(0, 140)) + (String(val || '').length > 140 ? '…' : '') + (r.is_private ? ' <span class="fin-pill" style="background:#fdecea;color:#c0392b">비공개</span>' : '') + '</td>';
                 return '<td style="white-space:nowrap">' + esc(val || '') + '</td>';
@@ -160,6 +246,7 @@ console.log('[affairs.js] v20260701i');
             var r = byId[b.dataset.edit]; if (!r) return;
             editId = r.id; resetBtn.style.display = ''; panel.querySelector('#af_save').textContent = '저장(수정)';
             type.fields.forEach(function (f) { var el = form.querySelector('[data-k="' + f.k + '"]'); if (!el) return; if (f.type === 'check') el.checked = !!r[f.k]; else el.value = (f.type === 'date') ? fmtD(r[f.k]) : (r[f.k] == null ? '' : r[f.k]); });
+            linkCtl.setByKey(r.member_key, r.member_name);
             panel.scrollIntoView({ behavior: 'smooth' });
           };
         });
@@ -185,6 +272,7 @@ console.log('[affairs.js] v20260701i');
     }
     api('GET', 'admins?uid=eq.' + s.uid + '&select=uid').then(function (rows) {
       if (!rows || !rows.length) { root.innerHTML = msgCard('접근 권한이 없습니다', '행정관리는 관리자만 이용할 수 있습니다.'); return; }
+      loadMembers();
       render();
     }).catch(function (e) { root.innerHTML = msgCard('오류', e.message); });
   }
