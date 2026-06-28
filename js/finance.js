@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260630u
+ * 콘솔: [finance.js] v20260630v
  */
-console.log('[finance.js] v20260630u');
+console.log('[finance.js] v20260630v');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -11,7 +11,22 @@ console.log('[finance.js] v20260630u');
   var won = function (n) { return (Number(n) || 0).toLocaleString('ko-KR'); };
   var parseNum = function (s) { return Number(String(s == null ? '' : s).replace(/[^\d-]/g, '')) || 0; };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-  var today = function () { var d = new Date(), p = function (x) { return ('' + x).padStart(2, '0'); }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
+  var pad2 = function (n) { return ('0' + n).slice(-2); };
+  var today = function () { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+
+  // ── 회계연도 ──
+  function fyStartMonth() { var v = Number(localStorage.getItem('wpf_fy_start')); return (v >= 1 && v <= 12) ? v : 1; }
+  function lastDay(y, m) { return new Date(y, m, 0).getDate(); }
+  function fyRange(year) {
+    var sm = fyStartMonth();
+    var from = year + '-' + pad2(sm) + '-01';
+    var endY = (sm === 1) ? year : year + 1, endM = (sm === 1) ? 12 : sm - 1;
+    return { from: from, to: endY + '-' + pad2(endM) + '-' + pad2(lastDay(endY, endM)) };
+  }
+  function curFY() { var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1; return (m >= fyStartMonth()) ? y : y - 1; }
+  function inFY(x) { var r = fyRange(M.fy), d = String(x['일자']).slice(0, 10); return d >= r.from && d <= r.to; }
+  function vouchersFY() { return M.vouchers.filter(inFY); }
+  M.fy = curFY();
 
   var tries = 0;
   function boot() {
@@ -43,11 +58,23 @@ console.log('[finance.js] v20260630u');
   var TABS = [
     ['offering', '헌금입력'], ['expense', '지출입력'], ['ledger', '거래장부'],
     ['givers', '헌금자통계'], ['gl', '총계정원장'], ['report', '결산보고서'],
-    ['receipt', '기부금영수증'], ['budget', '예산']
+    ['receipt', '기부금영수증'], ['budget', '예산'], ['settings', '설정']
   ];
   var tab = 'offering';
+  function fyBar() {
+    var d = new Date(), y = d.getFullYear(), opts = '';
+    for (var yr = y + 1; yr >= y - 4; yr--) opts += '<option value="' + yr + '"' + (yr === M.fy ? ' selected' : '') + '>' + yr + '년도</option>';
+    var r = fyRange(M.fy);
+    return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:#f5f8fc;border:1px solid #e3ebf5;border-radius:10px;">' +
+      '<b style="color:var(--accent,#032257)">📅 회계연도</b>' +
+      '<select id="fySel" style="padding:6px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;background:#fff;">' + opts + '</select>' +
+      '<span style="color:#7b8794;font-size:.86rem;">' + r.from + ' ~ ' + r.to + '</span>' +
+      '<span style="color:#9aa5b1;font-size:.8rem;margin-left:auto;">시작월·범위는 <b>설정</b> 탭에서</span></div>';
+  }
   function render() {
-    root.innerHTML = '<div class="fin-tabs">' + TABS.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div id="finPanel"></div>';
+    root.innerHTML = fyBar() + '<div class="fin-tabs">' + TABS.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div id="finPanel"></div>';
+    var sel = document.getElementById('fySel');
+    if (sel) sel.onchange = function () { M.fy = Number(sel.value); render(); };
     Array.prototype.forEach.call(root.querySelectorAll('.fin-tabs button'), function (b) {
       if (b.dataset.t === tab) b.classList.add('active');
       b.onclick = function () { tab = b.dataset.t; render(); };
@@ -61,6 +88,7 @@ console.log('[finance.js] v20260630u');
     else if (tab === 'report') renderReport(p);
     else if (tab === 'receipt') renderReceipt(p);
     else if (tab === 'budget') renderBudget(p);
+    else if (tab === 'settings') renderSettings(p);
   }
 
   function accOptions(type, group) {
@@ -216,7 +244,8 @@ console.log('[finance.js] v20260630u');
 
   /* ── 거래장부 ── */
   function renderLedger(panel) {
-    panel.innerHTML = '<div class="fin-card"><div class="fin-grid"><div class="form-field"><label>시작일</label><input type="date" id="l_from"></div><div class="form-field"><label>종료일</label><input type="date" id="l_to"></div><div class="form-field"><label>검색(계정/이름/적요)</label><input type="text" id="l_q"></div><div class="form-field" style="align-self:end"><button class="btn btn-solid" id="l_go">조회</button></div></div></div><div id="l_out"></div>';
+    var _r = fyRange(M.fy);
+    panel.innerHTML = '<div class="fin-card"><div class="fin-grid"><div class="form-field"><label>시작일</label><input type="date" id="l_from" value="' + _r.from + '"></div><div class="form-field"><label>종료일</label><input type="date" id="l_to" value="' + _r.to + '"></div><div class="form-field"><label>검색(계정/이름/적요)</label><input type="text" id="l_q"></div><div class="form-field" style="align-self:end"><button class="btn btn-solid" id="l_go">조회</button></div></div></div><div id="l_out"></div>';
     var out = panel.querySelector('#l_out');
     function draw() {
       loading(out);
@@ -240,7 +269,7 @@ console.log('[finance.js] v20260630u');
     loading(panel);
     ensureVouchers().then(function () {
       var map = {};
-      M.vouchers.filter(function (x) { return String(x['종류']) === '헌금'; }).forEach(function (v) {
+      vouchersFY().filter(function (x) { return String(x['종류']) === '헌금'; }).forEach(function (v) {
         var key = v['매칭키'] || ('이름:' + (v['헌금자'] || '무명')); if (!map[key]) map[key] = { name: v['헌금자'] || '무명', key: v['매칭키'], count: 0, total: 0 };
         map[key].count++; map[key].total += Number(v['금액']) || 0;
       });
@@ -258,7 +287,7 @@ console.log('[finance.js] v20260630u');
       panel.innerHTML = '';
       ['수입', '지출'].forEach(function (type) {
         var byAcc = {}; var tot = 0;
-        M.vouchers.filter(function (x) { return String(x['구분']) === type; }).forEach(function (v) { var a = v['계정'] || '?'; if (!byAcc[a]) byAcc[a] = { count: 0, sum: 0 }; byAcc[a].count++; byAcc[a].sum += Number(v['금액']) || 0; tot += Number(v['금액']) || 0; });
+        vouchersFY().filter(function (x) { return String(x['구분']) === type; }).forEach(function (v) { var a = v['계정'] || '?'; if (!byAcc[a]) byAcc[a] = { count: 0, sum: 0 }; byAcc[a].count++; byAcc[a].sum += Number(v['금액']) || 0; tot += Number(v['금액']) || 0; });
         var rows = Object.keys(byAcc).map(function (k) { return { acc: k, count: byAcc[k].count, sum: byAcc[k].sum }; }).sort(function (a, b) { return b.sum - a.sum; });
         var card = document.createElement('div'); card.className = 'fin-card'; card.style.marginBottom = '16px';
         card.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>' + type + ' 계정별 집계</b><b style="color:' + (type === '수입' ? '#1e874b' : '#c0392b') + '">' + won(tot) + '원</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>계정</th><th class="num">건수</th><th class="num">금액</th><th class="num">비율</th></tr></thead><tbody>' +
@@ -273,7 +302,7 @@ console.log('[finance.js] v20260630u');
     loading(panel);
     Promise.all([ensureVouchers(), ensureBudget()]).then(function () {
       var months = {}; var order = [];
-      M.vouchers.forEach(function (v) { var m = String(v['일자']).slice(0, 7); if (!months[m]) { months[m] = { inc: 0, exp: 0 }; order.push(m); } if (String(v['구분']) === '수입') months[m].inc += Number(v['금액']) || 0; else months[m].exp += Number(v['금액']) || 0; });
+      vouchersFY().forEach(function (v) { var m = String(v['일자']).slice(0, 7); if (!months[m]) { months[m] = { inc: 0, exp: 0 }; order.push(m); } if (String(v['구분']) === '수입') months[m].inc += Number(v['금액']) || 0; else months[m].exp += Number(v['금액']) || 0; });
       order.sort();
       var ti = 0, te = 0;
       var monthTbl = order.map(function (m) { ti += months[m].inc; te += months[m].exp; return '<tr><td>' + esc(m) + '</td><td class="num">' + won(months[m].inc) + '</td><td class="num">' + won(months[m].exp) + '</td><td class="num"><b>' + won(months[m].inc - months[m].exp) + '</b></td></tr>'; }).join('');
@@ -294,7 +323,7 @@ console.log('[finance.js] v20260630u');
     loading(panel);
     ensureVouchers().then(function () {
       var map = {};
-      M.vouchers.filter(function (x) { return String(x['종류']) === '헌금' && x['매칭키']; }).forEach(function (v) { var k = v['매칭키']; if (!map[k]) map[k] = { name: v['헌금자'], key: k, total: 0, count: 0 }; map[k].total += Number(v['금액']) || 0; map[k].count++; });
+      vouchersFY().filter(function (x) { return String(x['종류']) === '헌금' && x['매칭키']; }).forEach(function (v) { var k = v['매칭키']; if (!map[k]) map[k] = { name: v['헌금자'], key: k, total: 0, count: 0 }; map[k].total += Number(v['금액']) || 0; map[k].count++; });
       var rows = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return b.total - a.total; });
       var tot = rows.reduce(function (s, r) { return s + r.total; }, 0);
       panel.innerHTML = '<div class="fin-card"><div style="background:#fff8e8;border:1px solid #f0d98c;color:#8a6512;padding:10px 14px;border-radius:9px;font-size:.85rem;margin-bottom:12px">연말정산 기부금영수증용 — 교적 매칭된 교인의 헌금 누계입니다. (미등록 헌금자 제외)</div><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>교인별 헌금 누계 (' + rows.length + '명)</b><b style="color:#1e874b">' + won(tot) + '원</b></div><div style="overflow:auto;max-height:600px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th class="num">건수</th><th class="num">헌금 누계</th></tr></thead><tbody>' +
@@ -347,6 +376,29 @@ console.log('[finance.js] v20260630u');
         wrap.appendChild(tbl); card.appendChild(head); card.appendChild(wrap); panel.appendChild(card);
       });
     }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
+  }
+
+  /* ── 설정(회계연도 시작 월) ── */
+  function renderSettings(panel) {
+    var sm = fyStartMonth();
+    var mopts = '';
+    for (var i = 1; i <= 12; i++) mopts += '<option value="' + i + '"' + (i === sm ? ' selected' : '') + '>' + i + '월</option>';
+    var r = fyRange(M.fy);
+    panel.innerHTML = '<div class="fin-card" style="max-width:560px">' +
+      '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">회계연도 설정</h3>' +
+      '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:16px">회계연도가 시작하는 월을 정합니다. 거래장부·통계·결산보고서·기부금영수증이 선택한 회계연도 범위로 집계됩니다.</p>' +
+      '<div class="form-field" style="max-width:220px"><label>회계연도 시작 월</label><select id="set_sm">' + mopts + '</select></div>' +
+      '<p class="help" style="margin-top:10px">예) <b>1월</b> → 1/1 ~ 12/31 · <b>12월</b> → 12/1 ~ 익년 11/30(오직 방식) · <b>3월</b> → 3/1 ~ 익년 2/말</p>' +
+      '<p style="margin-top:6px;font-size:.86rem">현재 <b>' + M.fy + '년도</b> 범위: <b>' + r.from + ' ~ ' + r.to + '</b></p>' +
+      '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_save">저장</button><span class="fin-msg" id="set_msg"></span></div>' +
+      '<p style="color:#9aa5b1;font-size:.78rem;margin-top:12px">※ 이 설정은 현재 브라우저에 저장됩니다(관리자 PC 기준). 회계연도 선택은 상단 드롭다운에서 바꿀 수 있습니다.</p></div>';
+    panel.querySelector('#set_save').onclick = function () {
+      var v = Number(panel.querySelector('#set_sm').value);
+      localStorage.setItem('wpf_fy_start', v);
+      M.fy = curFY();
+      var msg = panel.querySelector('#set_msg'); msg.style.color = 'green'; msg.textContent = '✓ 저장됨';
+      setTimeout(render, 700);
+    };
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
