@@ -1,9 +1,9 @@
 /* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
  * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
- * 콘솔: [finance-api.js] v20260701s (Supabase)
+ * 콘솔: [finance-api.js] v20260701t (Supabase)
  */
-console.log('[finance-api.js] v20260701s (Supabase)');
+console.log('[finance-api.js] v20260701t (Supabase)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -119,7 +119,9 @@ window.WPF = (function () {
       case 'updateAccount':
         return rest('PATCH', 'budget?code=eq.' + encodeURIComponent(params.code), params.fields || {}, 'return=minimal').then(function () { return { ok: true }; });
       case 'deleteAccount':
-        return rest('DELETE', 'budget?code=eq.' + encodeURIComponent(params.code), null, 'return=minimal').then(function () { return { ok: true }; });
+        return rest('DELETE', 'budget?code=eq.' + encodeURIComponent(params.code), null, 'return=representation').then(function (rows) { return { ok: true, deleted: (rows || []).length }; });
+      case 'deleteAccountTree': // 항 + 하위 목(같은 앞 3자리)을 한 번에 삭제
+        return rest('DELETE', 'budget?code=like.' + String(params.code || '').slice(0, 3) + '*', null, 'return=representation').then(function (rows) { return { ok: true, deleted: (rows || []).length }; });
       case 'listGyojeok':
         return rest('GET', 'gyojeok?select=*&order=name&limit=20000').then(function (rows) { return { ok: true, members: (rows || []).map(gjOut) }; });
       case 'addGyojeok': {

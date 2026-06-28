@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701s
+ * 콘솔: [finance.js] v20260701t
  */
-console.log('[finance.js] v20260701s');
+console.log('[finance.js] v20260701t');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -840,7 +840,7 @@ console.log('[finance.js] v20260701s');
           if (editing) tr.appendChild(mng([
             { label: '＋ 목 추가', fn: function () { var nm = prompt('「' + gr['계정이름'] + '」에 추가할 목(계정) 이름'); if (nm && nm.trim()) WPF.call('addAccount', { code: nextDetail(gr['계정코드'], g), atype: g, name: nm.trim(), budget: 0 }).then(reload).catch(function (e) { flash(e.message, false); }); } },
             { label: '✏ 수정', fn: function () { var nm = prompt('항(분류) 이름 수정', gr['계정이름']); if (nm && nm.trim()) WPF.call('updateAccount', { code: gr['계정코드'], fields: { name: nm.trim() } }).then(reload).catch(function (e) { flash(e.message, false); }); } },
-            { label: '🗑 삭제', fn: function () { var kids = byParent[gr['계정코드']] || []; if (!confirm('「' + gr['계정이름'] + '」 항' + (kids.length ? '과 하위 목 ' + kids.length + '개를 모두' : '을') + ' 삭제할까요?')) return; var codes = kids.map(function (k) { return k['계정코드']; }).concat([gr['계정코드']]); Promise.all(codes.map(function (c) { return WPF.call('deleteAccount', { code: c }); })).then(reload).catch(function (e) { flash(e.message, false); }); } }
+            { label: '🗑 삭제', fn: function () { var kids = byParent[gr['계정코드']] || []; if (!confirm('「' + gr['계정이름'] + '」 항' + (kids.length ? '과 하위 목 ' + kids.length + '개를 모두' : '을') + ' 삭제할까요?')) return; flash('삭제 중…'); WPF.call('deleteAccountTree', { code: gr['계정코드'] }).then(function (r) { flash('✓ ' + (r.deleted || 0) + '개 삭제됨', true); reload(); }).catch(function (e) { flash('삭제 실패: ' + e.message, false); }); } }
           ]));
           tb.appendChild(tr);
           detailRows(gr['계정코드']);
