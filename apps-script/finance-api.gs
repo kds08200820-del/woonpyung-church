@@ -18,6 +18,7 @@
 // ── 고정 설정(비밀 아님: 파일ID/공개URL/anon공개키) ──
 var GYOJEOK_SHEET_ID = '1UQ9G-4jrVRy1TPywC76xMEpwEZL1nxf_xXdqSnfx6TU'; // 운평교적_데이터
 var JAEJEONG_SHEET_ID = '1HtXV55KccpB9MztYN2aRwupeAFlwie9mhQjBkgpXOko'; // 운평재정_장부
+var YESAN_SHEET_ID = '1Ag9oU5qgge4rEgz_wJND_gDYZzOFgAVT5FmS-XF1BoA';   // 운평재정_예산
 var SUPABASE_URL = 'https://cetacttsdwzxjzkyozgd.supabase.co';
 var SUPABASE_ANON = 'sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G';
 
@@ -102,6 +103,7 @@ function doPost(e) {
     if (action === 'me') return json_(actionMe_(req));
     if (action === 'myOfferings') return json_(actionMyOfferings_(req));
     if (action === 'masters') return json_(actionMasters_(req));
+    if (action === 'budget') return json_(actionBudget_(req));
     if (action === 'listVouchers') return json_(actionListVouchers_(req));
     if (action === 'addVoucher') return json_(actionAddVoucher_(req));
     if (action === 'updateVoucher') return json_(actionUpdateVoucher_(req));
@@ -182,6 +184,15 @@ function actionMasters_(req) {
   var accounts = readObjects_(JAEJEONG_SHEET_ID, '계정과목');
   var services = readObjects_(JAEJEONG_SHEET_ID, '예배');
   return { ok: true, members: members, accounts: accounts, services: services };
+}
+
+// 예산 조회(권한자만) — 운평재정_예산 시트
+function actionBudget_(req) {
+  var user = verifyUser_(req.token);
+  requireFinance_(user.id);
+  var rows = readObjects_(YESAN_SHEET_ID, '운평재정_예산');
+  if (!rows.length) rows = readObjects_(YESAN_SHEET_ID, SpreadsheetApp.openById(YESAN_SHEET_ID).getSheets()[0].getName());
+  return { ok: true, budget: rows };
 }
 
 // 전표 목록(권한자만)
