@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701ab
+ * 콘솔: [finance.js] v20260701ac
  */
-console.log('[finance.js] v20260701ab');
+console.log('[finance.js] v20260701ac');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -259,21 +259,24 @@ console.log('[finance.js] v20260701ab');
         var maxV = Math.max.apply(null, order.map(function (m) { return Math.max(months[m].inc, months[m].exp); }).concat([1]));
         function cx(i) { return PL + (i + 0.5) * (pw / n); }
         function yv(v) { return PT + ph - (v / maxV) * ph; }
+        var INC = '#34C759', EXP = '#FF3B30';
         var bw = 11, rects = '', incPts = [], expPts = [], dots = '', hits = '', labels = '';
         order.forEach(function (m, i) {
-          var c = cx(i), inc = months[m].inc, exp = months[m].exp, xi = c - bw - 1, xe = c + 1;
-          rects += '<rect x="' + xi + '" y="' + yv(inc) + '" width="' + bw + '" height="' + (baseY - yv(inc)) + '" rx="2" fill="#10b981" opacity="0.28"></rect>';
-          rects += '<rect x="' + xe + '" y="' + yv(exp) + '" width="' + bw + '" height="' + (baseY - yv(exp)) + '" rx="2" fill="#ef4444" opacity="0.28"></rect>';
+          var c = cx(i), inc = months[m].inc, exp = months[m].exp, xi = c - bw - 1.5, xe = c + 1.5;
+          rects += '<rect x="' + xi + '" y="' + yv(inc) + '" width="' + bw + '" height="' + (baseY - yv(inc)) + '" rx="3.5" fill="url(#gInc)"></rect>';
+          rects += '<rect x="' + xe + '" y="' + yv(exp) + '" width="' + bw + '" height="' + (baseY - yv(exp)) + '" rx="3.5" fill="url(#gExp)"></rect>';
           incPts.push((xi + bw / 2).toFixed(1) + ',' + yv(inc).toFixed(1));
           expPts.push((xe + bw / 2).toFixed(1) + ',' + yv(exp).toFixed(1));
-          dots += '<circle cx="' + (xi + bw / 2) + '" cy="' + yv(inc) + '" r="3.2" fill="#10b981"></circle><circle cx="' + (xe + bw / 2) + '" cy="' + yv(exp) + '" r="3.2" fill="#ef4444"></circle>';
+          dots += '<circle cx="' + (xi + bw / 2) + '" cy="' + yv(inc) + '" r="3.6" fill="' + INC + '" stroke="#fff" stroke-width="1.6"></circle><circle cx="' + (xe + bw / 2) + '" cy="' + yv(exp) + '" r="3.6" fill="' + EXP + '" stroke="#fff" stroke-width="1.6"></circle>';
           hits += '<rect class="mc-hit" data-i="' + i + '" x="' + (c - (pw / n) / 2) + '" y="' + PT + '" width="' + (pw / n) + '" height="' + ph + '" fill="transparent" style="cursor:pointer"></rect>';
-          labels += '<text x="' + c + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#7b8794">' + m.slice(5) + '월</text>';
+          labels += '<text x="' + c + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#8a8a8e">' + m.slice(5) + '월</text>';
         });
         return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" preserveAspectRatio="xMidYMid meet" style="height:auto;max-width:' + W + 'px">' +
+          '<defs><linearGradient id="gInc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + INC + '" stop-opacity="0.5"></stop><stop offset="1" stop-color="' + INC + '" stop-opacity="0.05"></stop></linearGradient>' +
+          '<linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + EXP + '" stop-opacity="0.5"></stop><stop offset="1" stop-color="' + EXP + '" stop-opacity="0.05"></stop></linearGradient></defs>' +
           rects +
-          '<polyline points="' + incPts.join(' ') + '" fill="none" stroke="#10b981" stroke-width="2"></polyline>' +
-          '<polyline points="' + expPts.join(' ') + '" fill="none" stroke="#ef4444" stroke-width="2"></polyline>' +
+          '<polyline points="' + incPts.join(' ') + '" fill="none" stroke="' + INC + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>' +
+          '<polyline points="' + expPts.join(' ') + '" fill="none" stroke="' + EXP + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>' +
           dots + labels + hits + '</svg>';
       }
 
@@ -283,11 +286,11 @@ console.log('[finance.js] v20260701ab');
         var ents = Object.keys(map).map(function (k) { return { k: k, v: map[k] }; }).filter(function (e) { return e.v > 0; }).sort(function (a, b) { return b.v - a.v; });
         var total = ents.reduce(function (s, e) { return s + e.v; }, 0);
         if (!total) return '<p style="color:#9aa5b1;margin-top:12px">내역 없음</p>';
-        var PAL = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4', '#a855f7', '#eab308', '#f43f5e', '#0ea5e9', '#22c55e'];
-        var R = 54, C = 2 * Math.PI * R, off = 0;
-        var segs = ents.map(function (e, i) { var len = e.v / total * C; var s = '<circle r="' + R + '" cx="75" cy="75" fill="none" stroke="' + PAL[i % PAL.length] + '" stroke-width="22" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 75 75)"></circle>'; off += len; return s; }).join('');
-        var svg = '<svg viewBox="0 0 150 150" width="160" height="160" style="flex:0 0 auto">' + segs + '<text x="75" y="71" text-anchor="middle" font-size="10" fill="#7b8794">헌금 합계</text><text x="75" y="89" text-anchor="middle" font-size="11" font-weight="700" fill="#032257">' + won(total) + '</text></svg>';
-        var legend = '<div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:5px">' + ents.map(function (e, i) { return '<div style="display:flex;align-items:center;gap:7px;font-size:.84rem"><span style="width:11px;height:11px;border-radius:3px;background:' + PAL[i % PAL.length] + ';flex:0 0 auto"></span><span style="flex:1">' + esc(e.k) + '</span><b style="font-variant-numeric:tabular-nums">' + won(e.v) + '</b><span style="color:#9aa5b1;width:42px;text-align:right">' + (e.v / total * 100).toFixed(0) + '%</span></div>'; }).join('') + '</div>';
+        var PAL = ['#0A84FF', '#30D158', '#FF9F0A', '#FF453A', '#BF5AF2', '#FF375F', '#64D2FF', '#FF9500', '#5E5CE6', '#AC8E68', '#66D4CF', '#FFD60A', '#FF6482', '#32ADE6', '#A2845E', '#34C759'];
+        var R = 55, SW = 17, C = 2 * Math.PI * R, GAP = ents.length > 1 ? 2 : 0, off = 0;
+        var segs = ents.map(function (e, i) { var frac = e.v / total * C, len = Math.max(0.5, frac - GAP); var s = '<circle r="' + R + '" cx="75" cy="75" fill="none" stroke="' + PAL[i % PAL.length] + '" stroke-width="' + SW + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 75 75)"></circle>'; off += frac; return s; }).join('');
+        var svg = '<svg viewBox="0 0 150 150" width="160" height="160" style="flex:0 0 auto">' + segs + '<text x="75" y="71" text-anchor="middle" font-size="10" fill="#8a8a8e">헌금 합계</text><text x="75" y="89" text-anchor="middle" font-size="11" font-weight="700" fill="#1d1d1f">' + won(total) + '</text></svg>';
+        var legend = '<div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:5px">' + ents.map(function (e, i) { return '<div style="display:flex;align-items:center;gap:8px;font-size:.84rem"><span style="width:10px;height:10px;border-radius:50%;background:' + PAL[i % PAL.length] + ';flex:0 0 auto"></span><span style="flex:1;color:#1d1d1f">' + esc(e.k) + '</span><b style="font-variant-numeric:tabular-nums">' + won(e.v) + '</b><span style="color:#9aa5b1;width:42px;text-align:right">' + (e.v / total * 100).toFixed(0) + '%</span></div>'; }).join('') + '</div>';
         return '<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:12px">' + svg + legend + '</div>';
       }
 
@@ -301,7 +304,7 @@ console.log('[finance.js] v20260701ab');
       panel.innerHTML =
         // 월별 차트 + 도넛 (상단)
         '<div class="fin-card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:24px">' +
-          '<div><b>📊 월별 수입·지출</b> <span style="font-size:.76rem"><span style="color:#10b981">● 수입</span> <span style="color:#ef4444">● 지출</span> <span style="color:#9aa5b1">· 막대+추세선</span></span>' +
+          '<div><b>📊 월별 수입·지출</b> <span style="font-size:.76rem"><span style="color:#34C759">● 수입</span> <span style="color:#FF3B30">● 지출</span> <span style="color:#9aa5b1">· 막대+추세선</span></span>' +
             '<div id="mcWrap" style="position:relative;margin-top:14px">' + monthChart() + '<div id="mcTip" style="position:absolute;display:none;background:#032257;color:#fff;font-size:.76rem;line-height:1.45;padding:6px 9px;border-radius:7px;pointer-events:none;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.25)"></div></div></div>' +
           '<div><b>🍩 헌금 항목별 (연간)</b>' + donut(incFY) + '</div>' +
         '</div></div>' +
