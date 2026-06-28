@@ -104,6 +104,7 @@ function doPost(e) {
     if (action === 'myOfferings') return json_(actionMyOfferings_(req));
     if (action === 'masters') return json_(actionMasters_(req));
     if (action === 'budget') return json_(actionBudget_(req));
+    if (action === 'updateBudget') return json_(actionUpdateBudget_(req));
     if (action === 'listAccess') return json_(actionListAccess_(req));
     if (action === 'setAccess') return json_(actionSetAccess_(req));
     if (action === 'listGyojeok') return json_(actionListGyojeok_(req));
@@ -177,7 +178,7 @@ function actionMyOfferings_(req) {
   var total = 0;
   var out = mine.map(function (r) {
     var amt = Number(r['금액']) || 0; total += amt;
-    return { date: r['일자'], account: r['계정'], service: r['예배'], amount: amt, memo: r['적요'], giver: r['헌금자'] || '' };
+    return { date: ymd_(r['일자']), account: r['계정'], service: r['예배'], amount: amt, memo: r['적요'], giver: r['헌금자'] || '' };
   });
   return { ok: true, status: '정회원', memberName: link.member_name, spouse: spouseName, offerings: out, total: total };
 }
@@ -202,6 +203,28 @@ function actionBudget_(req) {
   var rows = readObjects_(YESAN_SHEET_ID, '운평재정_예산');
   if (!rows.length) rows = readObjects_(YESAN_SHEET_ID, SpreadsheetApp.openById(YESAN_SHEET_ID).getSheets()[0].getName());
   return { ok: true, budget: rows };
+}
+
+// 예산 금년예산 수정(권한자만) — 운평재정_예산 시트에 직접 기록
+function actionUpdateBudget_(req) {
+  var user = verifyUser_(req.token);
+  requireFinance_(user.id);
+  var ss = SpreadsheetApp.openById(YESAN_SHEET_ID);
+  var sh = ss.getSheetByName('운평재정_예산') || ss.getSheets()[0];
+  var data = sh.getDataRange().getValues();
+  if (data.length < 2) return { ok: false, error: '예산 시트가 비어 있습니다.' };
+  var head = data[0];
+  var codeCol = head.indexOf('계정코드');
+  var amtCol = head.indexOf('예산');
+  if (codeCol < 0) codeCol = head.indexOf('코드');
+  if (codeCol < 0 || amtCol < 0) return { ok: false, error: '예산 시트에 계정코드/예산 열이 필요합니다.' };
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][codeCol]) === String(req.code)) {
+      sh.getRange(i + 1, amtCol + 1).setValue(Number(req.amount) || 0);
+      return { ok: true };
+    }
+  }
+  return { ok: false, error: '예산 항목을 찾을 수 없습니다: ' + req.code };
 }
 
 // ── 관리자(교적관리)용: 회원 접근권한 목록 ──
@@ -250,6 +273,7 @@ function actionListVouchers_(req) {
   var user = verifyUser_(req.token);
   requireFinance_(user.id);
   var rows = readObjects_(JAEJEONG_SHEET_ID, '전표');
+  rows.forEach(function (r) { r['일자'] = ymd_(r['일자']); }); // 시트가 날짜로 바꾼 값을 문자열로 정규화
   if (req.from) rows = rows.filter(function (r) { return String(r['일자']) >= req.from; });
   if (req.to) rows = rows.filter(function (r) { return String(r['일자']) <= req.to; });
   rows.sort(function (a, b) { return String(b['일자']).localeCompare(String(a['일자'])); });
@@ -377,6 +401,12 @@ function findGyojeokByKey_(key) {
   var rows = readObjects_(GYOJEOK_SHEET_ID, '교적');
   for (var i = 0; i < rows.length; i++) if (String(rows[i]['매칭키']) === key) return rows[i];
   return null;
+}
+
+// 날짜 정규화: 시트가 날짜로 바꾼 Date → 'YYYY-MM-DD' 문자열, 그 외는 앞 10자
+function ymd_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return String(v == null ? '' : v).slice(0, 10);
 }
 
 function json_(obj) {

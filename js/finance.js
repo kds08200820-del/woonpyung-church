@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260630r
+ * 콘솔: [finance.js] v20260630s
  */
-console.log('[finance.js] v20260630r');
+console.log('[finance.js] v20260630s');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -109,8 +109,10 @@ console.log('[finance.js] v20260630r');
         var list = (r.vouchers || []).filter(function (x) { return String(x['종류']) === '헌금'; });
         var tot = list.reduce(function (s, x) { return s + (Number(x['금액']) || 0); }, 0);
         if (!list.length) { box.innerHTML = '<div class="fin-card"><b>' + esc(d) + '</b> 헌금 내역이 없습니다.</div>'; return; }
-        box.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>' + esc(d) + ' 헌금</b><b style="color:#1e874b">' + won(tot) + '원</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>예배</th><th>항목</th><th>헌금자</th><th class="num">금액</th><th></th></tr></thead><tbody>' +
-          list.map(function (x) { return '<tr><td>' + esc(x['예배'] || '') + '</td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || '') + '</td><td class="num">' + won(x['금액']) + '</td><td><button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table></div></div>';
+        var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
+        box.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>' + esc(d) + ' 헌금</b><b style="color:#1e874b">' + won(tot) + '원</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>예배</th><th>항목</th><th>헌금자</th><th class="num">금액</th><th>관리</th></tr></thead><tbody>' +
+          list.map(function (x) { return '<tr><td>' + esc(x['예배'] || '') + '</td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || '') + '</td><td class="num">' + won(x['금액']) + '</td><td style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table></div></div>';
+        Array.prototype.forEach.call(box.querySelectorAll('[data-edit]'), function (b) { b.onclick = function () { openEditor(byId[b.dataset.edit], function () { loadToday(d); }); }; });
         Array.prototype.forEach.call(box.querySelectorAll('[data-del]'), function (b) { b.onclick = function () { if (!confirm('삭제할까요?')) return; WPF.call('deleteVoucher', { id: b.dataset.del }).then(function () { M.loaded = false; loadToday(d); }); }; });
       }).catch(function (e) { box.innerHTML = msgCard('조회 실패', e.message); });
     }
@@ -132,6 +134,47 @@ console.log('[finance.js] v20260630r');
     function pick(m) { input.value = m.name; hidden.value = m.key || ''; close(); if (onPick) onPick(m); }
   }
 
+  var ymdStr = function (v) { return String(v == null ? '' : v).slice(0, 10); };
+
+  /* ── 전표 수정 모달(헌금/지출 공용) ── */
+  function openEditor(x, onSaved) {
+    if (!x) return;
+    var isExp = String(x['구분']) === '지출';
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+    ov.innerHTML = '<div class="fin-card" style="max-width:460px;width:100%;background:#fff;max-height:90vh;overflow:auto">' +
+      '<h3 style="margin:0 0 14px;color:var(--accent,#032257)">' + (isExp ? '지출' : '헌금') + ' 전표 수정</h3>' +
+      '<div class="form-field"><label>일자</label><input type="date" id="ed_date" value="' + esc(ymdStr(x['일자'])) + '"></div>' +
+      '<div class="form-field"><label>계정</label><select id="ed_acc">' + (isExp ? accOptions('지출') : accOptions('수입', '헌금')) + '</select></div>' +
+      (isExp ? '' : '<div class="form-field"><label>예배</label><select id="ed_svc">' + svcOptions() + '</select></div>') +
+      '<div class="form-field"><label>' + (isExp ? '거래처/수령인' : '헌금자') + '</label><input type="text" id="ed_payer" value="' + esc(x['헌금자'] || '') + '"></div>' +
+      '<div class="form-field"><label>금액</label><input type="text" id="ed_amt" inputmode="numeric" value="' + won(x['금액']) + '" style="text-align:right;font-weight:700"></div>' +
+      '<div class="form-field"><label>수단</label><select id="ed_method"><option>현금</option><option>통장</option></select></div>' +
+      '<div class="form-field"><label>적요</label><input type="text" id="ed_memo" value="' + esc(x['적요'] || '') + '"></div>' +
+      '<div style="display:flex;gap:10px;align-items:center;margin-top:16px"><button class="btn btn-solid" id="ed_save">저장</button><button class="btn btn-line" id="ed_cancel">취소</button><span class="fin-msg" id="ed_msg"></span></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#ed_acc').value = x['계정'] || '';
+    if (!isExp) ov.querySelector('#ed_svc').value = x['예배'] || '';
+    ov.querySelector('#ed_method').value = x['수단'] || '현금';
+    var amtI = ov.querySelector('#ed_amt');
+    amtI.addEventListener('input', function () { var n = parseNum(amtI.value); amtI.value = n ? won(n) : ''; });
+    function close() { ov.remove(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    ov.querySelector('#ed_cancel').onclick = close;
+    ov.querySelector('#ed_save').onclick = function () {
+      var v = {
+        date: ov.querySelector('#ed_date').value, type: x['구분'], kind: x['종류'],
+        account: ov.querySelector('#ed_acc').value, service: isExp ? '' : ov.querySelector('#ed_svc').value,
+        payer: ov.querySelector('#ed_payer').value.trim(), memberKey: x['매칭키'] || '',
+        amount: parseNum(amtI.value), method: ov.querySelector('#ed_method').value, memo: ov.querySelector('#ed_memo').value.trim()
+      };
+      var msg = ov.querySelector('#ed_msg');
+      if (!v.date || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자·금액을 확인하세요.'; return; }
+      msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
+      WPF.call('updateVoucher', { id: x['전표ID'], voucher: v }).then(function () { M.loaded = false; close(); if (onSaved) onSaved(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+    };
+  }
+
   /* ── 지출입력 ── */
   function renderExpense(panel) {
     panel.innerHTML =
@@ -143,7 +186,7 @@ console.log('[finance.js] v20260630r');
       '<div class="form-field"><label>적요</label><input type="text" id="e_memo" placeholder="예: 6월 전기요금"></div>' +
       '<div class="form-field"><label>거래처/수령인(선택)</label><input type="text" id="e_payer"></div>' +
       '<div class="form-field"><label>금액</label><input type="text" id="e_amt" inputmode="numeric" placeholder="0" style="text-align:right;font-weight:700"></div>' +
-      '</div><div style="margin-top:6px;display:flex;gap:10px;align-items:center;"><button class="btn btn-solid" id="e_add">＋ 지출 추가</button><span class="fin-msg" id="e_msg"></span></div></div>';
+      '</div><div style="margin-top:6px;display:flex;gap:10px;align-items:center;"><button class="btn btn-solid" id="e_add">＋ 지출 추가</button><span class="fin-msg" id="e_msg"></span></div></div><div id="e_today"></div>';
     var amt = panel.querySelector('#e_amt');
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
     panel.querySelector('#e_add').onclick = function () {
@@ -151,8 +194,24 @@ console.log('[finance.js] v20260630r');
       var msg = panel.querySelector('#e_msg');
       if (!v.date || !v.memo || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자·적요·금액을 입력하세요.'; return; }
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#e_memo').value = ''; panel.querySelector('#e_payer').value = ''; amt.value = ''; M.loaded = false; }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#e_memo').value = ''; panel.querySelector('#e_payer').value = ''; amt.value = ''; M.loaded = false; loadExp(v.date); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
     };
+    var ebox = panel.querySelector('#e_today');
+    function loadExp(d) {
+      loading(ebox);
+      WPF.call('listVouchers', { from: d, to: d }).then(function (r) {
+        var list = (r.vouchers || []).filter(function (x) { return String(x['구분']) === '지출'; });
+        var tot = list.reduce(function (s, x) { return s + (Number(x['금액']) || 0); }, 0);
+        if (!list.length) { ebox.innerHTML = '<div class="fin-card"><b>' + esc(d) + '</b> 지출 내역이 없습니다.</div>'; return; }
+        var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
+        ebox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>' + esc(d) + ' 지출</b><b style="color:#c0392b">' + won(tot) + '원</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>계정</th><th>적요</th><th>거래처</th><th class="num">금액</th><th>관리</th></tr></thead><tbody>' +
+          list.map(function (x) { return '<tr><td>' + esc(x['계정']) + '</td><td>' + esc(x['적요'] || '') + '</td><td>' + esc(x['헌금자'] || '') + '</td><td class="num">' + won(x['금액']) + '</td><td style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table></div></div>';
+        Array.prototype.forEach.call(ebox.querySelectorAll('[data-edit]'), function (b) { b.onclick = function () { openEditor(byId[b.dataset.edit], function () { loadExp(d); }); }; });
+        Array.prototype.forEach.call(ebox.querySelectorAll('[data-del]'), function (b) { b.onclick = function () { if (!confirm('삭제할까요?')) return; WPF.call('deleteVoucher', { id: b.dataset.del }).then(function () { M.loaded = false; loadExp(d); }); }; });
+      }).catch(function (e) { ebox.innerHTML = msgCard('조회 실패', e.message); });
+    }
+    panel.querySelector('#e_date').addEventListener('change', function () { loadExp(this.value); });
+    loadExp(panel.querySelector('#e_date').value);
   }
 
   /* ── 거래장부 ── */
@@ -166,8 +225,11 @@ console.log('[finance.js] v20260630r');
         var list = M.vouchers.filter(function (x) { return (!f || x['일자'] >= f) && (!t || x['일자'] <= t) && (!q || (String(x['계정']) + x['헌금자'] + x['적요']).toLowerCase().indexOf(q) >= 0); }).slice().sort(function (a, b) { return String(b['일자']).localeCompare(String(a['일자'])); });
         var inc = 0, exp = 0; list.forEach(function (x) { if (String(x['구분']) === '수입') inc += Number(x['금액']) || 0; else exp += Number(x['금액']) || 0; });
         out.innerHTML = '<div class="fin-card" style="display:flex;gap:24px;flex-wrap:wrap"><div>수입 <b style="color:#1e874b">' + won(inc) + '</b></div><div>지출 <b style="color:#c0392b">' + won(exp) + '</b></div><div>차액 <b>' + won(inc - exp) + '</b></div><div style="margin-left:auto">' + list.length + '건</div></div>' +
-          '<div class="fin-card" style="overflow:auto;max-height:560px"><table class="fin-table"><thead><tr><th>일자</th><th>구분</th><th>계정</th><th>상대/적요</th><th class="num">수입</th><th class="num">지출</th></tr></thead><tbody>' +
-          list.slice(0, 1500).map(function (x) { var isIn = String(x['구분']) === '수입'; return '<tr><td>' + esc(x['일자']) + '</td><td><span class="fin-pill ' + (isIn ? 'in' : 'out') + '">' + esc(x['구분']) + '</span></td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || x['적요'] || '') + '</td><td class="num">' + (isIn ? won(x['금액']) : '') + '</td><td class="num">' + (!isIn ? won(x['금액']) : '') + '</td></tr>'; }).join('') + '</tbody></table>' + (list.length > 1500 ? '<p class="help" style="padding:8px">최근 1,500건만 표시(합계는 전체 기준).</p>' : '') + '</div>';
+          '<div class="fin-card" style="overflow:auto;max-height:560px"><table class="fin-table"><thead><tr><th>일자</th><th>구분</th><th>계정</th><th>상대/적요</th><th class="num">수입</th><th class="num">지출</th><th>관리</th></tr></thead><tbody>' +
+          list.slice(0, 1500).map(function (x) { var isIn = String(x['구분']) === '수입'; return '<tr><td>' + esc(x['일자']) + '</td><td><span class="fin-pill ' + (isIn ? 'in' : 'out') + '">' + esc(x['구분']) + '</span></td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || x['적요'] || '') + '</td><td class="num">' + (isIn ? won(x['금액']) : '') + '</td><td class="num">' + (!isIn ? won(x['금액']) : '') + '</td><td style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table>' + (list.length > 1500 ? '<p class="help" style="padding:8px">최근 1,500건만 표시(합계는 전체 기준).</p>' : '') + '</div>';
+        var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
+        Array.prototype.forEach.call(out.querySelectorAll('[data-edit]'), function (b) { b.onclick = function () { openEditor(byId[b.dataset.edit], draw); }; });
+        Array.prototype.forEach.call(out.querySelectorAll('[data-del]'), function (b) { b.onclick = function () { if (!confirm('삭제할까요?')) return; WPF.call('deleteVoucher', { id: b.dataset.del }).then(function () { M.loaded = false; draw(); }); }; });
       }).catch(function (e) { out.innerHTML = msgCard('조회 실패', e.message); });
     }
     panel.querySelector('#l_go').onclick = draw; draw();
@@ -240,22 +302,50 @@ console.log('[finance.js] v20260630r');
     }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
   }
 
-  /* ── 예산 ── */
+  /* ── 예산(앱 내 직접 편집 → 구글시트 저장) ── */
   function renderBudget(panel) {
     loading(panel);
     ensureBudget().then(function () {
       if (!M.budget.length) { panel.innerHTML = msgCard('예산 없음', '예산 데이터를 불러오지 못했습니다. Apps Script에 budget 액션이 배포됐는지 확인하세요.'); return; }
       panel.innerHTML = '';
+      var info = document.createElement('div'); info.className = 'fin-card'; info.style.marginBottom = '14px';
+      info.innerHTML = '<p style="margin:0;color:var(--ink-soft);font-size:.88rem">금년예산 칸을 클릭해 직접 수정하면 <b>구글시트(운평재정_예산)에 자동 저장</b>됩니다. 소계(코드 끝 0000)는 하위 항목 합계로 자동 계산됩니다.</p>';
+      panel.appendChild(info);
       ['수입', '지출'].forEach(function (g) {
         var rows = M.budget.filter(function (b) { return String(b['구분']) === g; });
         if (!rows.length) return;
-        var sum = rows.filter(function (b) { return String(b['계정코드'] || '').slice(-4) !== '0000'; }).reduce(function (s, b) { return s + (Number(b['예산']) || 0); }, 0);
         var card = document.createElement('div'); card.className = 'fin-card'; card.style.marginBottom = '16px';
-        card.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>' + g + ' 예산</b><b>' + won(sum) + '원</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>코드</th><th>계정</th><th class="num">전년예산</th><th class="num">전년결산</th><th class="num">금년예산</th></tr></thead><tbody>' +
-          rows.map(function (b) { var top = String(b['계정코드'] || '').slice(-4) === '0000'; return '<tr style="' + (top ? 'font-weight:700;background:#f5f8fc' : '') + '"><td>' + esc(b['계정코드']) + '</td><td>' + esc(b['계정이름']) + '</td><td class="num">' + won(b['전년예산']) + '</td><td class="num">' + won(b['전년결산']) + '</td><td class="num"><b>' + won(b['예산']) + '</b></td></tr>'; }).join('') + '</tbody></table></div>';
-        panel.appendChild(card);
+        function sumOf() { return rows.filter(function (b) { return String(b['계정코드'] || '').slice(-4) !== '0000'; }).reduce(function (s, b) { return s + (Number(b['예산']) || 0); }, 0); }
+        var head = document.createElement('div'); head.style.cssText = 'display:flex;justify-content:space-between;margin-bottom:8px'; head.innerHTML = '<b>' + g + ' 예산</b><b class="bud-sum">' + won(sumOf()) + '원</b>';
+        var wrap = document.createElement('div'); wrap.style.overflow = 'auto';
+        var tbl = document.createElement('table'); tbl.className = 'fin-table';
+        tbl.innerHTML = '<thead><tr><th>코드</th><th>계정</th><th class="num">전년예산</th><th class="num">전년결산</th><th class="num">금년예산</th></tr></thead><tbody></tbody>';
+        var tb = tbl.querySelector('tbody');
+        rows.forEach(function (b) {
+          var top = String(b['계정코드'] || '').slice(-4) === '0000';
+          var tr = document.createElement('tr'); if (top) tr.style.cssText = 'font-weight:700;background:#f5f8fc';
+          tr.innerHTML = '<td>' + esc(b['계정코드']) + '</td><td>' + esc(b['계정이름']) + '</td><td class="num">' + won(b['전년예산']) + '</td><td class="num">' + won(b['전년결산']) + '</td>';
+          var td = document.createElement('td'); td.className = 'num';
+          if (top) { td.innerHTML = '<b>' + won(b['예산']) + '</b>'; }
+          else {
+            var inp = document.createElement('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.value = won(b['예산']);
+            inp.style.cssText = 'width:120px;text-align:right;border:1px solid #dfe5ee;border-radius:6px;padding:4px 7px;font:inherit';
+            inp.addEventListener('input', function () { var n = parseNum(inp.value); inp.value = n ? won(n) : ''; });
+            inp.addEventListener('change', function () {
+              var n = parseNum(inp.value); var prev = Number(b['예산']) || 0; if (n === prev) return;
+              inp.style.borderColor = '#9aa5b1';
+              WPF.call('updateBudget', { code: b['계정코드'], amount: n }).then(function () {
+                b['예산'] = n; M._b = false; // 결산보고서 재집계용 캐시 무효화
+                inp.style.borderColor = '#1e874b'; head.querySelector('.bud-sum').textContent = won(sumOf()) + '원';
+                setTimeout(function () { inp.style.borderColor = '#dfe5ee'; }, 1200);
+              }).catch(function (e) { inp.style.borderColor = '#c0392b'; inp.value = won(prev); alert('저장 실패: ' + e.message); });
+            });
+            td.appendChild(inp);
+          }
+          tr.appendChild(td); tb.appendChild(tr);
+        });
+        wrap.appendChild(tbl); card.appendChild(head); card.appendChild(wrap); panel.appendChild(card);
       });
-      var note = document.createElement('p'); note.className = 'help'; note.style.marginTop = '8px'; note.textContent = '※ 예산 편집은 운평재정_예산 시트에서 직접 수정합니다(앱 내 편집은 추후 추가).'; panel.appendChild(note);
     }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
   }
 
