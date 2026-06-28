@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701v
+ * 콘솔: [finance.js] v20260701w
  */
-console.log('[finance.js] v20260701v');
+console.log('[finance.js] v20260701w');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -144,12 +144,29 @@ console.log('[finance.js] v20260701v');
       '<span style="color:#7b8794;font-size:.86rem;">' + r.from + ' ~ ' + r.to + '</span>' +
       '<span style="color:#9aa5b1;font-size:.8rem;margin-left:auto;">시작월·범위는 <b>설정</b> 탭에서</span></div>';
   }
+  // 상위 카테고리(호버 드롭다운). 항목은 위 TABS의 키.
+  var GROUPS = [
+    { label: '🏠 홈', tab: 'home' },
+    { label: '전표입력', items: ['offering', 'bulk', 'expense'] },
+    { label: '장부관리', items: ['ledger', 'givers', 'gl', 'bulletin'] },
+    { label: '결산·보고서', items: ['report', 'finrep', 'receipt'] },
+    { label: '예산·계정', items: ['budget'] },
+    { label: '설정', tab: 'settings' }
+  ];
+  function tabLabel(k) { for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === k) return TABS[i][1]; return k; }
+  function menuHTML() {
+    return '<div class="fin-menu">' + GROUPS.map(function (grp) {
+      var active = grp.tab ? (tab === grp.tab) : grp.items.indexOf(tab) >= 0;
+      if (grp.tab) return '<button class="fm-top' + (active ? ' active' : '') + '" data-t="' + grp.tab + '">' + grp.label + '</button>';
+      return '<div class="fm-group"><button class="fm-top' + (active ? ' active' : '') + '" data-t="' + grp.items[0] + '">' + grp.label + ' ▾</button>' +
+        '<div class="fm-drop">' + grp.items.map(function (it) { return '<button data-t="' + it + '"' + (tab === it ? ' class="active"' : '') + '>' + tabLabel(it) + '</button>'; }).join('') + '</div></div>';
+    }).join('') + '</div>';
+  }
   function render() {
-    root.innerHTML = fyBar() + '<div class="fin-tabs">' + TABS.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div id="finPanel"></div>';
+    root.innerHTML = fyBar() + menuHTML() + '<div id="finPanel"></div>';
     var sel = document.getElementById('fySel');
     if (sel) sel.onchange = function () { M.fy = Number(sel.value); render(); };
-    Array.prototype.forEach.call(root.querySelectorAll('.fin-tabs button'), function (b) {
-      if (b.dataset.t === tab) b.classList.add('active');
+    Array.prototype.forEach.call(root.querySelectorAll('.fin-menu [data-t]'), function (b) {
       b.onclick = function () { tab = b.dataset.t; render(); };
     });
     var p = document.getElementById('finPanel');
