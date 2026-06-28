@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260630p
+ * 콘솔: [finance.js] v20260630q
  */
-console.log('[finance.js] v20260630p');
+console.log('[finance.js] v20260630q');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -79,19 +79,28 @@ console.log('[finance.js] v20260630p');
       '<div class="form-field"><label>헌금 항목</label><select id="o_acc">' + accOptions('수입', '헌금') + '</select></div>' +
       '<div class="form-field"><label>수단</label><select id="o_method"><option>현금</option><option>통장</option></select></div>' +
       '</div><div class="fin-grid">' +
-      '<div class="form-field" style="position:relative"><label>헌금자(교적 검색)</label><input type="text" id="o_payer" autocomplete="off" placeholder="이름 입력 → 선택"><input type="hidden" id="o_key"></div>' +
+      '<div class="form-field" style="position:relative"><label>헌금자(교적 검색)</label><input type="text" id="o_payer" autocomplete="off" placeholder="이름 입력 → 선택"><input type="hidden" id="o_key"><input type="hidden" id="o_spouseKey"><div id="o_spouseBox" style="margin-top:4px"></div></div>' +
       '<div class="form-field"><label>금액</label><input type="text" id="o_amt" inputmode="numeric" placeholder="0" style="text-align:right;font-weight:700"></div>' +
       '<div class="form-field"><label>적요(선택)</label><input type="text" id="o_memo"></div>' +
       '</div><div style="margin-top:6px;display:flex;gap:10px;align-items:center;"><button class="btn btn-solid" id="o_add">＋ 헌금 추가</button><span class="fin-msg" id="o_msg"></span></div></div><div id="o_today"></div>';
-    setupMemberSearch(panel.querySelector('#o_payer'), panel.querySelector('#o_key'));
+    var spouseBox = panel.querySelector('#o_spouseBox');
+    setupMemberSearch(panel.querySelector('#o_payer'), panel.querySelector('#o_key'), function (m) {
+      panel.querySelector('#o_spouseKey').value = (m && m.spouseKey) || '';
+      if (m && m.spouse) spouseBox.innerHTML = '<label class="sw" style="font-size:.82rem;display:inline-flex;align-items:center;gap:5px;color:#1e874b"><input type="checkbox" id="o_couple" checked> 💑 배우자 <b>' + esc(m.spouse) + '</b> 합산(가정 헌금)</label>';
+      else spouseBox.innerHTML = '';
+    });
     var amt = panel.querySelector('#o_amt');
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
     panel.querySelector('#o_add').onclick = function () {
-      var v = { date: panel.querySelector('#o_date').value, type: '수입', kind: '헌금', account: panel.querySelector('#o_acc').value, service: panel.querySelector('#o_svc').value, payer: panel.querySelector('#o_payer').value.trim(), memberKey: panel.querySelector('#o_key').value, amount: parseNum(amt.value), method: panel.querySelector('#o_method').value, memo: panel.querySelector('#o_memo').value.trim() };
+      var payerName = panel.querySelector('#o_payer').value.trim();
+      var coupleCk = panel.querySelector('#o_couple');
+      var spLabel = spouseBox.querySelector('b');
+      if (coupleCk && coupleCk.checked && spLabel && payerName.indexOf('(') < 0) payerName = payerName + '(' + spLabel.textContent + ')';
+      var v = { date: panel.querySelector('#o_date').value, type: '수입', kind: '헌금', account: panel.querySelector('#o_acc').value, service: panel.querySelector('#o_svc').value, payer: payerName, memberKey: panel.querySelector('#o_key').value, amount: parseNum(amt.value), method: panel.querySelector('#o_method').value, memo: panel.querySelector('#o_memo').value.trim() };
       var msg = panel.querySelector('#o_msg');
       if (!v.date || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자와 금액을 입력하세요.'; return; }
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#o_payer').value = ''; panel.querySelector('#o_key').value = ''; amt.value = ''; panel.querySelector('#o_memo').value = ''; M.loaded = false; loadToday(v.date); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#o_payer').value = ''; panel.querySelector('#o_key').value = ''; panel.querySelector('#o_spouseKey').value = ''; spouseBox.innerHTML = ''; amt.value = ''; panel.querySelector('#o_memo').value = ''; M.loaded = false; loadToday(v.date); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
     };
     var box = panel.querySelector('#o_today');
     function loadToday(d) {
@@ -108,7 +117,7 @@ console.log('[finance.js] v20260630p');
     panel.querySelector('#o_date').addEventListener('change', function () { loadToday(this.value); });
     loadToday(panel.querySelector('#o_date').value);
   }
-  function setupMemberSearch(input, hidden) {
+  function setupMemberSearch(input, hidden, onPick) {
     var pop = null, hi = -1, matches = [];
     function close() { if (pop) { pop.remove(); pop = null; hi = -1; } }
     input.addEventListener('input', function () {
@@ -120,7 +129,7 @@ console.log('[finance.js] v20260630p');
     });
     input.addEventListener('keydown', function (e) { if (!pop) return; var rows = pop.querySelectorAll('div'); if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); } else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); } else if (e.key === 'Enter' && hi >= 0) { e.preventDefault(); pick(matches[hi]); return; } else return; Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); }); });
     input.addEventListener('blur', function () { setTimeout(close, 180); });
-    function pick(m) { input.value = m.name; hidden.value = m.key || ''; close(); }
+    function pick(m) { input.value = m.name; hidden.value = m.key || ''; close(); if (onPick) onPick(m); }
   }
 
   /* ── 지출입력 ── */

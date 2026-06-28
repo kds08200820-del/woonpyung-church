@@ -166,15 +166,20 @@ function actionMyOfferings_(req) {
   if (!link || link.member_status !== '정회원' || !link.member_key) {
     return { ok: true, status: link ? link.member_status : '준회원', offerings: [], total: 0 };
   }
+  // 부부 합산: 내 매칭키 + 배우자 매칭키 모두 조회(가정 헌금)
+  var keys = {}; keys[link.member_key] = true;
+  var meRow = findGyojeokByKey_(link.member_key);
+  var spouseName = '';
+  if (meRow && meRow['배우자매칭키']) { keys[meRow['배우자매칭키']] = true; spouseName = meRow['배우자'] || ''; }
   var rows = readObjects_(JAEJEONG_SHEET_ID, '전표');
-  var mine = rows.filter(function (r) { return String(r['매칭키']) === link.member_key && String(r['종류']) === '헌금'; });
+  var mine = rows.filter(function (r) { return keys[String(r['매칭키'])] && String(r['종류']) === '헌금'; });
   mine.sort(function (a, b) { return String(b['일자']).localeCompare(String(a['일자'])); });
   var total = 0;
   var out = mine.map(function (r) {
     var amt = Number(r['금액']) || 0; total += amt;
-    return { date: r['일자'], account: r['계정'], service: r['예배'], amount: amt, memo: r['적요'] };
+    return { date: r['일자'], account: r['계정'], service: r['예배'], amount: amt, memo: r['적요'], giver: r['헌금자'] || '' };
   });
-  return { ok: true, status: '정회원', memberName: link.member_name, offerings: out, total: total };
+  return { ok: true, status: '정회원', memberName: link.member_name, spouse: spouseName, offerings: out, total: total };
 }
 
 // 재정관리 화면용 기초데이터(권한자만)
@@ -182,7 +187,8 @@ function actionMasters_(req) {
   var user = verifyUser_(req.token);
   requireFinance_(user.id);
   var members = readObjects_(GYOJEOK_SHEET_ID, '교적').map(function (m) {
-    return { name: m['이름'], key: m['매칭키'], birth: m['생년월일'], group: m['그룹'] };
+    return { name: m['이름'], key: m['매칭키'], birth: m['생년월일'], group: m['그룹'],
+             spouse: m['배우자'] || '', spouseKey: m['배우자매칭키'] || '', head: m['세대주'] || '', rel: m['관계'] || '' };
   }).filter(function (m) { return m.name; });
   var accounts = readObjects_(JAEJEONG_SHEET_ID, '계정과목');
   var services = readObjects_(JAEJEONG_SHEET_ID, '예배');

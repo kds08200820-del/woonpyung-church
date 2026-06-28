@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260630p
+ * 콘솔: [gyojeok.js] v20260630q
  */
-console.log('[gyojeok.js] v20260630p');
+console.log('[gyojeok.js] v20260630q');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -71,8 +71,11 @@ console.log('[gyojeok.js] v20260630p');
     loading(panel);
     WPF.call('listGyojeok').then(function (r) {
       var ms = (r.members || []).filter(function (m) { return m['이름']; });
-      panel.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>교적 명단 (' + ms.length + '명)</b></div><div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th>그룹</th><th>직책</th><th>신급</th><th>성별</th><th>휴대폰</th></tr></thead><tbody>' +
-        ms.map(function (m) { return '<tr><td><b>' + esc(m['이름']) + '</b></td><td>' + esc(birthOf(m)) + '</td><td>' + esc(m['그룹']) + '</td><td>' + esc(m['직책']) + '</td><td>' + esc(m['신급']) + '</td><td>' + esc(m['성별']) + '</td><td>' + esc(fmtPhone(m['휴대폰'])) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+      // 세대주별 묶음(가나다), 세대주 먼저
+      ms.sort(function (a, b) { var ha = a['세대주'] || a['이름'], hb = b['세대주'] || b['이름']; if (ha !== hb) return ha.localeCompare(hb, 'ko'); return (a['이름'] === ha ? -1 : 1) - (b['이름'] === hb ? -1 : 1); });
+      var couples = ms.filter(function (m) { return m['배우자']; }).length / 2;
+      panel.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>교적 명단 (' + ms.length + '명)</b><span style="color:var(--ink-soft);font-size:.85rem">부부 ' + Math.round(couples) + '쌍</span></div><div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th>세대주</th><th>관계</th><th>배우자</th><th>그룹</th><th>직책</th><th>휴대폰</th></tr></thead><tbody>' +
+        ms.map(function (m) { var isHead = (m['세대주'] || m['이름']) === m['이름']; return '<tr' + (isHead ? ' style="background:#f7faff"' : '') + '><td><b>' + esc(m['이름']) + '</b></td><td>' + esc(birthOf(m)) + '</td><td>' + esc(m['세대주'] || '') + '</td><td>' + esc(m['관계'] || '') + '</td><td>' + (m['배우자'] ? '💑 ' + esc(m['배우자']) : '') + '</td><td>' + esc(m['그룹']) + '</td><td>' + esc(m['직책']) + '</td><td>' + esc(fmtPhone(m['휴대폰'])) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
     }).catch(function (e) {
       panel.innerHTML = msgCard('조회 실패', e.message);
     });

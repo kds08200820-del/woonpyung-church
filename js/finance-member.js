@@ -1,8 +1,8 @@
 /* finance-member.js — 내 정보(admin.html)의 "교적 인증 · 내 헌금" 섹션
  * 로그인한 회원이 이름+생년월일로 교적 인증(정/준회원) 후 본인 헌금만 조회.
- * 콘솔: [finance-member.js] v20260630p
+ * 콘솔: [finance-member.js] v20260630q
  */
-console.log('[finance-member.js] v20260630p');
+console.log('[finance-member.js] v20260630q');
 
 (function () {
   var box = document.getElementById('offeringBox');
@@ -80,19 +80,21 @@ console.log('[finance-member.js] v20260630p');
     }
     WPF.call('myOfferings').then(function (r) {
       var el = document.getElementById('offeringList');
+      var spouseNote = r.spouse ? '<p style="background:#e8f6ee;border:1px solid #bfe3cd;color:#1e874b;padding:8px 12px;border-radius:8px;font-size:.85rem;margin-bottom:10px;">💑 배우자 <b>' + esc(r.spouse) + '</b>님과 <b>가정 헌금</b>이 합산되어 표시됩니다.</p>' : '';
       var list = r.offerings || [];
-      if (!list.length) { el.innerHTML = '<p style="color:var(--ink-soft);font-size:.9rem;">조회된 헌금 내역이 없습니다.</p>'; return; }
+      if (!list.length) { el.innerHTML = spouseNote + '<p style="color:var(--ink-soft);font-size:.9rem;">조회된 헌금 내역이 없습니다.</p>'; return; }
+      var hasGiver = list.some(function (o) { return o.giver && o.giver !== (me.memberName || ''); });
       var rows = list.map(function (o) {
-        return '<tr><td>' + esc(o.date) + '</td><td>' + esc(o.service || '') + '</td><td>' + esc(o.account || '') +
+        return '<tr><td>' + esc(o.date) + '</td>' + (hasGiver ? '<td>' + esc(o.giver || '') + '</td>' : '') + '<td>' + esc(o.service || '') + '</td><td>' + esc(o.account || '') +
           '</td><td style="text-align:right;font-variant-numeric:tabular-nums;">' + won(o.amount) + '</td></tr>';
       }).join('');
-      el.innerHTML =
+      el.innerHTML = spouseNote +
         '<div style="overflow:auto;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.92rem;">' +
-        '<thead><tr><th style="text-align:left;">일자</th><th style="text-align:left;">예배</th><th style="text-align:left;">항목</th><th style="text-align:right;">금액</th></tr></thead>' +
+        '<thead><tr><th style="text-align:left;">일자</th>' + (hasGiver ? '<th style="text-align:left;">헌금자</th>' : '') + '<th style="text-align:left;">예배</th><th style="text-align:left;">항목</th><th style="text-align:right;">금액</th></tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
-        '<tfoot><tr><td colspan="3" style="text-align:right;font-weight:700;">합계</td><td style="text-align:right;font-weight:700;">' + won(r.total) + '원</td></tr></tfoot>' +
+        '<tfoot><tr><td colspan="' + (hasGiver ? 4 : 3) + '" style="text-align:right;font-weight:700;">합계</td><td style="text-align:right;font-weight:700;">' + won(r.total) + '원</td></tr></tfoot>' +
         '</table></div>' +
-        '<p style="color:var(--ink-soft);font-size:.8rem;margin-top:8px;">🔒 이 내역은 본인에게만 표시됩니다.</p>';
+        '<p style="color:var(--ink-soft);font-size:.8rem;margin-top:8px;">🔒 이 내역은 본인(부부)에게만 표시됩니다.</p>';
     }).catch(function (e) {
       var el = document.getElementById('offeringList');
       if (el) el.innerHTML = '<p style="color:var(--accent-soft);font-size:.9rem;">헌금 조회 실패: ' + esc(e.message) + '</p>';
