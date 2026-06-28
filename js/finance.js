@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701ac
+ * 콘솔: [finance.js] v20260701ad
  */
-console.log('[finance.js] v20260701ac');
+console.log('[finance.js] v20260701ad');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -695,25 +695,39 @@ console.log('[finance.js] v20260701ac');
 
   /* ── 지출입력 ── */
   function renderExpense(panel) {
+    var expAccs = M.accounts.filter(function (a) { return String(a['구분']) === '지출'; });
+    function hangOf(a) { return a['분류'] || a['상위'] || '(미분류)'; }
+    function hangList() { var seen = {}, out = []; expAccs.forEach(function (a) { var h = hangOf(a); if (!seen[h]) { seen[h] = 1; out.push(h); } }); return out; }
+    function mokOptions(hang) { return expAccs.filter(function (a) { return hangOf(a) === hang; }).map(function (a) { return '<option value="' + esc(a['계정명']) + '">' + esc(a['계정명']) + '</option>'; }).join(''); }
+    var firstHang = hangList()[0] || '';
     panel.innerHTML =
       '<div class="fin-card"><div class="fin-grid">' +
       '<div class="form-field"><label>일자</label><input type="date" id="e_date" value="' + today() + '"></div>' +
-      '<div class="form-field"><label>지출 계정</label><select id="e_acc">' + accOptions('지출') + '</select></div>' +
-      '<div class="form-field"><label>수단</label><select id="e_method"><option>통장</option><option>현금</option></select></div>' +
+      '<div class="form-field"><label>지출 항(분류)</label><select id="e_hang">' + hangList().map(function (h) { return '<option>' + esc(h) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="form-field"><label>지출 목(계정)</label><select id="e_acc">' + mokOptions(firstHang) + '</select></div>' +
+      '<div class="form-field"><label>수단</label><select id="e_method"><option>계좌</option><option>법인카드</option><option>현금</option></select></div>' +
       '</div><div class="fin-grid">' +
-      '<div class="form-field"><label>적요</label><input type="text" id="e_memo" placeholder="예: 6월 전기요금"></div>' +
-      '<div class="form-field"><label>거래처/수령인(선택)</label><input type="text" id="e_payer"></div>' +
+      '<div class="form-field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="e_memo_on" style="width:auto;margin:0"> 적요 입력</label><input type="text" id="e_memo" disabled placeholder="체크하면 입력"></div>' +
+      '<div class="form-field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="e_payer_on" style="width:auto;margin:0"> 수령인 입력</label><input type="text" id="e_payer" disabled placeholder="체크하면 입력"></div>' +
       '<div class="form-field"><label>금액</label><input type="text" id="e_amt" inputmode="numeric" placeholder="0" style="text-align:right;font-weight:700"></div>' +
       '</div><div style="margin-top:6px;display:flex;gap:10px;align-items:center;"><button class="btn btn-solid" id="e_add">＋ 지출 추가</button><span class="fin-msg" id="e_msg"></span></div></div><div id="e_today"></div>';
     var amt = panel.querySelector('#e_amt');
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
-    panel.querySelector('#e_add').onclick = function () {
-      var v = { date: panel.querySelector('#e_date').value, type: '지출', kind: '일반', account: panel.querySelector('#e_acc').value, service: '', payer: panel.querySelector('#e_payer').value.trim(), memberKey: '', amount: parseNum(amt.value), method: panel.querySelector('#e_method').value, memo: panel.querySelector('#e_memo').value.trim() };
+    var hangSel = panel.querySelector('#e_hang'), mokSel = panel.querySelector('#e_acc');
+    hangSel.addEventListener('change', function () { mokSel.innerHTML = mokOptions(hangSel.value); });
+    var emOn = panel.querySelector('#e_memo_on'), emEl = panel.querySelector('#e_memo');
+    emOn.addEventListener('change', function () { emEl.disabled = !emOn.checked; if (emOn.checked) emEl.focus(); else emEl.value = ''; });
+    var epOn = panel.querySelector('#e_payer_on'), epEl = panel.querySelector('#e_payer');
+    epOn.addEventListener('change', function () { epEl.disabled = !epOn.checked; if (epOn.checked) epEl.focus(); else epEl.value = ''; });
+    function submitExpense() {
+      var v = { date: panel.querySelector('#e_date').value, type: '지출', kind: '일반', account: mokSel.value, service: '', payer: epEl.value.trim(), memberKey: '', amount: parseNum(amt.value), method: panel.querySelector('#e_method').value, memo: emEl.value.trim() };
       var msg = panel.querySelector('#e_msg');
-      if (!v.date || !v.memo || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자·적요·금액을 입력하세요.'; return; }
+      if (!v.date || !v.account || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자·계정·금액을 입력하세요.'; return; }
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#e_memo').value = ''; panel.querySelector('#e_payer').value = ''; amt.value = ''; M.loaded = false; loadExp(v.date); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
-    };
+      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; emEl.value = ''; epEl.value = ''; amt.value = ''; M.loaded = false; loadExp(v.date); hangSel.focus(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+    }
+    amt.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitExpense(); } else if (e.key === 'Tab' && !e.shiftKey && !emOn.checked && !epOn.checked) { e.preventDefault(); submitExpense(); } });
+    panel.querySelector('#e_add').onclick = submitExpense;
     var ebox = panel.querySelector('#e_today');
     function loadExp(d) {
       loading(ebox);
