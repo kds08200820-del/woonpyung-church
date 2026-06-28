@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701p
+ * 콘솔: [affairs.js] v20260701q
  */
-console.log('[affairs.js] v20260701p');
+console.log('[affairs.js] v20260701q');
 
 (function () {
   var root = document.getElementById('afRoot');

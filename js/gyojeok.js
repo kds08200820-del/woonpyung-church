@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701p
+ * 콘솔: [gyojeok.js] v20260701q
  */
-console.log('[gyojeok.js] v20260701p');
+console.log('[gyojeok.js] v20260701q');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -13,6 +13,7 @@ console.log('[gyojeok.js] v20260701p');
   function fmtPhone(p) { p = String(p == null ? '' : p).replace(/[^0-9]/g, ''); if (!p) return ''; if (p.length === 10 && p.charAt(0) !== '0') p = '0' + p; if (p.length === 11) return p.slice(0, 3) + '-' + p.slice(3, 7) + '-' + p.slice(7); if (p.length === 10) return p.slice(0, 3) + '-' + p.slice(3, 6) + '-' + p.slice(6); return p; }
   function msgCard(t, x) { return '<div class="fin-card" style="text-align:center;padding:40px 18px;"><h3 style="margin:0 0 8px;color:var(--accent,#032257);">' + esc(t) + '</h3><p style="color:var(--ink-soft,#7b8794);">' + esc(x) + '</p></div>'; }
   function loading(el) { el.innerHTML = '<p class="qt-loading">불러오는 중…</p>'; }
+  function stPill(st) { return '<span class="fin-pill ' + (st === '정회원' ? 'in' : 'out') + '">' + (st === '정회원' ? '정회원' : '준회원') + '</span>'; }
 
   var tries = 0, tab = 'access';
   function boot() {
@@ -43,7 +44,7 @@ console.log('[gyojeok.js] v20260701p');
         '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>이름</th><th>이메일</th><th>회원</th><th style="text-align:center">관리자</th><th style="text-align:center">재정권한</th></tr></thead><tbody>' +
         users.map(function (u) {
           return '<tr data-uid="' + esc(u.uid) + '"><td><b>' + esc(u.name || '(이름없음)') + '</b></td><td style="color:var(--ink-soft)">' + esc(u.email) + '</td>' +
-            '<td><select class="ck-status" style="padding:5px 8px;border:1px solid #cdd7e3;border-radius:7px;font:inherit;background:#fff">' +
+            '<td><span class="st-pill" style="margin-right:8px;display:inline-block;min-width:48px">' + stPill(u.status) + '</span><select class="ck-status" style="padding:5px 8px;border:1px solid #cdd7e3;border-radius:7px;font:inherit;background:#fff">' +
               '<option value="준회원"' + (u.status === '정회원' ? '' : ' selected') + '>준회원</option>' +
               '<option value="정회원"' + (u.status === '정회원' ? ' selected' : '') + '>정회원</option></select></td>' +
             '<td style="text-align:center"><input type="checkbox" class="ck-admin" ' + (u.isAdmin ? 'checked' : '') + '></td>' +
@@ -67,6 +68,7 @@ console.log('[gyojeok.js] v20260701p');
           msg.style.color = 'var(--ink-soft)'; msg.textContent = '저장 중…';
           WPF.call('adminSetMember', { uid: uid, status: status, memberKey: key, memberName: name }).then(function () {
             prevStatus = status; u.status = status; if (name) { u.name = name; tr.querySelector('td b').textContent = name; }
+            var sp = tr.querySelector('.st-pill'); if (sp) sp.innerHTML = stPill(status);
             flash(true, '✓ ' + (name ? esc(name) + ' · ' : '') + status + ' 저장됨');
           }).catch(function (e) { flash(false, '오류: ' + e.message); sel.value = prevStatus; });
         }
