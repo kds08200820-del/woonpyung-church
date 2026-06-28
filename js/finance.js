@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260630w
+ * 콘솔: [finance.js] v20260630x
  */
-console.log('[finance.js] v20260630w');
+console.log('[finance.js] v20260630x');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -12,6 +12,7 @@ console.log('[finance.js] v20260630w');
   var parseNum = function (s) { return Number(String(s == null ? '' : s).replace(/[^\d-]/g, '')) || 0; };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var pad2 = function (n) { return ('0' + n).slice(-2); };
+  var fmtD = function (d) { return String(d == null ? '' : d).slice(0, 10); }; // 'YYYY-MM-DDT..Z' → 'YYYY-MM-DD'
   var today = function () { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
 
   // ── 회계연도 ──
@@ -165,8 +166,8 @@ console.log('[finance.js] v20260630w');
     var box = panel.querySelector('#o_today');
     function loadToday(d) {
       loading(box);
-      WPF.call('listVouchers', { from: d, to: d }).then(function (r) {
-        var list = (r.vouchers || []).filter(function (x) { return String(x['종류']) === '헌금'; });
+      ensureVouchers().then(function () {
+        var list = M.vouchers.filter(function (x) { return fmtD(x['일자']) === d && String(x['종류']) === '헌금'; });
         var tot = list.reduce(function (s, x) { return s + (Number(x['금액']) || 0); }, 0);
         if (!list.length) { box.innerHTML = '<div class="fin-card"><b>' + esc(d) + '</b> 헌금 내역이 없습니다.</div>'; return; }
         var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
@@ -259,8 +260,8 @@ console.log('[finance.js] v20260630w');
     var ebox = panel.querySelector('#e_today');
     function loadExp(d) {
       loading(ebox);
-      WPF.call('listVouchers', { from: d, to: d }).then(function (r) {
-        var list = (r.vouchers || []).filter(function (x) { return String(x['구분']) === '지출'; });
+      ensureVouchers().then(function () {
+        var list = M.vouchers.filter(function (x) { return fmtD(x['일자']) === d && String(x['구분']) === '지출'; });
         var tot = list.reduce(function (s, x) { return s + (Number(x['금액']) || 0); }, 0);
         if (!list.length) { ebox.innerHTML = '<div class="fin-card"><b>' + esc(d) + '</b> 지출 내역이 없습니다.</div>'; return; }
         var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
@@ -283,11 +284,11 @@ console.log('[finance.js] v20260630w');
       loading(out);
       ensureVouchers().then(function () {
         var f = panel.querySelector('#l_from').value, t = panel.querySelector('#l_to').value, q = panel.querySelector('#l_q').value.trim().toLowerCase();
-        var list = M.vouchers.filter(function (x) { return (!f || x['일자'] >= f) && (!t || x['일자'] <= t) && (!q || (String(x['계정']) + x['헌금자'] + x['적요']).toLowerCase().indexOf(q) >= 0); }).slice().sort(function (a, b) { return String(b['일자']).localeCompare(String(a['일자'])); });
+        var list = M.vouchers.filter(function (x) { var dd = fmtD(x['일자']); return (!f || dd >= f) && (!t || dd <= t) && (!q || (String(x['계정']) + x['헌금자'] + x['적요']).toLowerCase().indexOf(q) >= 0); }).slice().sort(function (a, b) { return fmtD(b['일자']).localeCompare(fmtD(a['일자'])); });
         var inc = 0, exp = 0; list.forEach(function (x) { if (String(x['구분']) === '수입') inc += Number(x['금액']) || 0; else exp += Number(x['금액']) || 0; });
         withPrint(out, '거래장부', '<div class="fin-card" style="display:flex;gap:24px;flex-wrap:wrap"><div>수입 <b style="color:#1e874b">' + won(inc) + '</b></div><div>지출 <b style="color:#c0392b">' + won(exp) + '</b></div><div>차액 <b>' + won(inc - exp) + '</b></div><div style="margin-left:auto">' + list.length + '건</div></div>' +
           '<div class="fin-card" style="overflow:auto;max-height:560px"><table class="fin-table"><thead><tr><th>일자</th><th>구분</th><th>계정</th><th>상대/적요</th><th class="num">수입</th><th class="num">지출</th><th class="mng">관리</th></tr></thead><tbody>' +
-          list.slice(0, 1500).map(function (x) { var isIn = String(x['구분']) === '수입'; return '<tr><td>' + esc(x['일자']) + '</td><td><span class="fin-pill ' + (isIn ? 'in' : 'out') + '">' + esc(x['구분']) + '</span></td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || x['적요'] || '') + '</td><td class="num">' + (isIn ? won(x['금액']) : '') + '</td><td class="num">' + (!isIn ? won(x['금액']) : '') + '</td><td class="mng" style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table>' + (list.length > 1500 ? '<p class="help" style="padding:8px">최근 1,500건만 표시(합계는 전체 기준).</p>' : '') + '</div>');
+          list.slice(0, 1500).map(function (x) { var isIn = String(x['구분']) === '수입'; return '<tr><td>' + esc(fmtD(x['일자'])) + '</td><td><span class="fin-pill ' + (isIn ? 'in' : 'out') + '">' + esc(x['구분']) + '</span></td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || x['적요'] || '') + '</td><td class="num">' + (isIn ? won(x['금액']) : '') + '</td><td class="num">' + (!isIn ? won(x['금액']) : '') + '</td><td class="mng" style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table>' + (list.length > 1500 ? '<p class="help" style="padding:8px">최근 1,500건만 표시(합계는 전체 기준).</p>' : '') + '</div>');
         var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
         Array.prototype.forEach.call(out.querySelectorAll('[data-edit]'), function (b) { b.onclick = function () { openEditor(byId[b.dataset.edit], draw); }; });
         Array.prototype.forEach.call(out.querySelectorAll('[data-del]'), function (b) { b.onclick = function () { if (!confirm('삭제할까요?')) return; WPF.call('deleteVoucher', { id: b.dataset.del }).then(function () { M.loaded = false; draw(); }); }; });
