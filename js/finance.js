@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260630z
+ * 콘솔: [finance.js] v20260701a
  */
-console.log('[finance.js] v20260630z');
+console.log('[finance.js] v20260701a');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -48,8 +48,9 @@ console.log('[finance.js] v20260630z');
   function msgCard(t, x) { return '<div class="fin-card" style="text-align:center;padding:40px 18px;"><h3 style="margin:0 0 8px;color:var(--accent,#032257);">' + esc(t) + '</h3><p style="color:var(--ink-soft,#7b8794);">' + esc(x) + '</p></div>'; }
 
   // ── 보고서 인쇄/PDF ──
-  function printDoc(title, inner) {
+  function printDoc(title, inner, sub) {
     var r = fyRange(M.fy);
+    var subLine = sub || (M.fy + '년도 회계연도 (' + r.from + ' ~ ' + r.to + ')');
     var w = window.open('', '_blank', 'width=920,height=760');
     if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해 주세요.'); return; }
     var css = 'body{font-family:"Malgun Gothic","맑은 고딕","Noto Sans KR",sans-serif;color:#1a1a1a;padding:30px;}' +
@@ -66,7 +67,7 @@ console.log('[finance.js] v20260630z');
       '@media print{body{padding:0;}.noprint{display:none;}}';
     var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>운평장로교회 ' + esc(title) + '</title><style>' + css + '</style></head><body>' +
       '<h1>운평장로교회 ' + esc(title) + '</h1>' +
-      '<div class="sub">' + M.fy + '년도 회계연도 (' + r.from + ' ~ ' + r.to + ') · 출력일 ' + today() + '</div>' +
+      '<div class="sub">' + esc(subLine) + ' · 출력일 ' + today() + '</div>' +
       inner +
       '<div class="sign">담임목사 ＿＿＿＿＿ (인)　　　재정부장 ＿＿＿＿＿ (인)　　　회계 ＿＿＿＿＿ (인)</div>' +
       '<div class="noprint" style="text-align:center;margin-top:24px;"><button onclick="window.print()" style="padding:9px 22px;font-size:14px;cursor:pointer;">🖨 인쇄 / PDF 저장</button></div>' +
@@ -91,9 +92,17 @@ console.log('[finance.js] v20260630z');
   }
 
   // 보고서 패널에 인쇄 버튼을 얹고 본문을 감싼다
-  function withPrint(el, title, contentHTML) {
+  function withPrint(el, title, contentHTML, sub) {
     el.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;"><button class="btn btn-line" data-print>🖨 인쇄 / PDF</button></div><div class="rep-body">' + contentHTML + '</div>';
-    el.querySelector('[data-print]').onclick = function () { printDoc(title, el.querySelector('.rep-body').innerHTML); };
+    el.querySelector('[data-print]').onclick = function () { printDoc(title, el.querySelector('.rep-body').innerHTML, sub); };
+  }
+  // 주(週) 범위: 일요일~토요일
+  function ymdOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function weekRange(dateStr) {
+    var d = new Date((dateStr || today()) + 'T00:00:00'); var day = d.getDay();
+    var s = new Date(d); s.setDate(d.getDate() - day);
+    var e = new Date(s); e.setDate(s.getDate() + 6);
+    return { from: ymdOf(s), to: ymdOf(e) };
   }
 
   function ensureVouchers() {
@@ -108,7 +117,8 @@ console.log('[finance.js] v20260630z');
   var TABS = [
     ['offering', '헌금입력'], ['expense', '지출입력'], ['ledger', '거래장부'],
     ['givers', '헌금자통계'], ['gl', '총계정원장'], ['report', '결산보고서'],
-    ['receipt', '기부금영수증'], ['budget', '예산'], ['settings', '설정']
+    ['finrep', '재정보고서'], ['bulletin', '헌금명단'], ['receipt', '기부금영수증'],
+    ['budget', '예산'], ['settings', '설정']
   ];
   var tab = 'offering';
   function fyBar() {
@@ -136,6 +146,8 @@ console.log('[finance.js] v20260630z');
     else if (tab === 'givers') renderGivers(p);
     else if (tab === 'gl') renderGL(p);
     else if (tab === 'report') renderReport(p);
+    else if (tab === 'finrep') renderFinReport(p);
+    else if (tab === 'bulletin') renderGiverList(p);
     else if (tab === 'receipt') renderReceipt(p);
     else if (tab === 'budget') renderBudget(p);
     else if (tab === 'settings') renderSettings(p);
@@ -368,6 +380,93 @@ console.log('[finance.js] v20260630z');
           '<tr><td>지출</td><td class="num">' + won(budExp) + '</td><td class="num">' + won(te) + '</td><td class="num">' + (budExp ? (te / budExp * 100).toFixed(1) + '%' : '-') + '</td></tr>' +
           '</tbody></table></div><p class="help">예산=연간 기준, 실적=입력된 ' + order.length + '개월 누계.</p></div>' : ''));
     }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
+  }
+
+  /* ── 재정보고서 (월별/주별/분기별/직접 기간) ── */
+  function renderFinReport(panel) {
+    panel.innerHTML =
+      '<div class="fin-card"><div class="fin-grid" style="align-items:end">' +
+      '<div class="form-field"><label>기간 구분</label><select id="fr_type"><option value="month">월별</option><option value="week">주별</option><option value="quarter">분기별</option><option value="custom">직접 선택</option></select></div>' +
+      '<div class="form-field" id="fr_month_wrap"><label>월</label><select id="fr_month"></select></div>' +
+      '<div class="form-field" id="fr_quarter_wrap" style="display:none"><label>분기</label><select id="fr_quarter"><option value="1">1분기(1~3월)</option><option value="2">2분기(4~6월)</option><option value="3">3분기(7~9월)</option><option value="4">4분기(10~12월)</option></select></div>' +
+      '<div class="form-field" id="fr_week_wrap" style="display:none"><label>기준일(해당 주)</label><input type="date" id="fr_week" value="' + today() + '"></div>' +
+      '<div class="form-field" id="fr_from_wrap" style="display:none"><label>시작일</label><input type="date" id="fr_from"></div>' +
+      '<div class="form-field" id="fr_to_wrap" style="display:none"><label>종료일</label><input type="date" id="fr_to"></div>' +
+      '<div class="form-field"><button class="btn btn-solid" id="fr_go">조회</button></div>' +
+      '</div></div><div id="fr_out"></div>';
+    var msel = panel.querySelector('#fr_month'), nowM = new Date().getMonth() + 1, im = '';
+    for (var i = 1; i <= 12; i++) im += '<option value="' + i + '"' + (i === nowM ? ' selected' : '') + '>' + i + '월</option>';
+    msel.innerHTML = im;
+    var typeSel = panel.querySelector('#fr_type');
+    function toggle() {
+      var t = typeSel.value;
+      panel.querySelector('#fr_month_wrap').style.display = t === 'month' ? '' : 'none';
+      panel.querySelector('#fr_quarter_wrap').style.display = t === 'quarter' ? '' : 'none';
+      panel.querySelector('#fr_week_wrap').style.display = t === 'week' ? '' : 'none';
+      panel.querySelector('#fr_from_wrap').style.display = t === 'custom' ? '' : 'none';
+      panel.querySelector('#fr_to_wrap').style.display = t === 'custom' ? '' : 'none';
+    }
+    typeSel.onchange = toggle; toggle();
+    function range() {
+      var t = typeSel.value, y = M.fy;
+      if (t === 'month') { var m = Number(msel.value); return { from: y + '-' + pad2(m) + '-01', to: y + '-' + pad2(m) + '-' + pad2(lastDay(y, m)), label: y + '년 ' + m + '월' }; }
+      if (t === 'quarter') { var q = Number(panel.querySelector('#fr_quarter').value), sm = (q - 1) * 3 + 1, em = sm + 2; return { from: y + '-' + pad2(sm) + '-01', to: y + '-' + pad2(em) + '-' + pad2(lastDay(y, em)), label: y + '년 ' + q + '분기 (' + sm + '~' + em + '월)' }; }
+      if (t === 'week') { var w = weekRange(panel.querySelector('#fr_week').value); return { from: w.from, to: w.to, label: w.from + ' ~ ' + w.to + ' (주간)' }; }
+      var f = panel.querySelector('#fr_from').value, tt = panel.querySelector('#fr_to').value; return { from: f, to: tt, label: (f || '?') + ' ~ ' + (tt || '?') };
+    }
+    var out = panel.querySelector('#fr_out');
+    function go() {
+      var rg = range();
+      if (!rg.from || !rg.to) { out.innerHTML = msgCard('기간 확인', '시작일과 종료일을 선택하세요.'); return; }
+      loading(out);
+      ensureVouchers().then(function () {
+        var list = M.vouchers.filter(function (x) { var d = fmtD(x['일자']); return d >= rg.from && d <= rg.to; });
+        var inc = 0, exp = 0, accIn = {}, accEx = {};
+        list.forEach(function (v) { var amt = Number(v['금액']) || 0, a = v['계정'] || '?'; if (String(v['구분']) === '수입') { inc += amt; if (!accIn[a]) accIn[a] = { c: 0, s: 0 }; accIn[a].c++; accIn[a].s += amt; } else { exp += amt; if (!accEx[a]) accEx[a] = { c: 0, s: 0 }; accEx[a].c++; accEx[a].s += amt; } });
+        function tbl(map, tot) { var rows = Object.keys(map).map(function (k) { return { a: k, c: map[k].c, s: map[k].s }; }).sort(function (a, b) { return b.s - a.s; }); if (!rows.length) return '<p class="help">내역 없음</p>'; return '<table class="fin-table"><thead><tr><th>계정</th><th class="num">건수</th><th class="num">금액</th><th class="num">비율</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + esc(r.a) + '</td><td class="num">' + r.c + '</td><td class="num"><b>' + won(r.s) + '</b></td><td class="num">' + (tot ? (r.s / tot * 100).toFixed(1) + '%' : '-') + '</td></tr>'; }).join('') + '</tbody><tfoot><tr style="font-weight:700;background:#f5f8fc"><td>합계</td><td class="num">' + rows.reduce(function (s, r) { return s + r.c; }, 0) + '</td><td class="num">' + won(tot) + '</td><td class="num">100%</td></tr></tfoot></table>'; }
+        var content = '<div class="fin-card" style="display:flex;gap:20px;flex-wrap:wrap;align-items:center"><b>' + esc(rg.label) + '</b><div style="margin-left:auto">수입 <b style="color:#1e874b">' + won(inc) + '</b></div><div>지출 <b style="color:#c0392b">' + won(exp) + '</b></div><div>차액 <b>' + won(inc - exp) + '</b></div><div>' + list.length + '건</div></div>' +
+          '<div class="fin-card"><b>수입 계정별</b><div style="overflow:auto;margin-top:8px">' + tbl(accIn, inc) + '</div></div>' +
+          '<div class="fin-card"><b>지출 계정별</b><div style="overflow:auto;margin-top:8px">' + tbl(accEx, exp) + '</div></div>';
+        withPrint(out, '재정보고서', content, rg.label);
+      }).catch(function (e) { out.innerHTML = msgCard('조회 실패', e.message); });
+    }
+    panel.querySelector('#fr_go').onclick = go; go();
+  }
+
+  /* ── 헌금명단 (주보용: 주간·항목별 명단) ── */
+  function renderGiverList(panel) {
+    panel.innerHTML =
+      '<div class="fin-card"><div class="fin-grid" style="align-items:end">' +
+      '<div class="form-field"><label>기준일(해당 주)</label><input type="date" id="gl2_date" value="' + today() + '"></div>' +
+      '<div class="form-field"><label>주간 선택</label><div style="display:flex;gap:6px"><button class="btn btn-line" id="gl2_this">이번주</button><button class="btn btn-line" id="gl2_last">지난주</button></div></div>' +
+      '<div class="form-field"><label>옵션</label><label class="sw" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="gl2_amt"> 금액 표시</label></div>' +
+      '<div class="form-field"><button class="btn btn-solid" id="gl2_go">조회</button></div>' +
+      '</div><p class="help" style="margin-top:6px">주보용 헌금자 명단 — 십일조·감사 등 <b>항목별로 명단</b>을 출력합니다.</p></div><div id="gl2_out"></div>';
+    var dateInp = panel.querySelector('#gl2_date');
+    panel.querySelector('#gl2_this').onclick = function () { dateInp.value = today(); go(); };
+    panel.querySelector('#gl2_last').onclick = function () { var d = new Date(today() + 'T00:00:00'); d.setDate(d.getDate() - 7); dateInp.value = ymdOf(d); go(); };
+    var out = panel.querySelector('#gl2_out');
+    function go() {
+      var w = weekRange(dateInp.value), showAmt = panel.querySelector('#gl2_amt').checked;
+      loading(out);
+      ensureVouchers().then(function () {
+        var list = M.vouchers.filter(function (x) { var d = fmtD(x['일자']); return d >= w.from && d <= w.to && String(x['종류']) === '헌금'; });
+        if (!list.length) { out.innerHTML = '<div class="fin-card">해당 주(' + w.from + ' ~ ' + w.to + ') 헌금 내역이 없습니다.</div>'; return; }
+        var byAcc = {}, order = [];
+        list.forEach(function (v) { var a = v['계정'] || '기타'; if (!byAcc[a]) { byAcc[a] = []; order.push(a); } byAcc[a].push(v); });
+        function accSum(a) { return byAcc[a].reduce(function (s, v) { return s + (Number(v['금액']) || 0); }, 0); }
+        order.sort(function (a, b) { return accSum(b) - accSum(a); });
+        var totAll = list.reduce(function (s, v) { return s + (Number(v['금액']) || 0); }, 0);
+        var content = '<div class="fin-card" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center"><b>' + w.from + ' ~ ' + w.to + ' 헌금자 명단</b><div style="margin-left:auto">총 ' + list.length + '건 · ' + won(totAll) + '원</div></div>';
+        order.forEach(function (a) {
+          var arr = byAcc[a], sum = accSum(a);
+          var names = arr.map(function (v) { var nm = esc(v['헌금자'] || '무명'); var memo = v['적요'] ? ' (' + esc(v['적요']) + ')' : ''; var amt = showAmt ? ' <span style="color:#1e874b">' + won(v['금액']) + '</span>' : ''; return nm + memo + amt; });
+          content += '<div class="fin-card"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><b style="color:var(--accent,#032257)">' + esc(a) + ' (' + arr.length + '명)</b><b style="color:#1e874b">' + won(sum) + '원</b></div><div style="line-height:2.1;font-size:.95rem">' + names.join('<span style="color:#cbd5e1"> · </span>') + '</div></div>';
+        });
+        withPrint(out, '헌금자 명단', content, w.from + ' ~ ' + w.to + ' 주간');
+      }).catch(function (e) { out.innerHTML = msgCard('조회 실패', e.message); });
+    }
+    panel.querySelector('#gl2_go').onclick = go; go();
   }
 
   /* ── 기부금영수증 (교인 헌금 누계) ── */
