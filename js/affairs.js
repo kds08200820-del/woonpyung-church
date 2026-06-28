@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701h
+ * 콘솔: [affairs.js] v20260701i
  */
-console.log('[affairs.js] v20260701h');
+console.log('[affairs.js] v20260701i');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -167,7 +167,7 @@ console.log('[affairs.js] v20260701h');
           b.onclick = function () { if (!confirm('삭제할까요?')) return; api('DELETE', type.table + '?id=eq.' + b.dataset.del, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); };
         });
       }).catch(function (e) {
-        if (/relation .* does not exist|42P01/i.test(e.message)) listBox.innerHTML = msgCard('테이블 준비 필요', 'Supabase에 affairs.sql을 실행해 주세요(visitations·counsels).');
+        if (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(e.message)) listBox.innerHTML = msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/affairs.sql 을 1회 실행해 주세요(visitations·counsels 테이블 생성).');
         else listBox.innerHTML = msgCard('조회 실패', e.message);
       });
     }

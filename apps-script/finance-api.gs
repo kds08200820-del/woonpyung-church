@@ -112,6 +112,7 @@ function doPost(e) {
     if (action === 'updateGyojeok') return json_(actionUpdateGyojeok_(req));
     if (action === 'listVouchers') return json_(actionListVouchers_(req));
     if (action === 'addVoucher') return json_(actionAddVoucher_(req));
+    if (action === 'addVouchersBulk') return json_(actionAddVouchersBulk_(req));
     if (action === 'updateVoucher') return json_(actionUpdateVoucher_(req));
     if (action === 'deleteVoucher') return json_(actionDeleteVoucher_(req));
     return json_({ ok: false, error: 'unknown action: ' + action });
@@ -170,17 +171,21 @@ function actionMyOfferings_(req) {
     return { ok: true, status: link ? link.member_status : '준회원', offerings: [], total: 0 };
   }
   // 부부 합산: 내 매칭키 + 배우자 매칭키 모두 조회(가정 헌금)
-  var keys = {}; keys[link.member_key] = true;
+  var selfKey = String(link.member_key);
+  var keys = {}; keys[selfKey] = true;
   var meRow = findGyojeokByKey_(link.member_key);
   var spouseName = '';
-  if (meRow && meRow['배우자매칭키']) { keys[meRow['배우자매칭키']] = true; spouseName = meRow['배우자'] || ''; }
+  var spouseKey = '';
+  if (meRow && meRow['배우자매칭키']) { spouseKey = String(meRow['배우자매칭키']); keys[spouseKey] = true; spouseName = meRow['배우자'] || ''; }
   var rows = readObjects_(JAEJEONG_SHEET_ID, '전표');
   var mine = rows.filter(function (r) { return keys[String(r['매칭키'])] && String(r['종류']) === '헌금'; });
   mine.sort(function (a, b) { return String(b['일자']).localeCompare(String(a['일자'])); });
   var total = 0;
   var out = mine.map(function (r) {
     var amt = Number(r['금액']) || 0; total += amt;
-    return { date: ymd_(r['일자']), account: r['계정'], service: r['예배'], amount: amt, memo: r['적요'], giver: r['헌금자'] || '' };
+    var mk = String(r['매칭키']);
+    // 본인/배우자 구분(매칭키 기준) — 프런트의 [본인·배우자] 분리 조회용
+    return { date: ymd_(r['일자']), account: r['계정'], service: r['예배'], amount: amt, memo: r['적요'], giver: r['헌금자'] || '', who: (spouseKey && mk === spouseKey) ? 'spouse' : 'self' };
   });
   return { ok: true, status: '정회원', memberName: link.member_name, spouse: spouseName, offerings: out, total: total };
 }
@@ -368,6 +373,26 @@ function actionAddVoucher_(req) {
     v.memo || '', user.email || '', new Date().toISOString()
   ]);
   return { ok: true, id: id };
+}
+
+// 전표 일괄 추가(권한자만) — 명단 붙여넣기 등에서 여러 건을 한 번에 저장
+function actionAddVouchersBulk_(req) {
+  var user = verifyUser_(req.token);
+  requireFinance_(user.id);
+  var vs = req.vouchers || [];
+  if (!vs.length) return { ok: true, count: 0, ids: [] };
+  var sh = SpreadsheetApp.openById(JAEJEONG_SHEET_ID).getSheetByName('전표');
+  var now = new Date().toISOString();
+  var base = Date.now();
+  var rows = vs.map(function (v, i) {
+    return [
+      'V' + base + '_' + i, v.date || '', v.type || '', v.kind || '', v.account || '', v.service || '',
+      v.payer || '', v.memberKey || '', Number(v.amount) || 0, v.method || '',
+      v.memo || '', user.email || '', now
+    ];
+  });
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  return { ok: true, count: rows.length, ids: rows.map(function (r) { return r[0]; }) };
 }
 
 // 전표 수정(권한자만)

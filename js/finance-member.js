@@ -1,8 +1,8 @@
 /* finance-member.js — 내 정보(admin.html)의 "교적 인증 · 내 헌금" 섹션
  * 로그인한 회원이 이름+생년월일로 교적 인증(정/준회원) 후 본인 헌금만 조회.
- * 콘솔: [finance-member.js] v20260701h
+ * 콘솔: [finance-member.js] v20260701i
  */
-console.log('[finance-member.js] v20260701h');
+console.log('[finance-member.js] v20260701i');
 
 (function () {
   var box = document.getElementById('offeringBox');
@@ -83,7 +83,7 @@ console.log('[finance-member.js] v20260701h');
       var spouseNote = r.spouse ? '<p style="background:#e8f6ee;border:1px solid #bfe3cd;color:#1e874b;padding:8px 12px;border-radius:8px;font-size:.85rem;margin-bottom:14px;">💑 배우자 <b>' + esc(r.spouse) + '</b>님과 <b>가정 헌금</b>이 합산되어 표시됩니다.</p>' : '';
       var list = r.offerings || [];
       if (!list.length) { el.innerHTML = spouseNote + '<p style="color:var(--ink-soft);font-size:.9rem;">조회된 헌금 내역이 없습니다.</p>'; return; }
-      renderOfferingView(el, list, r, me, spouseNote);
+      renderWithFilter(el, list, r, me, spouseNote);
     }).catch(function (e) {
       var el = document.getElementById('offeringList');
       if (el) el.innerHTML = '<p style="color:var(--accent-soft);font-size:.9rem;">헌금 조회 실패: ' + esc(e.message) + '</p>';
@@ -95,6 +95,54 @@ console.log('[finance-member.js] v20260701h');
   function anyService(list) { return list.some(function (o) { return o.service; }); }
   function statCard(label, val, color) {
     return '<div style="flex:1;min-width:104px;background:#fff;border:1px solid #e8edf3;border-radius:12px;padding:13px 15px;"><div style="color:#7b8794;font-size:.76rem;margin-bottom:5px;">' + label + '</div><div style="font-size:1.2rem;font-weight:700;color:' + color + ';">' + val + '</div></div>';
+  }
+
+  // 헌금 1건이 본인 것인지 배우자 것인지 판별
+  //  1) 실제 헌금자명(giver)이 본인/배우자 이름과 일치하면 그대로 사용 — "누가 냈나"를 가장 잘 반영
+  //  2) 헌금자명이 비어있으면 서버 who('self'/'spouse', 매칭키 기준)로 판별
+  //  3) 둘 다 없으면 본인으로 간주
+  function whoOf(o, selfName, spouseName) {
+    if (o.giver) {
+      if (spouseName && o.giver === spouseName) return 'spouse';
+      if (selfName && o.giver === selfName) return 'self';
+    }
+    if (o.who === 'self' || o.who === 'spouse') return o.who;
+    return 'self';
+  }
+
+  // 부부 합산이 가능한 경우 [합산 · 본인 · 배우자] 선택을 띄우고,
+  // 선택에 맞춰 같은 화면(카드·도넛·탭)을 필터링해 다시 그린다.
+  function renderWithFilter(el, list, r, me, spouseNote) {
+    var selfName = me.memberName || '본인';
+    var spouseName = r.spouse || '';
+    var hasSelf = list.some(function (o) { return whoOf(o, selfName, spouseName) === 'self'; });
+    var hasSpouse = !!spouseName && list.some(function (o) { return whoOf(o, selfName, spouseName) === 'spouse'; });
+
+    // 분리할 게 없으면(혼자 헌금) 토글 없이 기존처럼 한 번만 렌더
+    if (!hasSpouse || !hasSelf) { renderOfferingView(el, list, r, me, spouseNote); return; }
+
+    el.innerHTML =
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">' +
+      '  <button type="button" class="btn fm-who" data-w="all">합산</button>' +
+      '  <button type="button" class="btn fm-who" data-w="self">' + esc(selfName) + '</button>' +
+      '  <button type="button" class="btn fm-who" data-w="spouse">' + esc(spouseName) + '</button>' +
+      '</div><div id="fmInner"></div>';
+
+    var inner = el.querySelector('#fmInner');
+    var tabs = el.querySelectorAll('.fm-who');
+    function setActive(b) {
+      Array.prototype.forEach.call(tabs, function (x) { x.style.background = '#fff'; x.style.color = 'var(--accent,#032257)'; x.style.border = '1px solid #cdd7e3'; });
+      b.style.background = 'var(--accent,#032257)'; b.style.color = '#fff'; b.style.border = '1px solid var(--accent,#032257)';
+    }
+    function show(w, btn) {
+      setActive(btn);
+      var filtered = w === 'all' ? list : list.filter(function (o) { return whoOf(o, selfName, spouseName) === w; });
+      var note = w === 'all' ? spouseNote : '';            // 합산일 때만 안내 배너 표시
+      var rr = { spouse: r.spouse, total: w === 'all' ? r.total : undefined }; // 분리 시 합계는 필터된 목록으로 재계산
+      renderOfferingView(inner, filtered, rr, me, note);
+    }
+    Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { show(b.dataset.w, b); }; });
+    show('all', tabs[0]);
   }
 
   // 깔끔한 시각화(요약 카드 + 도넛 + 항목별/전체 탭)

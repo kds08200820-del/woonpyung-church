@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701h
+ * 콘솔: [gyojeok.js] v20260701i
  */
-console.log('[gyojeok.js] v20260701h');
+console.log('[gyojeok.js] v20260701i');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -94,12 +94,13 @@ console.log('[gyojeok.js] v20260701h');
   // 수정 가능한 항목(라벨 → 교적 열 이름)
   var EDIT_FIELDS = [
     ['이름', '이름', 'text'], ['생년월일', '생년월일', 'birth'], ['성별', '성별', 'sex'],
-    ['휴대폰', '휴대폰', 'tel'], ['신급', '신급', 'grade'], ['직책', '직책', 'text'],
+    ['휴대폰', '휴대폰', 'tel'], ['신급', '신급', 'grade'], ['직책', '직책', 'role'],
     ['세례일', '세례일', 'date'], ['임직일', '임직일', 'date'],
     ['세대주', '세대주', 'text'], ['세대주와 관계', '관계', 'text'], ['배우자', '배우자', 'text'],
     ['구역/부서', '그룹', 'text'], ['회원상태', '회원상태', 'status'], ['주소', '주소', 'text']
   ];
   var GRADE_OPTS = ['원입', '학습', '세례', '입교', '유아세례', '안수'];
+  var ROLE_OPTS = ['담임목사', '원로목사', '장로', '원로장로', '안수집사', '권사', '은퇴권사', '집사', '권찰', '성도'];
   var STATUS_OPTS = ['준회원', '정회원후보', '정회원'];
   var GROUP_PRESET = ['여전도회', '권사회', '남전도회', '구제선교위원회', '성가대', '찬양대'];
   function selOpts(opts, v) { var has = opts.indexOf(v) >= 0; return '<option value=""></option>' + (v && !has ? '<option selected>' + esc(v) + '</option>' : '') + opts.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); }
@@ -150,6 +151,7 @@ console.log('[gyojeok.js] v20260701h');
         var ctrl;
         if (type === 'sex') ctrl = '<select data-col="' + col + '"><option value=""></option><option' + (v === '남' ? ' selected' : '') + '>남</option><option' + (v === '여' ? ' selected' : '') + '>여</option></select>';
         else if (type === 'grade') ctrl = '<select data-col="' + col + '">' + selOpts(GRADE_OPTS, v) + '</select>';
+        else if (type === 'role') ctrl = '<select data-col="' + col + '">' + selOpts(ROLE_OPTS, v) + '</select>';
         else if (type === 'status') ctrl = '<select data-col="' + col + '">' + selOpts(STATUS_OPTS, v) + '</select>';
         else ctrl = '<input type="text" data-col="' + col + '" value="' + esc(v) + '"' + (type === 'tel' ? ' inputmode="numeric"' : '') + (type === 'birth' ? ' placeholder="예: 1981-08-19"' : '') + (type === 'date' ? ' placeholder="예: 2010-03-21"' : '') + '>';
         return '<div class="af-field"><label>' + esc(label) + '</label>' + ctrl + '</div>';

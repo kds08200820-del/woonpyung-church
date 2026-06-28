@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701h
+ * 콘솔: [finance.js] v20260701i
  */
-console.log('[finance.js] v20260701h');
+console.log('[finance.js] v20260701i');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -115,7 +115,7 @@ console.log('[finance.js] v20260701h');
   }
 
   var TABS = [
-    ['offering', '헌금입력'], ['expense', '지출입력'], ['ledger', '거래장부'],
+    ['offering', '헌금입력'], ['bulk', '명단일괄'], ['expense', '지출입력'], ['ledger', '거래장부'],
     ['givers', '헌금자통계'], ['gl', '총계정원장'], ['report', '결산보고서'],
     ['finrep', '재정보고서'], ['bulletin', '헌금명단'], ['receipt', '기부금영수증'],
     ['budget', '예산'], ['settings', '설정']
@@ -141,6 +141,7 @@ console.log('[finance.js] v20260701h');
     });
     var p = document.getElementById('finPanel');
     if (tab === 'offering') renderOffering(p);
+    else if (tab === 'bulk') renderBulk(p);
     else if (tab === 'expense') renderExpense(p);
     else if (tab === 'ledger') renderLedger(p);
     else if (tab === 'givers') renderGivers(p);
@@ -315,6 +316,117 @@ console.log('[finance.js] v20260701h');
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
       WPF.call('updateVoucher', { id: x['전표ID'], voucher: v }).then(function () { M.loaded = false; close(); if (onSaved) onSaved(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
     };
+  }
+
+  /* ── 명단 일괄입력 (헌금자 리스트 붙여넣기 → 교적매칭 → 일괄저장) ── */
+  function renderBulk(panel) {
+    function normName(s) { return String(s == null ? '' : s).replace(/\s+/g, ''); }
+    function isAmount(s) { return /^[\d,]+$/.test(String(s).trim()) && parseNum(s) > 0; }
+    function offeringAccounts() {
+      return M.accounts.filter(function (a) { return String(a['구분']) === '수입' && String(a['분류']) === '헌금'; })
+        .map(function (a) { return String(a['계정명']); });
+    }
+    panel.innerHTML =
+      '<div class="fin-card"><div class="fin-grid" style="align-items:end">' +
+      '<div class="form-field"><label>일자(주일)</label><input type="date" id="b_date" value="' + today() + '"></div>' +
+      '<div class="form-field"><label>예배</label><select id="b_svc">' + svcOptions() + '</select></div>' +
+      '<div class="form-field"><label>수단</label><select id="b_method"><option>현금</option><option>통장</option></select></div>' +
+      '</div>' +
+      '<div class="form-field" style="margin-top:10px"><label>헌금자 명단 붙여넣기 <span style="font-weight:400;color:var(--ink-soft);font-size:.82rem">— 엑셀(헌금자 리스트)에서 항목·이름·금액 영역을 그대로 복사해 붙여넣으세요</span></label>' +
+      '<textarea id="b_text" style="width:100%;min-height:190px;padding:10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;white-space:pre;overflow:auto" placeholder="십일조&#9;&#10;신용화(차영선)&#9;100000&#9;임수만(정춘란)&#9;50000&#10;감사헌금&#10;구성호&#9;50000&#9;김가엘&#9;5000 ..."></textarea></div>' +
+      '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap"><button class="btn btn-line" id="b_prev">미리보기 · 교적매칭</button><button class="btn btn-solid" id="b_save" disabled>일괄 저장</button><span class="fin-msg" id="b_msg"></span></div>' +
+      '<p class="help" style="margin-top:8px">· 항목명만 있는 줄(예: 십일조, 감사헌금)은 <b>항목 구분</b>으로 인식하고, 그 아래 「이름〔탭〕금액」들을 해당 항목 헌금으로 읽습니다.<br>· 「신용화(차영선)」처럼 괄호가 있으면 <b>부부 합산</b>으로 보고 대표자(신용화)로 교적 매칭합니다. · 제목·기간·누계·합계 줄은 자동 무시됩니다.</p>' +
+      '</div><div id="b_out"></div>';
+
+    var parsed = [];
+    function parse() {
+      var accSet = {}; offeringAccounts().forEach(function (a) { accSet[normName(a)] = a; });
+      var lines = (panel.querySelector('#b_text').value || '').split(/\r?\n/);
+      var cat = '', items = [];
+      lines.forEach(function (raw) {
+        var cells = raw.split(/[\t ]+/).map(function (c) { return c.trim(); }).filter(function (c) { return c !== ''; });
+        if (!cells.length) return;
+        var joined = cells.join(' ');
+        if (/^헌금자\s*리스트/.test(joined) || /^기간/.test(joined) || /누\s*계/.test(joined) || /합\s*계/.test(joined)) return;
+        if (cells.length === 1 && !isAmount(cells[0])) { cat = cells[0]; return; } // 항목 구분 줄
+        for (var i = 0; i < cells.length; i += 2) {
+          var name = cells[i], amt = cells[i + 1];
+          if (!name || isAmount(name)) continue;
+          if (!amt || !isAmount(amt)) continue;
+          items.push({ cat: cat, payer: name, base: name.replace(/\(.*\)$/, '').trim(), amount: parseNum(amt) });
+        }
+      });
+      items.forEach(function (it) {
+        var hits = M.members.filter(function (m) { return m.name === it.base; });
+        if (hits.length === 1) { it.key = hits[0].key; it.match = 'ok'; it.matchName = hits[0].name; }
+        else if (hits.length === 0) { it.key = ''; it.match = 'none'; }
+        else { it.key = ''; it.match = 'dup'; }
+        it.accountKnown = !!accSet[normName(it.cat)];
+      });
+      parsed = items;
+      return items;
+    }
+
+    function preview() {
+      var items = parse();
+      var out = panel.querySelector('#b_out');
+      var saveBtn = panel.querySelector('#b_save');
+      if (!items.length) { out.innerHTML = '<div class="fin-card">인식된 헌금 내역이 없습니다. 붙여넣은 형식을 확인해 주세요.</div>'; saveBtn.disabled = true; return; }
+      var tot = items.reduce(function (s, i) { return s + i.amount; }, 0);
+      var nMatch = items.filter(function (i) { return i.match === 'ok'; }).length;
+      var nNone = items.filter(function (i) { return i.match === 'none'; }).length;
+      var nDup = items.filter(function (i) { return i.match === 'dup'; }).length;
+      var unk = {}; items.forEach(function (i) { if (!i.accountKnown) unk[i.cat] = 1; });
+      var unkList = Object.keys(unk);
+      // 항목별 소계
+      var byCat = {}; var catOrder = [];
+      items.forEach(function (i) { if (!byCat[i.cat]) { byCat[i.cat] = { c: 0, s: 0 }; catOrder.push(i.cat); } byCat[i.cat].c++; byCat[i.cat].s += i.amount; });
+      out.innerHTML = '<div class="fin-card">' +
+        '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><b>' + items.length + '건</b><b style="color:#1e874b">' + won(tot) + '원</b>' +
+        '<span class="fin-pill in">교적매칭 ' + nMatch + '</span>' + (nNone ? '<span class="fin-pill out">미등록 ' + nNone + '</span>' : '') + (nDup ? '<span class="fin-pill out">동명이인 ' + nDup + '</span>' : '') + '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + catOrder.map(function (c) { return '<span class="fin-pill" style="background:#eef2f7;color:#3a4a63">' + esc(c) + ' ' + byCat[c].c + '건 · ' + won(byCat[c].s) + '</span>'; }).join('') + '</div>' +
+        (unkList.length ? '<p class="help" style="color:#c0392b">⚠ 계정과목 마스터에 없는 항목: <b>' + esc(unkList.join(', ')) + '</b> — 그대로 저장되며 거래장부엔 보이지만, 결산 분류에서 빠질 수 있습니다. 필요하면 설정에서 계정 추가 후 다시 하세요.</p>' : '') +
+        '<div style="overflow:auto;max-height:420px"><table class="fin-table"><thead><tr><th>항목</th><th>헌금자</th><th class="num">금액</th><th>교적</th></tr></thead><tbody>' +
+        items.map(function (i) {
+          var badge = i.match === 'ok' ? '<span class="fin-pill in">✓ ' + esc(i.matchName) + '</span>' : i.match === 'dup' ? '<span class="fin-pill out">동명이인(수동확인)</span>' : '<span style="color:#9aa5b1">미등록</span>';
+          return '<tr><td>' + esc(i.cat) + '</td><td>' + esc(i.payer) + '</td><td class="num">' + won(i.amount) + '</td><td>' + badge + '</td></tr>';
+        }).join('') + '</tbody></table></div>' +
+        (nNone || nDup ? '<p class="help">미등록·동명이인 건도 헌금자 이름은 그대로 저장됩니다(헌금자통계엔 표시). 다만 개인 "내 헌금 조회"에는 교적 매칭된 건만 잡히므로, 저장 후 <b>거래장부</b>에서 해당 건을 열어 헌금자를 교적과 연결하면 됩니다.</p>' : '') +
+        '</div>';
+      saveBtn.disabled = false;
+    }
+
+    function save() {
+      if (!parsed.length) { preview(); }
+      if (!parsed.length) return;
+      var date = panel.querySelector('#b_date').value;
+      var svc = panel.querySelector('#b_svc').value;
+      var method = panel.querySelector('#b_method').value;
+      var msg = panel.querySelector('#b_msg');
+      var saveBtn = panel.querySelector('#b_save');
+      if (!date) { msg.style.color = '#c0392b'; msg.textContent = '일자를 선택하세요.'; return; }
+      if (!confirm(date + ' 헌금 ' + parsed.length + '건을 저장할까요?')) return;
+      var vouchers = parsed.map(function (i) {
+        return { date: date, type: '수입', kind: '헌금', account: i.cat, service: svc, payer: i.payer, memberKey: i.key || '', amount: i.amount, method: method, memo: '' };
+      });
+      saveBtn.disabled = true; msg.style.color = '#7b8794'; msg.textContent = '저장 중… (' + vouchers.length + '건)';
+      function done(n) { msg.style.color = 'green'; msg.textContent = '✓ ' + n + '건 저장 완료. 거래장부·내 헌금 조회에서 확인하세요.'; M.loaded = false; saveBtn.disabled = false; }
+      function seq(i) {
+        if (i >= vouchers.length) { done(i); return; }
+        msg.textContent = '저장 중… (' + (i + 1) + '/' + vouchers.length + ')';
+        WPF.call('addVoucher', { voucher: vouchers[i] }).then(function () { seq(i + 1); })
+          .catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = (i) + '건 저장 후 실패: ' + e.message; saveBtn.disabled = false; });
+      }
+      WPF.call('addVouchersBulk', { vouchers: vouchers }).then(function (r) { done(r.count || vouchers.length); })
+        .catch(function (e) {
+          if (/unknown action/i.test(e.message)) { msg.textContent = '저장 중… (개별 저장 모드)'; seq(0); }
+          else { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; saveBtn.disabled = false; }
+        });
+    }
+
+    panel.querySelector('#b_prev').onclick = preview;
+    panel.querySelector('#b_save').onclick = save;
+    panel.querySelector('#b_text').addEventListener('input', function () { panel.querySelector('#b_save').disabled = true; });
   }
 
   /* ── 지출입력 ── */
