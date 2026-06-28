@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701u
+ * 콘솔: [finance.js] v20260701v
  */
-console.log('[finance.js] v20260701u');
+console.log('[finance.js] v20260701v');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -18,13 +18,21 @@ console.log('[finance.js] v20260701u');
   // ── 회계연도 ──
   function fyStartMonth() { var v = Number(localStorage.getItem('wpf_fy_start')); return (v >= 1 && v <= 12) ? v : 1; }
   function lastDay(y, m) { return new Date(y, m, 0).getDate(); }
+  // 회계연도 명명: 시작월이 8월 이상(하반기)이면 '종료 연도'로 부른다.
+  //  예) 시작월 12월 → 2025-12 ~ 2026-11 회계연도는 "2026년도".
   function fyRange(year) {
     var sm = fyStartMonth();
-    var from = year + '-' + pad2(sm) + '-01';
-    var endY = (sm === 1) ? year : year + 1, endM = (sm === 1) ? 12 : sm - 1;
+    var startYear = (sm >= 8) ? year - 1 : year;          // 하반기 시작이면 라벨연도-1에서 시작
+    var from = startYear + '-' + pad2(sm) + '-01';
+    var endY = (sm === 1) ? year : startYear + 1, endM = (sm === 1) ? 12 : sm - 1;
     return { from: from, to: endY + '-' + pad2(endM) + '-' + pad2(lastDay(endY, endM)) };
   }
-  function curFY() { var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1; return (m >= fyStartMonth()) ? y : y - 1; }
+  function curFY() {
+    var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1, sm = fyStartMonth();
+    if (sm === 1) return y;
+    if (sm >= 8) return (m >= sm) ? y + 1 : y;             // 하반기 시작 → 종료연도로 명명
+    return (m >= sm) ? y : y - 1;
+  }
   function inFY(x) { var r = fyRange(M.fy), d = String(x['일자']).slice(0, 10); return d >= r.from && d <= r.to; }
   function vouchersFY() { return M.vouchers.filter(inFY); }
   M.fy = curFY();
