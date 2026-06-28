@@ -75,7 +75,6 @@
               ${joined ? `<div class="ac-row"><span>가입일</span><strong>${joined}</strong></div>` : ""}
             </div>
             <a class="btn btn-line ac-go" href="admin.html">내 정보 · 수정</a>
-            <a class="btn btn-line ac-go" href="finance.html" style="margin-top:6px;">재정관리</a>
           </div>
         </div>
         <button class="auth-btn" id="logoutBtn">로그아웃</button>`;

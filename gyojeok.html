@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>재정관리 | 운평장로교회</title>
+  <title>교적관리 | 운평장로교회</title>
   <meta name="robots" content="noindex" />
   <link rel="manifest" href="manifest.json?v=20260630i" />
   <meta name="theme-color" content="#032257" />
@@ -15,34 +15,30 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20260630i" />
   <style>
-    .fin-wrap{max-width:960px}
+    .fin-wrap{max-width:1000px}
     .fin-tabs{display:flex;gap:6px;border-bottom:2px solid var(--line,#e3e7ee);margin:8px 0 20px;flex-wrap:wrap}
     .fin-tabs button{background:none;border:none;padding:10px 16px;font-weight:700;color:var(--ink-soft,#7b8794);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:inherit}
     .fin-tabs button.active{color:var(--accent,#032257);border-bottom-color:var(--accent,#032257)}
     .fin-card{background:#fff;border:1px solid var(--line,#e3e7ee);border-radius:12px;padding:18px;margin-bottom:18px}
-    .fin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 14px}
     .fin-table{width:100%;border-collapse:collapse;font-size:.9rem}
     .fin-table th,.fin-table td{padding:8px 9px;border-bottom:1px solid var(--line,#eef1f5);text-align:left;white-space:nowrap}
     .fin-table td.num,.fin-table th.num{text-align:right;font-variant-numeric:tabular-nums}
-    .fin-msg{font-size:.88rem}
-    .fin-sugg{position:absolute;background:#fff;border:1px solid var(--line,#e3e7ee);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.1);max-height:230px;overflow:auto;z-index:20;min-width:220px}
-    .fin-sugg div{padding:8px 11px;cursor:pointer;font-size:.88rem;border-bottom:1px solid #f0f0f0}
-    .fin-sugg div:hover,.fin-sugg div.hi{background:#f5f8fc}
     .fin-pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:700}
     .fin-pill.in{background:#e8f6ee;color:#1e874b}.fin-pill.out{background:#fdecea;color:#c0392b}
+    .sw{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:.85rem}
+    .sw input{width:16px;height:16px}
   </style>
 </head>
 <body>
-
   <section class="page-hero">
-    <p class="ph-eyebrow">FINANCE</p>
-    <h1>재정관리</h1>
-    <p>헌금·지출을 입력하고 장부를 조회합니다. (권한이 부여된 회원만 이용)</p>
+    <p class="ph-eyebrow">ADMIN</p>
+    <h1>교적관리</h1>
+    <p>교인 명단 확인 · 관리자/재정 권한 지정 (관리자 전용)</p>
   </section>
 
   <section class="block">
     <div class="container fin-wrap">
-      <div id="finRoot"><p class="qt-loading">권한 확인 중입니다…</p></div>
+      <div id="gjRoot"><p class="qt-loading">권한 확인 중입니다…</p></div>
     </div>
   </section>
 
@@ -51,6 +47,6 @@
   <script src="js/layout.js?v=20260630i"></script>
   <script src="js/main.js?v=20260630i"></script>
   <script src="js/finance-api.js?v=20260630i"></script>
-  <script src="js/finance.js?v=20260630i"></script>
+  <script src="js/gyojeok.js?v=20260630i"></script>
 </body>
 </html>

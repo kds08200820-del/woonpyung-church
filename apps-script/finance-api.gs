@@ -104,6 +104,9 @@ function doPost(e) {
     if (action === 'myOfferings') return json_(actionMyOfferings_(req));
     if (action === 'masters') return json_(actionMasters_(req));
     if (action === 'budget') return json_(actionBudget_(req));
+    if (action === 'listAccess') return json_(actionListAccess_(req));
+    if (action === 'setAccess') return json_(actionSetAccess_(req));
+    if (action === 'listGyojeok') return json_(actionListGyojeok_(req));
     if (action === 'listVouchers') return json_(actionListVouchers_(req));
     if (action === 'addVoucher') return json_(actionAddVoucher_(req));
     if (action === 'updateVoucher') return json_(actionUpdateVoucher_(req));
@@ -195,6 +198,47 @@ function actionBudget_(req) {
   return { ok: true, budget: rows };
 }
 
+// ── 관리자(교적관리)용: 회원 접근권한 목록 ──
+// 가입회원(profiles) + 정/준회원(member_links) + 관리자(admins) + 재정권한 병합
+function actionListAccess_(req) {
+  var user = verifyUser_(req.token);
+  requireAdmin_(user.id);
+  var profiles = sbAdmin_('get', '/rest/v1/profiles?select=id,name,email');
+  var links = sbAdmin_('get', '/rest/v1/member_links?select=user_id,member_status,member_name,can_finance');
+  var admins = sbAdmin_('get', '/rest/v1/admins?select=uid');
+  var linkMap = {}; links.forEach(function (l) { linkMap[l.user_id] = l; });
+  var adminSet = {}; admins.forEach(function (a) { adminSet[a.uid] = true; });
+  var out = profiles.map(function (p) {
+    var l = linkMap[p.id] || {};
+    return { uid: p.id, name: l.member_name || p.name || '', email: p.email || '',
+             status: l.member_status || '준회원', canFinance: !!l.can_finance, isAdmin: !!adminSet[p.id] };
+  });
+  return { ok: true, users: out };
+}
+
+// 관리자/재정권한 부여·회수 (관리자만, service_role로 기록)
+function actionSetAccess_(req) {
+  var user = verifyUser_(req.token);
+  requireAdmin_(user.id);
+  var uid = req.targetUid;
+  if (!uid) return { ok: false, error: '대상 사용자가 없습니다.' };
+  if (typeof req.isAdmin === 'boolean') {
+    if (req.isAdmin) sbAdmin_('post', '/rest/v1/admins?on_conflict=uid', { uid: uid }, { 'Prefer': 'resolution=merge-duplicates,return=minimal' });
+    else sbAdmin_('delete', '/rest/v1/admins?uid=eq.' + uid, null, { 'Prefer': 'return=minimal' });
+  }
+  if (typeof req.canFinance === 'boolean') {
+    sbAdmin_('post', '/rest/v1/member_links?on_conflict=user_id', { user_id: uid, can_finance: req.canFinance, updated_at: new Date().toISOString() }, { 'Prefer': 'resolution=merge-duplicates,return=minimal' });
+  }
+  return { ok: true };
+}
+
+// 교적 명단(관리자만)
+function actionListGyojeok_(req) {
+  var user = verifyUser_(req.token);
+  requireAdmin_(user.id);
+  return { ok: true, members: readObjects_(GYOJEOK_SHEET_ID, '교적') };
+}
+
 // 전표 목록(권한자만)
 function actionListVouchers_(req) {
   var user = verifyUser_(req.token);
@@ -279,6 +323,10 @@ function requireFinance_(uid) {
 function isAdmin_(uid) {
   var r = sbAdmin_('get', '/rest/v1/admins?uid=eq.' + uid + '&select=uid');
   return r.length > 0;
+}
+function requireAdmin_(uid) {
+  if (!isAdmin_(uid)) throw new Error('관리자만 접근할 수 있습니다.');
+  return true;
 }
 function getLink_(uid) {
   var r = sbAdmin_('get', '/rest/v1/member_links?user_id=eq.' + uid + '&select=*');

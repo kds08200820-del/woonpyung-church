@@ -40,7 +40,10 @@
       { href: "library.html#edu", label: "교육 자료실" },
       { href: "library.html#worship", label: "예배 자료실" },
     ] },
-    { href: "admin.html#tax", label: "연말정산" },
+    { href: "finance.html", label: "관리자", adminOnly: true, sub: [
+      { href: "finance.html", label: "재정관리" },
+      { href: "gyojeok.html", label: "교적관리" },
+    ] },
   ];
 
   const path = location.pathname.split("/").pop() || "index.html";
@@ -48,9 +51,10 @@
   // ===== 헤더 =====
   const navLinks = NAV.map((n) => {
     const active = path === n.href.split("#")[0] ? ' class="active"' : "";
-    if (!n.sub) return `<div class="nav-item"><a href="${n.href}"${active}>${n.label}</a></div>`;
+    const admAttr = n.adminOnly ? ' id="navAdmin" style="display:none"' : "";
+    if (!n.sub) return `<div class="nav-item"${admAttr}><a href="${n.href}"${active}>${n.label}</a></div>`;
     const subs = n.sub.map((s) => `<a href="${s.href}">${s.label}</a>`).join("");
-    return `<div class="nav-item has-sub">
+    return `<div class="nav-item has-sub"${admAttr}>
         <a href="${n.href}"${active}>${n.label}<span class="nav-caret" aria-hidden="true">⌄</span></a>
         <div class="nav-dropdown"><div class="nav-dropdown-inner">${subs}</div></div>
       </div>`;
@@ -298,6 +302,16 @@
         } catch (e) {}
         const headers = { apikey: window.SUPABASE_ANON_KEY };
         if (token) headers.Authorization = "Bearer " + token;
+        // 관리자(admins 테이블)면 헤더 '관리자' 메뉴 노출
+        fetch(window.SUPABASE_URL + "/rest/v1/admins?uid=eq." + uid + "&select=uid", { headers })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((rows) => {
+            if (rows && rows.length) {
+              const el = document.getElementById("navAdmin");
+              if (el) el.style.display = "";
+            }
+          })
+          .catch(() => {});
         fetch(window.SUPABASE_URL + "/rest/v1/profiles?id=eq." + uid + "&select=name,role", { headers })
           .then((r) => (r.ok ? r.json() : null))
           .then((rows) => {
@@ -340,7 +354,6 @@
                 ${joined ? `<div class="ac-row"><span>가입일</span><strong>${joined}</strong></div>` : ""}
               </div>
               <a class="btn btn-line ac-go" href="admin.html">내 정보 · 수정</a>
-              <a class="btn btn-line ac-go" href="finance.html" style="margin-top:6px;">재정관리</a>
             </div>
           </div>
           <button class="auth-btn" id="logoutBtnInit">로그아웃</button>`;
@@ -381,7 +394,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260630h";
+      auth.src = "js/auth.js?v=20260630i";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)
