@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701m
+ * 콘솔: [finance.js] v20260701n
  */
-console.log('[finance.js] v20260701m');
+console.log('[finance.js] v20260701n');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -161,8 +161,56 @@ console.log('[finance.js] v20260701m');
   function svcOptions() { return M.services.map(function (s) { return '<option value="' + esc(s['예배명']) + '">' + esc(s['예배명']) + '</option>'; }).join(''); }
   function loading(el) { el.innerHTML = '<p class="qt-loading">불러오는 중…</p>'; }
 
-  /* ── 헌금입력 ── */
+  /* ── 헌금입력 (입력/조회 서브탭) ── */
   function renderOffering(panel) {
+    panel.innerHTML =
+      '<div style="display:flex;gap:8px;margin-bottom:14px">' +
+      '<button type="button" class="btn os2" data-s="input">＋ 입력</button>' +
+      '<button type="button" class="btn os2" data-s="lookup">🔍 조회</button>' +
+      '</div><div id="o_sub"></div>';
+    var sub = panel.querySelector('#o_sub');
+    var tabs = panel.querySelectorAll('.os2');
+    function setA(b) { Array.prototype.forEach.call(tabs, function (x) { x.style.background = '#fff'; x.style.color = 'var(--accent,#032257)'; x.style.border = '1px solid #cdd7e3'; }); b.style.background = 'var(--accent,#032257)'; b.style.color = '#fff'; b.style.border = '1px solid var(--accent,#032257)'; }
+    function show(s, b) { setA(b); if (s === 'lookup') renderOfferingLookup(sub); else renderOfferingInput(sub); }
+    Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { show(b.dataset.s, b); }; });
+    show('input', tabs[0]);
+  }
+
+  // 조회: 이름·기간으로 헌금 즉시 검색
+  function renderOfferingLookup(panel) {
+    panel.innerHTML =
+      '<div class="fin-card"><div class="fin-grid">' +
+      '<div class="form-field"><label>헌금자 이름</label><input type="text" id="oq_name" placeholder="이름 일부"></div>' +
+      '<div class="form-field"><label>시작일</label><input type="date" id="oq_from"></div>' +
+      '<div class="form-field"><label>종료일</label><input type="date" id="oq_to"></div>' +
+      '<div class="form-field" style="align-self:end"><button class="btn btn-solid" id="oq_go">조회</button></div>' +
+      '</div></div><div id="oq_out"></div>';
+    var out = panel.querySelector('#oq_out');
+    function draw() {
+      loading(out);
+      ensureVouchers().then(function () {
+        var nm = panel.querySelector('#oq_name').value.trim();
+        var f = panel.querySelector('#oq_from').value, t = panel.querySelector('#oq_to').value;
+        var list = M.vouchers.filter(function (x) {
+          if (String(x['종류']) !== '헌금') return false;
+          var d = fmtD(x['일자']);
+          if (f && d < f) return false; if (t && d > t) return false;
+          if (nm && String(x['헌금자'] || '').indexOf(nm) < 0) return false;
+          return true;
+        }).sort(function (a, b) { return fmtD(b['일자']).localeCompare(fmtD(a['일자'])); });
+        var tot = list.reduce(function (s, x) { return s + (Number(x['금액']) || 0); }, 0);
+        if (!list.length) { out.innerHTML = '<div class="fin-card">조회된 헌금이 없습니다.</div>'; return; }
+        out.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>' + list.length + '건</b><b style="color:#1e874b">' + won(tot) + '원</b></div><div style="overflow:auto;max-height:520px"><table class="fin-table"><thead><tr><th>일자</th><th>항목</th><th>헌금자</th><th class="num">금액</th></tr></thead><tbody>' +
+          list.map(function (x) { return '<tr><td style="white-space:nowrap">' + esc(fmtD(x['일자'])) + '</td><td>' + esc(x['계정'] || '') + '</td><td>' + esc(x['헌금자'] || '') + '</td><td class="num">' + won(x['금액']) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+      }).catch(function (e) { out.innerHTML = msgCard('조회 실패', e.message); });
+    }
+    panel.querySelector('#oq_go').onclick = draw;
+    panel.querySelector('#oq_name').addEventListener('keydown', function (e) { if (e.key === 'Enter') draw(); });
+    draw();
+  }
+
+  // 입력 폼
+  function renderOfferingInput(panel) {
     panel.innerHTML =
       '<div class="fin-card"><div class="fin-grid">' +
       '<div class="form-field"><label>일자</label><input type="date" id="o_date" value="' + today() + '"></div>' +
