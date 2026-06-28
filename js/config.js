@@ -20,6 +20,13 @@ window.SUPABASE_ANON_KEY = "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G";
    비어 있으면 사진/파일 업로드 기능은 자동으로 숨겨집니다(사이트는 정상). */
 window.R2_UPLOAD_URL = "https://church-files.kds08200820.workers.dev";
 
+/* --- 재정 API (Apps Script 웹앱) ---
+   구글시트(교적·재정) 보안 API의 웹 앱 URL.
+   공개돼도 안전: 모든 요청을 Supabase 로그인 토큰으로 서버(Apps Script)가 검증하며,
+   본인 헌금은 본인만, 재정관리는 권한자만 접근됩니다.
+   비어 있으면 헌금조회·재정관리 메뉴만 "준비 중"으로 표시되고 사이트는 정상 동작합니다. */
+window.FINANCE_API_URL = "https://script.google.com/macros/s/AKfycbxu0xEpIx4gcF8K1-vqjLTM-Ik3FUPYfXcrBhzlBOvIoyOB_fXSc-rbYWSLJ0RVHbS5aw/exec";
+
 /* --- 연말정산 신청 알림 이메일(FormSubmit) ---
    계정/키 없이 관리자 이메일(kds08200820@gmail.com)로 알림이 발송됩니다(민감정보 제외).
    아래 값은 실제 이메일을 숨기는 FormSubmit '별칭(alias)'으로, 이미 활성화 완료됨.

@@ -340,6 +340,7 @@
                 ${joined ? `<div class="ac-row"><span>가입일</span><strong>${joined}</strong></div>` : ""}
               </div>
               <a class="btn btn-line ac-go" href="admin.html">내 정보 · 수정</a>
+              <a class="btn btn-line ac-go" href="finance.html" style="margin-top:6px;">재정관리</a>
             </div>
           </div>
           <button class="auth-btn" id="logoutBtnInit">로그아웃</button>`;
@@ -380,7 +381,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260629u";
+      auth.src = "js/auth.js?v=20260630g";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)
