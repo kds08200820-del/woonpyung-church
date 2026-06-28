@@ -40,9 +40,10 @@
       { href: "library.html#edu", label: "교육 자료실" },
       { href: "library.html#worship", label: "예배 자료실" },
     ] },
-    { href: "finance.html", label: "관리자", adminOnly: true, sub: [
+    { href: "finance.html", label: "교회행정", adminOnly: true, sub: [
       { href: "finance.html", label: "재정관리" },
       { href: "gyojeok.html", label: "교적관리" },
+      { href: "affairs.html", label: "행정관리" },
     ] },
   ];
 
