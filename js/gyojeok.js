@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701o
+ * 콘솔: [gyojeok.js] v20260701p
  */
-console.log('[gyojeok.js] v20260701o');
+console.log('[gyojeok.js] v20260701p');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -33,37 +33,83 @@ console.log('[gyojeok.js] v20260701o');
     if (tab === 'access') renderAccess(p); else renderMembers(p);
   }
 
-  /* ── 권한 관리: 가입 회원에게 관리자/재정권한 부여 ── */
+  /* ── 권한 관리: 정/준회원·교적연결 + 관리자/재정권한 ── */
   function renderAccess(panel) {
     loading(panel);
-    WPF.call('listAccess').then(function (r) {
-      var users = (r.users || []).sort(function (a, b) { return (b.isAdmin - a.isAdmin) || (b.canFinance - a.canFinance) || String(a.name).localeCompare(String(b.name), 'ko'); });
-      panel.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">홈페이지에 가입한 회원입니다. 체크하면 즉시 권한이 부여됩니다. <b>관리자</b>는 이 교적관리·전체 기능, <b>재정권한</b>은 재정관리 페이지에 접근할 수 있습니다.</p>' +
+    Promise.all([WPF.call('listAccess'), WPF.call('listGyojeok')]).then(function (res) {
+      var users = (res[0].users || []).sort(function (a, b) { return (b.isAdmin - a.isAdmin) || (b.canFinance - a.canFinance) || String(a.name).localeCompare(String(b.name), 'ko'); });
+      var gj = (res[1].members || []).filter(function (m) { return m['이름']; });
+      panel.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">홈페이지에 가입한 회원입니다. <b>회원</b> 칸에서 정/준회원을 바꿀 수 있고, <b>정회원</b>으로 바꾸면 교적과 연결됩니다(헌금조회·가정합산 연동). <b>관리자</b>는 교적관리·전체 기능, <b>재정권한</b>은 재정관리에 접근합니다.</p>' +
         '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>이름</th><th>이메일</th><th>회원</th><th style="text-align:center">관리자</th><th style="text-align:center">재정권한</th></tr></thead><tbody>' +
         users.map(function (u) {
           return '<tr data-uid="' + esc(u.uid) + '"><td><b>' + esc(u.name || '(이름없음)') + '</b></td><td style="color:var(--ink-soft)">' + esc(u.email) + '</td>' +
-            '<td>' + (u.status === '정회원' ? '<span class="fin-pill in">정회원</span>' : '<span class="fin-pill out">준회원</span>') + '</td>' +
+            '<td><select class="ck-status" style="padding:5px 8px;border:1px solid #cdd7e3;border-radius:7px;font:inherit;background:#fff">' +
+              '<option value="준회원"' + (u.status === '정회원' ? '' : ' selected') + '>준회원</option>' +
+              '<option value="정회원"' + (u.status === '정회원' ? ' selected' : '') + '>정회원</option></select></td>' +
             '<td style="text-align:center"><input type="checkbox" class="ck-admin" ' + (u.isAdmin ? 'checked' : '') + '></td>' +
             '<td style="text-align:center"><input type="checkbox" class="ck-fin" ' + (u.canFinance ? 'checked' : '') + '></td></tr>';
         }).join('') + '</tbody></table></div><p class="help" id="gj_msg" style="margin-top:10px"></p></div>';
+      var msg = panel.querySelector('#gj_msg');
+      function flash(ok, txt) { msg.style.color = ok ? 'green' : '#c0392b'; msg.textContent = txt; }
       Array.prototype.forEach.call(panel.querySelectorAll('tr[data-uid]'), function (tr) {
         var uid = tr.getAttribute('data-uid');
-        var ckA = tr.querySelector('.ck-admin'), ckF = tr.querySelector('.ck-fin');
-        var msg = panel.querySelector('#gj_msg');
-        function save(field, val, cb) {
+        var u = users.filter(function (x) { return x.uid === uid; })[0] || {};
+        var ckA = tr.querySelector('.ck-admin'), ckF = tr.querySelector('.ck-fin'), sel = tr.querySelector('.ck-status');
+        var prevStatus = u.status === '정회원' ? '정회원' : '준회원';
+        function saveAccess(field, val, revert) {
           var body = { targetUid: uid }; body[field] = val;
           msg.style.color = 'var(--ink-soft)'; msg.textContent = '저장 중…';
-          WPF.call('setAccess', body).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 저장됨'; })
-            .catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '오류: ' + e.message; if (cb) cb(); });
+          WPF.call('setAccess', body).then(function () { flash(true, '✓ 저장됨'); }).catch(function (e) { flash(false, '오류: ' + e.message); if (revert) revert(); });
         }
-        ckA.addEventListener('change', function () { save('isAdmin', ckA.checked, function () { ckA.checked = !ckA.checked; }); });
-        ckF.addEventListener('change', function () { save('canFinance', ckF.checked, function () { ckF.checked = !ckF.checked; }); });
+        ckA.addEventListener('change', function () { saveAccess('isAdmin', ckA.checked, function () { ckA.checked = !ckA.checked; }); });
+        ckF.addEventListener('change', function () { saveAccess('canFinance', ckF.checked, function () { ckF.checked = !ckF.checked; }); });
+        function setMember(status, key, name) {
+          msg.style.color = 'var(--ink-soft)'; msg.textContent = '저장 중…';
+          WPF.call('adminSetMember', { uid: uid, status: status, memberKey: key, memberName: name }).then(function () {
+            prevStatus = status; u.status = status; if (name) { u.name = name; tr.querySelector('td b').textContent = name; }
+            flash(true, '✓ ' + (name ? esc(name) + ' · ' : '') + status + ' 저장됨');
+          }).catch(function (e) { flash(false, '오류: ' + e.message); sel.value = prevStatus; });
+        }
+        sel.addEventListener('change', function () {
+          if (sel.value === '정회원') {
+            pickGyojeok(gj, function (m) {
+              if (!m) { sel.value = prevStatus; return; }
+              setMember('정회원', m['매칭키'], m['이름']);
+            });
+          } else { setMember('준회원', '', u.name || ''); }
+        });
       });
     }).catch(function (e) {
-      if (/unknown action/i.test(e.message)) root.innerHTML = msgCard('백엔드 업데이트 필요', 'Apps Script를 최신본으로 다시 배포해 주세요. (관리·교적관리 기능이 추가됨)');
+      if (/unknown action|admin_set_member|404/i.test(e.message)) root.innerHTML = msgCard('백엔드 업데이트 필요', 'Supabase에 admin_set_member.sql 을 실행해 주세요.');
       else if (e.message.indexOf('관리자') >= 0) root.innerHTML = msgCard('접근 권한이 없습니다', '교적관리는 관리자만 이용할 수 있습니다.');
       else root.innerHTML = msgCard('오류', e.message);
     });
+  }
+
+  // 교적에서 인물 선택 팝업(정회원 연결용)
+  function pickGyojeok(gj, cb) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:40px 16px;overflow:auto';
+    ov.innerHTML = '<div class="fin-card" style="max-width:460px;width:100%;background:#fff;margin:auto">' +
+      '<h3 style="margin:0 0 8px;color:var(--accent,#032257)">교적 연결</h3>' +
+      '<p style="color:var(--ink-soft);font-size:.86rem;margin-bottom:10px">정회원으로 연결할 교적 인물을 선택하세요. 본인 헌금 조회·가정 합산이 이 교적과 연동됩니다.</p>' +
+      '<input type="text" id="pg_q" placeholder="🔍 이름 검색" style="width:100%;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
+      '<div id="pg_list" style="max-height:320px;overflow:auto;margin-top:8px;border:1px solid #eef1f5;border-radius:8px"></div>' +
+      '<div style="margin-top:12px;text-align:right"><button class="btn btn-line" id="pg_cancel">취소</button></div></div>';
+    document.body.appendChild(ov);
+    function close() { ov.remove(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) { close(); cb(null); } });
+    ov.querySelector('#pg_cancel').onclick = function () { close(); cb(null); };
+    var q = ov.querySelector('#pg_q'), listEl = ov.querySelector('#pg_list');
+    function draw() {
+      var s = q.value.trim();
+      var rows = (s ? gj.filter(function (m) { return String(m['이름']).indexOf(s) >= 0; }) : gj).slice(0, 50);
+      listEl.innerHTML = rows.length ? rows.map(function (m) {
+        return '<div class="pg-item" data-key="' + esc(m['매칭키']) + '" style="padding:9px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer"><b>' + esc(m['이름']) + '</b> <span style="color:#9aa5b1;font-size:.8rem">' + esc(birthOf(m)) + (m['그룹'] ? ' · ' + esc(m['그룹']) : '') + (m['직책'] ? ' · ' + esc(m['직책']) : '') + (m['세대주'] && m['세대주'] !== m['이름'] ? ' · ' + esc(m['세대주']) + '의 가정' : '') + '</span></div>';
+      }).join('') : '<p style="color:#9aa5b1;padding:10px">검색 결과가 없습니다.</p>';
+      Array.prototype.forEach.call(listEl.querySelectorAll('.pg-item'), function (d) { d.onclick = function () { var m = gj.filter(function (x) { return String(x['매칭키']) === d.dataset.key; })[0]; close(); cb(m || null); }; });
+    }
+    q.addEventListener('input', draw); draw(); setTimeout(function () { q.focus(); }, 50);
   }
 
   /* ── 교적 명단 ── */
