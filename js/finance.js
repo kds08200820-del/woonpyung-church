@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701l
+ * 콘솔: [finance.js] v20260701m
  */
-console.log('[finance.js] v20260701l');
+console.log('[finance.js] v20260701m');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -172,7 +172,7 @@ console.log('[finance.js] v20260701l');
       '</div><div class="fin-grid">' +
       '<div class="form-field" style="position:relative"><label>헌금자(교적 검색)</label><input type="text" id="o_payer" autocomplete="off" placeholder="이름 입력 → 선택"><input type="hidden" id="o_key"><input type="hidden" id="o_spouseKey"><div id="o_spouseBox" style="margin-top:4px"></div></div>' +
       '<div class="form-field"><label>금액</label><input type="text" id="o_amt" inputmode="numeric" placeholder="0" style="text-align:right;font-weight:700"></div>' +
-      '<div class="form-field"><label>적요(선택)</label><input type="text" id="o_memo"></div>' +
+      '<div class="form-field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="o_memo_on" style="width:auto;margin:0"> 적요 입력(선택)</label><input type="text" id="o_memo" disabled placeholder="체크하면 입력"></div>' +
       '</div><div style="margin-top:6px;display:flex;gap:10px;align-items:center;"><button class="btn btn-solid" id="o_add">＋ 헌금 추가</button><span class="fin-msg" id="o_msg"></span></div></div><div id="o_today"></div>';
     var spouseBox = panel.querySelector('#o_spouseBox');
     setupMemberSearch(panel.querySelector('#o_payer'), panel.querySelector('#o_key'), function (m) {
@@ -185,9 +185,9 @@ console.log('[finance.js] v20260701l');
     function doAddOffering(v) {
       var msg = panel.querySelector('#o_msg');
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#o_payer').value = ''; panel.querySelector('#o_key').value = ''; panel.querySelector('#o_spouseKey').value = ''; spouseBox.innerHTML = ''; amt.value = ''; panel.querySelector('#o_memo').value = ''; M.loaded = false; loadToday(v.date); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#o_payer').value = ''; panel.querySelector('#o_key').value = ''; panel.querySelector('#o_spouseKey').value = ''; spouseBox.innerHTML = ''; amt.value = ''; panel.querySelector('#o_memo').value = ''; M.loaded = false; loadToday(v.date); panel.querySelector('#o_payer').focus(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
     }
-    panel.querySelector('#o_add').onclick = function () {
+    function submitOffering() {
       var payerName = panel.querySelector('#o_payer').value.trim();
       var coupleCk = panel.querySelector('#o_couple');
       var spLabel = spouseBox.querySelector('b');
@@ -210,7 +210,16 @@ console.log('[finance.js] v20260701l');
         }
       }
       doAddOffering(v);
-    };
+    }
+    panel.querySelector('#o_add').onclick = submitOffering;
+    // 빠른 입력: 적요 체크박스 토글 + 금액에서 Enter/Tab 즉시 추가
+    var memoOn = panel.querySelector('#o_memo_on'), memoEl = panel.querySelector('#o_memo');
+    memoOn.addEventListener('change', function () { memoEl.disabled = !memoOn.checked; if (memoOn.checked) memoEl.focus(); else memoEl.value = ''; });
+    amt.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); if (memoOn.checked) memoEl.focus(); else submitOffering(); }
+      else if (e.key === 'Tab' && !e.shiftKey && !memoOn.checked) { e.preventDefault(); submitOffering(); }
+    });
+    memoEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitOffering(); } });
     var box = panel.querySelector('#o_today');
     function loadToday(d) {
       loading(box);
