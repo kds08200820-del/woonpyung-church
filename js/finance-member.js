@@ -1,8 +1,8 @@
 /* finance-member.js — 내 정보(admin.html)의 "교적 인증 · 내 헌금" 섹션
  * 로그인한 회원이 이름+생년월일로 교적 인증(정/준회원) 후 본인 헌금만 조회.
- * 콘솔: [finance-member.js] v20260630q
+ * 콘솔: [finance-member.js] v20260630r
  */
-console.log('[finance-member.js] v20260630q');
+console.log('[finance-member.js] v20260630r');
 
 (function () {
   var box = document.getElementById('offeringBox');
@@ -20,9 +20,48 @@ console.log('[finance-member.js] v20260630q');
   var tries = 0;
   function waitLogin() {
     if (!window.FINANCE_API_URL) { box.hidden = true; return; }
-    if (window.WPF && WPF.token()) { box.hidden = false; loadMe(); return; }
+    if (window.WPF && WPF.token()) { box.hidden = false; loadMe(); renderFamily(); return; }
     if (tries++ < 20) { setTimeout(waitLogin, 400); return; }
     box.hidden = true; // 끝내 비로그인 → 섹션 숨김
+  }
+
+  // ── 내 가족(본인 프로필 profiles.family) ──
+  function sess() {
+    try {
+      var ref = (window.SUPABASE_URL || '').match(/https:\/\/([^.]+)\./)[1];
+      var raw = localStorage.getItem('sb-' + ref + '-auth-token');
+      if (!raw) return null;
+      var s = JSON.parse(raw); s = (s && s.currentSession) ? s.currentSession : s;
+      return { uid: s && s.user && s.user.id, token: s && s.access_token };
+    } catch (e) { return null; }
+  }
+  function sbRest(method, path, body) {
+    var s = sess(); var h = { apikey: window.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+    if (s && s.token) h.Authorization = 'Bearer ' + s.token;
+    var opt = { method: method, headers: h };
+    if (body) { h.Prefer = 'return=minimal'; opt.body = JSON.stringify(body); }
+    return fetch(window.SUPABASE_URL + '/rest/v1/' + path, opt);
+  }
+  function renderFamily() {
+    var fbox = document.getElementById('familyBox'); var fbody = document.getElementById('familyBody');
+    if (!fbox || !fbody) return;
+    var s = sess(); if (!s || !s.uid) { fbox.hidden = true; return; }
+    fbox.hidden = false;
+    sbRest('GET', 'profiles?id=eq.' + s.uid + '&select=family').then(function (r) { return r.ok ? r.json() : []; }).then(function (rows) {
+      var fam = (rows[0] && rows[0].family) || '';
+      fbody.innerHTML =
+        '<textarea id="fam_in" rows="3" style="width:100%;border:1px solid var(--line,#e3e7ee);border-radius:8px;padding:9px 10px;font-family:inherit;font-size:.92rem;" placeholder="예: 배우자 신은주 / 자녀 김가엘, 김주영">' + esc(fam) + '</textarea>' +
+        '<div style="margin-top:10px;display:flex;gap:10px;align-items:center;"><button type="button" class="btn btn-solid" id="fam_save">저장</button><span class="profile-msg" id="fam_msg"></span></div>';
+      document.getElementById('fam_save').onclick = function () {
+        var v = document.getElementById('fam_in').value;
+        var msg = document.getElementById('fam_msg'); msg.style.color = 'var(--ink-soft)'; msg.textContent = '저장 중…';
+        sbRest('PATCH', 'profiles?id=eq.' + s.uid, { family: v }).then(function (r) {
+          if (r.ok) { msg.style.color = 'green'; msg.textContent = '✓ 저장되었습니다'; }
+          else if (r.status === 400 || r.status === 404) { msg.style.color = 'var(--accent-soft)'; msg.textContent = '저장란이 아직 없습니다. 관리자에게 문의하세요(profiles.family 컬럼).'; }
+          else { msg.style.color = 'var(--accent-soft)'; msg.textContent = '저장 실패 (' + r.status + ')'; }
+        }).catch(function (e) { msg.style.color = 'var(--accent-soft)'; msg.textContent = '오류: ' + e.message; });
+      };
+    }).catch(function () { fbody.innerHTML = '<p style="color:var(--accent-soft);font-size:.88rem;">가족 정보를 불러오지 못했습니다.</p>'; });
   }
 
   function loading(msg) { body.innerHTML = '<p class="qt-loading">' + esc(msg || '확인 중입니다…') + '</p>'; }
