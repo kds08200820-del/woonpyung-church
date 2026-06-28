@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701y
+ * 콘솔: [finance.js] v20260701z
  */
-console.log('[finance.js] v20260701y');
+console.log('[finance.js] v20260701z');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -251,15 +251,31 @@ console.log('[finance.js] v20260701y');
 
       function stat(label, val, color) { return '<div style="flex:1;min-width:150px;background:#fff;border:1px solid #e8edf3;border-radius:12px;padding:14px 16px"><div style="color:#7b8794;font-size:.78rem;margin-bottom:6px">' + label + '</div><div style="font-size:1.3rem;font-weight:700;color:' + color + '">' + won(val) + '<span style="font-size:.8rem;font-weight:400">원</span></div></div>'; }
 
-      // 월별 막대
-      var maxM = Math.max.apply(null, order.map(function (m) { return Math.max(months[m].inc, months[m].exp); }).concat([1]));
-      var monthBars = order.map(function (m) {
-        return '<div style="flex:1;min-width:40px;display:flex;flex-direction:column;align-items:center;gap:5px">' +
-          '<div style="display:flex;gap:3px;align-items:flex-end;height:150px">' +
-          '<div title="수입 ' + won(months[m].inc) + '" style="width:13px;background:#10b981;border-radius:3px 3px 0 0;height:' + (months[m].inc / maxM * 100) + '%"></div>' +
-          '<div title="지출 ' + won(months[m].exp) + '" style="width:13px;background:#ef4444;border-radius:3px 3px 0 0;height:' + (months[m].exp / maxM * 100) + '%"></div>' +
-          '</div><span style="font-size:.72rem;color:#7b8794">' + m.slice(5) + '월</span></div>';
-      }).join('');
+      // 월별 차트 (막대 + 추세선 + 호버 hit영역)
+      function monthChart() {
+        var n = order.length; if (!n) return '<p style="color:#9aa5b1;margin-top:14px">내역 없음</p>';
+        var W = Math.max(360, n * 80), H = 210, PT = 14, PB = 30, PL = 12, PR = 12;
+        var ph = H - PT - PB, pw = W - PL - PR, baseY = PT + ph;
+        var maxV = Math.max.apply(null, order.map(function (m) { return Math.max(months[m].inc, months[m].exp); }).concat([1]));
+        function cx(i) { return PL + (i + 0.5) * (pw / n); }
+        function yv(v) { return PT + ph - (v / maxV) * ph; }
+        var bw = 11, rects = '', incPts = [], expPts = [], dots = '', hits = '', labels = '';
+        order.forEach(function (m, i) {
+          var c = cx(i), inc = months[m].inc, exp = months[m].exp, xi = c - bw - 1, xe = c + 1;
+          rects += '<rect x="' + xi + '" y="' + yv(inc) + '" width="' + bw + '" height="' + (baseY - yv(inc)) + '" rx="2" fill="#10b981" opacity="0.28"></rect>';
+          rects += '<rect x="' + xe + '" y="' + yv(exp) + '" width="' + bw + '" height="' + (baseY - yv(exp)) + '" rx="2" fill="#ef4444" opacity="0.28"></rect>';
+          incPts.push((xi + bw / 2).toFixed(1) + ',' + yv(inc).toFixed(1));
+          expPts.push((xe + bw / 2).toFixed(1) + ',' + yv(exp).toFixed(1));
+          dots += '<circle cx="' + (xi + bw / 2) + '" cy="' + yv(inc) + '" r="3.2" fill="#10b981"></circle><circle cx="' + (xe + bw / 2) + '" cy="' + yv(exp) + '" r="3.2" fill="#ef4444"></circle>';
+          hits += '<rect class="mc-hit" data-i="' + i + '" x="' + (c - (pw / n) / 2) + '" y="' + PT + '" width="' + (pw / n) + '" height="' + ph + '" fill="transparent" style="cursor:pointer"></rect>';
+          labels += '<text x="' + c + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#7b8794">' + m.slice(5) + '월</text>';
+        });
+        return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" preserveAspectRatio="xMidYMid meet" style="height:auto;max-width:' + W + 'px">' +
+          rects +
+          '<polyline points="' + incPts.join(' ') + '" fill="none" stroke="#10b981" stroke-width="2"></polyline>' +
+          '<polyline points="' + expPts.join(' ') + '" fill="none" stroke="#ef4444" stroke-width="2"></polyline>' +
+          dots + labels + hits + '</svg>';
+      }
 
       // 헌금 항목별 도넛(연간 수입)
       var incFY = sumByAcc('수입', fyR.from, fyR.to);
@@ -290,10 +306,24 @@ console.log('[finance.js] v20260701y');
           '<div class="fin-card"><b style="color:#1e874b">수입 (연간 누계)</b>' + statusTable('수입', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
           '<div class="fin-card"><b style="color:#c0392b">지출 (연간 누계)</b>' + statusTable('지출', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
         '</div>' +
-        // 월별 그래프
-        '<div class="fin-card" style="margin-top:16px"><b>📊 월별 수입·지출</b> <span style="font-size:.78rem;color:#9aa5b1">■<span style="color:#10b981">수입</span> ■<span style="color:#ef4444">지출</span></span><div style="display:flex;gap:6px;align-items:flex-end;margin-top:14px;overflow:auto;padding-bottom:4px">' + (monthBars || '<span style="color:#9aa5b1">내역 없음</span>') + '</div></div>' +
-        // 헌금 항목별 도넛
-        '<div class="fin-card"><b>🍩 헌금 항목별 (연간)</b>' + donut(incFY) + '</div>';
+        // 월별 차트 + 도넛 (한 박스 2단)
+        '<div class="fin-card" style="margin-top:16px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:24px">' +
+          '<div><b>📊 월별 수입·지출</b> <span style="font-size:.76rem"><span style="color:#10b981">● 수입</span> <span style="color:#ef4444">● 지출</span> <span style="color:#9aa5b1">· 막대+추세선</span></span>' +
+            '<div id="mcWrap" style="position:relative;margin-top:14px">' + monthChart() + '<div id="mcTip" style="position:absolute;display:none;background:#032257;color:#fff;font-size:.76rem;line-height:1.45;padding:6px 9px;border-radius:7px;pointer-events:none;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.25)"></div></div></div>' +
+          '<div><b>🍩 헌금 항목별 (연간)</b>' + donut(incFY) + '</div>' +
+        '</div></div>';
+      var mcWrap = panel.querySelector('#mcWrap'), mcTip = panel.querySelector('#mcTip');
+      if (mcWrap && mcTip) Array.prototype.forEach.call(mcWrap.querySelectorAll('.mc-hit'), function (h) {
+        function show(e) {
+          var i = +h.getAttribute('data-i'), m = order[i];
+          mcTip.innerHTML = '<b>' + m + '</b><br>수입 ' + won(months[m].inc) + '원<br>지출 ' + won(months[m].exp) + '원';
+          var r = mcWrap.getBoundingClientRect(), x = e.clientX - r.left + 12, y = e.clientY - r.top + 10;
+          if (x > r.width - 130) x = e.clientX - r.left - 130;
+          mcTip.style.left = x + 'px'; mcTip.style.top = y + 'px'; mcTip.style.display = 'block';
+        }
+        h.addEventListener('mousemove', show); h.addEventListener('mouseenter', show);
+        h.addEventListener('mouseleave', function () { mcTip.style.display = 'none'; });
+      });
     }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
   }
 
