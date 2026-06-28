@@ -1,9 +1,9 @@
 /* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
  * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
- * 콘솔: [finance-api.js] v20260701n (Supabase)
+ * 콘솔: [finance-api.js] v20260701o (Supabase)
  */
-console.log('[finance-api.js] v20260701n (Supabase)');
+console.log('[finance-api.js] v20260701o (Supabase)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -174,6 +174,12 @@ window.WPF = (function () {
           p_is_admin: (typeof params.isAdmin === 'boolean') ? params.isAdmin : null,
           p_can_finance: (typeof params.canFinance === 'boolean') ? params.canFinance : null
         });
+      case 'getSettings':
+        return rest('GET', 'app_settings?select=key,value&limit=2000').then(function (rows) {
+          var s = {}; (rows || []).forEach(function (r) { s[r.key] = r.value; }); return { ok: true, settings: s };
+        });
+      case 'setSetting':
+        return rest('POST', 'app_settings?on_conflict=key', { key: params.key, value: String(params.value == null ? '' : params.value), updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal').then(function () { return { ok: true }; });
       default:
         return Promise.reject(new Error('unknown action: ' + action));
     }

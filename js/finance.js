@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701n
+ * 콘솔: [finance.js] v20260701o
  */
-console.log('[finance.js] v20260701n');
+console.log('[finance.js] v20260701o');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -113,6 +113,11 @@ console.log('[finance.js] v20260701n');
     if (M._b) return Promise.resolve();
     return WPF.call('budget').then(function (r) { M.budget = r.budget || []; M._b = true; }).catch(function () { M.budget = []; M._b = true; });
   }
+  function ensureSettings() {
+    if (M._s) return Promise.resolve();
+    return WPF.call('getSettings').then(function (r) { M.settings = r.settings || {}; M._s = true; }).catch(function () { M.settings = {}; M._s = true; });
+  }
+  function carryover(fy) { return parseNum((M.settings || {})['carryover_' + (fy || M.fy)]); } // 회계연도별 전기 이월금
 
   var TABS = [
     ['offering', '헌금입력'], ['bulk', '명단일괄'], ['expense', '지출입력'], ['ledger', '거래장부'],
@@ -608,7 +613,7 @@ console.log('[finance.js] v20260701n');
   /* ── 결산보고서 (월별현황 + 예산대비) ── */
   function renderReport(panel) {
     loading(panel);
-    Promise.all([ensureVouchers(), ensureBudget()]).then(function () {
+    Promise.all([ensureVouchers(), ensureBudget(), ensureSettings()]).then(function () {
       var months = {}; var order = [];
       vouchersFY().forEach(function (v) { var m = String(v['일자']).slice(0, 7); if (!months[m]) { months[m] = { inc: 0, exp: 0 }; order.push(m); } if (String(v['구분']) === '수입') months[m].inc += Number(v['금액']) || 0; else months[m].exp += Number(v['금액']) || 0; });
       order.sort();
@@ -616,7 +621,9 @@ console.log('[finance.js] v20260701n');
       var monthTbl = order.map(function (m) { ti += months[m].inc; te += months[m].exp; return '<tr><td>' + esc(m) + '</td><td class="num">' + won(months[m].inc) + '</td><td class="num">' + won(months[m].exp) + '</td><td class="num"><b>' + won(months[m].inc - months[m].exp) + '</b></td></tr>'; }).join('');
       var budIn = 0, budExp = 0;
       M.budget.forEach(function (b) { var code = String(b['계정코드'] || ''); var amt = Number(b['예산']) || 0; if (code.slice(-4) === '0000') return; if (/^1/.test(code)) budIn += amt; else if (/^2/.test(code)) budExp += amt; });
+      var carry = carryover();
       withPrint(panel, '결산보고서',
+        '<div class="fin-card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center"><div>전기 이월금 <b>' + won(carry) + '</b></div><div>당기 수입 <b style="color:#1e874b">' + won(ti) + '</b></div><div>당기 지출 <b style="color:#c0392b">' + won(te) + '</b></div><div style="margin-left:auto;font-size:1.05rem">기말 잔액 <b style="color:var(--accent,#032257)">' + won(carry + ti - te) + '</b></div></div>' +
         '<div class="fin-card"><b>월별 수입·지출 현황</b><div style="overflow:auto;margin-top:8px"><table class="fin-table"><thead><tr><th>월</th><th class="num">수입</th><th class="num">지출</th><th class="num">차액</th></tr></thead><tbody>' + monthTbl +
         '</tbody><tfoot><tr style="font-weight:700;background:#f5f8fc"><td>합계</td><td class="num">' + won(ti) + '</td><td class="num">' + won(te) + '</td><td class="num">' + won(ti - te) + '</td></tr></tfoot></table></div></div>' +
         (M.budget.length ? '<div class="fin-card"><b>예산 대비 실적</b><div style="overflow:auto;margin-top:8px"><table class="fin-table"><thead><tr><th>구분</th><th class="num">연간 예산</th><th class="num">실적 누계</th><th class="num">집행률</th></tr></thead><tbody>' +
@@ -811,25 +818,44 @@ console.log('[finance.js] v20260701n');
 
   /* ── 설정(회계연도 시작 월) ── */
   function renderSettings(panel) {
-    var sm = fyStartMonth();
-    var mopts = '';
-    for (var i = 1; i <= 12; i++) mopts += '<option value="' + i + '"' + (i === sm ? ' selected' : '') + '>' + i + '월</option>';
-    var r = fyRange(M.fy);
-    panel.innerHTML = '<div class="fin-card" style="max-width:560px">' +
-      '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">회계연도 설정</h3>' +
-      '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:16px">회계연도가 시작하는 월을 정합니다. 거래장부·통계·결산보고서·기부금영수증이 선택한 회계연도 범위로 집계됩니다.</p>' +
-      '<div class="form-field" style="max-width:220px"><label>회계연도 시작 월</label><select id="set_sm">' + mopts + '</select></div>' +
-      '<p class="help" style="margin-top:10px">예) <b>1월</b> → 1/1 ~ 12/31 · <b>12월</b> → 12/1 ~ 익년 11/30(오직 방식) · <b>3월</b> → 3/1 ~ 익년 2/말</p>' +
-      '<p style="margin-top:6px;font-size:.86rem">현재 <b>' + M.fy + '년도</b> 범위: <b>' + r.from + ' ~ ' + r.to + '</b></p>' +
-      '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_save">저장</button><span class="fin-msg" id="set_msg"></span></div>' +
-      '<p style="color:#9aa5b1;font-size:.78rem;margin-top:12px">※ 이 설정은 현재 브라우저에 저장됩니다(관리자 PC 기준). 회계연도 선택은 상단 드롭다운에서 바꿀 수 있습니다.</p></div>';
-    panel.querySelector('#set_save').onclick = function () {
-      var v = Number(panel.querySelector('#set_sm').value);
-      localStorage.setItem('wpf_fy_start', v);
-      M.fy = curFY();
-      var msg = panel.querySelector('#set_msg'); msg.style.color = 'green'; msg.textContent = '✓ 저장됨';
-      setTimeout(render, 700);
-    };
+    loading(panel);
+    ensureSettings().then(function () {
+      var sm = fyStartMonth();
+      var mopts = '';
+      for (var i = 1; i <= 12; i++) mopts += '<option value="' + i + '"' + (i === sm ? ' selected' : '') + '>' + i + '월</option>';
+      var r = fyRange(M.fy);
+      var carry = carryover();
+      panel.innerHTML = '<div class="fin-card" style="max-width:560px">' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">회계연도 설정</h3>' +
+        '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:16px">회계연도가 시작하는 월을 정합니다. 거래장부·통계·결산보고서·기부금영수증이 선택한 회계연도 범위로 집계됩니다.</p>' +
+        '<div class="form-field" style="max-width:220px"><label>회계연도 시작 월</label><select id="set_sm">' + mopts + '</select></div>' +
+        '<p class="help" style="margin-top:10px">예) <b>1월</b> → 1/1 ~ 12/31 · <b>12월</b> → 12/1 ~ 익년 11/30(오직 방식) · <b>3월</b> → 3/1 ~ 익년 2/말</p>' +
+        '<p style="margin-top:6px;font-size:.86rem">현재 <b>' + M.fy + '년도</b> 범위: <b>' + r.from + ' ~ ' + r.to + '</b></p>' +
+        '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_save">저장</button><span class="fin-msg" id="set_msg"></span></div>' +
+        '<p style="color:#9aa5b1;font-size:.78rem;margin-top:12px">※ 시작월은 현재 브라우저에 저장됩니다. 회계연도 선택은 상단 드롭다운에서 바꿀 수 있습니다.</p></div>' +
+        '<div class="fin-card" style="max-width:560px">' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">전기 이월금 — ' + M.fy + '년도</h3>' +
+        '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px">회계연도 시작 시점의 <b>이월 잔액</b>입니다. 결산보고서의 기말 잔액(이월금＋수입－지출) 계산에 반영됩니다. 회계연도마다 따로 저장됩니다.</p>' +
+        '<div class="form-field" style="max-width:260px"><label>이월금 (원)</label><input type="text" id="set_carry" inputmode="numeric" value="' + (carry ? won(carry) : '') + '" placeholder="0" style="text-align:right;font-weight:700"></div>' +
+        '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_carry_save">이월금 저장</button><span class="fin-msg" id="set_carry_msg"></span></div></div>';
+      panel.querySelector('#set_save').onclick = function () {
+        var v = Number(panel.querySelector('#set_sm').value);
+        localStorage.setItem('wpf_fy_start', v);
+        M.fy = curFY();
+        var msg = panel.querySelector('#set_msg'); msg.style.color = 'green'; msg.textContent = '✓ 저장됨';
+        setTimeout(render, 700);
+      };
+      var carryEl = panel.querySelector('#set_carry');
+      carryEl.addEventListener('input', function () { var n = parseNum(carryEl.value); carryEl.value = n ? won(n) : ''; });
+      panel.querySelector('#set_carry_save').onclick = function () {
+        var amt = parseNum(carryEl.value);
+        var msg = panel.querySelector('#set_carry_msg'); msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
+        WPF.call('setSetting', { key: 'carryover_' + M.fy, value: amt }).then(function () {
+          M.settings['carryover_' + M.fy] = String(amt);
+          msg.style.color = 'green'; msg.textContent = '✓ 저장됨';
+        }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; });
+      };
+    }).catch(function (e) { panel.innerHTML = msgCard('설정 조회 실패', e.message); });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
