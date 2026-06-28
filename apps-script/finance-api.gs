@@ -189,7 +189,7 @@ function actionMasters_(req) {
   var user = verifyUser_(req.token);
   requireFinance_(user.id);
   var members = readObjects_(GYOJEOK_SHEET_ID, '교적').map(function (m) {
-    return { name: m['이름'], key: m['매칭키'], birth: m['생년월일'], group: m['그룹'],
+    return { name: m['이름'], key: m['매칭키'], birth: m['생년월일'], group: m['그룹'], role: m['직책'] || '',
              spouse: m['배우자'] || '', spouseKey: m['배우자매칭키'] || '', head: m['세대주'] || '', rel: m['관계'] || '' };
   }).filter(function (m) { return m.name; });
   var accounts = readObjects_(JAEJEONG_SHEET_ID, '계정과목');

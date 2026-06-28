@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701b
+ * 콘솔: [finance.js] v20260701c
  */
-console.log('[finance.js] v20260701b');
+console.log('[finance.js] v20260701c');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -486,33 +486,69 @@ console.log('[finance.js] v20260701b');
 
   /* ── 헌금명단 (주보용: 주간·항목별 명단) ── */
   function renderGiverList(panel) {
+    function ck(id, label, on) { return '<label class="sw" style="display:inline-flex;gap:5px;align-items:center;margin-right:14px;font-size:.86rem"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '> ' + label + '</label>'; }
     panel.innerHTML =
       '<div class="fin-card"><div class="fin-grid" style="align-items:end">' +
       '<div class="form-field"><label>기준일(해당 주)</label><input type="date" id="gl2_date" value="' + today() + '"></div>' +
       '<div class="form-field"><label>주간 선택</label><div style="display:flex;gap:6px"><button class="btn btn-line" id="gl2_this">이번주</button><button class="btn btn-line" id="gl2_last">지난주</button></div></div>' +
-      '<div class="form-field"><label>옵션</label><label class="sw" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="gl2_amt"> 금액 표시</label></div>' +
       '<div class="form-field"><button class="btn btn-solid" id="gl2_go">조회</button></div>' +
-      '</div><p class="help" style="margin-top:6px">주보용 헌금자 명단 — 십일조·감사 등 <b>항목별로 명단</b>을 출력합니다.</p></div><div id="gl2_out"></div>';
+      '</div>' +
+      '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eef1f5"><b style="font-size:.85rem;color:var(--ink-soft);margin-right:10px">출력 항목</b>' +
+      ck('opt_name', '이름', true) + ck('opt_role', '직분', false) + ck('opt_memo', '헌금 사유', true) + ck('opt_amt', '금액', false) + ck('opt_couple', '배우자 합산', false) +
+      '</div><p class="help" style="margin-top:8px">주보용 헌금자 명단 — 십일조·감사 등 <b>항목별로 명단</b>을 출력합니다. 옵션을 바꾸면 바로 반영됩니다.</p></div><div id="gl2_out"></div>';
     var dateInp = panel.querySelector('#gl2_date');
     panel.querySelector('#gl2_this').onclick = function () { dateInp.value = today(); go(); };
     panel.querySelector('#gl2_last').onclick = function () { var d = new Date(today() + 'T00:00:00'); d.setDate(d.getDate() - 7); dateInp.value = ymdOf(d); go(); };
+    ['opt_name', 'opt_role', 'opt_memo', 'opt_amt', 'opt_couple'].forEach(function (id) { panel.querySelector('#' + id).onchange = go; });
     var out = panel.querySelector('#gl2_out');
     function go() {
-      var w = weekRange(dateInp.value), showAmt = panel.querySelector('#gl2_amt').checked;
+      var w = weekRange(dateInp.value);
+      var oName = panel.querySelector('#opt_name').checked, oRole = panel.querySelector('#opt_role').checked,
+        oMemo = panel.querySelector('#opt_memo').checked, oAmt = panel.querySelector('#opt_amt').checked, oCouple = panel.querySelector('#opt_couple').checked;
       loading(out);
       ensureVouchers().then(function () {
         var list = M.vouchers.filter(function (x) { var d = fmtD(x['일자']); return d >= w.from && d <= w.to && String(x['종류']) === '헌금'; });
         if (!list.length) { out.innerHTML = '<div class="fin-card">해당 주(' + w.from + ' ~ ' + w.to + ') 헌금 내역이 없습니다.</div>'; return; }
+        var mp = {}; M.members.forEach(function (m) { if (m.key) mp[m.key] = m; });
+        var roleByName = {}; M.members.forEach(function (m) { if (m.name && m.role) roleByName[m.name] = m.role; });
+        function baseName(s) { return String(s || '').replace(/\(.*\)$/, '').trim(); }
+        function roleOf(v) { var m = v['매칭키'] && mp[v['매칭키']]; var r = (m && m.role) || roleByName[baseName(v['헌금자'])] || ''; return r; }
         var byAcc = {}, order = [];
         list.forEach(function (v) { var a = v['계정'] || '기타'; if (!byAcc[a]) { byAcc[a] = []; order.push(a); } byAcc[a].push(v); });
         function accSum(a) { return byAcc[a].reduce(function (s, v) { return s + (Number(v['금액']) || 0); }, 0); }
         order.sort(function (a, b) { return accSum(b) - accSum(a); });
         var totAll = list.reduce(function (s, v) { return s + (Number(v['금액']) || 0); }, 0);
+
+        // 한 항목의 entries → (배우자합산 시) 가정별 병합
+        function entriesFor(arr) {
+          if (!oCouple) return arr.map(function (v) { return { names: [v['헌금자'] || '무명'], memo: v['적요'] || '', amt: Number(v['금액']) || 0, role: roleOf(v) }; });
+          var groups = {}, ordg = [];
+          arr.forEach(function (v) {
+            var k = v['매칭키'], m = k && mp[k], hk;
+            if (m && m.spouseKey) hk = [k, m.spouseKey].sort().join('+'); else hk = k || ('nm:' + (v['헌금자'] || ''));
+            if (!groups[hk]) { groups[hk] = { names: [], memo: '', amt: 0, role: roleOf(v) }; ordg.push(hk); }
+            var g = groups[hk];
+            baseName(v['헌금자']).split(/[·,]/).forEach(function (nm) { nm = nm.trim(); if (nm && g.names.indexOf(nm) < 0) g.names.push(nm); });
+            // 괄호 안 배우자명도 합산 표시
+            var paren = (String(v['헌금자']).match(/\(([^)]+)\)/) || [])[1];
+            if (paren && g.names.indexOf(paren) < 0) g.names.push(paren);
+            if (v['적요'] && !g.memo) g.memo = v['적요'];
+            g.amt += Number(v['금액']) || 0;
+          });
+          return ordg.map(function (k) { return groups[k]; });
+        }
+
         var content = '<div class="fin-card" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center"><b>' + w.from + ' ~ ' + w.to + ' 헌금자 명단</b><div style="margin-left:auto">총 ' + list.length + '건 · ' + won(totAll) + '원</div></div>';
         order.forEach(function (a) {
-          var arr = byAcc[a], sum = accSum(a);
-          var names = arr.map(function (v) { var nm = esc(v['헌금자'] || '무명'); var memo = v['적요'] ? ' (' + esc(v['적요']) + ')' : ''; var amt = showAmt ? ' <span style="color:#1e874b">' + won(v['금액']) + '</span>' : ''; return nm + memo + amt; });
-          content += '<div class="fin-card"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><b style="color:var(--accent,#032257)">' + esc(a) + ' (' + arr.length + '명)</b><b style="color:#1e874b">' + won(sum) + '원</b></div><div style="line-height:2.1;font-size:.95rem">' + names.join('<span style="color:#cbd5e1"> · </span>') + '</div></div>';
+          var ents = entriesFor(byAcc[a]), sum = accSum(a);
+          var names = ents.map(function (g) {
+            var nm = oName ? esc(g.names.join('·')) : '';
+            var role = (oRole && g.role) ? ' <span style="color:#7b8794">' + esc(g.role) + '</span>' : '';
+            var memo = (oMemo && g.memo) ? ' (' + esc(g.memo) + ')' : '';
+            var amt = oAmt ? ' <span style="color:#1e874b">' + won(g.amt) + '</span>' : '';
+            return (nm + role + memo + amt).trim() || esc(g.names.join('·'));
+          });
+          content += '<div class="fin-card"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><b style="color:var(--accent,#032257)">' + esc(a) + ' (' + ents.length + '명)</b><b style="color:#1e874b">' + won(sum) + '원</b></div><div style="line-height:2.1;font-size:.95rem">' + names.join('<span style="color:#cbd5e1"> · </span>') + '</div></div>';
         });
         withPrint(out, '헌금자 명단', content, w.from + ' ~ ' + w.to + ' 주간');
       }).catch(function (e) { out.innerHTML = msgCard('조회 실패', e.message); });
