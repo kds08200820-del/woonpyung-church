@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701r
+ * 콘솔: [finance.js] v20260701s
  */
-console.log('[finance.js] v20260701r');
+console.log('[finance.js] v20260701s');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -827,8 +827,8 @@ console.log('[finance.js] v20260701r');
             tr.innerHTML = '<td style="color:#9aa5b1">' + esc(b['계정코드']) + '</td><td>' + esc(b['계정이름']) + '</td><td class="num">' + won(b['전년예산']) + '</td><td class="num">' + won(b['전년결산']) + '</td>';
             var td = document.createElement('td'); td.className = 'num'; td.appendChild(budgetInput(b)); tr.appendChild(td);
             if (editing) tr.appendChild(mng([
-              { label: '이름', fn: function () { var nm = prompt('목(계정) 이름', b['계정이름']); if (nm && nm.trim()) WPF.call('updateAccount', { code: b['계정코드'], fields: { name: nm.trim() } }).then(reload).catch(function (e) { flash(e.message, false); }); } },
-              { label: '삭제', fn: function () { if (confirm('「' + b['계정이름'] + '」 계정을 삭제할까요?')) WPF.call('deleteAccount', { code: b['계정코드'] }).then(reload).catch(function (e) { flash(e.message, false); }); } }
+              { label: '✏ 수정', fn: function () { var nm = prompt('목(계정) 이름 수정', b['계정이름']); if (nm && nm.trim()) WPF.call('updateAccount', { code: b['계정코드'], fields: { name: nm.trim() } }).then(reload).catch(function (e) { flash(e.message, false); }); } },
+              { label: '🗑 삭제', fn: function () { if (confirm('「' + b['계정이름'] + '」 목(계정)을 삭제할까요?')) WPF.call('deleteAccount', { code: b['계정코드'] }).then(reload).catch(function (e) { flash(e.message, false); }); } }
             ]));
             tb.appendChild(tr);
           });
@@ -838,20 +838,21 @@ console.log('[finance.js] v20260701r');
           var tr = document.createElement('tr'); tr.style.cssText = 'font-weight:700;background:#f5f8fc';
           tr.innerHTML = '<td>' + esc(gr['계정코드']) + '</td><td>' + esc(gr['계정이름']) + ' <span style="color:#9aa5b1;font-weight:400">(항)</span></td><td class="num"></td><td class="num"></td><td class="num">' + won(sub) + '</td>';
           if (editing) tr.appendChild(mng([
-            { label: '+목', fn: function () { var nm = prompt('「' + gr['계정이름'] + '」에 추가할 목(계정) 이름'); if (nm && nm.trim()) WPF.call('addAccount', { code: nextDetail(gr['계정코드'], g), atype: g, name: nm.trim(), budget: 0 }).then(reload).catch(function (e) { flash(e.message, false); }); } },
-            { label: '이름', fn: function () { var nm = prompt('항(분류) 이름', gr['계정이름']); if (nm && nm.trim()) WPF.call('updateAccount', { code: gr['계정코드'], fields: { name: nm.trim() } }).then(reload).catch(function (e) { flash(e.message, false); }); } },
-            { label: '삭제', fn: function () { if ((byParent[gr['계정코드']] || []).length) { alert('하위 목(계정)을 먼저 삭제하세요.'); return; } if (confirm('「' + gr['계정이름'] + '」 항을 삭제할까요?')) WPF.call('deleteAccount', { code: gr['계정코드'] }).then(reload).catch(function (e) { flash(e.message, false); }); } }
+            { label: '＋ 목 추가', fn: function () { var nm = prompt('「' + gr['계정이름'] + '」에 추가할 목(계정) 이름'); if (nm && nm.trim()) WPF.call('addAccount', { code: nextDetail(gr['계정코드'], g), atype: g, name: nm.trim(), budget: 0 }).then(reload).catch(function (e) { flash(e.message, false); }); } },
+            { label: '✏ 수정', fn: function () { var nm = prompt('항(분류) 이름 수정', gr['계정이름']); if (nm && nm.trim()) WPF.call('updateAccount', { code: gr['계정코드'], fields: { name: nm.trim() } }).then(reload).catch(function (e) { flash(e.message, false); }); } },
+            { label: '🗑 삭제', fn: function () { var kids = byParent[gr['계정코드']] || []; if (!confirm('「' + gr['계정이름'] + '」 항' + (kids.length ? '과 하위 목 ' + kids.length + '개를 모두' : '을') + ' 삭제할까요?')) return; var codes = kids.map(function (k) { return k['계정코드']; }).concat([gr['계정코드']]); Promise.all(codes.map(function (c) { return WPF.call('deleteAccount', { code: c }); })).then(reload).catch(function (e) { flash(e.message, false); }); } }
           ]));
           tb.appendChild(tr);
           detailRows(gr['계정코드']);
         });
         Object.keys(byParent).filter(function (p) { return !groups.some(function (gr) { return gr['계정코드'] === p; }); }).forEach(detailRows);
-        wrap.appendChild(tbl); card.appendChild(wrap);
+        wrap.appendChild(tbl);
         if (editing) {
-          var addG = document.createElement('button'); addG.className = 'btn btn-line'; addG.style.marginTop = '10px'; addG.textContent = '＋ ' + g + ' 항(분류) 추가';
+          var addG = document.createElement('button'); addG.className = 'btn btn-solid'; addG.style.cssText = 'margin-bottom:12px;padding:6px 14px;font-size:.85rem'; addG.textContent = '＋ 새 ' + g + ' 항(분류) 추가';
           addG.onclick = function () { var nm = prompt('새 ' + g + ' 항(분류) 이름'); if (nm && nm.trim()) WPF.call('addAccount', { code: nextGroup(prefix, g), atype: g, name: nm.trim(), budget: 0 }).then(reload).catch(function (e) { flash(e.message, false); }); };
           card.appendChild(addG);
         }
+        card.appendChild(wrap);
         panel.appendChild(card);
       });
     }
