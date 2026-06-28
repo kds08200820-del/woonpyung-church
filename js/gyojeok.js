@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701g
+ * 콘솔: [gyojeok.js] v20260701h
  */
-console.log('[gyojeok.js] v20260701g');
+console.log('[gyojeok.js] v20260701h');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -135,9 +135,10 @@ console.log('[gyojeok.js] v20260701g');
         '</div><div style="flex:1;min-width:240px">' +
         row('세대주', cur['세대주']) + row('세대주와 관계', cur['관계']) + row('배우자', cur['배우자']) + row('회원상태', cur['회원상태']) + row('임직일', cur['임직일']) +
         '</div></div>' + (cur['주소'] ? row('주소', cur['주소']) : '') + (groupsOf(cur).length ? '<div style="margin-top:12px"><div style="color:#7b8794;font-size:.85rem;margin-bottom:5px">소속 그룹</div>' + groupsOf(cur).map(function (g) { return '<span class="fin-pill" style="background:#e8f0fb;color:#2b5797;margin:0 6px 6px 0;display:inline-block">' + esc(g) + '</span>'; }).join('') + '</div>' : '') +
-        '<div style="margin-top:16px"><b style="color:var(--accent,#032257)">가족 관계</b><div style="overflow:auto;margin-top:6px"><table class="fin-table" style="font-size:.86rem"><thead><tr><th>이름</th><th>관계</th><th>생년월일</th><th>직책</th></tr></thead><tbody>' + famRows + '</tbody></table></div></div>';
+        '<div style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="color:var(--accent,#032257)">가족 관계</b><button class="btn btn-line" id="gd_family" style="padding:3px 12px;font-size:.8rem">👪 가족 구성/수정</button></div><div style="overflow:auto;margin-top:6px"><table class="fin-table" style="font-size:.86rem"><thead><tr><th>이름</th><th>관계</th><th>생년월일</th><th>직책</th></tr></thead><tbody>' + famRows + '</tbody></table></div></div>';
       box.querySelector('#gd_close').onclick = close;
       box.querySelector('#gd_edit').onclick = function () { editMode(cur); };
+      box.querySelector('#gd_family').onclick = function () { familyMode(cur); };
       Array.prototype.forEach.call(box.querySelectorAll('.gd-fam'), function (a) { a.onclick = function (e) { e.preventDefault(); var f = ALL.filter(function (x) { return String(x['매칭키']) === a.dataset.key; })[0]; if (f) viewMode(f); }; });
     }
 
@@ -202,6 +203,78 @@ console.log('[gyojeok.js] v20260701g');
           if (/unknown action/i.test(e.message)) { msg.style.color = '#c0392b'; msg.textContent = '교적 수정은 Apps Script 재배포 후 가능합니다.'; }
           else { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; }
         });
+      };
+    }
+
+    // ── 가족 관계 설정(관계형 구성) ──
+    function familyMode(cur) {
+      var REL = ['세대주', '배우자', '부', '모', '조부', '조모', '장남', '차남', '삼남', '아들', '장녀', '차녀', '삼녀', '딸', '자녀', '형제', '자매', '손자', '손녀', '사위', '며느리', '기타'];
+      function relSel(id, val) { var has = REL.indexOf(val) >= 0; return '<select id="' + id + '">' + (val && !has ? '<option selected>' + esc(val) + '</option>' : '') + REL.map(function (o) { return '<option' + (o === val ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>'; }
+      var head = cur['세대주'] || cur['이름'];
+      var fam = ALL.filter(function (x) { return (x['세대주'] || x['이름']) === head; });
+      var cand = ALL.filter(function (x) { return (x['세대주'] || x['이름']) !== head; }).sort(function (a, b) { return String(a['이름']).localeCompare(String(b['이름']), 'ko'); });
+      var msgEl;
+      function setMsg(t, ok) { if (msgEl) { msgEl.style.color = ok ? 'green' : '#c0392b'; msgEl.textContent = t; } }
+      function rerun(id) { setMsg('처리 중…', true); return WPF.call('listGyojeok').then(function (r) { ALL = (r.members || []).filter(function (m) { return m['이름']; }); var nc = ALL.filter(function (x) { return String(x['교적ID']) === String(id); })[0] || cur; familyMode(nc); }).catch(function (e) { setMsg('오류: ' + e.message, false); }); }
+      function doLink(memberRow, rel) {
+        var fields = { 세대주: head, 관계: rel };
+        var calls = [];
+        if (rel === '배우자') {
+          var headRow = ALL.filter(function (x) { return x['이름'] === head; })[0];
+          fields['배우자'] = head; fields['배우자매칭키'] = headRow ? headRow['매칭키'] : '';
+          if (headRow) calls.push(WPF.call('updateGyojeok', { id: headRow['교적ID'], fields: { 배우자: memberRow['이름'], 배우자매칭키: memberRow['매칭키'] } }));
+        }
+        calls.push(WPF.call('updateGyojeok', { id: memberRow['교적ID'], fields: fields }));
+        return Promise.all(calls);
+      }
+
+      box.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;color:var(--accent,#032257)">👪 가족 관계 설정</h3><button class="btn btn-line" id="fm_back" style="padding:4px 12px">← 돌아가기</button></div>' +
+        '<p style="color:#7b8794;font-size:.85rem;margin-bottom:10px"><b>' + esc(head) + '</b>의 가정 · ' + fam.length + '명</p>' +
+        '<span class="fin-msg" id="fm_msg" style="display:block;margin-bottom:8px"></span>' +
+        '<div class="fin-card" style="padding:12px;margin-bottom:14px"><b style="font-size:.85rem">현재 가족</b><div style="overflow:auto;margin-top:6px"><table class="fin-table" style="font-size:.85rem"><thead><tr><th>이름</th><th>생년월일</th><th>관계</th><th>관리</th></tr></thead><tbody>' +
+        fam.map(function (f) { var isMe = f['교적ID'] === cur['교적ID']; return '<tr><td><b>' + esc(f['이름']) + '</b>' + (isMe ? ' <span style="color:#9ab;font-size:.74rem">(본인)</span>' : '') + '</td><td>' + esc(birthOf(f)) + '</td><td>' + relSel('fm_rel_' + f['교적ID'], f['관계']) + '</td><td style="white-space:nowrap"><button class="btn btn-line fm-relsave" data-id="' + esc(f['교적ID']) + '" style="padding:2px 8px;font-size:.74rem">관계저장</button> <button class="btn btn-line fm-remove" data-id="' + esc(f['교적ID']) + '" data-name="' + esc(f['이름']) + '" style="padding:2px 8px;font-size:.74rem">제외</button></td></tr>'; }).join('') +
+        '</tbody></table></div></div>' +
+        (cur['이름'] !== head ? '<div style="margin-bottom:14px"><button class="btn btn-line" id="fm_sethead" style="padding:5px 12px;font-size:.84rem">⌂ ' + esc(cur['이름']) + '님을 세대주로 지정</button></div>' : '') +
+        '<div class="fin-card" style="padding:12px;margin-bottom:14px"><b style="font-size:.85rem">기존 교인 연결</b><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:8px">' +
+        '<div class="af-field" style="flex:2;min-width:160px"><label>교인 선택</label><select id="fm_member"><option value="">교인 선택</option>' + cand.map(function (m) { return '<option value="' + esc(m['교적ID']) + '">' + esc(m['이름']) + ' (' + esc(birthOf(m)) + ')</option>'; }).join('') + '</select></div>' +
+        '<div class="af-field" style="flex:1;min-width:110px"><label>관계</label>' + relSel('fm_rel', '배우자') + '</div>' +
+        '<button class="btn btn-solid" id="fm_addexist" style="padding:8px 14px">＋ 연결</button></div></div>' +
+        '<div class="fin-card" style="padding:12px"><b style="font-size:.85rem">새 교인 추가</b><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:8px">' +
+        '<div class="af-field" style="flex:1;min-width:110px"><label>이름</label><input type="text" id="fm_nname"></div>' +
+        '<div class="af-field" style="flex:1;min-width:120px"><label>생년월일(선택)</label><input type="text" id="fm_nbirth" placeholder="예: 2010-03-21"></div>' +
+        '<div class="af-field" style="flex:1;min-width:100px"><label>관계</label>' + relSel('fm_nrel', '자녀') + '</div>' +
+        '<button class="btn btn-solid" id="fm_addnew" style="padding:8px 14px">＋ 추가</button></div></div>' +
+        '<p class="help" style="margin-top:8px">※ 같은 세대주로 묶이면 가족이 됩니다. ‘배우자’로 연결하면 양쪽에 배우자가 자동 등록됩니다.</p>';
+
+      msgEl = box.querySelector('#fm_msg');
+      box.querySelector('#fm_back').onclick = function () { renderMembers(document.getElementById('gjPanel')); viewMode(cur); };
+      var setHead = box.querySelector('#fm_sethead');
+      if (setHead) setHead.onclick = function () { WPF.call('updateGyojeok', { id: cur['교적ID'], fields: { 세대주: cur['이름'], 관계: '세대주' } }).then(function () { rerun(cur['교적ID']); }).catch(function (e) { setMsg('오류: ' + e.message, false); }); };
+      Array.prototype.forEach.call(box.querySelectorAll('.fm-relsave'), function (b) {
+        b.onclick = function () { var sel = document.getElementById('fm_rel_' + b.dataset.id); var rel = sel ? sel.value : ''; var m = ALL.filter(function (x) { return String(x['교적ID']) === String(b.dataset.id); })[0]; if (!m) return; doLink(m, rel).then(function () { rerun(cur['교적ID']); }).catch(function (e) { setMsg('오류: ' + e.message, false); }); };
+      });
+      Array.prototype.forEach.call(box.querySelectorAll('.fm-remove'), function (b) {
+        b.onclick = function () { if (!confirm(b.dataset.name + '님을 이 가족에서 제외할까요?')) return; WPF.call('updateGyojeok', { id: b.dataset.id, fields: { 세대주: b.dataset.name, 관계: '', 배우자: '', 배우자매칭키: '' } }).then(function () { rerun(cur['교적ID']); }).catch(function (e) { setMsg('오류: ' + e.message, false); }); };
+      });
+      box.querySelector('#fm_addexist').onclick = function () {
+        var id = box.querySelector('#fm_member').value; if (!id) { setMsg('연결할 교인을 선택하세요.', false); return; }
+        var rel = box.querySelector('#fm_rel').value; var m = ALL.filter(function (x) { return String(x['교적ID']) === String(id); })[0]; if (!m) return;
+        setMsg('연결 중…', true); doLink(m, rel).then(function () { rerun(cur['교적ID']); }).catch(function (e) { setMsg('오류: ' + e.message, false); });
+      };
+      box.querySelector('#fm_addnew').onclick = function () {
+        var nm = box.querySelector('#fm_nname').value.trim(); var bd = box.querySelector('#fm_nbirth').value.replace(/[^0-9]/g, ''); var rel = box.querySelector('#fm_nrel').value;
+        if (!nm) { setMsg('이름을 입력하세요.', false); return; }
+        if (bd && bd.length !== 8) { setMsg('생년월일은 8자리이거나 비워 두세요.', false); return; }
+        setMsg('추가 중…', true);
+        WPF.call('addGyojeok', { name: nm, birth: bd }).then(function (r) {
+          return WPF.call('listGyojeok').then(function (lr) {
+            ALL = (lr.members || []).filter(function (m) { return m['이름']; });
+            var newM = ALL.filter(function (x) { return String(x['매칭키']) === r.key; })[0];
+            if (!newM) throw new Error('추가된 교인을 찾지 못했습니다.');
+            return doLink(newM, rel);
+          });
+        }).then(function () { rerun(cur['교적ID']); }).catch(function (e) { setMsg('오류: ' + e.message, false); });
       };
     }
 
