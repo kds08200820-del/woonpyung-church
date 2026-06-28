@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260630x
+ * 콘솔: [finance.js] v20260630y
  */
-console.log('[finance.js] v20260630x');
+console.log('[finance.js] v20260630y');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -62,6 +62,7 @@ console.log('[finance.js] v20260630x');
       '.fin-card{margin-bottom:16px;}.fin-pill{font-size:11px;padding:1px 6px;border-radius:8px;}' +
       '.help{font-size:11px;color:#888;}.sign{margin-top:44px;text-align:right;font-size:13px;line-height:2.4;}' +
       '.mng{display:none!important;}' +
+      '@page{size:A4;margin:20mm 15mm;}' +
       '@media print{body{padding:0;}.noprint{display:none;}}';
     var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>운평장로교회 ' + esc(title) + '</title><style>' + css + '</style></head><body>' +
       '<h1>운평장로교회 ' + esc(title) + '</h1>' +
