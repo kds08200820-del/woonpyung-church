@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701a
+ * 콘솔: [finance.js] v20260701b
  */
-console.log('[finance.js] v20260701a');
+console.log('[finance.js] v20260701b');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -181,6 +181,11 @@ console.log('[finance.js] v20260701a');
     });
     var amt = panel.querySelector('#o_amt');
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
+    function doAddOffering(v) {
+      var msg = panel.querySelector('#o_msg');
+      msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
+      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#o_payer').value = ''; panel.querySelector('#o_key').value = ''; panel.querySelector('#o_spouseKey').value = ''; spouseBox.innerHTML = ''; amt.value = ''; panel.querySelector('#o_memo').value = ''; M.loaded = false; loadToday(v.date); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+    }
     panel.querySelector('#o_add').onclick = function () {
       var payerName = panel.querySelector('#o_payer').value.trim();
       var coupleCk = panel.querySelector('#o_couple');
@@ -189,8 +194,21 @@ console.log('[finance.js] v20260701a');
       var v = { date: panel.querySelector('#o_date').value, type: '수입', kind: '헌금', account: panel.querySelector('#o_acc').value, service: panel.querySelector('#o_svc').value, payer: payerName, memberKey: panel.querySelector('#o_key').value, amount: parseNum(amt.value), method: panel.querySelector('#o_method').value, memo: panel.querySelector('#o_memo').value.trim() };
       var msg = panel.querySelector('#o_msg');
       if (!v.date || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자와 금액을 입력하세요.'; return; }
-      msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#o_payer').value = ''; panel.querySelector('#o_key').value = ''; panel.querySelector('#o_spouseKey').value = ''; spouseBox.innerHTML = ''; amt.value = ''; panel.querySelector('#o_memo').value = ''; M.loaded = false; loadToday(v.date); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+      // 교적 매칭 확인: 선택(매칭키)도 없고 이름이 교적에 없으면 → 등록 팝업
+      var base = payerName.replace(/\(.*\)$/, '').trim();
+      if (!v.memberKey && base) {
+        var hits = M.members.filter(function (m) { return m.name === base; });
+        if (hits.length === 1) { v.memberKey = hits[0].key; doAddOffering(v); return; }
+        if (hits.length === 0) {
+          askRegister(base, function (res) {
+            if (!res) { msg.style.color = '#c0392b'; msg.textContent = '취소되었습니다.'; return; }
+            if (res.key) { v.memberKey = res.key; v.payer = res.name + (payerName.indexOf('(') >= 0 ? payerName.slice(payerName.indexOf('(')) : ''); }
+            doAddOffering(v);
+          });
+          return;
+        }
+      }
+      doAddOffering(v);
     };
     var box = panel.querySelector('#o_today');
     function loadToday(d) {
@@ -226,6 +244,39 @@ console.log('[finance.js] v20260701a');
   }
 
   var ymdStr = function (v) { return String(v == null ? '' : v).slice(0, 10); };
+
+  /* ── 교적 등록 팝업(헌금 입력 중 새 이름) ── */
+  function askRegister(name, cb) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+    ov.innerHTML = '<div class="fin-card" style="max-width:420px;width:100%;background:#fff">' +
+      '<h3 style="margin:0 0 8px;color:var(--accent,#032257)">교적에 등록할까요?</h3>' +
+      '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px"><b>' + esc(name) + '</b>님은 교적에 없습니다. 등록하면 다음부터 검색·헌금 집계가 연결됩니다. <b>생년월일은 비워도 됩니다.</b></p>' +
+      '<div class="form-field"><label>이름</label><input type="text" id="rg_name" value="' + esc(name) + '"></div>' +
+      '<div class="form-field" style="margin-top:8px"><label>생년월일 (선택)</label><input type="text" id="rg_birth" maxlength="10" placeholder="예: 1981-08-19 (없으면 비움)" inputmode="numeric"></div>' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap"><button class="btn btn-solid" id="rg_save">교적 등록 후 추가</button><button class="btn btn-line" id="rg_skip">등록 없이 추가</button><button class="btn btn-line" id="rg_cancel">취소</button></div>' +
+      '<span class="fin-msg" id="rg_msg" style="display:block;margin-top:8px"></span></div>';
+    document.body.appendChild(ov);
+    function close() { ov.remove(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) { close(); cb(null); } });
+    ov.querySelector('#rg_cancel').onclick = function () { close(); cb(null); };
+    ov.querySelector('#rg_skip').onclick = function () { close(); cb({ key: '', name: name }); };
+    ov.querySelector('#rg_save').onclick = function () {
+      var nm = ov.querySelector('#rg_name').value.trim();
+      var birth = ov.querySelector('#rg_birth').value.replace(/[^0-9]/g, '');
+      var msg = ov.querySelector('#rg_msg');
+      if (!nm) { msg.style.color = '#c0392b'; msg.textContent = '이름을 입력하세요.'; return; }
+      if (birth && birth.length !== 8) { msg.style.color = '#c0392b'; msg.textContent = '생년월일은 8자리(예: 19810819)로 입력하거나 비워 두세요.'; return; }
+      msg.style.color = '#7b8794'; msg.textContent = '교적 등록 중…';
+      WPF.call('addGyojeok', { name: nm, birth: birth }).then(function (r) {
+        WPF.call('masters').then(function (m) { M.members = m.members || M.members; }).catch(function () { });
+        close(); cb({ key: r.key, name: nm });
+      }).catch(function (e) {
+        if (/unknown action/i.test(e.message)) { msg.style.color = '#c0392b'; msg.textContent = '교적 등록은 Apps Script 재배포 후 가능합니다. 우선 "등록 없이 추가"를 눌러 주세요.'; }
+        else { msg.style.color = '#c0392b'; msg.textContent = '등록 실패: ' + e.message; }
+      });
+    };
+  }
 
   /* ── 전표 수정 모달(헌금/지출 공용) ── */
   function openEditor(x, onSaved) {

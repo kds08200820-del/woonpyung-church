@@ -108,6 +108,7 @@ function doPost(e) {
     if (action === 'listAccess') return json_(actionListAccess_(req));
     if (action === 'setAccess') return json_(actionSetAccess_(req));
     if (action === 'listGyojeok') return json_(actionListGyojeok_(req));
+    if (action === 'addGyojeok') return json_(actionAddGyojeok_(req));
     if (action === 'listVouchers') return json_(actionListVouchers_(req));
     if (action === 'addVoucher') return json_(actionAddVoucher_(req));
     if (action === 'updateVoucher') return json_(actionUpdateVoucher_(req));
@@ -266,6 +267,34 @@ function actionListGyojeok_(req) {
   var user = verifyUser_(req.token);
   requireAdmin_(user.id);
   return { ok: true, members: readObjects_(GYOJEOK_SHEET_ID, '교적') };
+}
+
+// 교적 신규 등록(재정권한자) — 헌금 입력 중 새 이름을 즉시 교적에 추가
+//  - 생년월일 없이 이름만으로도 등록 가능(매칭키='이름|')
+function actionAddGyojeok_(req) {
+  var user = verifyUser_(req.token);
+  requireFinance_(user.id);
+  var name = String(req.name || '').trim();
+  if (!name) return { ok: false, error: '이름은 필수입니다.' };
+  var birth = String(req.birth || '').replace(/[^0-9]/g, ''); // YYYYMMDD 또는 빈값
+  if (birth && birth.length !== 8) return { ok: false, error: '생년월일은 8자리(YYYYMMDD)로 입력하거나 비워 두세요.' };
+  var key = name + '|' + birth;
+  var dup = findGyojeokByKey_(key);
+  if (dup) return { ok: true, key: key, name: name, dup: true };
+  var sh = SpreadsheetApp.openById(GYOJEOK_SHEET_ID).getSheetByName('교적');
+  if (!sh) return { ok: false, error: '교적 시트를 찾을 수 없습니다.' };
+  var head = sh.getDataRange().getValues()[0];
+  var birthStr = birth ? (birth.slice(0, 4) + '-' + birth.slice(4, 6) + '-' + birth.slice(6, 8)) : '';
+  var row = head.map(function (h) {
+    if (h === '이름') return name;
+    if (h === '생년월일') return birthStr;
+    if (h === '매칭키') return key;
+    if (h === '교적ID') return 'M' + Date.now();
+    if (h === '회원상태') return '헌금등록';
+    return '';
+  });
+  sh.appendRow(row);
+  return { ok: true, key: key, name: name, added: true };
 }
 
 // 전표 목록(권한자만)
