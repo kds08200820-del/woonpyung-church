@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701z
+ * 콘솔: [finance.js] v20260701aa
  */
-console.log('[finance.js] v20260701z');
+console.log('[finance.js] v20260701aa');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -292,19 +292,25 @@ console.log('[finance.js] v20260701z');
       }
 
       var wkCols = [{ label: '지난주', from: lastWk.from, to: lastWk.to }, { label: '이번주', from: thisWk.from, to: thisWk.to }];
+      function totMap(m) { var s = 0; for (var k in m) s += m[k]; return s; }
+      var incLT = totMap(sumByAcc('수입', lastWk.from, lastWk.to)), incTT = totMap(sumByAcc('수입', thisWk.from, thisWk.to));
+      var expLT = totMap(sumByAcc('지출', lastWk.from, lastWk.to)), expTT = totMap(sumByAcc('지출', thisWk.from, thisWk.to));
+      var incFYt = totMap(incFY), expFYt = totMap(sumByAcc('지출', fyR.from, fyR.to));
+      function wkRight(l, t) { return '<span style="color:#9aa5b1">지난주</span> <b>' + won(l) + '</b> <span style="color:#9aa5b1">· 이번주</span> <b>' + won(t) + '</b>'; }
+      function cardHead(title, color, right) { return '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px"><b style="color:' + color + '">' + title + '</b><span style="font-size:.85rem">' + right + '</span></div>'; }
       panel.innerHTML =
         '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">' + stat('전기 이월금', carry, '#7b8794') + stat('당기 수입', ti, '#1e874b') + stat('당기 지출', te, '#c0392b') + stat('현재 잔액', bal, '#032257') + '</div>' +
         // 주간 수입/지출 현황
         '<h3 style="margin:6px 0 10px;color:var(--accent,#032257)">주간 현황 <span style="font-size:.8rem;font-weight:400;color:#9aa5b1">지난주 ' + esc(lastWk.from) + '~' + esc(lastWk.to) + ' · 이번주 ' + esc(thisWk.from) + '~' + esc(thisWk.to) + '</span></h3>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-bottom:8px">' +
-          '<div class="fin-card"><b style="color:#1e874b">＋ 수입 현황</b>' + statusTable('수입', wkCols) + '</div>' +
-          '<div class="fin-card"><b style="color:#c0392b">－ 지출 현황</b>' + statusTable('지출', wkCols) + '</div>' +
+          '<div class="fin-card">' + cardHead('＋ 수입 현황', '#1e874b', wkRight(incLT, incTT)) + statusTable('수입', wkCols) + '</div>' +
+          '<div class="fin-card">' + cardHead('－ 지출 현황', '#c0392b', wkRight(expLT, expTT)) + statusTable('지출', wkCols) + '</div>' +
         '</div>' +
         // 연간 현황
         '<h3 style="margin:22px 0 10px;color:var(--accent,#032257)">' + M.fy + '년 현황 <span style="font-size:.8rem;font-weight:400;color:#9aa5b1">' + esc(fyR.from) + ' ~ ' + esc(fyR.to) + '</span></h3>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">' +
-          '<div class="fin-card"><b style="color:#1e874b">수입 (연간 누계)</b>' + statusTable('수입', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
-          '<div class="fin-card"><b style="color:#c0392b">지출 (연간 누계)</b>' + statusTable('지출', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
+          '<div class="fin-card">' + cardHead('수입 (연간 누계)', '#1e874b', '<b style="color:#1e874b">' + won(incFYt) + '원</b>') + statusTable('수입', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
+          '<div class="fin-card">' + cardHead('지출 (연간 누계)', '#c0392b', '<b style="color:#c0392b">' + won(expFYt) + '원</b>') + statusTable('지출', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
         '</div>' +
         // 월별 차트 + 도넛 (한 박스 2단)
         '<div class="fin-card" style="margin-top:16px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:24px">' +
