@@ -1,9 +1,9 @@
 /* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
  * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
- * 콘솔: [finance-api.js] v20260701bg (Supabase)
+ * 콘솔: [finance-api.js] v20260701bh (Supabase)
  */
-console.log('[finance-api.js] v20260701bg (Supabase)');
+console.log('[finance-api.js] v20260701bh (Supabase)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -58,7 +58,7 @@ window.WPF = (function () {
   // ── 매핑 헬퍼 (Supabase 컬럼 ↔ 기존 한글 키) ──
   function gjOut(r) {
     return {
-      '교적ID': r.gyojeok_id, '이름': r.name, '생년월일': r.birth, '매칭키': r.member_key,
+      '교적ID': r.id, '교적번호': r.gyojeok_id, '이름': r.name, '생년월일': r.birth, '매칭키': r.member_key,
       '세대주': r.head, '관계': r.relation, '배우자': r.spouse, '배우자매칭키': r.spouse_key,
       '그룹': r.groups, '직책': r.role, '신급': r.grade, '성별': r.sex, '휴대폰': r.phone,
       '주소': r.address, '회원상태': r.status, '사진': r.photo, '세례일': r.baptism_date,
@@ -141,7 +141,7 @@ window.WPF = (function () {
           patch[col] = val;
         });
         if (f['이름'] && f['생년월일']) patch.member_key = f['이름'] + '|' + String(f['생년월일']).replace(/[^0-9]/g, '').slice(0, 8);
-        return rest('PATCH', 'gyojeok?gyojeok_id=eq.' + encodeURIComponent(params.id), patch, 'return=minimal').then(function () { return { ok: true }; });
+        return rest('PATCH', 'gyojeok?id=eq.' + encodeURIComponent(params.id), patch, 'return=minimal').then(function () { return { ok: true }; });
       }
       case 'listVouchers':
         return Promise.all([
