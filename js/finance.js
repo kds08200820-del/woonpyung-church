@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701am
+ * 콘솔: [finance.js] v20260701an
  */
-console.log('[finance.js] v20260701am');
+console.log('[finance.js] v20260701an');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -168,6 +168,7 @@ console.log('[finance.js] v20260701am');
       addr: s.rcp_addr || '경기도 화성시 우정읍 운평길 47',
       rep: s.rcp_rep || '김동석',
       law: s.rcp_law || '「소득세법」 제34조제3항제1호',
+      imgLogo: s.rcp_img_logo || '',   // 교회 로고
       imgUid: s.rcp_img_uid || '',     // 고유번호증
       imgAssoc: s.rcp_img_assoc || '', // 총회소속증명서
       imgSeal: s.rcp_img_seal || ''    // 직인
@@ -1199,6 +1200,9 @@ console.log('[finance.js] v20260701am');
       'body{font-family:"Noto Sans KR","Malgun Gothic",sans-serif;color:#111;margin:0;padding:24px 30px;font-size:12px;line-height:1.4}',
       '.doc{max-width:760px;margin:0 auto}',
       '.no{font-size:11px;color:#333;margin-bottom:2px}',
+      '.lh{display:flex;align-items:center;justify-content:center;gap:12px;margin:0 0 6px;padding-bottom:10px;border-bottom:2px solid #1f3a5f}',
+      '.lh img{height:50px}',
+      '.lh .lh-kr{font-family:"Noto Serif KR",serif;font-size:21px;font-weight:700;letter-spacing:.14em;color:#1f3a5f}',
       'h1{text-align:center;font-size:24px;letter-spacing:.5em;margin:6px 0 4px;font-weight:700}',
       '.law-top{text-align:center;font-size:10.5px;color:#444;margin:0 0 14px}',
       'table{width:100%;border-collapse:collapse;margin-bottom:6px}',
@@ -1225,6 +1229,7 @@ console.log('[finance.js] v20260701am');
     var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>기부금영수증 ' + esc(rec.no) + '</title>' +
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">' +
       '<style>' + css + '</style></head><body><div class="doc">' +
+      (org.imgLogo ? '<div class="lh"><img src="' + esc(org.imgLogo) + '" alt="로고"><span class="lh-kr">' + esc(org.name) + '</span></div>' : '') +
       '<div class="no">※ 일련번호 &nbsp;<b>' + esc(rec.no) + '</b></div>' +
       '<h1>기부금영수증</h1>' +
       '<p class="law-top">「소득세법」 제34조ㆍ제59조의4, 「조세특례제한법」 제76조ㆍ제88조의4 및 「법인세법」 제24조에 따른 기부금</p>' +
@@ -1428,6 +1433,7 @@ console.log('[finance.js] v20260701am');
         (function () {
           var o = orgInfo();
           var slots = [
+            { key: 'rcp_img_logo', label: '교회 로고', url: o.imgLogo, hint: '영수증 상단에 교회명과 함께 출력 (투명 PNG 권장)' },
             { key: 'rcp_img_uid', label: '고유번호증', url: o.imgUid, hint: '영수증 출력 시 [붙임 1]로 첨부' },
             { key: 'rcp_img_assoc', label: '총회소속증명서', url: o.imgAssoc, hint: '영수증 출력 시 [붙임 2]로 첨부' },
             { key: 'rcp_img_seal', label: '직인', url: o.imgSeal, hint: '운평장로교회 옆에 날인 (투명 PNG 권장)' }
@@ -1477,7 +1483,7 @@ console.log('[finance.js] v20260701am');
       // 증빙 이미지 업로드/삭제
       Array.prototype.forEach.call(panel.querySelectorAll('.rcp-up'), function (slot) {
         var key = slot.dataset.key;
-        var seal = (key === 'rcp_img_seal');
+        var seal = (key === 'rcp_img_seal' || key === 'rcp_img_logo'); // 직인·로고는 투명 PNG 보존(무압축)
         var prev = slot.querySelector('.rcp-up-prev');
         var msg = slot.querySelector('.rcp-up-msg');
         var file = slot.querySelector('input[type="file"]');
