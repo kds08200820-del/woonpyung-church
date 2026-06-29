@@ -28,6 +28,9 @@
       '.hd .eng{font-family:"Noto Sans KR",sans-serif;font-size:8pt;letter-spacing:.34em;color:#a8915c;font-weight:600}',
       '.hd .ch{font-family:"Noto Serif KR",serif;font-weight:700;font-size:25pt;letter-spacing:.26em;color:#0a2c5c;margin:2.5mm 0 1.5mm}',
       '.hd .sub{font-family:"Noto Sans KR",sans-serif;font-size:8.5pt;color:#777}',
+      // 표지 말씀 헤드라인 배너
+      '.hl{text-align:center;font-family:"Noto Serif KR",serif;font-size:1.12em;line-height:1.65;color:#0a2c5c;background:linear-gradient(#f8f5ee,#f1ece0);border:1px solid #e3d9bd;border-radius:8px;padding:14px 18px;margin:0 0 16px}',
+      'body.l3 .hl{font-size:9.5pt;line-height:1.5;padding:4mm 5mm;margin-bottom:4mm}',
       // 섹션
       'section{margin-bottom:6mm;page-break-inside:avoid}',
       'h2{font-family:"Noto Sans KR",sans-serif;font-size:10.5pt;font-weight:700;color:#0a2c5c;margin:0 0 3mm;padding-bottom:1.4mm;border-bottom:1pt solid #d9cfb3;display:flex;align-items:baseline;gap:7px}',
@@ -106,8 +109,15 @@
     var notices = (d.notices || '').split('\n').filter(function (l) { return l.trim(); }).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('');
     var sub = 'WOONPYEONG PRESBYTERIAN CHURCH · ' + esc(dotDate(rec.bdate)) + (d.no ? ' · No. ' + esc(d.no) : '') + (d.week ? ' · ' + esc(d.week) : '');
 
+    // 표지 말씀 헤드라인(있으면 머리글 아래 배너로)
+    var headlineHtml = '';
+    if (d.headline) {
+      var hl = String(d.headline).replace(/^말씀:\s*/m, '').replace(/^헤드라인:\s*/m, '— ');
+      headlineHtml = '<div class="hl">' + esc(hl).replace(/\n/g, '<br>') + '</div>';
+    }
     var h = '<div class="page">' +
       '<div class="hd"><div class="eng">SUNDAY WORSHIP</div><div class="ch">운 평 장 로 교 회</div><div class="sub">' + sub + '</div></div>' +
+      headlineHtml +
       '<section><div class="serm"><div class="lab">오 늘 의 설 교 · SERMON</div><div class="t">' + esc(rec.title || '') + '</div><div class="m">본문 ● ' + esc(rec.scripture || '') + ' ● ' + esc(rec.preacher || '') + '</div></div>' +
       '<h2>주일 낮 예배 <span class="en">ORDER OF WORSHIP</span></h2><table class="ord"><tbody>' + orderHtml + '</tbody></table></section>';
 

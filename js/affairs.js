@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cw
+ * 콘솔: [affairs.js] v20260701cx
  */
-console.log('[affairs.js] v20260701cw');
+console.log('[affairs.js] v20260701cx');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1163,7 +1163,9 @@ console.log('[affairs.js] v20260701cw');
       '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px">' +
       tI('설교 제목', 'bt_title', rec.title) + tI('본문', 'bt_scripture', rec.scripture, '예: 나훔 2:8-13') + tI('설교자', 'bt_preacher', rec.preacher || '김동석 목사') +
       '</div>' +
-      '<label style="font-size:.82rem;color:#7b8794;display:block;margin-bottom:6px">예배 순서 <span style="font-weight:400">(순서명 · 내용/담당) — 설교 불러오기 시 예배 순서가 자동 채워집니다</span></label>' +
+      '<div class="af-field" style="margin-bottom:12px"><label>📜 표지 말씀 헤드라인 <button type="button" id="bt_headline_ai" class="btn btn-line" style="padding:2px 10px;font-size:.74rem;background:#f3eefc;border-color:#c4a8ee;margin-left:4px">✨ 자동</button> <span style="font-weight:400;font-size:.72rem;color:#9aa5b1">1면 표지에 크게 들어갈 대표 말씀</span></label>' +
+      '<textarea id="bt_headline" placeholder="✨ 자동을 누르면 그 주 설교 본문에서 대표 말씀을 뽑아 채웁니다." style="min-height:64px;line-height:1.6;font-family:\'Noto Serif KR\',serif">' + esc(d.headline || '') + '</textarea></div>' +
+      '<label style="font-size:.82rem;color:#7b8794;display:block;margin-bottom:6px">예배 순서 <span style="font-weight:400">(순서명 · 내용/담당) — 데이터 불러오기 시 자동 채워집니다</span></label>' +
       '<div id="bt_order"></div></div>' +
       // 주중 예배
       '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent)">③ 주중 · 새벽 · QT</h4>' +
@@ -1288,6 +1290,7 @@ console.log('[affairs.js] v20260701cw');
         offering: {}, offering_amounts: {}, committee: {},
         column_title: ov.querySelector('#bt_col_title').value.trim(), column_body: ov.querySelector('#bt_col_body').value,
         notices: ov.querySelector('#bt_notices').value,
+        headline: ov.querySelector('#bt_headline').value.trim(),
         founded: FOUNDED_DATE
       };
       var tot = 0;
@@ -1375,6 +1378,35 @@ console.log('[affairs.js] v20260701cw');
           bodyEl.innerHTML = mdLite((o.j && o.j.result) || '결과가 비어 있습니다.');
         })
         .catch(function (e) { bodyEl.innerHTML = '<p style="color:#c0392b">호출 실패: ' + esc(e.message) + '</p><p style="font-size:.82rem;color:#9aa5b1;margin-top:10px">※ Supabase에 bulletin-ai Edge Function을 배포해 주세요.</p>'; });
+    };
+
+    // ── 📜 표지 말씀 헤드라인 자동: 그 주 주일 설교(본문·성경 원문)로 대표 말씀 생성 ──
+    ov.querySelector('#bt_headline_ai').onclick = function () {
+      var s = sess(); if (!s || !s.token) { bmsg('로그인이 필요합니다.', '#c0392b'); return; }
+      var bd = ov.querySelector('#bt_bdate').value; if (!bd) { bmsg('주일 날짜를 먼저 선택하세요.', '#c0392b'); return; }
+      var btn = ov.querySelector('#bt_headline_ai'); btn.disabled = true; btn.textContent = '✨ 생성 중…';
+      function done(t) { btn.disabled = false; btn.textContent = '✨ 자동'; if (t) bmsg(t, '#c0392b'); }
+      // 그 주(주일~토) 주일 낮 예배 설교에서 본문·성경원문·요약 확보
+      api('GET', 'sermons?select=title,scripture,bible_text,content,service&sermon_date=gte.' + bd + '&sermon_date=lte.' + addDays(bd, 6) + '&order=sermon_date.asc').then(function (rows) {
+        rows = rows || [];
+        var sun = null; for (var i = 0; i < rows.length; i++) if (rows[i].service === '주일 낮 예배') { sun = rows[i]; break; }
+        var title = (sun && sun.title) || ov.querySelector('#bt_title').value || '';
+        var scripture = (sun && sun.scripture) || ov.querySelector('#bt_scripture').value || '';
+        var bible = (sun && sun.bible_text) || '';
+        var summary = (sun && sun.content) ? String(sun.content).slice(0, 1500) : '';
+        var content = '설교 제목: ' + title + '\n본문: ' + scripture + '\n\n[성경 본문 원문]\n' + (bible || '(없음)') + '\n\n[설교 요약]\n' + (summary || '(없음)');
+        return fetch(SB.replace(/\/$/, '') + '/functions/v1/bulletin-ai', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token, 'apikey': AK },
+          body: JSON.stringify({ mode: 'headline', content: content })
+        });
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (o) {
+          if (!o.ok) { done(((o.j && o.j.error) || '생성 실패') + (o.j && o.j.detail ? ' (' + o.j.detail + ')' : '')); return; }
+          var txt = (o.j && o.j.result || '').trim();
+          if (txt) { ov.querySelector('#bt_headline').value = txt; bmsg('✓ 표지 말씀 헤드라인을 생성했습니다', 'green'); }
+          done();
+        })
+        .catch(function (e) { done('생성 실패: ' + e.message + ' (bulletin-ai 배포 필요)'); });
     };
     ov.querySelector('#bt_publish').onclick = function () {
       if (!confirm('이 주보를 홈페이지에 게시할까요?\n(헌금 금액은 홈페이지에 노출되지 않습니다)')) return;
