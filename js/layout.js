@@ -88,7 +88,10 @@
           <span class="logo-en">UNPYEONG PRESBYTERIAN CHURCH · SINCE 1964</span>
         </div>
         <nav class="footer-nav">${NAV.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="bylaws.html">정관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
-        <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">💬 카카오톡 채널 추가</a>
+        <div class="footer-actions">
+          <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">💬 카카오톡 채널 추가</a>
+          <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">💝 온라인헌금</a>
+        </div>
         <div class="footer-meta">
           <p>담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</p>
           <p>화성특례시 만세구 우정읍 운평길 47 · T. <a href="tel:010-4032-2903">010-4032-2903</a></p>
@@ -128,8 +131,50 @@
         </form>
         <p class="auth-switch">처음이신가요? <button type="button" id="authToggle">회원가입</button></p>
       </div>
+    </div>
+
+    <!-- 온라인 헌금 모달 -->
+    <div class="modal" id="giveModal" hidden>
+      <div class="modal-backdrop" data-give-close></div>
+      <div class="modal-box modal-box-give" role="dialog" aria-modal="true" aria-label="온라인 헌금">
+        <button class="modal-close" data-give-close aria-label="닫기">&times;</button>
+        <div class="give-head">
+          <span class="give-emoji">💝</span>
+          <h3>온라인 헌금</h3>
+          <p>아래 계좌로 헌금하실 수 있습니다. 정성을 다해 드리는 헌금에 감사드립니다.</p>
+        </div>
+        <div class="give-acct">
+          <span class="give-bank">농협</span>
+          <span class="give-no" id="giveAcctNo">351-1344-7997-23</span>
+          <span class="give-holder">예금주 · 운평장로교회</span>
+        </div>
+        <div class="give-actions">
+          <a class="give-toss" id="giveTossBtn" href="supertoss://send?bank=농협&accountNo=3511344799723">📲 토스로 송금하기</a>
+          <button type="button" class="give-copy" id="giveCopyBtn">📋 계좌번호 복사</button>
+        </div>
+        <p class="give-note">‘토스로 송금하기’는 토스 앱이 설치된 휴대폰에서 송금 화면으로 연결됩니다. 그 외에는 계좌번호를 복사해 이용해 주세요.</p>
+      </div>
     </div>`;
   document.body.insertAdjacentHTML("beforeend", footerHTML);
+  // 온라인 헌금 모달 동작
+  (function () {
+    var giveBtn = document.getElementById("giveOnlineBtn");
+    var giveModal = document.getElementById("giveModal");
+    if (giveBtn && giveModal) {
+      var openGive = function () { giveModal.removeAttribute("hidden"); document.body.style.overflow = "hidden"; };
+      var closeGive = function () { giveModal.setAttribute("hidden", ""); document.body.style.overflow = ""; };
+      giveBtn.addEventListener("click", openGive);
+      giveModal.querySelectorAll("[data-give-close]").forEach(function (el) { el.addEventListener("click", closeGive); });
+      var copyBtn = document.getElementById("giveCopyBtn");
+      if (copyBtn) copyBtn.addEventListener("click", function () {
+        var num = "3511344799723";
+        var done = function () { var o = copyBtn.textContent; copyBtn.textContent = "✓ 복사되었습니다"; copyBtn.classList.add("copied"); setTimeout(function () { copyBtn.textContent = o; copyBtn.classList.remove("copied"); }, 1800); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(num).then(done, function () { window.prompt("계좌번호를 복사하세요", num); });
+        } else { window.prompt("계좌번호를 복사하세요", num); }
+      });
+    }
+  })();
 
   // ===== 토스트 메시지(로그아웃 등 안내) =====
   function showFlash(msg) {
@@ -395,7 +440,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260701ah";
+      auth.src = "js/auth.js?v=20260701ai";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)

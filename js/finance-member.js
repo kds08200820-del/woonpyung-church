@@ -1,8 +1,8 @@
 /* finance-member.js — 내 정보(admin.html)의 "교적 인증 · 내 헌금" 섹션
  * 로그인한 회원이 이름+생년월일로 교적 인증(정/준회원) 후 본인 헌금만 조회.
- * 콘솔: [finance-member.js] v20260701ah
+ * 콘솔: [finance-member.js] v20260701ai
  */
-console.log('[finance-member.js] v20260701ah');
+console.log('[finance-member.js] v20260701ai');
 
 (function () {
   var box = document.getElementById('offeringBox');
