@@ -365,6 +365,24 @@ console.log('[affairs.js] v20260701di');
     { label: '📖 성경본문', url: 'https://bible.goodtv.co.kr/' }
   ];
   function hymnTitle(n) { var H = window.HYMNS; if (H) { n = Number(n); for (var i = 0; i < H.length; i++) if (H[i].no === n) return H[i].title || ''; } return ''; }
+  // ── 모달 뒤로가기 처리 ───────────────────────────────────────────────
+  // 모달을 열 때 history 항목을 하나 쌓아, 브라우저/안드로이드 '뒤로가기'가
+  // 사이트를 벗어나지 않고 "맨 위 모달만" 닫도록 한다(중첩 모달은 LIFO 순서).
+  // 닫기 버튼·완료 등도 반환된 close() 로 통일하면, 우리가 넣은 history 항목이
+  // 직접 닫기/뒤로가기 어느 쪽이든 정확히 한 번만 제거된다.
+  var _wpcModalClosers = [];            // 열린 모달들의 teardown 스택(LIFO)
+  var _wpcPopBound = false;
+  function _wpcOnPop() { var fn = _wpcModalClosers.pop(); if (fn) fn(); }
+  function pushBackClose(teardown) {
+    if (!_wpcPopBound) { window.addEventListener('popstate', _wpcOnPop); _wpcPopBound = true; }
+    _wpcModalClosers.push(teardown);
+    history.pushState({ _wpcModal: 1 }, '');
+    return function close() {
+      if (_wpcModalClosers.indexOf(teardown) < 0) return;  // 이미 닫힘 → 무시
+      history.back();   // → popstate → _wpcOnPop → 이 모달 teardown 실행
+    };
+  }
+
   // 찬송가 검색 선택기(번호·제목, 복수 선택) — 숫자만 입력해도 바로 검색
   function hymnPicker(initial, onDone) {
     var HY = window.HYMNS || [];
@@ -378,7 +396,7 @@ console.log('[affairs.js] v20260701di');
       '<div id="hp_list" style="max-height:340px;overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
       '<div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:flex-end"><button class="btn btn-solid" id="hp_done" style="padding:8px 18px">선택 완료</button></div></div>';
     document.body.appendChild(ov);
-    function close() { ov.remove(); }
+    var close = pushBackClose(function () { ov.remove(); });
     ov.querySelector('#hp_close').onclick = close;
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var selBox = ov.querySelector('#hp_sel'), listEl = ov.querySelector('#hp_list'), qEl = ov.querySelector('#hp_q');
@@ -425,7 +443,7 @@ console.log('[affairs.js] v20260701di');
       '</div></div>';
     document.body.appendChild(ov);
     var sel = null;
-    function close() { ov.remove(); }
+    var close = pushBackClose(function () { ov.remove(); });
     ov.querySelector('#gp_close').onclick = close;
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var listEl = ov.querySelector('#gp_list'), prevEl = ov.querySelector('#gp_prev'), pickBtn = ov.querySelector('#gp_pick');
@@ -610,7 +628,7 @@ console.log('[affairs.js] v20260701di');
         '</div></div>';
       document.body.appendChild(ov);
       document.body.style.overflow = 'hidden';
-      function close() { ov.remove(); document.body.style.overflow = ''; }
+      var close = pushBackClose(function () { ov.remove(); document.body.style.overflow = ''; });
       ov.querySelector('#se_close').onclick = close;
 
       // ── 예배 순서(드래그) + 항목별 파일 업로드 ──
