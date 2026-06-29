@@ -1,0 +1,129 @@
+/* 주보 렌더러 — 관리자(affairs.js)·홈페이지(main.js) 공용.
+ * 실제 주보 용지(211mm × 380mm)에 맞춘 고품질 인쇄/PDF 레이아웃.
+ * window.BulletinRender.open(rec, {amounts:true|false})
+ *   rec = { bdate, title, scripture, preacher, data:{...} }
+ *   amounts=true 일 때만 헌금 금액(offering_amounts) 표시(관리자 인쇄용).
+ */
+(function () {
+  var OFFER_KEYS = ['십일조', '감사헌금', '주일헌금', '건축헌금', '선교헌금', '유년부', '차량헌금', '일천번기도'];
+  var AMOUNT_KEYS = ['십일조', '감사헌금', '주일헌금', '생일감사', '건축헌금', '선교헌금', '차량헌금', '일천번제', '합계'];
+  var COMMITTEE_KEYS = ['헌금위원', '안내위원', '주차·사찰', '이주의 기도'];
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function ymd(v) { return String(v == null ? '' : v).slice(0, 10); }
+  function dotDate(v) { return ymd(v).replace(/-/g, '. '); }
+
+  function css() {
+    return [
+      '@page{size:211mm 380mm;margin:0}',
+      '*{box-sizing:border-box}html,body{margin:0;padding:0}',
+      'body{font-family:"Noto Serif KR",serif;background:#d9dade;color:#1b1b1b;-webkit-print-color-adjust:exact;print-color-adjust:exact}',
+      '.bar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #ddd;padding:8px 14px;display:flex;gap:8px;align-items:center;justify-content:flex-end}',
+      '.bar .info{margin-right:auto;font-size:.8rem;color:#8a8a8a}',
+      '.bar button{font:inherit;border:0;background:#0a2c5c;color:#fff;border-radius:8px;padding:8px 18px;cursor:pointer}',
+      // 용지
+      '.page{width:211mm;min-height:380mm;margin:16px auto;background:#fff;padding:14mm 13mm 12mm;box-shadow:0 4px 26px rgba(0,0,0,.20);position:relative}',
+      // 머리글
+      '.hd{text-align:center;padding-bottom:6mm;margin-bottom:7mm;border-bottom:2.4pt solid #0a2c5c;position:relative}',
+      '.hd::after{content:"";position:absolute;left:0;right:0;bottom:-3.4pt;height:.9pt;background:#0a2c5c}',
+      '.hd .eng{font-family:"Noto Sans KR",sans-serif;font-size:8pt;letter-spacing:.34em;color:#a8915c;font-weight:600}',
+      '.hd .ch{font-family:"Noto Serif KR",serif;font-weight:700;font-size:25pt;letter-spacing:.26em;color:#0a2c5c;margin:2.5mm 0 1.5mm}',
+      '.hd .sub{font-family:"Noto Sans KR",sans-serif;font-size:8.5pt;color:#777}',
+      // 섹션
+      'section{margin-bottom:6mm;page-break-inside:avoid}',
+      'h2{font-family:"Noto Sans KR",sans-serif;font-size:10.5pt;font-weight:700;color:#0a2c5c;margin:0 0 3mm;padding-bottom:1.4mm;border-bottom:1pt solid #d9cfb3;display:flex;align-items:baseline;gap:7px}',
+      'h2 .en{font-size:7.5pt;font-weight:400;color:#b6a273;letter-spacing:.04em}',
+      // 설교 강조
+      '.serm{text-align:center;background:linear-gradient(#fbf8f0,#f5efe1);border:1pt solid #e3d9bd;border-radius:3mm;padding:6mm 4mm;margin-bottom:6mm}',
+      '.serm .lab{font-family:"Noto Sans KR",sans-serif;font-size:8pt;letter-spacing:.26em;color:#a8895a}',
+      '.serm .t{font-family:"Noto Serif KR",serif;font-size:17pt;font-weight:700;color:#1a1a1a;margin:2.4mm 0;line-height:1.32}',
+      '.serm .m{font-family:"Noto Sans KR",sans-serif;font-size:9pt;color:#5a5346}',
+      // 예배 순서
+      'table{width:100%;border-collapse:collapse}',
+      '.ord td{padding:1.5mm 2mm;font-size:9.5pt;border-bottom:.5pt solid #efece2;vertical-align:top}',
+      '.ord .bno{width:8mm;text-align:center;color:#b6a273;font-family:"Noto Sans KR",sans-serif;font-size:8pt}',
+      '.ord .bn{width:30mm;font-weight:600;font-family:"Noto Sans KR",sans-serif;color:#34415c}',
+      '.ord .bd{color:#3a3a3a}',
+      // 2단
+      '.two{display:grid;grid-template-columns:1fr 1fr;gap:1.2mm 8mm}',
+      '.ofg{font-size:9pt;padding:1.3mm 0;border-bottom:.5pt dotted #e7e1d1;line-height:1.5}',
+      '.ofg b{font-family:"Noto Sans KR",sans-serif;color:#7a5d27;font-weight:600;margin-right:5px;font-size:8.5pt}',
+      // 금액
+      '.amt{margin-top:4mm;border:1pt solid #e6dcbe;border-radius:2mm;overflow:hidden}',
+      '.amt td{padding:1.6mm 4mm;font-family:"Noto Sans KR",sans-serif;font-size:9pt;border-bottom:.5pt solid #efe7d0}',
+      '.amt tr:last-child td{border-bottom:0;font-weight:700;background:#faf6ea}',
+      '.amt .num{text-align:right}',
+      // 주중
+      '.wk{font-size:9.5pt;line-height:1.95}',
+      '.lbl{display:inline-block;min-width:24mm;color:#7a5d27;font-weight:600;font-family:"Noto Sans KR",sans-serif;font-size:9pt}',
+      // 칼럼
+      '.col{font-size:9.5pt;line-height:1.85;white-space:pre-wrap;text-align:justify}',
+      '.col .ct{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:10pt;color:#7a5d27;margin-bottom:2mm;text-align:left}',
+      // 광고
+      '.news{margin:0;padding:0;list-style:none;counter-reset:n}',
+      '.news li{position:relative;padding:1.5mm 0 1.5mm 9mm;font-size:9.5pt;line-height:1.6;border-bottom:.5pt dotted #eee;counter-increment:n}',
+      '.news li::before{content:counter(n,decimal-leading-zero);position:absolute;left:0;top:1.7mm;font-family:"Noto Sans KR",sans-serif;font-size:8pt;font-weight:700;color:#b6a273}',
+      // 꼬리
+      '.foot{margin-top:7mm;padding-top:3.5mm;border-top:1pt solid #ddd;text-align:center;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;color:#9a9a9a;line-height:1.7}',
+      '.note{font-size:7.5pt;color:#aaa;text-align:center;margin-top:3mm}',
+      '@media print{html,body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;width:auto;min-height:auto}}'
+    ].join('');
+  }
+
+  function bodyHTML(rec, opts) {
+    rec = rec || {}; opts = opts || {}; var d = rec.data || {};
+    var orderHtml = (d.order || []).map(function (o, i) { return '<tr><td class="bno">' + (i + 1) + '</td><td class="bn">' + esc(o.name || '') + '</td><td class="bd">' + esc(o.detail || '') + '</td></tr>'; }).join('');
+    var offHtml = OFFER_KEYS.map(function (k) { return (d.offering && d.offering[k]) ? '<div class="ofg"><b>' + esc(k) + '</b> ' + esc(d.offering[k]) + '</div>' : ''; }).join('');
+    var amtHtml = '';
+    if (opts.amounts && d.offering_amounts) {
+      var rows = AMOUNT_KEYS.map(function (k) { var v = d.offering_amounts[k]; return v ? ('<tr><td>' + esc(k) + '</td><td class="num">' + esc(v) + (/[0-9]$/.test(v) ? ' 원' : '') + '</td></tr>') : ''; }).join('');
+      if (rows) amtHtml = '<table class="amt"><tbody>' + rows + '</tbody></table>';
+    }
+    var comHtml = COMMITTEE_KEYS.map(function (k) { return (d.committee && d.committee[k]) ? '<div class="ofg"><b>' + esc(k) + '</b> ' + esc(d.committee[k]) + '</div>' : ''; }).join('');
+    var notices = (d.notices || '').split('\n').filter(function (l) { return l.trim(); }).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('');
+    var sub = 'WOONPYEONG PRESBYTERIAN CHURCH · ' + esc(dotDate(rec.bdate)) + (d.no ? ' · No. ' + esc(d.no) : '') + (d.week ? ' · ' + esc(d.week) : '');
+
+    var h = '<div class="page">' +
+      '<div class="hd"><div class="eng">SUNDAY WORSHIP</div><div class="ch">운 평 장 로 교 회</div><div class="sub">' + sub + '</div></div>' +
+      '<section><div class="serm"><div class="lab">오 늘 의 설 교 · SERMON</div><div class="t">' + esc(rec.title || '') + '</div><div class="m">본문 ● ' + esc(rec.scripture || '') + ' ● ' + esc(rec.preacher || '') + '</div></div>' +
+      '<h2>주일 낮 예배 <span class="en">ORDER OF WORSHIP</span></h2><table class="ord"><tbody>' + orderHtml + '</tbody></table></section>';
+
+    if (d.wed_title || d.wed_series || d.dawn || d.qt) {
+      h += '<section><h2>주중 · 새벽 · QT <span class="en">PRAYER MEETINGS</span></h2><div class="wk">' +
+        ((d.wed_series || d.wed_title) ? '<div><span class="lbl">수요기도회</span>' + esc([d.wed_series, d.wed_title].filter(Boolean).join(' — ')) + (d.wed_dateline ? '<br><span class="lbl"></span><span style="color:#6a6a6a;font-size:8.5pt">' + esc(d.wed_dateline) + '</span>' : '') + '</div>' : '') +
+        (d.dawn ? '<div><span class="lbl">새벽기도회</span>' + esc(d.dawn) + '</div>' : '') +
+        (d.qt ? '<div><span class="lbl">매일 QT</span>' + esc(d.qt) + '</div>' : '') +
+        '</div></section>';
+    }
+    if (offHtml || amtHtml) {
+      h += '<section><h2>향기로운 예물 <span class="en">FRAGRANT OFFERING</span></h2>' + (offHtml ? '<div class="two">' + offHtml + '</div>' : '') + amtHtml + '</section>';
+    }
+    if (comHtml) h += '<section><h2>봉사위원 · 이주의 기도 <span class="en">SERVANTS</span></h2><div class="two">' + comHtml + '</div></section>';
+    if (d.column_title || d.column_body) h += '<section><h2>신앙과 책 <span class="en">FAITH &amp; BOOKS</span></h2><div class="col"><div class="ct">' + esc(d.column_title || '') + '</div>' + esc(d.column_body || '') + '</div></section>';
+    if (notices) h += '<section><h2>한 주의 소식 <span class="en">THIS WEEK</span></h2><ul class="news">' + notices + '</ul></section>';
+    if (!opts.amounts) h += '<p class="note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>';
+    h += '<div class="foot">운평장로교회 · 담임목사 김동석 · 화성특례시 우정읍 운평길 47 · www.k-logos.com</div>';
+    h += '</div>';
+    return h;
+  }
+
+  function fullHTML(rec, opts) {
+    rec = rec || {}; opts = opts || {};
+    return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>주보 ' + esc(ymd(rec.bdate)) + '</title>' +
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+      '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
+      '<style>' + css() + '</style></head><body>' +
+      '<div class="bar"><span class="info">' + (opts.amounts ? '🔒 인쇄용 · 헌금 금액 포함 (211×380mm)' : '홈페이지용 · 211×380mm') + '</span><button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>' +
+      bodyHTML(rec, opts) +
+      '</body></html>';
+  }
+
+  function open(rec, opts) {
+    var w = window.open('', '_blank');
+    if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.'); return; }
+    w.document.write(fullHTML(rec, opts || {}));
+    w.document.close(); w.focus();
+  }
+
+  window.BulletinRender = { open: open, html: fullHTML };
+})();

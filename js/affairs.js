@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701ci
+ * 콘솔: [affairs.js] v20260701cj
  */
-console.log('[affairs.js] v20260701ci');
+console.log('[affairs.js] v20260701cj');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -427,13 +427,12 @@ console.log('[affairs.js] v20260701ci');
     panel.innerHTML =
       '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">' +
       '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">설교 작성·관리</b>' +
-      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">설교를 작성해 <b>내보내기</b>하면 자동 등록되고, <b>목록·캘린더</b>에서 관리할 수 있습니다.</div></div>' +
+      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">캘린더에서 <b>날짜를 클릭</b>하면 그 날짜로 바로 설교를 준비할 수 있고, 아래 <b>목록</b>에서도 관리됩니다.</div></div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-      '<span style="display:inline-flex;border:1px solid #cdd7e3;border-radius:8px;overflow:hidden"><button class="sm-view" data-v="list" style="border:0;background:#2f5d50;color:#fff;padding:7px 14px;cursor:pointer;font:inherit;font-size:.84rem;font-weight:700">목록</button><button class="sm-view" data-v="calendar" style="border:0;background:#fff;color:#48576b;padding:7px 14px;cursor:pointer;font:inherit;font-size:.84rem;font-weight:700">📅 캘린더</button></span>' +
       '<button class="btn btn-solid" id="sm_start" style="padding:11px 22px;font-size:1rem">✍️ 설교 시작</button></div></div>' +
+      '<div id="sm_cal"></div>' +
       '<div id="sm_list"><p class="qt-loading">불러오는 중…</p></div>';
     panel.querySelector('#sm_start').onclick = function () { sermonEditor(null); };
-    Array.prototype.forEach.call(panel.querySelectorAll('.sm-view'), function (b) { b.onclick = function () { smView = b.dataset.v; Array.prototype.forEach.call(panel.querySelectorAll('.sm-view'), function (x) { var on = x.dataset.v === smView; x.style.background = on ? '#2f5d50' : '#fff'; x.style.color = on ? '#fff' : '#48576b'; }); renderView(); }; });
 
     function loadList() {
       api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) { smRows = rows || []; renderView(); }).catch(function (e) {
@@ -442,7 +441,7 @@ console.log('[affairs.js] v20260701ci');
         else listBox.innerHTML = msgCard('조회 실패', e.message);
       });
     }
-    function renderView() { if (smView === 'calendar') renderCalendar(); else renderTable(); }
+    function renderView() { renderCalendar(); renderTable(); }
     function wireRows(box) {
       var byId = {}; smRows.forEach(function (r) { byId[r.id] = r; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-read'), function (b) { b.onclick = function () { sermonReadingView(byId[b.dataset.id], { qt: false }); }; });
@@ -450,7 +449,7 @@ console.log('[affairs.js] v20260701ci');
       Array.prototype.forEach.call(box.querySelectorAll('.sm-kakao'), function (b) { b.onclick = function () { copyKakaoQt(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-edit'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-del'), function (b) { b.onclick = function () { if (!confirm('이 설교를 삭제할까요?')) return; api('DELETE', 'sermons?id=eq.' + b.dataset.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
-      Array.prototype.forEach.call(box.querySelectorAll('.cal-item'), function (el) { el.onclick = function () { sermonReadingView(byId[el.dataset.id], { qt: (byId[el.dataset.id] || {}).service === '매일 QT' }); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.cal-item'), function (el) { el.onclick = function (e) { e.stopPropagation(); sermonEditor(byId[el.dataset.id]); }; });
     }
     function renderTable() {
       var listBox = panel.querySelector('#sm_list'), rows = smRows;
@@ -466,29 +465,40 @@ console.log('[affairs.js] v20260701ci');
       wireRows(listBox);
     }
     function renderCalendar() {
-      var listBox = panel.querySelector('#sm_list');
+      var calBox = panel.querySelector('#sm_cal');
+      if (!calBox) return;
       if (!calYM) { var t = new Date(); calYM = { y: t.getFullYear(), m: t.getMonth() }; }
       var y = calYM.y, m = calYM.m, startDow = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
+      var todayStr = today();
       var byDate = {}; smRows.forEach(function (r) { var d = fmtD(r.sermon_date); if (d) (byDate[d] = byDate[d] || []).push(r); });
       var legend = Object.keys(SERVICE_COLORS).map(function (s) { return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:.74rem;margin:0 9px 4px 0"><span style="width:11px;height:11px;border-radius:3px;background:' + SERVICE_COLORS[s] + '"></span>' + esc(s) + '</span>'; }).join('');
       var wd = ['일', '월', '화', '수', '목', '금', '토'];
       var html = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
         '<div style="display:flex;align-items:center;gap:8px"><button class="btn btn-line" id="cal_prev" style="padding:3px 11px">‹</button><b style="font-size:1.05rem;min-width:110px;text-align:center">' + y + '년 ' + (m + 1) + '월</b><button class="btn btn-line" id="cal_next" style="padding:3px 11px">›</button><button class="btn btn-line" id="cal_today" style="padding:3px 10px;font-size:.8rem">오늘</button></div>' +
-        '<div style="display:flex;flex-wrap:wrap">' + legend + '</div></div>' +
+        '<div style="display:flex;flex-wrap:wrap;align-items:center"><span style="font-size:.72rem;color:#9aa5b1;margin-right:10px">날짜 클릭 → 설교 작성</span>' + legend + '</div></div>' +
         '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' +
         wd.map(function (w, i) { return '<div style="text-align:center;font-size:.78rem;font-weight:700;color:' + (i === 0 ? '#c0392b' : (i === 6 ? '#2563eb' : '#7b8794')) + ';padding:4px 0">' + w + '</div>'; }).join('');
       for (var b = 0; b < startDow; b++) html += '<div></div>';
       for (var dd = 1; dd <= days; dd++) {
-        var ds = y + '-' + pad2(m + 1) + '-' + pad2(dd), dow = new Date(y, m, dd).getDay();
+        var ds = y + '-' + pad2(m + 1) + '-' + pad2(dd), dow = new Date(y, m, dd).getDay(), isToday = (ds === todayStr);
         var items = (byDate[ds] || []).map(function (r) { var c = svcColor(r.service); return '<div class="cal-item" data-id="' + esc(r.id) + '" title="' + esc((r.service || '') + ' · ' + (r.title || '') + (r.scripture ? ' · ' + r.scripture : '')) + '" style="background:' + c + '1a;border-left:3px solid ' + c + ';border-radius:4px;padding:2px 5px;margin-top:3px;cursor:pointer;font-size:.72rem;line-height:1.25"><b style="color:' + c + '">' + esc(r.title || '(제목없음)') + '</b>' + (r.scripture ? '<div style="color:#7b8794">' + esc(r.scripture) + '</div>' : '') + '</div>'; }).join('');
-        html += '<div style="min-height:86px;border:1px solid #eef1f5;border-radius:8px;padding:4px 5px;background:#fff"><div style="font-size:.78rem;color:' + (dow === 0 ? '#c0392b' : (dow === 6 ? '#2563eb' : '#48576b')) + '">' + dd + '</div>' + items + '</div>';
+        var dnumColor = isToday ? '#fff' : (dow === 0 ? '#c0392b' : (dow === 6 ? '#2563eb' : '#48576b'));
+        var dnum = isToday
+          ? '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:50%;background:#2f5d50;color:#fff;font-size:.74rem;font-weight:700">' + dd + '</span>'
+          : '<span style="font-size:.78rem;color:' + dnumColor + '">' + dd + '</span>';
+        html += '<div class="cal-day" data-date="' + ds + '" title="' + ds + ' — 이 날짜로 설교 작성" style="min-height:86px;border:1px solid ' + (isToday ? '#2f5d50' : '#eef1f5') + ';border-radius:8px;padding:4px 5px;background:' + (isToday ? '#f1f7f5' : '#fff') + ';cursor:pointer;transition:background .12s">' + dnum + items + '</div>';
       }
-      html += '</div></div>';
-      listBox.innerHTML = html;
+      html += '</div><div style="font-size:.72rem;color:#9aa5b1;margin-top:8px">＋ 빈 날짜를 클릭하면 그 날짜로 새 설교를, 설교 칸을 클릭하면 해당 설교를 엽니다.</div></div>';
+      calBox.innerHTML = html;
       panel.querySelector('#cal_prev').onclick = function () { var nm = m - 1, ny = y; if (nm < 0) { nm = 11; ny--; } calYM = { y: ny, m: nm }; renderCalendar(); };
       panel.querySelector('#cal_next').onclick = function () { var nm = m + 1, ny = y; if (nm > 11) { nm = 0; ny++; } calYM = { y: ny, m: nm }; renderCalendar(); };
       panel.querySelector('#cal_today').onclick = function () { var t = new Date(); calYM = { y: t.getFullYear(), m: t.getMonth() }; renderCalendar(); };
-      wireRows(listBox);
+      Array.prototype.forEach.call(calBox.querySelectorAll('.cal-day'), function (cell) {
+        cell.onmouseenter = function () { cell.style.background = '#eef4ff'; };
+        cell.onmouseleave = function () { cell.style.background = (cell.dataset.date === todayStr) ? '#f1f7f5' : '#fff'; };
+        cell.onclick = function () { sermonEditor({ sermon_date: cell.dataset.date }); };
+      });
+      wireRows(calBox);
     }
     loadList();
 
@@ -1206,63 +1216,10 @@ console.log('[affairs.js] v20260701ci');
     };
   }
 
-  // 주보 보기/인쇄(새 창). opts.amounts=true 면 헌금 금액 포함(관리자 인쇄)
+  // 주보 보기/인쇄(새 창) — 공용 렌더러(js/bulletin-render.js) 사용. opts.amounts=true 면 금액 포함
   function bulletinView(rec, opts) {
-    rec = rec || {}; opts = opts || {}; var d = rec.data || {};
-    var w = window.open('', '_blank'); if (!w) { alert('팝업이 차단되었습니다.'); return; }
-    function row(name, detail) { return '<tr><td class="bn">' + esc(name) + '</td><td class="bd">' + esc(detail || '') + '</td></tr>'; }
-    var orderHtml = (d.order || []).map(function (o, i) { return '<tr><td class="bno">' + (i + 1) + '</td><td class="bn">' + esc(o.name || '') + '</td><td class="bd">' + esc(o.detail || '') + '</td></tr>'; }).join('');
-    var offHtml = OFFER_KEYS.map(function (k) { return (d.offering && d.offering[k]) ? '<div class="ofg"><b>' + esc(k) + '</b> ' + esc(d.offering[k]) + '</div>' : ''; }).join('');
-    var amtHtml = '';
-    if (opts.amounts && d.offering_amounts) { amtHtml = '<table class="amt"><tbody>' + AMOUNT_KEYS.map(function (k) { var v = d.offering_amounts[k]; return v ? ('<tr><td>' + esc(k) + '</td><td class="num">' + esc(v) + (/[0-9]$/.test(v) ? ' 원' : '') + '</td></tr>') : ''; }).join('') + '</tbody></table>'; }
-    var comHtml = COMMITTEE_KEYS.map(function (k) { return (d.committee && d.committee[k]) ? '<div class="ofg"><b>' + esc(k) + '</b> ' + esc(d.committee[k]) + '</div>' : ''; }).join('');
-    var notices = (d.notices || '').split('\n').filter(function (l) { return l.trim(); }).map(function (l, i) { return '<li>' + esc(l) + '</li>'; }).join('');
-    var css = [
-      '*{box-sizing:border-box}body{font-family:"Noto Serif KR",serif;margin:0;background:#f0f0f0;color:#1a1a1a}',
-      '.bar{position:sticky;top:0;background:#fff;border-bottom:1px solid #ddd;padding:8px 14px;display:flex;gap:8px;justify-content:flex-end}',
-      '.bar button{font:inherit;border:1px solid #cdd7e3;background:#fff;border-radius:8px;padding:6px 14px;cursor:pointer}',
-      '.page{max-width:820px;margin:14px auto;background:#fff;padding:30px 34px;box-shadow:0 1px 10px rgba(0,0,0,.1)}',
-      '.hd{text-align:center;border-bottom:3px double #032257;padding-bottom:12px;margin-bottom:16px}',
-      '.hd .ch{font-family:"Noto Sans KR",sans-serif;letter-spacing:.4em;font-size:1.5rem;font-weight:700;color:#032257}',
-      '.hd .sub{font-size:.8rem;color:#888;margin-top:5px;font-family:"Noto Sans KR",sans-serif}',
-      'section{margin-bottom:18px}h2{font-family:"Noto Sans KR",sans-serif;font-size:.95rem;color:#032257;border-left:4px solid #032257;padding-left:9px;margin:0 0 9px}',
-      '.serm{text-align:center;background:#f6f4ee;border:1px solid #e4ddc9;border-radius:8px;padding:12px;margin-bottom:12px}',
-      '.serm .t{font-size:1.25rem;font-weight:700;margin:3px 0}.serm .m{font-size:.86rem;color:#555;font-family:"Noto Sans KR",sans-serif}',
-      'table{width:100%;border-collapse:collapse;font-size:.9rem}',
-      '.ord td{padding:3px 6px;border-bottom:1px solid #f0eee8}.ord .bno{width:24px;color:#aa9;text-align:center}.ord .bn{width:120px;font-weight:600;font-family:"Noto Sans KR",sans-serif}.ord .bd{color:#444}',
-      '.two{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:.88rem}',
-      '.ofg{padding:3px 0;border-bottom:1px dotted #eee;font-size:.85rem}.ofg b{color:#7a5d27;font-family:"Noto Sans KR",sans-serif;margin-right:5px}',
-      '.amt{margin-top:8px;font-size:.85rem}.amt td{padding:3px 8px;border-bottom:1px solid #eee;font-family:"Noto Sans KR",sans-serif}.amt .num{text-align:right;font-weight:600}',
-      '.col{font-size:.88rem;line-height:1.75;white-space:pre-wrap}.col .ct{font-weight:700;color:#7a5d27;margin-bottom:6px;font-family:"Noto Sans KR",sans-serif}',
-      'ul{margin:0;padding-left:20px;font-size:.88rem;line-height:1.7}',
-      '.lbl{display:inline-block;min-width:90px;color:#7a5d27;font-weight:600;font-family:"Noto Sans KR",sans-serif}',
-      '@media print{.bar{display:none}body{background:#fff}.page{box-shadow:none;margin:0;max-width:none}}'
-    ].join('');
-    var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-      '<title>주보 ' + esc(fmtD(rec.bdate)) + '</title>' +
-      '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
-      '<style>' + css + '</style></head><body>' +
-      '<div class="bar"><span style="margin-right:auto;align-self:center;font-size:.8rem;color:#888">' + (opts.amounts ? '🔒 인쇄용(헌금 금액 포함)' : '홈페이지용') + '</span><button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>' +
-      '<div class="page">' +
-      '<div class="hd"><div class="ch">운 평 장 로 교 회</div><div class="sub">WOONPYEONG PRESBYTERIAN CHURCH · ' + esc(fmtD(rec.bdate)) + (d.no ? ' · No. ' + esc(d.no) : '') + (d.week ? ' · ' + esc(d.week) : '') + '</div></div>' +
-      // 주일 예배
-      '<section><div class="serm"><div class="m">오 늘 의 설 교 · SERMON</div><div class="t">' + esc(rec.title || '') + '</div><div class="m">본문 ● ' + esc(rec.scripture || '') + ' ● ' + esc(rec.preacher || '') + '</div></div>' +
-      '<h2>주일 낮 예배 · ORDER OF WORSHIP</h2><table class="ord"><tbody>' + orderHtml + '</tbody></table></section>' +
-      // 주중
-      ((d.wed_title || d.wed_series || d.dawn || d.qt) ? '<section><h2>주중 예배 · 새벽 · QT</h2><div style="font-size:.9rem;line-height:1.8">' +
-        (d.wed_series || d.wed_title ? '<div><span class="lbl">수요기도회</span>' + esc([d.wed_series, d.wed_title].filter(Boolean).join(' — ')) + (d.wed_dateline ? '<br><span class="lbl"></span><span style="color:#666;font-size:.85rem">' + esc(d.wed_dateline) + '</span>' : '') + '</div>' : '') +
-        (d.dawn ? '<div><span class="lbl">새벽기도회</span>' + esc(d.dawn) + '</div>' : '') +
-        (d.qt ? '<div><span class="lbl">매일 QT</span>' + esc(d.qt) + '</div>' : '') + '</div></section>' : '') +
-      // 향기로운 예물
-      (offHtml ? '<section><h2>향기로운 예물 · 헌금자</h2><div class="two">' + offHtml + '</div>' + amtHtml + '</section>' : amtHtml ? '<section><h2>지난 주 헌금</h2>' + amtHtml + '</section>' : '') +
-      // 봉사위원
-      (comHtml ? '<section><h2>봉사위원 · 이주의 기도</h2><div class="two">' + comHtml + '</div></section>' : '') +
-      // 칼럼
-      ((d.column_title || d.column_body) ? '<section><h2>신앙과 책</h2><div class="col"><div class="ct">' + esc(d.column_title || '') + '</div>' + esc(d.column_body || '') + '</div></section>' : '') +
-      // 광고
-      (notices ? '<section><h2>한 주의 소식</h2><ul>' + notices + '</ul></section>' : '') +
-      '</div></body></html>';
-    w.document.write(html); w.document.close(); w.focus();
+    if (window.BulletinRender) { window.BulletinRender.open(rec, opts || {}); return; }
+    alert('주보 렌더러(bulletin-render.js)가 로드되지 않았습니다. 페이지를 새로고침해 주세요.');
   }
 
   // ── 부팅: 로그인 + 관리자 확인 ──

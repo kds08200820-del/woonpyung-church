@@ -569,59 +569,11 @@ function closeModal() {
   document.body.style.overflow = "";
 }
 
-// Supabase 게시 주보 — 새 탭 읽기 보기(헌금 금액 없음)
+// Supabase 게시 주보 — 공용 렌더러(js/bulletin-render.js)로 새 탭 보기(헌금 금액 없음)
 function openPublicBulletinView(b) {
   if (!b) return;
-  const d = b.data || {};
-  const w = window.open("", "_blank");
-  if (!w) { alert("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요."); return; }
-  const OFK = ["십일조", "감사헌금", "주일헌금", "건축헌금", "선교헌금", "유년부", "차량헌금", "일천번기도"];
-  const CMK = ["헌금위원", "안내위원", "주차·사찰", "이주의 기도"];
-  const orderHtml = (d.order || []).map((o, i) => `<tr><td class="bno">${i + 1}</td><td class="bn">${escB(o.name || "")}</td><td class="bd">${escB(o.detail || "")}</td></tr>`).join("");
-  const offHtml = OFK.map((k) => (d.offering && d.offering[k]) ? `<div class="ofg"><b>${escB(k)}</b> ${escB(d.offering[k])}</div>` : "").join("");
-  const comHtml = CMK.map((k) => (d.committee && d.committee[k]) ? `<div class="ofg"><b>${escB(k)}</b> ${escB(d.committee[k])}</div>` : "").join("");
-  const notices = (d.notices || "").split("\n").filter((l) => l.trim()).map((l) => `<li>${escB(l)}</li>`).join("");
-  const dl = String(b.bdate || "").slice(0, 10);
-  const css = [
-    '*{box-sizing:border-box}body{font-family:"Noto Serif KR",serif;margin:0;background:#f0f0f0;color:#1a1a1a}',
-    ".bar{position:sticky;top:0;background:#fff;border-bottom:1px solid #ddd;padding:8px 14px;display:flex;gap:8px;justify-content:flex-end}",
-    ".bar button{font:inherit;border:1px solid #cdd7e3;background:#fff;border-radius:8px;padding:6px 14px;cursor:pointer}",
-    ".page{max-width:820px;margin:14px auto;background:#fff;padding:30px 34px;box-shadow:0 1px 10px rgba(0,0,0,.1)}",
-    ".hd{text-align:center;border-bottom:3px double #032257;padding-bottom:12px;margin-bottom:16px}",
-    '.hd .ch{font-family:"Noto Sans KR",sans-serif;letter-spacing:.4em;font-size:1.5rem;font-weight:700;color:#032257}',
-    '.hd .sub{font-size:.8rem;color:#888;margin-top:5px;font-family:"Noto Sans KR",sans-serif}',
-    'section{margin-bottom:18px}h2{font-family:"Noto Sans KR",sans-serif;font-size:.95rem;color:#032257;border-left:4px solid #032257;padding-left:9px;margin:0 0 9px}',
-    ".serm{text-align:center;background:#f6f4ee;border:1px solid #e4ddc9;border-radius:8px;padding:12px;margin-bottom:12px}",
-    '.serm .t{font-size:1.25rem;font-weight:700;margin:3px 0}.serm .m{font-size:.86rem;color:#555;font-family:"Noto Sans KR",sans-serif}',
-    "table{width:100%;border-collapse:collapse;font-size:.9rem}",
-    ".ord td{padding:3px 6px;border-bottom:1px solid #f0eee8}.ord .bno{width:24px;color:#aa9;text-align:center}.ord .bn{width:120px;font-weight:600}.ord .bd{color:#444}",
-    ".two{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}",
-    ".ofg{padding:3px 0;border-bottom:1px dotted #eee;font-size:.85rem}.ofg b{color:#7a5d27;margin-right:5px}",
-    ".col{font-size:.88rem;line-height:1.75;white-space:pre-wrap}.col .ct{font-weight:700;color:#7a5d27;margin-bottom:6px}",
-    "ul{margin:0;padding-left:20px;font-size:.88rem;line-height:1.7}",
-    '.lbl{display:inline-block;min-width:90px;color:#7a5d27;font-weight:600;font-family:"Noto Sans KR",sans-serif}',
-    ".note{font-size:.78rem;color:#999;margin-top:14px;border-top:1px solid #eee;padding-top:8px}",
-    "@media print{.bar{display:none}body{background:#fff}.page{box-shadow:none;margin:0;max-width:none}}",
-  ].join("");
-  const html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    `<title>주보 ${escB(dl)}</title>` +
-    '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
-    `<style>${css}</style></head><body>` +
-    '<div class="bar"><button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div><div class="page">' +
-    `<div class="hd"><div class="ch">운 평 장 로 교 회</div><div class="sub">WOONPYEONG PRESBYTERIAN CHURCH · ${escB(dl)}${d.no ? " · No. " + escB(d.no) : ""}${d.week ? " · " + escB(d.week) : ""}</div></div>` +
-    `<section><div class="serm"><div class="m">오 늘 의 설 교 · SERMON</div><div class="t">${escB(b.title || "")}</div><div class="m">본문 ● ${escB(b.scripture || "")} ● ${escB(b.preacher || "")}</div></div>` +
-    `<h2>주일 낮 예배 · ORDER OF WORSHIP</h2><table class="ord"><tbody>${orderHtml}</tbody></table></section>` +
-    ((d.wed_title || d.wed_series || d.dawn || d.qt) ? `<section><h2>주중 예배 · 새벽 · QT</h2><div style="font-size:.9rem;line-height:1.8">` +
-      ((d.wed_series || d.wed_title) ? `<div><span class="lbl">수요기도회</span>${escB([d.wed_series, d.wed_title].filter(Boolean).join(" — "))}${d.wed_dateline ? `<br><span class="lbl"></span><span style="color:#666;font-size:.85rem">${escB(d.wed_dateline)}</span>` : ""}</div>` : "") +
-      (d.dawn ? `<div><span class="lbl">새벽기도회</span>${escB(d.dawn)}</div>` : "") +
-      (d.qt ? `<div><span class="lbl">매일 QT</span>${escB(d.qt)}</div>` : "") + "</div></section>" : "") +
-    (offHtml ? `<section><h2>향기로운 예물 · 헌금자</h2><div class="two">${offHtml}</div></section>` : "") +
-    (comHtml ? `<section><h2>봉사위원 · 이주의 기도</h2><div class="two">${comHtml}</div></section>` : "") +
-    ((d.column_title || d.column_body) ? `<section><h2>신앙과 책</h2><div class="col"><div class="ct">${escB(d.column_title || "")}</div>${escB(d.column_body || "")}</div></section>` : "") +
-    (notices ? `<section><h2>한 주의 소식</h2><ul>${notices}</ul></section>` : "") +
-    '<p class="note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>' +
-    "</div></body></html>";
-  w.document.write(html); w.document.close(); w.focus();
+  if (window.BulletinRender) { window.BulletinRender.open(b, { amounts: false }); return; }
+  alert("주보 보기를 불러오지 못했습니다. 페이지를 새로고침해 주세요.");
 }
 
 if (modal) {
