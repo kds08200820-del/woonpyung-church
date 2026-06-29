@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cg
+ * 콘솔: [affairs.js] v20260701ch
  */
-console.log('[affairs.js] v20260701cg');
+console.log('[affairs.js] v20260701ch');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -497,8 +497,17 @@ console.log('[affairs.js] v20260701cg');
       ov.style.cssText = 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto';
       var svcOpts = SVC_OPTS.map(function (o) { return '<option' + (o === (rec.service || '') ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
       ov.innerHTML =
+        '<style>' +
+        '.sed-wrap{position:relative;padding:22px 24px 70px}' +
+        '.sed-aside{position:absolute;left:24px;top:22px;width:268px}' +
+        '.sed-form{max-width:760px;margin:0 auto}' +
+        '.sed-qt{display:flex;align-items:center;gap:7px;background:#fff7e3;border:1px solid #e8cd86;border-radius:8px;padding:0 11px;height:40px;font-size:.84rem;font-weight:500;color:#8a6d1f;cursor:pointer;user-select:none}' +
+        '.sed-row2{display:grid;grid-template-columns:2.3fr 1fr;gap:12px;margin-bottom:12px}' +
+        '@media(max-width:1240px){.sed-aside{position:static;left:auto;top:auto;width:auto;max-width:760px;margin:0 auto 20px}.sed-form{max-width:760px}}' +
+        '@media(max-width:560px){.sed-row2{grid-template-columns:1fr}}' +
+        '</style>' +
         '<header style="position:sticky;top:0;z-index:6;background:linear-gradient(180deg,#ffffff 0%,#f7f9fc 100%);border-bottom:1px solid #e1e6ef;box-shadow:0 2px 10px rgba(3,34,87,.06)">' +
-        '<div style="max-width:1180px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
+        '<div style="margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
         '<button class="btn btn-line" id="se_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
         '<div style="flex:1;min-width:160px;text-align:center;line-height:1.25">' +
         '<div style="font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.22rem;color:var(--accent,#032257);letter-spacing:-.01em">예배 준비 도우미</div>' +
@@ -506,31 +515,32 @@ console.log('[affairs.js] v20260701cg');
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">' +
         '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 임시저장</button>' +
-        '<span style="width:1px;height:24px;background:#dde3ec"></span>' +
-        '<label id="se_qt_lbl" style="display:inline-flex;align-items:center;gap:7px;background:#fff7e3;border:1px solid #e8cd86;border-radius:9px;padding:7px 12px;font-size:.82rem;font-weight:500;color:#8a6d1f;cursor:pointer;user-select:none"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e">📲 QT 함께 만들기</label>' +
         '<button class="btn btn-line" id="se_kakao" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">💬 카카오톡 복사</button>' +
         '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 내보내기</button>' +
         '</div>' +
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
         '</div></header>' +
-        '<div style="max-width:1180px;margin:0 auto;padding:20px 20px 60px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;justify-content:center">' +
-        '<div style="flex:0 0 300px;max-width:100%"><div class="af-field" style="margin:0">' +
+        '<div class="sed-wrap">' +
+        '<div class="sed-aside"><div class="af-field" style="margin:0">' +
         '<label style="font-size:1.18rem;font-weight:700;color:var(--accent,#032257);margin-bottom:2px">📋 예배 순서</label>' +
-        '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·항목을 추가하고 드래그로 정렬 · 항목에 📎 파일 첨부</div>' +
+        '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·CCM·항목을 추가하고 드래그로 정렬 · 항목에 📎 파일 첨부</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px"><button type="button" class="btn btn-line" id="se_tpl_load" style="padding:6px 8px;font-size:.78rem">📋 양식 불러오기</button><button type="button" class="btn btn-line" id="se_tpl_save" style="padding:6px 8px;font-size:.78rem">💾 양식 저장</button></div>' +
         '<div id="se_tpl_msg" style="font-size:.74rem;color:#7b8794;min-height:0;margin-bottom:6px"></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px"><button type="button" class="btn btn-line" id="se_gyodok" style="padding:7px 6px;font-size:.82rem">📜 교독문</button><button type="button" class="btn btn-line" id="se_hymn" style="padding:7px 6px;font-size:.82rem">🎵 찬송가</button></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px"><button type="button" class="btn btn-line" id="se_gyodok" style="padding:7px 4px;font-size:.8rem">📜 교독문</button><button type="button" class="btn btn-line" id="se_hymn" style="padding:7px 4px;font-size:.8rem">🎵 찬송가</button><button type="button" class="btn btn-line" id="se_ccm" style="padding:7px 4px;font-size:.8rem">🎶 CCM</button></div>' +
         '<div id="se_order"></div>' +
         '</div></div>' +
-        '<div style="flex:1;min-width:320px">' +
-        '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px">' +
+        '<div class="sed-form">' +
+        '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:12px">' +
         '<div class="af-field"><label>일자</label><input type="date" id="se_date" value="' + esc(fmtD(rec.sermon_date) || today()) + '"></div>' +
         '<div class="af-field"><label>예배</label><select id="se_service"><option value="">선택</option>' + svcOpts + '</select></div>' +
         '<div class="af-field"><label>설교자</label><input type="text" id="se_preacher" value="' + esc(rec.preacher || '김동석 목사') + '"></div>' +
-        '<div class="af-field"><label>본문(성경) <a href="' + esc(SERMON_TOOLS[0].url) + '" target="_blank" rel="noopener" style="font-weight:400;font-size:.74rem;color:#1f6feb">📖 검색</a></label><input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="예: 요한복음 3:16"></div>' +
+        '<div class="af-field"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e">📲 함께 만들기</label></div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
         '</div>' +
-        '<div class="af-field" style="margin-bottom:12px"><label>제목</label><input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" style="font-size:1.1rem;font-weight:700"></div>' +
+        '<div class="sed-row2">' +
+        '<div class="af-field"><label>제목</label><input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" style="font-size:1.1rem;font-weight:700"></div>' +
+        '<div class="af-field"><label>본문(성경) <a href="' + esc(SERMON_TOOLS[0].url) + '" target="_blank" rel="noopener" style="font-weight:400;font-size:.74rem;color:#1f6feb">📖 검색</a></label><input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="예: 요한복음 3:16"></div>' +
+        '</div>' +
         '<div class="af-field" style="margin-bottom:10px"><label>📖 성경 본문 — 개역개정 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">새벽기도회·주일 설교 등에 사용</span></label><textarea id="se_bible" placeholder="개역개정 본문을 입력/붙여넣으세요. (예: 1 태초에 하나님이 천지를 창조하시니라 …)" style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.bible_text || '') + '</textarea></div>' +
         '<div class="af-field" id="se_qt_bible_wrap" style="margin-bottom:12px;display:none"><label>📲 성경 본문 — 우리말성경 (QT 전용) <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">QT 내보내기·카카오톡 양식에 사용</span></label><textarea id="se_qt_bible" placeholder="우리말성경 본문을 입력/붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
         '<div class="af-field"><label>설교 원고</label><textarea id="se_content" placeholder="설교 원고를 작성하세요. 줄바꿈·문단이 그대로 설교문에 반영됩니다." style="min-height:50vh;line-height:1.8;font-size:1.02rem">' + esc(rec.content || '') + '</textarea></div>' +
@@ -578,8 +588,7 @@ console.log('[affairs.js] v20260701cg');
         }).join('');
         oBox.innerHTML =
           '<button type="button" class="btn btn-line" id="od_add" style="padding:6px 13px;font-size:.84rem;margin-bottom:6px">＋ 항목 추가</button><div id="od_menu" style="display:none;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>' +
-          '<div id="od_rows">' + rowsHtml + '</div>' +
-          '<div id="od_drop" style="border:2px dashed #cdd7e3;border-radius:9px;padding:9px;text-align:center;color:#9aa5b1;font-size:.79rem;margin-top:6px">＋ CCM을 여기로 드래그 · 각 항목에 📎 파일 첨부(드래그앤드롭)</div>';
+          '<div id="od_rows">' + rowsHtml + '</div>';
         Array.prototype.forEach.call(oBox.querySelectorAll('.od-del'), function (b) { b.onclick = function () { order.splice(Number(b.dataset.i), 1); renderOrder(); }; });
         Array.prototype.forEach.call(oBox.querySelectorAll('.od-file'), function (b) { b.onclick = function () { var fi = document.createElement('input'); fi.type = 'file'; fi.onchange = function () { uploadToOrder(Number(b.dataset.i), fi.files && fi.files[0]); }; fi.click(); }; });
         Array.prototype.forEach.call(oBox.querySelectorAll('.od-edit'), function (b) {
@@ -632,15 +641,6 @@ console.log('[affairs.js] v20260701cg');
             order.length = 0; Array.prototype.push.apply(order, no); renderOrder();
           }
         });
-        var drop = oBox.querySelector('#od_drop');
-        drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.style.background = '#eef4ff'; });
-        drop.addEventListener('dragleave', function () { drop.style.background = ''; });
-        drop.addEventListener('drop', function (e) { e.preventDefault(); drop.style.background = '';
-          var it = dropItem();
-          if (it) order.push(it);
-          else if (dragKind === 'order' && dragOrderIdx >= 0) { var m = order.splice(dragOrderIdx, 1)[0]; order.push(m); }
-          clearDrag(); renderOrder();
-        });
       }
       renderOrder();
 
@@ -681,6 +681,12 @@ console.log('[affairs.js] v20260701cg');
           ns.forEach(function (n) { if (!have[n]) { var t = hymnTitle(n); order.push({ label: '찬송', detail: n + '장' + (t ? ' ' + t : ''), url: '', hno: n }); } });
           renderOrder();
         });
+      };
+      // CCM: 예배 순서에 빈 CCM 항목 추가(✎로 곡명 입력, 📎로 파일 첨부)
+      ov.querySelector('#se_ccm').onclick = function () {
+        var v = prompt('CCM 곡명을 입력하세요', '');
+        order.push({ label: 'CCM', detail: (v || '').trim(), url: '' });
+        renderOrder();
       };
       // QT 내보내기 체크박스: 켜면 우리말성경 본문칸·카카오톡 버튼 표시
       var qtToggle = ov.querySelector('#se_qt_toggle');
