@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701ao
+ * 콘솔: [finance.js] v20260701ap
  */
-console.log('[finance.js] v20260701ao');
+console.log('[finance.js] v20260701ap');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -49,7 +49,7 @@ console.log('[finance.js] v20260701ao');
       if (!me.canFinance) { root.innerHTML = msgCard('접근 권한이 없습니다', '재정관리는 관리자 승인을 받은 회원만 이용할 수 있습니다.'); return; }
       WPF.call('masters').then(function (m) {
         M.members = m.members || []; M.accounts = m.accounts || []; M.services = m.services || [];
-        render();
+        ensureSettings().then(render);   // 설정(로고 등)을 미리 로드 → 모든 출력물에 로고 사용 가능
       }).catch(function (e) { root.innerHTML = msgCard('불러오기 실패', e.message); });
     }).catch(function (e) { root.innerHTML = msgCard('확인 실패', e.message); });
   }
@@ -58,6 +58,7 @@ console.log('[finance.js] v20260701ao');
   // ── 보고서 인쇄/PDF (회의 배포용 전문 양식) ──
   function printDoc(title, inner, sub) {
     var r = fyRange(M.fy);
+    var logo = orgInfo().imgLogo;
     var subLine = sub || (M.fy + '년도 회계연도 (' + r.from + ' ~ ' + r.to + ')');
     var w = window.open('', '_blank', 'width=960,height=820');
     if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해 주세요.'); return; }
@@ -89,6 +90,7 @@ console.log('[finance.js] v20260701ao');
       '.fin-pill{font-size:9px;padding:1px 5px;border-radius:7px;border:1px solid #ccd}',
       '.help{font-size:9px;color:#9aa5b1}',
       '.issuer{text-align:center;margin-top:18px;padding-top:11px;border-top:2px solid #1f3a5f}',
+      '.issuer .ilogo{height:44px;display:block;margin:0 auto 6px}',
       '.issuer .kr{font-family:"Noto Serif KR",serif;font-size:18px;font-weight:700;letter-spacing:.2em;color:#1f3a5f;margin:0}',
       '.issuer .en{font-size:8px;letter-spacing:.32em;color:#8a93a0;margin-top:3px}',
       '.issuer .gen{font-size:9px;color:#aab2bd;margin-top:5px}',
@@ -106,11 +108,11 @@ console.log('[finance.js] v20260701ao');
       '<div class="rt"><h1>' + esc(title) + '</h1><div class="period">' + esc(subLine) + '</div><div class="meta">출력일 ' + dt + '</div></div>' +
       '<div class="signwrap">' + sign + '</div></div>' +
       inner +
-      '<div class="issuer"><p class="kr">운평장로교회</p><div class="en">UNPYEONG PRESBYTERIAN CHURCH</div><div class="gen">재정부 · 교회 회계시스템 생성 (' + dt + ')</div></div>' +
+      '<div class="issuer">' + (logo ? '<img class="ilogo" src="' + esc(logo) + '" alt="로고">' : '') + '<p class="kr">운평장로교회</p><div class="en">UNPYEONG PRESBYTERIAN CHURCH</div><div class="gen">재정부 · 교회 회계시스템 생성 (' + dt + ')</div></div>' +
       '<div class="noprint" style="text-align:center;margin-top:22px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#1f3a5f;color:#fff;border-radius:8px">🖨 인쇄 / PDF 저장</button></div>' +
+      '<scr' + 'ipt>window.addEventListener("load",function(){setTimeout(function(){try{window.print()}catch(e){}},450)});</scr' + 'ipt>' +
       '</div></body></html>';
     w.document.write(html); w.document.close(); w.focus();
-    setTimeout(function () { try { w.print(); } catch (e) { } }, 650);
   }
   // 선택 일괄 삭제
   function bulkDelete(ids, after) {
@@ -1450,12 +1452,18 @@ console.log('[finance.js] v20260701ao');
   /* ── 설정(회계연도 시작 월) ── */
   function renderSettings(panel) {
     loading(panel);
-    ensureSettings().then(function () {
+    Promise.all([ensureSettings(), ensureVouchers()]).then(function () {
       var sm = fyStartMonth();
       var mopts = '';
       for (var i = 1; i <= 12; i++) mopts += '<option value="' + i + '"' + (i === sm ? ' selected' : '') + '>' + i + '월</option>';
       var r = fyRange(M.fy);
       var carry = carryover();
+      // 회계연도 마감용 집계
+      var incFY = 0, expFY = 0;
+      vouchersFY().forEach(function (x) { if (String(x['구분']) === '수입') incFY += Number(x['금액']) || 0; else expFY += Number(x['금액']) || 0; });
+      var ending = carry + incFY - expFY;           // 기말 잔액 = 이월금 + 수입 - 지출
+      var nextFY = M.fy + 1;
+      var closedAt = (M.settings || {})['fy_closed_' + M.fy] || '';
       panel.innerHTML = '<div class="fin-card" style="max-width:560px">' +
         '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">회계연도 설정</h3>' +
         '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:16px">회계연도가 시작하는 월을 정합니다. 거래장부·통계·결산보고서·기부금영수증이 선택한 회계연도 범위로 집계됩니다.</p>' +
@@ -1469,6 +1477,17 @@ console.log('[finance.js] v20260701ao');
         '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px">회계연도 시작 시점의 <b>이월 잔액</b>입니다. 결산보고서의 기말 잔액(이월금＋수입－지출) 계산에 반영됩니다. 회계연도마다 따로 저장됩니다.</p>' +
         '<div class="form-field" style="max-width:260px"><label>이월금 (원)</label><input type="text" id="set_carry" inputmode="numeric" value="' + (carry ? won(carry) : '') + '" placeholder="0" style="text-align:right;font-weight:700"></div>' +
         '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_carry_save">이월금 저장</button><span class="fin-msg" id="set_carry_msg"></span></div></div>' +
+        '<div class="fin-card" style="max-width:560px">' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">회계연도 마감 — ' + M.fy + '년도</h3>' +
+        '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">현재 회계연도를 마감하면 <b>기말 잔액이 다음 연도(' + nextFY + '년도) 전기 이월금으로 자동 이월</b>되고, 화면이 ' + nextFY + '년도로 전환됩니다. 이월된 금액은 위 <b>전기 이월금</b>에서 수정할 수 있습니다.</p>' +
+        '<table class="fin-table" style="margin-bottom:12px"><tbody>' +
+        '<tr><td>전기 이월금</td><td class="num">' + won(carry) + '</td></tr>' +
+        '<tr><td>당기 수입</td><td class="num" style="color:#1e874b">＋ ' + won(incFY) + '</td></tr>' +
+        '<tr><td>당기 지출</td><td class="num" style="color:#c0392b">－ ' + won(expFY) + '</td></tr>' +
+        '<tr style="font-weight:700;background:#f5f8fc"><td>기말 잔액 (다음 연도 이월액)</td><td class="num">' + won(ending) + '</td></tr>' +
+        '</tbody></table>' +
+        (closedAt ? '<p style="font-size:.82rem;color:#1e874b;margin-bottom:8px">✓ 이미 마감됨 (' + esc(fmtD(closedAt)) + ') — 다시 마감하면 ' + nextFY + '년도 이월금이 재계산되어 덮어쓰입니다.</p>' : '') +
+        '<div style="display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_close" style="background:#1f3a5f">▶ ' + M.fy + '년도 마감하고 ' + nextFY + '년도로 이월</button><span class="fin-msg" id="set_close_msg"></span></div></div>' +
         (function () {
           var o = orgInfo();
           return '<div class="fin-card" style="max-width:560px">' +
@@ -1522,6 +1541,20 @@ console.log('[finance.js] v20260701ao');
           M.settings['carryover_' + M.fy] = String(amt);
           msg.style.color = 'green'; msg.textContent = '✓ 저장됨';
         }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; });
+      };
+      panel.querySelector('#set_close').onclick = function () {
+        if (!confirm(M.fy + '년도를 마감합니다.\n\n기말 잔액 ' + won(ending) + '원이 ' + nextFY + '년도 전기 이월금으로 이월되고, 화면이 ' + nextFY + '년도로 전환됩니다.\n\n진행할까요?')) return;
+        var cmsg = panel.querySelector('#set_close_msg'); cmsg.style.color = '#7b8794'; cmsg.textContent = '마감 처리 중…';
+        Promise.all([
+          WPF.call('setSetting', { key: 'carryover_' + nextFY, value: ending }),
+          WPF.call('setSetting', { key: 'fy_closed_' + M.fy, value: today() })
+        ]).then(function () {
+          M.settings['carryover_' + nextFY] = String(ending);
+          M.settings['fy_closed_' + M.fy] = today();
+          cmsg.style.color = 'green'; cmsg.textContent = '✓ 마감 완료 — ' + nextFY + '년도로 이월되었습니다.';
+          M.fy = nextFY;
+          setTimeout(render, 800);
+        }).catch(function (e) { cmsg.style.color = '#c0392b'; cmsg.textContent = '마감 실패: ' + e.message; });
       };
       var orgSave = panel.querySelector('#org_save');
       if (orgSave) orgSave.onclick = function () {
