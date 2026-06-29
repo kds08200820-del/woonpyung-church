@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701as
+ * 콘솔: [finance.js] v20260701at
  */
-console.log('[finance.js] v20260701as');
+console.log('[finance.js] v20260701at');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -841,7 +841,7 @@ console.log('[finance.js] v20260701as');
     panel.innerHTML =
       '<div class="fin-card"><div class="fin-grid">' +
       '<div class="form-field"><label>일자</label><input type="date" id="e_date" value="' + today() + '"></div>' +
-      '<div class="form-field" style="grid-column:span 2"><label>지출 계정 (검색)</label><div id="e_acc_wrap" style="display:flex;gap:6px;position:relative"><input type="text" id="e_acc_name" autocomplete="off" placeholder="계정명·항 입력 → 선택 (🔍 전체보기)" style="flex:1"><button type="button" class="btn btn-line" id="e_acc_btn" style="padding:0 13px;font-size:1rem">🔍</button></div><input type="hidden" id="e_acc"></div>' +
+      '<div class="form-field" style="grid-column:span 2"><label>지출 계정 (검색)</label><div id="e_acc_wrap" style="display:flex;gap:6px;position:relative"><input type="text" id="e_acc_name" autocomplete="off" lang="ko" inputmode="text" placeholder="계정명·항 입력 → 선택 (🔍 전체보기)" style="flex:1"><button type="button" class="btn btn-line" id="e_acc_btn" style="padding:0 13px;font-size:1rem">🔍</button></div><input type="hidden" id="e_acc"></div>' +
       '<div class="form-field"><label>수단</label><select id="e_method"><option>계좌</option><option>법인카드</option><option>현금</option></select></div>' +
       '</div><div class="fin-grid">' +
       '<div class="form-field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="e_memo_on" style="width:auto;margin:0"> 적요 입력</label><input type="text" id="e_memo" disabled placeholder="체크하면 입력"></div>' +
@@ -861,7 +861,7 @@ console.log('[finance.js] v20260701as');
       var msg = panel.querySelector('#e_msg');
       if (!v.date || !v.account || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자·계정·금액을 입력하세요. (계정은 목록에서 선택)'; return; }
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; emEl.value = ''; epEl.value = ''; amt.value = ''; M.loaded = false; loadExp(v.date); amt.focus(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; emEl.value = ''; epEl.value = ''; amt.value = ''; accName.value = ''; accHidden.value = ''; M.loaded = false; loadExp(v.date); accName.focus(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
     }
     amt.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitExpense(); } else if (e.key === 'Tab' && !e.shiftKey && !emOn.checked && !epOn.checked) { e.preventDefault(); submitExpense(); } });
     panel.querySelector('#e_add').onclick = submitExpense;
