@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701bq
+ * 콘솔: [affairs.js] v20260701br
  */
-console.log('[affairs.js] v20260701bq');
+console.log('[affairs.js] v20260701br');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -477,6 +477,7 @@ console.log('[affairs.js] v20260701bq');
         '<div class="af-field"><label>본문(성경)</label><input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="예: 요한복음 3:16"></div>' +
         '</div>' +
         '<div class="af-field" style="margin-bottom:12px"><label>제목</label><input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" style="font-size:1.1rem;font-weight:700"></div>' +
+        '<div class="af-field" style="margin-bottom:12px"><label>찬양곡 (예배 순서대로 · 드래그로 순서 변경)</label><div id="se_praise"></div></div>' +
         '<div class="af-field"><label>설교 원고</label><textarea id="se_content" placeholder="설교 원고를 작성하세요. 줄바꿈·문단이 그대로 설교문에 반영됩니다." style="min-height:50vh;line-height:1.8;font-size:1.02rem">' + esc(rec.content || '') + '</textarea></div>' +
         '<input type="hidden" id="se_media" value="' + esc(rec.media_url || '') + '"><input type="hidden" id="se_file" value="' + esc(rec.file_url || '') + '">' +
         '</div>';
@@ -495,6 +496,42 @@ console.log('[affairs.js] v20260701bq');
       ov.querySelector('#se_hymn').onclick = function () { ov.querySelector('#se_toolbox').style.display = ''; var cur = ov.querySelector('#se_hymns_v').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean); hymnPicker(cur, function (ns) { ov.querySelector('#se_hymns_v').value = ns.join(','); refreshSel(); }); };
       ov.querySelector('#se_gyodok').onclick = function () { ov.querySelector('#se_toolbox').style.display = ''; gyodokPicker(function (g) { ov.querySelector('#se_gyodok_v').value = g.no + '. ' + g.title; refreshSel(); }); };
       refreshSel();
+
+      // ── 찬양곡(예배 순서): 추가·업로드·드래그 정렬 ──
+      var praise = []; try { praise = JSON.parse(rec.praise || '[]') || []; } catch (e) { praise = []; }
+      var pBox = ov.querySelector('#se_praise'), pDrag = -1;
+      function renderPraise() {
+        pBox.innerHTML = praise.map(function (p, i) {
+          return '<div class="pr-row" draggable="true" data-i="' + i + '" style="display:flex;align-items:center;gap:7px;border:1px solid #e1e7ef;border-radius:9px;padding:7px 9px;margin-bottom:7px;background:#fff">' +
+            '<span class="pr-handle" title="드래그로 순서 변경" style="cursor:grab;color:#9aa5b1">≡</span>' +
+            '<span style="flex:0 0 22px;text-align:center;color:#7b8794;font-size:.82rem">' + (i + 1) + '</span>' +
+            '<input type="text" class="pr-title" data-i="' + i + '" value="' + esc(p.title || '') + '" placeholder="찬양곡 제목" style="flex:1;min-width:120px;padding:6px 9px;border:1px solid #dfe5ee;border-radius:7px;font:inherit">' +
+            '<button type="button" class="btn btn-line pr-file" data-i="' + i + '" style="padding:5px 10px;font-size:.8rem">📎 ' + (p.url ? '교체' : '파일') + '</button>' +
+            (p.url ? '<a href="' + esc(p.url) + '" target="_blank" rel="noopener" style="font-size:.8rem">열기</a>' : '') +
+            '<button type="button" class="btn btn-line pr-del" data-i="' + i + '" style="padding:5px 9px;font-size:.8rem;color:#c0392b">✕</button>' +
+            '</div>';
+        }).join('') + '<button type="button" class="btn btn-line" id="pr_add" style="padding:7px 14px;font-size:.86rem">＋ 찬양곡 추가</button>';
+        ov.querySelector('#pr_add').onclick = function () { praise.push({ title: '', url: '' }); renderPraise(); };
+        Array.prototype.forEach.call(pBox.querySelectorAll('.pr-title'), function (inp) { inp.oninput = function () { praise[Number(inp.dataset.i)].title = inp.value; }; });
+        Array.prototype.forEach.call(pBox.querySelectorAll('.pr-del'), function (b) { b.onclick = function () { praise.splice(Number(b.dataset.i), 1); renderPraise(); }; });
+        Array.prototype.forEach.call(pBox.querySelectorAll('.pr-file'), function (b) {
+          b.onclick = function () {
+            if (!(window.ChurchUpload && ChurchUpload.isReady())) { alert('업로드 서버가 설정되지 않았습니다.'); return; }
+            var fi = document.createElement('input'); fi.type = 'file';
+            fi.onchange = function () { var f = fi.files && fi.files[0]; if (!f) return; var i = Number(b.dataset.i); b.textContent = '업로드 중…'; b.disabled = true; ChurchUpload.upload(f, { folder: 'worship/praise', compress: false }).then(function (res) { praise[i].url = res.url; renderPraise(); }).catch(function (e) { b.disabled = false; b.textContent = '📎 파일'; alert('업로드 실패: ' + e.message); }); };
+            fi.click();
+          };
+        });
+        Array.prototype.forEach.call(pBox.querySelectorAll('.pr-row'), function (row) {
+          row.addEventListener('dragstart', function () { pDrag = Number(row.dataset.i); row.style.opacity = '.5'; });
+          row.addEventListener('dragend', function () { row.style.opacity = ''; });
+          row.addEventListener('dragover', function (e) { e.preventDefault(); row.style.borderColor = '#6f9be0'; });
+          row.addEventListener('dragleave', function () { row.style.borderColor = '#e1e7ef'; });
+          row.addEventListener('drop', function (e) { e.preventDefault(); var to = Number(row.dataset.i); if (pDrag < 0 || pDrag === to) { renderPraise(); return; } var moved = praise.splice(pDrag, 1)[0]; praise.splice(to, 0, moved); pDrag = -1; renderPraise(); });
+        });
+      }
+      renderPraise();
+
       function gather() {
         return {
           sermon_date: ov.querySelector('#se_date').value || null,
@@ -506,7 +543,8 @@ console.log('[affairs.js] v20260701bq');
           media_url: ov.querySelector('#se_media').value || null,
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
-          hymns: ov.querySelector('#se_hymns_v').value || null
+          hymns: ov.querySelector('#se_hymns_v').value || null,
+          praise: (praise.filter(function (p) { return p.title || p.url; }).length ? JSON.stringify(praise.filter(function (p) { return p.title || p.url; })) : null)
         };
       }
       function save(then) {
@@ -530,7 +568,13 @@ console.log('[affairs.js] v20260701bq');
     if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.'); return; }
     var meta = [r.service, fmtD(r.sermon_date), r.preacher].filter(Boolean).map(function (x) { return esc(x); }).join(' · ');
     var hymnsTxt = (function () { var a = String(r.hymns || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); return a.length ? a.join('장, ') + '장' : ''; })();
-    var orderHtml = (hymnsTxt || r.gyodok) ? '<div class="order">' + (hymnsTxt ? '<div>🎵 <b>찬송가</b> ' + esc(hymnsTxt) + '</div>' : '') + (r.gyodok ? '<div>📜 <b>교독문</b> ' + esc(r.gyodok) + '</div>' : '') + '</div>' : '';
+    var praiseArr = (function () { try { return JSON.parse(r.praise || '[]') || []; } catch (e) { return []; } })();
+    var orderRows = '';
+    if (r.gyodok) orderRows += '<div>📜 <b>교독문</b> &nbsp;' + esc(r.gyodok) + '</div>';
+    if (hymnsTxt) orderRows += '<div>🎵 <b>찬송가</b> &nbsp;' + esc(hymnsTxt) + '</div>';
+    if (praiseArr.length) orderRows += '<div>🎶 <b>찬양</b> &nbsp;' + praiseArr.map(function (p, i) { var t = esc(p.title || ('곡 ' + (i + 1))); return p.url ? ('<a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + t + '</a>') : t; }).join(' &nbsp;›&nbsp; ') + '</div>';
+    if (r.scripture) orderRows += '<div>📖 <b>본문</b> &nbsp;' + esc(r.scripture) + '</div>';
+    var orderHtml = orderRows ? '<div class="order"><div class="order-t">■ 예배 순서</div>' + orderRows + '</div>' : '';
     var bodyHtml = esc(r.content || '').replace(/\n/g, '<br>');
     var css = [
       '*{box-sizing:border-box}',
@@ -542,7 +586,8 @@ console.log('[affairs.js] v20260701bq');
       'h1{font-size:1.6em;margin:0 0 6px;line-height:1.35}',
       '.scr{font-size:1.05em;color:#7a5d27;font-weight:600;margin:0 0 4px}',
       '.meta{font-size:.8em;color:#9a8f78;margin:0 0 14px;font-family:"Noto Sans KR",sans-serif}',
-      '.order{font-family:"Noto Sans KR",sans-serif;font-size:.82em;background:#f1ece0;border:1px solid #e4dcc9;border-radius:10px;padding:10px 14px;margin:0 0 22px;line-height:1.7}body.dark .order{background:#23262c;border-color:#3a3d44}',
+      '.order{font-family:"Noto Sans KR",sans-serif;font-size:.82em;background:#f1ece0;border:1px solid #e4dcc9;border-radius:10px;padding:11px 15px;margin:0 0 22px;line-height:1.85}body.dark .order{background:#23262c;border-color:#3a3d44}',
+      '.order-t{font-weight:700;color:#7a5d27;margin-bottom:5px}body.dark .order-t{color:#e0c98a}.order a{color:#1f6feb}',
       '.body{white-space:normal}',
       'body.dark{background:#15171b;color:#e9e6df}body.dark .bar{background:rgba(25,27,31,.96);border-color:#2a2d33}body.dark .bar button{background:#23262c;color:#e9e6df;border-color:#3a3d44}body.dark .scr{color:#e0c98a}body.dark .meta{color:#8a8576}',
       '@media print{.bar{display:none}body{background:#fff;font-size:13pt}.wrap{padding:0}}'
