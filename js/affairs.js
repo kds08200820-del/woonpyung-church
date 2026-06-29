@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701dg
+ * 콘솔: [affairs.js] v20260701dh
  */
-console.log('[affairs.js] v20260701dg');
+console.log('[affairs.js] v20260701dh');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -51,14 +51,49 @@ console.log('[affairs.js] v20260701dg');
       return { uid: s && s.user && s.user.id, token: s && s.access_token };
     } catch (e) { return null; }
   }
-  function api(method, path, body, prefer) {
+  // 만료된 access_token 을 refresh_token 으로 갱신(중복 호출 방지)
+  var _refreshing = null;
+  function refreshToken() {
+    if (_refreshing) return _refreshing;
+    _refreshing = (function () {
+      try {
+        var ref = (SB || '').match(/https:\/\/([^.]+)\./)[1];
+        var key = 'sb-' + ref + '-auth-token';
+        var raw = localStorage.getItem(key); if (!raw) return Promise.reject(new Error('no session'));
+        var stored = JSON.parse(raw); var cur = stored.currentSession || stored;
+        var rt = cur && cur.refresh_token; if (!rt) return Promise.reject(new Error('no refresh token'));
+        return fetch(SB + '/auth/v1/token?grant_type=refresh_token', {
+          method: 'POST', headers: { apikey: AK, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: rt })
+        }).then(function (r) { return r.json(); }).then(function (data) {
+          if (!data || !data.access_token) throw new Error('refresh failed');
+          var t = stored.currentSession ? stored.currentSession : stored;
+          t.access_token = data.access_token; t.refresh_token = data.refresh_token || rt;
+          if (data.expires_at) t.expires_at = data.expires_at; if (data.expires_in) t.expires_in = data.expires_in;
+          if (data.user) t.user = data.user;
+          localStorage.setItem(key, JSON.stringify(stored));
+          return data.access_token;
+        });
+      } catch (e) { return Promise.reject(e); }
+    })();
+    _refreshing.then(function () { _refreshing = null; }, function () { _refreshing = null; });
+    return _refreshing;
+  }
+  function api(method, path, body, prefer, _retried) {
     var s = sess(); var h = { apikey: AK, 'Content-Type': 'application/json' };
     if (s && s.token) h.Authorization = 'Bearer ' + s.token;
     if (prefer) h.Prefer = prefer;
     var opt = { method: method, headers: h };
     if (body) opt.body = JSON.stringify(body);
     return fetch(SB + '/rest/v1/' + path, opt).then(function (r) {
-      if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); });
+      if (!r.ok) {
+        return r.text().then(function (t) {
+          // 토큰 만료(JWT expired/PGRST303/401) → 1회 갱신 후 재시도
+          if (!_retried && (r.status === 401 || /JWT expired|PGRST303|invalid (JWT|token)|token.*expired/i.test(t || ''))) {
+            return refreshToken().then(function () { return api(method, path, body, prefer, true); });
+          }
+          throw new Error(t || ('HTTP ' + r.status));
+        });
+      }
       // return=minimal 의 POST 는 201(빈 본문), PATCH/DELETE 는 204 → 본문 유무로 안전 파싱
       return r.text().then(function (t) { return t ? JSON.parse(t) : null; });
     });
