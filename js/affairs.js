@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701ba
+ * 콘솔: [affairs.js] v20260701bb
  */
-console.log('[affairs.js] v20260701ba');
+console.log('[affairs.js] v20260701bb');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -59,7 +59,8 @@ console.log('[affairs.js] v20260701ba');
     if (body) opt.body = JSON.stringify(body);
     return fetch(SB + '/rest/v1/' + path, opt).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); });
-      return (r.status === 204) ? null : r.json();
+      // return=minimal 의 POST 는 201(빈 본문), PATCH/DELETE 는 204 → 본문 유무로 안전 파싱
+      return r.text().then(function (t) { return t ? JSON.parse(t) : null; });
     });
   }
 
@@ -159,7 +160,7 @@ console.log('[affairs.js] v20260701ba');
       if (!pop) return; var rows = pop.querySelectorAll('div');
       if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); }
-      else if (e.key === 'Enter' && hi >= 0) { e.preventDefault(); pick(matches[hi]); return; }
+      else if (e.key === 'Enter') { if (matches.length) { e.preventDefault(); pick(matches[hi >= 0 ? hi : 0]); } return; }
       else if (e.key === 'Escape') { close(); return; }
       else return;
       Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); });
