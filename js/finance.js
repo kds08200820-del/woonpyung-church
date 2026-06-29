@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701an
+ * 콘솔: [finance.js] v20260701ao
  */
-console.log('[finance.js] v20260701an');
+console.log('[finance.js] v20260701ao');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -129,9 +129,46 @@ console.log('[finance.js] v20260701an');
   }
 
   // 보고서 패널에 인쇄 버튼을 얹고 본문을 감싼다
-  function withPrint(el, title, contentHTML, sub) {
-    el.innerHTML = '<div style="display:flex;justify-content:flex-end;margin-bottom:10px;"><button class="btn btn-line" data-print>🖨 인쇄 / PDF</button></div><div class="rep-body">' + contentHTML + '</div>';
+  function withPrint(el, title, contentHTML, sub, csvData) {
+    el.innerHTML = '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px;"><button class="btn btn-line" data-xls>⬇ 엑셀</button><button class="btn btn-line" data-print>🖨 인쇄 / PDF</button></div><div class="rep-body">' + contentHTML + '</div>';
     el.querySelector('[data-print]').onclick = function () { printDoc(title, el.querySelector('.rep-body').innerHTML, sub); };
+    el.querySelector('[data-xls]').onclick = function () { exportBodyToCSV(el.querySelector('.rep-body'), title, sub, csvData); };
+  }
+  // ── 엑셀(CSV) 내보내기 공통 ──
+  function safeFile(s) { return String(s == null ? 'export' : s).replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_'); }
+  function csvCell(v) { v = String(v == null ? '' : v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function downloadCSV(filename, matrix) {
+    var csv = '﻿' + matrix.map(function (r) { return (r || []).map(csvCell).join(','); }).join('\r\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  // DOM <table> → 행렬 (체크박스·관리 열 제외)
+  function tableToCSV(table) {
+    var out = [], skip = {}, headTexts = [];
+    var thead = table.querySelector('thead');
+    if (thead) {
+      var hrows = thead.querySelectorAll('tr'), hrow = hrows[hrows.length - 1];
+      if (hrow) Array.prototype.forEach.call(hrow.children, function (c, i) { var t = (c.textContent || '').replace(/\s+/g, ' ').trim(); headTexts[i] = t; if (!t || t === '관리') skip[i] = 1; });
+    }
+    function rowArr(tr) { var a = []; Array.prototype.forEach.call(tr.children, function (c, i) { if (skip[i]) return; a.push((c.textContent || '').replace(/\s+/g, ' ').trim()); }); return a; }
+    if (headTexts.length) { var h = []; headTexts.forEach(function (t, i) { if (!skip[i]) h.push(t); }); out.push(h); }
+    Array.prototype.forEach.call(table.querySelectorAll('tbody tr'), function (tr) { out.push(rowArr(tr)); });
+    Array.prototype.forEach.call(table.querySelectorAll('tfoot tr'), function (tr) { out.push(rowArr(tr)); });
+    return out;
+  }
+  // 보고서 본문을 CSV로. csvData={headers,rows} 가 있으면 우선(전체 데이터), 없으면 화면의 표를 추출.
+  function exportBodyToCSV(body, title, sub, csvData) {
+    var matrix = [[title + (sub ? (' (' + sub + ')') : '')], []];
+    if (csvData && csvData.rows) {
+      if (csvData.headers) matrix.push(csvData.headers);
+      csvData.rows.forEach(function (r) { matrix.push(r); });
+    } else {
+      var tables = body ? body.querySelectorAll('table') : [];
+      if (!tables.length) { alert('내보낼 표가 없습니다.'); return; }
+      Array.prototype.forEach.call(tables, function (t, idx) { if (idx) matrix.push([]); tableToCSV(t).forEach(function (r) { matrix.push(r); }); });
+    }
+    downloadCSV(safeFile(title) + '_' + today() + '.csv', matrix);
   }
   // 주(週) 범위: 일요일~토요일
   function ymdOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
@@ -818,7 +855,9 @@ console.log('[finance.js] v20260701an');
         var inc = 0, exp = 0; list.forEach(function (x) { if (String(x['구분']) === '수입') inc += Number(x['금액']) || 0; else exp += Number(x['금액']) || 0; });
         withPrint(out, '거래장부', '<div class="fin-card" style="display:flex;gap:24px;flex-wrap:wrap;align-items:center"><div>수입 <b style="color:#1e874b">' + won(inc) + '</b></div><div>지출 <b style="color:#c0392b">' + won(exp) + '</b></div><div>차액 <b>' + won(inc - exp) + '</b></div><div style="margin-left:auto">' + list.length + '건</div><button class="btn btn-line mng" style="padding:4px 12px;font-size:.8rem" data-bulk>🗑 선택 삭제</button></div>' +
           '<div class="fin-card" style="overflow:auto;max-height:560px"><table class="fin-table"><thead><tr><th class="mng" style="width:30px;text-align:center"><input type="checkbox" data-all></th><th>일자</th><th>구분</th><th>계정</th><th>상대/적요</th><th class="num">수입</th><th class="num">지출</th><th class="mng">관리</th></tr></thead><tbody>' +
-          list.slice(0, 1500).map(function (x) { var isIn = String(x['구분']) === '수입'; return '<tr><td class="mng" style="text-align:center"><input type="checkbox" class="rowck" value="' + esc(x['전표ID']) + '"></td><td>' + esc(fmtD(x['일자'])) + '</td><td><span class="fin-pill ' + (isIn ? 'in' : 'out') + '">' + esc(x['구분']) + '</span></td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || x['적요'] || '') + '</td><td class="num">' + (isIn ? won(x['금액']) : '') + '</td><td class="num">' + (!isIn ? won(x['금액']) : '') + '</td><td class="mng" style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table>' + (list.length > 1500 ? '<p class="help" style="padding:8px">최근 1,500건만 표시(합계는 전체 기준).</p>' : '') + '</div>');
+          list.slice(0, 1500).map(function (x) { var isIn = String(x['구분']) === '수입'; return '<tr><td class="mng" style="text-align:center"><input type="checkbox" class="rowck" value="' + esc(x['전표ID']) + '"></td><td>' + esc(fmtD(x['일자'])) + '</td><td><span class="fin-pill ' + (isIn ? 'in' : 'out') + '">' + esc(x['구분']) + '</span></td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || x['적요'] || '') + '</td><td class="num">' + (isIn ? won(x['금액']) : '') + '</td><td class="num">' + (!isIn ? won(x['금액']) : '') + '</td><td class="mng" style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table>' + (list.length > 1500 ? '<p class="help" style="padding:8px">최근 1,500건만 표시(합계·엑셀은 전체 기준).</p>' : '') + '</div>',
+          null,
+          { headers: ['일자', '구분', '계정', '상대/적요', '수입', '지출'], rows: list.map(function (x) { var isIn = String(x['구분']) === '수입'; return [fmtD(x['일자']), x['구분'], x['계정'], (x['헌금자'] || x['적요'] || ''), (isIn ? (Number(x['금액']) || 0) : ''), (!isIn ? (Number(x['금액']) || 0) : '')]; }) });
         var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
         wireChecks(out, draw);
         Array.prototype.forEach.call(out.querySelectorAll('[data-edit]'), function (b) { b.onclick = function () { openEditor(byId[b.dataset.edit], draw); }; });
@@ -1062,7 +1101,7 @@ console.log('[finance.js] v20260701an');
       panel.innerHTML =
         (org.bizno ? '' : '<div style="background:#fdecea;border:1px solid #f5b7b1;color:#922b21;padding:9px 13px;border-radius:8px;font-size:.83rem;margin-bottom:10px">⚠ 발급기관 <b>고유번호(사업자등록번호)</b>가 비어 있습니다. <b>설정 → 기부금영수증 발급기관</b>에서 먼저 입력하세요. (영수증 효력에 필요)</div>') +
         '<div class="fin-card"><div style="background:#fff8e8;border:1px solid #f0d98c;color:#8a6512;padding:10px 14px;border-radius:9px;font-size:.85rem;margin-bottom:12px">연말정산 기부금영수증 — 교적 매칭된 교인의 헌금 누계입니다. <b>발급</b> 버튼으로 공식 양식(소득세법 시행규칙 별지 제45호의2서식) 영수증을 출력/PDF 저장합니다. (미등록 헌금자 제외)</div>' +
-        '<div style="display:flex;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px"><b>교인별 헌금 누계 (' + rows.length + '명) · ' + M.fy + '년도</b><b style="color:#1e874b">' + won(tot) + '원</b></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px"><b>교인별 헌금 누계 (' + rows.length + '명) · ' + M.fy + '년도</b><span><b style="color:#1e874b;margin-right:12px">' + won(tot) + '원</b><button class="btn btn-line" id="rcp_xls">⬇ 엑셀</button></span></div>' +
         '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th class="num">건수</th><th class="num">헌금 누계</th><th>발급</th></tr></thead><tbody>' +
         rows.map(function (r, i) {
           var rc = cov[r.key];
@@ -1076,6 +1115,12 @@ console.log('[finance.js] v20260701an');
           }
           return '<tr><td><b>' + esc(r.name) + '</b></td><td>' + esc(birthFromKey(r.key)) + '</td><td class="num">' + r.count + '</td><td class="num"><b>' + won(r.total) + '</b></td><td style="white-space:nowrap">' + st + '</td></tr>';
         }).join('') + '</tbody></table></div></div>';
+      panel.querySelector('#rcp_xls').onclick = function () {
+        downloadCSV('교인별_헌금누계_' + M.fy + '_' + today() + '.csv',
+          [['교인별 헌금 누계 · ' + M.fy + '년도'], [], ['이름', '생년월일', '건수', '헌금누계', '발급상태']].concat(
+            rows.map(function (r) { var rc = cov[r.key]; var stat = rc ? ('발급완료(' + (rc.method === 'pdf' ? 'PDF' : '출력') + (rc.spouse ? (rc.key && rc.key !== r.key ? '·배우자합산' : '·부부합산') : '') + ')') : '미발급'; return [r.name, birthFromKey(r.key), r.count, r.total, stat]; })
+          ));
+      };
       Array.prototype.forEach.call(panel.querySelectorAll('.rcp-issue'), function (b) {
         b.onclick = function () { openReceiptModal(rows[Number(b.dataset.idx)], function () { renderReceipt(panel); }); };
       });
@@ -1324,11 +1369,17 @@ console.log('[finance.js] v20260701an');
     function draw() {
       panel.innerHTML = '';
       var bar = document.createElement('div'); bar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px';
-      bar.innerHTML = '<span id="bud_msg" style="font-size:.85rem;color:var(--ink-soft)"></span><button class="btn ' + (editing ? 'btn-solid' : 'btn-line') + '" id="bud_edit">' + (editing ? '✓ 편집 완료' : '✏️ 계정·예산 수정') + '</button>';
+      bar.innerHTML = '<span id="bud_msg" style="font-size:.85rem;color:var(--ink-soft)"></span><span style="display:flex;gap:8px"><button class="btn btn-line" id="bud_xls">⬇ 엑셀</button><button class="btn ' + (editing ? 'btn-solid' : 'btn-line') + '" id="bud_edit">' + (editing ? '✓ 편집 완료' : '✏️ 계정·예산 수정') + '</button></span>';
       panel.appendChild(bar);
       var msg = bar.querySelector('#bud_msg');
       function flash(t, ok) { msg.textContent = t; msg.style.color = ok === false ? '#c0392b' : (ok ? 'green' : 'var(--ink-soft)'); }
       bar.querySelector('#bud_edit').onclick = function () { editing = !editing; draw(); };
+      bar.querySelector('#bud_xls').onclick = function () {
+        var rows = M.budget.slice().sort(function (a, b) { return String(a['계정코드']).localeCompare(String(b['계정코드'])); }).map(function (b) {
+          return [b['구분'], b['계정코드'], b['계정이름'], (isGroup(b['계정코드']) ? '항' : '목'), Number(b['예산']) || 0, Number(b['전년예산']) || 0, Number(b['전년결산']) || 0];
+        });
+        downloadCSV('예산_' + M.fy + '_' + today() + '.csv', [['예산서 · ' + M.fy + '년도'], [], ['구분', '계정코드', '계정이름', '항/목', '금년예산', '전년예산', '전년결산']].concat(rows));
+      };
       if (editing) { var hint = document.createElement('p'); hint.className = 'help'; hint.style.marginBottom = '12px'; hint.textContent = '편집 모드: 항(분류)·목(계정)을 추가·이름수정·삭제할 수 있습니다. 금년예산 칸은 언제든 클릭해 바로 저장됩니다.'; panel.appendChild(hint); }
 
       ['수입', '지출'].forEach(function (g) {
