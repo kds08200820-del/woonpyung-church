@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cs
+ * 콘솔: [affairs.js] v20260701ct
  */
-console.log('[affairs.js] v20260701cs');
+console.log('[affairs.js] v20260701ct');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1305,7 +1305,9 @@ console.log('[affairs.js] v20260701cs');
         if (r.giver && r.giver.trim()) byCat[c].givers.push(r.giver.trim());
         var a = Number(r.amount) || 0; byCat[c].sum += a; total += a;
       });
-      function find(key) { if (byCat[key]) return byCat[key]; for (var k in byCat) { if (k.indexOf(key) >= 0 || key.indexOf(k) >= 0) return byCat[k]; } return null; }
+      // 항목명은 재정 입력값과 동일. 주보 표기만 다른 항목은 별칭으로 연결(일천번제=일천번기도)
+      var ALIAS = { '일천번제': '일천번기도', '일천번기도': '일천번제' };
+      function find(key) { if (byCat[key]) return byCat[key]; var al = ALIAS[key]; if (al && byCat[al]) return byCat[al]; return null; }
       function set(id, v) { var el = document.getElementById(id); if (el) el.value = v; }
       OFFER_KEYS.forEach(function (k) { var b = find(k); if (b && b.givers.length) set('bt_off_' + k, b.givers.join(' ')); });
       AMOUNT_KEYS.forEach(function (k) { if (k === '합계') { set('bt_amt_합계', comma(total)); return; } var b = find(k); if (b) set('bt_amt_' + k, comma(b.sum)); });
