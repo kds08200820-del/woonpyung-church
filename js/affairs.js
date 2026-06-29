@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701bb
+ * 콘솔: [affairs.js] v20260701bc
  */
-console.log('[affairs.js] v20260701bb');
+console.log('[affairs.js] v20260701bc');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -141,7 +141,7 @@ console.log('[affairs.js] v20260701bb');
       else { hint.innerHTML = ''; }
     }
     function setKey(m) { input.dataset.memberKey = (m && m.key) || ''; showHint(m); }
-    function pick(m) { input.value = m.name; close(); setKey(m); }
+    function pick(m) { input.value = m.name; close(); setKey(m); setTimeout(function () { var nx = form.querySelector('[data-k="category"]'); if (nx) nx.focus(); }, 0); }
     input.addEventListener('input', function () {
       input.dataset.memberKey = ''; var q = input.value.trim().toLowerCase(); close(); showHint(null);
       if (!q || !MEMBERS.length) return;
