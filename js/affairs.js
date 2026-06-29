@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701co
+ * 콘솔: [affairs.js] v20260701cp
  */
-console.log('[affairs.js] v20260701co');
+console.log('[affairs.js] v20260701cp');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1051,15 +1051,23 @@ console.log('[affairs.js] v20260701co');
   }
   // 교회 설립일(설정에서 변경). 호수의 주년 계산 기준
   var FOUNDED_DATE = '1964-03-01', FOUNDED_YEAR = 1964;
+  var PDF_NAME = '{date} 주보'; // 주보 PDF 기본 파일명 형식
   function loadGeneral() {
     return api('GET', 'church_settings?key=eq.general&select=data').then(function (rows) {
       var g = (rows && rows[0] && rows[0].data) || {};
       if (g.founded) { FOUNDED_DATE = g.founded; FOUNDED_YEAR = new Date(g.founded + 'T00:00:00').getFullYear(); }
+      if (g.pdf_name) PDF_NAME = g.pdf_name;
       return g;
     }).catch(function () { return {}; });
   }
   // 호수: (설립연도 기준 주년)-(그 해 주차). 예: 1964설립·2026-07-05 → 62-27
   function bulletinNo(bd) { if (!bd) return ''; var y = new Date(bd + 'T00:00:00').getFullYear(); return (y - FOUNDED_YEAR) + '-' + weekNoOfYear(bd); }
+  // 주보 PDF 파일명: {date}=YYYYMMDD, {no}=호수, {week}=주차
+  function bulletinFileName(rec) {
+    rec = rec || {}; var d = rec.data || {};
+    var ds = String(rec.bdate || '').replace(/-/g, '');
+    return ((PDF_NAME || '{date} 주보').replace(/\{date\}/g, ds).replace(/\{no\}/g, d.no || '').replace(/\{week\}/g, d.week || '').replace(/\s+/g, ' ').trim()) || ('주보 ' + ds);
+  }
   // 주차 라벨: "7월 첫째 주"
   function bulletinWeekLabel(bd) {
     if (!bd) return ''; var d = new Date(bd + 'T00:00:00');
@@ -1108,7 +1116,7 @@ console.log('[affairs.js] v20260701co');
           var w = window.open('', '_blank'); // 클릭 즉시 동기 오픈(팝업 차단 회피)
           api('GET', 'bulletins?id=eq.' + b.dataset.id + '&select=*').then(function (rs) {
             var rec = (rs && rs[0]) || {};
-            if (w && window.BulletinRender) { w.document.write(window.BulletinRender.html(rec, { amounts: true, layout: 'print3' })); w.document.close(); w.focus(); }
+            if (w && window.BulletinRender) { w.document.write(window.BulletinRender.html(rec, { amounts: true, layout: 'print3', fileName: bulletinFileName(rec) })); w.document.close(); w.focus(); }
             else if (w) { w.close(); alert('주보 렌더러를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.'); }
           }).catch(function (e) { if (w) w.close(); alert('불러오기 실패: ' + e.message); });
         };
@@ -1317,7 +1325,9 @@ console.log('[affairs.js] v20260701co');
 
   // 주보 보기/인쇄(새 창) — 공용 렌더러(js/bulletin-render.js) 사용. opts.amounts=true 면 금액 포함
   function bulletinView(rec, opts) {
-    if (window.BulletinRender) { window.BulletinRender.open(rec, opts || {}); return; }
+    opts = opts || {};
+    if (!opts.fileName) opts.fileName = bulletinFileName(rec); // PDF 기본 파일명
+    if (window.BulletinRender) { window.BulletinRender.open(rec, opts); return; }
     alert('주보 렌더러(bulletin-render.js)가 로드되지 않았습니다. 페이지를 새로고침해 주세요.');
   }
 
@@ -1363,8 +1373,17 @@ console.log('[affairs.js] v20260701co');
       '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end">' +
       '<div class="af-field"><label>교회 설립일</label><input type="date" id="set_founded" value=""></div>' +
       '<div class="af-field"><label>현재 주년(자동)</label><input type="text" id="set_anniv" value="" readonly style="background:#f5f7fa"></div>' +
-      '<div><button class="btn btn-line" id="set_save_g" style="padding:8px 16px;font-size:.85rem">💾 기본 정보 저장</button> <span id="set_gmsg" class="fin-msg"></span></div>' +
       '</div></div>' +
+      // 주보 PDF 저장
+      '<div class="fin-card"><h3 style="margin:0 0 4px;color:var(--accent,#032257)">주보 PDF 저장</h3>' +
+      '<p style="margin:0 0 12px;color:var(--ink-soft,#7b8794);font-size:.9rem">주보를 <b>🖨 3단 인쇄(PDF)</b> 할 때 PDF의 기본 <b>파일명</b>을 정합니다. 사용 가능한 항목: <code>{date}</code>(20260705) · <code>{no}</code>(62-27) · <code>{week}</code>(7월 첫째 주)</p>' +
+      '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end">' +
+      '<div class="af-field"><label>PDF 파일명 형식</label><input type="text" id="set_pdfname" value="" placeholder="{date} 주보"></div>' +
+      '<div class="af-field"><label>미리보기</label><input type="text" id="set_pdfprev" value="" readonly style="background:#f5f7fa"></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><button class="btn btn-solid" id="set_save_g" style="padding:8px 16px;font-size:.85rem">💾 기본 정보 저장</button> <span id="set_gmsg" class="fin-msg"></span></div>' +
+      '<p style="margin:10px 0 0;color:#9aa5b1;font-size:.78rem">※ 브라우저 보안상 웹페이지가 PC의 저장 <b>폴더</b>를 직접 지정할 수는 없습니다. 인쇄 창에서 <b>대상 → ‘PDF로 저장’</b>을 고른 뒤 폴더를 한 번 선택하면, 브라우저가 그 위치를 기억해 다음부터 같은 폴더로 저장됩니다.</p>' +
+      '</div>' +
       '<div class="fin-card"><h3 style="margin:0 0 4px;color:var(--accent,#032257)">연간 봉사위원</h3>' +
       '<p style="margin:0 0 12px;color:var(--ink-soft,#7b8794);font-size:.9rem">월별 봉사위원을 한 번 입력해 두면, <b>주보 제작 → 데이터 불러오기</b> 시 해당 월 봉사위원이 자동으로 채워집니다. 그 달 <b>마지막 주일</b> 주보에는 다음 달 봉사위원도 함께 표기됩니다.</p>' +
       '<div id="set_rows"></div>' +
@@ -1393,15 +1412,23 @@ console.log('[affairs.js] v20260701co');
     function gmsg(t, c) { var e = panel.querySelector('#set_gmsg'); if (e) { e.style.color = c || '#7b8794'; e.textContent = t; if (t) setTimeout(function () { if (e.textContent === t) e.textContent = ''; }, 3000); } }
     function annivOf(fdate) { if (!fdate) return ''; var fy = new Date(fdate + 'T00:00:00').getFullYear(); return (new Date().getFullYear() - fy) + '주년'; }
     var fEl = panel.querySelector('#set_founded'), aEl = panel.querySelector('#set_anniv');
+    var pEl = panel.querySelector('#set_pdfname'), pvEl = panel.querySelector('#set_pdfprev');
+    function pdfPreview() {
+      var fmt = pEl.value || '{date} 주보';
+      var ds = (nextSunday()).replace(/-/g, '');
+      pvEl.value = fmt.replace(/\{date\}/g, ds).replace(/\{no\}/g, bulletinNo(nextSunday())).replace(/\{week\}/g, bulletinWeekLabel(nextSunday())).replace(/\s+/g, ' ').trim() + '.pdf';
+    }
     fEl.addEventListener('change', function () { aEl.value = annivOf(fEl.value); });
+    pEl.addEventListener('input', pdfPreview);
     panel.querySelector('#set_save_g').onclick = function () {
       var fd = fEl.value; if (!fd) { gmsg('설립일을 입력하세요.', '#c0392b'); return; }
+      var pn = (pEl.value || '{date} 주보').trim();
       gmsg('저장 중…');
-      api('POST', 'church_settings?on_conflict=key', { key: 'general', data: { founded: fd }, updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal')
-        .then(function () { FOUNDED_DATE = fd; FOUNDED_YEAR = new Date(fd + 'T00:00:00').getFullYear(); gmsg('✓ 저장됨 — 이후 주보 호수에 반영됩니다', 'green'); })
+      api('POST', 'church_settings?on_conflict=key', { key: 'general', data: { founded: fd, pdf_name: pn }, updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal')
+        .then(function () { FOUNDED_DATE = fd; FOUNDED_YEAR = new Date(fd + 'T00:00:00').getFullYear(); PDF_NAME = pn; gmsg('✓ 저장됨 — 주보 호수·PDF 파일명에 반영됩니다', 'green'); })
         .catch(function (e) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e.message)) gmsg('church_settings.sql 실행 필요', '#c0392b'); else gmsg('저장 실패: ' + e.message, '#c0392b'); });
     };
-    loadGeneral().then(function (g) { fEl.value = (g && g.founded) || FOUNDED_DATE; aEl.value = annivOf(fEl.value); });
+    loadGeneral().then(function (g) { fEl.value = (g && g.founded) || FOUNDED_DATE; aEl.value = annivOf(fEl.value); pEl.value = (g && g.pdf_name) || PDF_NAME; pdfPreview(); });
     panel.querySelector('#set_add').onclick = function () { coms.push({ month: '', offering: '', guide: '', parking: '' }); renderRows(); };
     panel.querySelector('#set_save').onclick = function () {
       coms.sort(function (a, b) { return (a.month || '') < (b.month || '') ? -1 : 1; });

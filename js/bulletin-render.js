@@ -140,7 +140,7 @@
     var p3 = opts.layout === 'print3';
     var infoTxt = p3 ? '🖨 인쇄용 3단 · 211×380mm' + (opts.amounts ? ' · 금액 포함' : '') : (opts.amounts ? '🔒 인쇄용 · 금액 포함' : '홈페이지용');
     return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-      '<title>주보 ' + esc(ymd(rec.bdate)) + '</title>' +
+      '<title>' + esc(opts.fileName || ('주보 ' + ymd(rec.bdate))) + '</title>' +
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
       '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
       '<style>' + css() + '</style></head><body' + (p3 ? ' class="l3"' : '') + '>' +
