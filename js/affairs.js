@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cu
+ * 콘솔: [affairs.js] v20260701cv
  */
-console.log('[affairs.js] v20260701cu');
+console.log('[affairs.js] v20260701cv');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1170,7 +1170,7 @@ console.log('[affairs.js] v20260701cu');
       '<div>' + tI('수요기도회 — 강해 시리즈', 'bt_wed_series', d.wed_series, '예: 레위기 강해(1)') + '</div>' +
       '<div>' + tI('수요기도회 — 제목', 'bt_wed_title', d.wed_title, '예: 레위기란 어떤 책인가?') + '</div>' +
       '</div>' +
-      tI('수요기도회 — 날짜·본문·설교자', 'bt_wed_line', d.wed_dateline, '예: 2026. 07. 01 · 레위기 1장1절 · 김동석 목사') +
+      tI('수요기도회 — 날짜·본문·설교자 <span style="font-weight:400;font-size:.72rem;color:#9aa5b1">날짜 자동(그 주 수요일)</span>', 'bt_wed_line', d.wed_dateline, '예: 2026. 07. 01 · 레위기 1장1절 · 김동석 목사') +
       '<div class="fin-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">' +
       '<div>' + tI('새벽기도회 본문', 'bt_dawn', d.dawn, '예: 나훔, 시편 강해') + '</div>' +
       '<div>' + tI('매일 QT 본문', 'bt_qt', d.qt, '예: 나훔 3장, 시편107편~109편') + '</div>' +
@@ -1198,12 +1198,24 @@ console.log('[affairs.js] v20260701cu');
     ov.querySelector('#bt_close').onclick = close;
     function bmsg(t, c) { var e = ov.querySelector('#bt_msg'); e.style.color = c || '#7b8794'; e.textContent = t; }
 
-    // 주일 날짜 선택 → 호수·주차 자동 갱신
+    // 수요기도회 날짜(그 주 수요일 = 주일+3) 자동 입력. 본문·설교자는 뒤에 유지
+    function wedDateStr(bd) { var d = new Date(addDays(bd, 3) + 'T00:00:00'); return d.getFullYear() + '. ' + pad2(d.getMonth() + 1) + '. ' + pad2(d.getDate()); }
+    function setWedDate(bd) {
+      var el = ov.querySelector('#bt_wed_line'); if (!el) return;
+      var dt = wedDateStr(bd), cur = el.value;
+      var re = /^\s*\d{4}\s*[.\-]\s*\d{1,2}\s*[.\-]\s*\d{1,2}\s*\.?/;
+      if (re.test(cur)) el.value = cur.replace(re, dt);            // 앞 날짜만 교체
+      else if (!cur.trim()) el.value = dt + ' · ';                  // 비었으면 날짜+구분자
+      else el.value = dt + ' · ' + cur;                            // 본문/설교자만 있으면 앞에 날짜
+    }
+    // 주일 날짜 선택 → 호수·주차·수요일 날짜 자동 갱신
     ov.querySelector('#bt_bdate').addEventListener('change', function () {
       var bd = this.value; if (!bd) return;
       ov.querySelector('#bt_no').value = bulletinNo(bd);
       ov.querySelector('#bt_week').value = bulletinWeekLabel(bd);
+      setWedDate(bd);
     });
+    if (!rec.id && !(d && d.wed_dateline)) setWedDate(bd0); // 신규 작성 시 기본 채움
     // 설립일(호수 주년 기준)이 아직 로드 전이면 로드 후 호수 보정(사용자가 비워둔 경우만)
     loadGeneral().then(function () {
       var bd = ov.querySelector('#bt_bdate').value;
