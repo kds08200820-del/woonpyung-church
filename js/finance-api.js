@@ -1,9 +1,9 @@
 /* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
  * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
- * 콘솔: [finance-api.js] v20260701cy (Supabase)
+ * 콘솔: [finance-api.js] v20260701cz (Supabase)
  */
-console.log('[finance-api.js] v20260701cy (Supabase)');
+console.log('[finance-api.js] v20260701cz (Supabase)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };

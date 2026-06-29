@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cy
+ * 콘솔: [affairs.js] v20260701cz
  */
-console.log('[affairs.js] v20260701cy');
+console.log('[affairs.js] v20260701cz');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1039,7 +1039,7 @@ console.log('[affairs.js] v20260701cy');
   var BULLETIN_PRESET = ['경배와찬양', '목회 기도', '송영', '성시교독', '신앙고백', '찬송', '기도', '성경봉독', '성가대찬양', '말씀강해', '헌금봉헌', '교회소식', '기도', '찬송', '축도'];
   var OFFER_KEYS = ['십일조', '감사헌금', '주일헌금', '건축헌금', '선교헌금', '유년부', '차량헌금', '일천번기도'];
   var AMOUNT_KEYS = ['십일조', '감사헌금', '주일헌금', '생일감사', '건축헌금', '선교헌금', '차량헌금', '일천번제', '합계'];
-  var COMMITTEE_KEYS = ['헌금위원', '안내위원', '주차·사찰', '이주의 기도'];
+  var COMMITTEE_KEYS = ['헌금위원', '안내위원', '주차·사찰', '다음 주 기도'];
   function addDays(d, n) { var t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() + n); return t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate()); }
   function nextSunday() { var d = new Date(); var add = (7 - d.getDay()) % 7; d.setDate(d.getDate() + (add === 0 ? 7 : add)); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
   // 그 해 몇 번째 일요일(주차)
@@ -1183,7 +1183,7 @@ console.log('[affairs.js] v20260701cy');
       '<p style="margin:0 0 10px;font-size:.8rem;color:#9aa5b1">항목을 자유롭게 추가할 수 있습니다(특별헌금·추수감사·맥추감사 등). <b>명단</b>은 홈페이지에도 공개되고, <b>금액</b>은 🔒 인쇄(PDF)에만 표시됩니다. — 데이터 불러오기 시 직전 주일 헌금이 항목별로 채워집니다.</p>' +
       '<div id="bt_offer"></div></div>' +
       // 봉사위원
-      '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent)">⑥ 봉사위원 · 이주의 기도</h4>' +
+      '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent)">⑥ 봉사위원 · 다음 주 기도 <span style="font-weight:400;font-size:.72rem;color:#9aa5b1">이번 주 기도자는 예배 순서 \'기도\'에 자동</span></h4>' +
       '<div class="fin-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
       COMMITTEE_KEYS.map(function (k, i) { return tI(k, 'bt_com_' + i, com[k]); }).join('') +
       '</div></div>' +
@@ -1433,13 +1433,20 @@ console.log('[affairs.js] v20260701cy');
       set('헌금위원', merge(cur.offering, nextTxt && nextTxt.offering));
       set('안내위원', merge(cur.guide, nextTxt && nextTxt.guide));
       set('주차·사찰', merge(cur.parking, nextTxt && nextTxt.parking));
-      // 이주의 기도(2부 예배 기도) — 그 주차에 해당하는 기도자
-      if (cur.prayer && cur.prayer.length) {
-        var nth = Math.floor((new Date(bd + 'T00:00:00').getDate() - 1) / 7) + 1;
-        var pr = null;
-        for (var i = 0; i < cur.prayer.length; i++) { if ((cur.prayer[i].week || '').indexOf(nth + '주') >= 0) { pr = cur.prayer[i]; break; } }
-        if (pr && pr.person) set('이주의 기도', pr.person);
+      // 기도자(2부 예배 기도): 이번 주 → 예배 순서 '기도' 항목 / 다음 주 → ⑥ '다음 주 기도'
+      function prayerOf(arr, n) { if (!arr) return null; for (var i = 0; i < arr.length; i++) { if ((arr[i].week || '').indexOf(n + '주') >= 0) return arr[i]; } return null; }
+      var nth = Math.floor((new Date(bd + 'T00:00:00').getDate() - 1) / 7) + 1;
+      var thisPr = prayerOf(cur.prayer, nth);
+      var nextPr;
+      if (isLastSundayOfMonth(bd)) { var nxc = committeeFor(nextMonthYM(bd)); nextPr = nxc ? prayerOf(nxc.prayer, 1) : null; }
+      else nextPr = prayerOf(cur.prayer, nth + 1);
+      // 이번 주 기도자 → 예배 순서에서 라벨이 '기도'인 첫 항목의 내용/담당
+      if (thisPr && thisPr.person) {
+        for (var oi = 0; oi < order.length; oi++) { if (order[oi].label === '기도') { order[oi].detail = thisPr.person; break; } }
+        renderBOrder();
       }
+      // 다음 주 기도자 → ⑥ 봉사위원 '다음 주 기도'
+      set('다음 주 기도', nextPr ? nextPr.person : '');
       return true;
     }
     // 헌금 집계(Supabase offerings) → 동적 헌금 표(coffer)에 항목별 반영. 특별헌금 등은 자동 추가

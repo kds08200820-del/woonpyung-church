@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701cy
+ * 콘솔: [gyojeok.js] v20260701cz
  */
-console.log('[gyojeok.js] v20260701cy');
+console.log('[gyojeok.js] v20260701cz');
 
 (function () {
   var root = document.getElementById('gjRoot');
