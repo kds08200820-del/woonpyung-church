@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701bs
+ * 콘솔: [affairs.js] v20260701bt
  */
-console.log('[affairs.js] v20260701bs');
+console.log('[affairs.js] v20260701bt');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -419,32 +419,71 @@ console.log('[affairs.js] v20260701bs');
   var SVC_OPTS = ['주일 낮 예배', '주일 밤 예배', '수요예배', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'];
 
   function renderSermon(panel) {
+    var WTPL = {}, smView = 'list', smRows = [], calYM = null;
+    var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요예배': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
+    function svcColor(s) { return SERVICE_COLORS[s] || '#64748b'; }
+    api('GET', 'worship_templates?select=*').then(function (rows) { WTPL = {}; (rows || []).forEach(function (r) { WTPL[r.service] = r.items || []; }); }).catch(function () {});
     panel.innerHTML =
       '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">' +
       '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">설교 작성·관리</b>' +
-      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">설교를 작성해 <b>내보내기</b>하면 자동 등록되고, 목록의 <b>📖 보기</b>로 아이패드에서 바로 펼쳐 설교할 수 있습니다.</div></div>' +
-      '<button class="btn btn-solid" id="sm_start" style="padding:11px 22px;font-size:1rem">✍️ 설교 시작</button></div>' +
+      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">설교를 작성해 <b>내보내기</b>하면 자동 등록되고, <b>목록·캘린더</b>에서 관리할 수 있습니다.</div></div>' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+      '<span style="display:inline-flex;border:1px solid #cdd7e3;border-radius:8px;overflow:hidden"><button class="sm-view" data-v="list" style="border:0;background:#2f5d50;color:#fff;padding:7px 14px;cursor:pointer;font:inherit;font-size:.84rem;font-weight:700">목록</button><button class="sm-view" data-v="calendar" style="border:0;background:#fff;color:#48576b;padding:7px 14px;cursor:pointer;font:inherit;font-size:.84rem;font-weight:700">📅 캘린더</button></span>' +
+      '<button class="btn btn-solid" id="sm_start" style="padding:11px 22px;font-size:1rem">✍️ 설교 시작</button></div></div>' +
       '<div id="sm_list"><p class="qt-loading">불러오는 중…</p></div>';
     panel.querySelector('#sm_start').onclick = function () { sermonEditor(null); };
+    Array.prototype.forEach.call(panel.querySelectorAll('.sm-view'), function (b) { b.onclick = function () { smView = b.dataset.v; Array.prototype.forEach.call(panel.querySelectorAll('.sm-view'), function (x) { var on = x.dataset.v === smView; x.style.background = on ? '#2f5d50' : '#fff'; x.style.color = on ? '#fff' : '#48576b'; }); renderView(); }; });
 
     function loadList() {
-      var listBox = panel.querySelector('#sm_list');
-      api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) {
-        rows = rows || [];
-        if (!rows.length) { listBox.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">등록된 설교가 없습니다. <b>설교 시작</b>으로 작성해 보세요.</p></div>'; return; }
-        var byId = {}; rows.forEach(function (r) { byId[r.id] = r; });
-        listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>설교 (' + rows.length + '편)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>설교자</th><th>관리</th></tr></thead><tbody>' +
-          rows.map(function (r) {
-            return '<tr><td style="white-space:nowrap">' + esc(fmtD(r.sermon_date)) + '</td><td style="white-space:nowrap">' + esc(r.service || '') + '</td><td><b>' + esc(r.title || '(제목없음)') + '</b></td><td style="white-space:nowrap">' + esc(r.scripture || '') + '</td><td style="white-space:nowrap">' + esc(r.preacher || '') + '</td>' +
-              '<td style="white-space:nowrap"><button class="btn btn-solid sm-read" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 보기</button> <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button> <button class="btn btn-line sm-del" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">삭제</button></td></tr>';
-          }).join('') + '</tbody></table></div></div>';
-        Array.prototype.forEach.call(listBox.querySelectorAll('.sm-read'), function (b) { b.onclick = function () { sermonReadingView(byId[b.dataset.id]); }; });
-        Array.prototype.forEach.call(listBox.querySelectorAll('.sm-edit'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
-        Array.prototype.forEach.call(listBox.querySelectorAll('.sm-del'), function (b) { b.onclick = function () { if (!confirm('이 설교를 삭제할까요?')) return; api('DELETE', 'sermons?id=eq.' + b.dataset.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
-      }).catch(function (e) {
+      api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) { smRows = rows || []; renderView(); }).catch(function (e) {
+        var listBox = panel.querySelector('#sm_list');
         if (/42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message)) listBox.innerHTML = msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/affairs_modules.sql 을 1회 실행해 주세요.');
         else listBox.innerHTML = msgCard('조회 실패', e.message);
       });
+    }
+    function renderView() { if (smView === 'calendar') renderCalendar(); else renderTable(); }
+    function wireRows(box) {
+      var byId = {}; smRows.forEach(function (r) { byId[r.id] = r; });
+      Array.prototype.forEach.call(box.querySelectorAll('.sm-read'), function (b) { b.onclick = function () { sermonReadingView(byId[b.dataset.id]); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.sm-edit'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.sm-del'), function (b) { b.onclick = function () { if (!confirm('이 설교를 삭제할까요?')) return; api('DELETE', 'sermons?id=eq.' + b.dataset.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.cal-item'), function (el) { el.onclick = function () { sermonReadingView(byId[el.dataset.id]); }; });
+    }
+    function renderTable() {
+      var listBox = panel.querySelector('#sm_list'), rows = smRows;
+      if (!rows.length) { listBox.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">등록된 설교가 없습니다. <b>설교 시작</b>으로 작성해 보세요.</p></div>'; return; }
+      listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>설교 (' + rows.length + '편)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>설교자</th><th>관리</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          var c = svcColor(r.service);
+          return '<tr><td style="white-space:nowrap">' + esc(fmtD(r.sermon_date)) + '</td><td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td><td><b>' + esc(r.title || '(제목없음)') + '</b></td><td style="white-space:nowrap">' + esc(r.scripture || '') + '</td><td style="white-space:nowrap">' + esc(r.preacher || '') + '</td>' +
+            '<td style="white-space:nowrap"><button class="btn btn-solid sm-read" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 보기</button> <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button> <button class="btn btn-line sm-del" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">삭제</button></td></tr>';
+        }).join('') + '</tbody></table></div></div>';
+      wireRows(listBox);
+    }
+    function renderCalendar() {
+      var listBox = panel.querySelector('#sm_list');
+      if (!calYM) { var t = new Date(); calYM = { y: t.getFullYear(), m: t.getMonth() }; }
+      var y = calYM.y, m = calYM.m, startDow = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
+      var byDate = {}; smRows.forEach(function (r) { var d = fmtD(r.sermon_date); if (d) (byDate[d] = byDate[d] || []).push(r); });
+      var legend = Object.keys(SERVICE_COLORS).map(function (s) { return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:.74rem;margin:0 9px 4px 0"><span style="width:11px;height:11px;border-radius:3px;background:' + SERVICE_COLORS[s] + '"></span>' + esc(s) + '</span>'; }).join('');
+      var wd = ['일', '월', '화', '수', '목', '금', '토'];
+      var html = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
+        '<div style="display:flex;align-items:center;gap:8px"><button class="btn btn-line" id="cal_prev" style="padding:3px 11px">‹</button><b style="font-size:1.05rem;min-width:110px;text-align:center">' + y + '년 ' + (m + 1) + '월</b><button class="btn btn-line" id="cal_next" style="padding:3px 11px">›</button><button class="btn btn-line" id="cal_today" style="padding:3px 10px;font-size:.8rem">오늘</button></div>' +
+        '<div style="display:flex;flex-wrap:wrap">' + legend + '</div></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' +
+        wd.map(function (w, i) { return '<div style="text-align:center;font-size:.78rem;font-weight:700;color:' + (i === 0 ? '#c0392b' : (i === 6 ? '#2563eb' : '#7b8794')) + ';padding:4px 0">' + w + '</div>'; }).join('');
+      for (var b = 0; b < startDow; b++) html += '<div></div>';
+      for (var dd = 1; dd <= days; dd++) {
+        var ds = y + '-' + pad2(m + 1) + '-' + pad2(dd), dow = new Date(y, m, dd).getDay();
+        var items = (byDate[ds] || []).map(function (r) { var c = svcColor(r.service); return '<div class="cal-item" data-id="' + esc(r.id) + '" title="' + esc((r.service || '') + ' · ' + (r.title || '') + (r.scripture ? ' · ' + r.scripture : '')) + '" style="background:' + c + '1a;border-left:3px solid ' + c + ';border-radius:4px;padding:2px 5px;margin-top:3px;cursor:pointer;font-size:.72rem;line-height:1.25"><b style="color:' + c + '">' + esc(r.title || '(제목없음)') + '</b>' + (r.scripture ? '<div style="color:#7b8794">' + esc(r.scripture) + '</div>' : '') + '</div>'; }).join('');
+        html += '<div style="min-height:86px;border:1px solid #eef1f5;border-radius:8px;padding:4px 5px;background:#fff"><div style="font-size:.78rem;color:' + (dow === 0 ? '#c0392b' : (dow === 6 ? '#2563eb' : '#48576b')) + '">' + dd + '</div>' + items + '</div>';
+      }
+      html += '</div></div>';
+      listBox.innerHTML = html;
+      panel.querySelector('#cal_prev').onclick = function () { var nm = m - 1, ny = y; if (nm < 0) { nm = 11; ny--; } calYM = { y: ny, m: nm }; renderCalendar(); };
+      panel.querySelector('#cal_next').onclick = function () { var nm = m + 1, ny = y; if (nm > 11) { nm = 0; ny++; } calYM = { y: ny, m: nm }; renderCalendar(); };
+      panel.querySelector('#cal_today').onclick = function () { var t = new Date(); calYM = { y: t.getFullYear(), m: t.getMonth() }; renderCalendar(); };
+      wireRows(listBox);
     }
     loadList();
 
@@ -470,7 +509,9 @@ console.log('[affairs.js] v20260701bs');
         '<div id="se_sel" style="font-size:.82rem;color:#1e874b;margin-top:5px"></div>' +
         '<span style="font-size:.78rem;color:#9aa5b1;display:block;margin-top:2px">성경본문은 새 탭으로 열립니다. 선택한 <b>찬송가·교독문</b>은 내보내기 출력물(예배 정보)에 표시됩니다.</span></div>' +
         '<div style="max-width:1140px;margin:0 auto;padding:18px 16px 60px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">' +
-        '<div style="flex:0 0 290px;max-width:100%"><div class="af-field" style="margin:0"><label>예배 순서 (＋추가 · 드래그 정렬 · 찬양곡 끌어다 놓기)</label><div id="se_order"></div></div></div>' +
+        '<div style="flex:0 0 290px;max-width:100%"><div class="af-field" style="margin:0"><label>예배 순서 (＋추가 · 드래그 정렬 · 찬양곡 끌어다 놓기)</label>' +
+        '<div style="display:flex;gap:6px;margin-bottom:7px"><button type="button" class="btn btn-line" id="se_tpl_load" style="padding:4px 9px;font-size:.76rem">📋 양식 불러오기</button><button type="button" class="btn btn-line" id="se_tpl_save" style="padding:4px 9px;font-size:.76rem">💾 양식 저장</button><span id="se_tpl_msg" style="font-size:.74rem;color:#7b8794;align-self:center"></span></div>' +
+        '<div id="se_order"></div></div></div>' +
         '<div style="flex:1;min-width:320px">' +
         '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px">' +
         '<div class="af-field"><label>일자</label><input type="date" id="se_date" value="' + esc(fmtD(rec.sermon_date) || today()) + '"></div>' +
@@ -503,34 +544,53 @@ console.log('[affairs.js] v20260701bs');
       var dragKind = null, dragOrderIdx = -1, dragPraiseItem = null;
       var praise = []; try { praise = JSON.parse(rec.praise || '[]') || []; } catch (e) { praise = []; }
       var pBox = ov.querySelector('#se_praise'), pDrag = -1;
+      function uploadToPraise(i, f) {
+        if (!f || !praise[i]) return;
+        if (!(window.ChurchUpload && ChurchUpload.isReady())) { alert('업로드 서버가 설정되지 않았습니다.'); return; }
+        praise[i]._up = true; renderPraise();
+        ChurchUpload.upload(f, { folder: 'worship/praise', compress: false }).then(function (res) { if (praise[i]) { praise[i].url = res.url; praise[i]._up = false; } renderPraise(); }).catch(function (e) { if (praise[i]) praise[i]._up = false; renderPraise(); alert('업로드 실패: ' + e.message); });
+      }
       function renderPraise() {
         pBox.innerHTML = praise.map(function (p, i) {
           return '<div class="pr-row" draggable="true" data-i="' + i + '" style="display:flex;align-items:center;gap:7px;border:1px solid #e1e7ef;border-radius:9px;padding:7px 9px;margin-bottom:7px;background:#fff">' +
             '<span class="pr-handle" title="드래그로 순서 변경" style="cursor:grab;color:#9aa5b1">≡</span>' +
             '<span style="flex:0 0 22px;text-align:center;color:#7b8794;font-size:.82rem">' + (i + 1) + '</span>' +
             '<input type="text" class="pr-title" data-i="' + i + '" value="' + esc(p.title || '') + '" placeholder="찬양곡 제목" style="flex:1;min-width:120px;padding:6px 9px;border:1px solid #dfe5ee;border-radius:7px;font:inherit">' +
-            '<button type="button" class="btn btn-line pr-file" data-i="' + i + '" style="padding:5px 10px;font-size:.8rem">📎 ' + (p.url ? '교체' : '파일') + '</button>' +
+            '<button type="button" class="btn btn-line pr-file" data-i="' + i + '" style="padding:5px 10px;font-size:.8rem">📎 ' + (p._up ? '업로드 중…' : (p.url ? '교체' : '파일')) + '</button>' +
             (p.url ? '<a href="' + esc(p.url) + '" target="_blank" rel="noopener" style="font-size:.8rem">열기</a>' : '') +
             '<button type="button" class="btn btn-line pr-del" data-i="' + i + '" style="padding:5px 9px;font-size:.8rem;color:#c0392b">✕</button>' +
             '</div>';
-        }).join('') + '<button type="button" class="btn btn-line" id="pr_add" style="padding:7px 14px;font-size:.86rem">＋ 찬양곡 추가</button>';
+        }).join('') +
+          '<div id="pr_drop" style="border:2px dashed #cdd7e3;border-radius:9px;padding:9px;text-align:center;color:#9aa5b1;font-size:.79rem;margin-bottom:7px">파일을 여기로 끌어다 놓으면 찬양곡으로 추가됩니다</div>' +
+          '<button type="button" class="btn btn-line" id="pr_add" style="padding:7px 14px;font-size:.86rem">＋ 찬양곡 추가</button>';
         ov.querySelector('#pr_add').onclick = function () { praise.push({ title: '', url: '' }); renderPraise(); };
         Array.prototype.forEach.call(pBox.querySelectorAll('.pr-title'), function (inp) { inp.oninput = function () { praise[Number(inp.dataset.i)].title = inp.value; }; });
         Array.prototype.forEach.call(pBox.querySelectorAll('.pr-del'), function (b) { b.onclick = function () { praise.splice(Number(b.dataset.i), 1); renderPraise(); }; });
         Array.prototype.forEach.call(pBox.querySelectorAll('.pr-file'), function (b) {
-          b.onclick = function () {
-            if (!(window.ChurchUpload && ChurchUpload.isReady())) { alert('업로드 서버가 설정되지 않았습니다.'); return; }
-            var fi = document.createElement('input'); fi.type = 'file';
-            fi.onchange = function () { var f = fi.files && fi.files[0]; if (!f) return; var i = Number(b.dataset.i); b.textContent = '업로드 중…'; b.disabled = true; ChurchUpload.upload(f, { folder: 'worship/praise', compress: false }).then(function (res) { praise[i].url = res.url; renderPraise(); }).catch(function (e) { b.disabled = false; b.textContent = '📎 파일'; alert('업로드 실패: ' + e.message); }); };
-            fi.click();
-          };
+          b.onclick = function () { if (!(window.ChurchUpload && ChurchUpload.isReady())) { alert('업로드 서버가 설정되지 않았습니다.'); return; } var fi = document.createElement('input'); fi.type = 'file'; fi.onchange = function () { uploadToPraise(Number(b.dataset.i), fi.files && fi.files[0]); }; fi.click(); };
         });
         Array.prototype.forEach.call(pBox.querySelectorAll('.pr-row'), function (row) {
           row.addEventListener('dragstart', function () { pDrag = Number(row.dataset.i); dragKind = 'praise'; var p = praise[pDrag] || {}; dragPraiseItem = { title: p.title, url: p.url }; row.style.opacity = '.5'; });
           row.addEventListener('dragend', function () { row.style.opacity = ''; });
           row.addEventListener('dragover', function (e) { e.preventDefault(); row.style.borderColor = '#6f9be0'; });
           row.addEventListener('dragleave', function () { row.style.borderColor = '#e1e7ef'; });
-          row.addEventListener('drop', function (e) { e.preventDefault(); if (dragKind !== 'praise') { renderPraise(); return; } var to = Number(row.dataset.i); if (pDrag < 0 || pDrag === to) { renderPraise(); return; } var moved = praise.splice(pDrag, 1)[0]; praise.splice(to, 0, moved); pDrag = -1; dragKind = null; renderPraise(); });
+          row.addEventListener('drop', function (e) {
+            e.preventDefault(); row.style.borderColor = '#e1e7ef';
+            var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f) { uploadToPraise(Number(row.dataset.i), f); return; }
+            if (dragKind !== 'praise') { renderPraise(); return; }
+            var to = Number(row.dataset.i); if (pDrag < 0 || pDrag === to) { renderPraise(); return; }
+            var moved = praise.splice(pDrag, 1)[0]; praise.splice(to, 0, moved); pDrag = -1; dragKind = null; renderPraise();
+          });
+        });
+        var pdrop = pBox.querySelector('#pr_drop');
+        pdrop.addEventListener('dragover', function (e) { e.preventDefault(); pdrop.style.background = '#eef4ff'; });
+        pdrop.addEventListener('dragleave', function () { pdrop.style.background = ''; });
+        pdrop.addEventListener('drop', function (e) {
+          e.preventDefault(); pdrop.style.background = '';
+          var files = e.dataTransfer && e.dataTransfer.files; if (!files || !files.length) return;
+          if (!(window.ChurchUpload && ChurchUpload.isReady())) { alert('업로드 서버가 설정되지 않았습니다.'); return; }
+          Array.prototype.forEach.call(files, function (f) { var idx = praise.length; praise.push({ title: (f.name || '').replace(/\.[^.]+$/, ''), url: '' }); renderPraise(); uploadToPraise(idx, f); });
         });
       }
       renderPraise();
@@ -588,6 +648,24 @@ console.log('[affairs.js] v20260701bs');
       }
       renderOrder();
 
+      // 예배별 순서 양식: 저장/불러오기 + 예배 변경 시 자동 불러오기
+      function tplMsg(t, ok) { var e = ov.querySelector('#se_tpl_msg'); if (e) { e.style.color = ok === false ? '#c0392b' : (ok ? 'green' : '#7b8794'); e.textContent = t; if (t) setTimeout(function () { if (e.textContent === t) e.textContent = ''; }, 2500); } }
+      ov.querySelector('#se_tpl_save').onclick = function () {
+        var svc = ov.querySelector('#se_service').value; if (!svc) { tplMsg('예배를 먼저 선택하세요.', false); return; }
+        if (!order.length) { tplMsg('저장할 순서가 없습니다.', false); return; }
+        tplMsg('저장 중…');
+        api('POST', 'worship_templates?on_conflict=service', { service: svc, items: order, updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal')
+          .then(function () { WTPL[svc] = JSON.parse(JSON.stringify(order)); tplMsg('✓ ' + svc + ' 양식 저장됨', true); })
+          .catch(function (e) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e.message)) tplMsg('worship_templates.sql 실행 필요', false); else tplMsg('저장 실패: ' + e.message, false); });
+      };
+      function loadTpl(svc, silent) {
+        if (!svc || !WTPL[svc] || !WTPL[svc].length) { if (!silent) tplMsg('저장된 양식이 없습니다.', false); return false; }
+        order = JSON.parse(JSON.stringify(WTPL[svc])); renderOrder(); if (!silent) tplMsg('✓ ' + svc + ' 양식 불러옴', true); return true;
+      }
+      ov.querySelector('#se_tpl_load').onclick = function () { loadTpl(ov.querySelector('#se_service').value, false); };
+      ov.querySelector('#se_service').addEventListener('change', function () { if (!order.length) loadTpl(this.value, true); });
+      if (!rec.id && !order.length) loadTpl(ov.querySelector('#se_service').value, true); // 새 설교 + 예배 선택됨 → 자동
+
       function gather() {
         return {
           sermon_date: ov.querySelector('#se_date').value || null,
@@ -600,7 +678,7 @@ console.log('[affairs.js] v20260701bs');
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
           hymns: ov.querySelector('#se_hymns_v').value || null,
-          praise: (praise.filter(function (p) { return p.title || p.url; }).length ? JSON.stringify(praise.filter(function (p) { return p.title || p.url; })) : null),
+          praise: (function () { var a = praise.filter(function (p) { return p.title || p.url; }).map(function (p) { return { title: p.title || '', url: p.url || '' }; }); return a.length ? JSON.stringify(a) : null; })(),
           worship_order: (order.length ? JSON.stringify(order) : null)
         };
       }
