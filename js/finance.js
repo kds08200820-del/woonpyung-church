@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701at
+ * 콘솔: [finance.js] v20260701au
  */
-console.log('[finance.js] v20260701at');
+console.log('[finance.js] v20260701au');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -584,7 +584,7 @@ console.log('[finance.js] v20260701at');
     function pick(m) { input.value = m.name; hidden.value = m.key || ''; close(); if (onPick) onPick(m); }
   }
   // 계정 검색 자동완성: 🔍 클릭→전체, 입력→계정명/항으로 필터·추천
-  function setupAccountSearch(input, hidden, accs, container, btn) {
+  function setupAccountSearch(input, hidden, accs, container, btn, onPick) {
     var pop = null, hi = -1, matches = [];
     function close() { if (pop) { pop.remove(); pop = null; hi = -1; } }
     function hangOf(a) { return a['분류'] || a['상위'] || '(미분류)'; }
@@ -605,7 +605,7 @@ console.log('[finance.js] v20260701at');
       });
       (container || input.parentElement).appendChild(pop);
     }
-    function pick(a) { var h = a['분류'] || a['상위'] || ''; input.value = (h && h !== '(미분류)') ? (h + '-' + a['계정명']) : a['계정명']; hidden.value = a['계정명']; close(); }
+    function pick(a) { var h = a['분류'] || a['상위'] || ''; input.value = (h && h !== '(미분류)') ? (h + '-' + a['계정명']) : a['계정명']; hidden.value = a['계정명']; close(); if (onPick) onPick(a); }
     input.addEventListener('input', function () { hidden.value = ''; open(input.value); });
     input.addEventListener('focus', function () { if (!pop) open(input.value); });
     input.addEventListener('keydown', function (e) {
@@ -613,7 +613,7 @@ console.log('[finance.js] v20260701at');
       var rows = pop.querySelectorAll('div');
       if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); }
-      else if (e.key === 'Enter' && hi >= 0) { e.preventDefault(); pick(matches[hi]); return; }
+      else if (e.key === 'Enter') { if (matches.length) { e.preventDefault(); pick(matches[hi >= 0 ? hi : 0]); } return; }
       else if (e.key === 'Escape') { close(); return; }
       else return;
       Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); if (i === hi) r.scrollIntoView({ block: 'nearest' }); });
@@ -851,7 +851,7 @@ console.log('[finance.js] v20260701at');
     var amt = panel.querySelector('#e_amt');
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
     var accName = panel.querySelector('#e_acc_name'), accHidden = panel.querySelector('#e_acc'), accWrap = panel.querySelector('#e_acc_wrap');
-    setupAccountSearch(accName, accHidden, expAccs, accWrap, panel.querySelector('#e_acc_btn'));
+    setupAccountSearch(accName, accHidden, expAccs, accWrap, panel.querySelector('#e_acc_btn'), function () { setTimeout(function () { amt.focus(); amt.select(); }, 0); });
     var emOn = panel.querySelector('#e_memo_on'), emEl = panel.querySelector('#e_memo');
     emOn.addEventListener('change', function () { emEl.disabled = !emOn.checked; if (emOn.checked) emEl.focus(); else emEl.value = ''; });
     var epOn = panel.querySelector('#e_payer_on'), epEl = panel.querySelector('#e_payer');
