@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701de
+ * 콘솔: [affairs.js] v20260701df
  */
-console.log('[affairs.js] v20260701de');
+console.log('[affairs.js] v20260701df');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -448,6 +448,7 @@ console.log('[affairs.js] v20260701de');
       Array.prototype.forEach.call(box.querySelectorAll('.sm-read'), function (b) { b.onclick = function () { sermonReadingView(byId[b.dataset.id], { qt: false }); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-qt'), function (b) { b.onclick = function () { sermonReadingView(byId[b.dataset.id], { qt: true }); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-kakao'), function (b) { b.onclick = function () { copyKakaoQt(byId[b.dataset.id]); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.sm-title'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-edit'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-del'), function (b) { b.onclick = function () { if (!confirm('이 설교를 삭제할까요?')) return; api('DELETE', 'sermons?id=eq.' + b.dataset.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.cal-item'), function (el) { el.onclick = function (e) { e.stopPropagation(); sermonEditor(byId[el.dataset.id]); }; });
@@ -466,7 +467,7 @@ console.log('[affairs.js] v20260701de');
           if (!isQt) { qtCell = '<span style="color:#cbd2db">—</span>'; }
           else if (ds && ds <= todayS) { qtCell = '<span class="fin-pill" style="background:#e6f4ea;color:#1e874b">🟢 게시중</span>' + (hasUri ? '' : '<div style="font-size:.7rem;color:#c0392b;margin-top:2px">우리말 미입력</div>'); }
           else { qtCell = '<span class="fin-pill" style="background:#fff4e0;color:#a8742a">🕒 ' + esc(ds) + ' 게시예정</span>' + (hasUri ? '' : '<div style="font-size:.7rem;color:#c0392b;margin-top:2px">우리말 미입력</div>'); }
-          return '<tr><td style="white-space:nowrap">' + esc(ds) + '</td><td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td><td><b>' + esc(r.title || '(제목없음)') + '</b></td><td style="white-space:nowrap">' + esc(r.scripture || '') + '</td><td style="white-space:nowrap">' + qtCell + '</td>' +
+          return '<tr><td style="white-space:nowrap">' + esc(ds) + '</td><td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td><td><b class="sm-title" data-id="' + esc(r.id) + '" title="클릭하면 설교를 엽니다" style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목없음)') + '</b></td><td style="white-space:nowrap">' + esc(r.scripture || '') + '</td><td style="white-space:nowrap">' + qtCell + '</td>' +
             '<td style="white-space:nowrap"><button class="btn btn-solid sm-read" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 보기</button>' +
             (isQt ? ' <button class="btn btn-line sm-qt" data-id="' + esc(r.id) + '" title="우리말성경 QT로 보기" style="padding:4px 9px;font-size:.78rem;background:#fff8e6;border-color:#e6c97a">📲 QT</button> <button class="btn btn-line sm-kakao" data-id="' + esc(r.id) + '" title="카카오톡 발송 양식 복사" style="padding:4px 9px;font-size:.78rem;background:#fff8c4;border-color:#f4d641">💬 톡 복사</button>' : '') +
             ' <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button> <button class="btn btn-line sm-del" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">삭제</button></td></tr>';
