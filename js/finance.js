@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701ay
+ * 콘솔: [finance.js] v20260701az
  */
-console.log('[finance.js] v20260701ay');
+console.log('[finance.js] v20260701az');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -508,47 +508,44 @@ console.log('[finance.js] v20260701ay');
       '<div class="form-field"><label>헌금 항목</label><select id="o_acc">' + accOptions('수입', '헌금') + '</select></div>' +
       '<div class="form-field"><label>수단</label><select id="o_method"><option>현금</option><option>통장</option></select></div>' +
       '</div><div class="fin-grid">' +
-      '<div class="form-field" style="position:relative"><label>헌금자(교적 검색)</label><input type="text" id="o_payer" autocomplete="off" lang="ko" inputmode="text" placeholder="이름 입력 → 선택"><input type="hidden" id="o_key"><input type="hidden" id="o_spouseKey"><label class="sw" style="font-size:.8rem;display:inline-flex;align-items:center;gap:5px;margin-top:5px;color:#1e874b;cursor:pointer"><input type="checkbox" id="o_couple_top" style="width:auto;margin:0"> 💑 부부 함께(배우자 이름 표기)</label><div id="o_spouseBox" style="margin-top:3px"></div></div>' +
+      '<div class="form-field"><label>헌금자(교적 검색)</label><div style="position:relative"><input type="text" id="o_payer" autocomplete="off" lang="ko" inputmode="text" placeholder="이름 입력 → 선택"></div><input type="hidden" id="o_key"><input type="hidden" id="o_spouseKey"></div>' +
+      '<div class="form-field"><label>배우자(선택)</label><div style="position:relative"><input type="text" id="o_spouse" autocomplete="off" lang="ko" inputmode="text" placeholder="부부 함께 시 자동 · 직접 선택 가능"></div><input type="hidden" id="o_spouse_key"><label class="sw" style="font-size:.8rem;display:inline-flex;align-items:center;gap:5px;margin-top:5px;color:#1e874b;cursor:pointer"><input type="checkbox" id="o_couple_top" style="width:auto;margin:0"> 💑 부부 함께(자동 채움)</label></div>' +
       '<div class="form-field"><label>금액</label><input type="text" id="o_amt" lang="ko" placeholder="0" style="text-align:right;font-weight:700"></div>' +
       '<div class="form-field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="o_memo_on" style="width:auto;margin:0"> 적요 입력(선택)</label><input type="text" id="o_memo" disabled placeholder="체크하면 입력"></div>' +
       '</div><div style="margin-top:6px;display:flex;gap:10px;align-items:center;"><button class="btn btn-solid" id="o_add">＋ 헌금 추가</button><span class="fin-msg" id="o_msg"></span></div></div><div id="o_today"></div>';
-    var spouseBox = panel.querySelector('#o_spouseBox');
-    var payerEl = panel.querySelector('#o_payer'), coupleTop = panel.querySelector('#o_couple_top');
+    var payerEl = panel.querySelector('#o_payer'), spouseEl = panel.querySelector('#o_spouse'), coupleTop = panel.querySelector('#o_couple_top');
     var lastPick = null;
-    function applyCouple() {
-      var base = payerEl.value.replace(/\s*\([^)]*\)\s*$/, '').trim();
-      if (coupleTop.checked && lastPick && lastPick.spouse && lastPick.name === base) payerEl.value = base + ' (' + lastPick.spouse + ')';
-      else if (!coupleTop.checked) payerEl.value = base;
-    }
+    function focusAmt() { setTimeout(function () { var a = panel.querySelector('#o_amt'); if (a) { a.focus(); a.select(); } }, 0); }
     setupMemberSearch(payerEl, panel.querySelector('#o_key'), function (m) {
       panel.querySelector('#o_spouseKey').value = (m && m.spouseKey) || '';
       lastPick = m ? { name: m.name, spouse: m.spouse || '' } : null;
-      if (m && m.spouse) { applyCouple(); spouseBox.innerHTML = '<span style="font-size:.8rem;color:#7b8794">배우자: ' + esc(m.spouse) + (coupleTop.checked ? ' · 함께 표기됨' : '') + '</span>'; }
-      else spouseBox.innerHTML = '';
-      setTimeout(function () { var a = panel.querySelector('#o_amt'); if (a) { a.focus(); a.select(); } }, 0);
+      if (coupleTop.checked && m && m.spouse) spouseEl.value = m.spouse;  // 부부 함께 → 배우자칸 자동 채움
+      focusAmt();
     });
-    coupleTop.addEventListener('change', function () { applyCouple(); if (lastPick && lastPick.spouse) spouseBox.innerHTML = '<span style="font-size:.8rem;color:#7b8794">배우자: ' + esc(lastPick.spouse) + (coupleTop.checked ? ' · 함께 표기됨' : '') + '</span>'; });
+    setupMemberSearch(spouseEl, panel.querySelector('#o_spouse_key'), function () { focusAmt(); }); // 배우자 직접 검색/선택
+    coupleTop.addEventListener('change', function () { if (coupleTop.checked && lastPick && lastPick.spouse && !spouseEl.value.trim()) spouseEl.value = lastPick.spouse; });
     var amt = panel.querySelector('#o_amt');
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
     function doAddOffering(v) {
       var msg = panel.querySelector('#o_msg');
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#o_payer').value = ''; panel.querySelector('#o_key').value = ''; panel.querySelector('#o_spouseKey').value = ''; spouseBox.innerHTML = ''; amt.value = ''; panel.querySelector('#o_memo').value = ''; M.loaded = false; loadToday(v.date); panel.querySelector('#o_payer').focus(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#o_payer').value = ''; panel.querySelector('#o_key').value = ''; panel.querySelector('#o_spouseKey').value = ''; panel.querySelector('#o_spouse').value = ''; panel.querySelector('#o_spouse_key').value = ''; amt.value = ''; panel.querySelector('#o_memo').value = ''; M.loaded = false; loadToday(v.date); panel.querySelector('#o_payer').focus(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
     }
     function submitOffering() {
-      var payerName = panel.querySelector('#o_payer').value.trim();
+      var base = panel.querySelector('#o_payer').value.trim().replace(/\s*\([^)]*\)\s*$/, '');
+      var spouse = panel.querySelector('#o_spouse').value.trim();
+      var payerName = base + (spouse ? ' (' + spouse + ')' : '');
       var v = { date: panel.querySelector('#o_date').value, type: '수입', kind: '헌금', account: panel.querySelector('#o_acc').value, service: panel.querySelector('#o_svc').value, payer: payerName, memberKey: panel.querySelector('#o_key').value, amount: parseNum(amt.value), method: panel.querySelector('#o_method').value, memo: panel.querySelector('#o_memo').value.trim() };
       var msg = panel.querySelector('#o_msg');
       if (!v.date || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자와 금액을 입력하세요.'; return; }
       // 교적 매칭 확인: 선택(매칭키)도 없고 이름이 교적에 없으면 → 등록 팝업
-      var base = payerName.replace(/\(.*\)$/, '').trim();
       if (!v.memberKey && base) {
         var hits = M.members.filter(function (m) { return m.name === base; });
         if (hits.length === 1) { v.memberKey = hits[0].key; doAddOffering(v); return; }
         if (hits.length === 0) {
           askRegister(base, function (res) {
             if (!res) { msg.style.color = '#c0392b'; msg.textContent = '취소되었습니다.'; return; }
-            if (res.key) { v.memberKey = res.key; v.payer = res.name + (payerName.indexOf('(') >= 0 ? payerName.slice(payerName.indexOf('(')) : ''); }
+            if (res.key) { v.memberKey = res.key; v.payer = res.name + (spouse ? ' (' + spouse + ')' : ''); }
             doAddOffering(v);
           });
           return;
@@ -590,7 +587,8 @@ console.log('[finance.js] v20260701ay');
       hidden.value = ''; var q = input.value.trim().toLowerCase(); close(); if (!q) return;
       matches = M.members.filter(function (m) { return (m.name || '').toLowerCase().indexOf(q) >= 0; }).slice(0, 8); if (!matches.length) return;
       pop = document.createElement('div'); pop.className = 'fin-sugg';
-      matches.forEach(function (m) { var bd = (String(m.key || '').split('|')[1]) || ''; var bs = bd.length === 8 ? bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8) : String(m.birth || '').slice(0, 10); var d = document.createElement('div'); d.innerHTML = esc(m.name) + ' <span style="color:#9aa5b1;font-size:.78rem">' + esc(bs) + ' · ' + esc(m.group || '') + '</span>'; d.onclick = function () { pick(m); }; pop.appendChild(d); });
+      pop.style.top = '100%'; pop.style.left = '0'; pop.style.right = '0'; pop.style.marginTop = '4px'; pop.style.minWidth = '0';
+      matches.forEach(function (m) { var bd = (String(m.key || '').split('|')[1]) || ''; var bs = bd.length === 8 ? bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8) : String(m.birth || '').slice(0, 10); var d = document.createElement('div'); d.innerHTML = esc(m.name) + ' <span style="color:#9aa5b1;font-size:.78rem">' + esc(bs) + ' · ' + esc(m.group || '') + '</span>'; d.onmousedown = function (e) { e.preventDefault(); pick(m); }; pop.appendChild(d); });
       input.parentElement.appendChild(pop);
     });
     input.addEventListener('keydown', function (e) { if (!pop) return; var rows = pop.querySelectorAll('div'); if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); } else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); } else if (e.key === 'Enter') { if (matches.length) { e.preventDefault(); pick(matches[hi >= 0 ? hi : 0]); } return; } else if (e.key === 'Escape') { close(); return; } else return; Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); }); });
