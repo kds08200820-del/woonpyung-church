@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701au
+ * 콘솔: [finance.js] v20260701av
  */
-console.log('[finance.js] v20260701au');
+console.log('[finance.js] v20260701av');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -846,7 +846,7 @@ console.log('[finance.js] v20260701au');
       '</div><div class="fin-grid">' +
       '<div class="form-field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="e_memo_on" style="width:auto;margin:0"> 적요 입력</label><input type="text" id="e_memo" disabled placeholder="체크하면 입력"></div>' +
       '<div class="form-field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="e_payer_on" style="width:auto;margin:0"> 수령인 입력</label><input type="text" id="e_payer" disabled placeholder="체크하면 입력"></div>' +
-      '<div class="form-field"><label>금액</label><input type="text" id="e_amt" inputmode="numeric" placeholder="0" style="text-align:right;font-weight:700"></div>' +
+      '<div class="form-field"><label>금액</label><input type="text" id="e_amt" lang="ko" placeholder="0" style="text-align:right;font-weight:700"></div>' +
       '</div><div style="margin-top:6px;display:flex;gap:10px;align-items:center;"><button class="btn btn-solid" id="e_add">＋ 지출 추가</button><span class="fin-msg" id="e_msg"></span></div></div><div id="e_today"></div>';
     var amt = panel.querySelector('#e_amt');
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
