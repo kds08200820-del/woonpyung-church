@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cx
+ * 콘솔: [affairs.js] v20260701cy
  */
-console.log('[affairs.js] v20260701cx');
+console.log('[affairs.js] v20260701cy');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1185,7 +1185,7 @@ console.log('[affairs.js] v20260701cx');
       // 봉사위원
       '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent)">⑥ 봉사위원 · 이주의 기도</h4>' +
       '<div class="fin-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      COMMITTEE_KEYS.map(function (k) { return tI(k, 'bt_com_' + k, com[k]); }).join('') +
+      COMMITTEE_KEYS.map(function (k, i) { return tI(k, 'bt_com_' + i, com[k]); }).join('') +
       '</div></div>' +
       // 칼럼
       '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent)">⑦ 신앙과 책 (칼럼)</h4>' +
@@ -1300,7 +1300,7 @@ console.log('[affairs.js] v20260701cx');
         var a = numAmt(r.amount); if (a) { data.offering_amounts[nm] = commaAmt(r.amount); tot += a; }
       });
       if (tot) data.offering_amounts['합계'] = tot.toLocaleString('en-US');
-      COMMITTEE_KEYS.forEach(function (k) { data.committee[k] = ov.querySelector('#bt_com_' + k).value.trim(); });
+      COMMITTEE_KEYS.forEach(function (k, i) { var el = ov.querySelector('#bt_com_' + i); if (el) data.committee[k] = el.value.trim(); });
       return {
         bdate: ov.querySelector('#bt_bdate').value || null,
         title: ov.querySelector('#bt_title').value.trim() || null,
@@ -1321,9 +1321,19 @@ console.log('[affairs.js] v20260701cx');
     }
     ov.querySelector('#bt_save').onclick = function () { save(null); };
     ov.querySelector('#bt_printbtn').onclick = function () {
-      // 새 창은 클릭 즉시 동기로 열어야 팝업 차단을 피함(저장은 백그라운드)
-      bulletinView(gather(), { amounts: true, layout: 'print3' });
-      save(null);
+      // 새 창을 클릭 즉시 동기로 열어 팝업 차단을 피하고, 생성 오류는 창/메시지에 노출
+      var w = window.open('', '_blank');
+      if (!w) { bmsg('팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.', '#c0392b'); return; }
+      try {
+        var data = gather();
+        if (!window.BulletinRender) { w.document.write('주보 렌더러(bulletin-render.js)가 로드되지 않았습니다. 새로고침 후 다시 시도해 주세요.'); w.document.close(); return; }
+        w.document.write(window.BulletinRender.html(data, { amounts: true, layout: 'print3', fileName: bulletinFileName(data) }));
+        w.document.close(); w.focus();
+        save(null);
+      } catch (e) {
+        try { w.document.write('<pre style="white-space:pre-wrap;padding:16px;font-size:14px">인쇄 생성 오류:\n' + (e && e.message) + '</pre>'); w.document.close(); } catch (_) { }
+        bmsg('인쇄 생성 오류: ' + (e && e.message), '#c0392b');
+      }
     };
 
     // ── ✨ AI 검수: 주보 초안을 직렬화해 bulletin-ai Edge Function 호출 ──
@@ -1415,19 +1425,20 @@ console.log('[affairs.js] v20260701cx');
     // 봉사위원 자동 채움(설정 → 연간 봉사위원). 마지막 주일이면 다음 달도 병기
     function fillCommittee(bd) {
       var cur = committeeFor(ymOf(bd)); if (!cur) return false;
-      function set(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; }
+      function ci(name) { return COMMITTEE_KEYS.indexOf(name); }
+      function set(name, val) { var el = ov.querySelector('#bt_com_' + ci(name)); if (el && val) el.value = val; }
       var nextTxt = '';
       if (isLastSundayOfMonth(bd)) { var nx = committeeFor(nextMonthYM(bd)); if (nx) nextTxt = nx; }
       function merge(a, b) { return b ? (a || '') + (a ? '  /  ' : '') + '(다음 달) ' + b : (a || ''); }
-      set('bt_com_헌금위원', merge(cur.offering, nextTxt && nextTxt.offering));
-      set('bt_com_안내위원', merge(cur.guide, nextTxt && nextTxt.guide));
-      set('bt_com_주차·사찰', merge(cur.parking, nextTxt && nextTxt.parking));
+      set('헌금위원', merge(cur.offering, nextTxt && nextTxt.offering));
+      set('안내위원', merge(cur.guide, nextTxt && nextTxt.guide));
+      set('주차·사찰', merge(cur.parking, nextTxt && nextTxt.parking));
       // 이주의 기도(2부 예배 기도) — 그 주차에 해당하는 기도자
       if (cur.prayer && cur.prayer.length) {
         var nth = Math.floor((new Date(bd + 'T00:00:00').getDate() - 1) / 7) + 1;
         var pr = null;
         for (var i = 0; i < cur.prayer.length; i++) { if ((cur.prayer[i].week || '').indexOf(nth + '주') >= 0) { pr = cur.prayer[i]; break; } }
-        if (pr && pr.person) set('bt_com_이주의 기도', pr.person);
+        if (pr && pr.person) set('이주의 기도', pr.person);
       }
       return true;
     }
