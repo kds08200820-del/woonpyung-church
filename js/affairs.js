@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701bo
+ * 콘솔: [affairs.js] v20260701bp
  */
-console.log('[affairs.js] v20260701bo');
+console.log('[affairs.js] v20260701bp');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -324,10 +324,61 @@ console.log('[affairs.js] v20260701bo');
 
   // ── 설교관리(전용): 작성 페이지 · 도구상자 · 내보내기 · 아이패드 보기 ──
   var SERMON_TOOLS = [
-    { label: '📖 성경검색', url: 'https://bible.goodtv.co.kr/' },
-    { label: '🎵 찬송가 검색', url: 'https://search.naver.com/search.naver?query=' + encodeURIComponent('찬송가 가사') },
-    { label: '📜 교독문 검색', url: 'https://search.naver.com/search.naver?query=' + encodeURIComponent('교독문') }
+    { label: '📖 성경본문', url: 'https://bible.goodtv.co.kr/' },
+    { label: '🎵 찬송가', url: 'https://search.naver.com/search.naver?query=' + encodeURIComponent('찬송가 가사') }
   ];
+  // 교독문 본문을 인도자/회중/다같이 역할로 렌더
+  function gyodokBodyHTML(body) {
+    var lead = true;
+    return (body || []).map(function (line) {
+      if (/다같이/.test(line.slice(0, 8))) return '<div style="text-align:center;font-weight:600;color:#1f3a5f;margin:5px 0">' + esc(line) + '</div>';
+      var role = lead ? '인도자' : '회중'; lead = !lead;
+      return '<div style="margin:3px 0;display:flex;gap:8px"><span style="flex:0 0 46px;color:#9aa5b1;font-size:.76rem;padding-top:2px">' + role + '</span><span>' + esc(line) + '</span></div>';
+    }).join('');
+  }
+  // 교독문 선택기(목록·검색·미리보기). 선택은 localStorage 에 저장(차후 예배 콘티에 자동 삽입).
+  function gyodokPicker(onPick) {
+    if (!window.GYODOK || !window.GYODOK.length) { alert('교독문 데이터를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.'); return; }
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9500;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+    ov.innerHTML = '<div class="fin-card" style="max-width:760px;width:100%;background:#fff">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:var(--accent,#032257)">📜 교독문 선택</h3><button class="btn btn-line" id="gp_close" style="padding:3px 11px">닫기</button></div>' +
+      '<input type="text" id="gp_q" placeholder="🔍 번호·제목 검색 (예: 시편 23, 성탄)" style="width:100%;padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:10px">' +
+      '<div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">' +
+      '<div id="gp_list" style="flex:0 0 230px;max-width:100%;max-height:430px;overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
+      '<div style="flex:1;min-width:240px"><div id="gp_prev" style="max-height:390px;overflow:auto;border:1px solid #eef1f5;border-radius:8px;padding:12px;color:#48576b;font-size:.92rem">왼쪽에서 교독문을 선택하세요.</div>' +
+      '<div style="margin-top:10px;display:flex;gap:8px;align-items:center"><button class="btn btn-solid" id="gp_pick" disabled style="padding:8px 16px">이 교독문 선택</button><span id="gp_msg" style="font-size:.84rem;color:#7b8794"></span></div></div>' +
+      '</div></div>';
+    document.body.appendChild(ov);
+    var sel = null;
+    function close() { ov.remove(); }
+    ov.querySelector('#gp_close').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    var listEl = ov.querySelector('#gp_list'), prevEl = ov.querySelector('#gp_prev'), pickBtn = ov.querySelector('#gp_pick');
+    function drawList(q) {
+      q = (q || '').trim().toLowerCase();
+      var rows = window.GYODOK.filter(function (g) { return !q || (g.no + '. ' + g.title).toLowerCase().indexOf(q) >= 0; });
+      listEl.innerHTML = rows.map(function (g) { return '<div class="gp-item" data-no="' + g.no + '" style="padding:8px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer;font-size:.9rem"><b>' + g.no + '.</b> ' + esc(g.title) + '</div>'; }).join('') || '<p style="padding:10px;color:#9aa5b1">결과 없음</p>';
+      Array.prototype.forEach.call(listEl.querySelectorAll('.gp-item'), function (d) {
+        d.onclick = function () {
+          var g = window.GYODOK.filter(function (x) { return x.no === Number(d.dataset.no); })[0]; if (!g) return;
+          sel = g; pickBtn.disabled = false;
+          Array.prototype.forEach.call(listEl.querySelectorAll('.gp-item'), function (x) { x.style.background = ''; });
+          d.style.background = '#eef4ff';
+          prevEl.innerHTML = '<div style="font-weight:700;color:var(--accent,#032257);margin-bottom:8px">' + g.no + '. ' + esc(g.title) + '</div>' + gyodokBodyHTML(g.body);
+        };
+      });
+    }
+    ov.querySelector('#gp_q').oninput = function () { drawList(this.value); };
+    pickBtn.onclick = function () {
+      if (!sel) return;
+      try { localStorage.setItem('wpc_sel_gyodok', JSON.stringify({ no: sel.no, title: sel.title })); } catch (e) {}
+      if (onPick) onPick(sel);
+      close();
+    };
+    drawList('');
+  }
+  function selectedGyodok() { try { return JSON.parse(localStorage.getItem('wpc_sel_gyodok') || 'null'); } catch (e) { return null; } }
   var SVC_OPTS = ['주일 낮 예배', '주일 밤 예배', '수요예배', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'];
 
   function renderSermon(panel) {
@@ -374,9 +425,11 @@ console.log('[affairs.js] v20260701bo');
         '<button class="btn btn-line" id="se_save">💾 임시저장</button>' +
         '<button class="btn btn-solid" id="se_export">📤 설교 내보내기</button>' +
         '<span class="fin-msg" id="se_msg" style="width:100%;text-align:right"></span></div>' +
-        '<div id="se_toolbox" style="display:none;background:#eef4ff;border-bottom:1px solid #d6e2f5;padding:10px 16px"><span style="font-size:.84rem;color:#5b6b7d;margin-right:8px">참고 자료 열기:</span>' +
+        '<div id="se_toolbox" style="display:none;background:#eef4ff;border-bottom:1px solid #d6e2f5;padding:10px 16px"><span style="font-size:.84rem;color:#5b6b7d;margin-right:8px">참고/선택:</span>' +
         SERMON_TOOLS.map(function (t, i) { return '<button class="btn btn-line se-tool" data-i="' + i + '" style="margin:3px 6px 3px 0">' + t.label + '</button>'; }).join('') +
-        '<span style="font-size:.78rem;color:#9aa5b1;display:block;margin-top:4px">새 탭에서 열립니다. 사이트를 바꾸고 싶으면 말씀해 주세요.</span></div>' +
+        '<button class="btn btn-line" id="se_gyodok" style="margin:3px 6px 3px 0">📜 교독문</button>' +
+        '<span id="se_gyodok_sel" style="font-size:.82rem;color:#1e874b;margin-left:4px"></span>' +
+        '<span style="font-size:.78rem;color:#9aa5b1;display:block;margin-top:4px">성경본문·찬송가는 새 탭으로 열립니다. 교독문은 선택하면 저장되어 추후 예배 콘티에 자동 삽입됩니다.</span></div>' +
         '<div style="max-width:880px;margin:0 auto;padding:18px 16px 60px">' +
         '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px">' +
         '<div class="af-field"><label>일자</label><input type="date" id="se_date" value="' + esc(fmtD(rec.sermon_date) || today()) + '"></div>' +
@@ -394,6 +447,10 @@ console.log('[affairs.js] v20260701bo');
       ov.querySelector('#se_close').onclick = close;
       ov.querySelector('#se_tools').onclick = function () { var tb = ov.querySelector('#se_toolbox'); tb.style.display = tb.style.display === 'none' ? '' : 'none'; };
       Array.prototype.forEach.call(ov.querySelectorAll('.se-tool'), function (b) { b.onclick = function () { window.open(SERMON_TOOLS[Number(b.dataset.i)].url, '_blank', 'noopener'); }; });
+      var gsel = ov.querySelector('#se_gyodok_sel');
+      function showGyodok() { var g = selectedGyodok(); gsel.textContent = g ? ('선택됨: ' + g.no + '. ' + g.title) : ''; }
+      ov.querySelector('#se_gyodok').onclick = function () { ov.querySelector('#se_toolbox').style.display = ''; gyodokPicker(function () { showGyodok(); }); };
+      showGyodok();
       function gather() {
         return {
           sermon_date: ov.querySelector('#se_date').value || null,
