@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701ak
+ * 콘솔: [finance.js] v20260701al
  */
-console.log('[finance.js] v20260701ak');
+console.log('[finance.js] v20260701al');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -164,8 +164,8 @@ console.log('[finance.js] v20260701ak');
     var s = M.settings || {};
     return {
       name: s.rcp_org || '운평장로교회',
-      bizno: s.rcp_bizno || '',
-      addr: s.rcp_addr || '화성특례시 만세구 우정읍 운평길 47',
+      bizno: s.rcp_bizno || '124-82-62875',
+      addr: s.rcp_addr || '경기도 화성시 우정읍 운평길 47',
       rep: s.rcp_rep || '김동석',
       law: s.rcp_law || '「소득세법」 제34조제3항제1호'
     };
