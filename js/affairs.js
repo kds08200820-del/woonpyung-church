@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cj
+ * 콘솔: [affairs.js] v20260701ck
  */
-console.log('[affairs.js] v20260701cj');
+console.log('[affairs.js] v20260701ck');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1055,7 +1055,7 @@ console.log('[affairs.js] v20260701cj');
         }).join('') + '</tbody></table></div></div>';
       var byId = {}; rows.forEach(function (r) { byId[r.id] = r; });
       Array.prototype.forEach.call(box.querySelectorAll('.bt-edit'), function (b) { b.onclick = function () { api('GET', 'bulletins?id=eq.' + b.dataset.id + '&select=*').then(function (rs) { bulletinEditor((rs && rs[0]) || {}); }); }; });
-      Array.prototype.forEach.call(box.querySelectorAll('.bt-print'), function (b) { b.onclick = function () { api('GET', 'bulletins?id=eq.' + b.dataset.id + '&select=*').then(function (rs) { bulletinView((rs && rs[0]) || {}, { amounts: true }); }); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.bt-print'), function (b) { b.onclick = function () { api('GET', 'bulletins?id=eq.' + b.dataset.id + '&select=*').then(function (rs) { bulletinView((rs && rs[0]) || {}, { amounts: true, layout: 'print3' }); }); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.bt-del'), function (b) { b.onclick = function () { if (!confirm('이 주보를 삭제할까요?')) return; api('DELETE', 'bulletins?id=eq.' + b.dataset.id, null, 'return=minimal').then(function () { loadBulletinList(panel); }).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
     }).catch(function (e) {
       var box = panel.querySelector('#bt_list');
@@ -1079,7 +1079,7 @@ console.log('[affairs.js] v20260701cj');
       '<div style="flex:1;text-align:center"><div style="font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.2rem;color:var(--accent,#032257)">주보 제작</div><div style="font-size:.72rem;color:#9aa5b1">설교 연동 · 인쇄(PDF) · 홈페이지 게시</div></div>' +
       '<button class="btn btn-line" id="bt_pull" style="padding:8px 13px;border-radius:9px;background:#eef4ff;border-color:#9cc0f0">📥 설교 불러오기</button>' +
       '<button class="btn btn-line" id="bt_save" style="padding:8px 13px;border-radius:9px">💾 임시저장</button>' +
-      '<button class="btn btn-line" id="bt_printbtn" style="padding:8px 13px;border-radius:9px">🖨 인쇄</button>' +
+      '<button class="btn btn-line" id="bt_printbtn" style="padding:8px 13px;border-radius:9px">🖨 3단 인쇄(PDF)</button>' +
       '<button class="btn btn-solid" id="bt_publish" style="padding:8px 16px;border-radius:9px;font-weight:700">🌐 게시</button>' +
       '<div id="bt_msg" class="fin-msg" style="flex-basis:100%;text-align:right;margin-top:-2px"></div>' +
       '</div></header>' +
@@ -1186,7 +1186,7 @@ console.log('[affairs.js] v20260701cj');
         .catch(function (e) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e.message)) bmsg('bulletins.sql 실행 필요', '#c0392b'); else bmsg('저장 실패: ' + e.message, '#c0392b'); });
     }
     ov.querySelector('#bt_save').onclick = function () { save(null); };
-    ov.querySelector('#bt_printbtn').onclick = function () { save(function (s) { bulletinView(s, { amounts: true }); }); };
+    ov.querySelector('#bt_printbtn').onclick = function () { save(function (s) { bulletinView(s, { amounts: true, layout: 'print3' }); }); };
     ov.querySelector('#bt_publish').onclick = function () {
       if (!confirm('이 주보를 홈페이지에 게시할까요?\n(헌금 금액은 홈페이지에 노출되지 않습니다)')) return;
       save(function () { bmsg('✓ 게시되었습니다 — 홈페이지 주보란에 반영됩니다', 'green'); }, { published: true });

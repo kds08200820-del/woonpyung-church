@@ -65,6 +65,25 @@
       // 꼬리
       '.foot{margin-top:7mm;padding-top:3.5mm;border-top:1pt solid #ddd;text-align:center;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;color:#9a9a9a;line-height:1.7}',
       '.note{font-size:7.5pt;color:#aaa;text-align:center;margin-top:3mm}',
+      // ── 인쇄용 3단 양면 레이아웃(실제 주보 211×380mm · 신문식 3단) ──
+      'body.l3 .page{column-count:3;column-gap:5mm;padding:10mm 8mm 9mm;font-size:8pt}',
+      'body.l3 section{-webkit-column-break-inside:avoid;break-inside:avoid;margin-bottom:4mm}',
+      'body.l3 .hd{-webkit-column-break-inside:avoid;break-inside:avoid;padding-bottom:3.5mm;margin-bottom:4mm}',
+      'body.l3 .hd .ch{font-size:15pt;letter-spacing:.18em;margin:1.5mm 0 1mm}.body.l3 .hd .eng{font-size:6.5pt}body.l3 .hd .sub{font-size:6.5pt}',
+      'body.l3 h2{font-size:8.5pt;margin-bottom:2mm;padding-bottom:1mm;gap:4px}body.l3 h2 .en{font-size:6pt}',
+      'body.l3 .serm{padding:3.5mm 2.5mm;margin-bottom:3.5mm}body.l3 .serm .lab{font-size:6pt;letter-spacing:.18em}body.l3 .serm .t{font-size:11.5pt;margin:1.5mm 0}body.l3 .serm .m{font-size:7pt}',
+      'body.l3 .ord td{font-size:7.6pt;padding:.8mm 1mm}body.l3 .ord .bno{width:5mm;font-size:6.5pt}body.l3 .ord .bn{width:16mm;font-size:7pt}',
+      'body.l3 .two{grid-template-columns:1fr;gap:.4mm}body.l3 .ofg{font-size:7.2pt;padding:.7mm 0}body.l3 .ofg b{font-size:7pt}',
+      'body.l3 .amt td{font-size:7.2pt;padding:.9mm 2mm}',
+      'body.l3 .wk{font-size:7.6pt;line-height:1.7}body.l3 .lbl{min-width:16mm;font-size:7.4pt}',
+      'body.l3 .col{font-size:7.5pt;line-height:1.6}body.l3 .col .ct{font-size:8pt}',
+      'body.l3 .news li{font-size:7.5pt;padding-left:6mm;line-height:1.45}body.l3 .news li::before{font-size:6.5pt}',
+      'body.l3 .cover{-webkit-column-break-inside:avoid;break-inside:avoid;text-align:center;margin-top:6mm;padding-top:5mm;border-top:1.5pt solid #0a2c5c}',
+      'body.l3 .cover .since{font-family:"Noto Sans KR",sans-serif;font-size:6.5pt;color:#a8915c;letter-spacing:.1em}',
+      'body.l3 .cover .big{font-family:"Noto Serif KR",serif;font-weight:700;font-size:15pt;letter-spacing:.12em;color:#0a2c5c;margin:2mm 0}',
+      'body.l3 .cover .ld{font-family:"Noto Sans KR",sans-serif;font-size:7pt;color:#555;line-height:1.7}',
+      'body.l3 .cover .ad{font-family:"Noto Sans KR",sans-serif;font-size:6.5pt;color:#888;margin-top:2mm;line-height:1.6}',
+      'body.l3 .foot{display:none}',
       '@media print{html,body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;width:auto;min-height:auto}}'
     ].join('');
   }
@@ -101,19 +120,29 @@
     if (d.column_title || d.column_body) h += '<section><h2>신앙과 책 <span class="en">FAITH &amp; BOOKS</span></h2><div class="col"><div class="ct">' + esc(d.column_title || '') + '</div>' + esc(d.column_body || '') + '</div></section>';
     if (notices) h += '<section><h2>한 주의 소식 <span class="en">THIS WEEK</span></h2><ul class="news">' + notices + '</ul></section>';
     if (!opts.amounts) h += '<p class="note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>';
-    h += '<div class="foot">운평장로교회 · 담임목사 김동석 · 화성특례시 우정읍 운평길 47 · www.k-logos.com</div>';
+    // 인쇄용 3단에서는 마지막 단 하단에 표지(운평장로교회)가 오도록 표지 블록을 둔다
+    if (opts.layout === 'print3') {
+      h += '<div class="cover"><div class="since">SINCE 1964. 3. 1' + (d.no ? ' · No. ' + esc(d.no) : '') + '</div>' +
+        '<div class="big">운 평 장 로 교 회</div>' +
+        '<div class="ld">담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</div>' +
+        '<div class="ad">화성특례시 우정읍 운평길 47 · T. 010-4032-2903<br>' + esc(dotDate(rec.bdate)) + (d.week ? ' · ' + esc(d.week) : '') + ' · www.k-logos.com</div></div>';
+    } else {
+      h += '<div class="foot">운평장로교회 · 담임목사 김동석 · 화성특례시 우정읍 운평길 47 · www.k-logos.com</div>';
+    }
     h += '</div>';
     return h;
   }
 
   function fullHTML(rec, opts) {
     rec = rec || {}; opts = opts || {};
+    var p3 = opts.layout === 'print3';
+    var infoTxt = p3 ? '🖨 인쇄용 3단 · 211×380mm' + (opts.amounts ? ' · 금액 포함' : '') : (opts.amounts ? '🔒 인쇄용 · 금액 포함' : '홈페이지용');
     return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<title>주보 ' + esc(ymd(rec.bdate)) + '</title>' +
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
       '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
-      '<style>' + css() + '</style></head><body>' +
-      '<div class="bar"><span class="info">' + (opts.amounts ? '🔒 인쇄용 · 헌금 금액 포함 (211×380mm)' : '홈페이지용 · 211×380mm') + '</span><button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>' +
+      '<style>' + css() + '</style></head><body' + (p3 ? ' class="l3"' : '') + '>' +
+      '<div class="bar"><span class="info">' + infoTxt + '</span><button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>' +
       bodyHTML(rec, opts) +
       '</body></html>';
   }
