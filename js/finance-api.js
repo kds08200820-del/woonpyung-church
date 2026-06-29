@@ -1,9 +1,9 @@
 /* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
  * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
- * 콘솔: [finance-api.js] v20260701ai (Supabase)
+ * 콘솔: [finance-api.js] v20260701aj (Supabase)
  */
-console.log('[finance-api.js] v20260701ai (Supabase)');
+console.log('[finance-api.js] v20260701aj (Supabase)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -67,7 +67,8 @@ window.WPF = (function () {
   }
   var GJ_MAP = { '이름': 'name', '생년월일': 'birth', '매칭키': 'member_key', '세대주': 'head', '관계': 'relation', '배우자': 'spouse', '배우자매칭키': 'spouse_key', '그룹': 'groups', '직책': 'role', '신급': 'grade', '성별': 'sex', '휴대폰': 'phone', '주소': 'address', '회원상태': 'status', '사진': 'photo', '세례일': 'baptism_date', '임직일': 'ordination_date', '소속그룹': 'belong_groups' };
   var GJ_DATECOLS = { birth: 1, baptism_date: 1, ordination_date: 1 };
-  function memOut(r) { return { name: r.name, key: r.member_key, birth: r.birth, group: r.groups, role: r.role, spouse: r.spouse, spouseKey: r.spouse_key, head: r.head, rel: r.relation }; }
+  function memOut(r) { return { name: r.name, key: r.member_key, birth: r.birth, group: r.groups, role: r.role, spouse: r.spouse, spouseKey: r.spouse_key, head: r.head, rel: r.relation, address: r.address || '' }; }
+  function recOut(r) { return { id: r.id, no: r.receipt_no, fy: r.fy, key: r.member_key, name: r.donor_name, birth: r.donor_birth, rrn: r.donor_rrn, addr: r.donor_addr, includedKeys: r.included_keys || [], detail: r.detail, spouse: r.spouse, period: r.period_label, amount: r.amount, cnt: r.cnt, method: r.method, status: r.status, issuedBy: r.issued_by, issuedAt: r.issued_at, cancelledAt: r.cancelled_at }; }
   function accOut(r) { return { '구분': r.atype, '분류': (r.atype === '수입' ? '헌금' : (r.category || '')), '계정명': r.name, '계정코드': r.code, '상위': r.category }; }
   function offOut(r) { return { '전표ID': 'O' + r.id, '일자': r.offer_date, '구분': '수입', '종류': '헌금', '계정': r.category || '', '예배': r.service || '', '헌금자': r.giver || '', '매칭키': r.member_key || '', '금액': r.amount, '수단': r.method || '', '적요': r.memo || '' }; }
   function expOut(r) { return { '전표ID': 'E' + r.id, '일자': r.exp_date, '구분': '지출', '종류': '일반', '계정': r.account || '', '예배': '', '헌금자': r.payee || '', '매칭키': '', '금액': r.amount, '수단': r.method || '', '적요': r.memo || '' }; }
@@ -197,6 +198,21 @@ window.WPF = (function () {
         return rest('POST', 'app_settings?on_conflict=key', { key: params.key, value: String(params.value == null ? '' : params.value), updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal').then(function () { return { ok: true }; });
       case 'adminSetMember':
         return rpc('admin_set_member', { p_uid: params.uid, p_status: params.status, p_member_key: params.memberKey || '', p_member_name: params.memberName || '' });
+      case 'listReceipts':
+        return restAll('donation_receipts?select=*&order=id').then(function (rows) { return { ok: true, receipts: (rows || []).map(recOut) }; });
+      case 'addReceipt': {
+        var rc = params.receipt || {};
+        var body = {
+          receipt_no: rc.no, fy: rc.fy, member_key: rc.key || null, donor_name: rc.name,
+          donor_birth: rc.birth || null, donor_rrn: rc.rrn || null, donor_addr: rc.addr || null,
+          included_keys: rc.includedKeys || [], detail: rc.detail || 'sum', spouse: !!rc.spouse,
+          period_label: rc.period || null, amount: num(rc.amount), cnt: Number(rc.cnt) || 0,
+          method: rc.method || 'print', status: 'issued'
+        };
+        return rest('POST', 'donation_receipts', body, 'return=representation').then(function (rows) { return { ok: true, receipt: recOut((rows || [])[0] || body) }; });
+      }
+      case 'cancelReceipt':
+        return rest('PATCH', 'donation_receipts?id=eq.' + encodeURIComponent(params.id), { status: 'cancelled', cancelled_at: new Date().toISOString() }, 'return=minimal').then(function () { return { ok: true }; });
       default:
         return Promise.reject(new Error('unknown action: ' + action));
     }

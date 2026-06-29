@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701ai
+ * 콘솔: [finance.js] v20260701aj
  */
-console.log('[finance.js] v20260701ai');
+console.log('[finance.js] v20260701aj');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -155,11 +155,26 @@ console.log('[finance.js] v20260701ai');
     return WPF.call('getSettings').then(function (r) { M.settings = r.settings || {}; M._s = true; }).catch(function () { M.settings = {}; M._s = true; });
   }
   function carryover(fy) { return parseNum((M.settings || {})['carryover_' + (fy || M.fy)]); } // 회계연도별 전기 이월금
+  function ensureReceipts() {
+    if (M._rc) return Promise.resolve();
+    return WPF.call('listReceipts', {}).then(function (r) { M.receipts = r.receipts || []; M._rc = true; }).catch(function () { M.receipts = []; M._rc = true; });
+  }
+  // 발급기관(교회) — 기부금영수증 수령인 정보. 설정 탭에서 편집.
+  function orgInfo() {
+    var s = M.settings || {};
+    return {
+      name: s.rcp_org || '운평장로교회',
+      bizno: s.rcp_bizno || '',
+      addr: s.rcp_addr || '화성특례시 만세구 우정읍 운평길 47',
+      rep: s.rcp_rep || '김동석',
+      law: s.rcp_law || '「소득세법」 제34조제3항제1호'
+    };
+  }
 
   var TABS = [
     ['home', '🏠 홈'], ['offering', '헌금입력'], ['bulk', '명단일괄'], ['expense', '지출입력'], ['ledger', '거래장부'],
     ['givers', '헌금자통계'], ['gl', '총계정원장'], ['report', '결산보고서'],
-    ['finrep', '재정보고서'], ['bulletin', '헌금명단'], ['receipt', '기부금영수증'],
+    ['finrep', '재정보고서'], ['bulletin', '헌금명단'], ['receipt', '기부금영수증'], ['receiptlog', '영수증 발급대장'],
     ['budget', '예산'], ['settings', '설정']
   ];
   var tab = 'home';
@@ -178,7 +193,7 @@ console.log('[finance.js] v20260701ai');
     { label: '🏠 홈', tab: 'home' },
     { label: '전표입력', items: ['offering', 'bulk', 'expense'] },
     { label: '장부관리', items: ['ledger', 'givers', 'gl', 'bulletin'] },
-    { label: '결산·보고서', items: ['report', 'finrep', 'receipt'] },
+    { label: '결산·보고서', items: ['report', 'finrep', 'receipt', 'receiptlog'] },
     { label: '예산·계정', items: ['budget'] },
     { label: '설정', tab: 'settings' }
   ];
@@ -226,6 +241,7 @@ console.log('[finance.js] v20260701ai');
     else if (tab === 'finrep') renderFinReport(p);
     else if (tab === 'bulletin') renderGiverList(p);
     else if (tab === 'receipt') renderReceipt(p);
+    else if (tab === 'receiptlog') renderReceiptLog(p);
     else if (tab === 'budget') renderBudget(p);
     else if (tab === 'settings') renderSettings(p);
   }
@@ -996,17 +1012,283 @@ console.log('[finance.js] v20260701ai');
     panel.querySelector('#gl2_go').onclick = go; go();
   }
 
-  /* ── 기부금영수증 (교인 헌금 누계) ── */
+  /* ── 기부금영수증 발급 ── */
+  function birthFromKey(k) { var bd = (k || '').split('|')[1] || ''; return bd ? bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8) : ''; }
+  function birthDigits(k) { return (k || '').split('|')[1] || ''; }
+  function memByKey(k) { for (var i = 0; i < M.members.length; i++) if (M.members[i].key === k) return M.members[i]; return null; }
+  // 키 집합의 회계연도 헌금 전표
+  function receiptVouchers(keys) { return vouchersFY().filter(function (x) { return String(x['종류']) === '헌금' && keys.indexOf(x['매칭키']) >= 0; }); }
+  // 명세방식별 기부내용 행 [{date,content,amount}]
+  function detailRowsFor(vs, mode) {
+    var rows = [];
+    if (mode === 'month') {
+      var byM = {}, ord = [];
+      vs.forEach(function (v) { var m = fmtD(v['일자']).slice(0, 7); if (!byM[m]) { byM[m] = 0; ord.push(m); } byM[m] += Number(v['금액']) || 0; });
+      ord.sort();
+      ord.forEach(function (m) { rows.push({ date: m, content: '헌금(' + m.slice(5) + '월)', amount: byM[m] }); });
+    } else if (mode === 'account') {
+      var byA = {}, oa = [];
+      vs.forEach(function (v) { var a = v['계정'] || '헌금'; if (!byA[a]) { byA[a] = 0; oa.push(a); } byA[a] += Number(v['금액']) || 0; });
+      oa.sort(function (a, b) { return byA[b] - byA[a]; });
+      oa.forEach(function (a) { rows.push({ date: String(M.fy), content: a, amount: byA[a] }); });
+    } else {
+      var t = vs.reduce(function (s, v) { return s + (Number(v['금액']) || 0); }, 0);
+      rows.push({ date: String(M.fy), content: '헌금(종교단체)', amount: t });
+    }
+    return rows;
+  }
+  // 활성 영수증으로 커버된 매칭키 → 영수증
+  function coveredMap() {
+    var map = {};
+    (M.receipts || []).filter(function (r) { return r.status === 'issued' && r.fy === M.fy; }).forEach(function (r) {
+      var ks = (r.includedKeys && r.includedKeys.length) ? r.includedKeys : [r.key];
+      ks.forEach(function (k) { if (k) map[k] = r; });
+    });
+    return map;
+  }
   function renderReceipt(panel) {
     loading(panel);
-    ensureVouchers().then(function () {
+    Promise.all([ensureVouchers(), ensureSettings(), ensureReceipts()]).then(function () {
       var map = {};
       vouchersFY().filter(function (x) { return String(x['종류']) === '헌금' && x['매칭키']; }).forEach(function (v) { var k = v['매칭키']; if (!map[k]) map[k] = { name: v['헌금자'], key: k, total: 0, count: 0 }; map[k].total += Number(v['금액']) || 0; map[k].count++; });
       var rows = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return b.total - a.total; });
       var tot = rows.reduce(function (s, r) { return s + r.total; }, 0);
-      withPrint(panel, '기부금 영수증 (교인별 헌금 누계)', '<div class="fin-card"><div style="background:#fff8e8;border:1px solid #f0d98c;color:#8a6512;padding:10px 14px;border-radius:9px;font-size:.85rem;margin-bottom:12px">연말정산 기부금영수증용 — 교적 매칭된 교인의 헌금 누계입니다. (미등록 헌금자 제외)</div><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>교인별 헌금 누계 (' + rows.length + '명)</b><b style="color:#1e874b">' + won(tot) + '원</b></div><div style="overflow:auto;max-height:600px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th class="num">건수</th><th class="num">헌금 누계</th></tr></thead><tbody>' +
-        rows.map(function (r) { var bd = (r.key || '').split('|')[1] || ''; var b = bd ? bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8) : ''; return '<tr><td><b>' + esc(r.name) + '</b></td><td>' + esc(b) + '</td><td class="num">' + r.count + '</td><td class="num"><b>' + won(r.total) + '</b></td></tr>'; }).join('') + '</tbody></table></div></div>');
+      var cov = coveredMap();
+      var org = orgInfo();
+      panel.innerHTML =
+        (org.bizno ? '' : '<div style="background:#fdecea;border:1px solid #f5b7b1;color:#922b21;padding:9px 13px;border-radius:8px;font-size:.83rem;margin-bottom:10px">⚠ 발급기관 <b>고유번호(사업자등록번호)</b>가 비어 있습니다. <b>설정 → 기부금영수증 발급기관</b>에서 먼저 입력하세요. (영수증 효력에 필요)</div>') +
+        '<div class="fin-card"><div style="background:#fff8e8;border:1px solid #f0d98c;color:#8a6512;padding:10px 14px;border-radius:9px;font-size:.85rem;margin-bottom:12px">연말정산 기부금영수증 — 교적 매칭된 교인의 헌금 누계입니다. <b>발급</b> 버튼으로 공식 양식(소득세법 시행규칙 별지 제45호의2서식) 영수증을 출력/PDF 저장합니다. (미등록 헌금자 제외)</div>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px"><b>교인별 헌금 누계 (' + rows.length + '명) · ' + M.fy + '년도</b><b style="color:#1e874b">' + won(tot) + '원</b></div>' +
+        '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th class="num">건수</th><th class="num">헌금 누계</th><th>발급</th></tr></thead><tbody>' +
+        rows.map(function (r, i) {
+          var rc = cov[r.key];
+          var st;
+          if (rc) {
+            var byOther = (rc.key && rc.key !== r.key);
+            st = '<span class="rcp-badge ok">✓ 발급완료 · ' + (rc.method === 'pdf' ? 'PDF' : '출력') + (rc.spouse ? (byOther ? ' · 배우자합산' : ' · 부부합산') : '') + '</span>' +
+              (byOther ? '' : ' <button class="btn btn-line rcp-cancel" data-cancel="' + rc.id + '" style="padding:3px 9px;font-size:.76rem">발급취소</button>');
+          } else {
+            st = '<button class="btn btn-solid rcp-issue" data-idx="' + i + '" style="padding:4px 12px;font-size:.8rem">발급</button>';
+          }
+          return '<tr><td><b>' + esc(r.name) + '</b></td><td>' + esc(birthFromKey(r.key)) + '</td><td class="num">' + r.count + '</td><td class="num"><b>' + won(r.total) + '</b></td><td style="white-space:nowrap">' + st + '</td></tr>';
+        }).join('') + '</tbody></table></div></div>';
+      Array.prototype.forEach.call(panel.querySelectorAll('.rcp-issue'), function (b) {
+        b.onclick = function () { openReceiptModal(rows[Number(b.dataset.idx)], function () { renderReceipt(panel); }); };
+      });
+      Array.prototype.forEach.call(panel.querySelectorAll('.rcp-cancel'), function (b) {
+        b.onclick = function () {
+          if (!confirm('이 영수증 발급을 취소할까요? (발급대장에서 취소 상태로 기록됩니다)')) return;
+          b.disabled = true; b.textContent = '취소 중…';
+          WPF.call('cancelReceipt', { id: Number(b.dataset.cancel) }).then(function () { M._rc = false; ensureReceipts().then(function () { renderReceipt(panel); }); })
+            .catch(function (e) { alert('취소 실패: ' + e.message); b.disabled = false; b.textContent = '발급취소'; });
+        };
+      });
     }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
+  }
+
+  // 발급 팝업
+  function openReceiptModal(member, after) {
+    var me = memByKey(member.key) || {};
+    var spouseKey = me.spouseKey || '';
+    var spouseMem = spouseKey ? memByKey(spouseKey) : null;
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.55);z-index:9000;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 14px';
+    var addr = me.address || '';
+    ov.innerHTML =
+      '<div style="background:#fff;border-radius:14px;max-width:680px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:22px 24px 26px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;color:var(--accent,#032257)">기부금영수증 발급 — ' + esc(member.name) + '</h3><button id="rc_x" style="border:0;background:none;font-size:1.5rem;cursor:pointer;color:#98a2af">&times;</button></div>' +
+      '<p style="color:var(--ink-soft);font-size:.84rem;margin:0 0 14px">' + M.fy + '년도 헌금 누계 <b>' + won(member.total) + '원</b> · ' + member.count + '건. 발급 옵션을 선택하면 미리보기가 갱신됩니다.</p>' +
+      '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px">' +
+      '<div><div style="font-size:.78rem;color:var(--ink-soft);margin-bottom:4px">명세 방식</div>' +
+      '<label class="rc-r"><input type="radio" name="rc_detail" value="sum" checked> 합계(1줄)</label> ' +
+      '<label class="rc-r"><input type="radio" name="rc_detail" value="month"> 월별</label> ' +
+      '<label class="rc-r"><input type="radio" name="rc_detail" value="account"> 항목별</label></div>' +
+      (spouseKey ? '<div><div style="font-size:.78rem;color:var(--ink-soft);margin-bottom:4px">부부합산</div><label class="rc-r"><input type="checkbox" id="rc_spouse"> 배우자(' + esc(spouseMem ? spouseMem.name : (me.spouse || '')) + ') 헌금 합산</label></div>' : '') +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">' +
+      '<div class="form-field" style="margin:0"><label>주민등록번호 <span style="color:#98a2af;font-weight:400">(선택)</span></label><input type="text" id="rc_rrn" placeholder="앞 6자리 또는 전체" autocomplete="off"></div>' +
+      '<div class="form-field" style="margin:0"><label>주소</label><input type="text" id="rc_addr" value="' + esc(addr) + '" placeholder="기부자 주소"></div>' +
+      '</div>' +
+      '<div id="rc_prev" style="border:1px solid #e3e7ee;border-radius:10px;padding:12px;background:#fafbfd;margin-bottom:14px;max-height:230px;overflow:auto"></div>' +
+      '<div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;align-items:center"><span id="rc_msg" style="font-size:.82rem;color:#c0392b;margin-right:auto"></span>' +
+      '<button class="btn btn-line" id="rc_print">🖨 인쇄(출력)</button><button class="btn btn-solid" id="rc_pdf">📄 PDF로 저장</button></div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    document.body.style.overflow = 'hidden';
+    function close() { ov.remove(); document.body.style.overflow = ''; }
+    ov.querySelector('#rc_x').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    function opts() {
+      var mode = (ov.querySelector('input[name="rc_detail"]:checked') || {}).value || 'sum';
+      var sp = ov.querySelector('#rc_spouse'); var spOn = !!(sp && sp.checked);
+      return { mode: mode, spouse: spOn };
+    }
+    function gather() {
+      var o = opts();
+      var keys = [member.key]; if (o.spouse && spouseKey) keys.push(spouseKey);
+      var vs = receiptVouchers(keys);
+      var rows = detailRowsFor(vs, o.mode);
+      var total = vs.reduce(function (s, v) { return s + (Number(v['금액']) || 0); }, 0);
+      return { mode: o.mode, spouse: o.spouse, keys: keys, vs: vs, rows: rows, total: total };
+    }
+    function refresh() {
+      var g = gather();
+      var prev = ov.querySelector('#rc_prev');
+      prev.innerHTML = '<div style="font-size:.8rem;color:var(--ink-soft);margin-bottom:6px">기부내용 미리보기 · 합계 <b style="color:#1e874b">' + won(g.total) + '원</b> (' + g.vs.length + '건)</div>' +
+        '<table class="fin-table" style="font-size:.84rem"><thead><tr><th>연월일</th><th>내용</th><th class="num">금액</th></tr></thead><tbody>' +
+        g.rows.map(function (r) { return '<tr><td>' + esc(r.date) + '</td><td>' + esc(r.content) + '</td><td class="num">' + won(r.amount) + '</td></tr>'; }).join('') +
+        '</tbody></table>';
+      // 배우자 이미 발급 경고
+      var cov = coveredMap();
+      var msg = ov.querySelector('#rc_msg');
+      if (g.spouse && spouseKey && cov[spouseKey]) msg.textContent = '⚠ 배우자에게 이미 발급된 영수증이 있습니다. 합산 발급 시 중복될 수 있습니다.';
+      else if (!orgInfo().bizno) msg.textContent = '⚠ 설정에서 발급기관 고유번호를 먼저 입력하세요.';
+      else msg.textContent = '';
+    }
+    Array.prototype.forEach.call(ov.querySelectorAll('input[name="rc_detail"]'), function (r) { r.onchange = refresh; });
+    if (ov.querySelector('#rc_spouse')) ov.querySelector('#rc_spouse').onchange = refresh;
+    refresh();
+
+    function issue(method) {
+      var g = gather();
+      if (!g.total) { ov.querySelector('#rc_msg').textContent = '발급할 헌금 내역이 없습니다.'; return; }
+      var rrn = ov.querySelector('#rc_rrn').value.trim();
+      var addrV = ov.querySelector('#rc_addr').value.trim();
+      var r = fyRange(M.fy);
+      var no = nextReceiptNo();
+      var rec = {
+        no: no, fy: M.fy, key: member.key, name: member.name, birth: birthDigits(member.key),
+        rrn: rrn, addr: addrV, includedKeys: g.keys, detail: g.mode, spouse: g.spouse,
+        period: M.fy + '년도(' + r.from + '~' + r.to + ')', amount: g.total, cnt: g.vs.length, method: method
+      };
+      var btnP = ov.querySelector('#rc_print'), btnD = ov.querySelector('#rc_pdf');
+      btnP.disabled = btnD.disabled = true; ov.querySelector('#rc_msg').style.color = '#7b8794'; ov.querySelector('#rc_msg').textContent = '발급 기록 중…';
+      WPF.call('addReceipt', { receipt: rec }).then(function (res) {
+        printReceipt(rec, orgInfo(), g.rows);
+        M._rc = false;
+        ensureReceipts().then(function () { close(); if (after) after(); });
+      }).catch(function (e) { btnP.disabled = btnD.disabled = false; ov.querySelector('#rc_msg').style.color = '#c0392b'; ov.querySelector('#rc_msg').textContent = '발급 실패: ' + e.message; });
+    }
+    ov.querySelector('#rc_print').onclick = function () { issue('print'); };
+    ov.querySelector('#rc_pdf').onclick = function () { issue('pdf'); };
+  }
+
+  // 다음 일련번호 (회계연도-순번4자리)
+  function nextReceiptNo() {
+    var pre = M.fy + '-';
+    var max = 0;
+    (M.receipts || []).forEach(function (r) { if (String(r.no || '').indexOf(pre) === 0) { var n = parseInt(String(r.no).slice(pre.length), 10) || 0; if (n > max) max = n; } });
+    return pre + ('000' + (max + 1)).slice(-4);
+  }
+
+  // 공식 기부금영수증 인쇄 (별지 제45호의2서식)
+  function printReceipt(rec, org, rows) {
+    var w = window.open('', '_blank', 'width=900,height=940');
+    if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해 주세요.'); return; }
+    var dt = today(); var d = new Date(dt + 'T00:00:00');
+    var dateK = d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+    var rrn = rec.rrn ? esc(rec.rrn) : (birthDigits(rec.key) ? birthDigits(rec.key).slice(2) + '-*******' : '');
+    var bodyRows = rows.map(function (r) {
+      return '<tr><td class="c">종교단체기부금</td><td class="c">41</td><td class="c">금전</td><td class="c">' + esc(r.date) + '</td><td>' + esc(r.content) + '</td><td class="r">' + won(r.amount) + '</td></tr>';
+    }).join('');
+    var css = [
+      '*{box-sizing:border-box}',
+      'body{font-family:"Noto Sans KR","Malgun Gothic",sans-serif;color:#111;margin:0;padding:24px 30px;font-size:12px;line-height:1.4}',
+      '.doc{max-width:760px;margin:0 auto}',
+      '.no{font-size:11px;color:#333;margin-bottom:2px}',
+      'h1{text-align:center;font-size:24px;letter-spacing:.5em;margin:6px 0 4px;font-weight:700}',
+      '.law-top{text-align:center;font-size:10.5px;color:#444;margin:0 0 14px}',
+      'table{width:100%;border-collapse:collapse;margin-bottom:6px}',
+      'td,th{border:1px solid #555;padding:5px 7px;vertical-align:middle}',
+      '.sec{background:#f0f0f0;font-weight:700;text-align:center;width:96px}',
+      '.lbl{background:#f7f7f7;font-weight:600;text-align:center;width:104px;font-size:11px}',
+      '.c{text-align:center}.r{text-align:right;font-variant-numeric:tabular-nums}',
+      'thead th{background:#eaeef3;text-align:center;font-weight:700;font-size:11.5px}',
+      'tfoot td{background:#f3f3f3;font-weight:700}',
+      '.subt{font-weight:700;margin:12px 0 4px;font-size:12.5px}',
+      '.stmt{font-size:11.5px;margin:16px 0 4px;line-height:1.6}',
+      '.dt{text-align:center;margin:14px 0 6px;font-size:12.5px}',
+      '.sign{text-align:right;margin:4px 0;font-size:12.5px}',
+      '.ul{display:inline-block;min-width:120px;border-bottom:1px solid #111;text-align:center;font-weight:700}',
+      '.ul.big{min-width:180px;font-size:15px;font-family:"Noto Serif KR",serif}',
+      '.foot{margin-top:18px;font-size:9.5px;color:#888;border-top:1px solid #ddd;padding-top:8px}',
+      '@page{size:A4;margin:16mm 14mm}',
+      '@media print{body{padding:0}.noprint{display:none}}'
+    ].join('');
+    var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>기부금영수증 ' + esc(rec.no) + '</title>' +
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">' +
+      '<style>' + css + '</style></head><body><div class="doc">' +
+      '<div class="no">※ 일련번호 &nbsp;<b>' + esc(rec.no) + '</b></div>' +
+      '<h1>기부금영수증</h1>' +
+      '<p class="law-top">「소득세법」 제34조ㆍ제59조의4, 「조세특례제한법」 제76조ㆍ제88조의4 및 「법인세법」 제24조에 따른 기부금</p>' +
+      '<table>' +
+      '<tr><td class="sec" rowspan="2">① 기부자</td><td class="lbl">성명(법인명)</td><td>' + esc(rec.name) + '</td><td class="lbl">주민등록번호<br>(사업자등록번호)</td><td>' + rrn + '</td></tr>' +
+      '<tr><td class="lbl">주소(소재지)</td><td colspan="3">' + esc(rec.addr || '') + '</td></tr>' +
+      '</table>' +
+      '<table>' +
+      '<tr><td class="sec" rowspan="2">② 기부금<br>단체</td><td class="lbl">단체명</td><td>' + esc(org.name) + '</td><td class="lbl">사업자등록번호<br>(고유번호)</td><td>' + esc(org.bizno || '') + '</td></tr>' +
+      '<tr><td class="lbl">소재지</td><td>' + esc(org.addr) + '</td><td class="lbl">기부금공제대상<br>근거법령</td><td>' + esc(org.law) + '</td></tr>' +
+      '</table>' +
+      '<div class="subt">③ 기부내용</div>' +
+      '<table><thead><tr><th>유형</th><th>코드</th><th>구분</th><th>연월일</th><th>내용</th><th>금액</th></tr></thead>' +
+      '<tbody>' + bodyRows + '</tbody>' +
+      '<tfoot><tr><td class="c" colspan="5">합 계</td><td class="r">' + won(rec.amount) + '</td></tr></tfoot></table>' +
+      '<p class="stmt">「소득세법」 제34조, 「조세특례제한법」 제76조ㆍ제88조의4 및 「법인세법」 제24조에 따른 기부금을 위와 같이 기부하였음을 확인하여 주시기 바랍니다.</p>' +
+      '<p class="dt">' + dateK + '</p>' +
+      '<p class="sign">신청인(기부자) &nbsp; <span class="ul">' + esc(rec.name) + '</span> &nbsp;(서명 또는 인)</p>' +
+      '<p class="stmt">위와 같이 기부금을 기부받았음을 증명합니다.</p>' +
+      '<p class="dt">' + dateK + '</p>' +
+      '<p class="sign">기부금 수령인 &nbsp; <span class="ul big">' + esc(org.name) + '</span> &nbsp;(직인)</p>' +
+      '<div class="foot">발급방식: ' + (rec.method === 'pdf' ? 'PDF 저장' : '인쇄 출력') + ' · 회계연도: ' + esc(rec.period || (M.fy + '년도')) + ' · 발급일 ' + dt + ' · 운평장로교회 회계시스템</div>' +
+      '<div class="noprint" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#1f3a5f;color:#fff;border-radius:8px">🖨 인쇄 / PDF 저장</button></div>' +
+      '</div></body></html>';
+    w.document.write(html); w.document.close(); w.focus();
+    setTimeout(function () { try { w.print(); } catch (e) { } }, 700);
+  }
+
+  /* ── 기부금영수증 발급대장 ── */
+  function renderReceiptLog(panel) {
+    loading(panel);
+    Promise.all([ensureReceipts(), ensureSettings()]).then(function () {
+      var list = (M.receipts || []).slice().sort(function (a, b) { return String(b.no).localeCompare(String(a.no)); });
+      var issued = list.filter(function (r) { return r.status === 'issued'; });
+      var totAmt = issued.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+      var detailK = { sum: '합계', month: '월별', account: '항목별' };
+      panel.innerHTML = '<div class="fin-card">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px"><b>기부금영수증 발급대장 (전체 ' + list.length + '건 · 유효 ' + issued.length + '건)</b>' +
+        '<span><b style="color:#1e874b;margin-right:12px">' + won(totAmt) + '원</b><button class="btn btn-line" id="rcl_xls">⬇ 엑셀(세무서 보고용)</button></span></div>' +
+        '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>일련번호</th><th>발급일</th><th>기부자</th><th>생년월일</th><th>회계연도</th><th>명세</th><th>합산</th><th class="num">금액</th><th>방식</th><th>상태</th><th>관리</th></tr></thead><tbody>' +
+        (list.length ? list.map(function (r) {
+          var cancelled = r.status === 'cancelled';
+          return '<tr' + (cancelled ? ' style="color:#aab2bd;text-decoration:line-through"' : '') + '><td>' + esc(r.no) + '</td><td>' + esc(fmtD(r.issuedAt)) + '</td><td><b>' + esc(r.name) + '</b></td><td>' + esc(r.birth ? (r.birth.slice(0, 4) + '-' + r.birth.slice(4, 6) + '-' + r.birth.slice(6, 8)) : '') + '</td><td>' + esc(String(r.fy)) + '년</td><td>' + esc(detailK[r.detail] || r.detail) + '</td><td>' + (r.spouse ? '부부' : '-') + '</td><td class="num"><b>' + won(r.amount) + '</b></td><td>' + (r.method === 'pdf' ? 'PDF' : '출력') + '</td><td>' + (cancelled ? '취소됨' : '<span style="color:#1e874b">유효</span>') + '</td><td>' + (cancelled ? '' : '<button class="btn btn-line" data-cancel="' + r.id + '" style="padding:3px 9px;font-size:.76rem">발급취소</button>') + '</td></tr>';
+        }).join('') : '<tr><td colspan="11" style="text-align:center;color:#9aa5b1;padding:24px">발급된 영수증이 없습니다.</td></tr>') +
+        '</tbody></table></div></div>';
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-cancel]'), function (b) {
+        b.onclick = function () {
+          if (!confirm('이 영수증 발급을 취소할까요?')) return;
+          b.disabled = true; b.textContent = '취소 중…';
+          WPF.call('cancelReceipt', { id: Number(b.dataset.cancel) }).then(function () { M._rc = false; ensureReceipts().then(function () { renderReceiptLog(panel); }); })
+            .catch(function (e) { alert('취소 실패: ' + e.message); b.disabled = false; b.textContent = '발급취소'; });
+        };
+      });
+      panel.querySelector('#rcl_xls').onclick = function () { exportReceiptCSV(list, detailK); };
+    }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
+  }
+
+  function exportReceiptCSV(list, detailK) {
+    var head = ['일련번호', '발급일', '기부자성명', '생년월일', '주민등록번호', '주소', '회계연도', '명세방식', '부부합산', '헌금건수', '금액', '발급방식', '상태'];
+    function q(v) { v = String(v == null ? '' : v); return '"' + v.replace(/"/g, '""') + '"'; }
+    var lines = [head.map(q).join(',')];
+    list.forEach(function (r) {
+      lines.push([r.no, fmtD(r.issuedAt), r.name, r.birth || '', r.rrn || '', r.addr || '', r.fy + '년', (detailK[r.detail] || r.detail), (r.spouse ? '부부합산' : ''), r.cnt, r.amount, (r.method === 'pdf' ? 'PDF' : '출력'), (r.status === 'cancelled' ? '취소' : '유효')].map(q).join(','));
+    });
+    var csv = '﻿' + lines.join('\r\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '기부금영수증_발급대장_' + M.fy + '_' + today() + '.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
 
   /* ── 예산(앱 내 직접 편집 → 구글시트 저장) ── */
@@ -1121,7 +1403,19 @@ console.log('[finance.js] v20260701ai');
         '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">전기 이월금 — ' + M.fy + '년도</h3>' +
         '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px">회계연도 시작 시점의 <b>이월 잔액</b>입니다. 결산보고서의 기말 잔액(이월금＋수입－지출) 계산에 반영됩니다. 회계연도마다 따로 저장됩니다.</p>' +
         '<div class="form-field" style="max-width:260px"><label>이월금 (원)</label><input type="text" id="set_carry" inputmode="numeric" value="' + (carry ? won(carry) : '') + '" placeholder="0" style="text-align:right;font-weight:700"></div>' +
-        '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_carry_save">이월금 저장</button><span class="fin-msg" id="set_carry_msg"></span></div></div>';
+        '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_carry_save">이월금 저장</button><span class="fin-msg" id="set_carry_msg"></span></div></div>' +
+        (function () {
+          var o = orgInfo();
+          return '<div class="fin-card" style="max-width:560px">' +
+            '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">기부금영수증 발급기관</h3>' +
+            '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px">공식 기부금영수증(별지 제45호의2서식)에 인쇄되는 <b>기부금 수령인(교회)</b> 정보입니다. 특히 <b>고유번호(사업자등록번호)</b>는 영수증 효력에 필요합니다.</p>' +
+            '<div class="form-field"><label>단체명</label><input type="text" id="org_name" value="' + esc(o.name) + '"></div>' +
+            '<div class="form-field"><label>고유번호(사업자등록번호)</label><input type="text" id="org_bizno" value="' + esc(o.bizno) + '" placeholder="000-00-00000"></div>' +
+            '<div class="form-field"><label>소재지</label><input type="text" id="org_addr" value="' + esc(o.addr) + '"></div>' +
+            '<div class="form-field"><label>대표자(담임목사)</label><input type="text" id="org_rep" value="' + esc(o.rep) + '"></div>' +
+            '<div class="form-field"><label>기부금공제대상 근거법령</label><input type="text" id="org_law" value="' + esc(o.law) + '"></div>' +
+            '<div style="margin-top:6px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="org_save">발급기관 저장</button><span class="fin-msg" id="org_msg"></span></div></div>';
+        })();
       panel.querySelector('#set_save').onclick = function () {
         var v = Number(panel.querySelector('#set_sm').value);
         localStorage.setItem('wpf_fy_start', v);
@@ -1138,6 +1432,14 @@ console.log('[finance.js] v20260701ai');
           M.settings['carryover_' + M.fy] = String(amt);
           msg.style.color = 'green'; msg.textContent = '✓ 저장됨';
         }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; });
+      };
+      var orgSave = panel.querySelector('#org_save');
+      if (orgSave) orgSave.onclick = function () {
+        var omsg = panel.querySelector('#org_msg'); omsg.style.color = '#7b8794'; omsg.textContent = '저장 중…';
+        var fields = { rcp_org: '#org_name', rcp_bizno: '#org_bizno', rcp_addr: '#org_addr', rcp_rep: '#org_rep', rcp_law: '#org_law' };
+        var jobs = Object.keys(fields).map(function (k) { var v = panel.querySelector(fields[k]).value.trim(); return WPF.call('setSetting', { key: k, value: v }).then(function () { M.settings[k] = v; }); });
+        Promise.all(jobs).then(function () { omsg.style.color = 'green'; omsg.textContent = '✓ 저장됨'; })
+          .catch(function (e) { omsg.style.color = '#c0392b'; omsg.textContent = '저장 실패: ' + e.message; });
       };
     }).catch(function (e) { panel.innerHTML = msgCard('설정 조회 실패', e.message); });
   }
