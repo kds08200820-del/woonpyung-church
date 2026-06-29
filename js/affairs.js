@@ -679,6 +679,138 @@ console.log('[affairs.js] v20260701di');
     }
   }
 
+  // 붙여넣은 생명의 삶 본문을 날짜 블록으로 분리 (개인 비공개 보관용)
+  function parseQtPaste(text, year) {
+    text = String(text || '').replace(/\r\n?/g, '\n');
+    var re = /(?:(\d{4})\s*[.\-\/년]\s*)?(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})\s*일?/g;
+    var marks = [], m;
+    while ((m = re.exec(text))) {
+      var mo = Number(m[2]), da = Number(m[3]);
+      if (mo < 1 || mo > 12 || da < 1 || da > 31) continue;
+      var lineStart = text.lastIndexOf('\n', m.index - 1) + 1;
+      if (text.slice(lineStart, m.index).trim() !== '') continue;   // 줄 머리의 날짜만(오탐 방지)
+      var yy = m[1] ? Number(m[1]) : year;
+      marks.push({ i: m.index, date: yy + '-' + ('0' + mo).slice(-2) + '-' + ('0' + da).slice(-2) });
+    }
+    if (!marks.length) return text.trim() ? [{ date: '', title: '', scripture: '', raw: text.trim() }] : [];
+    var out = [];
+    for (var k = 0; k < marks.length; k++) {
+      var raw = text.slice(marks[k].i, k + 1 < marks.length ? marks[k + 1].i : text.length).trim();
+      var lines = raw.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+      var title = '', scripture = '';
+      for (var li = 1; li < lines.length; li++) {
+        if (!scripture && bookOf(lines[li]) && /\d+\s*[:：]\s*\d+/.test(lines[li]) && lines[li].length < 40) { scripture = lines[li]; continue; }
+        if (!title && lines[li].length < 60 && !/^\d/.test(lines[li])) title = lines[li];
+        if (title && scripture) break;
+      }
+      out.push({ date: marks[k].date, title: title, scripture: scripture, raw: raw });
+    }
+    return out;
+  }
+
+  // 생명의 삶 가져오기 모달 — 개인 비공개 보관함(qt_imports). 공개 사이트와 무관.
+  function qtImportModal() {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:#f4f6fa;z-index:9000;overflow:auto';
+    var thisYear = new Date().getFullYear();
+    ov.innerHTML =
+      '<header style="position:sticky;top:0;z-index:6;background:linear-gradient(180deg,#fff,#f7f9fc);border-bottom:1px solid #e1e6ef;box-shadow:0 2px 10px rgba(3,34,87,.06)">' +
+      '<div style="max-width:900px;margin:0 auto;padding:11px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
+      '<button class="btn btn-line" id="qi_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
+      '<div style="flex:1;min-width:160px"><div style="font-weight:700;font-size:1.12rem;color:var(--accent,#032257)">📥 생명의 삶 가져오기</div>' +
+      '<div style="font-size:.72rem;color:#9aa5b1;margin-top:2px">개인 참고용 비공개 보관함 — 홈페이지엔 절대 표시되지 않습니다</div></div>' +
+      '<button class="btn btn-solid" id="qi_save" style="padding:8px 18px;border-radius:9px;font-weight:700" disabled>💾 날짜별 저장</button>' +
+      '</div></header>' +
+      '<div style="max-width:900px;margin:0 auto;padding:18px">' +
+      '<div class="fin-card"><b style="color:var(--accent,#032257)">① 생명의 삶 열기 → 내용 복사</b>' +
+      '<div style="font-size:.84rem;color:#5a6b82;margin:6px 0 10px">아래 버튼으로 (이미 로그인된) 생명의 삶을 새 탭에서 엽니다. 그날(또는 한 달치) QT 본문을 <b>전체 선택(Ctrl+A) → 복사(Ctrl+C)</b> 하세요.</div>' +
+      '<a class="btn btn-line" href="https://www.du.plus/my-library" target="_blank" rel="noopener" style="padding:8px 16px">생명의 삶 열기 ↗</a></div>' +
+      '<div class="fin-card"><b style="color:var(--accent,#032257)">② 여기에 붙여넣기</b>' +
+      '<div style="display:flex;gap:10px;align-items:center;margin:8px 0;flex-wrap:wrap">' +
+      '<label style="font-size:.84rem;color:#5a6b82">연도(날짜에 연도가 없을 때)</label>' +
+      '<input type="number" id="qi_year" value="' + thisYear + '" style="width:96px;padding:6px 8px;border:1px solid #dfe5ee;border-radius:7px;font:inherit">' +
+      '<button class="btn btn-line" id="qi_parse" style="padding:7px 14px;margin-left:auto">날짜별로 정리 ↓</button></div>' +
+      '<textarea id="qi_paste" placeholder="생명의 삶 본문을 여기에 붙여넣으세요. (여러 날짜를 한 번에 붙여넣어도 날짜별로 자동 분리됩니다)" style="width:100%;min-height:180px;line-height:1.7;font-size:.95rem;padding:11px;border:1px solid #dfe5ee;border-radius:9px;font-family:\'Noto Serif KR\',serif;box-sizing:border-box"></textarea></div>' +
+      '<div id="qi_prev"></div>' +
+      '<div class="fin-card"><b style="color:var(--accent,#032257)">📂 가져온 자료 (비공개)</b><div id="qi_list" style="margin-top:8px"><p class="qt-loading">불러오는 중…</p></div></div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    document.body.style.overflow = 'hidden';
+    var close = pushBackClose(function () { ov.remove(); document.body.style.overflow = ''; });
+    ov.querySelector('#qi_close').onclick = close;
+
+    var parsed = [];
+    var prevBox = ov.querySelector('#qi_prev'), saveBtn = ov.querySelector('#qi_save');
+
+    ov.querySelector('#qi_parse').onclick = function () {
+      parsed = parseQtPaste(ov.querySelector('#qi_paste').value, Number(ov.querySelector('#qi_year').value) || thisYear);
+      renderPrev();
+    };
+
+    function renderPrev() {
+      if (!parsed.length) { prevBox.innerHTML = ''; saveBtn.disabled = true; return; }
+      saveBtn.disabled = false;
+      prevBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:var(--accent,#032257)">③ 날짜별 정리 미리보기 (' + parsed.length + '일)</b><span style="font-size:.78rem;color:#9aa5b1">저장 전에 날짜·제목을 고칠 수 있어요</span></div>' +
+        parsed.map(function (p, i) {
+          return '<div style="border:1px solid #eef1f5;border-radius:9px;padding:10px;margin-bottom:8px">' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">' +
+            '<input type="date" data-qf="date" data-i="' + i + '" value="' + esc(p.date) + '" style="padding:5px 8px;border:1px solid #dfe5ee;border-radius:7px;font:inherit">' +
+            '<input type="text" data-qf="scripture" data-i="' + i + '" value="' + esc(p.scripture) + '" placeholder="본문" style="width:140px;padding:5px 8px;border:1px solid #dfe5ee;border-radius:7px;font:inherit">' +
+            '<input type="text" data-qf="title" data-i="' + i + '" value="' + esc(p.title) + '" placeholder="제목" style="flex:1;min-width:120px;padding:5px 8px;border:1px solid #dfe5ee;border-radius:7px;font:inherit">' +
+            '<span style="font-size:.76rem;color:#9aa5b1">' + p.raw.length + '자</span>' +
+            '<button class="btn btn-line" data-qf="rm" data-i="' + i + '" style="padding:3px 9px;color:#c0392b">✕</button></div>' +
+            '<div style="font-size:.8rem;color:#7b8794;white-space:pre-wrap;max-height:80px;overflow:auto;background:#fafbfd;border-radius:6px;padding:7px">' + esc(p.raw.slice(0, 300)) + (p.raw.length > 300 ? ' …' : '') + '</div></div>';
+        }).join('') + '</div>';
+      Array.prototype.forEach.call(prevBox.querySelectorAll('[data-qf]'), function (el) {
+        var i = Number(el.dataset.i), f = el.dataset.qf;
+        if (f === 'rm') el.onclick = function () { parsed.splice(i, 1); renderPrev(); };
+        else el.oninput = function () { parsed[i][f] = el.value; };
+      });
+    }
+
+    saveBtn.onclick = function () {
+      var rows = parsed.filter(function (p) { return p.date; }).map(function (p) {
+        return { ref_date: p.date, title: p.title || null, scripture: p.scripture || null, raw_text: p.raw, updated_at: new Date().toISOString() };
+      });
+      if (!rows.length) { alert('저장할 날짜가 없습니다. 각 항목의 날짜를 확인해 주세요.'); return; }
+      saveBtn.disabled = true; saveBtn.textContent = '저장 중…';
+      api('POST', 'qt_imports?on_conflict=ref_date', rows, 'resolution=merge-duplicates,return=minimal')
+        .then(function () { saveBtn.textContent = '✓ 저장됨'; parsed = []; renderPrev(); ov.querySelector('#qi_paste').value = ''; loadList(); setTimeout(function () { saveBtn.textContent = '💾 날짜별 저장'; }, 1500); })
+        .catch(function (e) {
+          saveBtn.disabled = false; saveBtn.textContent = '💾 날짜별 저장';
+          if (/42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message)) alert('보관함 테이블이 없습니다. Supabase → SQL Editor 에서 supabase/qt_imports.sql 을 1회 실행해 주세요.');
+          else alert('저장 실패: ' + e.message);
+        });
+    };
+
+    var listBox = ov.querySelector('#qi_list');
+    function loadList() {
+      api('GET', 'qt_imports?select=ref_date,title,scripture,raw_text&order=ref_date.desc&limit=400').then(function (rows) {
+        rows = rows || [];
+        if (!rows.length) { listBox.innerHTML = '<p style="color:#9aa5b1;font-size:.86rem;margin:0">아직 가져온 자료가 없습니다.</p>'; return; }
+        var byDate = {}; rows.forEach(function (r) { byDate[r.ref_date] = r; });
+        listBox.innerHTML = rows.map(function (r) {
+          return '<div style="border-bottom:1px solid #f0f0f0;padding:8px 0">' +
+            '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+            '<b style="color:#27364a">' + esc(r.ref_date) + '</b>' +
+            (r.scripture ? '<span class="fin-pill">' + esc(r.scripture) + '</span>' : '') +
+            '<span style="flex:1;min-width:80px;color:#3a4a63">' + esc(r.title || '') + '</span>' +
+            '<button class="btn btn-line qi-view" data-d="' + esc(r.ref_date) + '" style="padding:3px 10px;font-size:.8rem">보기</button>' +
+            '<button class="btn btn-line qi-copy" data-d="' + esc(r.ref_date) + '" style="padding:3px 10px;font-size:.8rem">복사</button>' +
+            '<button class="btn btn-line qi-del" data-d="' + esc(r.ref_date) + '" style="padding:3px 10px;font-size:.8rem;color:#c0392b">삭제</button></div>' +
+            '<pre class="qi-raw" data-d="' + esc(r.ref_date) + '" style="display:none;white-space:pre-wrap;font-family:\'Noto Serif KR\',serif;font-size:.9rem;background:#fafbfd;border-radius:7px;padding:10px;margin:7px 0 0;max-height:300px;overflow:auto">' + esc(r.raw_text || '') + '</pre></div>';
+        }).join('');
+        Array.prototype.forEach.call(listBox.querySelectorAll('.qi-view'), function (b) { b.onclick = function () { var pre = listBox.querySelector('.qi-raw[data-d="' + b.dataset.d + '"]'); if (pre) pre.style.display = pre.style.display === 'none' ? 'block' : 'none'; }; });
+        Array.prototype.forEach.call(listBox.querySelectorAll('.qi-copy'), function (b) { b.onclick = function () { var r = byDate[b.dataset.d]; if (r && navigator.clipboard) navigator.clipboard.writeText(r.raw_text || '').then(function () { b.textContent = '복사됨'; setTimeout(function () { b.textContent = '복사'; }, 1200); }); }; });
+        Array.prototype.forEach.call(listBox.querySelectorAll('.qi-del'), function (b) { b.onclick = function () { if (!confirm(b.dataset.d + ' 자료를 삭제할까요?')) return; api('DELETE', 'qt_imports?ref_date=eq.' + b.dataset.d, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
+      }).catch(function (e) {
+        if (/42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message)) listBox.innerHTML = msgCard('보관함 준비 필요', 'Supabase → SQL Editor 에서 supabase/qt_imports.sql 을 1회 실행해 주세요.');
+        else listBox.innerHTML = '<p style="color:#c0392b;font-size:.86rem">조회 실패: ' + esc(e.message) + '</p>';
+      });
+    }
+    loadList();
+  }
+
   function renderSermon(panel) {
     var WTPL = {}, smView = 'list', smRows = [], calYM = null;
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요예배': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
@@ -689,10 +821,12 @@ console.log('[affairs.js] v20260701di');
       '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">설교 작성·관리</b>' +
       '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">캘린더에서 <b>날짜를 클릭</b>하면 그 날짜로 바로 설교를 준비할 수 있고, 아래 <b>목록</b>에서도 관리됩니다.</div></div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
+      '<button class="btn btn-line" id="sm_qtimport" style="padding:11px 16px;font-size:.95rem">📥 생명의 삶 가져오기</button>' +
       '<button class="btn btn-solid" id="sm_start" style="padding:11px 22px;font-size:1rem">✍️ 설교 시작</button></div></div>' +
       '<div id="sm_cal"></div>' +
       '<div id="sm_list"><p class="qt-loading">불러오는 중…</p></div>';
     panel.querySelector('#sm_start').onclick = function () { sermonEditor(null); };
+    panel.querySelector('#sm_qtimport').onclick = function () { qtImportModal(); };
     if (pendingSermon) { var _pp = pendingSermon; pendingSermon = null; sermonEditor(_pp); }   // 설교 제안에서 넘어온 prefill
 
     function loadList() {
