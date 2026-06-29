@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701dd
+ * 콘솔: [affairs.js] v20260701de
  */
-console.log('[affairs.js] v20260701dd');
+console.log('[affairs.js] v20260701de');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -746,14 +746,19 @@ console.log('[affairs.js] v20260701dd');
           worship_order: (order.length ? JSON.stringify(order) : null)
         };
       }
-      function save(then) {
+      function save(then, onErr) {
         var data = gather();
         var msg = ov.querySelector('#se_msg');
-        if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = '일자와 제목은 필수입니다.'; return; }
+        if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = '일자와 제목은 필수입니다.'; if (onErr) onErr(new Error('일자·제목 필수')); return; }
         msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
         var p = rec.id ? api('PATCH', 'sermons?id=eq.' + rec.id, data, 'return=representation') : api('POST', 'sermons', data, 'return=representation');
         p.then(function (rows) { var saved = (rows && rows[0]) || data; if (rows && rows[0]) rec.id = rows[0].id; msg.style.color = 'green'; msg.textContent = '✓ 저장되었습니다'; loadList(); if (then) then(saved); })
-          .catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; });
+          .catch(function (e) {
+            msg.style.color = '#c0392b';
+            var hint = /qt_bible_text|bible_text|column|PGRST204|schema cache|Could not find/i.test(e.message || '') ? ' — Supabase에서 supabase/sermons_extra.sql 을 1회 실행해 주세요(설교 본문·QT 컬럼 추가).' : '';
+            msg.textContent = '저장 실패: ' + (e.message || e) + hint;
+            if (onErr) onErr(e);
+          });
       }
       ov.querySelector('#se_save').onclick = function () { save(null); };
       ov.querySelector('#se_export').onclick = function () {
@@ -767,9 +772,17 @@ console.log('[affairs.js] v20260701dd');
         var w2 = alsoQt ? window.open('', '_blank') : null;
         if (!w1) { var m = ov.querySelector('#se_msg'); m.style.color = '#c0392b'; m.textContent = '팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.'; return; }
         if (alsoQt && !w2) { var m2 = ov.querySelector('#se_msg'); m2.style.color = '#c0392b'; m2.textContent = 'QT 창이 차단되었습니다 — 주소창의 팝업 차단을 허용해 주세요. (새벽은 정상 출력)'; }
+        // 저장이 끝나기 전 빈 창에 안내
+        function loading(w) { if (w) { try { w.document.write('<p style="font-family:sans-serif;color:#7b8794;padding:24px">저장 후 내보내는 중입니다…</p>'); } catch (_) { } } }
+        loading(w1); loading(w2);
         save(function (saved) {
           sermonReadingView(saved, { qt: false, win: w1 });           // ① 새벽 — 개역개정 (예배 순서 포함)
           if (alsoQt && w2) sermonReadingView(saved, { qt: true, win: w2 }); // ② QT — 우리말성경 (예배 순서 제외)
+        }, function (e) {
+          // 저장 실패 시 빈 창 대신 원인을 창에 표시
+          var html = '<div style="font-family:sans-serif;color:#c0392b;padding:24px;line-height:1.7">저장에 실패해 내보내기를 완료하지 못했습니다.<br><br><b>' + esc(e && e.message ? e.message : e) + '</b><br><br>※ Supabase SQL Editor에서 <b>supabase/sermons_extra.sql</b> 을 1회 실행했는지 확인해 주세요. (설교 본문·QT 컬럼이 없으면 저장이 실패합니다)</div>';
+          try { if (w1) { w1.document.body.innerHTML = html; } } catch (_) { }
+          try { if (w2) { w2.document.body.innerHTML = html; } } catch (_) { }
         });
       };
       ov.querySelector('#se_kakao').onclick = function () {
