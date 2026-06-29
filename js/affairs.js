@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701bl
+ * 콘솔: [affairs.js] v20260701bm
  */
-console.log('[affairs.js] v20260701bl');
+console.log('[affairs.js] v20260701bm');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -90,12 +90,51 @@ console.log('[affairs.js] v20260701bl');
         { k: 'is_private', label: '비공개(민감)', type: 'check' }
       ],
       cols: [['counsel_date', '일자'], ['member_name', '대상자'], ['category', '분류'], ['counselor', '상담자'], ['content', '내용']]
+    },
+    edu: {
+      table: 'edu_records', name: '교육', dateCol: 'edu_date',
+      fields: [
+        { k: 'edu_date', label: '일자', type: 'date' },
+        { k: 'title', label: '교육명', type: 'text', ph: '예: 새가족반 3주차' },
+        { k: 'target', label: '대상/부서', type: 'text', ph: '예: 새가족, 중등부' },
+        { k: 'teacher', label: '강사/인도자', type: 'text' },
+        { k: 'attendance', label: '참석 인원', type: 'text', ph: '예: 12명' },
+        { k: 'content', label: '내용/비고', type: 'textarea', full: true }
+      ],
+      cols: [['edu_date', '일자'], ['title', '교육명'], ['target', '대상'], ['teacher', '강사'], ['attendance', '인원'], ['content', '내용']]
+    },
+    sermon: {
+      table: 'sermons', name: '설교', dateCol: 'sermon_date',
+      fields: [
+        { k: 'sermon_date', label: '일자', type: 'date' },
+        { k: 'service', label: '예배', type: 'select', opts: ['주일 낮 예배', '주일 밤 예배', '수요예배', '금요기도회', '새벽기도', '특별집회', '기타'] },
+        { k: 'title', label: '제목', type: 'text' },
+        { k: 'scripture', label: '본문(성경)', type: 'text', ph: '예: 요한복음 3:16' },
+        { k: 'preacher', label: '설교자', type: 'text', ph: '예: 김동석 목사' },
+        { k: 'media_url', label: '영상/음성 링크', type: 'text', ph: '유튜브 등 URL' },
+        { k: 'file_url', label: '설교 원고/자료', type: 'file' },
+        { k: 'content', label: '요약/메모', type: 'textarea', full: true }
+      ],
+      cols: [['sermon_date', '일자'], ['service', '예배'], ['title', '제목'], ['scripture', '본문'], ['preacher', '설교자'], ['file_url', '자료'], ['content', '요약']]
+    },
+    doc: {
+      table: 'documents', name: '문서', dateCol: 'doc_date',
+      fields: [
+        { k: 'doc_date', label: '일자', type: 'date' },
+        { k: 'title', label: '제목', type: 'text' },
+        { k: 'category', label: '분류', type: 'select', opts: ['공문', '회의록', '보고서', '양식', '규정/정관', '대외협조', '기타'] },
+        { k: 'manager', label: '담당/부서', type: 'text' },
+        { k: 'file_url', label: '첨부 파일', type: 'file' },
+        { k: 'content', label: '내용/비고', type: 'textarea', full: true }
+      ],
+      cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
+  var TAB_ORDER = [['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['sermon', '설교관리'], ['doc', '문서관리']];
 
   var tab = 'visit';
   function render() {
-    root.innerHTML = '<div class="fin-tabs"><button data-t="visit">심방관리</button><button data-t="counsel">상담관리</button></div><div id="afPanel"></div>';
+    root.innerHTML = '<div class="fin-tabs">' + TAB_ORDER.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div id="afPanel"></div>';
     Array.prototype.forEach.call(root.querySelectorAll('.fin-tabs button'), function (b) {
       if (b.dataset.t === tab) b.classList.add('active');
       b.onclick = function () { tab = b.dataset.t; render(); };
@@ -109,6 +148,7 @@ console.log('[affairs.js] v20260701bl');
     if (f.type === 'select') inner = '<select data-k="' + f.k + '"><option value="">선택</option>' + f.opts.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     else if (f.type === 'textarea') inner = '<textarea data-k="' + f.k + '" placeholder="' + esc(f.ph || '') + '">' + esc(v) + '</textarea>';
     else if (f.type === 'check') inner = '<label class="sw" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px"><input type="checkbox" data-k="' + f.k + '"' + (v ? ' checked' : '') + '> 예</label>';
+    else if (f.type === 'file') inner = '<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><input type="hidden" data-k="' + f.k + '" value="' + esc(v) + '"><button type="button" class="btn btn-line af-file" data-for="' + f.k + '" style="padding:5px 11px;font-size:.82rem">📎 ' + (v ? '파일 교체' : '파일 선택') + '</button><a class="af-file-link" data-for="' + f.k + '" href="' + esc(v || '#') + '" target="_blank" rel="noopener" style="font-size:.8rem;' + (v ? '' : 'display:none') + '">열기</a></div>';
     else inner = '<input type="' + (f.type === 'date' ? 'date' : 'text') + '" data-k="' + f.k + '" value="' + esc(v) + '" placeholder="' + esc(f.ph || '') + '">';
     return '<div class="af-field' + (f.full ? ' full' : '') + '" style="' + (f.full ? 'grid-column:1/-1' : '') + '"><label>' + esc(f.label) + '</label>' + inner + '</div>';
   }
@@ -190,19 +230,37 @@ console.log('[affairs.js] v20260701bl');
     var msg = panel.querySelector('#af_msg');
     var resetBtn = panel.querySelector('#af_reset');
     var linkCtl = setupMemberLink(form);
+    var hasMember = type.fields.some(function (f) { return f.k === 'member_name'; });
     var editId = null;
+    function syncFiles() { Array.prototype.forEach.call(form.querySelectorAll('.af-file-link'), function (lk) { var hid = form.querySelector('input[type="hidden"][data-k="' + lk.dataset.for + '"]'); var u = hid ? hid.value : ''; lk.href = u || '#'; lk.style.display = u ? '' : 'none'; var btn = form.querySelector('.af-file[data-for="' + lk.dataset.for + '"]'); if (btn) btn.textContent = '📎 ' + (u ? '파일 교체' : '파일 선택'); }); }
     function clearForm() {
       editId = null; resetBtn.style.display = 'none'; panel.querySelector('#af_save').textContent = '＋ 추가';
       type.fields.forEach(function (f) { var el = form.querySelector('[data-k="' + f.k + '"]'); if (!el) return; if (f.type === 'check') el.checked = false; else el.value = (f.type === 'date') ? today() : ''; });
-      linkCtl.clear();
+      linkCtl.clear(); syncFiles();
     }
     resetBtn.onclick = clearForm;
+    // 파일 업로드(R2)
+    Array.prototype.forEach.call(form.querySelectorAll('.af-file'), function (btn) {
+      btn.onclick = function () {
+        if (!(window.ChurchUpload && ChurchUpload.isReady())) { msg.style.color = '#c0392b'; msg.textContent = '업로드 서버가 설정되지 않았습니다.'; return; }
+        var fi = document.createElement('input'); fi.type = 'file';
+        fi.onchange = function () {
+          var f = fi.files && fi.files[0]; if (!f) return;
+          var old = btn.textContent; btn.textContent = '업로드 중…'; btn.disabled = true;
+          ChurchUpload.upload(f, { folder: 'affairs/' + type.table, compress: false }).then(function (res) {
+            var hid = form.querySelector('input[type="hidden"][data-k="' + btn.dataset.for + '"]'); if (hid) hid.value = res.url;
+            btn.disabled = false; syncFiles();
+          }).catch(function (e) { btn.disabled = false; btn.textContent = old; msg.style.color = '#c0392b'; msg.textContent = '업로드 실패: ' + e.message; });
+        };
+        fi.click();
+      };
+    });
     form.onsubmit = function (e) {
       e.preventDefault();
       var rec = collect(form, type);
       var nme = form.querySelector('[data-k="member_name"]');
       rec.member_key = (nme && nme.dataset.memberKey) ? nme.dataset.memberKey : null; // 교적 매칭키(관계 연결)
-      if (!rec[type.dateCol] || !rec.member_name) { msg.style.color = '#c0392b'; msg.textContent = '일자와 대상자는 필수입니다.'; return; }
+      if (!rec[type.dateCol] || (hasMember && !rec.member_name)) { msg.style.color = '#c0392b'; msg.textContent = hasMember ? '일자와 대상자는 필수입니다.' : '일자는 필수입니다.'; return; }
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
       var p = editId
         ? api('PATCH', type.table + '?id=eq.' + editId, rec, 'return=minimal')
@@ -227,6 +285,7 @@ console.log('[affairs.js] v20260701bl');
                 if (k === 'member_name') { var mm = findMember(r.member_key); var badge = mm ? ' <span class="fin-pill" style="background:#e8f6ee;color:#1e874b">🔗 ' + esc(mm.role || mm.group || '교적') + '</span>' : (r.member_key ? ' <span class="fin-pill" style="background:#e8f6ee;color:#1e874b">🔗</span>' : ''); return '<td style="white-space:nowrap">' + esc(val || '') + badge + '</td>'; }
                 if (k === 'category') return '<td><span class="fin-pill">' + esc(val || '') + '</span></td>';
                 if (k === 'content') return '<td style="max-width:320px;white-space:normal;color:#48576b">' + nl2br(String(val || '').slice(0, 140)) + (String(val || '').length > 140 ? '…' : '') + (r.is_private ? ' <span class="fin-pill" style="background:#fdecea;color:#c0392b">비공개</span>' : '') + '</td>';
+                if (/url$/.test(k)) return '<td style="white-space:nowrap">' + (val ? '<a href="' + esc(val) + '" target="_blank" rel="noopener">📎 열기</a>' : '') + '</td>';
                 return '<td style="white-space:nowrap">' + esc(val || '') + '</td>';
               }).join('') +
               '<td style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-edit="' + esc(r.id) + '">수정</button> <button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-del="' + esc(r.id) + '">삭제</button></td></tr>';
@@ -247,7 +306,7 @@ console.log('[affairs.js] v20260701bl');
             var r = byId[b.dataset.edit]; if (!r) return;
             editId = r.id; resetBtn.style.display = ''; panel.querySelector('#af_save').textContent = '저장(수정)';
             type.fields.forEach(function (f) { var el = form.querySelector('[data-k="' + f.k + '"]'); if (!el) return; if (f.type === 'check') el.checked = !!r[f.k]; else el.value = (f.type === 'date') ? fmtD(r[f.k]) : (r[f.k] == null ? '' : r[f.k]); });
-            linkCtl.setByKey(r.member_key, r.member_name);
+            linkCtl.setByKey(r.member_key, r.member_name); syncFiles();
             panel.scrollIntoView({ behavior: 'smooth' });
           };
         });
@@ -255,7 +314,7 @@ console.log('[affairs.js] v20260701bl');
           b.onclick = function () { if (!confirm('삭제할까요?')) return; api('DELETE', type.table + '?id=eq.' + b.dataset.del, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); };
         });
       }).catch(function (e) {
-        if (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(e.message)) listBox.innerHTML = msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/affairs.sql 을 1회 실행해 주세요(visitations·counsels 테이블 생성).');
+        if (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(e.message)) listBox.innerHTML = msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/affairs.sql (심방·상담) 및 supabase/affairs_modules.sql (교육·설교·문서) 을 1회 실행해 주세요.');
         else listBox.innerHTML = msgCard('조회 실패', e.message);
       });
     }

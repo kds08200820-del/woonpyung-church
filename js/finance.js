@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701bl
+ * 콘솔: [finance.js] v20260701bm
  */
-console.log('[finance.js] v20260701bl');
+console.log('[finance.js] v20260701bm');
 
 (function () {
   var root = document.getElementById('finRoot');
