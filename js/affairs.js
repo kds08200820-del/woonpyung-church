@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701bw
+ * 콘솔: [affairs.js] v20260701bx
  */
-console.log('[affairs.js] v20260701bw');
+console.log('[affairs.js] v20260701bx');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -601,6 +601,7 @@ console.log('[affairs.js] v20260701bw');
             '<span style="flex:0 0 16px;text-align:center;color:#7b8794;font-size:.74rem;padding-top:3px">' + (i + 1) + '</span>' +
             '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:.85rem;color:var(--accent,#032257)">' + esc(it.label || '항목') + (it.url ? ' <a href="' + esc(it.url) + '" target="_blank" rel="noopener" style="font-size:.72rem;font-weight:400">자료</a>' : '') + '</div>' +
             '<input type="text" class="od-detail" data-i="' + i + '" value="' + esc(it.detail || '') + '" placeholder="내용(예: 305장 · 요 3:16)" style="width:100%;border:0;border-bottom:1px dashed #e6eaf0;padding:3px 0;font:inherit;font-size:.82rem;color:#48576b;background:none"></div>' +
+            '<button type="button" class="od-edit" data-i="' + i + '" title="수정/검색" style="border:0;background:none;cursor:pointer;color:#5b6b7d;padding-top:2px;font-size:.9rem">✎</button>' +
             '<button type="button" class="od-file" data-i="' + i + '" title="파일 첨부 (드래그앤드롭 가능)" style="border:0;background:none;cursor:pointer;color:' + (it.url ? '#1e874b' : '#5b6b7d') + ';padding-top:2px;font-size:.92rem">' + (it._up ? '⏳' : '📎') + '</button>' +
             '<button type="button" class="od-del" data-i="' + i + '" style="border:0;background:none;color:#c0392b;cursor:pointer;padding-top:2px">✕</button>' +
             '</div>';
@@ -610,6 +611,24 @@ console.log('[affairs.js] v20260701bw');
         Array.prototype.forEach.call(oBox.querySelectorAll('.od-detail'), function (inp) { inp.oninput = function () { order[Number(inp.dataset.i)].detail = inp.value; }; });
         Array.prototype.forEach.call(oBox.querySelectorAll('.od-del'), function (b) { b.onclick = function () { order.splice(Number(b.dataset.i), 1); renderOrder(); }; });
         Array.prototype.forEach.call(oBox.querySelectorAll('.od-file'), function (b) { b.onclick = function () { var fi = document.createElement('input'); fi.type = 'file'; fi.onchange = function () { uploadToOrder(Number(b.dataset.i), fi.files && fi.files[0]); }; fi.click(); }; });
+        Array.prototype.forEach.call(oBox.querySelectorAll('.od-edit'), function (b) {
+          b.onclick = function () {
+            var i = Number(b.dataset.i), it = order[i]; if (!it) return;
+            if (it.label === '교독문') {
+              gyodokPicker(function (g) { it.detail = g.no + '. ' + g.title; if (ov.querySelector('#se_gyodok_v')) ov.querySelector('#se_gyodok_v').value = it.detail; renderOrder(); });
+            } else if (it.label === '찬송') {
+              hymnPicker(it.hno ? [it.hno] : [], function (ns) {
+                if (!ns.length) return;
+                var f0 = ns[0]; it.hno = f0; it.detail = f0 + '장' + (hymnTitle(f0) ? ' ' + hymnTitle(f0) : '');
+                var extras = ns.slice(1).map(function (n) { return { label: '찬송', detail: n + '장' + (hymnTitle(n) ? ' ' + hymnTitle(n) : ''), url: '', hno: n }; });
+                if (extras.length) Array.prototype.splice.apply(order, [i + 1, 0].concat(extras));
+                renderOrder();
+              });
+            } else {
+              var inp = oBox.querySelector('.od-detail[data-i="' + i + '"]'); if (inp) { inp.focus(); inp.select(); }
+            }
+          };
+        });
         var menu = oBox.querySelector('#od_menu');
         menu.innerHTML = PRESETS.map(function (p) { return '<button type="button" class="btn btn-line od-preset" style="padding:3px 9px;font-size:.78rem">' + esc(p) + '</button>'; }).join('');
         oBox.querySelector('#od_add').onclick = function () { menu.style.display = (menu.style.display === 'none' ? 'flex' : 'none'); };
