@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cb
+ * 콘솔: [affairs.js] v20260701cc
  */
-console.log('[affairs.js] v20260701cb');
+console.log('[affairs.js] v20260701cc');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -506,11 +506,14 @@ console.log('[affairs.js] v20260701cb');
         '<button class="btn btn-line" id="se_kakao" style="background:#fff8c4;border-color:#f4d641">💬 카카오톡 양식 복사</button>' +
         '<span class="fin-msg" id="se_msg" style="width:100%;text-align:right"></span></div>' +
         '<div style="max-width:1140px;margin:0 auto;padding:18px 16px 60px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">' +
-        '<div style="flex:0 0 290px;max-width:100%"><div class="af-field" style="margin:0"><label>예배 순서 (교독문·찬송가·항목 추가 · 드래그 정렬 · 항목에 파일 첨부)</label>' +
-        '<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap"><button type="button" class="btn btn-line" id="se_tpl_load" style="padding:4px 9px;font-size:.76rem">📋 양식 불러오기</button><button type="button" class="btn btn-line" id="se_tpl_save" style="padding:4px 9px;font-size:.76rem">💾 양식 저장</button><span id="se_tpl_msg" style="font-size:.74rem;color:#7b8794;align-self:center"></span></div>' +
-        '<div style="display:flex;gap:6px;margin-bottom:7px;flex-wrap:wrap"><button type="button" class="btn btn-line" id="se_gyodok" style="padding:5px 11px;font-size:.8rem">📜 교독문</button><button type="button" class="btn btn-line" id="se_hymn" style="padding:5px 11px;font-size:.8rem">🎵 찬송가</button></div>' +
+        '<div style="flex:0 0 300px;max-width:100%"><div class="af-field" style="margin:0">' +
+        '<label style="font-size:1.18rem;font-weight:700;color:var(--accent,#032257);margin-bottom:2px">📋 예배 순서</label>' +
+        '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·CCM·항목을 추가하고 드래그로 정렬 · 항목에 📎 파일 첨부</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px"><button type="button" class="btn btn-line" id="se_tpl_load" style="padding:6px 8px;font-size:.78rem">📋 양식 불러오기</button><button type="button" class="btn btn-line" id="se_tpl_save" style="padding:6px 8px;font-size:.78rem">💾 양식 저장</button></div>' +
+        '<div id="se_tpl_msg" style="font-size:.74rem;color:#7b8794;min-height:0;margin-bottom:6px"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px"><button type="button" class="btn btn-line" id="se_gyodok" style="padding:7px 6px;font-size:.82rem">📜 교독문</button><button type="button" class="btn btn-line" id="se_hymn" style="padding:7px 6px;font-size:.82rem">🎵 찬송가</button><button type="button" class="btn btn-line" id="se_ccm" style="padding:7px 6px;font-size:.82rem">🎶 CCM</button></div>' +
         '<div id="se_order"></div>' +
-        '<div class="af-field" style="margin-top:14px"><label>CCM (예배 순서대로 · 드래그 정렬 · 파일 첨부)</label><div id="se_praise"></div></div>' +
+        '<div class="af-field" style="margin-top:16px"><label style="font-size:.95rem;font-weight:700;color:var(--accent,#032257)">🎶 CCM <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">드래그로 예배 순서에 넣기 · 파일 첨부</span></label><div id="se_praise"></div></div>' +
         '</div></div>' +
         '<div style="flex:1;min-width:320px">' +
         '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px">' +
@@ -553,10 +556,8 @@ console.log('[affairs.js] v20260701cb');
             '</div>';
         }).join('');
         pBox.innerHTML =
-          '<button type="button" class="btn btn-line" id="pr_add" style="padding:6px 13px;font-size:.84rem;margin-bottom:7px">＋ CCM 추가</button>' +
           '<div id="pr_rows">' + rowsHtml + '</div>' +
-          '<div id="pr_drop" style="border:2px dashed #cdd7e3;border-radius:9px;padding:9px;text-align:center;color:#9aa5b1;font-size:.79rem;margin-top:6px">파일을 여기로 끌어다 놓으면 CCM으로 추가됩니다</div>';
-        ov.querySelector('#pr_add').onclick = function () { praise.push({ title: '', url: '' }); renderPraise(); };
+          '<div id="pr_drop" style="border:2px dashed #cdd7e3;border-radius:9px;padding:9px;text-align:center;color:#9aa5b1;font-size:.79rem;margin-top:6px">＋ CCM 버튼을 누르거나, 파일을 여기로 끌어다 놓으세요</div>';
         Array.prototype.forEach.call(pBox.querySelectorAll('.pr-title'), function (inp) { inp.oninput = function () { praise[Number(inp.dataset.i)].title = inp.value; }; });
         Array.prototype.forEach.call(pBox.querySelectorAll('.pr-del'), function (b) { b.onclick = function () { praise.splice(Number(b.dataset.i), 1); renderPraise(); }; });
         Array.prototype.forEach.call(pBox.querySelectorAll('.pr-file'), function (b) {
@@ -742,6 +743,7 @@ console.log('[affairs.js] v20260701cb');
           renderOrder();
         });
       };
+      ov.querySelector('#se_ccm').onclick = function () { praise.push({ title: '', url: '' }); renderPraise(); var ti = pBox.querySelector('.pr-title[data-i="' + (praise.length - 1) + '"]'); if (ti) ti.focus(); };
 
       function gather() {
         return {
