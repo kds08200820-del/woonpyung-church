@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701bz
+ * 콘솔: [affairs.js] v20260701ca
  */
-console.log('[affairs.js] v20260701bz');
+console.log('[affairs.js] v20260701ca');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -816,7 +816,7 @@ console.log('[affairs.js] v20260701bz');
     } else fallback();
   }
 
-  // 아이패드용 설교문 보기(큰 글씨·스크롤·페이지넘김·다크모드·인쇄)
+  // 아이패드용 설교문 보기(큰 글씨·스크롤·페이지넘김·전체화면·다크모드·인쇄)
   function sermonReadingView(r, opts) {
     r = r || {}; opts = opts || {};
     var qtMode = !!opts.qt;
@@ -827,15 +827,19 @@ console.log('[affairs.js] v20260701bz');
     var praiseArr = (function () { try { return JSON.parse(r.praise || '[]') || []; } catch (e) { return []; } })();
     var wOrder = (function () { try { return JSON.parse(r.worship_order || '[]') || []; } catch (e) { return []; } })();
     function isImg(u) { return /\.(jpg|jpeg|png|webp|gif|bmp)(\?|$)/i.test(u || ''); }
-    var imgPages = '';
+
+    // 이미지 항목 수집 (각각 별도 페이지)
+    var imgPageItems = [];
     var orderRows = '';
     if (wOrder.length) {
       orderRows = wOrder.map(function (it, i) {
         var d = it.detail ? ' &nbsp;<span style="color:#5b6b7d">' + esc(it.detail) + '</span>' : '';
-        var a = it.url && !isImg(it.url) ? ' <a href="' + esc(it.url) + '" target="_blank" rel="noopener">자료</a>' : '';
+        var a = '';
         if (it.url && isImg(it.url)) {
-          imgPages += '<div class="img-page"><div class="img-page-t">' + esc(it.label || '항목') + (it.detail ? ' · ' + esc(it.detail) : '') + '</div><img src="' + esc(it.url) + '" alt="' + esc(it.label || '') + '"></div>';
-          a = ' <span style="color:#1e874b">📑 이미지 페이지</span>';
+          imgPageItems.push({ label: it.label || '항목', detail: it.detail || '', url: it.url });
+          a = ' <span style="color:#1e874b;font-size:.8em">📑 이미지</span>';
+        } else if (it.url) {
+          a = ' <a href="' + esc(it.url) + '" target="_blank" rel="noopener" style="font-size:.8em">자료</a>';
         }
         return '<div><span style="display:inline-block;min-width:16px;color:#9a8f78">' + (i + 1) + '.</span> <b>' + esc(it.label || '항목') + '</b>' + d + a + '</div>';
       }).join('');
@@ -850,41 +854,146 @@ console.log('[affairs.js] v20260701bz');
     var bibleLabel = qtMode ? '성경 본문 (우리말성경)' : '성경 본문 (개역개정)';
     var bibleHtml = bibleSrc ? '<div class="bible"><div class="bible-t">■ ' + bibleLabel + (r.scripture ? ' <span style="font-weight:400;color:#9a8f78">' + esc(r.scripture) + '</span>' : '') + '</div>' + esc(bibleSrc).replace(/\n/g, '<br>') + '</div>' : '';
     var bodyHtml = esc(r.content || '').replace(/\n/g, '<br>');
+
+    // ── 페이지 목록 구성 ──────────────────────────────────────────────
+    // 각 페이지는 <div class="pg"> 한 칸. 페이지 모드: 가로 flex+snap, 스크롤 모드: 세로 block
+    var pages = [];
+    // 페이지 0: 표지 (제목+메타+예배순서)
+    pages.push('<div class="pg pg-cover">' +
+      '<h1>' + esc(r.title || '(제목 없음)') + '</h1>' +
+      (r.scripture ? '<div class="scr">' + esc(r.scripture) + '</div>' : '') +
+      (meta ? '<div class="meta">' + meta + '</div>' : '') +
+      orderHtml +
+      '</div>');
+    // 페이지 1: 성경 본문 (있을 때만)
+    if (bibleHtml) pages.push('<div class="pg pg-bible">' + bibleHtml + '</div>');
+    // 페이지 2~N: 이미지 페이지 (예배순서 항목 중 이미지)
+    imgPageItems.forEach(function (it) {
+      pages.push('<div class="pg pg-img">' +
+        '<div class="img-pg-t">' + esc(it.label) + (it.detail ? ' · ' + esc(it.detail) : '') + '</div>' +
+        '<img src="' + esc(it.url) + '" alt="' + esc(it.label) + '">' +
+        '</div>');
+    });
+    // 마지막 페이지: 설교 원고
+    pages.push('<div class="pg pg-body"><div class="body">' + bodyHtml + '</div></div>');
+
     var css = [
       '*{box-sizing:border-box}',
-      'html,body{margin:0}',
-      'body{font-family:"Noto Serif KR",serif;background:#fbf9f4;color:#1a1a1a;font-size:22px;line-height:1.9;-webkit-text-size-adjust:100%}',
-      '.bar{position:sticky;top:0;background:rgba(255,255,255,.96);border-bottom:1px solid #e3ddd0;padding:8px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;z-index:10}',
-      '.bar button{font:inherit;font-size:15px;border:1px solid #cdd7e3;background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer}',
-      '.wrap{max-width:820px;margin:0 auto;padding:26px 22px 120px}',
+      'html,body{margin:0;height:100%}',
+      'body{font-family:"Noto Serif KR",serif;background:#fbf9f4;color:#1a1a1a;font-size:22px;line-height:1.9;-webkit-text-size-adjust:100%;display:flex;flex-direction:column}',
+      /* 상단 바 */
+      '.bar{flex-shrink:0;position:sticky;top:0;background:rgba(255,255,255,.96);border-bottom:1px solid #e3ddd0;padding:6px 12px;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;z-index:10;-webkit-overflow-scrolling:touch}',
+      '.bar button{flex-shrink:0;font:inherit;font-size:14px;border:1px solid #cdd7e3;background:#fff;border-radius:8px;padding:5px 11px;cursor:pointer;white-space:nowrap}',
+      '.bar button.active{background:#032257;color:#fff;border-color:#032257}',
+      '.bar .hint{flex-shrink:0;font-size:12px;color:#9a8f78;margin-left:auto;white-space:nowrap}',
+      /* 덱 컨테이너 */
+      '#deck{flex:1;overflow:hidden}',
+      /* ── 스크롤 모드 (기본) ── */
+      'body.scroll #deck{overflow-y:auto;overflow-x:hidden}',
+      'body.scroll .pg{max-width:820px;margin:0 auto;padding:24px 22px 60px}',
+      'body.scroll .pg+.pg{border-top:2px dashed #e7e0cf;padding-top:36px}',
+      /* ── 페이지 모드 ── */
+      'body.paged #deck{display:flex;flex-direction:row;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
+      'body.paged #deck::-webkit-scrollbar{display:none}',
+      'body.paged .pg{flex:0 0 100vw;width:100vw;height:100%;overflow-y:auto;scroll-snap-align:start;padding:24px 28px 40px}',
+      'body.paged .pg-img{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}',
+      /* 공통 요소 */
       'h1{font-size:1.6em;margin:0 0 6px;line-height:1.35}',
       '.scr{font-size:1.05em;color:#7a5d27;font-weight:600;margin:0 0 4px}',
-      '.meta{font-size:.8em;color:#9a8f78;margin:0 0 14px;font-family:"Noto Sans KR",sans-serif}',
-      '.order{font-family:"Noto Sans KR",sans-serif;font-size:.82em;background:#f1ece0;border:1px solid #e4dcc9;border-radius:10px;padding:11px 15px;margin:0 0 22px;line-height:1.85}body.dark .order{background:#23262c;border-color:#3a3d44}',
-      '.order-t{font-weight:700;color:#7a5d27;margin-bottom:5px}body.dark .order-t{color:#e0c98a}.order a{color:#1f6feb}',
-      '.bible{font-size:1em;background:#f6f2e8;border:1px solid #e7e0cf;border-left:4px solid #b89b5e;border-radius:8px;padding:14px 18px;margin:0 0 22px;line-height:1.95}body.dark .bible{background:#1e2026;border-color:#3a3d44;border-left-color:#7a5d27}',
-      '.bible-t{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:.8em;color:#7a5d27;margin-bottom:7px}body.dark .bible-t{color:#e0c98a}',
-      '.img-page{margin:0 0 22px;text-align:center;background:#fff;border:1px solid #e7e0cf;border-radius:8px;padding:14px}body.dark .img-page{background:#1e2026;border-color:#3a3d44}',
-      '.img-page-t{font-family:"Noto Sans KR",sans-serif;font-size:.78em;color:#7a5d27;margin:0 0 10px;font-weight:700}body.dark .img-page-t{color:#e0c98a}',
-      '.img-page img{max-width:100%;height:auto;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.08)}',
+      '.meta{font-size:.78em;color:#9a8f78;margin:0 0 14px;font-family:"Noto Sans KR",sans-serif}',
+      '.order{font-family:"Noto Sans KR",sans-serif;font-size:.82em;background:#f1ece0;border:1px solid #e4dcc9;border-radius:10px;padding:11px 15px;margin:0 0 0;line-height:1.85}',
+      '.order-t{font-weight:700;color:#7a5d27;margin-bottom:5px}.order a{color:#1f6feb}',
+      '.bible{font-size:1em;background:#f6f2e8;border:1px solid #e7e0cf;border-left:4px solid #b89b5e;border-radius:8px;padding:14px 18px;line-height:1.95}',
+      '.bible-t{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:.8em;color:#7a5d27;margin-bottom:7px}',
+      '.pg-img .img-pg-t{font-family:"Noto Sans KR",sans-serif;font-size:.75em;color:#7a5d27;font-weight:700;margin-bottom:10px;text-align:center}',
+      '.pg-img img{max-width:100%;max-height:calc(100% - 40px);object-fit:contain;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.1)}',
       '.body{white-space:normal}',
-      /* 페이지 넘김 모드 */
-      'body.paged{overflow:hidden;height:100vh}',
-      'body.paged .wrap{height:calc(100vh - 52px);max-width:none;padding:24px 30px;margin:0;columns:1;column-fill:auto;-webkit-columns:1;-moz-columns:1;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}',
-      '@supports (column-width: 100vw){body.paged .wrap{column-width:calc(100vw - 60px);column-gap:60px;width:auto}}',
-      'body.paged .wrap > *{scroll-snap-align:start;break-inside:avoid-column;-webkit-column-break-inside:avoid}',
-      'body.paged .img-page{break-before:column;-webkit-column-break-before:always;page-break-before:always}',
-      'body.paged .bar .pageonly{display:inline-block}.bar .pageonly{display:none}',
-      'body.dark{background:#15171b;color:#e9e6df}body.dark .bar{background:rgba(25,27,31,.96);border-color:#2a2d33}body.dark .bar button{background:#23262c;color:#e9e6df;border-color:#3a3d44}body.dark .scr{color:#e0c98a}body.dark .meta{color:#8a8576}',
-      '@media print{.bar{display:none}body{background:#fff;font-size:13pt}.wrap{padding:0}}'
+      /* 페이지 표시기 */
+      '#pg_ind{flex-shrink:0;font-size:12px;color:#9a8f78;min-width:44px;text-align:center;display:none}',
+      'body.paged #pg_ind{display:block}',
+      /* 다크 모드 */
+      'body.dark{background:#15171b;color:#e9e6df}',
+      'body.dark .bar{background:rgba(21,23,27,.96);border-color:#2a2d33}',
+      'body.dark .bar button{background:#23262c;color:#e9e6df;border-color:#3a3d44}',
+      'body.dark .bar button.active{background:#5b8dee;border-color:#5b8dee;color:#fff}',
+      'body.dark .scr{color:#e0c98a}body.dark .meta{color:#8a8576}',
+      'body.dark .order{background:#23262c;border-color:#3a3d44}body.dark .order-t{color:#e0c98a}',
+      'body.dark .bible{background:#1e2026;border-color:#3a3d44;border-left-color:#7a5d27}body.dark .bible-t{color:#e0c98a}',
+      'body.dark .pg+.pg{border-top-color:#2a2d33}',
+      '@media print{.bar{display:none}body{display:block;font-size:13pt}#deck,body.paged #deck{display:block;overflow:visible}body.paged .pg{width:auto;height:auto;page-break-after:always}}'
     ].join('');
-    var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+
+    var js = '(function(){' +
+      'var b=document.body,s=22,deck=document.getElementById("deck"),ind=document.getElementById("pg_ind");' +
+      'var pgs=deck.querySelectorAll(".pg"),total=pgs.length,curPg=0;' +
+      /* 글자 크기 */
+      'function ap(){b.style.fontSize=s+"px";try{localStorage.setItem("sermonFs",s)}catch(e){}}' +
+      'try{var sv=parseInt(localStorage.getItem("sermonFs"),10);if(sv)s=sv}catch(e){}ap();' +
+      'document.getElementById("inc").onclick=function(){s=Math.min(52,s+2);ap()};' +
+      'document.getElementById("dec").onclick=function(){s=Math.max(14,s-2);ap()};' +
+      /* 다크 */
+      'document.getElementById("dark").onclick=function(){b.classList.toggle("dark")};' +
+      /* 전체화면 */
+      'var fsBtn=document.getElementById("fs");' +
+      'function updateFs(){fsBtn.textContent=(document.fullscreenElement||document.webkitFullscreenElement)?"⊡ 창모드":"⛶ 전체화면";}' +
+      'fsBtn.onclick=function(){var el=document.documentElement;if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document).catch(function(){});}else{var req=el.requestFullscreen||el.webkitRequestFullscreen;if(req)req.call(el).catch(function(){});}};' +
+      'document.addEventListener("fullscreenchange",updateFs);document.addEventListener("webkitfullscreenchange",updateFs);' +
+      /* 페이지 표시 업데이트 */
+      'function updateInd(){if(total<2)return;var pg=Math.round(deck.scrollLeft/deck.clientWidth);curPg=pg;ind.textContent=(pg+1)+"/"+total;}' +
+      /* 페이지↔스크롤 토글 */
+      'var pgBtn=document.getElementById("pgbtn");' +
+      'function setMode(paged){' +
+        'b.classList.toggle("paged",paged);b.classList.toggle("scroll",!paged);' +
+        'pgBtn.classList.toggle("active",paged);' +
+        'try{localStorage.setItem("sermonPaged",paged?"1":"0")}catch(e){}' +
+        'if(paged){deck.scrollLeft=0;curPg=0;updateInd();}' +
+      '}' +
+      'pgBtn.onclick=function(){setMode(!b.classList.contains("paged"))};' +
+      'try{setMode(localStorage.getItem("sermonPaged")==="1")}catch(e){setMode(false)}' +
+      /* ◀ ▶ 버튼 */
+      'function goPage(d){var w=deck.clientWidth;deck.scrollTo({left:Math.max(0,(curPg+d)*w),behavior:"smooth"});}' +
+      'document.getElementById("prev").onclick=function(){goPage(-1)};' +
+      'document.getElementById("next").onclick=function(){goPage(1)};' +
+      /* 스크롤로 페이지 인디케이터 업데이트 */
+      'deck.addEventListener("scroll",function(){if(b.classList.contains("paged"))updateInd();},{passive:true});' +
+      /* 키보드 */
+      'document.addEventListener("keydown",function(e){' +
+        'if(!b.classList.contains("paged"))return;' +
+        'if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){e.preventDefault();goPage(1);}' +
+        'else if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();goPage(-1);}' +
+      '});' +
+      /* 터치 스와이프 */
+      'var sx=0,sy=0,st=0;' +
+      'deck.addEventListener("touchstart",function(e){var t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();},{passive:true});' +
+      'deck.addEventListener("touchend",function(e){' +
+        'if(!b.classList.contains("paged"))return;' +
+        'var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;' +
+        'if(dt<600&&Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.3){goPage(dx<0?1:-1);}' +
+      '},{passive:true});' +
+      /* 인쇄 */
+      'document.getElementById("print").onclick=function(){window.print()};' +
+      '})();';
+
+    var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
       '<title>' + esc(r.title || '설교문') + '</title>' +
-      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
-      '<style>' + css + '</style></head><body>' +
-      '<div class="bar"><button id="dec">가–</button><button id="inc">가+</button><button id="dark">🌙 다크</button><button id="page">📖 페이지</button><button id="prev" class="pageonly">◀</button><button id="next" class="pageonly">▶</button><button id="print">🖨 인쇄</button><span style="font-size:13px;color:#9a8f78;margin-left:auto">' + (qtMode ? 'QT (우리말성경)' : '설교') + ' · 손가락으로 좌우로 넘기세요</span></div>' +
-      '<div class="wrap" id="wrap"><h1>' + esc(r.title || '(제목 없음)') + '</h1>' + (r.scripture ? '<div class="scr">' + esc(r.scripture) + '</div>' : '') + (meta ? '<div class="meta">' + meta + '</div>' : '') + orderHtml + bibleHtml + imgPages + '<div class="body" id="body">' + bodyHtml + '</div></div>' +
-      '<script>(function(){var b=document.body,s=22,wrap=document.getElementById("wrap");function ap(){b.style.fontSize=s+"px";try{localStorage.setItem("sermonFs",s)}catch(e){}}try{var sv=parseInt(localStorage.getItem("sermonFs"),10);if(sv)s=sv}catch(e){}ap();document.getElementById("inc").onclick=function(){s=Math.min(48,s+2);ap()};document.getElementById("dec").onclick=function(){s=Math.max(14,s-2);ap()};document.getElementById("dark").onclick=function(){b.classList.toggle("dark")};document.getElementById("page").onclick=function(){b.classList.toggle("paged");try{localStorage.setItem("sermonPaged",b.classList.contains("paged")?"1":"0")}catch(e){}};try{if(localStorage.getItem("sermonPaged")==="1")b.classList.add("paged")}catch(e){}document.getElementById("prev").onclick=function(){wrap.scrollBy({left:-wrap.clientWidth,behavior:"smooth"})};document.getElementById("next").onclick=function(){wrap.scrollBy({left:wrap.clientWidth,behavior:"smooth"})};document.addEventListener("keydown",function(e){if(!b.classList.contains("paged"))return;if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){e.preventDefault();wrap.scrollBy({left:wrap.clientWidth,behavior:"smooth"})}else if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();wrap.scrollBy({left:-wrap.clientWidth,behavior:"smooth"})}});var sx=0,sy=0,st=0;wrap.addEventListener("touchstart",function(e){if(!b.classList.contains("paged"))return;var t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now()},{passive:true});wrap.addEventListener("touchend",function(e){if(!b.classList.contains("paged"))return;var t=e.changedTouches[0];var dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;if(dt<600&&Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.4){wrap.scrollBy({left:dx<0?wrap.clientWidth:-wrap.clientWidth,behavior:"smooth"})}});document.getElementById("print").onclick=function(){window.print()};})();<\/script>' +
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+      '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
+      '<style>' + css + '</style></head><body class="scroll">' +
+      '<div class="bar">' +
+        '<button id="dec">가–</button>' +
+        '<button id="inc">가+</button>' +
+        '<button id="dark">🌙</button>' +
+        '<button id="fs">⛶ 전체화면</button>' +
+        '<button id="pgbtn">📖 페이지</button>' +
+        '<button id="prev">◀</button>' +
+        '<span id="pg_ind"></span>' +
+        '<button id="next">▶</button>' +
+        '<button id="print">🖨</button>' +
+        '<span class="hint">' + (qtMode ? 'QT · 우리말성경' : '설교') + '</span>' +
+      '</div>' +
+      '<div id="deck">' + pages.join('') + '</div>' +
+      '<script>' + js + '<\/script>' +
       '</body></html>';
     w.document.write(html); w.document.close(); w.focus();
   }
