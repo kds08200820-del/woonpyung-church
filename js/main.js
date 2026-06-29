@@ -144,11 +144,52 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
   const dateListEl = document.getElementById("qtDateList");
   const detailEl = document.getElementById("qtDetail");
 
-  // 구글 시트(공유: 링크가 있는 모든 사용자) CSV 내보내기
+  // 구글 시트(레거시 — 운영중에는 Supabase 사용)
   const SHEET_CSV =
     "https://docs.google.com/spreadsheets/d/1Yg0dPnZEj18e9K5t-CC8ESwoXp1hP9Ro9AdTEhFSb0w/gviz/tq?tqx=out:csv";
 
   let entries = []; // [{date, content, title, ref}] (최신 → 과거)
+
+  // Supabase 'qt_published' 뷰에서 매일 QT 가져오기 → 카카오톡 발송 양식과 동일한 텍스트로 합성
+  function fmtKakaoDateFromIso(iso) {
+    if (!iso) return "";
+    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return iso;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    const dow = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"][d.getDay()];
+    return `${m[1]}.${m[2]}.${m[3]} ${dow}`;
+  }
+  function rowToQtContent(r) {
+    const dateStr = fmtKakaoDateFromIso(r.sermon_date);
+    const out = [];
+    out.push("📖 샬롬! 오늘의 QT입니다.");
+    out.push("");
+    out.push(`📅 날짜: ${dateStr}`);
+    out.push("");
+    if (r.title) out.push(r.title);
+    if (r.scripture) out.push(r.scripture);
+    out.push("");
+    out.push("📖 성경 본문 (우리말 성경)");
+    out.push((r.qt_bible_text || "").trim());
+    out.push("");
+    out.push("📝 묵상");
+    out.push("");
+    out.push((r.content || "").trim());
+    return out.join("\n");
+  }
+  function loadQtFromSupabase() {
+    if (!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve(null);
+    const u = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/qt_published?select=sermon_date,title,scripture,qt_bible_text,content&order=sermon_date.desc&limit=180";
+    return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + window.SUPABASE_ANON_KEY } })
+      .then((r) => r.ok ? r.json() : null)
+      .then((rows) => {
+        if (!rows || !rows.length) return null;
+        const ymd = (iso) => { const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[1]}.${m[2]}.${m[3]}` : ""; };
+        return rows
+          .filter((r) => r.sermon_date && (r.qt_bible_text || r.content))
+          .map((r) => ({ date: ymd(r.sermon_date), content: rowToQtContent(r) }));
+      })
+      .catch(() => null);
+  }
 
   // ── 갓피아(GODpia) 성경 듣기 딥링크: reading.asp?vol=<책코드>&chap=<장> ──
   const GODPIA_BASE = "https://www.godpia.com/read/reading.asp";
@@ -337,35 +378,42 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
   modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeModal(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
 
-  fetch(SHEET_CSV)
-    .then((r) => r.text())
-    .then((txt) => {
-      const rows = parseCSV(txt);
-      if (!rows.length) throw new Error("empty");
-      const header = rows[0].map((h) => h.trim());
-      const di = header.findIndex((h) => h.includes("날짜"));
-      const ci = header.findIndex((h) => h.includes("내용") || h.toUpperCase().includes("QT"));
-      const dIdx = di >= 0 ? di : 1;
-      const cIdx = ci >= 0 ? ci : 2;
-      entries = rows.slice(1)
-        .map((r) => ({ date: (r[dIdx] || "").trim(), content: (r[cIdx] || "").replace(/\r\n?/g, "\n").trim() }))
-        .filter((e) => e.date && e.content)
-        .filter((e) => dateNum(e.date) <= todayNum()) // 오늘 이후(미래) QT는 당일이 되기 전까지 숨김
-        .map((e) => ({ ...e, ...digest(e.content) }));
-      entries.sort((a, b) => (a.date < b.date ? 1 : -1));
-      renderToday();
-      // 푸시 알림 클릭(?qt=open 또는 #qt-open)으로 진입 시 모달 자동 열기
-      const wantOpen =
-        location.hash === "#qt-open" ||
-        new URLSearchParams(location.search).get("qt") === "open";
-      if (wantOpen && entries.length) {
-        const ts = todayStr();
-        openModal(entries.find((e) => e.date === ts) ? ts : entries[0].date);
-      }
-    })
-    .catch(() => {
-      todayBox.innerHTML = `<p class="qt-loading">오늘의 말씀을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>`;
-    });
+  function afterEntries() {
+    entries = entries
+      .filter((e) => e.date && e.content)
+      .filter((e) => dateNum(e.date) <= todayNum())
+      .map((e) => ({ ...e, ...digest(e.content) }));
+    entries.sort((a, b) => (a.date < b.date ? 1 : -1));
+    renderToday();
+    const wantOpen =
+      location.hash === "#qt-open" ||
+      new URLSearchParams(location.search).get("qt") === "open";
+    if (wantOpen && entries.length) {
+      const ts = todayStr();
+      openModal(entries.find((e) => e.date === ts) ? ts : entries[0].date);
+    }
+  }
+
+  // 1) Supabase qt_published 우선 → 2) 비어 있으면 구글 시트 백업
+  loadQtFromSupabase().then((sb) => {
+    if (sb && sb.length) { entries = sb; afterEntries(); return; }
+    return fetch(SHEET_CSV)
+      .then((r) => r.text())
+      .then((txt) => {
+        const rows = parseCSV(txt);
+        if (!rows.length) throw new Error("empty");
+        const header = rows[0].map((h) => h.trim());
+        const di = header.findIndex((h) => h.includes("날짜"));
+        const ci = header.findIndex((h) => h.includes("내용") || h.toUpperCase().includes("QT"));
+        const dIdx = di >= 0 ? di : 1;
+        const cIdx = ci >= 0 ? ci : 2;
+        entries = rows.slice(1)
+          .map((r) => ({ date: (r[dIdx] || "").trim(), content: (r[cIdx] || "").replace(/\r\n?/g, "\n").trim() }));
+        afterEntries();
+      });
+  }).catch(() => {
+    todayBox.innerHTML = `<p class="qt-loading">오늘의 말씀을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>`;
+  });
 })();
 
 // ===== 2. 주보 보관함: 월 필터 + 검색 =====
