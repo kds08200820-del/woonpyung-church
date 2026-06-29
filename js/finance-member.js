@@ -1,8 +1,8 @@
 /* finance-member.js — 내 정보(admin.html)의 "교적 인증 · 내 헌금" 섹션
  * 로그인한 회원이 이름+생년월일로 교적 인증(정/준회원) 후 본인 헌금만 조회.
- * 콘솔: [finance-member.js] v20260701bm
+ * 콘솔: [finance-member.js] v20260701bn
  */
-console.log('[finance-member.js] v20260701bm');
+console.log('[finance-member.js] v20260701bn');
 
 (function () {
   var box = document.getElementById('offeringBox');
@@ -117,7 +117,7 @@ console.log('[finance-member.js] v20260701bm');
       var head = null, spouse = null;
       for (var i = 0; i < fam.length; i++) if (fam[i].name === h) { head = fam[i]; break; }
       for (var j = 0; j < fam.length; j++) { var f = fam[j]; if (f !== head && (f.relation === '배우자' || (head && f.member_key && f.member_key === head.spouse_key))) { spouse = f; break; } }
-      var others = fam.filter(function (m) { return m !== head && m !== spouse; }).sort(function (a, b) { var ao = ORD[a.relation] || 50, bo = ORD[b.relation] || 50; if (ao !== bo) return ao - bo; return bday(a).localeCompare(bday(b)); });
+      var others = fam.filter(function (m) { return m !== head && m !== spouse; }).sort(function (a, b) { return bday(a).localeCompare(bday(b)); });  // 태어난 순(위가 손위)
       var origin = head && head.origin_head ? head.origin_head : '';
       var isMy = (h === myHead);
       return '<div style="border:1px solid ' + (isMy ? '#bfe3cd' : '#e8edf3') + ';border-radius:12px;padding:12px 14px;margin-bottom:10px;background:' + (isMy ? '#f4fbf6' : '#fff') + '">' +

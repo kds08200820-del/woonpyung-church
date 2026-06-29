@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701bm
+ * 콘솔: [gyojeok.js] v20260701bn
  */
-console.log('[gyojeok.js] v20260701bm');
+console.log('[gyojeok.js] v20260701bn');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -441,7 +441,7 @@ console.log('[gyojeok.js] v20260701bm');
       var headM = byName(fam, activeHead);
       var spouse = null;
       for (var i = 0; i < fam.length; i++) { var f = fam[i]; if (f === headM) continue; if (f['관계'] === '배우자' || (headM && f['매칭키'] && f['매칭키'] === headM['배우자매칭키'])) { spouse = f; break; } }
-      var others = fam.filter(function (m) { return m !== headM && m !== spouse; }).sort(function (a, b) { var ao = ORD[a['관계']] || 50, bo = ORD[b['관계']] || 50; if (ao !== bo) return ao - bo; return birthOf(a).localeCompare(birthOf(b)); });
+      var others = fam.filter(function (m) { return m !== headM && m !== spouse; }).sort(function (a, b) { return birthOf(a).localeCompare(birthOf(b)); });  // 태어난 순(위가 손위)
       function memNode(m, kind) { // kind: 'head' | 'spouse' | 'child'
         var isHead = kind === 'head';
         var icon = kind === 'head' ? '<span style="color:#c9a227;font-size:1.05rem">⌂</span>' : (kind === 'spouse' ? '<span style="color:#e0639b">💑</span>' : '<span style="color:#cbd5e1">└</span>');
