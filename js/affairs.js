@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cr
+ * 콘솔: [affairs.js] v20260701cs
  */
-console.log('[affairs.js] v20260701cr');
+console.log('[affairs.js] v20260701cs');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1315,9 +1315,10 @@ console.log('[affairs.js] v20260701cr');
     ov.querySelector('#bt_pull').onclick = function () {
       var bd = ov.querySelector('#bt_bdate').value; if (!bd) { bmsg('주일 날짜를 먼저 선택하세요.', '#c0392b'); return; }
       bmsg('데이터 불러오는 중…');
+      var prevSun = addDays(bd, -7); // 지난 주 헌금 = 직전 주일
       var pSerm = api('GET', 'sermons?select=*&sermon_date=gte.' + bd + '&sermon_date=lte.' + addDays(bd, 6) + '&order=sermon_date.asc');
       var pCom = COMMITTEES ? Promise.resolve(COMMITTEES) : loadCommittees();
-      var pOff = api('GET', 'offerings?select=category,giver,amount&offer_date=eq.' + bd).catch(function () { return null; });
+      var pOff = api('GET', 'offerings?select=category,giver,amount&offer_date=eq.' + prevSun).catch(function () { return null; });
       Promise.all([pSerm, pCom, pOff]).then(function (res) {
         var rows = res[0] || [];
         function pick(svc) { for (var i = 0; i < rows.length; i++) if (rows[i].service === svc) return rows[i]; return null; }
@@ -1337,8 +1338,8 @@ console.log('[affairs.js] v20260701cr');
         if (n) parts.push('설교 ' + n + '건');
         if (fillCommittee(bd)) parts.push('봉사위원');
         var offs = res[2];
-        if (offs && offs.length) { fillOfferings(offs); parts.push('헌금 ' + offs.length + '건'); }
-        bmsg(parts.length ? ('✓ ' + parts.join(' · ') + ' 불러옴 (' + bd + ')') + (offs && !offs.length ? ' · 해당일 헌금 없음' : '') : '해당 주/일에 불러올 데이터가 없습니다.', parts.length ? 'green' : '#c0392b');
+        if (offs && offs.length) { fillOfferings(offs); parts.push('헌금 ' + offs.length + '건(직전 주일 ' + prevSun + ')'); }
+        bmsg(parts.length ? ('✓ ' + parts.join(' · ') + ' 불러옴') + (offs && !offs.length ? ' · 직전 주일(' + prevSun + ') 헌금 없음' : '') : '해당 주/일에 불러올 데이터가 없습니다.', parts.length ? 'green' : '#c0392b');
       }).catch(function (e) { bmsg('불러오기 실패: ' + e.message, '#c0392b'); });
     };
   }
