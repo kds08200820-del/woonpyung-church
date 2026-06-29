@@ -145,11 +145,11 @@
         </div>
         <div class="give-acct">
           <span class="give-bank">농협</span>
-          <span class="give-no" id="giveAcctNo">351-1344-7997-23</span>
+          <span class="give-no" id="giveAcctNo">351-1344-7987-23</span>
           <span class="give-holder">예금주 · 운평장로교회</span>
         </div>
         <div class="give-actions">
-          <a class="give-toss" id="giveTossBtn" href="supertoss://send?bank=농협&accountNo=3511344799723">📲 토스로 송금하기</a>
+          <a class="give-toss" id="giveTossBtn" href="supertoss://send?bank=농협&accountNo=3511344798723">📲 토스로 송금하기</a>
           <button type="button" class="give-copy" id="giveCopyBtn">📋 계좌번호 복사</button>
         </div>
         <p class="give-note">‘토스로 송금하기’는 토스 앱이 설치된 휴대폰에서 송금 화면으로 연결됩니다. 그 외에는 계좌번호를 복사해 이용해 주세요.</p>
@@ -167,7 +167,7 @@
       giveModal.querySelectorAll("[data-give-close]").forEach(function (el) { el.addEventListener("click", closeGive); });
       var copyBtn = document.getElementById("giveCopyBtn");
       if (copyBtn) copyBtn.addEventListener("click", function () {
-        var num = "3511344799723";
+        var num = "3511344798723";
         var done = function () { var o = copyBtn.textContent; copyBtn.textContent = "✓ 복사되었습니다"; copyBtn.classList.add("copied"); setTimeout(function () { copyBtn.textContent = o; copyBtn.classList.remove("copied"); }, 1800); };
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(num).then(done, function () { window.prompt("계좌번호를 복사하세요", num); });
@@ -440,7 +440,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260701aj";
+      auth.src = "js/auth.js?v=20260701ak";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)
