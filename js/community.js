@@ -115,7 +115,7 @@
   }
 
   function init() {
-    console.log("[community.js] v20260701cq REST + R2");
+    console.log("[community.js] v20260701cr REST + R2");
     loadPosts();
 
     // 업로드 서버가 설정된 경우에만 사진 첨부 칸 노출

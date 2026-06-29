@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cq
+ * 콘솔: [affairs.js] v20260701cr
  */
-console.log('[affairs.js] v20260701cq');
+console.log('[affairs.js] v20260701cr');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1413,19 +1413,23 @@ console.log('[affairs.js] v20260701cq');
     function msg(t, c) { var e = panel.querySelector('#set_msg'); if (e) { e.style.color = c || '#7b8794'; e.textContent = t; if (t) setTimeout(function () { if (e.textContent === t) e.textContent = ''; }, 3000); } }
     var coms = [];
     function rowsBox() { return panel.querySelector('#set_rows'); }
-    function prayerToText(arr) { return (arr || []).map(function (p) { return (p.week || '') + ':' + (p.person || ''); }).filter(function (s) { return s !== ':'; }).join(' / '); }
-    function textToPrayer(s) { return String(s || '').split('/').map(function (part) { var i = part.indexOf(':'); if (i < 0) { var t = part.trim(); return t ? { week: '', person: t } : null; } return { week: part.slice(0, i).trim(), person: part.slice(i + 1).trim() }; }).filter(function (p) { return p && p.person; }); }
+    function prayerToText(arr) { return (arr || []).map(function (p) { return (p.week ? p.week + ':' : '') + (p.person || ''); }).filter(Boolean).join('\n'); }
+    function textToPrayer(s) { return String(s || '').split(/[\n\/]/).map(function (part) { var i = part.indexOf(':'); if (i < 0) { var t = part.trim(); return t ? { week: '', person: t } : null; } return { week: part.slice(0, i).trim(), person: part.slice(i + 1).trim() }; }).filter(function (p) { return p && p.person; }); }
     function renderRows() {
       var box = rowsBox();
-      box.innerHTML = '<div style="overflow:auto"><table class="fin-table"><thead><tr><th style="min-width:110px">월</th><th>헌금위원</th><th>안내위원</th><th>주차·사찰</th><th style="min-width:220px">이주의 기도 <span style="font-weight:400;color:#9aa5b1;font-size:.74rem">(1주:이름 / 2주:이름)</span></th><th></th></tr></thead><tbody>' +
+      var ist = 'width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit;font-size:.84rem;box-sizing:border-box';
+      box.innerHTML = '<div style="overflow:auto"><table class="fin-table" style="table-layout:fixed;width:100%;min-width:780px">' +
+        '<colgroup><col style="width:8%"><col style="width:16%"><col style="width:14%"><col style="width:14%"><col style="width:45%"><col style="width:3%"></colgroup>' +
+        '<thead><tr><th>월</th><th>헌금위원</th><th>안내위원</th><th>주차·사찰</th><th>이주의 기도 <span style="font-weight:400;color:#9aa5b1;font-size:.72rem">(주차별 · 한 줄에 하나)</span></th><th></th></tr></thead><tbody>' +
         coms.map(function (c, i) {
+          var lines = Math.max(2, (c.prayer && c.prayer.length) || 0);
           return '<tr>' +
-            '<td><input type="month" class="set-month" data-i="' + i + '" value="' + esc(c.month || '') + '" style="padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
-            '<td><input type="text" class="set-offering" data-i="' + i + '" value="' + esc(c.offering || '') + '" placeholder="이름 · 이름" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
-            '<td><input type="text" class="set-guide" data-i="' + i + '" value="' + esc(c.guide || '') + '" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
-            '<td><input type="text" class="set-parking" data-i="' + i + '" value="' + esc(c.parking || '') + '" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
-            '<td><input type="text" class="set-prayer" data-i="' + i + '" value="' + esc(prayerToText(c.prayer)) + '" placeholder="1주:신용화 장로 / 2주:박경자 권사" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
-            '<td><button type="button" class="set-del" data-i="' + i + '" style="border:0;background:none;color:#c0392b;cursor:pointer">✕</button></td></tr>';
+            '<td><input type="month" class="set-month" data-i="' + i + '" value="' + esc(c.month || '') + '" style="' + ist + '"></td>' +
+            '<td><input type="text" class="set-offering" data-i="' + i + '" value="' + esc(c.offering || '') + '" placeholder="이름 이름" title="' + esc(c.offering || '') + '" style="' + ist + '"></td>' +
+            '<td><input type="text" class="set-guide" data-i="' + i + '" value="' + esc(c.guide || '') + '" title="' + esc(c.guide || '') + '" style="' + ist + '"></td>' +
+            '<td><input type="text" class="set-parking" data-i="' + i + '" value="' + esc(c.parking || '') + '" title="' + esc(c.parking || '') + '" style="' + ist + '"></td>' +
+            '<td><textarea class="set-prayer" data-i="' + i + '" rows="' + lines + '" placeholder="1주:신용화 장로&#10;2주:박경자 권사" style="' + ist + ';line-height:1.5;resize:vertical;min-height:52px">' + esc(prayerToText(c.prayer)) + '</textarea></td>' +
+            '<td style="text-align:center;vertical-align:top;padding-top:8px"><button type="button" class="set-del" data-i="' + i + '" style="border:0;background:none;color:#c0392b;cursor:pointer">✕</button></td></tr>';
         }).join('') + '</tbody></table></div>';
       function bind(cls, key) { Array.prototype.forEach.call(box.querySelectorAll('.' + cls), function (inp) { inp.oninput = function () { coms[Number(inp.dataset.i)][key] = inp.value; }; }); }
       bind('set-month', 'month'); bind('set-offering', 'offering'); bind('set-guide', 'guide'); bind('set-parking', 'parking');
