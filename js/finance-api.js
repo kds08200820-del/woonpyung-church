@@ -1,9 +1,9 @@
 /* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
  * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
- * 콘솔: [finance-api.js] v20260701av (Supabase)
+ * 콘솔: [finance-api.js] v20260701aw (Supabase)
  */
-console.log('[finance-api.js] v20260701av (Supabase)');
+console.log('[finance-api.js] v20260701aw (Supabase)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -70,8 +70,8 @@ window.WPF = (function () {
   function memOut(r) { return { name: r.name, key: r.member_key, birth: r.birth, group: r.groups, role: r.role, spouse: r.spouse, spouseKey: r.spouse_key, head: r.head, rel: r.relation, address: r.address || '' }; }
   function recOut(r) { return { id: r.id, no: r.receipt_no, fy: r.fy, key: r.member_key, name: r.donor_name, birth: r.donor_birth, rrn: r.donor_rrn, addr: r.donor_addr, includedKeys: r.included_keys || [], detail: r.detail, spouse: r.spouse, period: r.period_label, amount: r.amount, cnt: r.cnt, method: r.method, status: r.status, issuedBy: r.issued_by, issuedAt: r.issued_at, cancelledAt: r.cancelled_at }; }
   function accOut(r) { return { '구분': r.atype, '분류': (r.atype === '수입' ? '헌금' : (r.category || '')), '계정명': r.name, '계정코드': r.code, '상위': r.category }; }
-  function offOut(r) { return { '전표ID': 'O' + r.id, '일자': r.offer_date, '구분': '수입', '종류': '헌금', '계정': r.category || '', '예배': r.service || '', '헌금자': r.giver || '', '매칭키': r.member_key || '', '금액': r.amount, '수단': r.method || '', '적요': r.memo || '' }; }
-  function expOut(r) { return { '전표ID': 'E' + r.id, '일자': r.exp_date, '구분': '지출', '종류': '일반', '계정': r.account || '', '예배': '', '헌금자': r.payee || '', '매칭키': '', '금액': r.amount, '수단': r.method || '', '적요': r.memo || '' }; }
+  function offOut(r) { return { '전표ID': 'O' + r.id, '일자': r.offer_date, '구분': '수입', '종류': '헌금', '계정': r.category || '', '예배': r.service || '', '헌금자': r.giver || '', '매칭키': r.member_key || '', '금액': r.amount, '수단': r.method || '', '적요': r.memo || '', '입력자': r.created_by || '', '입력일': r.created_at || '', '수정자': r.updated_by || '', '수정일': r.updated_at || '' }; }
+  function expOut(r) { return { '전표ID': 'E' + r.id, '일자': r.exp_date, '구분': '지출', '종류': '일반', '계정': r.account || '', '예배': '', '헌금자': r.payee || '', '매칭키': '', '금액': r.amount, '수단': r.method || '', '적요': r.memo || '', '입력자': r.created_by || '', '입력일': r.created_at || '', '수정자': r.updated_by || '', '수정일': r.updated_at || '' }; }
   function budOut(r) { return { '계정코드': r.code, '계정이름': r.name, '구분': r.atype, '예산': r.budget, '전년예산': r.prev_budget, '전년결산': r.prev_actual }; }
   function toOffering(v) { return { offer_date: v.date || null, category: v.account || null, service: v.service || null, giver: v.payer || null, member_key: v.memberKey || null, amount: num(v.amount), method: v.method || null, memo: v.memo || null }; }
   function toExpense(v) { return { exp_date: v.date || null, account: v.account || null, category: null, payee: v.payer || null, amount: num(v.amount), method: v.method || null, memo: v.memo || null }; }
