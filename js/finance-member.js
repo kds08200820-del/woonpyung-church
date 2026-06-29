@@ -1,8 +1,8 @@
 /* finance-member.js — 내 정보(admin.html)의 "교적 인증 · 내 헌금" 섹션
  * 로그인한 회원이 이름+생년월일로 교적 인증(정/준회원) 후 본인 헌금만 조회.
- * 콘솔: [finance-member.js] v20260701bk
+ * 콘솔: [finance-member.js] v20260701bl
  */
-console.log('[finance-member.js] v20260701bk');
+console.log('[finance-member.js] v20260701bl');
 
 (function () {
   var box = document.getElementById('offeringBox');
@@ -71,7 +71,8 @@ console.log('[finance-member.js] v20260701bk');
   function renderMember(me) {
     body.innerHTML =
       '<p style="font-size:.95rem;margin-bottom:14px;">✓ <b>정회원</b>' + (me.memberName ? ' · ' + esc(me.memberName) + '님' : '') + '</p>' +
-      '<div id="offeringList"><p class="qt-loading">헌금 내역을 불러오는 중…</p></div>';
+      '<div id="offeringList"><p class="qt-loading">헌금 내역을 불러오는 중…</p></div>' +
+      '<div id="familyTree" style="margin-top:20px"></div>';
     if (me.canFinance) {
       var a = document.createElement('a');
       a.className = 'btn btn-solid'; a.href = 'finance.html'; a.textContent = '재정관리 페이지로 이동 →';
@@ -79,6 +80,55 @@ console.log('[finance-member.js] v20260701bk');
       body.appendChild(a);
     }
     loadOfferings(me);
+    loadFamily(me);
+  }
+
+  // ── 우리 가족 가계도(읽기 전용) ──
+  function loadFamily(me) {
+    var el = document.getElementById('familyTree'); if (!el) return;
+    if (!(window.WPF && WPF.call)) return;
+    WPF.call('myFamily').then(function (r) {
+      var ms = (r && r.members) || [];
+      if (!ms.length) { el.innerHTML = ''; return; }
+      el.innerHTML = renderFamilyTree(ms, me);
+    }).catch(function () { el.innerHTML = ''; });
+  }
+  function renderFamilyTree(ms, me) {
+    var REL = ['세대주', '배우자', '부', '모', '조부', '조모', '장남', '차남', '삼남', '아들', '장녀', '차녀', '삼녀', '딸', '자녀', '형제', '자매', '손자', '손녀', '사위', '며느리', '기타'];
+    var ORD = {}; REL.forEach(function (r, i) { ORD[r] = i + 1; });
+    var myKeys = [me.memberKey, me.spouseKey].filter(Boolean).map(String);
+    function bday(m) { var bd = (String(m.member_key || '').split('|')[1]) || ''; if (bd.length === 8) return bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8); return String(m.birth || '').slice(0, 10); }
+    function headOf(m) { return m.head || m.name; }
+    var heads = {}, order = [];
+    ms.forEach(function (m) { var h = headOf(m); if (!heads[h]) { heads[h] = []; order.push(h); } heads[h].push(m); });
+    var myHead = (function () { for (var i = 0; i < ms.length; i++) if (myKeys.indexOf(String(ms[i].member_key)) >= 0) return headOf(ms[i]); return order[0]; })();
+    order.sort(function (a, b) { return (b === myHead ? 0 : 1) - (a === myHead ? 0 : 1) || a.localeCompare(b, 'ko'); });
+    function isMine(m) { return myKeys.indexOf(String(m.member_key)) >= 0; }
+    function person(m, kind) {
+      var mine = isMine(m);
+      var icon = kind === 'head' ? '⌂ ' : (kind === 'spouse' ? '💑 ' : '');
+      return '<span style="display:inline-flex;align-items:center;gap:5px">' + icon +
+        '<b style="' + (mine ? 'color:#1e874b' : (kind === 'head' ? 'color:var(--accent,#032257)' : '')) + '">' + esc(m.name) + '</b>' +
+        (mine ? '<span style="font-size:.7rem;background:#e8f6ee;color:#1e874b;border-radius:999px;padding:1px 7px">나</span>' : '') +
+        '<span style="font-size:.74rem;color:#7b8794">' + esc(kind === 'head' ? '세대주' : (m.relation || (kind === 'spouse' ? '배우자' : ''))) + (bday(m) ? ' · ' + esc(bday(m)) : '') + '</span></span>';
+    }
+    function household(h) {
+      var fam = heads[h];
+      var head = null, spouse = null;
+      for (var i = 0; i < fam.length; i++) if (fam[i].name === h) { head = fam[i]; break; }
+      for (var j = 0; j < fam.length; j++) { var f = fam[j]; if (f !== head && (f.relation === '배우자' || (head && f.member_key && f.member_key === head.spouse_key))) { spouse = f; break; } }
+      var others = fam.filter(function (m) { return m !== head && m !== spouse; }).sort(function (a, b) { var ao = ORD[a.relation] || 50, bo = ORD[b.relation] || 50; if (ao !== bo) return ao - bo; return bday(a).localeCompare(bday(b)); });
+      var origin = head && head.origin_head ? head.origin_head : '';
+      var isMy = (h === myHead);
+      return '<div style="border:1px solid ' + (isMy ? '#bfe3cd' : '#e8edf3') + ';border-radius:12px;padding:12px 14px;margin-bottom:10px;background:' + (isMy ? '#f4fbf6' : '#fff') + '">' +
+        (origin ? '<div style="font-size:.76rem;color:#9aa5b1;margin-bottom:5px">↑ ' + esc(origin) + '님 가정에서 분가</div>' : '') +
+        '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' + (head ? person(head, 'head') : '') + (spouse ? '<span style="color:#cdd5e1">—</span>' + person(spouse, 'spouse') : '') + '</div>' +
+        others.map(function (m) { return '<div style="padding:4px 0 4px 18px;color:#cbd5e1">└ ' + person(m, 'child') + '</div>'; }).join('') +
+        '</div>';
+    }
+    return '<div style="border-top:1px solid #eef1f5;padding-top:16px"><h3 style="margin:0 0 4px;color:var(--accent,#032257);font-size:1.05rem">👪 우리 가족 가계도</h3>' +
+      '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px">교적에 등록된 우리 가족 관계입니다. (변경은 교회 사무실·관리자에게 문의)</p>' +
+      order.map(household).join('') + '</div>';
   }
 
   function spouseBanner(name) {
