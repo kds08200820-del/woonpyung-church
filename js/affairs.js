@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701df
+ * 콘솔: [affairs.js] v20260701dg
  */
-console.log('[affairs.js] v20260701df');
+console.log('[affairs.js] v20260701dg');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -420,6 +420,11 @@ console.log('[affairs.js] v20260701df');
   function selectedGyodok() { try { return JSON.parse(localStorage.getItem('wpc_sel_gyodok') || 'null'); } catch (e) { return null; } }
   var SVC_OPTS = ['주일 낮 예배', '주일 밤 예배', '수요예배', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'];
 
+  // 고정 전례문(설교 큐시트 자동 펼침용)
+  var APOSTLES_CREED = ['전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며,', '그 외아들 우리 주 예수 그리스도를 믿사오니,', '이는 성령으로 잉태하사 동정녀 마리아에게 나시고,', '본디오 빌라도에게 고난을 받으사, 십자가에 못 박혀 죽으시고, 장사한 지 사흘 만에 죽은 자 가운데서 다시 살아나시며,', '하늘에 오르사, 전능하신 하나님 우편에 앉아 계시다가,', '저리로서 산 자와 죽은 자를 심판하러 오시리라.', '성령을 믿사오며, 거룩한 공회와, 성도가 서로 교통하는 것과,', '죄를 사하여 주시는 것과, 몸이 다시 사는 것과, 영원히 사는 것을 믿사옵나이다. 아멘.'];
+  var LORDS_PRAYER = ['하늘에 계신 우리 아버지여 이름이 거룩히 여김을 받으시오며', '나라가 임하시오며 뜻이 하늘에서 이루어진 것 같이 땅에서도 이루어지이다', '오늘 우리에게 일용할 양식을 주시옵고', '우리가 우리에게 죄 지은 자를 사하여 준 것 같이 우리 죄를 사하여 주시옵고', '우리를 시험에 들게 하지 마시옵고 다만 악에서 구하시옵소서', '대개 나라와 권세와 영광이 아버지께 영원히 있사옵나이다 아멘.'];
+  function gyodokByNo(no) { if (!window.GYODOK) return null; for (var i = 0; i < window.GYODOK.length; i++) if (window.GYODOK[i].no === Number(no)) return window.GYODOK[i]; return null; }
+
   function renderSermon(panel) {
     var WTPL = {}, smView = 'list', smRows = [], calYM = null;
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요예배': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
@@ -604,7 +609,9 @@ console.log('[affairs.js] v20260701df');
             '<span style="flex:0 0 16px;text-align:center;color:#7b8794;font-size:.74rem;padding-top:3px">' + (i + 1) + '</span>' +
             '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:.85rem;color:var(--accent,#032257)">' + esc(it.label || '항목') + (it.url ? ' <a href="' + esc(it.url) + '" target="_blank" rel="noopener" style="font-size:.72rem;font-weight:400">자료</a>' : '') + '</div>' +
             detailLine +
+            (it._openBody ? '<textarea class="od-body" data-i="' + i + '" placeholder="전문(찬송가 가사·기도문 등) — 아이패드 보기에 그대로 펼쳐집니다" style="width:100%;margin-top:5px;min-height:72px;line-height:1.7;padding:6px 8px;border:1px solid #dfe5ee;border-radius:7px;font:inherit;font-size:.84rem">' + esc(it.body || '') + '</textarea>' : '') +
             '</div>' +
+            '<button type="button" class="od-bodybtn" data-i="' + i + '" title="전문(가사·기도문) 입력" style="border:0;background:none;cursor:pointer;color:' + (it.body ? '#1e874b' : '#5b6b7d') + ';padding-top:2px;font-size:.9rem">📄</button>' +
             '<button type="button" class="od-edit" data-i="' + i + '" title="수정/검색" style="border:0;background:none;cursor:pointer;color:#5b6b7d;padding-top:2px;font-size:.9rem">✎</button>' +
             '<button type="button" class="od-file" data-i="' + i + '" title="파일 첨부 (드래그앤드롭 가능)" style="border:0;background:none;cursor:pointer;color:' + (it.url ? '#1e874b' : '#5b6b7d') + ';padding-top:2px;font-size:.92rem">' + (it._up ? '⏳' : '📎') + '</button>' +
             '<button type="button" class="od-del" data-i="' + i + '" style="border:0;background:none;color:#c0392b;cursor:pointer;padding-top:2px">✕</button>' +
@@ -614,6 +621,8 @@ console.log('[affairs.js] v20260701df');
           '<button type="button" class="btn btn-line" id="od_add" style="padding:6px 13px;font-size:.84rem;margin-bottom:6px">＋ 항목 추가</button><div id="od_menu" style="display:none;flex-wrap:wrap;gap:5px;margin-bottom:8px"></div>' +
           '<div id="od_rows">' + rowsHtml + '</div>';
         Array.prototype.forEach.call(oBox.querySelectorAll('.od-del'), function (b) { b.onclick = function () { order.splice(Number(b.dataset.i), 1); renderOrder(); }; });
+        Array.prototype.forEach.call(oBox.querySelectorAll('.od-bodybtn'), function (b) { b.onclick = function () { var i = Number(b.dataset.i); order[i]._openBody = !order[i]._openBody; renderOrder(); var ta = oBox.querySelector('.od-body[data-i="' + i + '"]'); if (ta) ta.focus(); }; });
+        Array.prototype.forEach.call(oBox.querySelectorAll('.od-body'), function (ta) { ta.oninput = function () { order[Number(ta.dataset.i)].body = ta.value; }; });
         Array.prototype.forEach.call(oBox.querySelectorAll('.od-file'), function (b) { b.onclick = function () { var fi = document.createElement('input'); fi.type = 'file'; fi.onchange = function () { uploadToOrder(Number(b.dataset.i), fi.files && fi.files[0]); }; fi.click(); }; });
         Array.prototype.forEach.call(oBox.querySelectorAll('.od-edit'), function (b) {
           b.onclick = function () {
@@ -744,7 +753,7 @@ console.log('[affairs.js] v20260701df');
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
           hymns: ov.querySelector('#se_hymns_v').value || null,
-          worship_order: (order.length ? JSON.stringify(order) : null)
+          worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, body: o.body || '' }; })) : null)
         };
       }
       function save(then, onErr) {
@@ -839,25 +848,37 @@ console.log('[affairs.js] v20260701df');
 
     // QT 출력에는 예배 순서·이미지(찬송가 등)를 넣지 않음
     var imgPageItems = [];
-    var orderRows = '';
-    if (!qtMode) {
-      if (wOrder.length) {
-        orderRows = wOrder.map(function (it, i) {
-          var d = it.detail ? ' &nbsp;<span style="color:#5b6b7d">' + esc(it.detail) + '</span>' : '';
-          var a = '';
-          if (it.url && isImg(it.url)) {
-            imgPageItems.push({ label: it.label || '항목', detail: it.detail || '', url: it.url });
-            a = ' <span style="color:#1e874b;font-size:.8em">📑 이미지</span>';
-          } else if (it.url) {
-            a = ' <a href="' + esc(it.url) + '" target="_blank" rel="noopener" style="font-size:.8em">자료</a>';
-          }
-          return '<div><span style="display:inline-block;min-width:16px;color:#9a8f78">' + (i + 1) + '.</span> <b>' + esc(it.label || '항목') + '</b>' + d + a + '</div>';
-        }).join('');
-      } else {
-        if (r.gyodok) orderRows += '<div>📜 <b>교독문</b> &nbsp;' + esc(r.gyodok) + '</div>';
-        if (hymnsTxt) orderRows += '<div>🎵 <b>찬송가</b> &nbsp;' + esc(hymnsTxt) + '</div>';
-        if (r.scripture) orderRows += '<div>📖 <b>본문</b> &nbsp;' + esc(r.scripture) + '</div>';
-      }
+    var orderRows = '', liturgyHtml = '';
+    function creedLines(arr) { return '<div class="lt-creed">' + arr.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div>'; }
+    if (!qtMode && wOrder.length) {
+      // 간단 순서표(맨 위) + 항목별 전문 펼침
+      orderRows = wOrder.map(function (it, i) {
+        var d = it.detail ? ' &nbsp;<span style="color:#5b6b7d">' + esc(it.detail) + '</span>' : '';
+        if (it.url && isImg(it.url)) imgPageItems.push({ label: it.label || '항목', detail: it.detail || '', url: it.url });
+        return '<div><span style="display:inline-block;min-width:18px;color:#9a8f78">' + (i + 1) + '.</span> <b>' + esc(it.label || '항목') + '</b>' + d + (it.url && isImg(it.url) ? ' <span style="color:#1e874b;font-size:.8em">📑</span>' : '') + '</div>';
+      }).join('');
+      liturgyHtml = wOrder.map(function (it, i) {
+        var label = it.label || '항목';
+        var head = '<div class="lt-h"><span class="lt-n">' + (i + 1) + '</span> ' + esc(label) + (it.detail ? ' <span class="lt-d">' + esc(it.detail) + '</span>' : '') + '</div>';
+        var body = '';
+        if (label === '교독문') {
+          var m = (it.detail || '').match(/(\d+)/); var g = m ? gyodokByNo(m[1]) : null;
+          if (g) body = '<div class="lt-creed">' + gyodokBodyHTML(g.body) + '</div>';
+        } else if (label === '신앙고백') {
+          body = (/니케아|니케야/.test(it.detail || '')) ? '' : creedLines(APOSTLES_CREED);
+        } else if (label === '주기도문') {
+          body = creedLines(LORDS_PRAYER);
+        } else if (label === '성경봉독') {
+          if (r.bible_text) body = '<div class="lt-bible">' + esc(r.bible_text).replace(/\n/g, '<br>') + '</div>';
+        }
+        if (it.body && it.body.trim()) body += '<div class="lt-body">' + esc(it.body).replace(/\n/g, '<br>') + '</div>';
+        if (it.url && !isImg(it.url)) body += '<div style="margin-top:4px"><a href="' + esc(it.url) + '" target="_blank" rel="noopener">📎 첨부 자료</a></div>';
+        return '<div class="lt-item">' + head + body + '</div>';
+      }).join('');
+    } else if (!qtMode) {
+      if (r.gyodok) orderRows += '<div>📜 <b>교독문</b> &nbsp;' + esc(r.gyodok) + '</div>';
+      if (hymnsTxt) orderRows += '<div>🎵 <b>찬송가</b> &nbsp;' + esc(hymnsTxt) + '</div>';
+      if (r.scripture) orderRows += '<div>📖 <b>본문</b> &nbsp;' + esc(r.scripture) + '</div>';
     }
     var orderHtml = orderRows ? '<div class="order"><div class="order-t">■ 예배 순서</div>' + orderRows + '</div>' : '';
     var bibleSrc = qtMode ? (r.qt_bible_text || r.bible_text || '') : (r.bible_text || '');
@@ -869,14 +890,16 @@ console.log('[affairs.js] v20260701df');
 
     // ── 고정 페이지 구성(표지·성경·이미지). 설교 원고 페이지는 JS가 동적 생성 ──
     var pages = [];
-    // 페이지 0: 표지 (제목+메타+예배순서)
+    // 페이지 0: 표지 (제목+메타+예배순서 요약)
     pages.push('<div class="pg pg-fixed pg-cover">' +
       '<h1>' + esc(r.title || '(제목 없음)') + '</h1>' +
       (r.scripture ? '<div class="scr">' + esc(r.scripture) + '</div>' : '') +
       (meta ? '<div class="meta">' + meta + '</div>' : '') +
       orderHtml +
       '</div>');
-    // 페이지 1: 성경 본문 (있을 때만)
+    // 페이지 1: 예배 순서 전문(교독문·사도신경·주기도문·성경봉독·가사/기도문) — 큐시트
+    if (liturgyHtml) pages.push('<div class="pg pg-fixed pg-lit"><div class="lit-t">■ 예배 순서 (전문)</div>' + liturgyHtml + '</div>');
+    // 성경 본문 (있을 때만)
     if (bibleHtml) pages.push('<div class="pg pg-fixed pg-bible">' + bibleHtml + '</div>');
     // 페이지 2~N: 이미지 페이지 (예배순서 항목 중 이미지)
     imgPageItems.forEach(function (it) {
@@ -916,6 +939,16 @@ console.log('[affairs.js] v20260701df');
       '.order-t{font-weight:700;color:#7a5d27;margin-bottom:5px}.order a{color:#1f6feb}',
       '.bible{font-size:1em;background:#f6f2e8;border:1px solid #e7e0cf;border-left:4px solid #b89b5e;border-radius:8px;padding:14px 18px;line-height:1.95}',
       '.bible-t{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:.8em;color:#7a5d27;margin-bottom:7px}',
+      /* 예배 순서 전문(큐시트) */
+      '.lit-t{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:.82em;color:#7a5d27;margin:0 0 12px}body.dark .lit-t{color:#e0c98a}',
+      '.lt-item{margin:0 0 18px;padding:0 0 14px;border-bottom:1px dashed #e3ddcf}body.dark .lt-item{border-bottom-color:#3a3d44}',
+      '.lt-h{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:1.02em;color:var(--accent,#0a2c5c);margin-bottom:6px}body.dark .lt-h{color:#e0c98a}',
+      '.lt-h .lt-n{display:inline-flex;align-items:center;justify-content:center;min-width:1.5em;height:1.5em;border-radius:50%;background:#0a2c5c;color:#fff;font-size:.72em;margin-right:5px}body.dark .lt-h .lt-n{background:#5b8dee}',
+      '.lt-d{font-weight:500;font-size:.86em;color:#7a5d27}body.dark .lt-d{color:#cbb98a}',
+      '.lt-creed{font-size:.98em;line-height:1.85;color:#2b2b2b}body.dark .lt-creed{color:#e3e0d8}',
+      '.lt-creed>div{margin:3px 0}',
+      '.lt-bible{font-size:.98em;line-height:1.9;white-space:normal}',
+      '.lt-body{font-size:.98em;line-height:1.85;white-space:pre-wrap;margin-top:4px}',
       '.pg-img .img-pg-t{font-family:"Noto Sans KR",sans-serif;font-size:.75em;color:#7a5d27;font-weight:700;margin-bottom:10px;text-align:center}',
       '.pg-img img{max-width:100%;max-height:calc(100% - 40px);object-fit:contain;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.1)}',
       '.body{white-space:normal}',
