@@ -165,9 +165,33 @@ console.log('[affairs.js] v20260701di');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['sermon', '설교관리'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['settings', '설정']];
 
-  var tab = 'sermon';
+  // ── 성경 66권(설교 권별 커버리지) ──
+  var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
+  var BIBLE_NT = ['마태복음', '마가복음', '누가복음', '요한복음', '사도행전', '로마서', '고린도전서', '고린도후서', '갈라디아서', '에베소서', '빌립보서', '골로새서', '데살로니가전서', '데살로니가후서', '디모데전서', '디모데후서', '디도서', '빌레몬서', '히브리서', '야고보서', '베드로전서', '베드로후서', '요한일서', '요한이서', '요한삼서', '유다서', '요한계시록'];
+  var BOOK_ALIAS = (function () {
+    var m = {};
+    BIBLE_OT.concat(BIBLE_NT).forEach(function (n) { m[n] = n; });
+    var ab = { 창: '창세기', 출: '출애굽기', 레: '레위기', 민: '민수기', 신: '신명기', 수: '여호수아', 삿: '사사기', 룻: '룻기', 삼상: '사무엘상', 삼하: '사무엘하', 왕상: '열왕기상', 왕하: '열왕기하', 대상: '역대상', 대하: '역대하', 스: '에스라', 느: '느헤미야', 에: '에스더', 욥: '욥기', 시: '시편', 잠: '잠언', 전: '전도서', 아: '아가', 사: '이사야', 렘: '예레미야', 애: '예레미야애가', 겔: '에스겔', 단: '다니엘', 호: '호세아', 욜: '요엘', 암: '아모스', 옵: '오바댜', 욘: '요나', 미: '미가', 나: '나훔', 합: '하박국', 습: '스바냐', 학: '학개', 슥: '스가랴', 말: '말라기', 마: '마태복음', 막: '마가복음', 눅: '누가복음', 요: '요한복음', 행: '사도행전', 롬: '로마서', 고전: '고린도전서', 고후: '고린도후서', 갈: '갈라디아서', 엡: '에베소서', 빌: '빌립보서', 골: '골로새서', 살전: '데살로니가전서', 살후: '데살로니가후서', 딤전: '디모데전서', 딤후: '디모데후서', 딛: '디도서', 몬: '빌레몬서', 히: '히브리서', 약: '야고보서', 벧전: '베드로전서', 벧후: '베드로후서', 요일: '요한일서', 요이: '요한이서', 요삼: '요한삼서', 유: '유다서', 계: '요한계시록' };
+    Object.keys(ab).forEach(function (k) { m[k] = ab[k]; });
+    return m;
+  })();
+  // 설교 본문(scripture) 문자열에서 성경 책 이름을 추출 (예: "나훔 3:12~19" → "나훔", "레위기1:1" → "레위기")
+  function bookOf(scripture) {
+    var s = String(scripture == null ? '' : scripture).trim();
+    var m = s.match(/^([가-힣]+)/);
+    if (!m) return null;
+    var tok = m[1];
+    if (BOOK_ALIAS[tok]) return BOOK_ALIAS[tok];           // 전체/약어 정확 일치 우선
+    for (var len = tok.length; len >= 1; len--) {           // 아니면 가장 긴 접두 별칭
+      var pre = tok.slice(0, len);
+      if (BOOK_ALIAS[pre]) return BOOK_ALIAS[pre];
+    }
+    return null;
+  }
+
+  var tab = 'dashboard';
   function render() {
     root.innerHTML = '<div class="fin-tabs">' + TAB_ORDER.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div id="afPanel"></div>';
     Array.prototype.forEach.call(root.querySelectorAll('.fin-tabs button'), function (b) {
@@ -175,7 +199,8 @@ console.log('[affairs.js] v20260701di');
       b.onclick = function () { tab = b.dataset.t; render(); };
     });
     var p = document.getElementById('afPanel');
-    if (tab === 'sermon') renderSermon(p);
+    if (tab === 'dashboard') renderSermonDashboard(p);
+    else if (tab === 'sermon') renderSermon(p);
     else if (tab === 'bulletin') renderBulletinAdmin(p);
     else if (tab === 'settings') renderSettings(p);
     else renderManager(p, TYPES[tab]);
@@ -477,6 +502,98 @@ console.log('[affairs.js] v20260701di');
   var APOSTLES_CREED = ['전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며,', '그 외아들 우리 주 예수 그리스도를 믿사오니,', '이는 성령으로 잉태하사 동정녀 마리아에게 나시고,', '본디오 빌라도에게 고난을 받으사, 십자가에 못 박혀 죽으시고, 장사한 지 사흘 만에 죽은 자 가운데서 다시 살아나시며,', '하늘에 오르사, 전능하신 하나님 우편에 앉아 계시다가,', '저리로서 산 자와 죽은 자를 심판하러 오시리라.', '성령을 믿사오며, 거룩한 공회와, 성도가 서로 교통하는 것과,', '죄를 사하여 주시는 것과, 몸이 다시 사는 것과, 영원히 사는 것을 믿사옵나이다. 아멘.'];
   var LORDS_PRAYER = ['하늘에 계신 우리 아버지여 이름이 거룩히 여김을 받으시오며', '나라가 임하시오며 뜻이 하늘에서 이루어진 것 같이 땅에서도 이루어지이다', '오늘 우리에게 일용할 양식을 주시옵고', '우리가 우리에게 죄 지은 자를 사하여 준 것 같이 우리 죄를 사하여 주시옵고', '우리를 시험에 들게 하지 마시옵고 다만 악에서 구하시옵소서', '대개 나라와 권세와 영광이 아버지께 영원히 있사옵나이다 아멘.'];
   function gyodokByNo(no) { if (!window.GYODOK) return null; for (var i = 0; i < window.GYODOK.length; i++) if (window.GYODOK[i].no === Number(no)) return window.GYODOK[i]; return null; }
+
+  // ── 설교 대시보드: 통계 + 성경 권별 커버리지 ──
+  function renderSermonDashboard(panel) {
+    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">설교 데이터를 불러오는 중…</p></div>';
+    api('GET', 'sermons?select=sermon_date,service,title,scripture,content,file_url,media_url&order=sermon_date.desc')
+      .then(function (rows) { draw(rows || []); })
+      .catch(function (e) { panel.innerHTML = msgCard('불러오기 실패', (e && e.message) || '설교 데이터를 불러오지 못했습니다.'); });
+
+    function draw(rows) {
+      var now = new Date(), yr = now.getFullYear(), ym = yr + '-' + pad2(now.getMonth() + 1);
+      var total = rows.length, thisYear = 0, thisMonth = 0;
+      var bySvc = {}, cover = {};
+      rows.forEach(function (r) {
+        var d = String(r.sermon_date || '');
+        if (d.slice(0, 4) === String(yr)) thisYear++;
+        if (d.slice(0, 7) === ym) thisMonth++;
+        var s = r.service || '기타'; bySvc[s] = (bySvc[s] || 0) + 1;
+        var b = bookOf(r.scripture); if (b) cover[b] = (cover[b] || 0) + 1;
+      });
+      var otDone = BIBLE_OT.filter(function (n) { return cover[n]; }).length;
+      var ntDone = BIBLE_NT.filter(function (n) { return cover[n]; }).length;
+      var covDone = otDone + ntDone, covTotal = BIBLE_OT.length + BIBLE_NT.length;
+      var pct = covTotal ? Math.round(covDone / covTotal * 100) : 0;
+
+      function statCard(label, value, sub, accent) {
+        return '<div class="fin-card" style="margin:0;padding:16px 18px">' +
+          '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">' + esc(label) + '</div>' +
+          '<div style="font-size:1.85rem;font-weight:800;color:' + (accent || 'var(--accent,#032257)') + ';line-height:1.1;margin-top:4px">' + esc(String(value)) + '</div>' +
+          (sub ? '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">' + esc(sub) + '</div>' : '') + '</div>';
+      }
+
+      var svcArr = Object.keys(bySvc).map(function (k) { return [k, bySvc[k]]; }).sort(function (a, b) { return b[1] - a[1]; });
+      var svcMax = svcArr.length ? svcArr[0][1] : 1;
+      var svcHTML = svcArr.map(function (x) {
+        var w = Math.round(x[1] / svcMax * 100);
+        return '<div style="display:flex;align-items:center;gap:10px;margin:6px 0">' +
+          '<div style="flex:0 0 96px;font-size:.84rem;color:#3a4a63;font-weight:600;text-align:right">' + esc(x[0]) + '</div>' +
+          '<div style="flex:1;background:#eef2f7;border-radius:6px;height:16px;overflow:hidden"><div style="width:' + w + '%;height:100%;background:linear-gradient(90deg,#3a6db5,#032257)"></div></div>' +
+          '<div style="flex:0 0 42px;font-size:.82rem;font-weight:700;color:#3a4a63">' + x[1] + '편</div></div>';
+      }).join('') || '<p style="color:#9aa5b1;font-size:.86rem">아직 설교 기록이 없습니다.</p>';
+
+      function cells(list) {
+        return list.map(function (n) {
+          var c = cover[n] || 0, on = c > 0;
+          return '<div class="cov-cell' + (on ? ' on' : '') + '" title="' + esc(n) + (on ? ' · ' + c + '편' : ' · 미설교') + '"><span class="cov-nm">' + esc(n) + '</span><span class="cov-ct">' + (on ? c : '·') + '</span></div>';
+        }).join('');
+      }
+
+      var recent = rows.slice(0, 6).map(function (r) {
+        return '<div style="display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid #f0f0f0">' +
+          '<div style="flex:0 0 84px;font-size:.8rem;color:#9aa5b1">' + esc(fmtD(r.sermon_date)) + '</div>' +
+          '<div style="flex:0 0 76px"><span class="fin-pill">' + esc(r.service || '-') + '</span></div>' +
+          '<div style="flex:1;min-width:0"><div style="font-weight:700;color:#27364a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.title || '(제목 없음)') + '</div>' +
+          (r.scripture ? '<div style="font-size:.78rem;color:#7b8794">' + esc(r.scripture) + '</div>' : '') + '</div></div>';
+      }).join('') || '<p style="color:#9aa5b1;font-size:.86rem">아직 설교 기록이 없습니다.</p>';
+
+      panel.innerHTML =
+        '<style>' +
+        '.cov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:7px}' +
+        '.cov-cell{border:1px solid #e3e7ee;border-radius:9px;padding:7px 5px;text-align:center;background:#f7f9fc;color:#aab3c0;min-height:50px;display:flex;flex-direction:column;justify-content:center;gap:2px}' +
+        '.cov-cell.on{background:#eaf1ff;border-color:#9bbcf3;color:#1f3a5f}' +
+        '.cov-nm{font-size:.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+        '.cov-ct{font-size:.72rem;font-weight:700}.cov-cell.on .cov-ct{color:#1f6feb}' +
+        '.cov-wrap.only .cov-cell:not(.on){display:none}' +
+        '</style>' +
+        '<div class="fin-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px">' +
+        statCard('총 설교', total, '전체 누적', null) +
+        statCard(yr + '년 설교', thisYear, '올해 누적', '#1f6feb') +
+        statCard('이번 달', thisMonth, ym, '#2e8b57') +
+        statCard('성경 커버리지', covDone + '/' + covTotal + '권', pct + '% · 구약 ' + otDone + ' · 신약 ' + ntDone, '#c0392b') +
+        '</div>' +
+        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
+        '<b style="color:var(--accent,#032257)">📖 성경 권별 커버리지</b>' +
+        '<div><button class="btn btn-line" id="sd_all" style="padding:4px 11px;font-size:.8rem">전체</button> <button class="btn btn-line" id="sd_only" style="padding:4px 11px;font-size:.8rem">설교한 성경만</button></div></div>' +
+        '<div style="background:#eef2f7;border-radius:7px;height:10px;overflow:hidden;margin-bottom:14px"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#3a6db5,#032257)"></div></div>' +
+        '<div class="cov-wrap" id="sd_cov">' +
+        '<div style="font-size:.82rem;color:#7b8794;font-weight:700;margin:2px 0 7px">구약 <span style="color:#1f6feb">' + otDone + '</span>/' + BIBLE_OT.length + '권</div>' +
+        '<div class="cov-grid" style="margin-bottom:16px">' + cells(BIBLE_OT) + '</div>' +
+        '<div style="font-size:.82rem;color:#7b8794;font-weight:700;margin:2px 0 7px">신약 <span style="color:#1f6feb">' + ntDone + '</span>/' + BIBLE_NT.length + '권</div>' +
+        '<div class="cov-grid">' + cells(BIBLE_NT) + '</div>' +
+        '</div></div>' +
+        '<div class="fin-grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:start">' +
+        '<div class="fin-card"><b style="color:var(--accent,#032257)">🗂 예배별 분포</b><div style="margin-top:10px">' + svcHTML + '</div></div>' +
+        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center"><b style="color:var(--accent,#032257)">🕘 최근 설교</b><button class="btn btn-line" id="sd_goList" style="padding:4px 11px;font-size:.8rem">설교관리 →</button></div><div style="margin-top:8px">' + recent + '</div></div>' +
+        '</div>';
+
+      var cov = panel.querySelector('#sd_cov');
+      panel.querySelector('#sd_only').onclick = function () { cov.classList.add('only'); };
+      panel.querySelector('#sd_all').onclick = function () { cov.classList.remove('only'); };
+      var go = panel.querySelector('#sd_goList'); if (go) go.onclick = function () { tab = 'sermon'; render(); };
+    }
+  }
 
   function renderSermon(panel) {
     var WTPL = {}, smView = 'list', smRows = [], calYM = null;
