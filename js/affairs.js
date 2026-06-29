@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cf
+ * 콘솔: [affairs.js] v20260701cg
  */
-console.log('[affairs.js] v20260701cf');
+console.log('[affairs.js] v20260701cg');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -870,9 +870,16 @@ console.log('[affairs.js] v20260701cf');
       'body.paged #pg_ind{display:block}',
       /* 몰입 모드(전체화면 폴백) — 상단 바 숨김 */
       'body.immersive .bar{display:none}',
-      '#exitfs{position:fixed;top:10px;right:10px;z-index:30;display:none;font:inherit;font-size:14px;border:1px solid rgba(0,0,0,.15);background:rgba(255,255,255,.9);border-radius:20px;padding:7px 13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}',
+      '#exitfs{position:fixed;top:8px;left:8px;z-index:30;display:none;font:inherit;font-size:12px;border:1px solid rgba(0,0,0,.12);background:rgba(255,255,255,.78);color:#5b6b7d;border-radius:16px;padding:5px 11px;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.1);opacity:.78}',
       'body.immersive #exitfs{display:block}',
-      'body.dark #exitfs{background:rgba(35,38,44,.92);color:#e9e6df;border-color:#3a3d44}',
+      'body.dark #exitfs{background:rgba(35,38,44,.85);color:#cdd3dc;border-color:#3a3d44}',
+      /* 페이지 모드: 양 끝 탭 영역 + 화살표 힌트 */
+      '.edge{position:fixed;top:0;bottom:0;width:22%;max-width:150px;z-index:15;display:none;align-items:center;pointer-events:none}',
+      'body.paged .edge{display:flex}',
+      '#edgeL{left:0;justify-content:flex-start;padding-left:6px}#edgeR{right:0;justify-content:flex-end;padding-right:6px}',
+      '.edge span{font-size:34px;line-height:1;color:rgba(60,72,90,.16);transition:color .15s}',
+      '.edge:active span{color:rgba(60,72,90,.42)}',
+      'body.dark .edge span{color:rgba(255,255,255,.18)}body.dark .edge:active span{color:rgba(255,255,255,.44)}',
       /* 다크 모드 */
       'body.dark{background:#15171b;color:#e9e6df}',
       'body.dark .bar{background:rgba(21,23,27,.96);border-color:#2a2d33}',
@@ -954,15 +961,19 @@ console.log('[affairs.js] v20260701cf');
         'if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){e.preventDefault();goPage(1);}' +
         'else if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();goPage(-1);}' +
       '});' +
+      /* 좌/우 가장자리 탭으로 페이지 넘김 (스와이프가 안 되는 환경 대비, 링크·버튼·스와이프 직후 제외) */
+      'var moved=false;' +
+      'deck.addEventListener("click",function(e){if(!b.classList.contains("paged"))return;if(moved){moved=false;return;}if(e.target.closest&&e.target.closest("a,button,input,textarea"))return;var x=e.clientX,w=window.innerWidth||deck.clientWidth;if(x<w*0.22){goPage(-1);}else if(x>w*0.78){goPage(1);}});' +
       /* 터치 스와이프 — 손가락 따라 미리보기 후 손 떼면 페이지 전환 */
       'var sx=0,sy=0,st=0,sw=0,dragging=false,locked=false;' +
-      'track.addEventListener("touchstart",function(e){if(!b.classList.contains("paged"))return;var t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();sw=deck.clientWidth||1;dragging=true;locked=false;track.style.transition="none";},{passive:true});' +
+      'track.addEventListener("touchstart",function(e){if(!b.classList.contains("paged"))return;var t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();sw=deck.clientWidth||window.innerWidth||1;dragging=true;locked=false;track.style.transition="none";},{passive:true});' +
       'track.addEventListener("touchmove",function(e){if(!dragging)return;var t=e.touches[0],dx=t.clientX-sx,dy=t.clientY-sy;' +
-        'if(!locked){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8){locked="x";}else if(Math.abs(dy)>8){locked="y";}}' +
-        'if(locked==="x"){var pct=(-curPg*100)+(dx/sw*100);track.style.transform="translateX("+pct+"%)";}},{passive:true});' +
+        'if(!locked){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>6){locked="x";}else if(Math.abs(dy)>10){locked="y";}}' +
+        'if(locked==="x"){moved=true;var pct=(-curPg*100)+(dx/sw*100);track.style.transform="translateX("+pct+"%)";}},{passive:true});' +
       'track.addEventListener("touchend",function(e){if(!dragging)return;dragging=false;track.style.transition="";' +
         'var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;' +
-        'if(locked==="x"&&(Math.abs(dx)>sw*0.18||(dt<350&&Math.abs(dx)>40))){goPage(dx<0?1:-1);}else{apply();}},{passive:true});' +
+        'if(locked==="x"&&(Math.abs(dx)>sw*0.12||(dt<500&&Math.abs(dx)>30))){goPage(dx<0?1:-1);}else{apply();}' +
+        'setTimeout(function(){moved=false;},50);},{passive:true});' +
       /* 창 크기/회전 시 재분할 */
       'window.addEventListener("resize",function(){clearTimeout(reflowTimer);reflowTimer=setTimeout(reflow,150);});' +
       /* 인쇄 */
@@ -985,9 +996,10 @@ console.log('[affairs.js] v20260701cf');
         '<span id="pg_ind"></span>' +
         '<button id="next">▶</button>' +
         '<button id="print">🖨</button>' +
-        '<span class="hint">' + (qtMode ? 'QT · 우리말성경' : '설교') + '</span>' +
+        '<span class="hint">' + (qtMode ? 'QT · 우리말성경' : '설교') + ' · 좌우 끝을 탭하면 넘김</span>' +
       '</div>' +
       '<div id="deck"><div id="track">' + pages.join('') + '</div></div>' +
+      '<div class="edge" id="edgeL"><span>‹</span></div><div class="edge" id="edgeR"><span>›</span></div>' +
       '<button id="exitfs">⊡ 도구 보기</button>' +
       '<script>' + js + '<\/script>' +
       '</body></html>';
