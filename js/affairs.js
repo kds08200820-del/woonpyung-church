@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cn
+ * 콘솔: [affairs.js] v20260701co
  */
-console.log('[affairs.js] v20260701cn');
+console.log('[affairs.js] v20260701co');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1277,6 +1277,13 @@ console.log('[affairs.js] v20260701cn');
       set('bt_com_헌금위원', merge(cur.offering, nextTxt && nextTxt.offering));
       set('bt_com_안내위원', merge(cur.guide, nextTxt && nextTxt.guide));
       set('bt_com_주차·사찰', merge(cur.parking, nextTxt && nextTxt.parking));
+      // 이주의 기도(2부 예배 기도) — 그 주차에 해당하는 기도자
+      if (cur.prayer && cur.prayer.length) {
+        var nth = Math.floor((new Date(bd + 'T00:00:00').getDate() - 1) / 7) + 1;
+        var pr = null;
+        for (var i = 0; i < cur.prayer.length; i++) { if ((cur.prayer[i].week || '').indexOf(nth + '주') >= 0) { pr = cur.prayer[i]; break; } }
+        if (pr && pr.person) set('bt_com_이주의 기도', pr.person);
+      }
       return true;
     }
     // 데이터 불러오기: 설교목록(주일/수요/새벽/QT) + 봉사위원(설정)
@@ -1312,6 +1319,38 @@ console.log('[affairs.js] v20260701cn');
   function bulletinView(rec, opts) {
     if (window.BulletinRender) { window.BulletinRender.open(rec, opts || {}); return; }
     alert('주보 렌더러(bulletin-render.js)가 로드되지 않았습니다. 페이지를 새로고침해 주세요.');
+  }
+
+  // 한글(.hwpx) '예배 봉사자' 표 파싱 → 월별 봉사위원
+  //   표: c0=월 c1=안내 c2=헌금위원 c3/c4=2부기도(주차) c5=주차·사찰
+  function parseBongsaHwpx(xml, filename) {
+    function dec(s) { return String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#(\d+);/g, function (_, n) { return String.fromCharCode(+n); }); }
+    var tcs = xml.match(/<hp:tc\b[\s\S]*?<\/hp:tc>/g) || [];
+    var grid = {}, maxr = 0;
+    tcs.forEach(function (tc) {
+      var a = tc.match(/<hp:cellAddr colAddr="(\d+)" rowAddr="(\d+)"/);
+      if (!a) return;
+      var sp = tc.match(/<hp:cellSpan colSpan="(\d+)" rowSpan="(\d+)"/);
+      var col = +a[1], row = +a[2], rs = sp ? +sp[2] : 1;
+      var ts = tc.match(/<hp:t>[\s\S]*?<\/hp:t>/g) || [];
+      var txt = ts.map(function (t) { return dec(t.replace(/<\/?hp:t>/g, '')).trim(); }).join(' ').replace(/\s+/g, ' ').trim();
+      grid[row + ',' + col] = { txt: txt, rs: rs };
+      if (row > maxr) maxr = row;
+    });
+    function cell(r, c) { return grid[r + ',' + c] || { txt: '', rs: 1 }; }
+    // 연도: 제목 셀 → 파일명 → 올해
+    var ym = (cell(0, 0).txt.match(/(\d{4})/) || (String(filename || '').match(/(\d{4})/)) || [])[1];
+    var year = ym || String(new Date().getFullYear());
+    var months = [];
+    for (var r = 1; r <= maxr; r++) {
+      var c0 = cell(r, 0).txt; var mm = c0.match(/(\d{1,2})\s*월/);
+      if (!mm) continue;
+      var mno = ('0' + mm[1]).slice(-2);
+      var rs = cell(r, 0).rs, prayer = [];
+      for (var rr = r; rr < r + rs; rr++) { var wk = cell(rr, 3).txt, ps = cell(rr, 4).txt; if (ps) prayer.push({ week: wk, person: ps }); }
+      months.push({ month: year + '-' + mno, guide: cell(r, 1).txt, offering: cell(r, 2).txt, parking: cell(r, 5).txt, prayer: prayer });
+    }
+    return { year: year, months: months };
   }
 
   // ====================================================================
@@ -1371,16 +1410,36 @@ console.log('[affairs.js] v20260701cn');
         .then(function () { COMMITTEES = coms.slice(); msg('✓ 저장되었습니다', 'green'); })
         .catch(function (e) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e.message)) msg('church_settings.sql 실행 필요', '#c0392b'); else msg('저장 실패: ' + e.message, '#c0392b'); });
     };
-    // 한글(.hwpx) 파일 드롭 → 텍스트 추출(베타). 본격 매핑은 다음 단계.
+    // 한글(.hwpx) 봉사자 파일 드롭 → 표 파싱 → 월별 봉사위원 자동 채움
+    function applyParsed(parsed) {
+      if (!parsed || !parsed.months || !parsed.months.length) { msg('봉사자 표를 찾지 못했습니다. (예배 봉사자 .hwpx 파일인지 확인해 주세요)', '#c0392b'); return; }
+      var byMonth = {}; coms.forEach(function (c) { if (c.month) byMonth[c.month] = c; });
+      var added = 0, updated = 0;
+      parsed.months.forEach(function (m) {
+        if (byMonth[m.month]) { var c = byMonth[m.month]; c.offering = m.offering; c.guide = m.guide; c.parking = m.parking; if (m.prayer) c.prayer = m.prayer; updated++; }
+        else { coms.push(m); byMonth[m.month] = m; added++; }
+      });
+      coms = coms.filter(function (c) { return c.month || c.offering || c.guide || c.parking; });
+      coms.sort(function (a, b) { return (a.month || '') < (b.month || '') ? -1 : 1; });
+      renderRows();
+      msg('✓ ' + parsed.year + '년 ' + parsed.months.length + '개월 불러옴 (추가 ' + added + ' · 갱신 ' + updated + ') — 확인 후 💾 저장하세요', 'green');
+    }
+    function handleFile(f) {
+      if (!f) return;
+      if (!/\.hwpx$/i.test(f.name)) { msg('한글 .hwpx 파일만 지원합니다. (.hwp 구형식은 한글에서 hwpx로 저장 후 사용)', '#c0392b'); return; }
+      if (!window.JSZip) { msg('압축 해제 모듈(JSZip)이 로드되지 않았습니다. 새로고침 후 다시 시도해 주세요.', '#c0392b'); return; }
+      msg('파일 분석 중…');
+      f.arrayBuffer().then(function (buf) { return window.JSZip.loadAsync(buf); })
+        .then(function (zip) { var fe = zip.file('Contents/section0.xml') || zip.file('section0.xml'); if (!fe) throw new Error('section0.xml 없음'); return fe.async('string').then(function (xml) { return { xml: xml, name: f.name }; }); })
+        .then(function (o) { applyParsed(parseBongsaHwpx(o.xml, o.name)); })
+        .catch(function (e) { msg('파일을 읽지 못했습니다: ' + e.message, '#c0392b'); });
+    }
     var drop = panel.querySelector('#set_drop');
     drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.style.background = '#eef4ff'; });
     drop.addEventListener('dragleave', function () { drop.style.background = ''; });
-    drop.addEventListener('drop', function (e) {
-      e.preventDefault(); drop.style.background = '';
-      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-      if (!f) return;
-      msg('한글 파일 자동 채우기는 다음 업데이트에서 지원됩니다. (' + esc(f.name) + ')', '#c0392b');
-    });
+    drop.addEventListener('drop', function (e) { e.preventDefault(); drop.style.background = ''; handleFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]); });
+    drop.style.cursor = 'pointer';
+    drop.addEventListener('click', function () { var fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.hwpx'; fi.onchange = function () { handleFile(fi.files && fi.files[0]); }; fi.click(); });
     api('GET', 'church_settings?key=eq.committees&select=data').then(function (rows) {
       coms = (rows && rows[0] && rows[0].data && rows[0].data.months) || [];
       COMMITTEES = coms.slice();
