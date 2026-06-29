@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701ag
+ * 콘솔: [finance.js] v20260701ah
  */
-console.log('[finance.js] v20260701ag');
+console.log('[finance.js] v20260701ah');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -64,48 +64,49 @@ console.log('[finance.js] v20260701ag');
     var dt = today();
     var css = [
       '*{box-sizing:border-box}',
-      'body{font-family:"Noto Sans KR","Malgun Gothic","맑은 고딕",sans-serif;color:#1a1a1a;margin:0;padding:26px 30px;font-size:12px;line-height:1.5}',
+      'body{font-family:"Noto Sans KR","Malgun Gothic","맑은 고딕",sans-serif;color:#1a1a1a;margin:0;padding:20px 26px;font-size:11px;line-height:1.32}',
       '.doc{max-width:780px;margin:0 auto}',
-      '.lh{text-align:center;border-bottom:2.5px solid #1f3a5f;padding-bottom:11px}',
-      '.lh .kr{font-family:"Noto Serif KR",serif;font-size:23px;font-weight:700;letter-spacing:.18em;color:#1f3a5f;margin:0}',
-      '.lh .en{font-size:9px;letter-spacing:.34em;color:#8a93a0;margin-top:3px}',
-      '.rt{text-align:center;margin:20px 0 2px}',
-      '.rt h1{font-family:"Noto Serif KR",serif;font-size:20px;margin:0;letter-spacing:.14em;color:#16263d}',
-      '.rt .period{color:#555;font-size:12.5px;margin-top:7px}',
-      '.meta{text-align:right;color:#8a93a0;font-size:11px;margin:3px 0 16px}',
-      '.fin-card{margin-bottom:6px}',
-      '.fin-card>b{display:block;font-size:13px;font-weight:700;color:#1f3a5f;margin:17px 0 7px;padding-left:9px;border-left:3px solid #c9a227}',
-      'table{width:100%;border-collapse:collapse;font-size:11.5px;margin:0 0 14px}',
-      'th{background:#1f3a5f;color:#fff;font-weight:600;padding:7px 9px;text-align:left;border:1px solid #1f3a5f}',
-      'td{padding:6px 9px;border:1px solid #d4dae3}',
+      '.head{display:flex;align-items:flex-start;gap:14px;margin-bottom:12px}',
+      '.head .spacer{flex:1}',
+      '.head .rt{text-align:center;padding-top:4px}',
+      '.head .rt h1{font-family:"Noto Serif KR",serif;font-size:19px;margin:0;letter-spacing:.12em;color:#16263d}',
+      '.head .rt .period{color:#555;font-size:11.5px;margin-top:5px}',
+      '.head .rt .meta{color:#9aa5b1;font-size:10px;margin-top:3px}',
+      '.signwrap{flex:1;display:flex;justify-content:flex-end}',
+      '.sign{border-collapse:collapse}',
+      '.sign td{border:1px solid #b9c2cf;text-align:center;padding:0;width:62px}',
+      '.sign .role{background:#eef2f7;font-weight:600;font-size:10px;padding:3px 0;border-bottom:1px solid #b9c2cf}',
+      '.sign .role small{font-weight:400;color:#778;font-size:8px}',
+      '.sign .box{height:40px}',
+      '.fin-card{margin-bottom:4px}',
+      '.fin-card>b{display:block;font-size:12px;font-weight:700;color:#1f3a5f;margin:11px 0 5px;padding-left:8px;border-left:3px solid #c9a227}',
+      'table{width:100%;border-collapse:collapse;font-size:11px;margin:0 0 9px}',
+      'th{background:#1f3a5f;color:#fff;font-weight:600;padding:5px 8px;text-align:left;border:1px solid #1f3a5f}',
+      'td{padding:4px 8px;border:1px solid #d4dae3}',
       'tbody tr:nth-child(even){background:#f6f8fb}',
       '.num{text-align:right!important;font-variant-numeric:tabular-nums}',
       'tfoot td,tr[style*="bold"] td,tr[style*="700"] td{font-weight:700;background:#eef2f7}',
-      '.fin-pill{font-size:10px;padding:1px 6px;border-radius:8px;border:1px solid #ccd}',
-      '.help{font-size:10px;color:#9aa5b1}',
-      '.sign{margin-top:32px;display:flex;justify-content:flex-end}',
-      '.sign table{width:auto;margin:0}',
-      '.sign td{border:1px solid #b9c2cf;text-align:center;padding:0;width:92px}',
-      '.sign .role{background:#eef2f7;font-weight:600;padding:5px 0;border-bottom:1px solid #b9c2cf;font-size:11px}',
-      '.sign .role small{font-weight:400;color:#667;font-size:9px}',
-      '.sign .box{height:52px}',
-      '.foot{margin-top:24px;border-top:1px solid #d4dae3;padding-top:8px;text-align:center;color:#9aa5b1;font-size:10px}',
+      '.fin-pill{font-size:9px;padding:1px 5px;border-radius:7px;border:1px solid #ccd}',
+      '.help{font-size:9px;color:#9aa5b1}',
+      '.issuer{text-align:center;margin-top:18px;padding-top:11px;border-top:2px solid #1f3a5f}',
+      '.issuer .kr{font-family:"Noto Serif KR",serif;font-size:18px;font-weight:700;letter-spacing:.2em;color:#1f3a5f;margin:0}',
+      '.issuer .en{font-size:8px;letter-spacing:.32em;color:#8a93a0;margin-top:3px}',
+      '.issuer .gen{font-size:9px;color:#aab2bd;margin-top:5px}',
       '.mng{display:none!important}',
-      '@page{size:A4;margin:16mm 14mm}',
+      '@page{size:A4;margin:14mm 13mm}',
       '@media print{body{padding:0}.noprint{display:none}}'
     ].join('');
-    var sign = '<table><tr>' +
-      '<td class="role">작성<br><small>회계</small></td><td class="role">검토<br><small>재정부장</small></td><td class="role">승인<br><small>담임목사</small></td><td class="role">감사<br><small>감사</small></td></tr>' +
-      '<tr><td class="box"></td><td class="box"></td><td class="box"></td><td class="box"></td></tr></table>';
+    var sign = '<table class="sign"><tr>' +
+      '<td class="role">작성<br><small>회계</small></td><td class="role">검토<br><small>재정부장</small></td><td class="role">승인<br><small>담임목사</small></td></tr>' +
+      '<tr><td class="box"></td><td class="box"></td><td class="box"></td></tr></table>';
     var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>운평장로교회 ' + esc(title) + '</title>' +
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@600;700&display=swap" rel="stylesheet">' +
       '<style>' + css + '</style></head><body><div class="doc">' +
-      '<div class="lh"><p class="kr">운평장로교회</p><div class="en">UNPYEONG PRESBYTERIAN CHURCH</div></div>' +
-      '<div class="rt"><h1>' + esc(title) + '</h1><div class="period">' + esc(subLine) + '</div></div>' +
-      '<div class="meta">출력일 ' + dt + '</div>' +
+      '<div class="head"><div class="spacer"></div>' +
+      '<div class="rt"><h1>' + esc(title) + '</h1><div class="period">' + esc(subLine) + '</div><div class="meta">출력일 ' + dt + '</div></div>' +
+      '<div class="signwrap">' + sign + '</div></div>' +
       inner +
-      '<div class="sign">' + sign + '</div>' +
-      '<div class="foot">운평장로교회 재정부 · 본 보고서는 교회 회계시스템에서 생성되었습니다. (' + dt + ')</div>' +
+      '<div class="issuer"><p class="kr">운평장로교회</p><div class="en">UNPYEONG PRESBYTERIAN CHURCH</div><div class="gen">재정부 · 교회 회계시스템 생성 (' + dt + ')</div></div>' +
       '<div class="noprint" style="text-align:center;margin-top:22px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#1f3a5f;color:#fff;border-radius:8px">🖨 인쇄 / PDF 저장</button></div>' +
       '</div></body></html>';
     w.document.write(html); w.document.close(); w.focus();
