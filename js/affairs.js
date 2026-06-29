@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701bn
+ * 콘솔: [affairs.js] v20260701bo
  */
-console.log('[affairs.js] v20260701bn');
+console.log('[affairs.js] v20260701bo');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -107,7 +107,7 @@ console.log('[affairs.js] v20260701bn');
       table: 'sermons', name: '설교', dateCol: 'sermon_date',
       fields: [
         { k: 'sermon_date', label: '일자', type: 'date' },
-        { k: 'service', label: '예배', type: 'select', opts: ['주일 낮 예배', '주일 밤 예배', '수요예배', '금요기도회', '새벽기도', '특별집회', '기타'] },
+        { k: 'service', label: '예배', type: 'select', opts: ['주일 낮 예배', '주일 밤 예배', '수요예배', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'] },
         { k: 'title', label: '제목', type: 'text' },
         { k: 'scripture', label: '본문(성경)', type: 'text', ph: '예: 요한복음 3:16' },
         { k: 'preacher', label: '설교자', type: 'text', ph: '예: 김동석 목사' },
@@ -130,16 +130,17 @@ console.log('[affairs.js] v20260701bn');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['sermon', '설교관리'], ['doc', '문서관리']];
+  var TAB_ORDER = [['sermon', '설교관리'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리']];
 
-  var tab = 'visit';
+  var tab = 'sermon';
   function render() {
     root.innerHTML = '<div class="fin-tabs">' + TAB_ORDER.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div id="afPanel"></div>';
     Array.prototype.forEach.call(root.querySelectorAll('.fin-tabs button'), function (b) {
       if (b.dataset.t === tab) b.classList.add('active');
       b.onclick = function () { tab = b.dataset.t; render(); };
     });
-    renderManager(document.getElementById('afPanel'), TYPES[tab]);
+    var p = document.getElementById('afPanel');
+    if (tab === 'sermon') renderSermon(p); else renderManager(p, TYPES[tab]);
   }
 
   function fieldHTML(f, val) {
@@ -319,6 +320,136 @@ console.log('[affairs.js] v20260701bn');
       });
     }
     loadList();
+  }
+
+  // ── 설교관리(전용): 작성 페이지 · 도구상자 · 내보내기 · 아이패드 보기 ──
+  var SERMON_TOOLS = [
+    { label: '📖 성경검색', url: 'https://bible.goodtv.co.kr/' },
+    { label: '🎵 찬송가 검색', url: 'https://search.naver.com/search.naver?query=' + encodeURIComponent('찬송가 가사') },
+    { label: '📜 교독문 검색', url: 'https://search.naver.com/search.naver?query=' + encodeURIComponent('교독문') }
+  ];
+  var SVC_OPTS = ['주일 낮 예배', '주일 밤 예배', '수요예배', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'];
+
+  function renderSermon(panel) {
+    panel.innerHTML =
+      '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">' +
+      '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">설교 작성·관리</b>' +
+      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">설교를 작성해 <b>내보내기</b>하면 자동 등록되고, 목록의 <b>📖 보기</b>로 아이패드에서 바로 펼쳐 설교할 수 있습니다.</div></div>' +
+      '<button class="btn btn-solid" id="sm_start" style="padding:11px 22px;font-size:1rem">✍️ 설교 시작</button></div>' +
+      '<div id="sm_list"><p class="qt-loading">불러오는 중…</p></div>';
+    panel.querySelector('#sm_start').onclick = function () { sermonEditor(null); };
+
+    function loadList() {
+      var listBox = panel.querySelector('#sm_list');
+      api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) {
+        rows = rows || [];
+        if (!rows.length) { listBox.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">등록된 설교가 없습니다. <b>설교 시작</b>으로 작성해 보세요.</p></div>'; return; }
+        var byId = {}; rows.forEach(function (r) { byId[r.id] = r; });
+        listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>설교 (' + rows.length + '편)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>설교자</th><th>관리</th></tr></thead><tbody>' +
+          rows.map(function (r) {
+            return '<tr><td style="white-space:nowrap">' + esc(fmtD(r.sermon_date)) + '</td><td style="white-space:nowrap">' + esc(r.service || '') + '</td><td><b>' + esc(r.title || '(제목없음)') + '</b></td><td style="white-space:nowrap">' + esc(r.scripture || '') + '</td><td style="white-space:nowrap">' + esc(r.preacher || '') + '</td>' +
+              '<td style="white-space:nowrap"><button class="btn btn-solid sm-read" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 보기</button> <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button> <button class="btn btn-line sm-del" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">삭제</button></td></tr>';
+          }).join('') + '</tbody></table></div></div>';
+        Array.prototype.forEach.call(listBox.querySelectorAll('.sm-read'), function (b) { b.onclick = function () { sermonReadingView(byId[b.dataset.id]); }; });
+        Array.prototype.forEach.call(listBox.querySelectorAll('.sm-edit'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
+        Array.prototype.forEach.call(listBox.querySelectorAll('.sm-del'), function (b) { b.onclick = function () { if (!confirm('이 설교를 삭제할까요?')) return; api('DELETE', 'sermons?id=eq.' + b.dataset.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
+      }).catch(function (e) {
+        if (/42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message)) listBox.innerHTML = msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/affairs_modules.sql 을 1회 실행해 주세요.');
+        else listBox.innerHTML = msgCard('조회 실패', e.message);
+      });
+    }
+    loadList();
+
+    // 설교 작성 페이지(전체화면)
+    function sermonEditor(rec) {
+      rec = rec || {};
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto';
+      var svcOpts = SVC_OPTS.map(function (o) { return '<option' + (o === (rec.service || '') ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+      ov.innerHTML =
+        '<div style="position:sticky;top:0;background:#fff;border-bottom:1px solid #e3e7ee;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;z-index:5">' +
+        '<b style="color:var(--accent,#032257);font-size:1.05rem;margin-right:auto">✍️ 설교 작성</b>' +
+        '<button class="btn btn-line" id="se_tools">🧰 도구상자</button>' +
+        '<button class="btn btn-line" id="se_close">닫기</button>' +
+        '<button class="btn btn-line" id="se_save">💾 임시저장</button>' +
+        '<button class="btn btn-solid" id="se_export">📤 설교 내보내기</button>' +
+        '<span class="fin-msg" id="se_msg" style="width:100%;text-align:right"></span></div>' +
+        '<div id="se_toolbox" style="display:none;background:#eef4ff;border-bottom:1px solid #d6e2f5;padding:10px 16px"><span style="font-size:.84rem;color:#5b6b7d;margin-right:8px">참고 자료 열기:</span>' +
+        SERMON_TOOLS.map(function (t, i) { return '<button class="btn btn-line se-tool" data-i="' + i + '" style="margin:3px 6px 3px 0">' + t.label + '</button>'; }).join('') +
+        '<span style="font-size:.78rem;color:#9aa5b1;display:block;margin-top:4px">새 탭에서 열립니다. 사이트를 바꾸고 싶으면 말씀해 주세요.</span></div>' +
+        '<div style="max-width:880px;margin:0 auto;padding:18px 16px 60px">' +
+        '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px">' +
+        '<div class="af-field"><label>일자</label><input type="date" id="se_date" value="' + esc(fmtD(rec.sermon_date) || today()) + '"></div>' +
+        '<div class="af-field"><label>예배</label><select id="se_service"><option value="">선택</option>' + svcOpts + '</select></div>' +
+        '<div class="af-field"><label>설교자</label><input type="text" id="se_preacher" value="' + esc(rec.preacher || '김동석 목사') + '"></div>' +
+        '<div class="af-field"><label>본문(성경)</label><input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="예: 요한복음 3:16"></div>' +
+        '</div>' +
+        '<div class="af-field" style="margin-bottom:12px"><label>제목</label><input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" style="font-size:1.1rem;font-weight:700"></div>' +
+        '<div class="af-field"><label>설교 원고</label><textarea id="se_content" placeholder="설교 원고를 작성하세요. 줄바꿈·문단이 그대로 설교문에 반영됩니다." style="min-height:50vh;line-height:1.8;font-size:1.02rem">' + esc(rec.content || '') + '</textarea></div>' +
+        '<input type="hidden" id="se_media" value="' + esc(rec.media_url || '') + '"><input type="hidden" id="se_file" value="' + esc(rec.file_url || '') + '">' +
+        '</div>';
+      document.body.appendChild(ov);
+      document.body.style.overflow = 'hidden';
+      function close() { ov.remove(); document.body.style.overflow = ''; }
+      ov.querySelector('#se_close').onclick = close;
+      ov.querySelector('#se_tools').onclick = function () { var tb = ov.querySelector('#se_toolbox'); tb.style.display = tb.style.display === 'none' ? '' : 'none'; };
+      Array.prototype.forEach.call(ov.querySelectorAll('.se-tool'), function (b) { b.onclick = function () { window.open(SERMON_TOOLS[Number(b.dataset.i)].url, '_blank', 'noopener'); }; });
+      function gather() {
+        return {
+          sermon_date: ov.querySelector('#se_date').value || null,
+          service: ov.querySelector('#se_service').value || null,
+          title: ov.querySelector('#se_title').value.trim() || null,
+          scripture: ov.querySelector('#se_scripture').value.trim() || null,
+          preacher: ov.querySelector('#se_preacher').value.trim() || null,
+          content: ov.querySelector('#se_content').value || null,
+          media_url: ov.querySelector('#se_media').value || null,
+          file_url: ov.querySelector('#se_file').value || null
+        };
+      }
+      function save(then) {
+        var data = gather();
+        var msg = ov.querySelector('#se_msg');
+        if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = '일자와 제목은 필수입니다.'; return; }
+        msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
+        var p = rec.id ? api('PATCH', 'sermons?id=eq.' + rec.id, data, 'return=representation') : api('POST', 'sermons', data, 'return=representation');
+        p.then(function (rows) { var saved = (rows && rows[0]) || data; if (rows && rows[0]) rec.id = rows[0].id; msg.style.color = 'green'; msg.textContent = '✓ 저장되었습니다'; loadList(); if (then) then(saved); })
+          .catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; });
+      }
+      ov.querySelector('#se_save').onclick = function () { save(null); };
+      ov.querySelector('#se_export').onclick = function () { save(function (saved) { sermonReadingView(saved); }); };
+    }
+  }
+
+  // 아이패드용 설교문 보기(큰 글씨·스크롤·글자크기·다크모드·인쇄)
+  function sermonReadingView(r) {
+    r = r || {};
+    var w = window.open('', '_blank');
+    if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.'); return; }
+    var meta = [r.service, fmtD(r.sermon_date), r.preacher].filter(Boolean).map(function (x) { return esc(x); }).join(' · ');
+    var bodyHtml = esc(r.content || '').replace(/\n/g, '<br>');
+    var css = [
+      '*{box-sizing:border-box}',
+      'html,body{margin:0}',
+      'body{font-family:"Noto Serif KR",serif;background:#fbf9f4;color:#1a1a1a;font-size:22px;line-height:1.9;-webkit-text-size-adjust:100%}',
+      '.bar{position:sticky;top:0;background:rgba(255,255,255,.96);border-bottom:1px solid #e3ddd0;padding:8px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;z-index:10}',
+      '.bar button{font:inherit;font-size:15px;border:1px solid #cdd7e3;background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer}',
+      '.wrap{max-width:820px;margin:0 auto;padding:26px 22px 120px}',
+      'h1{font-size:1.6em;margin:0 0 6px;line-height:1.35}',
+      '.scr{font-size:1.05em;color:#7a5d27;font-weight:600;margin:0 0 4px}',
+      '.meta{font-size:.8em;color:#9a8f78;margin:0 0 22px;font-family:"Noto Sans KR",sans-serif}',
+      '.body{white-space:normal}',
+      'body.dark{background:#15171b;color:#e9e6df}body.dark .bar{background:rgba(25,27,31,.96);border-color:#2a2d33}body.dark .bar button{background:#23262c;color:#e9e6df;border-color:#3a3d44}body.dark .scr{color:#e0c98a}body.dark .meta{color:#8a8576}',
+      '@media print{.bar{display:none}body{background:#fff;font-size:13pt}.wrap{padding:0}}'
+    ].join('');
+    var html = '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>' + esc(r.title || '설교문') + '</title>' +
+      '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
+      '<style>' + css + '</style></head><body>' +
+      '<div class="bar"><button id="dec">가–</button><button id="inc">가+</button><button id="dark">🌙 다크</button><button id="print">🖨 인쇄</button><span style="font-size:13px;color:#9a8f78;margin-left:auto">아이패드에서 그대로 펼쳐 설교하세요</span></div>' +
+      '<div class="wrap"><h1>' + esc(r.title || '(제목 없음)') + '</h1>' + (r.scripture ? '<div class="scr">' + esc(r.scripture) + '</div>' : '') + (meta ? '<div class="meta">' + meta + '</div>' : '') + '<div class="body" id="body">' + bodyHtml + '</div></div>' +
+      '<script>(function(){var b=document.body,s=22;function ap(){b.style.fontSize=s+"px";try{localStorage.setItem("sermonFs",s)}catch(e){}}try{var sv=parseInt(localStorage.getItem("sermonFs"),10);if(sv)s=sv}catch(e){}ap();document.getElementById("inc").onclick=function(){s=Math.min(48,s+2);ap()};document.getElementById("dec").onclick=function(){s=Math.max(14,s-2);ap()};document.getElementById("dark").onclick=function(){b.classList.toggle("dark")};document.getElementById("print").onclick=function(){window.print()};})();<\/script>' +
+      '</body></html>';
+    w.document.write(html); w.document.close(); w.focus();
   }
 
   // ── 부팅: 로그인 + 관리자 확인 ──
