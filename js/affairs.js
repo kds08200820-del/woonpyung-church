@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701ce
+ * 콘솔: [affairs.js] v20260701cf
  */
-console.log('[affairs.js] v20260701ce');
+console.log('[affairs.js] v20260701cf');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -497,15 +497,23 @@ console.log('[affairs.js] v20260701ce');
       ov.style.cssText = 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto';
       var svcOpts = SVC_OPTS.map(function (o) { return '<option' + (o === (rec.service || '') ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
       ov.innerHTML =
-        '<div style="position:sticky;top:0;background:#fff;border-bottom:1px solid #e3e7ee;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;z-index:5">' +
-        '<b style="color:var(--accent,#032257);font-size:1.05rem;margin-right:auto">✍️ 설교 작성</b>' +
-        '<button class="btn btn-line" id="se_close">닫기</button>' +
-        '<button class="btn btn-line" id="se_save">💾 임시저장</button>' +
-        '<label id="se_qt_lbl" style="display:inline-flex;align-items:center;gap:6px;background:#fff8e6;border:1px solid #e6c97a;border-radius:8px;padding:6px 11px;font-size:.84rem;cursor:pointer;user-select:none"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer">📲 QT도 내보내기 (우리말성경)</label>' +
-        '<button class="btn btn-solid" id="se_export">📤 설교 내보내기</button>' +
-        '<button class="btn btn-line" id="se_kakao" style="background:#fff8c4;border-color:#f4d641;display:none">💬 카카오톡 양식 복사</button>' +
-        '<span class="fin-msg" id="se_msg" style="width:100%;text-align:right"></span></div>' +
-        '<div style="max-width:1140px;margin:0 auto;padding:18px 16px 60px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">' +
+        '<header style="position:sticky;top:0;z-index:6;background:linear-gradient(180deg,#ffffff 0%,#f7f9fc 100%);border-bottom:1px solid #e1e6ef;box-shadow:0 2px 10px rgba(3,34,87,.06)">' +
+        '<div style="max-width:1180px;margin:0 auto;padding:11px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
+        '<button class="btn btn-line" id="se_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
+        '<div style="flex:1;min-width:160px;text-align:center;line-height:1.25">' +
+        '<div style="font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.22rem;color:var(--accent,#032257);letter-spacing:-.01em">예배 준비 도우미</div>' +
+        '<div style="font-size:.72rem;color:#9aa5b1;margin-top:2px;letter-spacing:.02em">설교문과 QT를 함께 준비하고 아이패드로 내보냅니다</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">' +
+        '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 임시저장</button>' +
+        '<span style="width:1px;height:24px;background:#dde3ec"></span>' +
+        '<label id="se_qt_lbl" style="display:inline-flex;align-items:center;gap:7px;background:#fff7e3;border:1px solid #e8cd86;border-radius:9px;padding:7px 12px;font-size:.82rem;font-weight:500;color:#8a6d1f;cursor:pointer;user-select:none"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e">📲 QT 함께 만들기</label>' +
+        '<button class="btn btn-line" id="se_kakao" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">💬 카카오톡 복사</button>' +
+        '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 내보내기</button>' +
+        '</div>' +
+        '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
+        '</div></header>' +
+        '<div style="max-width:1180px;margin:0 auto;padding:20px 20px 60px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;justify-content:center">' +
         '<div style="flex:0 0 300px;max-width:100%"><div class="af-field" style="margin:0">' +
         '<label style="font-size:1.18rem;font-weight:700;color:var(--accent,#032257);margin-bottom:2px">📋 예배 순서</label>' +
         '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·항목을 추가하고 드래그로 정렬 · 항목에 📎 파일 첨부</div>' +
