@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cv
+ * 콘솔: [affairs.js] v20260701cw
  */
-console.log('[affairs.js] v20260701cv');
+console.log('[affairs.js] v20260701cw');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1144,6 +1144,7 @@ console.log('[affairs.js] v20260701cv');
       '<button class="btn btn-line" id="bt_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
       '<div style="flex:1;text-align:center"><div style="font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.2rem;color:var(--accent,#032257)">주보 제작</div><div style="font-size:.72rem;color:#9aa5b1">설교 연동 · 인쇄(PDF) · 홈페이지 게시</div></div>' +
       '<button class="btn btn-line" id="bt_pull" style="padding:8px 13px;border-radius:9px;background:#eef4ff;border-color:#9cc0f0">📥 데이터 불러오기</button>' +
+      '<button class="btn btn-line" id="bt_ai" style="padding:8px 13px;border-radius:9px;background:#f3eefc;border-color:#c4a8ee">✨ AI 검수</button>' +
       '<button class="btn btn-line" id="bt_save" style="padding:8px 13px;border-radius:9px">💾 임시저장</button>' +
       '<button class="btn btn-line" id="bt_printbtn" style="padding:8px 13px;border-radius:9px">🖨 3단 인쇄(PDF)</button>' +
       '<button class="btn btn-solid" id="bt_publish" style="padding:8px 16px;border-radius:9px;font-weight:700">🌐 게시</button>' +
@@ -1320,6 +1321,60 @@ console.log('[affairs.js] v20260701cv');
       // 새 창은 클릭 즉시 동기로 열어야 팝업 차단을 피함(저장은 백그라운드)
       bulletinView(gather(), { amounts: true, layout: 'print3' });
       save(null);
+    };
+
+    // ── ✨ AI 검수: 주보 초안을 직렬화해 bulletin-ai Edge Function 호출 ──
+    function serializeBulletin(p) {
+      var d = p.data || {}, L = [];
+      L.push('[기본] 주일 ' + (p.bdate || '') + ' · 호수 ' + (d.no || '') + ' · ' + (d.week || ''));
+      L.push('[주일 낮 예배] 제목: ' + (p.title || '(없음)') + ' / 본문: ' + (p.scripture || '(없음)') + ' / 설교자: ' + (p.preacher || '(없음)'));
+      L.push('예배 순서: ' + (d.order || []).map(function (o, i) { return (i + 1) + '.' + (o.name || '') + (o.detail ? '(' + o.detail + ')' : ''); }).join(' '));
+      L.push('[주중] 수요기도회: ' + [d.wed_series, d.wed_title, d.wed_dateline].filter(Boolean).join(' · '));
+      L.push('새벽기도회: ' + (d.dawn || '') + ' / 매일 QT: ' + (d.qt || ''));
+      var offs = Object.keys(d.offering || {}).map(function (k) { return k + '(' + d.offering[k] + ')'; });
+      if (offs.length) L.push('[향기로운 예물] ' + offs.join(' / '));
+      var amts = Object.keys(d.offering_amounts || {}).map(function (k) { return k + ':' + d.offering_amounts[k]; });
+      if (amts.length) L.push('[헌금 금액(내부)] ' + amts.join(' / '));
+      var coms = Object.keys(d.committee || {}).filter(function (k) { return d.committee[k]; }).map(function (k) { return k + ':' + d.committee[k]; });
+      if (coms.length) L.push('[봉사위원] ' + coms.join(' / '));
+      if (d.column_title || d.column_body) L.push('[칼럼] ' + (d.column_title || '') + '\n' + (d.column_body || ''));
+      if (d.notices) L.push('[광고]\n' + d.notices);
+      return L.join('\n');
+    }
+    function aiPanel() {
+      var ai = document.createElement('div');
+      ai.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9600;display:flex;align-items:center;justify-content:center;padding:16px';
+      ai.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #eef1f5">' +
+        '<b style="font-size:1.05rem;color:#5b34a8">✨ AI 주보 검수</b>' +
+        '<span style="font-size:.74rem;color:#9aa5b1">헤드라인 제안 · 실수/누락 · 철자 · 특수상황</span>' +
+        '<button id="ai_close" class="btn btn-line" style="margin-left:auto;padding:5px 12px">닫기</button></div>' +
+        '<div id="ai_body" style="padding:18px 20px;overflow:auto;line-height:1.75;font-size:.95rem;white-space:pre-wrap;word-break:break-word"></div></div>';
+      document.body.appendChild(ai);
+      ai.querySelector('#ai_close').onclick = function () { ai.remove(); };
+      ai.addEventListener('click', function (e) { if (e.target === ai) ai.remove(); });
+      return ai.querySelector('#ai_body');
+    }
+    function mdLite(t) {
+      return esc(t)
+        .replace(/^\s*##\s*(.+)$/gm, '<div style="font-weight:700;color:#5b34a8;margin:14px 0 6px;font-size:1rem">$1</div>')
+        .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+        .replace(/\n/g, '<br>');
+    }
+    ov.querySelector('#bt_ai').onclick = function () {
+      var s = sess(); if (!s || !s.token) { bmsg('로그인이 필요합니다.', '#c0392b'); return; }
+      var bodyEl = aiPanel();
+      bodyEl.innerHTML = '<p style="color:#7b8794">AI가 주보를 검토하는 중입니다… (10~20초)</p>';
+      fetch(SB.replace(/\/$/, '') + '/functions/v1/bulletin-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token, 'apikey': AK },
+        body: JSON.stringify({ content: serializeBulletin(gather()) })
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (o) {
+          if (!o.ok) { bodyEl.innerHTML = '<p style="color:#c0392b">' + esc((o.j && o.j.error) || '검수에 실패했습니다.') + '</p>' + ((o.j && o.j.detail) ? '<p style="font-size:.8rem;color:#9aa5b1">' + esc(o.j.detail) + '</p>' : '') + '<p style="font-size:.82rem;color:#9aa5b1;margin-top:10px">※ bulletin-ai Edge Function 배포가 필요할 수 있습니다.</p>'; return; }
+          bodyEl.innerHTML = mdLite((o.j && o.j.result) || '결과가 비어 있습니다.');
+        })
+        .catch(function (e) { bodyEl.innerHTML = '<p style="color:#c0392b">호출 실패: ' + esc(e.message) + '</p><p style="font-size:.82rem;color:#9aa5b1;margin-top:10px">※ Supabase에 bulletin-ai Edge Function을 배포해 주세요.</p>'; });
     };
     ov.querySelector('#bt_publish').onclick = function () {
       if (!confirm('이 주보를 홈페이지에 게시할까요?\n(헌금 금액은 홈페이지에 노출되지 않습니다)')) return;
