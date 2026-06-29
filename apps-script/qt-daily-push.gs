@@ -1,27 +1,30 @@
 /****************************************************************
  * 운평장로교회 — 매일 아침 QT 푸시 자동 발송 (Google Apps Script)
  * --------------------------------------------------------------
- * 동작: 매일 아침 06:30(한국시간)에 구글 시트에서 "오늘 날짜" QT가
- *       올라와 있으면 OneSignal로 푸시 알림을 보냅니다.
+ * 동작: 매일 아침 06:30(한국시간)에 Supabase qt_published 뷰에서
+ *       "오늘 날짜(한국)" QT가 올라와 있으면 OneSignal로 푸시 알림을 보냅니다.
  *         제목 : 새로운 QT가 올라왔습니다 🙏
  *         본문 : 말씀과 기도로 하루를 시작하세요!
  *       알림을 탭하면 홈페이지의 오늘 QT 전문이 열립니다.
- *       (그날 QT가 비어 있으면 보내지 않습니다.)
+ *       (그날 QT가 없거나 본문이 비어 있으면 보내지 않습니다.)
+ *
+ *  ※ 2026-06-30: 데이터 소스를 구글시트 → Supabase(qt_published 뷰)로 변경.
+ *     홈페이지 QT가 Supabase 전용이 되어, 푸시 발송 판단도 같은 소스로 맞췄습니다.
  *
  * ▼ 설정 방법 (한 번만)
- *   1) 이 QT 구글 시트에서  확장 프로그램 ▸ Apps Script  열기
- *   2) 이 코드 전체를 붙여넣기
- *   3) 아래 CONFIG 4줄을 본인 값으로 채우기
- *        - ONESIGNAL_APP_ID, ONESIGNAL_REST_KEY : OneSignal 대시보드에서 발급
+ *   1) Apps Script 프로젝트 열기 (기존 QT 스크립트 위치 그대로 사용 가능)
+ *   2) 이 코드 전체를 붙여넣기(기존 시트 기반 코드 위에 덮어쓰기)
+ *   3) 아래 CONFIG 에서 ONESIGNAL_REST_KEY 만 본인 값으로 채우기
+ *        (SUPABASE_URL / SUPABASE_ANON_KEY 는 공개키라 그대로 두면 됩니다)
  *   4) 함수 목록에서 createDailyTrigger 를 한 번 실행 (권한 승인)
  *        → 매일 06:30(한국시간) 자동 발송이 등록됩니다.
  *   5) (테스트) sendTodayQT 를 직접 실행하면 즉시 한 번 발송됩니다.
  ****************************************************************/
 
 const CONFIG = {
-  SHEET_ID: "1Yg0dPnZEj18e9K5t-CC8ESwoXp1hP9Ro9AdTEhFSb0w",
-  DATE_HEADER: "날짜",          // 날짜가 들어있는 열 머리글
-  CONTENT_HEADER: "QT 내용",     // QT 본문이 들어있는 열 머리글
+  // Supabase 공개 설정 (config.js 와 동일 — 공개돼도 안전한 공개키)
+  SUPABASE_URL: "https://cetacttsdwzxjzkyozgd.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G",
   SITE_URL: "https://k-logos.com/",
   ONESIGNAL_APP_ID: "a22a1ff9-5a05-4915-b70f-b0c6df6ccd71",
   ONESIGNAL_REST_KEY: "여기에_OneSignal_REST_API_KEY",
@@ -37,46 +40,41 @@ function createDailyTrigger() {
   Logger.log("매일 06:30 발송 트리거가 등록되었습니다.");
 }
 
-/** 오늘 날짜 QT를 찾아 푸시 발송 */
+/** 오늘(한국) 날짜 QT가 Supabase에 올라와 있으면 푸시 발송 */
 function sendTodayQT() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  const sheet = ss.getSheets()[0];
-  const values = sheet.getDataRange().getValues();
-  const header = values[0].map(function (h) { return String(h).trim(); });
-  const dCol = header.indexOf(CONFIG.DATE_HEADER);
-  const cCol = header.indexOf(CONFIG.CONTENT_HEADER);
-  if (dCol < 0 || cCol < 0) { Logger.log("머리글(날짜/QT 내용)을 찾을 수 없습니다."); return; }
+  const today = Utilities.formatDate(new Date(), "Asia/Seoul", "yyyy-MM-dd");
+  const url = CONFIG.SUPABASE_URL.replace(/\/+$/, "") +
+    "/rest/v1/qt_published?select=sermon_date,title,scripture,qt_bible_text,content" +
+    "&sermon_date=eq." + today + "&limit=1";
 
-  const today = Utilities.formatDate(new Date(), "Asia/Seoul", "yyyy.MM.dd");
-
-  let content = "";
-  for (let i = 1; i < values.length; i++) {
-    const d = String(values[i][dCol]).trim().replace(/-/g, ".");
-    if (d === today) { content = String(values[i][cCol]).trim(); break; }
+  const res = UrlFetchApp.fetch(url, {
+    method: "get",
+    headers: {
+      apikey: CONFIG.SUPABASE_ANON_KEY,
+      Authorization: "Bearer " + CONFIG.SUPABASE_ANON_KEY,
+    },
+    muteHttpExceptions: true,
+  });
+  if (res.getResponseCode() !== 200) {
+    Logger.log("Supabase 조회 실패: " + res.getResponseCode() + " " + res.getContentText());
+    return;
   }
-  if (!content) { Logger.log("오늘(" + today + ") QT 내용이 비어 있어 발송하지 않습니다."); return; }
+
+  let rows;
+  try { rows = JSON.parse(res.getContentText()); } catch (e) { rows = []; }
+  const row = rows && rows[0];
+  const hasContent = row && (String(row.qt_bible_text || "").trim() || String(row.content || "").trim());
+  if (!hasContent) {
+    Logger.log("오늘(" + today + ") QT가 없거나 본문이 비어 있어 발송하지 않습니다.");
+    return;
+  }
 
   // 새 QT가 올라와 있으면 고정 메시지로 발송
   const title = "새로운 QT가 올라왔습니다 🙏";
   const body = "말씀과 기도로 하루를 시작하세요!";
 
   sendPush(title, body);
-  Logger.log("발송 완료: " + title + " / " + body);
-}
-
-/** QT 본문에서 제목·성경구절 추출 */
-function digest(content) {
-  const lines = content.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
-  const meaningful = lines.filter(function (l) { return !/^📖|^📅|^샬롬|오늘의 QT/.test(l); });
-  let ref = "";
-  for (let i = 0; i < meaningful.length; i++) {
-    if (/\d+\s*[:：]\s*\d+/.test(meaningful[i]) && meaningful[i].length < 30) { ref = meaningful[i]; break; }
-  }
-  let title = "";
-  for (let i = 0; i < meaningful.length; i++) {
-    if (meaningful[i] !== ref) { title = meaningful[i]; break; }
-  }
-  return { title: title, ref: ref };
+  Logger.log("발송 완료(" + today + " · " + (row.scripture || "") + "): " + title);
 }
 
 /** OneSignal 푸시 전송 */
