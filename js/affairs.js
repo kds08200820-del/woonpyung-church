@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701ck
+ * 콘솔: [affairs.js] v20260701cl
  */
-console.log('[affairs.js] v20260701ck');
+console.log('[affairs.js] v20260701cl');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1033,6 +1033,22 @@ console.log('[affairs.js] v20260701ck');
   var COMMITTEE_KEYS = ['헌금위원', '안내위원', '주차·사찰', '이주의 기도'];
   function addDays(d, n) { var t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() + n); return t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate()); }
   function nextSunday() { var d = new Date(); var add = (7 - d.getDay()) % 7; d.setDate(d.getDate() + (add === 0 ? 7 : add)); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  // 그 해 몇 번째 일요일(주차)
+  function weekNoOfYear(bd) {
+    var d = new Date(bd + 'T00:00:00'); var y = d.getFullYear();
+    var jan1 = new Date(y, 0, 1);
+    var firstSun = new Date(y, 0, 1 + ((7 - jan1.getDay()) % 7)); // 그 해 첫 일요일
+    return Math.round((d - firstSun) / (7 * 86400000)) + 1;
+  }
+  // 호수: (설립 1964 기준 주년)-(그 해 주차). 예: 2026-07-05 → 62-27
+  function bulletinNo(bd) { if (!bd) return ''; var y = new Date(bd + 'T00:00:00').getFullYear(); return (y - 1964) + '-' + weekNoOfYear(bd); }
+  // 주차 라벨: "7월 첫째 주"
+  function bulletinWeekLabel(bd) {
+    if (!bd) return ''; var d = new Date(bd + 'T00:00:00');
+    var nth = Math.floor((d.getDate() - 1) / 7) + 1;
+    var ord = ['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'][nth - 1] || (nth + '');
+    return (d.getMonth() + 1) + '월 ' + ord + ' 주';
+  }
 
   function renderBulletinAdmin(panel) {
     panel.innerHTML =
@@ -1055,7 +1071,16 @@ console.log('[affairs.js] v20260701ck');
         }).join('') + '</tbody></table></div></div>';
       var byId = {}; rows.forEach(function (r) { byId[r.id] = r; });
       Array.prototype.forEach.call(box.querySelectorAll('.bt-edit'), function (b) { b.onclick = function () { api('GET', 'bulletins?id=eq.' + b.dataset.id + '&select=*').then(function (rs) { bulletinEditor((rs && rs[0]) || {}); }); }; });
-      Array.prototype.forEach.call(box.querySelectorAll('.bt-print'), function (b) { b.onclick = function () { api('GET', 'bulletins?id=eq.' + b.dataset.id + '&select=*').then(function (rs) { bulletinView((rs && rs[0]) || {}, { amounts: true, layout: 'print3' }); }); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.bt-print'), function (b) {
+        b.onclick = function () {
+          var w = window.open('', '_blank'); // 클릭 즉시 동기 오픈(팝업 차단 회피)
+          api('GET', 'bulletins?id=eq.' + b.dataset.id + '&select=*').then(function (rs) {
+            var rec = (rs && rs[0]) || {};
+            if (w && window.BulletinRender) { w.document.write(window.BulletinRender.html(rec, { amounts: true, layout: 'print3' })); w.document.close(); w.focus(); }
+            else if (w) { w.close(); alert('주보 렌더러를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.'); }
+          }).catch(function (e) { if (w) w.close(); alert('불러오기 실패: ' + e.message); });
+        };
+      });
       Array.prototype.forEach.call(box.querySelectorAll('.bt-del'), function (b) { b.onclick = function () { if (!confirm('이 주보를 삭제할까요?')) return; api('DELETE', 'bulletins?id=eq.' + b.dataset.id, null, 'return=minimal').then(function () { loadBulletinList(panel); }).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
     }).catch(function (e) {
       var box = panel.querySelector('#bt_list');
@@ -1068,6 +1093,7 @@ console.log('[affairs.js] v20260701ck');
     rec = rec || {}; var d = rec.data || {};
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto';
+    var bd0 = fmtD(rec.bdate) || nextSunday();
     var order = (d.order && d.order.length) ? d.order : BULLETIN_PRESET.map(function (n) { return { name: n, detail: '' }; });
     function tA(label, id, val, ph, h) { return '<div class="af-field" style="margin-bottom:10px"><label>' + label + '</label><textarea id="' + id + '" placeholder="' + esc(ph || '') + '" style="min-height:' + (h || 60) + 'px">' + esc(val || '') + '</textarea></div>'; }
     function tI(label, id, val, ph) { return '<div class="af-field"><label>' + label + '</label><input type="text" id="' + id + '" value="' + esc(val || '') + '" placeholder="' + esc(ph || '') + '"></div>'; }
@@ -1087,8 +1113,9 @@ console.log('[affairs.js] v20260701ck');
       // 기본
       '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent)">① 기본 정보</h4>' +
       '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">' +
-      '<div class="af-field"><label>주일 날짜</label><input type="date" id="bt_bdate" value="' + esc(fmtD(rec.bdate) || nextSunday()) + '"></div>' +
-      tI('호수(No.)', 'bt_no', d.no, '예: 62-27') + tI('주차', 'bt_week', d.week, '예: 7월 첫째 주') +
+      '<div class="af-field"><label>주일 날짜</label><input type="date" id="bt_bdate" value="' + esc(bd0) + '"></div>' +
+      tI('호수(No.) <span style="font-weight:400;font-size:.72rem;color:#9aa5b1">날짜 선택 시 자동</span>', 'bt_no', d.no || bulletinNo(bd0), '예: 62-27') +
+      tI('주차 <span style="font-weight:400;font-size:.72rem;color:#9aa5b1">자동</span>', 'bt_week', d.week || bulletinWeekLabel(bd0), '예: 7월 첫째 주') +
       '</div></div>' +
       // 주일 낮 예배
       '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent)">② 주일 낮 예배</h4>' +
@@ -1136,6 +1163,13 @@ console.log('[affairs.js] v20260701ck');
     function close() { ov.remove(); document.body.style.overflow = ''; }
     ov.querySelector('#bt_close').onclick = close;
     function bmsg(t, c) { var e = ov.querySelector('#bt_msg'); e.style.color = c || '#7b8794'; e.textContent = t; }
+
+    // 주일 날짜 선택 → 호수·주차 자동 갱신
+    ov.querySelector('#bt_bdate').addEventListener('change', function () {
+      var bd = this.value; if (!bd) return;
+      ov.querySelector('#bt_no').value = bulletinNo(bd);
+      ov.querySelector('#bt_week').value = bulletinWeekLabel(bd);
+    });
 
     // 예배 순서 편집
     var oBox = ov.querySelector('#bt_order');
@@ -1186,7 +1220,11 @@ console.log('[affairs.js] v20260701ck');
         .catch(function (e) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e.message)) bmsg('bulletins.sql 실행 필요', '#c0392b'); else bmsg('저장 실패: ' + e.message, '#c0392b'); });
     }
     ov.querySelector('#bt_save').onclick = function () { save(null); };
-    ov.querySelector('#bt_printbtn').onclick = function () { save(function (s) { bulletinView(s, { amounts: true, layout: 'print3' }); }); };
+    ov.querySelector('#bt_printbtn').onclick = function () {
+      // 새 창은 클릭 즉시 동기로 열어야 팝업 차단을 피함(저장은 백그라운드)
+      bulletinView(gather(), { amounts: true, layout: 'print3' });
+      save(null);
+    };
     ov.querySelector('#bt_publish').onclick = function () {
       if (!confirm('이 주보를 홈페이지에 게시할까요?\n(헌금 금액은 홈페이지에 노출되지 않습니다)')) return;
       save(function () { bmsg('✓ 게시되었습니다 — 홈페이지 주보란에 반영됩니다', 'green'); }, { published: true });
