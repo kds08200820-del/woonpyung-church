@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701db
+ * 콘솔: [affairs.js] v20260701dc
  */
-console.log('[affairs.js] v20260701db');
+console.log('[affairs.js] v20260701dc');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -754,9 +754,14 @@ console.log('[affairs.js] v20260701db');
           if (!confirm('우리말성경(QT) 본문이 비어 있습니다. QT 출력을 건너뛰고 새벽(개역개정)만 내보낼까요?\n\n[취소]를 누르면 우리말성경 본문을 먼저 입력하세요.')) return;
           alsoQt = false;
         }
+        // 창은 클릭 즉시(사용자 제스처) 동기로 열어야 팝업 차단을 피함 — 저장 후 내용 주입
+        var w1 = window.open('', '_blank');
+        var w2 = alsoQt ? window.open('', '_blank') : null;
+        if (!w1) { var m = ov.querySelector('#se_msg'); m.style.color = '#c0392b'; m.textContent = '팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.'; return; }
+        if (alsoQt && !w2) { var m2 = ov.querySelector('#se_msg'); m2.style.color = '#c0392b'; m2.textContent = 'QT 창이 차단되었습니다 — 주소창의 팝업 차단을 허용해 주세요. (새벽은 정상 출력)'; }
         save(function (saved) {
-          sermonReadingView(saved, { qt: false });           // ① 새벽 — 개역개정 (예배 순서 포함)
-          if (alsoQt) setTimeout(function () { sermonReadingView(saved, { qt: true }); }, 350); // ② QT — 우리말성경 (예배 순서 제외)
+          sermonReadingView(saved, { qt: false, win: w1 });           // ① 새벽 — 개역개정 (예배 순서 포함)
+          if (alsoQt && w2) sermonReadingView(saved, { qt: true, win: w2 }); // ② QT — 우리말성경 (예배 순서 제외)
         });
       };
       ov.querySelector('#se_kakao').onclick = function () {
@@ -803,7 +808,7 @@ console.log('[affairs.js] v20260701db');
   function sermonReadingView(r, opts) {
     r = r || {}; opts = opts || {};
     var qtMode = !!opts.qt;
-    var w = window.open('', '_blank');
+    var w = opts.win || window.open('', '_blank'); // 미리 연 창(opts.win)이 있으면 재사용(팝업 차단 회피)
     if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.'); return; }
     var meta = [r.service, fmtD(r.sermon_date), r.preacher].filter(Boolean).map(function (x) { return esc(x); }).join(' · ');
     var hymnsTxt = hymnsLabel(r.hymns);
