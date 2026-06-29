@@ -122,7 +122,9 @@
     if (!opts.amounts) h += '<p class="note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>';
     // 인쇄용 3단에서는 마지막 단 하단에 표지(운평장로교회)가 오도록 표지 블록을 둔다
     if (opts.layout === 'print3') {
-      h += '<div class="cover"><div class="since">SINCE 1964. 3. 1' + (d.no ? ' · No. ' + esc(d.no) : '') + '</div>' +
+      var fm = String(d.founded || '1964-03-01').match(/(\d{4})-(\d{2})-(\d{2})/);
+      var sinceTxt = fm ? ('SINCE ' + fm[1] + '. ' + Number(fm[2]) + '. ' + Number(fm[3])) : 'SINCE 1964. 3. 1';
+      h += '<div class="cover"><div class="since">' + sinceTxt + (d.no ? ' · No. ' + esc(d.no) : '') + '</div>' +
         '<div class="big">운 평 장 로 교 회</div>' +
         '<div class="ld">담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</div>' +
         '<div class="ad">화성특례시 우정읍 운평길 47 · T. 010-4032-2903<br>' + esc(dotDate(rec.bdate)) + (d.week ? ' · ' + esc(d.week) : '') + ' · www.k-logos.com</div></div>';

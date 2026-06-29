@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cm
+ * 콘솔: [affairs.js] v20260701cn
  */
-console.log('[affairs.js] v20260701cm');
+console.log('[affairs.js] v20260701cn');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1049,8 +1049,17 @@ console.log('[affairs.js] v20260701cm');
     var firstSun = new Date(y, 0, 1 + ((7 - jan1.getDay()) % 7)); // 그 해 첫 일요일
     return Math.round((d - firstSun) / (7 * 86400000)) + 1;
   }
-  // 호수: (설립 1964 기준 주년)-(그 해 주차). 예: 2026-07-05 → 62-27
-  function bulletinNo(bd) { if (!bd) return ''; var y = new Date(bd + 'T00:00:00').getFullYear(); return (y - 1964) + '-' + weekNoOfYear(bd); }
+  // 교회 설립일(설정에서 변경). 호수의 주년 계산 기준
+  var FOUNDED_DATE = '1964-03-01', FOUNDED_YEAR = 1964;
+  function loadGeneral() {
+    return api('GET', 'church_settings?key=eq.general&select=data').then(function (rows) {
+      var g = (rows && rows[0] && rows[0].data) || {};
+      if (g.founded) { FOUNDED_DATE = g.founded; FOUNDED_YEAR = new Date(g.founded + 'T00:00:00').getFullYear(); }
+      return g;
+    }).catch(function () { return {}; });
+  }
+  // 호수: (설립연도 기준 주년)-(그 해 주차). 예: 1964설립·2026-07-05 → 62-27
+  function bulletinNo(bd) { if (!bd) return ''; var y = new Date(bd + 'T00:00:00').getFullYear(); return (y - FOUNDED_YEAR) + '-' + weekNoOfYear(bd); }
   // 주차 라벨: "7월 첫째 주"
   function bulletinWeekLabel(bd) {
     if (!bd) return ''; var d = new Date(bd + 'T00:00:00');
@@ -1193,6 +1202,11 @@ console.log('[affairs.js] v20260701cm');
       ov.querySelector('#bt_no').value = bulletinNo(bd);
       ov.querySelector('#bt_week').value = bulletinWeekLabel(bd);
     });
+    // 설립일(호수 주년 기준)이 아직 로드 전이면 로드 후 호수 보정(사용자가 비워둔 경우만)
+    loadGeneral().then(function () {
+      var bd = ov.querySelector('#bt_bdate').value;
+      if (bd && !(d && d.no)) ov.querySelector('#bt_no').value = bulletinNo(bd);
+    });
 
     // 예배 순서 편집
     var oBox = ov.querySelector('#bt_order');
@@ -1219,7 +1233,8 @@ console.log('[affairs.js] v20260701cm');
         dawn: ov.querySelector('#bt_dawn').value.trim(), qt: ov.querySelector('#bt_qt').value.trim(),
         offering: {}, offering_amounts: {}, committee: {},
         column_title: ov.querySelector('#bt_col_title').value.trim(), column_body: ov.querySelector('#bt_col_body').value,
-        notices: ov.querySelector('#bt_notices').value
+        notices: ov.querySelector('#bt_notices').value,
+        founded: FOUNDED_DATE
       };
       OFFER_KEYS.forEach(function (k) { data.offering[k] = ov.querySelector('#bt_off_' + k).value.trim(); });
       AMOUNT_KEYS.forEach(function (k) { data.offering_amounts[k] = ov.querySelector('#bt_amt_' + k).value.trim(); });
@@ -1304,6 +1319,13 @@ console.log('[affairs.js] v20260701cm');
   // ====================================================================
   function renderSettings(panel) {
     panel.innerHTML =
+      '<div class="fin-card"><h3 style="margin:0 0 4px;color:var(--accent,#032257)">교회 기본 정보</h3>' +
+      '<p style="margin:0 0 12px;color:var(--ink-soft,#7b8794);font-size:.9rem">설립일을 기준으로 주보 <b>호수(No.)</b>의 주년이 정해집니다. 예) 1964년 설립 → 2026년은 62주년 → 62-○○주.</p>' +
+      '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end">' +
+      '<div class="af-field"><label>교회 설립일</label><input type="date" id="set_founded" value=""></div>' +
+      '<div class="af-field"><label>현재 주년(자동)</label><input type="text" id="set_anniv" value="" readonly style="background:#f5f7fa"></div>' +
+      '<div><button class="btn btn-line" id="set_save_g" style="padding:8px 16px;font-size:.85rem">💾 기본 정보 저장</button> <span id="set_gmsg" class="fin-msg"></span></div>' +
+      '</div></div>' +
       '<div class="fin-card"><h3 style="margin:0 0 4px;color:var(--accent,#032257)">연간 봉사위원</h3>' +
       '<p style="margin:0 0 12px;color:var(--ink-soft,#7b8794);font-size:.9rem">월별 봉사위원을 한 번 입력해 두면, <b>주보 제작 → 데이터 불러오기</b> 시 해당 월 봉사위원이 자동으로 채워집니다. 그 달 <b>마지막 주일</b> 주보에는 다음 달 봉사위원도 함께 표기됩니다.</p>' +
       '<div id="set_rows"></div>' +
@@ -1328,6 +1350,19 @@ console.log('[affairs.js] v20260701cm');
       bind('set-month', 'month'); bind('set-offering', 'offering'); bind('set-guide', 'guide'); bind('set-parking', 'parking');
       Array.prototype.forEach.call(box.querySelectorAll('.set-del'), function (b) { b.onclick = function () { coms.splice(Number(b.dataset.i), 1); renderRows(); }; });
     }
+    // 교회 기본 정보(설립일) — 호수 주년 기준
+    function gmsg(t, c) { var e = panel.querySelector('#set_gmsg'); if (e) { e.style.color = c || '#7b8794'; e.textContent = t; if (t) setTimeout(function () { if (e.textContent === t) e.textContent = ''; }, 3000); } }
+    function annivOf(fdate) { if (!fdate) return ''; var fy = new Date(fdate + 'T00:00:00').getFullYear(); return (new Date().getFullYear() - fy) + '주년'; }
+    var fEl = panel.querySelector('#set_founded'), aEl = panel.querySelector('#set_anniv');
+    fEl.addEventListener('change', function () { aEl.value = annivOf(fEl.value); });
+    panel.querySelector('#set_save_g').onclick = function () {
+      var fd = fEl.value; if (!fd) { gmsg('설립일을 입력하세요.', '#c0392b'); return; }
+      gmsg('저장 중…');
+      api('POST', 'church_settings?on_conflict=key', { key: 'general', data: { founded: fd }, updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal')
+        .then(function () { FOUNDED_DATE = fd; FOUNDED_YEAR = new Date(fd + 'T00:00:00').getFullYear(); gmsg('✓ 저장됨 — 이후 주보 호수에 반영됩니다', 'green'); })
+        .catch(function (e) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e.message)) gmsg('church_settings.sql 실행 필요', '#c0392b'); else gmsg('저장 실패: ' + e.message, '#c0392b'); });
+    };
+    loadGeneral().then(function (g) { fEl.value = (g && g.founded) || FOUNDED_DATE; aEl.value = annivOf(fEl.value); });
     panel.querySelector('#set_add').onclick = function () { coms.push({ month: '', offering: '', guide: '', parking: '' }); renderRows(); };
     panel.querySelector('#set_save').onclick = function () {
       coms.sort(function (a, b) { return (a.month || '') < (b.month || '') ? -1 : 1; });
@@ -1369,6 +1404,7 @@ console.log('[affairs.js] v20260701cm');
     api('GET', 'admins?uid=eq.' + s.uid + '&select=uid').then(function (rows) {
       if (!rows || !rows.length) { root.innerHTML = msgCard('접근 권한이 없습니다', '행정관리는 관리자만 이용할 수 있습니다.'); return; }
       loadMembers();
+      loadGeneral(); // 설립일(호수 주년 기준) 미리 로드
       render();
     }).catch(function (e) { root.innerHTML = msgCard('오류', e.message); });
   }
