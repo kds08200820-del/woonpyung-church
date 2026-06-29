@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701aq
+ * 콘솔: [finance.js] v20260701ar
  */
-console.log('[finance.js] v20260701aq');
+console.log('[finance.js] v20260701ar');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -592,7 +592,8 @@ console.log('[finance.js] v20260701aq');
         return String(a['계정명'] || '').toLowerCase().indexOf(q) >= 0 || String(hangOf(a)).toLowerCase().indexOf(q) >= 0;
       }).slice(0, 300);
       if (!matches.length) { return; }
-      pop = document.createElement('div'); pop.className = 'fin-sugg'; pop.style.maxHeight = '300px'; pop.style.minWidth = '300px';
+      pop = document.createElement('div'); pop.className = 'fin-sugg';
+      pop.style.maxHeight = '300px'; pop.style.top = '100%'; pop.style.left = '0'; pop.style.right = '0'; pop.style.marginTop = '4px'; pop.style.minWidth = '0';
       matches.forEach(function (a) {
         var d = document.createElement('div');
         d.innerHTML = '<b>' + esc(a['계정명']) + '</b> <span style="color:#9aa5b1;font-size:.78rem;float:right">' + esc(hangOf(a)) + '</span>';
@@ -837,7 +838,7 @@ console.log('[finance.js] v20260701aq');
     panel.innerHTML =
       '<div class="fin-card"><div class="fin-grid">' +
       '<div class="form-field"><label>일자</label><input type="date" id="e_date" value="' + today() + '"></div>' +
-      '<div class="form-field" style="position:relative;grid-column:span 2"><label>지출 계정 (검색)</label><div style="display:flex;gap:6px"><input type="text" id="e_acc_name" autocomplete="off" placeholder="계정명·항 입력 → 선택 (🔍 전체보기)" style="flex:1"><button type="button" class="btn btn-line" id="e_acc_btn" style="padding:0 13px;font-size:1rem">🔍</button></div><input type="hidden" id="e_acc"></div>' +
+      '<div class="form-field" style="grid-column:span 2"><label>지출 계정 (검색)</label><div id="e_acc_wrap" style="display:flex;gap:6px;position:relative"><input type="text" id="e_acc_name" autocomplete="off" placeholder="계정명·항 입력 → 선택 (🔍 전체보기)" style="flex:1"><button type="button" class="btn btn-line" id="e_acc_btn" style="padding:0 13px;font-size:1rem">🔍</button></div><input type="hidden" id="e_acc"></div>' +
       '<div class="form-field"><label>수단</label><select id="e_method"><option>계좌</option><option>법인카드</option><option>현금</option></select></div>' +
       '</div><div class="fin-grid">' +
       '<div class="form-field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="e_memo_on" style="width:auto;margin:0"> 적요 입력</label><input type="text" id="e_memo" disabled placeholder="체크하면 입력"></div>' +
@@ -846,8 +847,8 @@ console.log('[finance.js] v20260701aq');
       '</div><div style="margin-top:6px;display:flex;gap:10px;align-items:center;"><button class="btn btn-solid" id="e_add">＋ 지출 추가</button><span class="fin-msg" id="e_msg"></span></div></div><div id="e_today"></div>';
     var amt = panel.querySelector('#e_amt');
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
-    var accName = panel.querySelector('#e_acc_name'), accHidden = panel.querySelector('#e_acc'), accField = accName.closest('.form-field');
-    setupAccountSearch(accName, accHidden, expAccs, accField, panel.querySelector('#e_acc_btn'));
+    var accName = panel.querySelector('#e_acc_name'), accHidden = panel.querySelector('#e_acc'), accWrap = panel.querySelector('#e_acc_wrap');
+    setupAccountSearch(accName, accHidden, expAccs, accWrap, panel.querySelector('#e_acc_btn'));
     var emOn = panel.querySelector('#e_memo_on'), emEl = panel.querySelector('#e_memo');
     emOn.addEventListener('change', function () { emEl.disabled = !emOn.checked; if (emOn.checked) emEl.focus(); else emEl.value = ''; });
     var epOn = panel.querySelector('#e_payer_on'), epEl = panel.querySelector('#e_payer');
