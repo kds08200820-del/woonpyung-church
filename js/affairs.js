@@ -708,6 +708,53 @@ console.log('[affairs.js] v20260701di');
     return out;
   }
 
+  // pdf.js 지연 로드(CDN) — PDF 가져오기 사용할 때만 1회 로드
+  var _pdfjsP = null;
+  function ensurePdfjs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (_pdfjsP) return _pdfjsP;
+    _pdfjsP = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = function () {
+        if (window.pdfjsLib) { try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } catch (e) {} resolve(window.pdfjsLib); }
+        else reject(new Error('pdf.js 로드 실패'));
+      };
+      s.onerror = function () { reject(new Error('pdf.js를 불러오지 못했습니다(인터넷 연결 확인)')); };
+      document.head.appendChild(s);
+    });
+    return _pdfjsP;
+  }
+  // PDF → 줄 구조를 살린 텍스트(Y좌표로 줄 묶기). 날짜별 분리를 위해 줄바꿈 유지.
+  function extractPdfText(buf) {
+    return ensurePdfjs().then(function (pdfjsLib) {
+      return pdfjsLib.getDocument({ data: buf }).promise.then(function (pdf) {
+        var pages = [], seq = Promise.resolve();
+        for (var i = 1; i <= pdf.numPages; i++) {
+          (function (n) {
+            seq = seq.then(function () {
+              return pdf.getPage(n).then(function (page) {
+                return page.getTextContent().then(function (tc) {
+                  var lines = {};
+                  tc.items.forEach(function (it) {
+                    if (!it.str) return;
+                    var y = Math.round(it.transform[5]);
+                    (lines[y] = lines[y] || []).push({ x: it.transform[4], s: it.str });
+                  });
+                  var ys = Object.keys(lines).map(Number).sort(function (a, b) { return b - a; });
+                  pages.push(ys.map(function (y) {
+                    return lines[y].sort(function (a, b) { return a.x - b.x; }).map(function (o) { return o.s; }).join('').replace(/\s+$/, '');
+                  }).join('\n'));
+                });
+              });
+            });
+          })(i);
+        }
+        return seq.then(function () { return pages.join('\n\n'); });
+      });
+    });
+  }
+
   // 생명의 삶 가져오기 모달 — 개인 비공개 보관함(qt_imports). 공개 사이트와 무관.
   // initialText: 북마클릿이 du.plus 페이지에서 긁어 넘긴 본문(있으면 자동 정리).
   function qtImportModal(initialText) {
@@ -731,7 +778,10 @@ console.log('[affairs.js] v20260701di');
       '<label style="font-size:.84rem;color:#5a6b82">연도(날짜에 연도가 없을 때)</label>' +
       '<input type="number" id="qi_year" value="' + thisYear + '" style="width:96px;padding:6px 8px;border:1px solid #dfe5ee;border-radius:7px;font:inherit">' +
       '<button class="btn btn-line" id="qi_parse" style="padding:7px 14px;margin-left:auto">날짜별로 정리 ↓</button></div>' +
-      '<textarea id="qi_paste" placeholder="생명의 삶 본문을 여기에 붙여넣으세요. (여러 날짜를 한 번에 붙여넣어도 날짜별로 자동 분리됩니다)" style="width:100%;min-height:180px;line-height:1.7;font-size:.95rem;padding:11px;border:1px solid #dfe5ee;border-radius:9px;font-family:\'Noto Serif KR\',serif;box-sizing:border-box"></textarea></div>' +
+      '<textarea id="qi_paste" placeholder="생명의 삶 본문을 여기에 붙여넣으세요. (여러 날짜를 한 번에 붙여넣어도 날짜별로 자동 분리됩니다)" style="width:100%;min-height:180px;line-height:1.7;font-size:.95rem;padding:11px;border:1px solid #dfe5ee;border-radius:9px;font-family:\'Noto Serif KR\',serif;box-sizing:border-box"></textarea>' +
+      '<div style="margin-top:10px;border-top:1px dashed #e1e6ef;padding-top:10px"><b style="font-size:.9rem;color:#3a4a63">또는 — 생명의 삶 PDF 올리기</b>' +
+      '<div style="font-size:.78rem;color:#9aa5b1;margin:3px 0 8px">그 달 PDF(생명의 삶 PLUS)를 올리면 전문을 추출해 위 칸에 채우고 날짜별로 정리합니다.</div>' +
+      '<input type="file" id="qi_pdf" accept="application/pdf,.pdf"><span id="qi_pdfmsg" style="font-size:.8rem;color:#7b8794;margin-left:8px"></span></div></div>' +
       '<div id="qi_prev"></div>' +
       '<div class="fin-card"><b style="color:var(--accent,#032257)">📂 가져온 자료 (비공개)</b><div id="qi_list" style="margin-top:8px"><p class="qt-loading">불러오는 중…</p></div></div>' +
       '</div>';
@@ -746,6 +796,19 @@ console.log('[affairs.js] v20260701di');
     ov.querySelector('#qi_parse').onclick = function () {
       parsed = parseQtPaste(ov.querySelector('#qi_paste').value, Number(ov.querySelector('#qi_year').value) || thisYear);
       renderPrev();
+    };
+
+    // PDF 올리기 → 텍스트 추출 → 붙여넣기 칸 채우고 자동 정리
+    var pdfIn = ov.querySelector('#qi_pdf'), pdfMsg = ov.querySelector('#qi_pdfmsg');
+    if (pdfIn) pdfIn.onchange = function () {
+      var f = pdfIn.files && pdfIn.files[0]; if (!f) return;
+      pdfMsg.style.color = '#7b8794'; pdfMsg.textContent = 'PDF 분석 중… (장수에 따라 시간이 걸립니다)';
+      f.arrayBuffer().then(function (b) { return extractPdfText(b); }).then(function (txt) {
+        if (!txt || txt.replace(/\s/g, '').length < 20) { pdfMsg.style.color = '#c0392b'; pdfMsg.textContent = '텍스트를 추출하지 못했습니다(이미지 기반 PDF일 수 있음).'; return; }
+        ov.querySelector('#qi_paste').value = txt;
+        pdfMsg.style.color = 'green'; pdfMsg.textContent = '✓ 추출 완료 (' + txt.length + '자) — 아래 미리보기에서 확인/수정 후 저장';
+        ov.querySelector('#qi_parse').click();
+      }).catch(function (e) { pdfMsg.style.color = '#c0392b'; pdfMsg.textContent = '실패: ' + ((e && e.message) || e); });
     };
 
     function renderPrev() {
