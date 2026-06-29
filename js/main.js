@@ -136,17 +136,13 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     </div>`;
 }
 
-// ===== 1-3. 매일 말씀 묵상(QT) — 구글 시트 연동(오늘 날짜 자동) =====
+// ===== 1-3. 매일 말씀 묵상(QT) — Supabase qt_published 뷰(오늘 날짜 자동) =====
 (function () {
   const todayBox = document.getElementById("qtToday");
   const modal = document.getElementById("qtModal");
   if (!todayBox || !modal) return;
   const dateListEl = document.getElementById("qtDateList");
   const detailEl = document.getElementById("qtDetail");
-
-  // 구글 시트(레거시 — 운영중에는 Supabase 사용)
-  const SHEET_CSV =
-    "https://docs.google.com/spreadsheets/d/1Yg0dPnZEj18e9K5t-CC8ESwoXp1hP9Ro9AdTEhFSb0w/gviz/tq?tqx=out:csv";
 
   let entries = []; // [{date, content, title, ref}] (최신 → 과거)
 
@@ -225,25 +221,6 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     if (!m) return GODPIA_BASE;
     const code = GODPIA_VOL[m[1]];
     return code ? `${GODPIA_BASE}?vol=${code}&chap=${m[2]}` : GODPIA_BASE;
-  }
-
-  function parseCSV(text) {
-    const rows = []; let row = []; let field = ""; let inQ = false;
-    for (let i = 0; i < text.length; i++) {
-      const c = text[i];
-      if (inQ) {
-        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; }
-        else field += c;
-      } else {
-        if (c === '"') inQ = true;
-        else if (c === ",") { row.push(field); field = ""; }
-        else if (c === "\r") { /* skip */ }
-        else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
-        else field += c;
-      }
-    }
-    if (field.length || row.length) { row.push(field); rows.push(row); }
-    return rows;
   }
 
   function digest(content) {
@@ -394,23 +371,10 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     }
   }
 
-  // 1) Supabase qt_published 우선 → 2) 비어 있으면 구글 시트 백업
+  // QT는 Supabase qt_published 뷰에서만 가져온다(구글시트 레거시 제거 — 2026-06-30)
   loadQtFromSupabase().then((sb) => {
-    if (sb && sb.length) { entries = sb; afterEntries(); return; }
-    return fetch(SHEET_CSV)
-      .then((r) => r.text())
-      .then((txt) => {
-        const rows = parseCSV(txt);
-        if (!rows.length) throw new Error("empty");
-        const header = rows[0].map((h) => h.trim());
-        const di = header.findIndex((h) => h.includes("날짜"));
-        const ci = header.findIndex((h) => h.includes("내용") || h.toUpperCase().includes("QT"));
-        const dIdx = di >= 0 ? di : 1;
-        const cIdx = ci >= 0 ? ci : 2;
-        entries = rows.slice(1)
-          .map((r) => ({ date: (r[dIdx] || "").trim(), content: (r[cIdx] || "").replace(/\r\n?/g, "\n").trim() }));
-        afterEntries();
-      });
+    entries = sb || [];
+    afterEntries();
   }).catch(() => {
     todayBox.innerHTML = `<p class="qt-loading">오늘의 말씀을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>`;
   });
