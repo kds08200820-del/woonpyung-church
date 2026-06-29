@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701bj
+ * 콘솔: [gyojeok.js] v20260701bk
  */
-console.log('[gyojeok.js] v20260701bj');
+console.log('[gyojeok.js] v20260701bk');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -25,7 +25,7 @@ console.log('[gyojeok.js] v20260701bj');
     render();
   }
   function render() {
-    root.innerHTML = '<div class="fin-tabs"><button data-t="access">권한 관리</button><button data-t="members">교적 명단</button><button data-t="family">가족관계</button></div><div id="gjPanel"></div>';
+    root.innerHTML = '<div class="fin-tabs"><button data-t="access">권한 관리</button><button data-t="members">교적 명단</button><button data-t="family">가계도</button></div><div id="gjPanel"></div>';
     Array.prototype.forEach.call(root.querySelectorAll('.fin-tabs button'), function (b) {
       if (b.dataset.t === tab) b.classList.add('active');
       b.onclick = function () { tab = b.dataset.t; render(); };
@@ -479,7 +479,7 @@ console.log('[gyojeok.js] v20260701bj');
     function draw() {
       var ch = changes().length;
       panel.innerHTML =
-        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px"><b>가족관계 (가계도 구성)</b><span style="display:flex;gap:10px;align-items:center"><span class="fin-msg" id="fam_msg" style="font-size:.84rem"></span><button class="btn btn-solid" id="fam_save">💾 저장하기' + (ch ? ' (' + ch + ')' : '') + '</button><button class="btn btn-line" id="fam_revert">되돌리기</button></span></div>' +
+        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px"><b>가계도</b><span style="display:flex;gap:10px;align-items:center"><span class="fin-msg" id="fam_msg" style="font-size:.84rem"></span><button class="btn btn-solid" id="fam_save">💾 저장하기' + (ch ? ' (' + ch + ')' : '') + '</button><button class="btn btn-line" id="fam_revert">되돌리기</button></span></div>' +
         '<p style="color:var(--ink-soft);font-size:.83rem;margin:0 0 12px">왼쪽 <b>이름/세대주</b> 탭에서 사람을 골라 오른쪽으로 <b>드래그</b>합니다. 빈 칸에 놓으면 <b>세대주</b>가 되어 가계도가 시작되고, 가정이 열린 뒤 이름을 놓으면 그 가정에 <b>관계</b>로 추가됩니다. 다 한 뒤 <b>저장하기</b>를 누르면 모두에게 반영됩니다.</p>' +
         '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">' +
         '<div style="flex:0 0 280px;max-width:100%">' +
