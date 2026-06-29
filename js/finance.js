@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701af
+ * 콘솔: [finance.js] v20260701ag
  */
-console.log('[finance.js] v20260701af');
+console.log('[finance.js] v20260701ag');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -899,12 +899,22 @@ console.log('[finance.js] v20260701af');
       var rg = range();
       if (!rg.from || !rg.to) { out.innerHTML = msgCard('기간 확인', '시작일과 종료일을 선택하세요.'); return; }
       loading(out);
-      ensureVouchers().then(function () {
+      Promise.all([ensureVouchers(), ensureSettings()]).then(function () {
         var list = M.vouchers.filter(function (x) { var d = fmtD(x['일자']); return d >= rg.from && d <= rg.to; });
         var inc = 0, exp = 0, accIn = {}, accEx = {};
         list.forEach(function (v) { var amt = Number(v['금액']) || 0, a = v['계정'] || '?'; if (String(v['구분']) === '수입') { inc += amt; if (!accIn[a]) accIn[a] = { c: 0, s: 0 }; accIn[a].c++; accIn[a].s += amt; } else { exp += amt; if (!accEx[a]) accEx[a] = { c: 0, s: 0 }; accEx[a].c++; accEx[a].s += amt; } });
+        // 기초 이월 잔액 = 회계연도 이월금 + (회계연도 시작 ~ 기간 시작 전) 순증감
+        var fyStart = fyRange(M.fy).from, priorNet = 0;
+        M.vouchers.forEach(function (v) { var d = fmtD(v['일자']); if (d >= fyStart && d < rg.from) { var amt = Number(v['금액']) || 0; priorNet += (String(v['구분']) === '수입') ? amt : -amt; } });
+        var opening = carryover() + priorNet, ending = opening + inc - exp;
         function tbl(map, tot) { var rows = Object.keys(map).map(function (k) { return { a: k, c: map[k].c, s: map[k].s }; }).sort(function (a, b) { return b.s - a.s; }); if (!rows.length) return '<p class="help">내역 없음</p>'; return '<table class="fin-table"><thead><tr><th>계정</th><th class="num">건수</th><th class="num">금액</th><th class="num">비율</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + esc(r.a) + '</td><td class="num">' + r.c + '</td><td class="num"><b>' + won(r.s) + '</b></td><td class="num">' + (tot ? (r.s / tot * 100).toFixed(1) + '%' : '-') + '</td></tr>'; }).join('') + '</tbody><tfoot><tr style="font-weight:700;background:#f5f8fc"><td>합계</td><td class="num">' + rows.reduce(function (s, r) { return s + r.c; }, 0) + '</td><td class="num">' + won(tot) + '</td><td class="num">100%</td></tr></tfoot></table>'; }
-        var content = '<div class="fin-card" style="display:flex;gap:20px;flex-wrap:wrap;align-items:center"><b>' + esc(rg.label) + '</b><div style="margin-left:auto">수입 <b style="color:#1e874b">' + won(inc) + '</b></div><div>지출 <b style="color:#c0392b">' + won(exp) + '</b></div><div>차액 <b>' + won(inc - exp) + '</b></div><div>' + list.length + '건</div></div>' +
+        var content = '<div class="fin-card" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center"><b>' + esc(rg.label) + '</b>' +
+          '<div style="margin-left:auto">기초 이월 <b>' + won(opening) + '</b></div>' +
+          '<div>수입 <b style="color:#1e874b">' + won(inc) + '</b></div>' +
+          '<div>지출 <b style="color:#c0392b">' + won(exp) + '</b></div>' +
+          '<div>당기차액 <b>' + won(inc - exp) + '</b></div>' +
+          '<div>기말 잔액 <b style="color:var(--accent,#032257)">' + won(ending) + '</b></div>' +
+          '<div style="color:#9aa5b1">' + list.length + '건</div></div>' +
           '<div class="fin-card"><b>수입 계정별</b><div style="overflow:auto;margin-top:8px">' + tbl(accIn, inc) + '</div></div>' +
           '<div class="fin-card"><b>지출 계정별</b><div style="overflow:auto;margin-top:8px">' + tbl(accEx, exp) + '</div></div>';
         withPrint(out, '재정보고서', content, rg.label);
