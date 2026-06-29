@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701az
+ * 콘솔: [finance.js] v20260701ba
  */
-console.log('[finance.js] v20260701az');
+console.log('[finance.js] v20260701ba');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -1085,7 +1085,7 @@ console.log('[finance.js] v20260701az');
         var blocks = order.map(function (a) {
           var names = byAcc[a].map(nameOf);
           return '<div style="margin-bottom:12px"><b style="color:var(--accent,#032257)">' + esc(a) + ' (' + names.length + '명)</b>' +
-            '<div style="line-height:2;font-size:.95rem;margin-top:2px">' + names.map(esc).join(' · ') + '</div></div>';
+            '<div style="line-height:2;font-size:.95rem;margin-top:2px">' + names.map(function (n) { return '<span style="margin-right:16px">' + esc(n) + '</span>'; }).join('') + '</div></div>';
         }).join('');
         var content = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>' + w.from + ' ~ ' + w.to + ' 헌금자 명단</b><span style="color:var(--ink-soft);font-size:.9rem">총 ' + list.length + '건</span></div>' + blocks + '</div>';
         withPrint(out, '헌금자 명단', content, w.from + ' ~ ' + w.to + ' 주간');
