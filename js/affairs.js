@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701ca
+ * 콘솔: [affairs.js] v20260701cb
  */
-console.log('[affairs.js] v20260701ca');
+console.log('[affairs.js] v20260701cb');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -887,15 +887,17 @@ console.log('[affairs.js] v20260701ca');
       '.bar button.active{background:#032257;color:#fff;border-color:#032257}',
       '.bar .hint{flex-shrink:0;font-size:12px;color:#9a8f78;margin-left:auto;white-space:nowrap}',
       /* 덱 컨테이너 */
-      '#deck{flex:1;overflow:hidden}',
+      '#deck{flex:1;overflow:hidden;position:relative}',
+      '#track{height:100%}',
       /* ── 스크롤 모드 (기본) ── */
       'body.scroll #deck{overflow-y:auto;overflow-x:hidden}',
-      'body.scroll .pg{max-width:820px;margin:0 auto;padding:24px 22px 60px}',
+      'body.scroll #track{display:block;height:auto;transform:none!important}',
+      'body.scroll .pg{max-width:820px;margin:0 auto;padding:24px 22px 60px;height:auto}',
       'body.scroll .pg+.pg{border-top:2px dashed #e7e0cf;padding-top:36px}',
-      /* ── 페이지 모드 ── */
-      'body.paged #deck{display:flex;flex-direction:row;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
-      'body.paged #deck::-webkit-scrollbar{display:none}',
-      'body.paged .pg{flex:0 0 100vw;width:100vw;height:100%;overflow-y:auto;scroll-snap-align:start;padding:24px 28px 40px}',
+      /* ── 페이지 모드 (transform 슬라이드 — iOS 안정) ── */
+      'body.paged #deck{overflow:hidden}',
+      'body.paged #track{display:flex;flex-direction:row;height:100%;transition:transform .32s cubic-bezier(.4,0,.2,1);will-change:transform}',
+      'body.paged .pg{flex:0 0 100%;width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 28px 44px}',
       'body.paged .pg-img{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}',
       /* 공통 요소 */
       'h1{font-size:1.6em;margin:0 0 6px;line-height:1.35}',
@@ -920,12 +922,12 @@ console.log('[affairs.js] v20260701ca');
       'body.dark .order{background:#23262c;border-color:#3a3d44}body.dark .order-t{color:#e0c98a}',
       'body.dark .bible{background:#1e2026;border-color:#3a3d44;border-left-color:#7a5d27}body.dark .bible-t{color:#e0c98a}',
       'body.dark .pg+.pg{border-top-color:#2a2d33}',
-      '@media print{.bar{display:none}body{display:block;font-size:13pt}#deck,body.paged #deck{display:block;overflow:visible}body.paged .pg{width:auto;height:auto;page-break-after:always}}'
+      '@media print{.bar{display:none}body{display:block;font-size:13pt}#deck{display:block;overflow:visible}#track,body.paged #track{display:block;transform:none!important}body.paged .pg{width:auto;height:auto;page-break-after:always;overflow:visible}}'
     ].join('');
 
     var js = '(function(){' +
-      'var b=document.body,s=22,deck=document.getElementById("deck"),ind=document.getElementById("pg_ind");' +
-      'var pgs=deck.querySelectorAll(".pg"),total=pgs.length,curPg=0;' +
+      'var b=document.body,s=22,deck=document.getElementById("deck"),track=document.getElementById("track"),ind=document.getElementById("pg_ind");' +
+      'var total=track.querySelectorAll(".pg").length,curPg=0;' +
       /* 글자 크기 */
       'function ap(){b.style.fontSize=s+"px";try{localStorage.setItem("sermonFs",s)}catch(e){}}' +
       'try{var sv=parseInt(localStorage.getItem("sermonFs"),10);if(sv)s=sv}catch(e){}ap();' +
@@ -936,40 +938,41 @@ console.log('[affairs.js] v20260701ca');
       /* 전체화면 */
       'var fsBtn=document.getElementById("fs");' +
       'function updateFs(){fsBtn.textContent=(document.fullscreenElement||document.webkitFullscreenElement)?"⊡ 창모드":"⛶ 전체화면";}' +
-      'fsBtn.onclick=function(){var el=document.documentElement;if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document).catch(function(){});}else{var req=el.requestFullscreen||el.webkitRequestFullscreen;if(req)req.call(el).catch(function(){});}};' +
+      'fsBtn.onclick=function(){var el=document.documentElement;if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document).catch(function(){});}else{var req=el.requestFullscreen||el.webkitRequestFullscreen;if(req){req.call(el).catch(function(){});}else{alert("이 브라우저는 전체화면을 지원하지 않습니다. (아이패드는 홈 화면에 추가하면 전체화면으로 열립니다)");}}};' +
       'document.addEventListener("fullscreenchange",updateFs);document.addEventListener("webkitfullscreenchange",updateFs);' +
-      /* 페이지 표시 업데이트 */
-      'function updateInd(){if(total<2)return;var pg=Math.round(deck.scrollLeft/deck.clientWidth);curPg=pg;ind.textContent=(pg+1)+"/"+total;}' +
+      /* transform 슬라이드 적용 */
+      'function apply(){if(b.classList.contains("paged")){track.style.transform="translateX("+(-curPg*100)+"%)";}ind.textContent=(curPg+1)+"/"+total;}' +
+      'function goPage(d){curPg=Math.max(0,Math.min(total-1,curPg+d));apply();}' +
       /* 페이지↔스크롤 토글 */
       'var pgBtn=document.getElementById("pgbtn");' +
       'function setMode(paged){' +
         'b.classList.toggle("paged",paged);b.classList.toggle("scroll",!paged);' +
         'pgBtn.classList.toggle("active",paged);' +
         'try{localStorage.setItem("sermonPaged",paged?"1":"0")}catch(e){}' +
-        'if(paged){deck.scrollLeft=0;curPg=0;updateInd();}' +
+        'if(paged){curPg=0;}else{track.style.transform="";}apply();' +
       '}' +
       'pgBtn.onclick=function(){setMode(!b.classList.contains("paged"))};' +
       'try{setMode(localStorage.getItem("sermonPaged")==="1")}catch(e){setMode(false)}' +
       /* ◀ ▶ 버튼 */
-      'function goPage(d){var w=deck.clientWidth;deck.scrollTo({left:Math.max(0,(curPg+d)*w),behavior:"smooth"});}' +
       'document.getElementById("prev").onclick=function(){goPage(-1)};' +
       'document.getElementById("next").onclick=function(){goPage(1)};' +
-      /* 스크롤로 페이지 인디케이터 업데이트 */
-      'deck.addEventListener("scroll",function(){if(b.classList.contains("paged"))updateInd();},{passive:true});' +
       /* 키보드 */
       'document.addEventListener("keydown",function(e){' +
         'if(!b.classList.contains("paged"))return;' +
         'if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){e.preventDefault();goPage(1);}' +
         'else if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();goPage(-1);}' +
       '});' +
-      /* 터치 스와이프 */
-      'var sx=0,sy=0,st=0;' +
-      'deck.addEventListener("touchstart",function(e){var t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();},{passive:true});' +
-      'deck.addEventListener("touchend",function(e){' +
-        'if(!b.classList.contains("paged"))return;' +
+      /* 터치 스와이프 — 손가락 따라 미리보기 후 손 떼면 페이지 전환 */
+      'var sx=0,sy=0,st=0,sw=0,dragging=false,locked=false;' +
+      'track.addEventListener("touchstart",function(e){if(!b.classList.contains("paged"))return;var t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();sw=deck.clientWidth||1;dragging=true;locked=false;track.style.transition="none";},{passive:true});' +
+      'track.addEventListener("touchmove",function(e){if(!dragging)return;var t=e.touches[0],dx=t.clientX-sx,dy=t.clientY-sy;' +
+        'if(!locked){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8){locked="x";}else if(Math.abs(dy)>8){locked="y";}}' +
+        'if(locked==="x"){var pct=(-curPg*100)+(dx/sw*100);track.style.transform="translateX("+pct+"%)";}},{passive:true});' +
+      'track.addEventListener("touchend",function(e){if(!dragging)return;dragging=false;track.style.transition="";' +
         'var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;' +
-        'if(dt<600&&Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.3){goPage(dx<0?1:-1);}' +
-      '},{passive:true});' +
+        'if(locked==="x"&&(Math.abs(dx)>sw*0.18||(dt<350&&Math.abs(dx)>40))){goPage(dx<0?1:-1);}else{apply();}},{passive:true});' +
+      /* 창 크기 변경 시 위치 보정 */
+      'window.addEventListener("resize",function(){if(b.classList.contains("paged"))apply();});' +
       /* 인쇄 */
       'document.getElementById("print").onclick=function(){window.print()};' +
       '})();';
@@ -992,7 +995,7 @@ console.log('[affairs.js] v20260701ca');
         '<button id="print">🖨</button>' +
         '<span class="hint">' + (qtMode ? 'QT · 우리말성경' : '설교') + '</span>' +
       '</div>' +
-      '<div id="deck">' + pages.join('') + '</div>' +
+      '<div id="deck"><div id="track">' + pages.join('') + '</div></div>' +
       '<script>' + js + '<\/script>' +
       '</body></html>';
     w.document.write(html); w.document.close(); w.focus();
