@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cp
+ * 콘솔: [affairs.js] v20260701cq
  */
-console.log('[affairs.js] v20260701cp');
+console.log('[affairs.js] v20260701cq');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1294,13 +1294,31 @@ console.log('[affairs.js] v20260701cp');
       }
       return true;
     }
-    // 데이터 불러오기: 설교목록(주일/수요/새벽/QT) + 봉사위원(설정)
+    // 헌금 집계(Supabase offerings) — 집계 기준: 주보 발간 주간의 일요일(bdate)
+    function comma(n) { n = Number(n) || 0; return n.toLocaleString('en-US'); }
+    function fillOfferings(rows) {
+      if (!rows) return false;
+      var byCat = {}, total = 0;
+      rows.forEach(function (r) {
+        var c = (r.category || '기타').trim();
+        if (!byCat[c]) byCat[c] = { givers: [], sum: 0 };
+        if (r.giver && r.giver.trim()) byCat[c].givers.push(r.giver.trim());
+        var a = Number(r.amount) || 0; byCat[c].sum += a; total += a;
+      });
+      function find(key) { if (byCat[key]) return byCat[key]; for (var k in byCat) { if (k.indexOf(key) >= 0 || key.indexOf(k) >= 0) return byCat[k]; } return null; }
+      function set(id, v) { var el = document.getElementById(id); if (el) el.value = v; }
+      OFFER_KEYS.forEach(function (k) { var b = find(k); if (b && b.givers.length) set('bt_off_' + k, b.givers.join(' ')); });
+      AMOUNT_KEYS.forEach(function (k) { if (k === '합계') { set('bt_amt_합계', comma(total)); return; } var b = find(k); if (b) set('bt_amt_' + k, comma(b.sum)); });
+      return rows.length > 0;
+    }
+    // 데이터 불러오기: 설교(주일/수요/새벽/QT) + 봉사위원(설정) + 헌금(Supabase)
     ov.querySelector('#bt_pull').onclick = function () {
       var bd = ov.querySelector('#bt_bdate').value; if (!bd) { bmsg('주일 날짜를 먼저 선택하세요.', '#c0392b'); return; }
       bmsg('데이터 불러오는 중…');
       var pSerm = api('GET', 'sermons?select=*&sermon_date=gte.' + bd + '&sermon_date=lte.' + addDays(bd, 6) + '&order=sermon_date.asc');
       var pCom = COMMITTEES ? Promise.resolve(COMMITTEES) : loadCommittees();
-      Promise.all([pSerm, pCom]).then(function (res) {
+      var pOff = api('GET', 'offerings?select=category,giver,amount&offer_date=eq.' + bd).catch(function () { return null; });
+      Promise.all([pSerm, pCom, pOff]).then(function (res) {
         var rows = res[0] || [];
         function pick(svc) { for (var i = 0; i < rows.length; i++) if (rows[i].service === svc) return rows[i]; return null; }
         var sun = pick('주일 낮 예배'), wed = pick('수요예배'), dawn = pick('새벽기도'), qt = pick('매일 QT');
@@ -1318,7 +1336,9 @@ console.log('[affairs.js] v20260701cp');
         if (qt) { ov.querySelector('#bt_qt').value = qt.scripture || qt.title || ''; n++; }
         if (n) parts.push('설교 ' + n + '건');
         if (fillCommittee(bd)) parts.push('봉사위원');
-        bmsg(parts.length ? ('✓ ' + parts.join(' · ') + ' 불러옴 (' + bd + ' 주간)') : '해당 주에 불러올 데이터가 없습니다. (설교/설정 봉사위원 확인)', parts.length ? 'green' : '#c0392b');
+        var offs = res[2];
+        if (offs && offs.length) { fillOfferings(offs); parts.push('헌금 ' + offs.length + '건'); }
+        bmsg(parts.length ? ('✓ ' + parts.join(' · ') + ' 불러옴 (' + bd + ')') + (offs && !offs.length ? ' · 해당일 헌금 없음' : '') : '해당 주/일에 불러올 데이터가 없습니다.', parts.length ? 'green' : '#c0392b');
       }).catch(function (e) { bmsg('불러오기 실패: ' + e.message, '#c0392b'); });
     };
   }
@@ -1393,19 +1413,23 @@ console.log('[affairs.js] v20260701cp');
     function msg(t, c) { var e = panel.querySelector('#set_msg'); if (e) { e.style.color = c || '#7b8794'; e.textContent = t; if (t) setTimeout(function () { if (e.textContent === t) e.textContent = ''; }, 3000); } }
     var coms = [];
     function rowsBox() { return panel.querySelector('#set_rows'); }
+    function prayerToText(arr) { return (arr || []).map(function (p) { return (p.week || '') + ':' + (p.person || ''); }).filter(function (s) { return s !== ':'; }).join(' / '); }
+    function textToPrayer(s) { return String(s || '').split('/').map(function (part) { var i = part.indexOf(':'); if (i < 0) { var t = part.trim(); return t ? { week: '', person: t } : null; } return { week: part.slice(0, i).trim(), person: part.slice(i + 1).trim() }; }).filter(function (p) { return p && p.person; }); }
     function renderRows() {
       var box = rowsBox();
-      box.innerHTML = '<div style="overflow:auto"><table class="fin-table"><thead><tr><th style="min-width:120px">월</th><th>헌금위원</th><th>안내위원</th><th>주차·사찰</th><th></th></tr></thead><tbody>' +
+      box.innerHTML = '<div style="overflow:auto"><table class="fin-table"><thead><tr><th style="min-width:110px">월</th><th>헌금위원</th><th>안내위원</th><th>주차·사찰</th><th style="min-width:220px">이주의 기도 <span style="font-weight:400;color:#9aa5b1;font-size:.74rem">(1주:이름 / 2주:이름)</span></th><th></th></tr></thead><tbody>' +
         coms.map(function (c, i) {
           return '<tr>' +
             '<td><input type="month" class="set-month" data-i="' + i + '" value="' + esc(c.month || '') + '" style="padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
             '<td><input type="text" class="set-offering" data-i="' + i + '" value="' + esc(c.offering || '') + '" placeholder="이름 · 이름" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
             '<td><input type="text" class="set-guide" data-i="' + i + '" value="' + esc(c.guide || '') + '" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
             '<td><input type="text" class="set-parking" data-i="' + i + '" value="' + esc(c.parking || '') + '" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
+            '<td><input type="text" class="set-prayer" data-i="' + i + '" value="' + esc(prayerToText(c.prayer)) + '" placeholder="1주:신용화 장로 / 2주:박경자 권사" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit"></td>' +
             '<td><button type="button" class="set-del" data-i="' + i + '" style="border:0;background:none;color:#c0392b;cursor:pointer">✕</button></td></tr>';
         }).join('') + '</tbody></table></div>';
       function bind(cls, key) { Array.prototype.forEach.call(box.querySelectorAll('.' + cls), function (inp) { inp.oninput = function () { coms[Number(inp.dataset.i)][key] = inp.value; }; }); }
       bind('set-month', 'month'); bind('set-offering', 'offering'); bind('set-guide', 'guide'); bind('set-parking', 'parking');
+      Array.prototype.forEach.call(box.querySelectorAll('.set-prayer'), function (inp) { inp.oninput = function () { coms[Number(inp.dataset.i)].prayer = textToPrayer(inp.value); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.set-del'), function (b) { b.onclick = function () { coms.splice(Number(b.dataset.i), 1); renderRows(); }; });
     }
     // 교회 기본 정보(설립일) — 호수 주년 기준
