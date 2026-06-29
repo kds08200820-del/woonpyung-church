@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701ap
+ * 콘솔: [finance.js] v20260701aq
  */
-console.log('[finance.js] v20260701ap');
+console.log('[finance.js] v20260701aq');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -580,6 +580,43 @@ console.log('[finance.js] v20260701ap');
     input.addEventListener('blur', function () { setTimeout(close, 180); });
     function pick(m) { input.value = m.name; hidden.value = m.key || ''; close(); if (onPick) onPick(m); }
   }
+  // 계정 검색 자동완성: 🔍 클릭→전체, 입력→계정명/항으로 필터·추천
+  function setupAccountSearch(input, hidden, accs, container, btn) {
+    var pop = null, hi = -1, matches = [];
+    function close() { if (pop) { pop.remove(); pop = null; hi = -1; } }
+    function hangOf(a) { return a['분류'] || a['상위'] || '(미분류)'; }
+    function open(q) {
+      close(); q = String(q || '').trim().toLowerCase();
+      matches = accs.filter(function (a) {
+        if (!q) return true;
+        return String(a['계정명'] || '').toLowerCase().indexOf(q) >= 0 || String(hangOf(a)).toLowerCase().indexOf(q) >= 0;
+      }).slice(0, 300);
+      if (!matches.length) { return; }
+      pop = document.createElement('div'); pop.className = 'fin-sugg'; pop.style.maxHeight = '300px'; pop.style.minWidth = '300px';
+      matches.forEach(function (a) {
+        var d = document.createElement('div');
+        d.innerHTML = '<b>' + esc(a['계정명']) + '</b> <span style="color:#9aa5b1;font-size:.78rem;float:right">' + esc(hangOf(a)) + '</span>';
+        d.addEventListener('mousedown', function (e) { e.preventDefault(); pick(a); });
+        pop.appendChild(d);
+      });
+      (container || input.parentElement).appendChild(pop);
+    }
+    function pick(a) { input.value = a['계정명']; hidden.value = a['계정명']; close(); }
+    input.addEventListener('input', function () { hidden.value = ''; open(input.value); });
+    input.addEventListener('focus', function () { if (!pop) open(input.value); });
+    input.addEventListener('keydown', function (e) {
+      if (!pop) { if (e.key === 'ArrowDown') open(input.value); return; }
+      var rows = pop.querySelectorAll('div');
+      if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); }
+      else if (e.key === 'Enter' && hi >= 0) { e.preventDefault(); pick(matches[hi]); return; }
+      else if (e.key === 'Escape') { close(); return; }
+      else return;
+      Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); if (i === hi) r.scrollIntoView({ block: 'nearest' }); });
+    });
+    input.addEventListener('blur', function () { setTimeout(close, 180); });
+    if (btn) btn.onclick = function () { input.focus(); if (pop) close(); else open(''); };
+  }
 
   var ymdStr = function (v) { return String(v == null ? '' : v).slice(0, 10); };
 
@@ -800,8 +837,7 @@ console.log('[finance.js] v20260701ap');
     panel.innerHTML =
       '<div class="fin-card"><div class="fin-grid">' +
       '<div class="form-field"><label>일자</label><input type="date" id="e_date" value="' + today() + '"></div>' +
-      '<div class="form-field"><label>지출 항(분류)</label><select id="e_hang">' + hangList().map(function (h) { return '<option>' + esc(h) + '</option>'; }).join('') + '</select></div>' +
-      '<div class="form-field"><label>지출 목(계정)</label><select id="e_acc">' + mokOptions(firstHang) + '</select></div>' +
+      '<div class="form-field" style="position:relative;grid-column:span 2"><label>지출 계정 (검색)</label><div style="display:flex;gap:6px"><input type="text" id="e_acc_name" autocomplete="off" placeholder="계정명·항 입력 → 선택 (🔍 전체보기)" style="flex:1"><button type="button" class="btn btn-line" id="e_acc_btn" style="padding:0 13px;font-size:1rem">🔍</button></div><input type="hidden" id="e_acc"></div>' +
       '<div class="form-field"><label>수단</label><select id="e_method"><option>계좌</option><option>법인카드</option><option>현금</option></select></div>' +
       '</div><div class="fin-grid">' +
       '<div class="form-field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="e_memo_on" style="width:auto;margin:0"> 적요 입력</label><input type="text" id="e_memo" disabled placeholder="체크하면 입력"></div>' +
@@ -810,18 +846,18 @@ console.log('[finance.js] v20260701ap');
       '</div><div style="margin-top:6px;display:flex;gap:10px;align-items:center;"><button class="btn btn-solid" id="e_add">＋ 지출 추가</button><span class="fin-msg" id="e_msg"></span></div></div><div id="e_today"></div>';
     var amt = panel.querySelector('#e_amt');
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
-    var hangSel = panel.querySelector('#e_hang'), mokSel = panel.querySelector('#e_acc');
-    hangSel.addEventListener('change', function () { mokSel.innerHTML = mokOptions(hangSel.value); });
+    var accName = panel.querySelector('#e_acc_name'), accHidden = panel.querySelector('#e_acc'), accField = accName.closest('.form-field');
+    setupAccountSearch(accName, accHidden, expAccs, accField, panel.querySelector('#e_acc_btn'));
     var emOn = panel.querySelector('#e_memo_on'), emEl = panel.querySelector('#e_memo');
     emOn.addEventListener('change', function () { emEl.disabled = !emOn.checked; if (emOn.checked) emEl.focus(); else emEl.value = ''; });
     var epOn = panel.querySelector('#e_payer_on'), epEl = panel.querySelector('#e_payer');
     epOn.addEventListener('change', function () { epEl.disabled = !epOn.checked; if (epOn.checked) epEl.focus(); else epEl.value = ''; });
     function submitExpense() {
-      var v = { date: panel.querySelector('#e_date').value, type: '지출', kind: '일반', account: mokSel.value, service: '', payer: epEl.value.trim(), memberKey: '', amount: parseNum(amt.value), method: panel.querySelector('#e_method').value, memo: emEl.value.trim() };
+      var v = { date: panel.querySelector('#e_date').value, type: '지출', kind: '일반', account: accHidden.value, service: '', payer: epEl.value.trim(), memberKey: '', amount: parseNum(amt.value), method: panel.querySelector('#e_method').value, memo: emEl.value.trim() };
       var msg = panel.querySelector('#e_msg');
-      if (!v.date || !v.account || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자·계정·금액을 입력하세요.'; return; }
+      if (!v.date || !v.account || !v.amount) { msg.style.color = '#c0392b'; msg.textContent = '일자·계정·금액을 입력하세요. (계정은 목록에서 선택)'; return; }
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; emEl.value = ''; epEl.value = ''; amt.value = ''; M.loaded = false; loadExp(v.date); hangSel.focus(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
+      WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; emEl.value = ''; epEl.value = ''; amt.value = ''; M.loaded = false; loadExp(v.date); amt.focus(); }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = e.message; });
     }
     amt.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitExpense(); } else if (e.key === 'Tab' && !e.shiftKey && !emOn.checked && !epOn.checked) { e.preventDefault(); submitExpense(); } });
     panel.querySelector('#e_add').onclick = submitExpense;
