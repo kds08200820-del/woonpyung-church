@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701al
+ * 콘솔: [finance.js] v20260701am
  */
-console.log('[finance.js] v20260701al');
+console.log('[finance.js] v20260701am');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -167,7 +167,10 @@ console.log('[finance.js] v20260701al');
       bizno: s.rcp_bizno || '124-82-62875',
       addr: s.rcp_addr || '경기도 화성시 우정읍 운평길 47',
       rep: s.rcp_rep || '김동석',
-      law: s.rcp_law || '「소득세법」 제34조제3항제1호'
+      law: s.rcp_law || '「소득세법」 제34조제3항제1호',
+      imgUid: s.rcp_img_uid || '',     // 고유번호증
+      imgAssoc: s.rcp_img_assoc || '', // 총회소속증명서
+      imgSeal: s.rcp_img_seal || ''    // 직인
     };
   }
 
@@ -1212,6 +1215,10 @@ console.log('[finance.js] v20260701al');
       '.ul{display:inline-block;min-width:120px;border-bottom:1px solid #111;text-align:center;font-weight:700}',
       '.ul.big{min-width:180px;font-size:15px;font-family:"Noto Serif KR",serif}',
       '.foot{margin-top:18px;font-size:9.5px;color:#888;border-top:1px solid #ddd;padding-top:8px}',
+      '.seal{height:58px;vertical-align:middle;margin-left:-6px;position:relative;top:-2px}',
+      '.attach{page-break-before:always;break-before:page;padding-top:6px}',
+      '.attach-t{font-size:12.5px;font-weight:700;color:#1f3a5f;margin:0 0 8px;border-left:3px solid #c9a227;padding-left:8px}',
+      '.attach img{display:block;max-width:100%;max-height:245mm;margin:0 auto;border:1px solid #ccc}',
       '@page{size:A4;margin:16mm 14mm}',
       '@media print{body{padding:0}.noprint{display:none}}'
     ].join('');
@@ -1238,12 +1245,14 @@ console.log('[finance.js] v20260701al');
       '<p class="sign">신청인(기부자) &nbsp; <span class="ul">' + esc(rec.name) + '</span> &nbsp;(서명 또는 인)</p>' +
       '<p class="stmt">위와 같이 기부금을 기부받았음을 증명합니다.</p>' +
       '<p class="dt">' + dateK + '</p>' +
-      '<p class="sign">기부금 수령인 &nbsp; <span class="ul big">' + esc(org.name) + '</span> &nbsp;(직인)</p>' +
+      '<p class="sign">기부금 수령인 &nbsp; <span class="ul big">' + esc(org.name) + '</span>' + (org.imgSeal ? '<img class="seal" src="' + esc(org.imgSeal) + '" alt="직인">' : ' &nbsp;(직인)') + '</p>' +
       '<div class="foot">발급방식: ' + (rec.method === 'pdf' ? 'PDF 저장' : '인쇄 출력') + ' · 회계연도: ' + esc(rec.period || (M.fy + '년도')) + ' · 발급일 ' + dt + ' · 운평장로교회 회계시스템</div>' +
+      (org.imgUid ? '<div class="attach"><div class="attach-t">[붙임 1] 고유번호증</div><img src="' + esc(org.imgUid) + '" alt="고유번호증"></div>' : '') +
+      (org.imgAssoc ? '<div class="attach"><div class="attach-t">[붙임 2] 총회소속증명서</div><img src="' + esc(org.imgAssoc) + '" alt="총회소속증명서"></div>' : '') +
       '<div class="noprint" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#1f3a5f;color:#fff;border-radius:8px">🖨 인쇄 / PDF 저장</button></div>' +
+      '<scr' + 'ipt>window.addEventListener("load",function(){setTimeout(function(){try{window.print()}catch(e){}},500)});</scr' + 'ipt>' +
       '</div></body></html>';
     w.document.write(html); w.document.close(); w.focus();
-    setTimeout(function () { try { w.print(); } catch (e) { } }, 700);
   }
 
   /* ── 기부금영수증 발급대장 ── */
@@ -1415,6 +1424,30 @@ console.log('[finance.js] v20260701al');
             '<div class="form-field"><label>대표자(담임목사)</label><input type="text" id="org_rep" value="' + esc(o.rep) + '"></div>' +
             '<div class="form-field"><label>기부금공제대상 근거법령</label><input type="text" id="org_law" value="' + esc(o.law) + '"></div>' +
             '<div style="margin-top:6px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="org_save">발급기관 저장</button><span class="fin-msg" id="org_msg"></span></div></div>';
+        })() +
+        (function () {
+          var o = orgInfo();
+          var slots = [
+            { key: 'rcp_img_uid', label: '고유번호증', url: o.imgUid, hint: '영수증 출력 시 [붙임 1]로 첨부' },
+            { key: 'rcp_img_assoc', label: '총회소속증명서', url: o.imgAssoc, hint: '영수증 출력 시 [붙임 2]로 첨부' },
+            { key: 'rcp_img_seal', label: '직인', url: o.imgSeal, hint: '운평장로교회 옆에 날인 (투명 PNG 권장)' }
+          ];
+          function slotHTML(s) {
+            return '<div class="rcp-up" data-key="' + s.key + '" style="border:1px solid #e3e7ee;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:center">' +
+              '<div class="rcp-up-prev" style="width:96px;height:72px;flex:0 0 auto;border:1px dashed #cdd7e3;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc;font-size:.72rem;color:#9aa5b1">' +
+              (s.url ? '<img src="' + esc(s.url) + '" style="max-width:100%;max-height:100%">' : '미등록') + '</div>' +
+              '<div style="flex:1;min-width:0"><div style="font-weight:700">' + s.label + '</div><div style="font-size:.78rem;color:var(--ink-soft)">' + s.hint + '</div>' +
+              '<div style="margin-top:7px;display:flex;gap:7px;align-items:center;flex-wrap:wrap">' +
+              '<label class="btn btn-line" style="padding:4px 12px;font-size:.8rem;cursor:pointer;margin:0">' + (s.url ? '교체' : '업로드') + '<input type="file" accept="image/*" hidden></label>' +
+              (s.url ? '<button class="btn btn-line rcp-up-del" style="padding:4px 12px;font-size:.8rem">삭제</button>' : '') +
+              '<span class="rcp-up-msg" style="font-size:.78rem"></span></div></div></div>';
+          }
+          return '<div class="fin-card" style="max-width:560px">' +
+            '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">기부금영수증 증빙 이미지</h3>' +
+            '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px">고유번호증·총회소속증명서·직인 이미지를 업로드하면 기부금영수증 출력 시 자동으로 반영됩니다. (고유번호증·총회소속증명서는 뒷장에 첨부, 직인은 교회명 옆에 날인)</p>' +
+            slots.map(slotHTML).join('') +
+            (window.ChurchUpload && ChurchUpload.isReady() ? '' : '<p style="color:#c0392b;font-size:.8rem">⚠ 업로드 서버가 설정되지 않아 업로드를 사용할 수 없습니다.</p>') +
+            '</div>';
         })();
       panel.querySelector('#set_save').onclick = function () {
         var v = Number(panel.querySelector('#set_sm').value);
@@ -1441,6 +1474,40 @@ console.log('[finance.js] v20260701al');
         Promise.all(jobs).then(function () { omsg.style.color = 'green'; omsg.textContent = '✓ 저장됨'; })
           .catch(function (e) { omsg.style.color = '#c0392b'; omsg.textContent = '저장 실패: ' + e.message; });
       };
+      // 증빙 이미지 업로드/삭제
+      Array.prototype.forEach.call(panel.querySelectorAll('.rcp-up'), function (slot) {
+        var key = slot.dataset.key;
+        var seal = (key === 'rcp_img_seal');
+        var prev = slot.querySelector('.rcp-up-prev');
+        var msg = slot.querySelector('.rcp-up-msg');
+        var file = slot.querySelector('input[type="file"]');
+        function setPrev(url) {
+          prev.innerHTML = url ? '<img src="' + esc(url) + '" style="max-width:100%;max-height:100%">' : '미등록';
+        }
+        file.addEventListener('change', function () {
+          var f = file.files && file.files[0]; if (!f) return;
+          if (!(window.ChurchUpload && ChurchUpload.isReady())) { msg.style.color = '#c0392b'; msg.textContent = '업로드 서버 미설정'; return; }
+          msg.style.color = '#7b8794'; msg.textContent = '업로드 중…';
+          // 직인은 투명 PNG 보존 위해 압축하지 않음
+          ChurchUpload.upload(f, { folder: 'finance/receipt', compress: !seal }).then(function (res) {
+            var url = res.url;
+            return WPF.call('setSetting', { key: key, value: url }).then(function () {
+              M.settings[key] = url; setPrev(url);
+              msg.style.color = 'green'; msg.textContent = '✓ 저장됨';
+              setTimeout(function () { renderSettings(panel); }, 600);
+            });
+          }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '실패: ' + e.message; });
+          file.value = '';
+        });
+        var del = slot.querySelector('.rcp-up-del');
+        if (del) del.onclick = function () {
+          if (!confirm('이 이미지를 삭제할까요?')) return;
+          msg.style.color = '#7b8794'; msg.textContent = '삭제 중…';
+          WPF.call('setSetting', { key: key, value: '' }).then(function () {
+            M.settings[key] = ''; setPrev(''); renderSettings(panel);
+          }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '실패: ' + e.message; });
+        };
+      });
     }).catch(function (e) { panel.innerHTML = msgCard('설정 조회 실패', e.message); });
   }
 
