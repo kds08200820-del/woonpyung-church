@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cc
+ * 콘솔: [affairs.js] v20260701cd
  */
-console.log('[affairs.js] v20260701cc');
+console.log('[affairs.js] v20260701cd');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -855,29 +855,28 @@ console.log('[affairs.js] v20260701cc');
     var bibleSrc = qtMode ? (r.qt_bible_text || r.bible_text || '') : (r.bible_text || '');
     var bibleLabel = qtMode ? '성경 본문 (우리말성경)' : '성경 본문 (개역개정)';
     var bibleHtml = bibleSrc ? '<div class="bible"><div class="bible-t">■ ' + bibleLabel + (r.scripture ? ' <span style="font-weight:400;color:#9a8f78">' + esc(r.scripture) + '</span>' : '') + '</div>' + esc(bibleSrc).replace(/\n/g, '<br>') + '</div>' : '';
-    var bodyHtml = esc(r.content || '').replace(/\n/g, '<br>');
+    // 설교 원고는 페이지 모드에서 화면 높이에 맞춰 동적으로 여러 페이지로 분할됨(아래 JS).
+    // 원고 줄 배열을 JSON으로 안전하게 주입('<' 이스케이프로 </script> 차단)
+    var bodyLinesJson = JSON.stringify((r.content || '').split('\n')).replace(/</g, '\\u003c');
 
-    // ── 페이지 목록 구성 ──────────────────────────────────────────────
-    // 각 페이지는 <div class="pg"> 한 칸. 페이지 모드: 가로 flex+snap, 스크롤 모드: 세로 block
+    // ── 고정 페이지 구성(표지·성경·이미지). 설교 원고 페이지는 JS가 동적 생성 ──
     var pages = [];
     // 페이지 0: 표지 (제목+메타+예배순서)
-    pages.push('<div class="pg pg-cover">' +
+    pages.push('<div class="pg pg-fixed pg-cover">' +
       '<h1>' + esc(r.title || '(제목 없음)') + '</h1>' +
       (r.scripture ? '<div class="scr">' + esc(r.scripture) + '</div>' : '') +
       (meta ? '<div class="meta">' + meta + '</div>' : '') +
       orderHtml +
       '</div>');
     // 페이지 1: 성경 본문 (있을 때만)
-    if (bibleHtml) pages.push('<div class="pg pg-bible">' + bibleHtml + '</div>');
+    if (bibleHtml) pages.push('<div class="pg pg-fixed pg-bible">' + bibleHtml + '</div>');
     // 페이지 2~N: 이미지 페이지 (예배순서 항목 중 이미지)
     imgPageItems.forEach(function (it) {
-      pages.push('<div class="pg pg-img">' +
+      pages.push('<div class="pg pg-fixed pg-img">' +
         '<div class="img-pg-t">' + esc(it.label) + (it.detail ? ' · ' + esc(it.detail) : '') + '</div>' +
         '<img src="' + esc(it.url) + '" alt="' + esc(it.label) + '">' +
         '</div>');
     });
-    // 마지막 페이지: 설교 원고
-    pages.push('<div class="pg pg-body"><div class="body">' + bodyHtml + '</div></div>');
 
     var css = [
       '*{box-sizing:border-box}',
@@ -915,6 +914,11 @@ console.log('[affairs.js] v20260701cc');
       /* 페이지 표시기 */
       '#pg_ind{flex-shrink:0;font-size:12px;color:#9a8f78;min-width:44px;text-align:center;display:none}',
       'body.paged #pg_ind{display:block}',
+      /* 몰입 모드(전체화면 폴백) — 상단 바 숨김 */
+      'body.immersive .bar{display:none}',
+      '#exitfs{position:fixed;top:10px;right:10px;z-index:30;display:none;font:inherit;font-size:14px;border:1px solid rgba(0,0,0,.15);background:rgba(255,255,255,.9);border-radius:20px;padding:7px 13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)}',
+      'body.immersive #exitfs{display:block}',
+      'body.dark #exitfs{background:rgba(35,38,44,.92);color:#e9e6df;border-color:#3a3d44}',
       /* 다크 모드 */
       'body.dark{background:#15171b;color:#e9e6df}',
       'body.dark .bar{background:rgba(21,23,27,.96);border-color:#2a2d33}',
@@ -929,19 +933,49 @@ console.log('[affairs.js] v20260701cc');
 
     var js = '(function(){' +
       'var b=document.body,s=22,deck=document.getElementById("deck"),track=document.getElementById("track"),ind=document.getElementById("pg_ind");' +
-      'var total=track.querySelectorAll(".pg").length,curPg=0;' +
+      'var BODY=' + bodyLinesJson + ';' +
+      'var curPg=0,total=0,reflowTimer=null;' +
+      'function eh(x){return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}' +
+      'function lineHtml(x){return (x?eh(x):"")+"<br>";}' +
+      'function fullBodyHtml(){return BODY.map(function(x){return x?eh(x):"";}).join("<br>");}' +
+      'function mkBodyPage(){var pg=document.createElement("div");pg.className="pg pg-body";var inr=document.createElement("div");inr.className="body";pg.appendChild(inr);return pg;}' +
+      /* 설교 원고를 현재 화면 높이에 맞춰 분할(페이지 모드) 또는 한 덩어리(스크롤 모드) */
+      'function buildBody(){' +
+        'var olds=track.querySelectorAll(".pg-body");for(var k=0;k<olds.length;k++)olds[k].parentNode.removeChild(olds[k]);' +
+        'if(!b.classList.contains("paged")){var pg=mkBodyPage();track.appendChild(pg);pg.firstChild.innerHTML=fullBodyHtml();}' +
+        'else{var i=0;if(!BODY.length){var e=mkBodyPage();track.appendChild(e);}' +
+          'while(i<BODY.length){var pg=mkBodyPage();track.appendChild(pg);var inr=pg.firstChild,started=false;' +
+            'while(i<BODY.length){var prev=inr.innerHTML;inr.innerHTML=prev+lineHtml(BODY[i]);' +
+              'if(started&&pg.scrollHeight>pg.clientHeight+1){inr.innerHTML=prev;break;}' +
+              'started=true;i++;}' +
+          '}' +
+        '}' +
+        'total=track.querySelectorAll(".pg").length;if(curPg>total-1)curPg=total-1;if(curPg<0)curPg=0;' +
+      '}' +
       /* 글자 크기 */
-      'function ap(){b.style.fontSize=s+"px";try{localStorage.setItem("sermonFs",s)}catch(e){}}' +
-      'try{var sv=parseInt(localStorage.getItem("sermonFs"),10);if(sv)s=sv}catch(e){}ap();' +
+      'function ap(){b.style.fontSize=s+"px";try{localStorage.setItem("sermonFs",s)}catch(e){}if(b.classList.contains("paged")){buildBody();apply();}}' +
+      'try{var sv=parseInt(localStorage.getItem("sermonFs"),10);if(sv)s=sv}catch(e){}' +
       'document.getElementById("inc").onclick=function(){s=Math.min(52,s+2);ap()};' +
       'document.getElementById("dec").onclick=function(){s=Math.max(14,s-2);ap()};' +
       /* 다크 */
       'document.getElementById("dark").onclick=function(){b.classList.toggle("dark")};' +
-      /* 전체화면 */
-      'var fsBtn=document.getElementById("fs");' +
-      'function updateFs(){fsBtn.textContent=(document.fullscreenElement||document.webkitFullscreenElement)?"⊡ 창모드":"⛶ 전체화면";}' +
-      'fsBtn.onclick=function(){var el=document.documentElement;if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document).catch(function(){});}else{var req=el.requestFullscreen||el.webkitRequestFullscreen;if(req){req.call(el).catch(function(){});}else{alert("이 브라우저는 전체화면을 지원하지 않습니다. (아이패드는 홈 화면에 추가하면 전체화면으로 열립니다)");}}};' +
-      'document.addEventListener("fullscreenchange",updateFs);document.addEventListener("webkitfullscreenchange",updateFs);' +
+      /* 전체화면 — 지원되면 Fullscreen API, 아이패드 등 미지원이면 몰입 모드(바 숨김) */
+      'var fsBtn=document.getElementById("fs"),exitBtn=document.getElementById("exitfs");' +
+      'function isFs(){return document.fullscreenElement||document.webkitFullscreenElement;}' +
+      'function updateFs(){var on=isFs()||b.classList.contains("immersive");fsBtn.textContent=on?"⊡ 창모드":"⛶ 전체화면";fsBtn.classList.toggle("active",on);}' +
+      'function reflow(){if(b.classList.contains("paged")){buildBody();apply();}}' +
+      'function enterImmersive(){b.classList.add("immersive");updateFs();setTimeout(reflow,60);}' +
+      'function exitImmersive(){b.classList.remove("immersive");updateFs();setTimeout(reflow,60);}' +
+      'fsBtn.onclick=function(){var el=document.documentElement;' +
+        'if(isFs()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return;}' +
+        'if(b.classList.contains("immersive")){exitImmersive();return;}' +
+        'var req=el.requestFullscreen||el.webkitRequestFullscreen;' +
+        'if(req){try{var p=req.call(el);if(p&&p.catch)p.catch(function(){enterImmersive();});}catch(e){enterImmersive();}}' +
+        'else{enterImmersive();}' +
+      '};' +
+      'exitBtn.onclick=function(){if(isFs()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}exitImmersive();};' +
+      'document.addEventListener("fullscreenchange",function(){updateFs();setTimeout(reflow,60);});' +
+      'document.addEventListener("webkitfullscreenchange",function(){updateFs();setTimeout(reflow,60);});' +
       /* transform 슬라이드 적용 */
       'function apply(){if(b.classList.contains("paged")){track.style.transform="translateX("+(-curPg*100)+"%)";}ind.textContent=(curPg+1)+"/"+total;}' +
       'function goPage(d){curPg=Math.max(0,Math.min(total-1,curPg+d));apply();}' +
@@ -951,9 +985,11 @@ console.log('[affairs.js] v20260701cc');
         'b.classList.toggle("paged",paged);b.classList.toggle("scroll",!paged);' +
         'pgBtn.classList.toggle("active",paged);' +
         'try{localStorage.setItem("sermonPaged",paged?"1":"0")}catch(e){}' +
-        'if(paged){curPg=0;}else{track.style.transform="";}apply();' +
+        'if(!paged){track.style.transform="";}else{curPg=0;}' +
+        'buildBody();apply();' +
       '}' +
       'pgBtn.onclick=function(){setMode(!b.classList.contains("paged"))};' +
+      'ap();' +
       'try{setMode(localStorage.getItem("sermonPaged")==="1")}catch(e){setMode(false)}' +
       /* ◀ ▶ 버튼 */
       'document.getElementById("prev").onclick=function(){goPage(-1)};' +
@@ -973,8 +1009,8 @@ console.log('[affairs.js] v20260701cc');
       'track.addEventListener("touchend",function(e){if(!dragging)return;dragging=false;track.style.transition="";' +
         'var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;' +
         'if(locked==="x"&&(Math.abs(dx)>sw*0.18||(dt<350&&Math.abs(dx)>40))){goPage(dx<0?1:-1);}else{apply();}},{passive:true});' +
-      /* 창 크기 변경 시 위치 보정 */
-      'window.addEventListener("resize",function(){if(b.classList.contains("paged"))apply();});' +
+      /* 창 크기/회전 시 재분할 */
+      'window.addEventListener("resize",function(){clearTimeout(reflowTimer);reflowTimer=setTimeout(reflow,150);});' +
       /* 인쇄 */
       'document.getElementById("print").onclick=function(){window.print()};' +
       '})();';
@@ -998,6 +1034,7 @@ console.log('[affairs.js] v20260701cc');
         '<span class="hint">' + (qtMode ? 'QT · 우리말성경' : '설교') + '</span>' +
       '</div>' +
       '<div id="deck"><div id="track">' + pages.join('') + '</div></div>' +
+      '<button id="exitfs">⊡ 도구 보기</button>' +
       '<script>' + js + '<\/script>' +
       '</body></html>';
     w.document.write(html); w.document.close(); w.focus();
