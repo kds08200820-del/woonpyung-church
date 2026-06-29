@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701dh
+ * 콘솔: [affairs.js] v20260701di
  */
-console.log('[affairs.js] v20260701dh');
+console.log('[affairs.js] v20260701di');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -881,68 +881,43 @@ console.log('[affairs.js] v20260701dh');
     var wOrder = (function () { try { return JSON.parse(r.worship_order || '[]') || []; } catch (e) { return []; } })();
     function isImg(u) { return /\.(jpg|jpeg|png|webp|gif|bmp)(\?|$)/i.test(u || ''); }
 
-    // QT 출력에는 예배 순서·이미지(찬송가 등)를 넣지 않음
-    var imgPageItems = [];
-    var orderRows = '', liturgyHtml = '';
     function creedLines(arr) { return '<div class="lt-creed">' + arr.map(function (l) { return '<div>' + esc(l) + '</div>'; }).join('') + '</div>'; }
-    if (!qtMode && wOrder.length) {
-      // 간단 순서표(맨 위) + 항목별 전문 펼침
-      orderRows = wOrder.map(function (it, i) {
-        var d = it.detail ? ' &nbsp;<span style="color:#5b6b7d">' + esc(it.detail) + '</span>' : '';
-        if (it.url && isImg(it.url)) imgPageItems.push({ label: it.label || '항목', detail: it.detail || '', url: it.url });
-        return '<div><span style="display:inline-block;min-width:18px;color:#9a8f78">' + (i + 1) + '.</span> <b>' + esc(it.label || '항목') + '</b>' + d + (it.url && isImg(it.url) ? ' <span style="color:#1e874b;font-size:.8em">📑</span>' : '') + '</div>';
-      }).join('');
-      liturgyHtml = wOrder.map(function (it, i) {
-        var label = it.label || '항목';
-        var head = '<div class="lt-h"><span class="lt-n">' + (i + 1) + '</span> ' + esc(label) + (it.detail ? ' <span class="lt-d">' + esc(it.detail) + '</span>' : '') + '</div>';
-        var body = '';
-        if (label === '교독문') {
-          var m = (it.detail || '').match(/(\d+)/); var g = m ? gyodokByNo(m[1]) : null;
-          if (g) body = '<div class="lt-creed">' + gyodokBodyHTML(g.body) + '</div>';
-        } else if (label === '신앙고백') {
-          body = (/니케아|니케야/.test(it.detail || '')) ? '' : creedLines(APOSTLES_CREED);
-        } else if (label === '주기도문') {
-          body = creedLines(LORDS_PRAYER);
-        } else if (label === '성경봉독') {
-          if (r.bible_text) body = '<div class="lt-bible">' + esc(r.bible_text).replace(/\n/g, '<br>') + '</div>';
-        }
-        if (it.body && it.body.trim()) body += '<div class="lt-body">' + esc(it.body).replace(/\n/g, '<br>') + '</div>';
-        if (it.url && !isImg(it.url)) body += '<div style="margin-top:4px"><a href="' + esc(it.url) + '" target="_blank" rel="noopener">📎 첨부 자료</a></div>';
-        return '<div class="lt-item">' + head + body + '</div>';
-      }).join('');
-    } else if (!qtMode) {
-      if (r.gyodok) orderRows += '<div>📜 <b>교독문</b> &nbsp;' + esc(r.gyodok) + '</div>';
-      if (hymnsTxt) orderRows += '<div>🎵 <b>찬송가</b> &nbsp;' + esc(hymnsTxt) + '</div>';
-      if (r.scripture) orderRows += '<div>📖 <b>본문</b> &nbsp;' + esc(r.scripture) + '</div>';
-    }
-    var orderHtml = orderRows ? '<div class="order"><div class="order-t">■ 예배 순서</div>' + orderRows + '</div>' : '';
     var bibleSrc = qtMode ? (r.qt_bible_text || r.bible_text || '') : (r.bible_text || '');
     var bibleLabel = qtMode ? '성경 본문 (우리말성경)' : '성경 본문 (개역개정)';
     var bibleHtml = bibleSrc ? '<div class="bible"><div class="bible-t">■ ' + bibleLabel + (r.scripture ? ' <span style="font-weight:400;color:#9a8f78">' + esc(r.scripture) + '</span>' : '') + '</div>' + esc(bibleSrc).replace(/\n/g, '<br>') + '</div>' : '';
-    // 설교 원고는 페이지 모드에서 화면 높이에 맞춰 동적으로 여러 페이지로 분할됨(아래 JS).
-    // 원고 줄 배열을 JSON으로 안전하게 주입('<' 이스케이프로 </script> 차단)
+    // 설교 원고는 페이지 모드에서 화면 높이에 맞춰 동적으로 분할됨(아래 JS). '<' 이스케이프로 </script> 차단
     var bodyLinesJson = JSON.stringify((r.content || '').split('\n')).replace(/</g, '\\u003c');
 
-    // ── 고정 페이지 구성(표지·성경·이미지). 설교 원고 페이지는 JS가 동적 생성 ──
+    // 예배 순서 한 항목의 전문(교독문·사도신경·주기도문·성경봉독·가사/기도문 자동 펼침)
+    function itemContent(it) {
+      var label = it.label || '항목', c = '';
+      if (label === '교독문') { var m = (it.detail || '').match(/(\d+)/); var g = m ? gyodokByNo(m[1]) : null; if (g) c += '<div class="it-d">' + esc(g.no + '. ' + g.title) + '</div><div class="lt-creed">' + gyodokBodyHTML(g.body) + '</div>'; else if (it.detail) c += '<div class="it-d">' + esc(it.detail) + '</div>'; }
+      else if (label === '신앙고백') { c += '<div class="it-d">사도신경</div>' + creedLines(APOSTLES_CREED); }
+      else if (label === '주기도문') { c += creedLines(LORDS_PRAYER); }
+      else if (label === '성경봉독') { if (r.scripture) c += '<div class="it-d">' + esc(r.scripture) + '</div>'; if (r.bible_text) c += '<div class="lt-bible">' + esc(r.bible_text).replace(/\n/g, '<br>') + '</div>'; }
+      else if (label === '말씀강해' || label === '말씀(설교)') { c += '<div class="it-stitle">' + esc(r.title || '') + '</div>' + (r.scripture ? '<div class="it-d">' + esc(r.scripture) + '</div>' : '') + '<div class="it-hint">▼ 다음 페이지부터 설교 원고</div>'; }
+      else { if (it.detail) c += '<div class="it-d">' + esc(it.detail) + '</div>'; }
+      if (it.body && it.body.trim()) c += '<div class="lt-body">' + esc(it.body).replace(/\n/g, '<br>') + '</div>';
+      if (it.url && isImg(it.url)) c += '<div class="it-img"><img src="' + esc(it.url) + '" alt=""></div>';
+      else if (it.url) c += '<div style="margin-top:8px"><a href="' + esc(it.url) + '" target="_blank" rel="noopener">📎 자료</a></div>';
+      return c;
+    }
+
+    // ── 페이지 구성: 표지 → 예배 순서(항목당 1페이지) → (말씀강해 뒤) 설교 원고 동적 ──
     var pages = [];
-    // 페이지 0: 표지 (제목+메타+예배순서 요약)
-    pages.push('<div class="pg pg-fixed pg-cover">' +
-      '<h1>' + esc(r.title || '(제목 없음)') + '</h1>' +
-      (r.scripture ? '<div class="scr">' + esc(r.scripture) + '</div>' : '') +
-      (meta ? '<div class="meta">' + meta + '</div>' : '') +
-      orderHtml +
-      '</div>');
-    // 페이지 1: 예배 순서 전문(교독문·사도신경·주기도문·성경봉독·가사/기도문) — 큐시트
-    if (liturgyHtml) pages.push('<div class="pg pg-fixed pg-lit"><div class="lit-t">■ 예배 순서 (전문)</div>' + liturgyHtml + '</div>');
-    // 성경 본문 (있을 때만)
-    if (bibleHtml) pages.push('<div class="pg pg-fixed pg-bible">' + bibleHtml + '</div>');
-    // 페이지 2~N: 이미지 페이지 (예배순서 항목 중 이미지)
-    imgPageItems.forEach(function (it) {
-      pages.push('<div class="pg pg-fixed pg-img">' +
-        '<div class="img-pg-t">' + esc(it.label) + (it.detail ? ' · ' + esc(it.detail) : '') + '</div>' +
-        '<img src="' + esc(it.url) + '" alt="' + esc(it.label) + '">' +
-        '</div>');
-    });
+    pages.push('<div class="pg pg-fixed pg-cover"><h1>' + esc(r.title || '(제목 없음)') + '</h1>' + (r.scripture ? '<div class="scr">' + esc(r.scripture) + '</div>' : '') + (meta ? '<div class="meta">' + meta + '</div>' : '') + '</div>');
+    if (!qtMode && wOrder.length) {
+      var total = wOrder.length;
+      wOrder.forEach(function (it, i) {
+        var label = it.label || '항목';
+        var isSermon = (label === '말씀강해' || label === '말씀(설교)');
+        pages.push('<div class="pg pg-fixed pg-item' + (isSermon ? ' pg-sermon-anchor' : '') + '">' +
+          '<div class="it-num">' + (i + 1) + ' / ' + total + '</div>' +
+          '<div class="it-label">' + esc(label) + '</div>' + itemContent(it) + '</div>');
+      });
+    } else if (bibleHtml) {
+      pages.push('<div class="pg pg-fixed pg-bible">' + bibleHtml + '</div>');
+    }
 
     var css = [
       '*{box-sizing:border-box}',
@@ -974,6 +949,13 @@ console.log('[affairs.js] v20260701dh');
       '.order-t{font-weight:700;color:#7a5d27;margin-bottom:5px}.order a{color:#1f6feb}',
       '.bible{font-size:1em;background:#f6f2e8;border:1px solid #e7e0cf;border-left:4px solid #b89b5e;border-radius:8px;padding:14px 18px;line-height:1.95}',
       '.bible-t{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:.8em;color:#7a5d27;margin-bottom:7px}',
+      /* 예배 순서 — 항목당 한 페이지 */
+      '.pg-item .it-num{font-family:"Noto Sans KR",sans-serif;font-size:.62em;color:#b3a06f;letter-spacing:.05em;margin-bottom:6px}',
+      '.pg-item .it-label{font-family:"Noto Sans KR",sans-serif;font-weight:800;font-size:1.5em;color:var(--accent,#0a2c5c);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #e4dcc9}body.dark .pg-item .it-label{color:#e0c98a;border-bottom-color:#3a3d44}',
+      '.pg-item .it-d{font-family:"Noto Sans KR",sans-serif;font-size:.92em;color:#7a5d27;margin-bottom:10px}body.dark .pg-item .it-d{color:#cbb98a}',
+      '.pg-item .it-stitle{font-family:"Noto Serif KR",serif;font-weight:700;font-size:1.35em;color:#1a1a1a;margin:8px 0}body.dark .pg-item .it-stitle{color:#f0ece2}',
+      '.pg-item .it-hint{font-family:"Noto Sans KR",sans-serif;font-size:.66em;color:#b3a06f;margin-top:18px}',
+      '.pg-item .it-img{margin-top:12px;text-align:center}.pg-item .it-img img{max-width:100%;border-radius:6px}',
       /* 예배 순서 전문(큐시트) */
       '.lit-t{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:.82em;color:#7a5d27;margin:0 0 12px}body.dark .lit-t{color:#e0c98a}',
       '.lt-item{margin:0 0 18px;padding:0 0 14px;border-bottom:1px dashed #e3ddcf}body.dark .lt-item{border-bottom-color:#3a3d44}',
@@ -1025,9 +1007,11 @@ console.log('[affairs.js] v20260701dh');
       /* 설교 원고를 현재 화면 높이에 맞춰 분할(페이지 모드) 또는 한 덩어리(스크롤 모드) */
       'function buildBody(){' +
         'var olds=track.querySelectorAll(".pg-body");for(var k=0;k<olds.length;k++)olds[k].parentNode.removeChild(olds[k]);' +
-        'if(!b.classList.contains("paged")){var pg=mkBodyPage();track.appendChild(pg);pg.firstChild.innerHTML=fullBodyHtml();}' +
-        'else{var i=0;if(!BODY.length){var e=mkBodyPage();track.appendChild(e);}' +
-          'while(i<BODY.length){var pg=mkBodyPage();track.appendChild(pg);var inr=pg.firstChild,started=false;' +
+        'var anchor=track.querySelector(".pg-sermon-anchor"),ref=anchor;' +
+        'function addPg(pg){if(anchor){track.insertBefore(pg,ref.nextSibling);ref=pg;}else{track.appendChild(pg);}}' +
+        'if(!b.classList.contains("paged")){var pg=mkBodyPage();addPg(pg);pg.firstChild.innerHTML=fullBodyHtml();}' +
+        'else{var i=0;if(!BODY.length){var e=mkBodyPage();addPg(e);}' +
+          'while(i<BODY.length){var pg=mkBodyPage();addPg(pg);var inr=pg.firstChild,started=false;' +
             'while(i<BODY.length){var prev=inr.innerHTML;inr.innerHTML=prev+lineHtml(BODY[i]);' +
               'if(started&&pg.scrollHeight>pg.clientHeight+1){inr.innerHTML=prev;break;}' +
               'started=true;i++;}' +
