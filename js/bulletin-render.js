@@ -12,9 +12,11 @@
   function ymd(v) { return String(v == null ? '' : v).slice(0, 10); }
   function dotDate(v) { return ymd(v).replace(/-/g, '. '); }
 
-  function css() {
+  function css(layout) {
+    // 인쇄용 3단은 가로(380×211 landscape), 그 외(홈페이지 읽기)는 세로
+    var page = layout === 'print3' ? '@page{size:380mm 211mm;margin:0}' : '@page{size:211mm 380mm;margin:0}';
     return [
-      '@page{size:211mm 380mm;margin:0}',
+      page,
       '*{box-sizing:border-box}html,body{margin:0;padding:0}',
       'body{font-family:"Noto Serif KR",serif;background:#d9dade;color:#1b1b1b;-webkit-print-color-adjust:exact;print-color-adjust:exact}',
       '.bar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #ddd;padding:8px 14px;display:flex;gap:8px;align-items:center;justify-content:flex-end}',
@@ -69,7 +71,7 @@
       '.foot{margin-top:7mm;padding-top:3.5mm;border-top:1pt solid #ddd;text-align:center;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;color:#9a9a9a;line-height:1.7}',
       '.note{font-size:7.5pt;color:#aaa;text-align:center;margin-top:3mm}',
       // ── 인쇄용 3단 양면 레이아웃(실제 주보 211×380mm · 신문식 3단) ──
-      'body.l3 .page{column-count:3;column-gap:5mm;padding:10mm 8mm 9mm;font-size:8pt}',
+      'body.l3 .page{width:380mm;min-height:211mm;column-count:3;column-gap:8mm;column-rule:1px dotted #cdbf99;padding:9mm 9mm;font-size:8pt}',
       'body.l3 section{-webkit-column-break-inside:avoid;break-inside:avoid;margin-bottom:4mm}',
       'body.l3 .hd{-webkit-column-break-inside:avoid;break-inside:avoid;padding-bottom:3.5mm;margin-bottom:4mm}',
       'body.l3 .hd .ch{font-size:15pt;letter-spacing:.18em;margin:1.5mm 0 1mm}.body.l3 .hd .eng{font-size:6.5pt}body.l3 .hd .sub{font-size:6.5pt}',
@@ -153,12 +155,12 @@
   function fullHTML(rec, opts) {
     rec = rec || {}; opts = opts || {};
     var p3 = opts.layout === 'print3';
-    var infoTxt = p3 ? '🖨 인쇄용 3단 · 211×380mm' + (opts.amounts ? ' · 금액 포함' : '') : (opts.amounts ? '🔒 인쇄용 · 금액 포함' : '홈페이지용');
+    var infoTxt = p3 ? '🖨 인쇄용 3단 · 가로 380×211mm (인쇄 설정: 가로/Landscape · 배율 100% · 여백 없음)' + (opts.amounts ? ' · 금액 포함' : '') : (opts.amounts ? '🔒 인쇄용 · 금액 포함' : '홈페이지용');
     return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<title>' + esc(opts.fileName || ('주보 ' + ymd(rec.bdate))) + '</title>' +
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
       '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
-      '<style>' + css() + '</style></head><body' + (p3 ? ' class="l3"' : '') + '>' +
+      '<style>' + css(opts.layout) + '</style></head><body' + (p3 ? ' class="l3"' : '') + '>' +
       '<div class="bar"><span class="info">' + infoTxt + '</span><button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>' +
       bodyHTML(rec, opts) +
       '</body></html>';
