@@ -165,7 +165,7 @@ console.log('[affairs.js] v20260701di');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['suggest', '설교 제안'], ['sermon', '설교관리'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['settings', '설정']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -190,8 +190,21 @@ console.log('[affairs.js] v20260701di');
     }
     return null;
   }
+  // 성경 분류(설교 제안 — 분야가 골고루 채워지도록)
+  var BIBLE_CATS = [
+    { name: '모세오경', t: '구약', books: ['창세기', '출애굽기', '레위기', '민수기', '신명기'] },
+    { name: '역사서', t: '구약', books: ['여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더'] },
+    { name: '시가서', t: '구약', books: ['욥기', '시편', '잠언', '전도서', '아가'] },
+    { name: '대선지서', t: '구약', books: ['이사야', '예레미야', '예레미야애가', '에스겔', '다니엘'] },
+    { name: '소선지서', t: '구약', books: ['호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'] },
+    { name: '복음서·사도행전', t: '신약', books: ['마태복음', '마가복음', '누가복음', '요한복음', '사도행전'] },
+    { name: '바울서신', t: '신약', books: ['로마서', '고린도전서', '고린도후서', '갈라디아서', '에베소서', '빌립보서', '골로새서', '데살로니가전서', '데살로니가후서', '디모데전서', '디모데후서', '디도서', '빌레몬서'] },
+    { name: '일반서신', t: '신약', books: ['히브리서', '야고보서', '베드로전서', '베드로후서', '요한일서', '요한이서', '요한삼서', '유다서'] },
+    { name: '예언서', t: '신약', books: ['요한계시록'] }
+  ];
 
   var tab = 'dashboard';
+  var pendingSermon = null;   // 설교 제안에서 '이 책으로 시작' 클릭 시, 설교관리 탭이 열며 편집기 prefill
   function render() {
     root.innerHTML = '<div class="fin-tabs">' + TAB_ORDER.map(function (t) { return '<button data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div><div id="afPanel"></div>';
     Array.prototype.forEach.call(root.querySelectorAll('.fin-tabs button'), function (b) {
@@ -200,6 +213,7 @@ console.log('[affairs.js] v20260701di');
     });
     var p = document.getElementById('afPanel');
     if (tab === 'dashboard') renderSermonDashboard(p);
+    else if (tab === 'suggest') renderSermonSuggest(p);
     else if (tab === 'sermon') renderSermon(p);
     else if (tab === 'bulletin') renderBulletinAdmin(p);
     else if (tab === 'settings') renderSettings(p);
@@ -595,6 +609,76 @@ console.log('[affairs.js] v20260701di');
     }
   }
 
+  // ── 설교 제안: 커버리지를 거꾸로 활용해 '다음에 설교할 책' 추천 ──
+  function renderSermonSuggest(panel) {
+    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">설교 데이터를 분석하는 중…</p></div>';
+    api('GET', 'sermons?select=sermon_date,service,title,scripture&order=sermon_date.desc')
+      .then(function (rows) { draw(rows || []); })
+      .catch(function (e) { panel.innerHTML = msgCard('불러오기 실패', (e && e.message) || '설교 데이터를 불러오지 못했습니다.'); });
+
+    function draw(rows) {
+      var cover = {}, lastDate = {};
+      rows.forEach(function (r) {
+        var b = bookOf(r.scripture); if (!b) return;
+        cover[b] = (cover[b] || 0) + 1;
+        var d = String(r.sermon_date || '').slice(0, 10);
+        if (d && (!lastDate[b] || d > lastDate[b])) lastDate[b] = d;
+      });
+
+      var catData = BIBLE_CATS.map(function (c) {
+        var un = c.books.filter(function (b) { return !cover[b]; });
+        return { name: c.name, t: c.t, total: c.books.length, done: c.books.length - un.length, un: un, pct: Math.round((c.books.length - un.length) / c.books.length * 100) };
+      });
+      // 헤드라인: 미설교 책이 있는 분류 중 커버리지 낮은 순 3개에서 첫 책
+      var head = catData.filter(function (c) { return c.un.length; }).slice()
+        .sort(function (a, b) { return a.pct - b.pct || b.un.length - a.un.length; })
+        .slice(0, 3).map(function (c) { return { book: c.un[0], cat: c.name }; });
+      // 한동안 안 다룬 책: 설교한 책 중 마지막 설교가 가장 오래된 순
+      var neglect = Object.keys(lastDate).map(function (b) { return { book: b, date: lastDate[b], n: cover[b] }; })
+        .sort(function (a, b) { return a.date < b.date ? -1 : 1; }).slice(0, 6);
+
+      var headHTML = head.length ? head.map(function (h) {
+        return '<button class="sg-head" data-book="' + esc(h.book) + '"><div class="sg-h-book">' + esc(h.book) + '</div><div class="sg-h-cat">' + esc(h.cat) + ' · 아직 설교 안 함</div><div class="sg-h-go">이 책으로 설교 시작 →</div></button>';
+      }).join('') : '<p style="color:#2e8b57;font-weight:600;margin:0">🎉 성경 66권을 모두 한 번 이상 설교하셨습니다! 아래 “한동안 안 다룬 책”을 참고하세요.</p>';
+
+      var catHTML = catData.map(function (c) {
+        var inner = c.un.length ? c.un.map(function (b) { return '<button class="sg-chip" data-book="' + esc(b) + '">' + esc(b) + '</button>'; }).join('') : '<span style="font-size:.82rem;color:#2e8b57;font-weight:600">✓ 전부 설교함</span>';
+        return '<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
+          '<b style="font-size:.92rem;color:#3a4a63">' + esc(c.name) + ' <span style="font-size:.74rem;color:#9aa5b1;font-weight:500">' + c.t + '</span></b>' +
+          '<span style="font-size:.8rem;font-weight:700;color:' + (c.un.length ? '#c0392b' : '#2e8b57') + '">' + c.done + '/' + c.total + '권</span></div>' +
+          '<div class="sg-chips">' + inner + '</div></div>';
+      }).join('');
+
+      var neglectHTML = neglect.length ? neglect.map(function (x) {
+        return '<button class="sg-row" data-book="' + esc(x.book) + '"><span style="font-weight:700;color:#27364a">' + esc(x.book) + '</span><span style="font-size:.78rem;color:#9aa5b1">마지막 ' + esc(x.date) + ' · 누적 ' + x.n + '편</span></button>';
+      }).join('') : '<p style="color:#9aa5b1;font-size:.86rem;margin:0">아직 설교 기록이 없습니다.</p>';
+
+      panel.innerHTML =
+        '<style>' +
+        '.sg-head{display:block;width:100%;text-align:left;border:1px solid #cdddf6;background:linear-gradient(135deg,#f5f9ff,#eaf1ff);border-radius:12px;padding:14px 16px;cursor:pointer;font-family:inherit}' +
+        '.sg-head:hover{border-color:#1f6feb}' +
+        '.sg-h-book{font-size:1.3rem;font-weight:800;color:var(--accent,#032257)}' +
+        '.sg-h-cat{font-size:.8rem;color:#5a6b82;margin-top:2px}.sg-h-go{font-size:.8rem;color:#1f6feb;font-weight:700;margin-top:8px}' +
+        '.sg-chips{display:flex;flex-wrap:wrap;gap:6px}' +
+        '.sg-chip{border:1px solid #f0c4c4;background:#fff6f6;border-radius:999px;padding:5px 13px;font-size:.86rem;font-weight:600;color:#b3413a;cursor:pointer;font-family:inherit}' +
+        '.sg-chip:hover{border-color:#1f6feb;color:#1f6feb;background:#f5f9ff}' +
+        '.sg-row{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;gap:10px;background:none;border:0;border-bottom:1px solid #f0f0f0;padding:9px 2px;cursor:pointer;font-family:inherit}' +
+        '.sg-row:hover{background:#f7f9fc}' +
+        '</style>' +
+        '<div class="fin-card"><b style="color:var(--accent,#032257)">💡 이번에 이 본문은 어떠세요?</b>' +
+        '<div style="font-size:.8rem;color:#9aa5b1;margin:3px 0 12px">아직 설교하지 않은 성경 책 중에서, 분야가 골고루 채워지도록 추천합니다. 클릭하면 그 본문으로 바로 설교를 시작합니다.</div>' +
+        '<div class="fin-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">' + headHTML + '</div></div>' +
+        '<div class="fin-grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start">' +
+        '<div class="fin-card"><b style="color:var(--accent,#032257)">📚 분류별 아직 안 한 책</b><div style="font-size:.78rem;color:#9aa5b1;margin:3px 0 12px">빨간 칩 = 아직 한 번도 설교 안 한 책 (클릭 → 설교 시작)</div>' + catHTML + '</div>' +
+        '<div class="fin-card"><b style="color:var(--accent,#032257)">🕰 한동안 안 다룬 책</b><div style="font-size:.78rem;color:#9aa5b1;margin:3px 0 10px">설교했지만 가장 오래된 순 — 다시 다뤄볼 만한 책</div>' + neglectHTML + '</div>' +
+        '</div>';
+
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-book]'), function (el) {
+        el.onclick = function () { pendingSermon = { scripture: el.dataset.book + ' ' }; tab = 'sermon'; render(); };
+      });
+    }
+  }
+
   function renderSermon(panel) {
     var WTPL = {}, smView = 'list', smRows = [], calYM = null;
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요예배': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
@@ -609,6 +693,7 @@ console.log('[affairs.js] v20260701di');
       '<div id="sm_cal"></div>' +
       '<div id="sm_list"><p class="qt-loading">불러오는 중…</p></div>';
     panel.querySelector('#sm_start').onclick = function () { sermonEditor(null); };
+    if (pendingSermon) { var _pp = pendingSermon; pendingSermon = null; sermonEditor(_pp); }   // 설교 제안에서 넘어온 prefill
 
     function loadList() {
       api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) { smRows = rows || []; renderView(); }).catch(function (e) {
