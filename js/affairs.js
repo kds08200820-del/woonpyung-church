@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701ct
+ * 콘솔: [affairs.js] v20260701cu
  */
-console.log('[affairs.js] v20260701ct');
+console.log('[affairs.js] v20260701cu');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1175,16 +1175,10 @@ console.log('[affairs.js] v20260701ct');
       '<div>' + tI('새벽기도회 본문', 'bt_dawn', d.dawn, '예: 나훔, 시편 강해') + '</div>' +
       '<div>' + tI('매일 QT 본문', 'bt_qt', d.qt, '예: 나훔 3장, 시편107편~109편') + '</div>' +
       '</div></div>' +
-      // 향기로운 예물(명단)
-      '<div class="fin-card"><h4 style="margin:0 0 4px;color:var(--accent)">④ 향기로운 예물 — 헌금자 명단</h4><p style="margin:0 0 10px;font-size:.8rem;color:#9aa5b1">이름만 입력(공백 구분). 홈페이지에도 이 명단은 공개됩니다.</p>' +
-      '<div class="fin-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-      OFFER_KEYS.map(function (k) { return tA(k, 'bt_off_' + k, off[k], '이름들…', 54); }).join('') +
-      '</div></div>' +
-      // 지난주 헌금 금액(비공개)
-      '<div class="fin-card" style="border-color:#e6c97a;background:#fffdf6"><h4 style="margin:0 0 4px;color:#8a6d1f">⑤ 지난 주 헌금 — 금액 <span style="font-size:.74rem;font-weight:400">🔒 인쇄(PDF)에만 표시 · 홈페이지 비공개</span></h4>' +
-      '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:8px">' +
-      AMOUNT_KEYS.map(function (k) { return tI(k, 'bt_amt_' + k, amt[k], '예: 970,000'); }).join('') +
-      '</div></div>' +
+      // 향기로운 예물 + 헌금 금액(통합 동적 표 — 특별헌금 등 자유 추가)
+      '<div class="fin-card"><h4 style="margin:0 0 4px;color:var(--accent)">④ 향기로운 예물 · 헌금</h4>' +
+      '<p style="margin:0 0 10px;font-size:.8rem;color:#9aa5b1">항목을 자유롭게 추가할 수 있습니다(특별헌금·추수감사·맥추감사 등). <b>명단</b>은 홈페이지에도 공개되고, <b>금액</b>은 🔒 인쇄(PDF)에만 표시됩니다. — 데이터 불러오기 시 직전 주일 헌금이 항목별로 채워집니다.</p>' +
+      '<div id="bt_offer"></div></div>' +
       // 봉사위원
       '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent)">⑥ 봉사위원 · 이주의 기도</h4>' +
       '<div class="fin-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
@@ -1233,6 +1227,45 @@ console.log('[affairs.js] v20260701ct');
     }
     renderBOrder();
 
+    // ── 헌금(향기로운 예물 명단 + 금액) 동적 표 — 특별헌금 등 자유 추가 ──
+    var OFFER_BASE = ['십일조', '감사헌금', '주일헌금', '생일감사', '건축헌금', '선교헌금', '유년부', '차량헌금', '일천번기도'];
+    var coffer = (function () {
+      var names = [], idx = {};
+      function add(n) { if (n && !idx[n]) { idx[n] = 1; names.push(n); } }
+      OFFER_BASE.forEach(add);
+      Object.keys(off).forEach(add);
+      Object.keys(amt).forEach(function (k) { if (k !== '합계') add(k); });
+      return names.map(function (n) { return { name: n, givers: off[n] || '', amount: amt[n] || '' }; });
+    })();
+    function numAmt(v) { return Number(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')) || 0; }
+    function commaAmt(v) { var n = numAmt(v); return n ? n.toLocaleString('en-US') : ''; }
+    var ofBox = ov.querySelector('#bt_offer');
+    function renderOffer() {
+      var total = coffer.reduce(function (s, r) { return s + numAmt(r.amount); }, 0);
+      ofBox.innerHTML = '<div style="overflow:auto"><table class="fin-table" style="table-layout:fixed;width:100%;min-width:560px">' +
+        '<colgroup><col style="width:22%"><col style="width:48%"><col style="width:24%"><col style="width:6%"></colgroup>' +
+        '<thead><tr><th>항목</th><th>헌금자 명단 <span style="font-weight:400;color:#9aa5b1;font-size:.72rem">(공개)</span></th><th>금액 <span style="font-weight:400;color:#8a6d1f;font-size:.72rem">🔒</span></th><th></th></tr></thead><tbody>' +
+        coffer.map(function (r, i) {
+          return '<tr>' +
+            '<td><input type="text" class="of-name" data-i="' + i + '" value="' + esc(r.name || '') + '" placeholder="예: 특별헌금" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit;font-size:.84rem;font-weight:600;color:#34415c;box-sizing:border-box"></td>' +
+            '<td><input type="text" class="of-givers" data-i="' + i + '" value="' + esc(r.givers || '') + '" placeholder="이름 이름 이름" title="' + esc(r.givers || '') + '" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit;font-size:.84rem;box-sizing:border-box"></td>' +
+            '<td><input type="text" class="of-amount" data-i="' + i + '" value="' + esc(r.amount || '') + '" placeholder="0" inputmode="numeric" style="width:100%;padding:5px 7px;border:1px solid #dfe5ee;border-radius:7px;font:inherit;font-size:.84rem;text-align:right;box-sizing:border-box"></td>' +
+            '<td style="text-align:center"><button type="button" class="of-del" data-i="' + i + '" style="border:0;background:none;color:#c0392b;cursor:pointer">✕</button></td></tr>';
+        }).join('') +
+        '<tr style="background:#faf6ea"><td style="font-weight:700;color:#8a6d1f">합계</td><td></td><td style="text-align:right;font-weight:700">' + (total ? total.toLocaleString('en-US') + ' 원' : '') + '</td><td></td></tr>' +
+        '</tbody></table></div>' +
+        '<button type="button" class="btn btn-line" id="of_add" style="padding:5px 12px;font-size:.8rem;margin-top:8px">＋ 헌금 항목 추가</button>';
+      Array.prototype.forEach.call(ofBox.querySelectorAll('.of-name'), function (inp) { inp.oninput = function () { coffer[Number(inp.dataset.i)].name = inp.value; }; });
+      Array.prototype.forEach.call(ofBox.querySelectorAll('.of-givers'), function (inp) { inp.oninput = function () { coffer[Number(inp.dataset.i)].givers = inp.value; }; });
+      Array.prototype.forEach.call(ofBox.querySelectorAll('.of-amount'), function (inp) {
+        inp.oninput = function () { coffer[Number(inp.dataset.i)].amount = inp.value; };
+        inp.onblur = function () { var i = Number(inp.dataset.i); coffer[i].amount = commaAmt(inp.value); renderOffer(); };
+      });
+      Array.prototype.forEach.call(ofBox.querySelectorAll('.of-del'), function (b) { b.onclick = function () { coffer.splice(Number(b.dataset.i), 1); renderOffer(); }; });
+      ofBox.querySelector('#of_add').onclick = function () { coffer.push({ name: '', givers: '', amount: '' }); renderOffer(); var ins = ofBox.querySelectorAll('.of-name'); if (ins.length) ins[ins.length - 1].focus(); };
+    }
+    renderOffer();
+
     function gather() {
       var data = {
         no: ov.querySelector('#bt_no').value.trim(), week: ov.querySelector('#bt_week').value.trim(),
@@ -1244,8 +1277,13 @@ console.log('[affairs.js] v20260701ct');
         notices: ov.querySelector('#bt_notices').value,
         founded: FOUNDED_DATE
       };
-      OFFER_KEYS.forEach(function (k) { data.offering[k] = ov.querySelector('#bt_off_' + k).value.trim(); });
-      AMOUNT_KEYS.forEach(function (k) { data.offering_amounts[k] = ov.querySelector('#bt_amt_' + k).value.trim(); });
+      var tot = 0;
+      coffer.forEach(function (r) {
+        var nm = (r.name || '').trim(); if (!nm) return;
+        if (r.givers && r.givers.trim()) data.offering[nm] = r.givers.trim();
+        var a = numAmt(r.amount); if (a) { data.offering_amounts[nm] = commaAmt(r.amount); tot += a; }
+      });
+      if (tot) data.offering_amounts['합계'] = tot.toLocaleString('en-US');
       COMMITTEE_KEYS.forEach(function (k) { data.committee[k] = ov.querySelector('#bt_com_' + k).value.trim(); });
       return {
         bdate: ov.querySelector('#bt_bdate').value || null,
@@ -1294,23 +1332,25 @@ console.log('[affairs.js] v20260701ct');
       }
       return true;
     }
-    // 헌금 집계(Supabase offerings) — 집계 기준: 주보 발간 주간의 일요일(bdate)
-    function comma(n) { n = Number(n) || 0; return n.toLocaleString('en-US'); }
+    // 헌금 집계(Supabase offerings) → 동적 헌금 표(coffer)에 항목별 반영. 특별헌금 등은 자동 추가
     function fillOfferings(rows) {
       if (!rows) return false;
-      var byCat = {}, total = 0;
+      var byCat = {};
       rows.forEach(function (r) {
         var c = (r.category || '기타').trim();
         if (!byCat[c]) byCat[c] = { givers: [], sum: 0 };
         if (r.giver && r.giver.trim()) byCat[c].givers.push(r.giver.trim());
-        var a = Number(r.amount) || 0; byCat[c].sum += a; total += a;
+        byCat[c].sum += Number(r.amount) || 0;
       });
-      // 항목명은 재정 입력값과 동일. 주보 표기만 다른 항목은 별칭으로 연결(일천번제=일천번기도)
       var ALIAS = { '일천번제': '일천번기도', '일천번기도': '일천번제' };
-      function find(key) { if (byCat[key]) return byCat[key]; var al = ALIAS[key]; if (al && byCat[al]) return byCat[al]; return null; }
-      function set(id, v) { var el = document.getElementById(id); if (el) el.value = v; }
-      OFFER_KEYS.forEach(function (k) { var b = find(k); if (b && b.givers.length) set('bt_off_' + k, b.givers.join(' ')); });
-      AMOUNT_KEYS.forEach(function (k) { if (k === '합계') { set('bt_amt_합계', comma(total)); return; } var b = find(k); if (b) set('bt_amt_' + k, comma(b.sum)); });
+      Object.keys(byCat).forEach(function (cat) {
+        var b = byCat[cat], row = null;
+        for (var i = 0; i < coffer.length; i++) { if (coffer[i].name === cat || ALIAS[coffer[i].name] === cat) { row = coffer[i]; break; } }
+        if (!row) { row = { name: cat, givers: '', amount: '' }; coffer.push(row); }
+        row.givers = b.givers.join(' ');
+        row.amount = b.sum ? b.sum.toLocaleString('en-US') : '';
+      });
+      renderOffer();
       return rows.length > 0;
     }
     // 데이터 불러오기: 설교(주일/수요/새벽/QT) + 봉사위원(설정) + 헌금(Supabase)

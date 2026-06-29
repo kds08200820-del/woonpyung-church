@@ -91,10 +91,15 @@
   function bodyHTML(rec, opts) {
     rec = rec || {}; opts = opts || {}; var d = rec.data || {};
     var orderHtml = (d.order || []).map(function (o, i) { return '<tr><td class="bno">' + (i + 1) + '</td><td class="bn">' + esc(o.name || '') + '</td><td class="bd">' + esc(o.detail || '') + '</td></tr>'; }).join('');
-    var offHtml = OFFER_KEYS.map(function (k) { return (d.offering && d.offering[k]) ? '<div class="ofg"><b>' + esc(k) + '</b> ' + esc(d.offering[k]) + '</div>' : ''; }).join('');
+    // 명단·금액은 저장된 항목(동적) 전체를 순서대로 출력 — 특별헌금 등 포함
+    var offObj = d.offering || {};
+    var offHtml = Object.keys(offObj).map(function (k) { return offObj[k] ? '<div class="ofg"><b>' + esc(k) + '</b> ' + esc(offObj[k]) + '</div>' : ''; }).join('');
     var amtHtml = '';
     if (opts.amounts && d.offering_amounts) {
-      var rows = AMOUNT_KEYS.map(function (k) { var v = d.offering_amounts[k]; return v ? ('<tr><td>' + esc(k) + '</td><td class="num">' + esc(v) + (/[0-9]$/.test(v) ? ' 원' : '') + '</td></tr>') : ''; }).join('');
+      var amtObj = d.offering_amounts;
+      var keys = Object.keys(amtObj).filter(function (k) { return k !== '합계' && amtObj[k]; });
+      var rows = keys.map(function (k) { var v = amtObj[k]; return '<tr><td>' + esc(k) + '</td><td class="num">' + esc(v) + (/[0-9]$/.test(v) ? ' 원' : '') + '</td></tr>'; }).join('');
+      if (amtObj['합계']) rows += '<tr><td>합계</td><td class="num">' + esc(amtObj['합계']) + (/[0-9]$/.test(amtObj['합계']) ? ' 원' : '') + '</td></tr>';
       if (rows) amtHtml = '<table class="amt"><tbody>' + rows + '</tbody></table>';
     }
     var comHtml = COMMITTEE_KEYS.map(function (k) { return (d.committee && d.committee[k]) ? '<div class="ofg"><b>' + esc(k) + '</b> ' + esc(d.committee[k]) + '</div>' : ''; }).join('');
