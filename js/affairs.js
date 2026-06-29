@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701cd
+ * 콘솔: [affairs.js] v20260701ce
  */
-console.log('[affairs.js] v20260701cd');
+console.log('[affairs.js] v20260701ce');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -501,19 +501,18 @@ console.log('[affairs.js] v20260701cd');
         '<b style="color:var(--accent,#032257);font-size:1.05rem;margin-right:auto">✍️ 설교 작성</b>' +
         '<button class="btn btn-line" id="se_close">닫기</button>' +
         '<button class="btn btn-line" id="se_save">💾 임시저장</button>' +
-        '<button class="btn btn-solid" id="se_export">📤 설교 내보내기 (개역개정)</button>' +
-        '<button class="btn btn-line" id="se_export_qt" style="background:#fff8e6;border-color:#e6c97a">📲 QT 내보내기 (우리말성경)</button>' +
-        '<button class="btn btn-line" id="se_kakao" style="background:#fff8c4;border-color:#f4d641">💬 카카오톡 양식 복사</button>' +
+        '<label id="se_qt_lbl" style="display:inline-flex;align-items:center;gap:6px;background:#fff8e6;border:1px solid #e6c97a;border-radius:8px;padding:6px 11px;font-size:.84rem;cursor:pointer;user-select:none"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer">📲 QT도 내보내기 (우리말성경)</label>' +
+        '<button class="btn btn-solid" id="se_export">📤 설교 내보내기</button>' +
+        '<button class="btn btn-line" id="se_kakao" style="background:#fff8c4;border-color:#f4d641;display:none">💬 카카오톡 양식 복사</button>' +
         '<span class="fin-msg" id="se_msg" style="width:100%;text-align:right"></span></div>' +
         '<div style="max-width:1140px;margin:0 auto;padding:18px 16px 60px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">' +
         '<div style="flex:0 0 300px;max-width:100%"><div class="af-field" style="margin:0">' +
         '<label style="font-size:1.18rem;font-weight:700;color:var(--accent,#032257);margin-bottom:2px">📋 예배 순서</label>' +
-        '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·CCM·항목을 추가하고 드래그로 정렬 · 항목에 📎 파일 첨부</div>' +
+        '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·항목을 추가하고 드래그로 정렬 · 항목에 📎 파일 첨부</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px"><button type="button" class="btn btn-line" id="se_tpl_load" style="padding:6px 8px;font-size:.78rem">📋 양식 불러오기</button><button type="button" class="btn btn-line" id="se_tpl_save" style="padding:6px 8px;font-size:.78rem">💾 양식 저장</button></div>' +
         '<div id="se_tpl_msg" style="font-size:.74rem;color:#7b8794;min-height:0;margin-bottom:6px"></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px"><button type="button" class="btn btn-line" id="se_gyodok" style="padding:7px 6px;font-size:.82rem">📜 교독문</button><button type="button" class="btn btn-line" id="se_hymn" style="padding:7px 6px;font-size:.82rem">🎵 찬송가</button><button type="button" class="btn btn-line" id="se_ccm" style="padding:7px 6px;font-size:.82rem">🎶 CCM</button></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px"><button type="button" class="btn btn-line" id="se_gyodok" style="padding:7px 6px;font-size:.82rem">📜 교독문</button><button type="button" class="btn btn-line" id="se_hymn" style="padding:7px 6px;font-size:.82rem">🎵 찬송가</button></div>' +
         '<div id="se_order"></div>' +
-        '<div class="af-field" style="margin-top:16px"><label style="font-size:.95rem;font-weight:700;color:var(--accent,#032257)">🎶 CCM <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">드래그로 예배 순서에 넣기 · 파일 첨부</span></label><div id="se_praise"></div></div>' +
         '</div></div>' +
         '<div style="flex:1;min-width:320px">' +
         '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px">' +
@@ -525,7 +524,7 @@ console.log('[affairs.js] v20260701cd');
         '</div>' +
         '<div class="af-field" style="margin-bottom:12px"><label>제목</label><input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" style="font-size:1.1rem;font-weight:700"></div>' +
         '<div class="af-field" style="margin-bottom:10px"><label>📖 성경 본문 — 개역개정 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">새벽기도회·주일 설교 등에 사용</span></label><textarea id="se_bible" placeholder="개역개정 본문을 입력/붙여넣으세요. (예: 1 태초에 하나님이 천지를 창조하시니라 …)" style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.bible_text || '') + '</textarea></div>' +
-        '<div class="af-field" style="margin-bottom:12px"><label>📲 성경 본문 — 우리말성경 (QT 전용) <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">QT 내보내기·카카오톡 양식에 사용</span></label><textarea id="se_qt_bible" placeholder="우리말성경 본문을 입력/붙여넣으세요. (QT가 아니면 비워두셔도 됩니다)" style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
+        '<div class="af-field" id="se_qt_bible_wrap" style="margin-bottom:12px;display:none"><label>📲 성경 본문 — 우리말성경 (QT 전용) <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">QT 내보내기·카카오톡 양식에 사용</span></label><textarea id="se_qt_bible" placeholder="우리말성경 본문을 입력/붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
         '<div class="af-field"><label>설교 원고</label><textarea id="se_content" placeholder="설교 원고를 작성하세요. 줄바꿈·문단이 그대로 설교문에 반영됩니다." style="min-height:50vh;line-height:1.8;font-size:1.02rem">' + esc(rec.content || '') + '</textarea></div>' +
         '<input type="hidden" id="se_media" value="' + esc(rec.media_url || '') + '"><input type="hidden" id="se_file" value="' + esc(rec.file_url || '') + '">' +
         '</div></div>';
@@ -535,68 +534,9 @@ console.log('[affairs.js] v20260701cd');
       ov.querySelector('#se_close').onclick = close;
 
       // ── 예배 순서(드래그) + 항목별 파일 업로드 ──
-      var dragKind = null, dragOrderIdx = -1, dragPraiseItem = null, dragGyodok = null;
-      var praise = []; try { praise = JSON.parse(rec.praise || '[]') || []; } catch (e) { praise = []; }
-      var pBox = ov.querySelector('#se_praise'), pDrag = -1, pSortable = null;
-      function uploadToPraise(i, f) {
-        if (!f || !praise[i]) return;
-        if (!(window.ChurchUpload && ChurchUpload.isReady())) { alert('업로드 서버가 설정되지 않았습니다.'); return; }
-        praise[i]._up = true; renderPraise();
-        ChurchUpload.upload(f, { folder: 'worship/praise', compress: false }).then(function (res) { if (praise[i]) { praise[i].url = res.url; praise[i]._up = false; } renderPraise(); }).catch(function (e) { if (praise[i]) praise[i]._up = false; renderPraise(); alert('업로드 실패: ' + e.message); });
-      }
-      function renderPraise() {
-        var rowsHtml = praise.map(function (p, i) {
-          return '<div class="pr-row" data-i="' + i + '" style="display:flex;align-items:center;gap:7px;border:1px solid #e1e7ef;border-radius:9px;padding:7px 9px;margin-bottom:7px;background:#fff">' +
-            '<span class="pr-handle" title="드래그로 예배 순서로 이동 / 정렬" style="cursor:grab;color:#9aa5b1;touch-action:none">≡</span>' +
-            '<span style="flex:0 0 22px;text-align:center;color:#7b8794;font-size:.82rem">' + (i + 1) + '</span>' +
-            '<input type="text" class="pr-title" data-i="' + i + '" value="' + esc(p.title || '') + '" placeholder="CCM 제목" style="flex:1;min-width:120px;padding:6px 9px;border:1px solid #dfe5ee;border-radius:7px;font:inherit">' +
-            '<button type="button" class="btn btn-line pr-file" data-i="' + i + '" style="padding:5px 10px;font-size:.8rem">📎 ' + (p._up ? '업로드 중…' : (p.url ? '교체' : '파일')) + '</button>' +
-            (p.url ? '<a href="' + esc(p.url) + '" target="_blank" rel="noopener" style="font-size:.8rem">열기</a>' : '') +
-            '<button type="button" class="btn btn-line pr-del" data-i="' + i + '" style="padding:5px 9px;font-size:.8rem;color:#c0392b">✕</button>' +
-            '</div>';
-        }).join('');
-        pBox.innerHTML =
-          '<div id="pr_rows">' + rowsHtml + '</div>' +
-          '<div id="pr_drop" style="border:2px dashed #cdd7e3;border-radius:9px;padding:9px;text-align:center;color:#9aa5b1;font-size:.79rem;margin-top:6px">＋ CCM 버튼을 누르거나, 파일을 여기로 끌어다 놓으세요</div>';
-        Array.prototype.forEach.call(pBox.querySelectorAll('.pr-title'), function (inp) { inp.oninput = function () { praise[Number(inp.dataset.i)].title = inp.value; }; });
-        Array.prototype.forEach.call(pBox.querySelectorAll('.pr-del'), function (b) { b.onclick = function () { praise.splice(Number(b.dataset.i), 1); renderPraise(); }; });
-        Array.prototype.forEach.call(pBox.querySelectorAll('.pr-file'), function (b) {
-          b.onclick = function () { if (!(window.ChurchUpload && ChurchUpload.isReady())) { alert('업로드 서버가 설정되지 않았습니다.'); return; } var fi = document.createElement('input'); fi.type = 'file'; fi.onchange = function () { uploadToPraise(Number(b.dataset.i), fi.files && fi.files[0]); }; fi.click(); };
-        });
-        Array.prototype.forEach.call(pBox.querySelectorAll('.pr-row'), function (row) {
-          row.addEventListener('dragover', function (e) { e.preventDefault(); });
-          row.addEventListener('drop', function (e) {
-            var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-            if (f) { e.preventDefault(); uploadToPraise(Number(row.dataset.i), f); }
-          });
-        });
-        if (pSortable) { try { pSortable.destroy(); } catch (e) { } pSortable = null; }
-        var pRows = pBox.querySelector('#pr_rows');
-        if (window.Sortable && pRows) pSortable = window.Sortable.create(pRows, {
-          handle: '.pr-handle', draggable: '.pr-row', animation: 170, easing: 'cubic-bezier(.2,.6,.35,1)',
-          group: { name: 'ccm-out', pull: 'clone', put: false },
-          sort: true,
-          onEnd: function (evt) {
-            if (evt.to === evt.from) {
-              var ids = Array.prototype.map.call(pRows.querySelectorAll('.pr-row'), function (r) { return Number(r.dataset.i); });
-              var np = ids.map(function (idx) { return praise[idx]; }).filter(Boolean);
-              if (np.length) { praise.length = 0; Array.prototype.push.apply(praise, np); renderPraise(); }
-            }
-          }
-        });
-        var pdrop = pBox.querySelector('#pr_drop');
-        pdrop.addEventListener('dragover', function (e) { e.preventDefault(); pdrop.style.background = '#eef4ff'; });
-        pdrop.addEventListener('dragleave', function () { pdrop.style.background = ''; });
-        pdrop.addEventListener('drop', function (e) {
-          e.preventDefault(); pdrop.style.background = '';
-          var files = e.dataTransfer && e.dataTransfer.files; if (!files || !files.length) return;
-          if (!(window.ChurchUpload && ChurchUpload.isReady())) { alert('업로드 서버가 설정되지 않았습니다.'); return; }
-          Array.prototype.forEach.call(files, function (f) { var idx = praise.length; praise.push({ title: (f.name || '').replace(/\.[^.]+$/, ''), url: '' }); renderPraise(); uploadToPraise(idx, f); });
-        });
-      }
-      renderPraise();
+      var dragKind = null, dragOrderIdx = -1, dragGyodok = null;
 
-      // ── 예배 순서(왼쪽): 항목 추가 · 드래그 정렬 · 찬양곡 끌어다 놓기 ──
+      // ── 예배 순서(왼쪽): 항목 추가 · 드래그 정렬 ──
       var order = []; try { order = JSON.parse(rec.worship_order || '[]') || []; } catch (e) { order = []; }
       var oSortable = null;
       function uploadToOrder(i, f) {
@@ -658,9 +598,8 @@ console.log('[affairs.js] v20260701cd');
         oBox.querySelector('#od_add').onclick = function () { menu.style.display = (menu.style.display === 'none' ? 'flex' : 'none'); };
         Array.prototype.forEach.call(menu.querySelectorAll('.od-preset'), function (b) { b.onclick = function () { var lb = b.textContent; order.push({ label: lb, detail: presetDetail(lb), url: '' }); renderOrder(); }; });
         function insertAt(idx, item) { if (idx < 0 || idx > order.length) idx = order.length; order.splice(idx, 0, item); }
-        function clearDrag() { dragKind = null; dragOrderIdx = -1; dragPraiseItem = null; dragGyodok = null; }
+        function clearDrag() { dragKind = null; dragOrderIdx = -1; dragGyodok = null; }
         function dropItem() {
-          if (dragKind === 'praise' && dragPraiseItem) return { label: 'CCM', detail: dragPraiseItem.title || 'CCM', url: dragPraiseItem.url || '' };
           if (dragKind === 'gyodok' && dragGyodok) return { label: '교독문', detail: dragGyodok, url: '' };
           return null;
         }
@@ -678,14 +617,6 @@ console.log('[affairs.js] v20260701cd');
         var oRows = oBox.querySelector('#od_rows');
         if (window.Sortable && oRows) oSortable = window.Sortable.create(oRows, {
           handle: '.od-handle', draggable: '.od-row', animation: 170, easing: 'cubic-bezier(.2,.6,.35,1)',
-          group: { name: 'worship', pull: false, put: ['ccm-out'] },
-          onAdd: function (evt) {
-            var from = evt.from, to = evt.to, oldIdx = evt.oldIndex, newIdx = evt.newIndex;
-            try { evt.item.parentNode && evt.item.parentNode.removeChild(evt.item); } catch (e) { }
-            var p = praise[oldIdx]; if (!p) { renderOrder(); return; }
-            var item = { label: 'CCM', detail: p.title || 'CCM', url: p.url || '' };
-            order.splice(newIdx, 0, item); renderOrder();
-          },
           onEnd: function () {
             var ids = Array.prototype.map.call(oRows.querySelectorAll('.od-row'), function (r) { return Number(r.dataset.i); });
             var no = ids.map(function (idx) { return order[idx]; }).filter(Boolean);
@@ -743,7 +674,17 @@ console.log('[affairs.js] v20260701cd');
           renderOrder();
         });
       };
-      ov.querySelector('#se_ccm').onclick = function () { praise.push({ title: '', url: '' }); renderPraise(); var ti = pBox.querySelector('.pr-title[data-i="' + (praise.length - 1) + '"]'); if (ti) ti.focus(); };
+      // QT 내보내기 체크박스: 켜면 우리말성경 본문칸·카카오톡 버튼 표시
+      var qtToggle = ov.querySelector('#se_qt_toggle');
+      var qtWrap = ov.querySelector('#se_qt_bible_wrap');
+      var kakaoBtn = ov.querySelector('#se_kakao');
+      function qtOn() { return !!(qtToggle && qtToggle.checked); }
+      function syncQt() { var on = qtOn(); if (qtWrap) qtWrap.style.display = on ? '' : 'none'; if (kakaoBtn) kakaoBtn.style.display = on ? '' : 'none'; }
+      if (qtToggle) {
+        qtToggle.checked = !!(rec.qt_bible_text || rec.service === '매일 QT');
+        qtToggle.onchange = syncQt;
+      }
+      syncQt();
 
       function gather() {
         return {
@@ -754,12 +695,11 @@ console.log('[affairs.js] v20260701cd');
           preacher: ov.querySelector('#se_preacher').value.trim() || null,
           content: ov.querySelector('#se_content').value || null,
           bible_text: (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '') || null,
-          qt_bible_text: (ov.querySelector('#se_qt_bible') ? ov.querySelector('#se_qt_bible').value : '') || null,
+          qt_bible_text: (qtOn() && ov.querySelector('#se_qt_bible') ? ov.querySelector('#se_qt_bible').value : '') || null,
           media_url: ov.querySelector('#se_media').value || null,
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
           hymns: ov.querySelector('#se_hymns_v').value || null,
-          praise: (function () { var a = praise.filter(function (p) { return p.title || p.url; }).map(function (p) { return { title: p.title || '', url: p.url || '' }; }); return a.length ? JSON.stringify(a) : null; })(),
           worship_order: (order.length ? JSON.stringify(order) : null)
         };
       }
@@ -773,10 +713,16 @@ console.log('[affairs.js] v20260701cd');
           .catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; });
       }
       ov.querySelector('#se_save').onclick = function () { save(null); };
-      ov.querySelector('#se_export').onclick = function () { save(function (saved) { sermonReadingView(saved, { qt: false }); }); };
-      ov.querySelector('#se_export_qt').onclick = function () {
-        if (!ov.querySelector('#se_qt_bible').value.trim()) { if (!confirm('우리말성경 본문이 비어 있습니다. 그래도 QT 형식으로 내보낼까요?')) return; }
-        save(function (saved) { sermonReadingView(saved, { qt: true }); });
+      ov.querySelector('#se_export').onclick = function () {
+        var alsoQt = qtOn();
+        if (alsoQt && !ov.querySelector('#se_qt_bible').value.trim()) {
+          if (!confirm('우리말성경(QT) 본문이 비어 있습니다. QT 출력을 건너뛰고 새벽(개역개정)만 내보낼까요?\n\n[취소]를 누르면 우리말성경 본문을 먼저 입력하세요.')) return;
+          alsoQt = false;
+        }
+        save(function (saved) {
+          sermonReadingView(saved, { qt: false });           // ① 새벽 — 개역개정 (예배 순서 포함)
+          if (alsoQt) setTimeout(function () { sermonReadingView(saved, { qt: true }); }, 350); // ② QT — 우리말성경 (예배 순서 제외)
+        });
       };
       ov.querySelector('#se_kakao').onclick = function () {
         save(function (saved) { copyKakaoQt(saved); });
@@ -826,30 +772,30 @@ console.log('[affairs.js] v20260701cd');
     if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.'); return; }
     var meta = [r.service, fmtD(r.sermon_date), r.preacher].filter(Boolean).map(function (x) { return esc(x); }).join(' · ');
     var hymnsTxt = hymnsLabel(r.hymns);
-    var praiseArr = (function () { try { return JSON.parse(r.praise || '[]') || []; } catch (e) { return []; } })();
     var wOrder = (function () { try { return JSON.parse(r.worship_order || '[]') || []; } catch (e) { return []; } })();
     function isImg(u) { return /\.(jpg|jpeg|png|webp|gif|bmp)(\?|$)/i.test(u || ''); }
 
-    // 이미지 항목 수집 (각각 별도 페이지)
+    // QT 출력에는 예배 순서·이미지(찬송가 등)를 넣지 않음
     var imgPageItems = [];
     var orderRows = '';
-    if (wOrder.length) {
-      orderRows = wOrder.map(function (it, i) {
-        var d = it.detail ? ' &nbsp;<span style="color:#5b6b7d">' + esc(it.detail) + '</span>' : '';
-        var a = '';
-        if (it.url && isImg(it.url)) {
-          imgPageItems.push({ label: it.label || '항목', detail: it.detail || '', url: it.url });
-          a = ' <span style="color:#1e874b;font-size:.8em">📑 이미지</span>';
-        } else if (it.url) {
-          a = ' <a href="' + esc(it.url) + '" target="_blank" rel="noopener" style="font-size:.8em">자료</a>';
-        }
-        return '<div><span style="display:inline-block;min-width:16px;color:#9a8f78">' + (i + 1) + '.</span> <b>' + esc(it.label || '항목') + '</b>' + d + a + '</div>';
-      }).join('');
-    } else {
-      if (r.gyodok) orderRows += '<div>📜 <b>교독문</b> &nbsp;' + esc(r.gyodok) + '</div>';
-      if (hymnsTxt) orderRows += '<div>🎵 <b>찬송가</b> &nbsp;' + esc(hymnsTxt) + '</div>';
-      if (praiseArr.length) orderRows += '<div>🎶 <b>CCM</b> &nbsp;' + praiseArr.map(function (p, i) { var t = esc(p.title || ('곡 ' + (i + 1))); return p.url ? ('<a href="' + esc(p.url) + '" target="_blank" rel="noopener">' + t + '</a>') : t; }).join(' &nbsp;›&nbsp; ') + '</div>';
-      if (r.scripture) orderRows += '<div>📖 <b>본문</b> &nbsp;' + esc(r.scripture) + '</div>';
+    if (!qtMode) {
+      if (wOrder.length) {
+        orderRows = wOrder.map(function (it, i) {
+          var d = it.detail ? ' &nbsp;<span style="color:#5b6b7d">' + esc(it.detail) + '</span>' : '';
+          var a = '';
+          if (it.url && isImg(it.url)) {
+            imgPageItems.push({ label: it.label || '항목', detail: it.detail || '', url: it.url });
+            a = ' <span style="color:#1e874b;font-size:.8em">📑 이미지</span>';
+          } else if (it.url) {
+            a = ' <a href="' + esc(it.url) + '" target="_blank" rel="noopener" style="font-size:.8em">자료</a>';
+          }
+          return '<div><span style="display:inline-block;min-width:16px;color:#9a8f78">' + (i + 1) + '.</span> <b>' + esc(it.label || '항목') + '</b>' + d + a + '</div>';
+        }).join('');
+      } else {
+        if (r.gyodok) orderRows += '<div>📜 <b>교독문</b> &nbsp;' + esc(r.gyodok) + '</div>';
+        if (hymnsTxt) orderRows += '<div>🎵 <b>찬송가</b> &nbsp;' + esc(hymnsTxt) + '</div>';
+        if (r.scripture) orderRows += '<div>📖 <b>본문</b> &nbsp;' + esc(r.scripture) + '</div>';
+      }
     }
     var orderHtml = orderRows ? '<div class="order"><div class="order-t">■ 예배 순서</div>' + orderRows + '</div>' : '';
     var bibleSrc = qtMode ? (r.qt_bible_text || r.bible_text || '') : (r.bible_text || '');
