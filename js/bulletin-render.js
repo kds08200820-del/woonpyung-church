@@ -83,13 +83,16 @@
       'body.l3 .wk{font-size:7.6pt;line-height:1.7}body.l3 .lbl{min-width:16mm;font-size:7.4pt}',
       'body.l3 .col{font-size:7.5pt;line-height:1.6}body.l3 .col .ct{font-size:8pt}',
       'body.l3 .news li{font-size:7.5pt;padding-left:6mm;line-height:1.45}body.l3 .news li::before{font-size:6.5pt}',
-      'body.l3 .cover{-webkit-column-break-inside:avoid;break-inside:avoid;text-align:center;margin-top:6mm;padding-top:5mm;border-top:1.5pt solid #0a2c5c}',
+      'body.l3 .cover{-webkit-column-break-inside:avoid;break-inside:avoid;-webkit-column-break-before:always;break-before:column;text-align:center;padding-top:8mm;border-top:1.5pt solid #0a2c5c}',
+      'body.l3 .cover .hl{font-size:9pt;line-height:1.55;margin:0 0 6mm;background:linear-gradient(#f8f5ee,#f1ece0)}',
       'body.l3 .cover .since{font-family:"Noto Sans KR",sans-serif;font-size:6.5pt;color:#a8915c;letter-spacing:.1em}',
       'body.l3 .cover .big{font-family:"Noto Serif KR",serif;font-weight:700;font-size:15pt;letter-spacing:.12em;color:#0a2c5c;margin:2mm 0}',
       'body.l3 .cover .ld{font-family:"Noto Sans KR",sans-serif;font-size:7pt;color:#555;line-height:1.7}',
       'body.l3 .cover .ad{font-family:"Noto Sans KR",sans-serif;font-size:6.5pt;color:#888;margin-top:2mm;line-height:1.6}',
       'body.l3 .foot{display:none}',
-      '@media print{html,body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;width:auto;min-height:auto}}'
+      // 양면: 앞면(front) 다음에 새 페이지
+      'body.l3 .front{page-break-after:always;break-after:page}',
+      '@media print{html,body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;width:auto;min-height:auto}body.l3 .page{width:auto}}'
     ].join('');
   }
 
@@ -117,39 +120,38 @@
       var hl = String(d.headline).replace(/^말씀:\s*/m, '').replace(/^헤드라인:\s*/m, '— ');
       headlineHtml = '<div class="hl">' + esc(hl).replace(/\n/g, '<br>') + '</div>';
     }
-    var h = '<div class="page">' +
-      '<div class="hd"><div class="eng">SUNDAY WORSHIP</div><div class="ch">운 평 장 로 교 회</div><div class="sub">' + sub + '</div></div>' +
-      headlineHtml +
-      '<section><div class="serm"><div class="lab">오 늘 의 설 교 · SERMON</div><div class="t">' + esc(rec.title || '') + '</div><div class="m">본문 ● ' + esc(rec.scripture || '') + ' ● ' + esc(rec.preacher || '') + '</div></div>' +
-      '<h2>주일 낮 예배 <span class="en">ORDER OF WORSHIP</span></h2><table class="ord"><tbody>' + orderHtml + '</tbody></table></section>';
-
-    if (d.wed_title || d.wed_series || d.dawn || d.qt) {
-      h += '<section><h2>주중 · 새벽 · QT <span class="en">PRAYER MEETINGS</span></h2><div class="wk">' +
+    // ── 섹션 조각 ──
+    var hdBanner = '<div class="hd"><div class="eng">SUNDAY WORSHIP</div><div class="ch">운 평 장 로 교 회</div><div class="sub">' + sub + '</div></div>';
+    var sermSec = '<section><h2>주일 낮 예배 <span class="en">ORDER OF WORSHIP</span></h2>' +
+      '<div class="serm"><div class="lab">오 늘 의 설 교 · SERMON</div><div class="t">' + esc(rec.title || '') + '</div><div class="m">본문 ● ' + esc(rec.scripture || '') + ' ● ' + esc(rec.preacher || '') + '</div></div>' +
+      '<table class="ord"><tbody>' + orderHtml + '</tbody></table></section>';
+    var midSec = (d.wed_title || d.wed_series || d.dawn || d.qt)
+      ? ('<section><h2>주중 · 새벽 · QT <span class="en">PRAYER MEETINGS</span></h2><div class="wk">' +
         ((d.wed_series || d.wed_title) ? '<div><span class="lbl">수요기도회</span>' + esc([d.wed_series, d.wed_title].filter(Boolean).join(' — ')) + (d.wed_dateline ? '<br><span class="lbl"></span><span style="color:#6a6a6a;font-size:8.5pt">' + esc(d.wed_dateline) + '</span>' : '') + '</div>' : '') +
         (d.dawn ? '<div><span class="lbl">새벽기도회</span>' + esc(d.dawn) + '</div>' : '') +
-        (d.qt ? '<div><span class="lbl">매일 QT</span>' + esc(d.qt) + '</div>' : '') +
-        '</div></section>';
-    }
-    if (offHtml || amtHtml) {
-      h += '<section><h2>향기로운 예물 <span class="en">FRAGRANT OFFERING</span></h2>' + (offHtml ? '<div class="two">' + offHtml + '</div>' : '') + amtHtml + '</section>';
-    }
-    if (comHtml) h += '<section><h2>봉사위원 · 이주의 기도 <span class="en">SERVANTS</span></h2><div class="two">' + comHtml + '</div></section>';
-    if (d.column_title || d.column_body) h += '<section><h2>신앙과 책 <span class="en">FAITH &amp; BOOKS</span></h2><div class="col"><div class="ct">' + esc(d.column_title || '') + '</div>' + esc(d.column_body || '') + '</div></section>';
-    if (notices) h += '<section><h2>한 주의 소식 <span class="en">THIS WEEK</span></h2><ul class="news">' + notices + '</ul></section>';
-    if (!opts.amounts) h += '<p class="note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>';
-    // 인쇄용 3단에서는 마지막 단 하단에 표지(운평장로교회)가 오도록 표지 블록을 둔다
+        (d.qt ? '<div><span class="lbl">매일 QT</span>' + esc(d.qt) + '</div>' : '') + '</div></section>') : '';
+    var offerSec = (offHtml || amtHtml) ? ('<section><h2>향기로운 예물 <span class="en">FRAGRANT OFFERING</span></h2>' + (offHtml ? '<div class="two">' + offHtml + '</div>' : '') + amtHtml + '</section>') : '';
+    var comSec = comHtml ? ('<section><h2>봉사위원 · 다음 주 기도 <span class="en">SERVANTS</span></h2><div class="two">' + comHtml + '</div></section>') : '';
+    var colSec = (d.column_title || d.column_body) ? ('<section><h2>신앙과 책 <span class="en">FAITH &amp; BOOKS</span></h2><div class="col"><div class="ct">' + esc(d.column_title || '') + '</div>' + esc(d.column_body || '') + '</div></section>') : '';
+    var newsSec = notices ? ('<section><h2>한 주의 소식 <span class="en">THIS WEEK</span></h2><ul class="news">' + notices + '</ul></section>') : '';
+    var noteHtml = !opts.amounts ? '<p class="note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>' : '';
+    var fm = String(d.founded || '1964-03-01').match(/(\d{4})-(\d{2})-(\d{2})/);
+    var sinceTxt = fm ? ('SINCE ' + fm[1] + '. ' + Number(fm[2]) + '. ' + Number(fm[3])) : 'SINCE 1964. 3. 1';
+    var coverBlock = '<div class="cover">' + (headlineHtml || '') +
+      '<div class="since">' + sinceTxt + (d.no ? ' · No. ' + esc(d.no) : '') + '</div>' +
+      '<div class="big">운 평 장 로 교 회</div>' +
+      '<div class="ld">담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</div>' +
+      '<div class="ad">화성특례시 우정읍 운평길 47 · T. 010-4032-2903<br>' + esc(dotDate(rec.bdate)) + (d.week ? ' · ' + esc(d.week) : '') + ' · www.k-logos.com</div></div>';
+
     if (opts.layout === 'print3') {
-      var fm = String(d.founded || '1964-03-01').match(/(\d{4})-(\d{2})-(\d{2})/);
-      var sinceTxt = fm ? ('SINCE ' + fm[1] + '. ' + Number(fm[2]) + '. ' + Number(fm[3])) : 'SINCE 1964. 3. 1';
-      h += '<div class="cover"><div class="since">' + sinceTxt + (d.no ? ' · No. ' + esc(d.no) : '') + '</div>' +
-        '<div class="big">운 평 장 로 교 회</div>' +
-        '<div class="ld">담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</div>' +
-        '<div class="ad">화성특례시 우정읍 운평길 47 · T. 010-4032-2903<br>' + esc(dotDate(rec.bdate)) + (d.week ? ' · ' + esc(d.week) : '') + ' · www.k-logos.com</div></div>';
-    } else {
-      h += '<div class="foot">운평장로교회 · 담임목사 김동석 · 화성특례시 우정읍 운평길 47 · www.k-logos.com</div>';
+      // 가로 3단 양면 — 앞면: 설교/예배순서·주중·헌금/봉사위원 / 뒷면: 칼럼·광고·표지
+      var front = '<div class="page front">' + sermSec + midSec + offerSec + comSec + noteHtml + '</div>';
+      var back = '<div class="page back">' + colSec + newsSec + coverBlock + '</div>';
+      return front + back;
     }
-    h += '</div>';
-    return h;
+    // 홈페이지 읽기(세로 1단)
+    return '<div class="page">' + hdBanner + (headlineHtml || '') + sermSec + midSec + offerSec + comSec + colSec + newsSec + noteHtml +
+      '<div class="foot">운평장로교회 · 담임목사 김동석 · 화성특례시 우정읍 운평길 47 · www.k-logos.com</div></div>';
   }
 
   function fullHTML(rec, opts) {
