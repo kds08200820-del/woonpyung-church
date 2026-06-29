@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
- * 콘솔: [finance.js] v20260701ae
+ * 콘솔: [finance.js] v20260701af
  */
-console.log('[finance.js] v20260701ae');
+console.log('[finance.js] v20260701af');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -291,8 +291,8 @@ console.log('[finance.js] v20260701ae');
         var bw = 11, rects = '', incPts = [], expPts = [], dots = '', hits = '', labels = '';
         order.forEach(function (m, i) {
           var c = cx(i), inc = months[m].inc, exp = months[m].exp, xi = c - bw - 1.5, xe = c + 1.5;
-          rects += '<rect x="' + xi + '" y="' + yv(inc) + '" width="' + bw + '" height="' + (baseY - yv(inc)) + '" rx="3.5" fill="url(#gInc)"></rect>';
-          rects += '<rect x="' + xe + '" y="' + yv(exp) + '" width="' + bw + '" height="' + (baseY - yv(exp)) + '" rx="3.5" fill="url(#gExp)"></rect>';
+          rects += '<rect x="' + xi + '" y="' + yv(inc) + '" width="' + bw + '" height="' + (baseY - yv(inc)) + '" rx="3" fill="' + INC + '" opacity="0.42"></rect>';
+          rects += '<rect x="' + xe + '" y="' + yv(exp) + '" width="' + bw + '" height="' + (baseY - yv(exp)) + '" rx="3" fill="' + EXP + '" opacity="0.42"></rect>';
           incPts.push((xi + bw / 2).toFixed(1) + ',' + yv(inc).toFixed(1));
           expPts.push((xe + bw / 2).toFixed(1) + ',' + yv(exp).toFixed(1));
           dots += '<circle cx="' + (xi + bw / 2) + '" cy="' + yv(inc) + '" r="3.6" fill="' + INC + '" stroke="#fff" stroke-width="1.6"></circle><circle cx="' + (xe + bw / 2) + '" cy="' + yv(exp) + '" r="3.6" fill="' + EXP + '" stroke="#fff" stroke-width="1.6"></circle>';
@@ -300,26 +300,26 @@ console.log('[finance.js] v20260701ae');
           labels += '<text x="' + c + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#8a8a8e">' + m.slice(5) + '월</text>';
         });
         return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" preserveAspectRatio="xMidYMid meet" style="height:auto;max-width:' + W + 'px">' +
-          '<defs><linearGradient id="gInc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + INC + '" stop-opacity="0.5"></stop><stop offset="1" stop-color="' + INC + '" stop-opacity="0.05"></stop></linearGradient>' +
-          '<linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + EXP + '" stop-opacity="0.5"></stop><stop offset="1" stop-color="' + EXP + '" stop-opacity="0.05"></stop></linearGradient></defs>' +
           rects +
           '<polyline points="' + incPts.join(' ') + '" fill="none" stroke="' + INC + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>' +
           '<polyline points="' + expPts.join(' ') + '" fill="none" stroke="' + EXP + '" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>' +
           dots + labels + hits + '</svg>';
       }
 
-      // 헌금 항목별 도넛(연간 수입)
+      // 헌금 항목별 도넛(연간 수입) — 클릭 상세
       var incFY = sumByAcc('수입', fyR.from, fyR.to);
-      function donut(map) {
-        var ents = Object.keys(map).map(function (k) { return { k: k, v: map[k] }; }).filter(function (e) { return e.v > 0; }).sort(function (a, b) { return b.v - a.v; });
-        var total = ents.reduce(function (s, e) { return s + e.v; }, 0);
-        if (!total) return '<p style="color:#9aa5b1;margin-top:12px">내역 없음</p>';
-        var PAL = ['#0A84FF', '#30D158', '#FF9F0A', '#FF453A', '#BF5AF2', '#FF375F', '#64D2FF', '#FF9500', '#5E5CE6', '#AC8E68', '#66D4CF', '#FFD60A', '#FF6482', '#32ADE6', '#A2845E', '#34C759'];
-        var R = 55, SW = 17, C = 2 * Math.PI * R, GAP = ents.length > 1 ? 2 : 0, off = 0;
-        var segs = ents.map(function (e, i) { var frac = e.v / total * C, len = Math.max(0.5, frac - GAP); var s = '<circle r="' + R + '" cx="75" cy="75" fill="none" stroke="' + PAL[i % PAL.length] + '" stroke-width="' + SW + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 75 75)"></circle>'; off += frac; return s; }).join('');
-        var svg = '<svg viewBox="0 0 150 150" width="160" height="160" style="flex:0 0 auto">' + segs + '<text x="75" y="71" text-anchor="middle" font-size="10" fill="#8a8a8e">헌금 합계</text><text x="75" y="89" text-anchor="middle" font-size="11" font-weight="700" fill="#1d1d1f">' + won(total) + '</text></svg>';
-        var legend = '<div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:5px">' + ents.map(function (e, i) { return '<div style="display:flex;align-items:center;gap:8px;font-size:.84rem"><span style="width:10px;height:10px;border-radius:50%;background:' + PAL[i % PAL.length] + ';flex:0 0 auto"></span><span style="flex:1;color:#1d1d1f">' + esc(e.k) + '</span><b style="font-variant-numeric:tabular-nums">' + won(e.v) + '</b><span style="color:#9aa5b1;width:42px;text-align:right">' + (e.v / total * 100).toFixed(0) + '%</span></div>'; }).join('') + '</div>';
-        return '<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:12px">' + svg + legend + '</div>';
+      var PAL = ['#0A84FF', '#30D158', '#FF9F0A', '#FF453A', '#BF5AF2', '#FF375F', '#64D2FF', '#FF9500', '#5E5CE6', '#AC8E68', '#66D4CF', '#FFD60A', '#FF6482', '#32ADE6', '#A2845E', '#34C759'];
+      var dnEnts = Object.keys(incFY).map(function (k) { return { k: k, v: incFY[k] }; }).filter(function (e) { return e.v > 0; }).sort(function (a, b) { return b.v - a.v; });
+      var dnTotal = dnEnts.reduce(function (s, e) { return s + e.v; }, 0);
+      var dnCount = {}; M.vouchers.forEach(function (v) { if (String(v['구분']) !== '수입') return; var d = fmtD(v['일자']); if (d < fyR.from || d > fyR.to) return; var a = v['계정'] || ''; dnCount[a] = (dnCount[a] || 0) + 1; });
+      function donut() {
+        if (!dnTotal) return '<p style="color:#9aa5b1;margin-top:12px">내역 없음</p>';
+        var R = 68, SW = 22, C = 2 * Math.PI * R, GAP = dnEnts.length > 1 ? 2.5 : 0, off = 0;
+        var segs = dnEnts.map(function (e, i) { var frac = e.v / dnTotal * C, len = Math.max(0.5, frac - GAP); var s = '<circle class="dn-seg" data-i="' + i + '" r="' + R + '" cx="90" cy="90" fill="none" stroke="' + PAL[i % PAL.length] + '" stroke-width="' + SW + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 90 90)" style="cursor:pointer;transition:opacity .15s"></circle>'; off += frac; return s; }).join('');
+        var svg = '<svg viewBox="0 0 180 180" width="230" height="230" style="flex:0 0 auto;max-width:64vw">' + segs + '<text x="90" y="85" text-anchor="middle" font-size="11" fill="#8a8a8e">헌금 합계</text><text x="90" y="107" text-anchor="middle" font-size="14" font-weight="700" fill="#1d1d1f">' + won(dnTotal) + '</text></svg>';
+        var legend = '<div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px">' + dnEnts.map(function (e, i) { return '<div class="dn-leg" data-i="' + i + '" style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer;padding:3px 7px;border-radius:7px"><span style="width:10px;height:10px;border-radius:50%;background:' + PAL[i % PAL.length] + ';flex:0 0 auto"></span><span style="flex:1;color:#1d1d1f">' + esc(e.k) + '</span><b style="font-variant-numeric:tabular-nums">' + won(e.v) + '</b><span style="color:#9aa5b1;width:42px;text-align:right">' + (e.v / dnTotal * 100).toFixed(0) + '%</span></div>'; }).join('') + '</div>';
+        return '<div><div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:12px">' + svg + legend + '</div>' +
+          '<div id="dnDetail" style="margin-top:14px;padding:11px 14px;background:#f6f8fb;border:1px solid #eef1f5;border-radius:10px;font-size:.9rem;color:#7b8794">항목(도넛·범례)을 클릭하면 금액·비율·건수가 표시됩니다.</div></div>';
       }
 
       var wkCols = [{ label: '지난주', from: lastWk.from, to: lastWk.to }, { label: '이번주', from: thisWk.from, to: thisWk.to }];
@@ -334,7 +334,7 @@ console.log('[finance.js] v20260701ae');
         '<div class="fin-card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:24px">' +
           '<div><b>📊 월별 수입·지출</b> <span style="font-size:.76rem"><span style="color:#34C759">● 수입</span> <span style="color:#FF3B30">● 지출</span> <span style="color:#9aa5b1">· 막대+추세선</span></span>' +
             '<div id="mcWrap" style="position:relative;margin-top:14px">' + monthChart() + '<div id="mcTip" style="position:absolute;display:none;background:#032257;color:#fff;font-size:.76rem;line-height:1.45;padding:6px 9px;border-radius:7px;pointer-events:none;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.25)"></div></div></div>' +
-          '<div><b>🍩 헌금 항목별 (연간)</b>' + donut(incFY) + '</div>' +
+          '<div><b>🍩 헌금 항목별 (연간)</b>' + donut() + '</div>' +
         '</div></div>' +
         // KPI 요약
         '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">' + stat('전기 이월금', carry, '#7b8794') + stat('당기 수입', ti, '#1e874b') + stat('당기 지출', te, '#c0392b') + stat('현재 잔액', bal, '#032257') + '</div>' +
@@ -362,6 +362,15 @@ console.log('[finance.js] v20260701ae');
         h.addEventListener('mousemove', show); h.addEventListener('mouseenter', show);
         h.addEventListener('mouseleave', function () { mcTip.style.display = 'none'; });
       });
+      // 도넛 클릭 → 상세(금액·비율·건수) + 선택 강조
+      var dnDetail = panel.querySelector('#dnDetail');
+      function selDonut(i) {
+        var e = dnEnts[i]; if (!e || !dnDetail) return;
+        dnDetail.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:' + PAL[i % PAL.length] + ';margin-right:9px;vertical-align:middle"></span><b style="color:#1d1d1f">' + esc(e.k) + '</b> &nbsp;·&nbsp; <b style="color:#1e874b">' + won(e.v) + '원</b> &nbsp;·&nbsp; ' + (e.v / dnTotal * 100).toFixed(1) + '% &nbsp;·&nbsp; ' + (dnCount[e.k] || 0) + '건';
+        Array.prototype.forEach.call(panel.querySelectorAll('.dn-seg'), function (s) { s.style.opacity = (+s.getAttribute('data-i') === i) ? '1' : '0.25'; });
+        Array.prototype.forEach.call(panel.querySelectorAll('.dn-leg'), function (l) { l.style.background = (+l.getAttribute('data-i') === i) ? '#eef4fb' : 'transparent'; });
+      }
+      Array.prototype.forEach.call(panel.querySelectorAll('.dn-seg,.dn-leg'), function (x) { x.addEventListener('click', function () { selDonut(+x.getAttribute('data-i')); }); });
     }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
   }
 
