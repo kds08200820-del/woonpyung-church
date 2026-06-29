@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701bc
+ * 콘솔: [gyojeok.js] v20260701bd
  */
-console.log('[gyojeok.js] v20260701bc');
+console.log('[gyojeok.js] v20260701bd');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -25,13 +25,13 @@ console.log('[gyojeok.js] v20260701bc');
     render();
   }
   function render() {
-    root.innerHTML = '<div class="fin-tabs"><button data-t="access">권한 관리</button><button data-t="members">교적 명단</button></div><div id="gjPanel"></div>';
+    root.innerHTML = '<div class="fin-tabs"><button data-t="access">권한 관리</button><button data-t="members">교적 명단</button><button data-t="family">가족관계</button></div><div id="gjPanel"></div>';
     Array.prototype.forEach.call(root.querySelectorAll('.fin-tabs button'), function (b) {
       if (b.dataset.t === tab) b.classList.add('active');
       b.onclick = function () { tab = b.dataset.t; render(); };
     });
     var p = document.getElementById('gjPanel');
-    if (tab === 'access') renderAccess(p); else renderMembers(p);
+    if (tab === 'access') renderAccess(p); else if (tab === 'family') renderFamily(p); else renderMembers(p);
   }
 
   /* ── 권한 관리: 정/준회원·교적연결 + 관리자/재정권한 ── */
@@ -329,6 +329,108 @@ console.log('[gyojeok.js] v20260701bc');
     }
 
     viewMode(m);
+  }
+
+  /* ── 가족관계: 드래그 가계도 구성 ── */
+  function renderFamily(panel) {
+    var REL = ['세대주', '배우자', '부', '모', '조부', '조모', '장남', '차남', '삼남', '아들', '장녀', '차녀', '삼녀', '딸', '자녀', '형제', '자매', '손자', '손녀', '사위', '며느리', '기타'];
+    var ORD = {}; REL.forEach(function (r, i) { ORD[r] = i + 1; });
+    var ALL = [], selKey = null, dragId = null, q = '';
+    function headOf(m) { return m['세대주'] || m['이름']; }
+    function byId(id) { for (var i = 0; i < ALL.length; i++) if (String(ALL[i]['교적ID']) === String(id)) return ALL[i]; return null; }
+    function byKey(k) { for (var i = 0; i < ALL.length; i++) if (ALL[i]['매칭키'] === k) return ALL[i]; return null; }
+    function byName(nm) { for (var i = 0; i < ALL.length; i++) if (ALL[i]['이름'] === nm) return ALL[i]; return null; }
+    function flash(t, ok) { var e = panel.querySelector('#fam_msg'); if (e) { e.style.color = ok === false ? '#c0392b' : (ok ? 'green' : '#7b8794'); e.textContent = t; } }
+    function load() { panel.innerHTML = '<p class="qt-loading">불러오는 중…</p>'; return WPF.call('listGyojeok').then(function (r) { ALL = (r.members || []).filter(function (m) { return m['이름']; }); draw(); }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); }); }
+    function doLink(member, head, rel) {
+      var fields = { 세대주: head, 관계: rel }, calls = [];
+      if (rel === '배우자') { var hr = byName(head); fields['배우자'] = head; fields['배우자매칭키'] = hr ? hr['매칭키'] : ''; if (hr) calls.push(WPF.call('updateGyojeok', { id: hr['교적ID'], fields: { 배우자: member['이름'], 배우자매칭키: member['매칭키'] } })); }
+      calls.push(WPF.call('updateGyojeok', { id: member['교적ID'], fields: fields }));
+      return Promise.all(calls);
+    }
+    function makeHead(member) { flash('저장 중…'); WPF.call('updateGyojeok', { id: member['교적ID'], fields: { 세대주: member['이름'], 관계: '세대주' } }).then(function () { selKey = null; load(); }).catch(function (e) { flash('오류: ' + e.message, false); }); }
+    function removeFam(member) { flash('처리 중…'); WPF.call('updateGyojeok', { id: member['교적ID'], fields: { 세대주: member['이름'], 관계: '', 배우자: '', 배우자매칭키: '' } }).then(load).catch(function (e) { flash('오류: ' + e.message, false); }); }
+    function pickRel(member, head, dflt) {
+      return new Promise(function (resolve) {
+        var ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
+        ov.innerHTML = '<div class="fin-card" style="max-width:340px;width:100%;background:#fff"><h3 style="margin:0 0 10px;color:var(--accent,#032257)">관계 지정</h3>' +
+          '<p style="font-size:.86rem;color:#7b8794;margin:0 0 10px"><b>' + esc(member['이름']) + '</b> → <b>' + esc(head) + '</b>님 가정</p>' +
+          '<select id="pr_rel" style="width:100%;padding:8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit">' + REL.map(function (o) { return '<option' + (o === dflt ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>' +
+          '<div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end"><button class="btn btn-line" id="pr_cancel">취소</button><button class="btn btn-solid" id="pr_ok">확인</button></div></div>';
+        document.body.appendChild(ov);
+        function close(v) { ov.remove(); resolve(v); }
+        ov.addEventListener('click', function (e) { if (e.target === ov) close(null); });
+        ov.querySelector('#pr_cancel').onclick = function () { close(null); };
+        ov.querySelector('#pr_ok').onclick = function () { close(ov.querySelector('#pr_rel').value); };
+      });
+    }
+    function assign(member, head) {
+      if (member['이름'] === head) { flash('본인을 같은 가정에 넣을 수 없습니다.', false); return; }
+      pickRel(member, head, member['배우자'] === head ? '배우자' : '자녀').then(function (rel) {
+        if (!rel) return; flash('저장 중…');
+        doLink(member, head, rel).then(function () { selKey = null; load(); }).catch(function (e) { flash('오류: ' + e.message, false); });
+      });
+    }
+    function draw() {
+      var heads = {}, headOrder = [];
+      ALL.forEach(function (m) { var h = headOf(m); if (!heads[h]) { heads[h] = []; headOrder.push(h); } heads[h].push(m); });
+      headOrder.sort(function (a, b) { return a.localeCompare(b, 'ko'); });
+      var ql = q.trim().toLowerCase();
+      var leftList = ALL.filter(function (m) { return !ql || (m['이름'] || '').toLowerCase().indexOf(ql) >= 0; }).sort(function (a, b) { return String(a['이름']).localeCompare(String(b['이름']), 'ko'); });
+      function chip(m) {
+        var isHead = !m['세대주'] || m['세대주'] === m['이름'];
+        var sub = birthOf(m) + (isHead ? ' · 세대주' : ' · ' + esc(m['세대주']) + '의 가정');
+        return '<div class="fam-chip" draggable="true" data-id="' + esc(m['교적ID']) + '" style="padding:7px 10px;border:1px solid #e1e7ef;border-radius:8px;margin-bottom:6px;cursor:grab;background:' + (selKey === m['매칭키'] ? '#e7f0ff' : '#fff') + '"><b>' + esc(m['이름']) + '</b> <span style="color:#9aa5b1;font-size:.76rem">' + sub + '</span></div>';
+      }
+      var leftHTML = leftList.map(chip).join('') || '<p style="color:#9aa5b1;padding:10px">결과 없음</p>';
+      function famTree(h) {
+        var mem = heads[h].slice().sort(function (a, b) { var ah = a['이름'] === h ? 0 : (ORD[a['관계']] || 50), bh = b['이름'] === h ? 0 : (ORD[b['관계']] || 50); if (ah !== bh) return ah - bh; return birthOf(a).localeCompare(birthOf(b)); });
+        var rows = mem.map(function (m) {
+          var isHead = m['이름'] === h;
+          return '<div class="fam-node" draggable="true" data-id="' + esc(m['교적ID']) + '" style="display:flex;align-items:center;gap:6px;padding:3px 0 3px ' + (isHead ? '0' : '18px') + ';cursor:grab">' +
+            (isHead ? '<span style="color:#c9a227">⌂</span>' : '<span style="color:#cbd5e1">└</span>') +
+            '<b style="' + (isHead ? 'color:var(--accent,#032257)' : '') + '">' + esc(m['이름']) + '</b>' +
+            '<span style="font-size:.74rem;color:#7b8794">' + (isHead ? '세대주' : esc(m['관계'] || '관계 미지정')) + ' · ' + esc(birthOf(m)) + '</span>' +
+            (isHead ? '' : '<button class="fam-x" data-id="' + esc(m['교적ID']) + '" title="가족에서 제외" style="margin-left:auto;border:0;background:none;color:#c0392b;cursor:pointer;font-size:.85rem">✕</button>') +
+            '</div>';
+        }).join('');
+        return '<div class="fam-house" data-head="' + esc(h) + '" style="border:1px solid #e1e7ef;border-radius:10px;padding:10px 12px;margin-bottom:10px;background:#fff;transition:background .15s">' +
+          '<div style="font-size:.76rem;color:#9aa5b1;margin-bottom:4px">' + heads[h].length + '명 · 여기로 드래그하면 이 가정에 추가</div>' + rows + '</div>';
+      }
+      var treeHTML = headOrder.map(famTree).join('');
+      panel.innerHTML =
+        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px"><b>가족관계 (가계도 구성)</b><span class="fin-msg" id="fam_msg" style="font-size:.84rem"></span></div>' +
+        '<p style="color:var(--ink-soft);font-size:.83rem;margin:0 0 12px">왼쪽 이름을 오른쪽 <b>가정</b>으로 드래그하면 그 가정에 묶입니다(관계 선택). ‘새 가정’으로 드래그하면 세대주가 됩니다. 터치 기기는 이름을 <b>탭해 선택</b> 후 가정(또는 새 가정)을 탭하세요.</p>' +
+        '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">' +
+        '<div style="flex:0 0 280px;max-width:100%"><input type="text" id="fam_q" value="' + esc(q) + '" placeholder="🔍 이름 검색" style="width:100%;padding:8px 11px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;margin-bottom:8px"><div id="fam_left" style="max-height:560px;overflow:auto;padding-right:4px">' + leftHTML + '</div></div>' +
+        '<div style="flex:1;min-width:280px"><div id="fam_newhome" style="border:2px dashed #cdd7e3;border-radius:10px;padding:12px;text-align:center;color:#9aa5b1;margin-bottom:10px;font-size:.85rem">＋ 여기로 드래그 → 새 가정(세대주로 지정)</div><div id="fam_right" style="max-height:600px;overflow:auto">' + treeHTML + '</div></div>' +
+        '</div></div>';
+      var qel = panel.querySelector('#fam_q');
+      qel.oninput = function () { q = qel.value; var pos = qel.selectionStart; draw(); var n = panel.querySelector('#fam_q'); n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} };
+      Array.prototype.forEach.call(panel.querySelectorAll('.fam-chip'), function (c) {
+        c.addEventListener('dragstart', function (e) { dragId = c.dataset.id; e.dataTransfer.setData('text/plain', c.dataset.id); });
+        c.addEventListener('click', function () { var m = byId(c.dataset.id); var k = m && m['매칭키']; selKey = (selKey === k) ? null : k; draw(); });
+      });
+      Array.prototype.forEach.call(panel.querySelectorAll('.fam-node'), function (n) {
+        n.addEventListener('dragstart', function (e) { e.stopPropagation(); dragId = n.dataset.id; e.dataTransfer.setData('text/plain', n.dataset.id); });
+      });
+      Array.prototype.forEach.call(panel.querySelectorAll('.fam-house'), function (hb) {
+        hb.addEventListener('dragover', function (e) { e.preventDefault(); hb.style.background = '#eef4ff'; });
+        hb.addEventListener('dragleave', function () { hb.style.background = '#fff'; });
+        hb.addEventListener('drop', function (e) { e.preventDefault(); hb.style.background = '#fff'; var m = byId(dragId); if (m) assign(m, hb.dataset.head); });
+        hb.addEventListener('click', function (e) { if (e.target.closest('.fam-x') || e.target.closest('.fam-node[draggable]')) return; if (!selKey) return; var m = byKey(selKey); if (m) assign(m, hb.dataset.head); });
+      });
+      var nh = panel.querySelector('#fam_newhome');
+      nh.addEventListener('dragover', function (e) { e.preventDefault(); nh.style.background = '#eef4ff'; });
+      nh.addEventListener('dragleave', function () { nh.style.background = ''; });
+      nh.addEventListener('drop', function (e) { e.preventDefault(); nh.style.background = ''; var m = byId(dragId); if (m) makeHead(m); });
+      nh.addEventListener('click', function () { if (!selKey) return; var m = byKey(selKey); if (m) makeHead(m); });
+      Array.prototype.forEach.call(panel.querySelectorAll('.fam-x'), function (b) {
+        b.onclick = function (e) { e.stopPropagation(); var m = byId(b.dataset.id); if (!m) return; if (!confirm(m['이름'] + '님을 이 가족에서 제외할까요?')) return; removeFam(m); };
+      });
+    }
+    load();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
