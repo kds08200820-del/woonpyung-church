@@ -709,7 +709,8 @@ console.log('[affairs.js] v20260701di');
   }
 
   // 생명의 삶 가져오기 모달 — 개인 비공개 보관함(qt_imports). 공개 사이트와 무관.
-  function qtImportModal() {
+  // initialText: 북마클릿이 du.plus 페이지에서 긁어 넘긴 본문(있으면 자동 정리).
+  function qtImportModal(initialText) {
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:#f4f6fa;z-index:9000;overflow:auto';
     var thisYear = new Date().getFullYear();
@@ -809,6 +810,13 @@ console.log('[affairs.js] v20260701di');
       });
     }
     loadList();
+
+    // 북마클릿으로 넘어온 본문이 있으면 자동으로 채우고 날짜별 정리 실행
+    if (initialText && String(initialText).trim()) {
+      ov.querySelector('#qi_paste').value = String(initialText);
+      ov.querySelector('#qi_parse').click();
+      var prev = ov.querySelector('#qi_prev'); if (prev && prev.scrollIntoView) setTimeout(function () { prev.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
+    }
   }
 
   function renderSermon(panel) {
@@ -2113,7 +2121,21 @@ console.log('[affairs.js] v20260701di');
       loadMembers();
       loadGeneral(); // 설립일(호수 주년 기준) 미리 로드
       render();
+      maybeQtIncoming();
     }).catch(function (e) { root.innerHTML = msgCard('오류', e.message); });
+  }
+
+  // 북마클릿이 du.plus 페이지 본문을 window.name 으로 실어 보내면, 여기서 받아 가져오기 모달을 자동으로 연다.
+  function maybeQtIncoming() {
+    try {
+      var pref = 'QTIMPORT::';
+      var nm = String(window.name || '');
+      if (nm.indexOf(pref) !== 0) return;
+      var txt = nm.slice(pref.length);
+      window.name = '';                       // 1회성: 즉시 비움
+      tab = 'sermon'; render();
+      qtImportModal(txt);
+    } catch (e) { /* noop */ }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
