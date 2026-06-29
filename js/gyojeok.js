@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701bf
+ * 콘솔: [gyojeok.js] v20260701bg
  */
-console.log('[gyojeok.js] v20260701bf');
+console.log('[gyojeok.js] v20260701bg');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -399,18 +399,24 @@ console.log('[gyojeok.js] v20260701bf');
       if (!activeHead) {
         return '<div id="fam_canvas" style="border:2px dashed #cdd7e3;border-radius:12px;padding:34px 16px;text-align:center;color:#9aa5b1;font-size:.9rem;min-height:160px;display:flex;align-items:center;justify-content:center">이름을 여기로 <b style="margin:0 4px">드래그</b>하면 그 사람이 <b style="margin:0 4px">세대주</b>가 되어 가계도가 시작됩니다.<br>또는 왼쪽 <b style="margin:0 4px">‘세대주’</b> 탭에서 가정을 선택하세요.</div>';
       }
-      var fam = familyOf(activeHead).slice().sort(function (a, b) { var ah = a['이름'] === activeHead ? 0 : (ORD[a['관계']] || 50), bh = b['이름'] === activeHead ? 0 : (ORD[b['관계']] || 50); if (ah !== bh) return ah - bh; return birthOf(a).localeCompare(birthOf(b)); });
-      var rowsHtml = fam.map(function (m) {
-        var isH = m['이름'] === activeHead;
-        return '<div class="fam-node"' + (isH ? '' : ' draggable="true"') + ' data-id="' + esc(m['교적ID']) + '" style="display:flex;align-items:center;gap:6px;padding:5px 0 5px ' + (isH ? '0' : '18px') + ';cursor:' + (isH ? 'default' : 'grab') + '">' +
-          (isH ? '<span style="color:#c9a227;font-size:1.05rem">⌂</span>' : '<span style="color:#cbd5e1">└</span>') +
-          '<b style="' + (isH ? 'color:var(--accent,#032257);font-size:1.02rem' : '') + '">' + esc(m['이름']) + '</b>' +
-          '<span style="font-size:.74rem;color:#7b8794">' + (isH ? '세대주' : esc(m['관계'] || '관계 미지정')) + ' · ' + esc(birthOf(m)) + '</span>' +
-          (isH ? '' : '<button class="fam-x" data-id="' + esc(m['교적ID']) + '" title="가족에서 제외" style="margin-left:auto;border:0;background:none;color:#c0392b;cursor:pointer;font-size:.85rem">✕</button>') +
-          '</div>';
-      }).join('');
+      var fam = familyOf(activeHead);
+      var headM = byName(fam, activeHead);
+      var spouse = null;
+      for (var i = 0; i < fam.length; i++) { var f = fam[i]; if (f === headM) continue; if (f['관계'] === '배우자' || (headM && f['매칭키'] && f['매칭키'] === headM['배우자매칭키'])) { spouse = f; break; } }
+      var others = fam.filter(function (m) { return m !== headM && m !== spouse; }).sort(function (a, b) { var ao = ORD[a['관계']] || 50, bo = ORD[b['관계']] || 50; if (ao !== bo) return ao - bo; return birthOf(a).localeCompare(birthOf(b)); });
+      function memNode(m, kind) { // kind: 'head' | 'spouse' | 'child'
+        var isHead = kind === 'head';
+        var icon = kind === 'head' ? '<span style="color:#c9a227;font-size:1.05rem">⌂</span>' : (kind === 'spouse' ? '<span style="color:#e0639b">💑</span>' : '<span style="color:#cbd5e1">└</span>');
+        return '<span class="fam-node"' + (isHead ? '' : ' draggable="true"') + ' data-id="' + esc(m['교적ID']) + '" style="display:inline-flex;align-items:center;gap:6px;cursor:' + (isHead ? 'default' : 'grab') + '">' +
+          icon + '<b style="' + (isHead ? 'color:var(--accent,#032257);font-size:1.02rem' : '') + '">' + esc(m['이름']) + '</b>' +
+          '<span style="font-size:.74rem;color:#7b8794">' + (isHead ? '세대주' : esc(m['관계'] || (kind === 'spouse' ? '배우자' : '관계 미지정'))) + ' · ' + esc(birthOf(m)) + '</span>' +
+          (isHead ? '' : '<button class="fam-x" data-id="' + esc(m['교적ID']) + '" title="가족에서 제외" style="border:0;background:none;color:#c0392b;cursor:pointer;font-size:.82rem">✕</button>') +
+          '</span>';
+      }
+      var topLine = '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:4px 0">' + (headM ? memNode(headM, 'head') : '') + (spouse ? '<span style="color:#cdd5e1">—</span>' + memNode(spouse, 'spouse') : '') + '</div>';
+      var childRows = others.map(function (m) { return '<div style="padding:5px 0 5px 18px">' + memNode(m, 'child') + '</div>'; }).join('');
       return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="color:var(--accent,#032257)">' + esc(activeHead) + '님 가정 (' + fam.length + '명)</b><button class="btn btn-line" id="fam_close" style="padding:3px 11px;font-size:.78rem">✕ 닫기</button></div>' +
-        '<div id="fam_canvas" style="border:2px dashed #b9cdee;border-radius:12px;padding:12px 14px;min-height:130px;background:#fafcff">' + rowsHtml + '<div style="font-size:.76rem;color:#9aa5b1;margin-top:8px;border-top:1px dashed #e1e7ef;padding-top:6px">＋ 왼쪽에서 이름을 여기로 드래그하면 이 가정에 추가됩니다</div></div>';
+        '<div id="fam_canvas" style="border:2px dashed #b9cdee;border-radius:12px;padding:12px 14px;min-height:130px;background:#fafcff">' + topLine + childRows + '<div style="font-size:.76rem;color:#9aa5b1;margin-top:8px;border-top:1px dashed #e1e7ef;padding-top:6px">＋ 왼쪽에서 이름을 여기로 드래그하면 이 가정에 추가됩니다</div></div>';
     }
     function wireLeft() {
       Array.prototype.forEach.call(panel.querySelectorAll('.fam-chip'), function (c) {
