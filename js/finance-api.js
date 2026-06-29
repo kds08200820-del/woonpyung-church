@@ -1,9 +1,9 @@
 /* finance-api.js — 재정/교적 데이터 계층 (Supabase 어댑터)
  * 기존 Apps Script(WPF.call)를 그대로 대체: 같은 action 이름·반환 형태를 Supabase로 처리.
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
- * 콘솔: [finance-api.js] v20260701bh (Supabase)
+ * 콘솔: [finance-api.js] v20260701bi (Supabase)
  */
-console.log('[finance-api.js] v20260701bh (Supabase)');
+console.log('[finance-api.js] v20260701bi (Supabase)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -62,10 +62,10 @@ window.WPF = (function () {
       '세대주': r.head, '관계': r.relation, '배우자': r.spouse, '배우자매칭키': r.spouse_key,
       '그룹': r.groups, '직책': r.role, '신급': r.grade, '성별': r.sex, '휴대폰': r.phone,
       '주소': r.address, '회원상태': r.status, '사진': r.photo, '세례일': r.baptism_date,
-      '임직일': r.ordination_date, '소속그룹': r.belong_groups
+      '임직일': r.ordination_date, '소속그룹': r.belong_groups, '부모세대': r.origin_head
     };
   }
-  var GJ_MAP = { '이름': 'name', '생년월일': 'birth', '매칭키': 'member_key', '세대주': 'head', '관계': 'relation', '배우자': 'spouse', '배우자매칭키': 'spouse_key', '그룹': 'groups', '직책': 'role', '신급': 'grade', '성별': 'sex', '휴대폰': 'phone', '주소': 'address', '회원상태': 'status', '사진': 'photo', '세례일': 'baptism_date', '임직일': 'ordination_date', '소속그룹': 'belong_groups' };
+  var GJ_MAP = { '이름': 'name', '생년월일': 'birth', '매칭키': 'member_key', '세대주': 'head', '관계': 'relation', '배우자': 'spouse', '배우자매칭키': 'spouse_key', '그룹': 'groups', '직책': 'role', '신급': 'grade', '성별': 'sex', '휴대폰': 'phone', '주소': 'address', '회원상태': 'status', '사진': 'photo', '세례일': 'baptism_date', '임직일': 'ordination_date', '소속그룹': 'belong_groups', '부모세대': 'origin_head' };
   var GJ_DATECOLS = { birth: 1, baptism_date: 1, ordination_date: 1 };
   function memOut(r) { return { name: r.name, key: r.member_key, birth: r.birth, group: r.groups, role: r.role, spouse: r.spouse, spouseKey: r.spouse_key, head: r.head, rel: r.relation, address: r.address || '' }; }
   function recOut(r) { return { id: r.id, no: r.receipt_no, fy: r.fy, key: r.member_key, name: r.donor_name, birth: r.donor_birth, rrn: r.donor_rrn, addr: r.donor_addr, includedKeys: r.included_keys || [], detail: r.detail, spouse: r.spouse, period: r.period_label, amount: r.amount, cnt: r.cnt, method: r.method, status: r.status, issuedBy: r.issued_by, issuedAt: r.issued_at, cancelledAt: r.cancelled_at }; }
