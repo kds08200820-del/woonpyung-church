@@ -165,7 +165,7 @@ console.log('[affairs.js] v20260701di');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['library', '나의 도서관'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['library', '나의 도서관'], ['bible', '📖 성경 보기'], ['settings', '설정']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -218,6 +218,7 @@ console.log('[affairs.js] v20260701di');
     else if (tab === 'worship') renderSermon(p, { worship: true });
     else if (tab === 'bulletin') renderBulletinAdmin(p);
     else if (tab === 'library') renderLibrary(p);
+    else if (tab === 'bible') renderBibleViewer(p);
     else if (tab === 'settings') renderSettings(p);
     else renderManager(p, TYPES[tab]);
   }
@@ -3150,6 +3151,153 @@ console.log('[affairs.js] v20260701di');
       months.push({ month: year + '-' + mno, guide: cell(r, 1).txt, offering: cell(r, 2).txt, parking: cell(r, 5).txt, prayer: prayer });
     }
     return { year: year, months: months };
+  }
+
+  // ====================================================================
+  //  성경 보기 — 3단 뷰어 (책 → 장 → 본문, 개역개정4판 / 우리말성경)
+  // ====================================================================
+  var BBLK = [
+    [1,'창세기','창',50,'ot'],[2,'출애굽기','출',40,'ot'],[3,'레위기','레',27,'ot'],
+    [4,'민수기','민',36,'ot'],[5,'신명기','신',34,'ot'],[6,'여호수아','수',24,'ot'],
+    [7,'사사기','삿',21,'ot'],[8,'룻기','룻',4,'ot'],[9,'사무엘상','삼상',31,'ot'],
+    [10,'사무엘하','삼하',24,'ot'],[11,'열왕기상','왕상',22,'ot'],[12,'열왕기하','왕하',25,'ot'],
+    [13,'역대상','대상',29,'ot'],[14,'역대하','대하',36,'ot'],[15,'에스라','스',10,'ot'],
+    [16,'느헤미야','느',13,'ot'],[17,'에스더','에',10,'ot'],[18,'욥기','욥',42,'ot'],
+    [19,'시편','시',150,'ot'],[20,'잠언','잠',31,'ot'],[21,'전도서','전',12,'ot'],
+    [22,'아가','아',8,'ot'],[23,'이사야','사',66,'ot'],[24,'예레미야','렘',52,'ot'],
+    [25,'예레미야애가','애',5,'ot'],[26,'에스겔','겔',48,'ot'],[27,'다니엘','단',12,'ot'],
+    [28,'호세아','호',14,'ot'],[29,'요엘','욜',3,'ot'],[30,'아모스','암',9,'ot'],
+    [31,'오바댜','옵',1,'ot'],[32,'요나','욘',4,'ot'],[33,'미가','미',7,'ot'],
+    [34,'나훔','나',3,'ot'],[35,'하박국','합',3,'ot'],[36,'스바냐','습',3,'ot'],
+    [37,'학개','학',2,'ot'],[38,'스가랴','슥',14,'ot'],[39,'말라기','말',4,'ot'],
+    [40,'마태복음','마',28,'nt'],[41,'마가복음','막',16,'nt'],[42,'누가복음','눅',24,'nt'],
+    [43,'요한복음','요',21,'nt'],[44,'사도행전','행',28,'nt'],[45,'로마서','롬',16,'nt'],
+    [46,'고린도전서','고전',16,'nt'],[47,'고린도후서','고후',13,'nt'],[48,'갈라디아서','갈',6,'nt'],
+    [49,'에베소서','엡',6,'nt'],[50,'빌립보서','빌',4,'nt'],[51,'골로새서','골',4,'nt'],
+    [52,'데살로니가전서','살전',5,'nt'],[53,'데살로니가후서','살후',3,'nt'],[54,'디모데전서','딤전',6,'nt'],
+    [55,'디모데후서','딤후',4,'nt'],[56,'디도서','딛',3,'nt'],[57,'빌레몬서','몬',1,'nt'],
+    [58,'히브리서','히',13,'nt'],[59,'야고보서','약',5,'nt'],[60,'베드로전서','벧전',5,'nt'],
+    [61,'베드로후서','벧후',3,'nt'],[62,'요한일서','요일',5,'nt'],[63,'요한이서','요이',1,'nt'],
+    [64,'요한삼서','요삼',1,'nt'],[65,'유다서','유',1,'nt'],[66,'요한계시록','계',22,'nt']
+  ];
+
+  function renderBibleViewer(panel) {
+    var bvTrans = 'gyr';
+    var bvBook  = 1;
+    var bvChap  = 1;
+
+    panel.innerHTML =
+      '<style>' +
+      '.bv-wrap{display:flex;height:calc(100vh - 210px);min-height:500px;border:1px solid #e3e7ee;border-radius:0 0 12px 12px;overflow:hidden;background:#fff}' +
+      '.bv-books{width:68px;flex-shrink:0;overflow-y:auto;background:#1a2b4a;padding:5px 3px}' +
+      '.bv-bb{display:block;width:100%;padding:5px 2px;background:none;border:none;color:#8ea8cc;font-size:.72rem;font-weight:700;cursor:pointer;border-radius:5px;text-align:center;margin:1px 0;line-height:1.3}' +
+      '.bv-bb:hover{background:#2a3f60;color:#c8d8f0}' +
+      '.bv-bb.on{background:#3a6db5;color:#fff}' +
+      '.bv-sep{font-size:.58rem;color:#4a6080;text-align:center;padding:6px 2px 2px;font-weight:700;letter-spacing:.06em}' +
+      '.bv-chaps{width:50px;flex-shrink:0;overflow-y:auto;background:#f4f7fb;padding:5px 3px;border-right:1px solid #e3e7ee}' +
+      '.bv-cb{display:block;width:100%;padding:4px 2px;background:none;border:none;color:#3a4a63;font-size:.8rem;font-weight:600;cursor:pointer;border-radius:4px;text-align:center;margin:1px 0}' +
+      '.bv-cb:hover{background:#dde6f5}' +
+      '.bv-cb.on{background:#032257;color:#fff}' +
+      '.bv-text{flex:1;overflow-y:auto;padding:16px 22px;background:#fdfcf8;font-family:\'Noto Serif KR\',serif}' +
+      '.bv-thead{font-size:.86rem;font-weight:700;color:#032257;padding-bottom:10px;border-bottom:1px solid #e8ecf2;margin-bottom:13px;display:flex;justify-content:space-between;align-items:center}' +
+      '.bv-verse{margin-bottom:7px;font-size:.99rem;line-height:1.95;color:#1a1a1a}' +
+      '.bv-vn{display:inline-block;font-size:.68rem;font-weight:800;color:#3a6db5;min-width:25px;vertical-align:top;margin-top:5px}' +
+      '.bv-vt{display:inline}' +
+      '.bv-hint{color:#9aa5b1;font-size:.88rem;padding:20px;font-style:italic}' +
+      '</style>' +
+      '<div style="display:flex;flex-direction:column;gap:0">' +
+      '<div style="display:flex;gap:8px;align-items:center;padding:10px 14px;border:1px solid #e3e7ee;border-bottom:none;background:#f8fafc;border-radius:12px 12px 0 0">' +
+      '<span style="font-size:.82rem;font-weight:700;color:#3a4a63">번역:</span>' +
+      '<button class="bv-trans" data-v="gyr" style="padding:5px 14px;border:none;border-radius:999px;cursor:pointer;font-size:.83rem;font-weight:700;background:#032257;color:#fff">개역개정4판</button>' +
+      '<button class="bv-trans" data-v="urm" style="padding:5px 14px;border:none;border-radius:999px;cursor:pointer;font-size:.83rem;font-weight:700;background:#eef2f7;color:#3a4a63">우리말성경</button>' +
+      '</div>' +
+      '<div class="bv-wrap">' +
+      '<div class="bv-books" id="bv_books"></div>' +
+      '<div class="bv-chaps" id="bv_chaps"></div>' +
+      '<div class="bv-text" id="bv_text"><p class="bv-hint">왼쪽에서 성경책을 선택하세요.</p></div>' +
+      '</div></div>';
+
+    var booksEl = panel.querySelector('#bv_books');
+    var chapsEl = panel.querySelector('#bv_chaps');
+    var textEl  = panel.querySelector('#bv_text');
+
+    function renderBooks() {
+      var html = '<div class="bv-sep">구약</div>';
+      BBLK.forEach(function (b) {
+        if (b[0] === 40) html += '<div class="bv-sep" style="margin-top:5px">신약</div>';
+        html += '<button class="bv-bb' + (b[0] === bvBook ? ' on' : '') + '" data-n="' + b[0] + '">' + b[2] + '</button>';
+      });
+      booksEl.innerHTML = html;
+      Array.prototype.forEach.call(booksEl.querySelectorAll('.bv-bb'), function (btn) {
+        btn.onclick = function () { selectBook(Number(btn.dataset.n)); };
+      });
+      var sel = booksEl.querySelector('.bv-bb.on');
+      if (sel) sel.scrollIntoView({ block: 'nearest' });
+    }
+
+    function renderChaps() {
+      var bk = BBLK[bvBook - 1];
+      var html = '';
+      for (var c = 1; c <= bk[3]; c++) {
+        html += '<button class="bv-cb' + (c === bvChap ? ' on' : '') + '" data-c="' + c + '">' + c + '</button>';
+      }
+      chapsEl.innerHTML = html;
+      Array.prototype.forEach.call(chapsEl.querySelectorAll('.bv-cb'), function (btn) {
+        btn.onclick = function () { selectChap(Number(btn.dataset.c)); };
+      });
+      var sel = chapsEl.querySelector('.bv-cb.on');
+      if (sel) sel.scrollIntoView({ block: 'nearest' });
+    }
+
+    function selectBook(n) { bvBook = n; bvChap = 1; renderBooks(); renderChaps(); loadAndShow(); }
+    function selectChap(c) { bvChap = c; renderChaps(); loadAndShow(); }
+
+    function getCached() { return bvTrans === 'gyr' ? window.BIBLE_GYR : window.BIBLE_URM; }
+
+    function loadAndShow() {
+      var d = getCached();
+      if (d) { showVerses(d); return; }
+      textEl.innerHTML = '<p class="bv-hint">성경 데이터 로드 중… (최초 1회, 약 5~10초)</p>';
+      fetch('data/bible-' + bvTrans + '.json')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (bvTrans === 'gyr') window.BIBLE_GYR = data;
+          else window.BIBLE_URM = data;
+          showVerses(data);
+        })
+        .catch(function () {
+          textEl.innerHTML = '<p style="color:#e74c3c;padding:20px">데이터 로드 실패 — 새로고침 후 다시 시도해 주세요.</p>';
+        });
+    }
+
+    function showVerses(data) {
+      var bk     = BBLK[bvBook - 1];
+      var verses = (data[bk[2]] || [])[bvChap - 1] || [];
+      var tname  = bvTrans === 'gyr' ? '개역개정4판' : '우리말성경';
+      var html   = '<div class="bv-thead"><span>' + esc(bk[1]) + ' ' + bvChap + '장</span>' +
+                   '<span style="font-size:.74rem;color:#9aa5b1;font-weight:400">' + tname + ' · ' + verses.length + '절</span></div>';
+      html += verses.map(function (v, i) {
+        return '<div class="bv-verse"><span class="bv-vn">' + (i + 1) + '</span><span class="bv-vt">' + esc(v) + '</span></div>';
+      }).join('');
+      if (!verses.length) html += '<p class="bv-hint">해당 장의 데이터가 없습니다.</p>';
+      textEl.innerHTML = html;
+      textEl.scrollTop = 0;
+    }
+
+    Array.prototype.forEach.call(panel.querySelectorAll('.bv-trans'), function (btn) {
+      btn.onclick = function () {
+        bvTrans = btn.dataset.v;
+        Array.prototype.forEach.call(panel.querySelectorAll('.bv-trans'), function (b) {
+          b.style.background = b.dataset.v === bvTrans ? '#032257' : '#eef2f7';
+          b.style.color      = b.dataset.v === bvTrans ? '#fff'    : '#3a4a63';
+        });
+        loadAndShow();
+      };
+    });
+
+    renderBooks();
+    renderChaps();
+    loadAndShow();
   }
 
   // ====================================================================
