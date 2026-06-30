@@ -1376,14 +1376,47 @@ console.log('[affairs.js] v20260701di');
     var pr = p.date ? api('GET', 'sermon_illustrations?ref_date=eq.' + encodeURIComponent(p.date) + '&select=id').then(function (rows) { return (rows && rows.length) ? api('PATCH', 'sermon_illustrations?id=eq.' + rows[0].id, payload, 'return=minimal') : ins(); }) : ins();
     pr.then(function () { if (onDone) onDone(); }).catch(function (e) { if (onErr) onErr(e); });
   }
-  // 예화 클립 모음 모달. opts.onInsert(html) 있으면 '본문에 삽입' 버튼 노출.
+  // 출처 문자열 "저자, 「책제목」(출판사)" → {author, book, publisher}
+  function parseIllusSource(src) {
+    src = String(src || '').trim();
+    var book = '', author = '', publisher = '', m;
+    m = src.match(/[「『]([^」』]+)[」』]/); if (m) book = m[1].trim();
+    var pubs = src.match(/[(（]([^)）]+)[)）]/g);
+    if (pubs && pubs.length) publisher = pubs[pubs.length - 1].replace(/[()（）]/g, '').trim();
+    var before = book ? src.split(/[「『]/)[0] : (publisher ? src.split(/[(（]/)[0] : src);
+    author = before.replace(/[,，]\s*$/, '').trim();
+    return { author: author, book: book, publisher: publisher, raw: src };
+  }
+  function illusBookLine(r) { var s = parseIllusSource(r.source); return [s.author, s.book ? '「' + s.book + '」' : '', s.publisher ? '(' + s.publisher + ')' : ''].filter(Boolean).join(' '); }
+  function copyToClipboard(t, btn, okText) { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { if (btn) btn.textContent = okText || '✓ 복사됨'; }, function () { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); if (btn) btn.textContent = okText || '✓ 복사됨'; } catch (e) {} document.body.removeChild(ta); }); }
+
+  // 예화 클립 한 건 보기(전문)
+  function illustrationViewModal(r) {
+    var meta = [fmtD(r.ref_date), r.scripture, r.title].filter(Boolean).map(esc).join(' · ');
+    var book = esc(illusBookLine(r));
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9800;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+    ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:680px;width:100%;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">📖 예화 클립</h3><button class="btn btn-line" id="iv_close" style="padding:3px 11px">닫기</button></div>' +
+      (meta ? '<div style="font-size:.78rem;color:#7b8794;margin-bottom:2px">' + meta + '</div>' : '') +
+      (book ? '<div style="font-size:.88rem;color:#7a5d27;font-weight:600;margin-bottom:12px">' + book + '</div>' : '') +
+      '<div style="white-space:pre-wrap;line-height:1.85;font-size:.97rem;color:#1f2937;max-height:62vh;overflow:auto">' + esc(r.content || '') + '</div>' +
+      '<div style="margin-top:14px;text-align:right"><button class="btn btn-line" id="iv_copy" style="padding:6px 14px">📋 복사</button></div></div>';
+    document.body.appendChild(ov);
+    var close = pushBackClose(function () { ov.remove(); });
+    ov.querySelector('#iv_close').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    ov.querySelector('#iv_copy').onclick = function () { copyToClipboard((r.content || '') + (r.source ? '\n— ' + r.source : ''), this); };
+  }
+
+  // 예화 클립 검색·선택 모달. opts.onPick(row) 있으면 선택 버튼(라벨 opts.pickLabel) 노출.
   function illustrationsModal(opts) {
     opts = opts || {};
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
-    ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:760px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;color:var(--accent,#032257)">🗂 예화 클립 모음</h3><button class="btn btn-line" id="il_close" style="padding:3px 11px">닫기</button></div>' +
-      '<input type="text" id="il_q" placeholder="🔍 내용·본문·출처 검색" style="width:100%;padding:9px 13px;border:1px solid #e2e8f0;border-radius:9px;font:inherit;margin:6px 0 12px;outline:none">' +
+    ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:720px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;color:var(--accent,#032257)">🔍 예화 검색</h3><button class="btn btn-line" id="il_close" style="padding:3px 11px">닫기</button></div>' +
+      '<input type="text" id="il_q" placeholder="🔍 제목·저자·출판사·본문·내용 검색" style="width:100%;padding:9px 13px;border:1px solid #e2e8f0;border-radius:9px;font:inherit;margin:6px 0 12px;outline:none">' +
       '<div id="il_list"><p class="qt-loading">불러오는 중…</p></div></div>';
     document.body.appendChild(ov);
     var close = pushBackClose(function () { ov.remove(); });
@@ -1396,19 +1429,20 @@ console.log('[affairs.js] v20260701di');
       var box = ov.querySelector('#il_list');
       if (!all.length) { box.innerHTML = '<div class="fin-card"><p style="color:#9aa5b1;margin:0">보관된 예화 클립이 없습니다. 생명의삶 자동분류 시 자동으로 모입니다.</p></div>'; return; }
       box.innerHTML = rows.length ? rows.map(function (r) {
-        var head = [fmtD(r.ref_date), r.scripture, r.title].filter(Boolean).map(esc).join(' · ');
-        return '<div class="fin-card" style="padding:14px 16px">' +
-          (head ? '<div style="font-size:.76rem;color:#7b8794;margin-bottom:6px">' + head + '</div>' : '') +
-          '<div style="white-space:pre-wrap;line-height:1.7;font-size:.92rem;color:#1f2937;max-height:200px;overflow:auto">' + esc(r.content || '') + '</div>' +
-          (r.source ? '<div style="font-size:.8rem;color:#7a5d27;margin-top:7px">— ' + esc(r.source) + '</div>' : '') +
-          '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn btn-line il-copy" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📋 복사</button>' +
-          (opts.onInsert ? '<button class="btn btn-solid il-ins" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">⬇ 원고에 삽입</button>' : '') +
-          '<button class="btn btn-line il-del" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">삭제</button></div></div>';
+        var head = [fmtD(r.ref_date), r.scripture].filter(Boolean).map(esc).join(' · ');
+        var book = esc(illusBookLine(r));
+        return '<div class="fin-card" style="padding:13px 15px">' +
+          (head ? '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:3px">' + head + '</div>' : '') +
+          (book ? '<div style="font-size:.9rem;color:#7a5d27;font-weight:700;margin-bottom:6px">' + book + '</div>' : '') +
+          '<div style="white-space:pre-wrap;line-height:1.6;font-size:.86rem;color:#41506a;max-height:96px;overflow:hidden;position:relative">' + esc(r.content || '') + '</div>' +
+          '<div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap"><button class="btn btn-line il-view" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 전문 보기</button>' +
+          (opts.onPick ? '<button class="btn btn-solid il-pick" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">' + esc(opts.pickLabel || '선택') + '</button>' : '') +
+          '<button class="btn btn-line il-copy" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📋 복사</button></div></div>';
       }).join('') : '<p style="color:#9aa5b1">검색 결과가 없습니다.</p>';
       var byId = {}; all.forEach(function (r) { byId[r.id] = r; });
-      Array.prototype.forEach.call(box.querySelectorAll('.il-copy'), function (b) { b.onclick = function () { var r = byId[b.dataset.id]; var t = (r.content || '') + (r.source ? '\n— ' + r.source : ''); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { b.textContent = '✓ 복사됨'; }, function () { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); b.textContent = '✓ 복사됨'; } catch (e) {} document.body.removeChild(ta); }); }; });
-      Array.prototype.forEach.call(box.querySelectorAll('.il-ins'), function (b) { b.onclick = function () { var r = byId[b.dataset.id]; opts.onInsert('<blockquote>' + esc(r.content || '').replace(/\n/g, '<br>') + (r.source ? '<br><span style="font-size:.85em;color:#7a5d27">— ' + esc(r.source) + '</span>' : '') + '</blockquote><p><br></p>'); close(); }; });
-      Array.prototype.forEach.call(box.querySelectorAll('.il-del'), function (b) { b.onclick = function () { if (!confirm('이 예화 클립을 삭제할까요?')) return; api('DELETE', 'sermon_illustrations?id=eq.' + b.dataset.id, null, 'return=minimal').then(function () { all = all.filter(function (r) { return String(r.id) !== String(b.dataset.id); }); draw(); }).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.il-view'), function (b) { b.onclick = function () { illustrationViewModal(byId[b.dataset.id]); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.il-copy'), function (b) { b.onclick = function () { var r = byId[b.dataset.id]; copyToClipboard((r.content || '') + (r.source ? '\n— ' + r.source : ''), b); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.il-pick'), function (b) { b.onclick = function () { opts.onPick(byId[b.dataset.id]); close(); }; });
     }
     ov.querySelector('#il_q').oninput = draw;
     api('GET', 'sermon_illustrations?select=*&order=ref_date.desc,created_at.desc').then(function (rows) { all = rows || []; draw(); }).catch(function (e) {
@@ -1417,13 +1451,13 @@ console.log('[affairs.js] v20260701di');
     });
   }
 
-  // 예화 클립 탭(전체 페이지): 보관된 예화 클립 정리·검색·복사·삭제
+  // 예화 클립 탭(전체 페이지): 목차형 표(일자·제목·저자·출판사·본문) + 보기·삭제
   function renderIllustrations(panel) {
     panel.innerHTML =
       '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">' +
       '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">🗂 예화 클립</b>' +
-      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">생명의삶 자동분류에서 모은 예화 클립입니다. 설교 작성 중 오른쪽 ‘예화 클립 모음 보기’에서 원고에 삽입할 수 있습니다.</div></div>' +
-      '<input type="text" id="il_q" placeholder="🔍 내용·본문·출처 검색" style="padding:9px 13px;border:1px solid #e2e8f0;border-radius:9px;font:inherit;min-width:230px;outline:none"></div>' +
+      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">생명의삶 자동분류에서 모은 예화 클립입니다. <b>보기</b>로 전문을 확인하고, 설교 작성 중에는 ‘예화 검색’으로 원고에 삽입할 수 있습니다.</div></div>' +
+      '<input type="text" id="il_q" placeholder="🔍 제목·저자·출판사·본문 검색" style="padding:9px 13px;border:1px solid #e2e8f0;border-radius:9px;font:inherit;min-width:230px;outline:none"></div>' +
       '<div id="il_list"><p class="qt-loading">불러오는 중…</p></div>';
     var all = [];
     function draw() {
@@ -1431,17 +1465,19 @@ console.log('[affairs.js] v20260701di');
       var rows = all.filter(function (r) { return !q || ((r.content || '') + (r.scripture || '') + (r.source || '') + (r.title || '')).toLowerCase().indexOf(q) >= 0; });
       var box = panel.querySelector('#il_list');
       if (!all.length) { box.innerHTML = '<div class="fin-card"><p style="color:#9aa5b1;margin:0">보관된 예화 클립이 없습니다. <b>설교관리 → 설교 시작</b> 후 오른쪽 ‘생명의삶 자동분류’로 자료를 분류하면 예화 클립이 여기에 모입니다.</p></div>'; return; }
-      box.innerHTML = '<div class="fin-card" style="margin-bottom:10px"><b>예화 클립 (' + all.length + '개)</b></div>' + (rows.length ? rows.map(function (r) {
-        var head = [fmtD(r.ref_date), r.scripture, r.title].filter(Boolean).map(esc).join(' · ');
-        return '<div class="fin-card" style="padding:15px 17px">' +
-          (head ? '<div style="font-size:.77rem;color:#7b8794;margin-bottom:7px">' + head + '</div>' : '') +
-          '<div style="white-space:pre-wrap;line-height:1.75;font-size:.94rem;color:#1f2937">' + esc(r.content || '') + '</div>' +
-          (r.source ? '<div style="font-size:.82rem;color:#7a5d27;margin-top:8px">— ' + esc(r.source) + '</div>' : '') +
-          '<div style="display:flex;gap:6px;margin-top:11px"><button class="btn btn-line il-copy" data-id="' + esc(r.id) + '" style="padding:4px 12px;font-size:.78rem">📋 복사</button>' +
-          '<button class="btn btn-line il-del" data-id="' + esc(r.id) + '" style="padding:4px 12px;font-size:.78rem">삭제</button></div></div>';
-      }).join('') : '<p style="color:#9aa5b1;padding:6px 2px">검색 결과가 없습니다.</p>');
+      box.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>예화 클립 (' + all.length + '개)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th style="white-space:nowrap">일자</th><th>제목(책)</th><th style="white-space:nowrap">저자</th><th>출판사</th><th style="white-space:nowrap">본문</th><th>관리</th></tr></thead><tbody>' +
+        (rows.length ? rows.map(function (r) {
+          var s = parseIllusSource(r.source);
+          return '<tr><td style="white-space:nowrap">' + esc(fmtD(r.ref_date) || '') + '</td>' +
+            '<td><b class="il-view" data-id="' + esc(r.id) + '" title="클릭하면 전문을 봅니다" style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(s.book || r.title || '(제목 없음)') + '</b></td>' +
+            '<td style="white-space:nowrap">' + esc(s.author || '—') + '</td>' +
+            '<td>' + esc(s.publisher || '—') + '</td>' +
+            '<td style="white-space:nowrap">' + esc(r.scripture || '—') + '</td>' +
+            '<td style="white-space:nowrap"><button class="btn btn-solid il-view" data-id="' + esc(r.id) + '" style="padding:4px 12px;font-size:.78rem">📖 보기</button> <button class="btn btn-line il-del" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">삭제</button></td></tr>';
+        }).join('') : '<tr><td colspan="6" style="color:#9aa5b1;padding:10px">검색 결과가 없습니다.</td></tr>') +
+        '</tbody></table></div></div>';
       var byId = {}; all.forEach(function (r) { byId[r.id] = r; });
-      Array.prototype.forEach.call(box.querySelectorAll('.il-copy'), function (b) { b.onclick = function () { var r = byId[b.dataset.id]; var t = (r.content || '') + (r.source ? '\n— ' + r.source : ''); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { b.textContent = '✓ 복사됨'; }, function () { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); b.textContent = '✓ 복사됨'; } catch (e) {} document.body.removeChild(ta); }); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.il-view'), function (b) { b.onclick = function () { illustrationViewModal(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.il-del'), function (b) { b.onclick = function () { if (!confirm('이 예화 클립을 삭제할까요?')) return; api('DELETE', 'sermon_illustrations?id=eq.' + b.dataset.id, null, 'return=minimal').then(function () { all = all.filter(function (r) { return String(r.id) !== String(b.dataset.id); }); draw(); }).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
     }
     panel.querySelector('#il_q').oninput = draw;
@@ -1658,7 +1694,7 @@ console.log('[affairs.js] v20260701di');
         '<div style="display:flex;gap:6px;margin-top:7px"><button type="button" class="btn btn-solid" id="qtc_run" style="flex:1;padding:9px;font-weight:700">🔎 분류</button><button type="button" class="btn btn-line" id="qtc_clear" style="padding:9px 12px">지우기</button></div>' +
         '<div id="qtc_msg" style="font-size:.76rem;margin-top:7px;min-height:0;line-height:1.5"></div>' +
         '<div id="qtc_result"></div>' +
-        '<div style="border-top:1px solid #eef1f5;margin:13px 0 0;padding-top:11px"><button type="button" class="btn btn-line" id="qtc_illus" style="width:100%;padding:9px">🗂 예화 클립 모음 보기</button></div>' +
+        '<div style="border-top:1px solid #eef1f5;margin:13px 0 0;padding-top:11px"><button type="button" class="btn btn-line" id="qtc_illus" style="width:100%;padding:9px">🔍 예화 검색·삽입</button></div>' +
         '</div></div>' +
         '</div>';
       document.body.appendChild(ov);
@@ -1928,7 +1964,7 @@ console.log('[affairs.js] v20260701di');
 
       // ── 생명의삶 자동분류 패널 ──
       ov.querySelector('#qtc_clear').onclick = function () { ov.querySelector('#qtc_paste').value = ''; ov.querySelector('#qtc_msg').textContent = ''; ov.querySelector('#qtc_result').innerHTML = ''; };
-      ov.querySelector('#qtc_illus').onclick = function () { illustrationsModal({ onInsert: function (html) { exec('insertHTML', html); } }); };
+      ov.querySelector('#qtc_illus').onclick = function () { illustrationsModal({ pickLabel: '⬇ 원고에 삽입', onPick: function (r) { exec('insertHTML', '<blockquote>' + esc(r.content || '').replace(/\n/g, '<br>') + (r.source ? '<br><span style="font-size:.85em;color:#7a5d27">— ' + esc(r.source) + '</span>' : '') + '</blockquote><p><br></p>'); } }); };
       ov.querySelector('#qtc_run').onclick = function () {
         var raw = ov.querySelector('#qtc_paste').value || '';
         var msg = ov.querySelector('#qtc_msg'), result = ov.querySelector('#qtc_result');
@@ -2419,7 +2455,7 @@ console.log('[affairs.js] v20260701di');
       COMMITTEE_KEYS.map(function (k, i) { return tI(k, 'bt_com_' + i, com[k]); }).join('') +
       '</div></div>' +
       // 칼럼
-      '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent)">⑦ 신앙과 책 (칼럼)</h4>' +
+      '<div class="fin-card"><h4 style="margin:0 0 10px;color:var(--accent);display:flex;align-items:center;gap:8px;flex-wrap:wrap">⑦ 신앙과 책 (칼럼) <button type="button" class="btn btn-line" id="bt_col_pick" style="padding:4px 11px;font-size:.76rem;font-weight:600">🔍 예화 클립에서 가져오기</button></h4>' +
       tI('제목/출처', 'bt_col_title', d.column_title, '예: 김다위, 「하나님 마음에 맞는 사람」 (두란노)') +
       tA('본문', 'bt_col_body', d.column_body, '칼럼 내용…', 140) + '</div>' +
       // 광고
@@ -2431,6 +2467,16 @@ console.log('[affairs.js] v20260701di');
     function close() { ov.remove(); document.body.style.overflow = ''; }
     ov.querySelector('#bt_close').onclick = close;
     function bmsg(t, c) { var e = ov.querySelector('#bt_msg'); e.style.color = c || '#7b8794'; e.textContent = t; }
+    // ⑦ 신앙과 책: 예화 클립에서 검색해 바로 삽입(제목/출처+본문)
+    var colPick = ov.querySelector('#bt_col_pick');
+    if (colPick) colPick.onclick = function () {
+      illustrationsModal({ pickLabel: '이 책으로 넣기', onPick: function (r) {
+        var t = ov.querySelector('#bt_col_title'), b = ov.querySelector('#bt_col_body');
+        if (t) t.value = r.source || illusBookLine(r) || (r.title || '');
+        if (b) b.value = r.content || '';
+        bmsg('✓ 예화 클립을 신앙과 책에 넣었습니다.', 'green');
+      } });
+    };
 
     // 수요기도회 날짜(그 주 수요일 = 주일+3) 자동 입력. 본문·설교자는 뒤에 유지
     function wedDateStr(bd) { var d = new Date(addDays(bd, 3) + 'T00:00:00'); return d.getFullYear() + '. ' + pad2(d.getMonth() + 1) + '. ' + pad2(d.getDate()); }
