@@ -142,7 +142,7 @@ console.log('[affairs.js] v20260701di');
       table: 'sermons', name: '설교', dateCol: 'sermon_date',
       fields: [
         { k: 'sermon_date', label: '일자', type: 'date' },
-        { k: 'service', label: '예배', type: 'select', opts: ['주일 낮 예배', '주일 밤 예배', '수요예배', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'] },
+        { k: 'service', label: '예배', type: 'select', opts: ['주일 낮 예배', '주일 밤 예배', '수요기도회', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'] },
         { k: 'title', label: '제목', type: 'text' },
         { k: 'scripture', label: '본문(성경)', type: 'text', ph: '예: 요한복음 3:16' },
         { k: 'preacher', label: '설교자', type: 'text', ph: '예: 김동석 목사' },
@@ -512,7 +512,7 @@ console.log('[affairs.js] v20260701di');
     drawList('');
   }
   function selectedGyodok() { try { return JSON.parse(localStorage.getItem('wpc_sel_gyodok') || 'null'); } catch (e) { return null; } }
-  var SVC_OPTS = ['주일 낮 예배', '주일 밤 예배', '수요예배', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'];
+  var SVC_OPTS = ['주일 낮 예배', '주일 밤 예배', '수요기도회', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'];
 
   // 고정 전례문(설교 큐시트 자동 펼침용)
   var APOSTLES_CREED = ['전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며,', '그 외아들 우리 주 예수 그리스도를 믿사오니,', '이는 성령으로 잉태하사 동정녀 마리아에게 나시고,', '본디오 빌라도에게 고난을 받으사, 십자가에 못 박혀 죽으시고, 장사한 지 사흘 만에 죽은 자 가운데서 다시 살아나시며,', '하늘에 오르사, 전능하신 하나님 우편에 앉아 계시다가,', '저리로서 산 자와 죽은 자를 심판하러 오시리라.', '성령을 믿사오며, 거룩한 공회와, 성도가 서로 교통하는 것과,', '죄를 사하여 주시는 것과, 몸이 다시 사는 것과, 영원히 사는 것을 믿사옵나이다. 아멘.'];
@@ -1535,7 +1535,7 @@ console.log('[affairs.js] v20260701di');
   function renderSermon(panel, opts) {
     var worshipMode = !!(opts && opts.worship);
     var WTPL = {}, smView = 'list', smRows = [], calYM = null;
-    var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요예배': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
+    var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요기도회': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#64748b'; }
     function orderCount(r) { try { var a = JSON.parse(r.worship_order || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
     function hasOrder(r) { return orderCount(r) > 0; }
@@ -1648,7 +1648,8 @@ console.log('[affairs.js] v20260701di');
       rec = rec || {};
       var ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto';
-      var svcOpts = SVC_OPTS.map(function (o) { return '<option' + (o === (rec.service || '') ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+      var svcList = SVC_OPTS.slice(); if (rec.service && svcList.indexOf(rec.service) < 0) svcList.unshift(rec.service);   // 옛 명칭(예: 수요예배) 보존
+      var svcOpts = svcList.map(function (o) { return '<option' + (o === (rec.service || '') ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
       ov.innerHTML =
         '<style>' +
         '.sed-wrap{position:relative;padding:22px 24px 70px}' +
@@ -2865,7 +2866,7 @@ console.log('[affairs.js] v20260701di');
       Promise.all([pSerm, pCom, pOff]).then(function (res) {
         var rows = res[0] || [];
         function pick(svc) { for (var i = 0; i < rows.length; i++) if (rows[i].service === svc) return rows[i]; return null; }
-        var sun = pick('주일 낮 예배'), wed = pick('수요예배'), dawn = pick('새벽기도'), qt = pick('매일 QT');
+        var sun = pick('주일 낮 예배'), wed = pick('수요기도회'), dawn = pick('새벽기도'), qt = pick('매일 QT');
         var n = 0, parts = [];
         if (sun) {
           if (sun.title) ov.querySelector('#bt_title').value = sun.title;
