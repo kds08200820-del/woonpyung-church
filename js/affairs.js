@@ -682,6 +682,37 @@ console.log('[affairs.js] v20260701di');
   // 붙여넣은 생명의 삶 본문을 날짜 블록으로 분리 (개인 비공개 보관용)
   function parseQtPaste(text, year) {
     text = String(text || '').replace(/\r\n?/g, '\n');
+
+    // (A) 생명의삶 PLUS PDF 형식: "01"(일) 줄 + "202606"(YYYYMM) 줄 = 그날 시작
+    var lines = text.split('\n');
+    var bnds = [], seen = {};
+    for (var bi = 0; bi < lines.length - 1; bi++) {
+      var dm = lines[bi].trim().match(/^(\d{1,2})$/);
+      var ym = lines[bi + 1].trim().match(/^(20\d{2})(\d{2})$/);
+      if (!dm || !ym) continue;
+      var da0 = Number(dm[1]), mo0 = Number(ym[2]);
+      if (da0 < 1 || da0 > 31 || mo0 < 1 || mo0 > 12) continue;
+      var dt = ym[1] + '-' + ym[2] + '-' + ('0' + da0).slice(-2);
+      if (seen[dt]) continue;                 // 같은 날 머리글 반복 시 첫 번째만
+      seen[dt] = 1; bnds.push({ line: bi, date: dt });
+    }
+    if (bnds.length) {
+      var offs = [], pos = 0;
+      for (var oi = 0; oi < lines.length; oi++) { offs.push(pos); pos += lines[oi].length + 1; }
+      var outP = [];
+      for (var p = 0; p < bnds.length; p++) {
+        var s = offs[bnds[p].line];
+        var e = (p + 1 < bnds.length) ? offs[bnds[p + 1].line] : text.length;
+        var rawP = text.slice(s, e).trim();
+        var refLine = (lines[bnds[p].line + 2] || '').trim();    // 3번째 줄: "요일 본문"
+        var ref = refLine.replace(/^(월|화|수|목|금|토|일)요일\s*/, '').replace(/\s+/g, ' ').replace(/\s*([:：∼~·\-])\s*/g, '$1').replace(/(\d)\s+(\d)/g, '$1$2').trim();
+        if (!bookOf(ref)) ref = '';
+        outP.push({ date: bnds[p].date, title: '', scripture: ref, raw: rawP });
+      }
+      return outP;
+    }
+
+    // (B) 일반(붙여넣기/북마클릿): 줄머리 날짜
     var re = /(?:(\d{4})\s*[.\-\/년]\s*)?(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})\s*일?/g;
     var marks = [], m;
     while ((m = re.exec(text))) {
