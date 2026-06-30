@@ -1510,16 +1510,15 @@ console.log('[affairs.js] v20260701di');
       var rows = all.filter(function (r) { return !q || ((r.content || '') + (r.scripture || '') + (r.source || '') + (r.title || '')).toLowerCase().indexOf(q) >= 0; });
       var box = panel.querySelector('#il_list');
       if (!all.length) { box.innerHTML = '<div class="fin-card"><p style="color:#9aa5b1;margin:0">보관된 예화 클립이 없습니다. <b>설교관리 → 설교 시작</b> 후 오른쪽 ‘생명의삶 자동분류’로 자료를 분류하면 예화 클립이 여기에 모입니다.</p></div>'; return; }
-      box.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>예화 클립 (' + all.length + '개)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th style="white-space:nowrap">일자</th><th>제목(책)</th><th style="white-space:nowrap">저자</th><th>출판사</th><th style="white-space:nowrap">본문</th><th>관리</th></tr></thead><tbody>' +
+      box.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>예화 클립 (' + all.length + '개)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th style="white-space:nowrap">일자</th><th>제목(책)</th><th style="white-space:nowrap">저자</th><th>출판사</th><th>관리</th></tr></thead><tbody>' +
         (rows.length ? rows.map(function (r) {
           var s = parseIllusSource(r.source);
           return '<tr><td style="white-space:nowrap">' + esc(fmtD(r.ref_date) || '') + '</td>' +
             '<td><b class="il-view" data-id="' + esc(r.id) + '" title="클릭하면 전문을 봅니다" style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(s.book || r.title || '(제목 없음)') + '</b></td>' +
             '<td style="white-space:nowrap">' + esc(s.author || '—') + '</td>' +
             '<td>' + esc(s.publisher || '—') + '</td>' +
-            '<td style="white-space:nowrap">' + esc(r.scripture || '—') + '</td>' +
             '<td style="white-space:nowrap"><button class="btn btn-solid il-view" data-id="' + esc(r.id) + '" style="padding:4px 12px;font-size:.78rem">📖 보기</button> <button class="btn btn-line il-edit" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">✏️ 수정</button> <button class="btn btn-line il-del" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">삭제</button></td></tr>';
-        }).join('') : '<tr><td colspan="6" style="color:#9aa5b1;padding:10px">검색 결과가 없습니다.</td></tr>') +
+        }).join('') : '<tr><td colspan="5" style="color:#9aa5b1;padding:10px">검색 결과가 없습니다.</td></tr>') +
         '</tbody></table></div></div>';
       var byId = {}; all.forEach(function (r) { byId[r.id] = r; });
       Array.prototype.forEach.call(box.querySelectorAll('.il-view'), function (b) { b.onclick = function () { illustrationViewModal(byId[b.dataset.id]); }; });
