@@ -965,6 +965,17 @@ console.log('[affairs.js] v20260701di');
     for (var i = 0; i < LIB_SERIES_TAG.length; i++) if (LIB_SERIES_TAG[i][1].test(t)) return LIB_SERIES_TAG[i][0];
     return '';
   }
+  // 정기간행물·잡지 종류 태그(하위 필터용). 이름 우선, 날짜만 있으면 월간 묵상·QT.
+  var LIB_MAG_TAG = [
+    ['월간목회', /월간목회/], ['목회와신학', /목회와신학/], ['생명의삶', /생명의\s*삶/], ['디사이플', /디사이플/],
+    ['그말씀', /그말씀/], ['날마다 솟는 샘물', /날마다\s*솟는\s*샘물/], ['말씀의 시간', /말씀의\s*시간/], ['빛과소금', /빛과소금/],
+    ['기독교사상', /기독교사상/], ['활천', /활천/], ['현대종교', /현대종교/], ['신학지남', /신학지남/], ['매일성경', /매일성경/],
+    ['교회와신앙', /교회와신앙/], ['갱신과부흥', /갱신과부흥/], ['개혁신앙', /개혁신앙/], ['월간 묵상·QT', /^20\d{4}/]
+  ];
+  function libMag(t) {
+    for (var i = 0; i < LIB_MAG_TAG.length; i++) if (LIB_MAG_TAG[i][1].test(t)) return LIB_MAG_TAG[i][0];
+    return '';
+  }
   function renderLibrary(panel) {
     var url = window.LIBRARY_API_URL;
     if (!url) { panel.innerHTML = msgCard('나의 도서관 — 설정 필요', 'Apps Script(library-api.gs) 배포 후 config.js 의 LIBRARY_API_URL 을 설정해 주세요.'); return; }
@@ -981,7 +992,7 @@ console.log('[affairs.js] v20260701di');
       var t = String(b.title == null ? '' : b.title).replace(/\+/g, ' ').replace(/\s+/g, ' ').trim();
       var a = b.author || '';
       if (!a) { var m = t.match(/^[\(\[]\s*([^\)\]]{1,24})\s*[\)\]]\s*(.+)$/); if (m) { a = m[1].trim(); t = m[2].trim(); } }
-      return { id: b.id, title: t || '(제목 없음)', author: a, cat: libClassify(t), series: libSeries(t), key: (t + ' ' + a).toLowerCase() };
+      return { id: b.id, title: t || '(제목 없음)', author: a, cat: libClassify(t), series: libSeries(t), pub: libMag(t), key: (t + ' ' + a).toLowerCase() };
     }
     var GRID_CSS = '<style>.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}.lib-card{cursor:pointer;text-align:left;background:none;border:0;padding:0;font-family:inherit}.lib-cover{width:100%;aspect-ratio:3/4;border-radius:8px;background:#eef2f7;object-fit:cover;border:1px solid #e3e7ee;box-shadow:0 2px 8px rgba(3,34,87,.08)}.lib-card:hover .lib-cover{box-shadow:0 5px 16px rgba(3,34,87,.18)}.lib-t{font-size:.86rem;font-weight:700;color:#27364a;margin-top:7px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.lib-a{font-size:.78rem;color:#9aa5b1;margin-top:1px}.lib-catcard{cursor:pointer;border:1px solid #e3e7ee;border-radius:10px;padding:13px 14px;background:#fff;text-align:left;font-family:inherit}.lib-catcard:hover{border-color:#1f6feb;background:#f5f9ff}.lib-schip{border:1px solid #dfe5ee;background:#fff;border-radius:999px;padding:4px 11px;font-size:.8rem;cursor:pointer;font-family:inherit;color:#3a4a63}.lib-schip:hover{border-color:#1f6feb}.lib-schip.on{background:var(--accent,#032257);color:#fff;border-color:var(--accent,#032257)}</style>';
     function card(bk) {
@@ -1019,14 +1030,17 @@ console.log('[affairs.js] v20260701di');
     }
 
     function listView(books, cat, q) {
-      var curCat = cat, curSeries = '', PAGE = 60, shown = PAGE;
-      function build(qq) { return books.filter(function (b) { return (!curCat || b.cat === curCat) && (!curSeries || b.series === curSeries) && (!qq || b.key.indexOf(qq) >= 0); }); }
-      // 성경·주석: 시리즈 하위 필터 칩
-      var seriesBar = '';
-      if (curCat === '성경·주석') {
-        var sc = {}; books.forEach(function (b) { if (b.cat === curCat && b.series) sc[b.series] = (sc[b.series] || 0) + 1; });
-        var arr = LIB_SERIES_TAG.map(function (s) { return s[0]; }).filter(function (s) { return sc[s]; }).map(function (s) { return [s, sc[s]]; });
-        if (arr.length) seriesBar = '<div class="fin-card" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="font-size:.8rem;color:#7b8794;font-weight:700;margin-right:2px">시리즈</span><button class="lib-schip on" data-s="">전체</button>' + arr.map(function (x) { return '<button class="lib-schip" data-s="' + esc(x[0]) + '">' + esc(x[0]) + ' ' + x[1] + '</button>'; }).join('') + '</div>';
+      var curCat = cat, curSub = '', PAGE = 60, shown = PAGE;
+      // 분류 안 하위 필터: 성경·주석=시리즈, 정기간행물·잡지=종류
+      var subField = (cat === '성경·주석') ? 'series' : (cat === '정기간행물·잡지') ? 'pub' : '';
+      var subOrder = (subField === 'series') ? LIB_SERIES_TAG : (subField === 'pub') ? LIB_MAG_TAG : [];
+      var subLabel = (subField === 'pub') ? '종류' : '시리즈';
+      function build(qq) { return books.filter(function (b) { return (!curCat || b.cat === curCat) && (!curSub || b[subField] === curSub) && (!qq || b.key.indexOf(qq) >= 0); }); }
+      var subBar = '';
+      if (subField) {
+        var sc = {}; books.forEach(function (b) { if (b.cat === curCat && b[subField]) sc[b[subField]] = (sc[b[subField]] || 0) + 1; });
+        var arr = subOrder.map(function (s) { return s[0]; }).filter(function (s) { return sc[s]; }).map(function (s) { return [s, sc[s]]; });
+        if (arr.length) subBar = '<div class="fin-card" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="font-size:.8rem;color:#7b8794;font-weight:700;margin-right:2px">' + subLabel + '</span><button class="lib-schip on" data-s="">전체</button>' + arr.map(function (x) { return '<button class="lib-schip" data-s="' + esc(x[0]) + '">' + esc(x[0]) + ' ' + x[1] + '</button>'; }).join('') + '</div>';
       }
       var curList = build(q);
       panel.innerHTML = GRID_CSS +
@@ -1034,7 +1048,7 @@ console.log('[affairs.js] v20260701di');
         '<div style="display:flex;align-items:center;gap:10px"><button class="btn btn-line" id="lib_back" style="padding:7px 13px">‹ 도서관</button>' +
         '<b style="color:var(--accent,#032257)">' + (cat ? esc(cat) : '검색: ' + esc(q)) + '</b></div>' +
         '<input type="text" id="lib_q2" placeholder="🔍 이 안에서 검색" value="' + esc(q) + '" style="padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:200px"></div>' +
-        seriesBar +
+        subBar +
         '<div class="lib-grid" id="lib_grid"></div>' +
         '<div style="text-align:center;margin:18px 0"><button class="btn btn-line" id="lib_more" style="padding:9px 24px">더 보기</button><div id="lib_cnt" style="font-size:.8rem;color:#9aa5b1;margin-top:7px"></div></div>';
       var grid = panel.querySelector('#lib_grid'), moreBtn = panel.querySelector('#lib_more'), cntEl = panel.querySelector('#lib_cnt');
@@ -1049,7 +1063,7 @@ console.log('[affairs.js] v20260701di');
       panel.querySelector('#lib_back').onclick = function () { dashboard(books); };
       Array.prototype.forEach.call(panel.querySelectorAll('.lib-schip'), function (b) {
         b.onclick = function () {
-          curSeries = b.dataset.s; shown = PAGE;
+          curSub = b.dataset.s; shown = PAGE;
           Array.prototype.forEach.call(panel.querySelectorAll('.lib-schip'), function (x) { x.className = (x === b) ? 'lib-schip on' : 'lib-schip'; });
           curList = build(panel.querySelector('#lib_q2').value.trim().toLowerCase()); render();
         };
