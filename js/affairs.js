@@ -976,17 +976,33 @@ console.log('[affairs.js] v20260701di');
     for (var i = 0; i < LIB_MAG_TAG.length; i++) if (LIB_MAG_TAG[i][1].test(t)) return LIB_MAG_TAG[i][0];
     return '';
   }
+  // 도서관 목록 로컬 캐시(즉시 표시용). 분류 규칙 바뀌면 LIB_CACHE_VER +1 → 옛 캐시 무효화.
+  var LIB_LS_KEY = 'wpc_lib_cache', LIB_CACHE_VER = 7;
+  function libLoadLS() {
+    try { var o = JSON.parse(localStorage.getItem(LIB_LS_KEY) || 'null'); return (o && o.v === LIB_CACHE_VER && o.books && o.books.length) ? o.books : null; } catch (e) { return null; }
+  }
+  function libSaveLS(books) {
+    try { localStorage.setItem(LIB_LS_KEY, JSON.stringify({ v: LIB_CACHE_VER, books: books })); } catch (e) { /* 용량초과 등 → 캐시 생략 */ }
+  }
   function renderLibrary(panel) {
     var url = window.LIBRARY_API_URL;
     if (!url) { panel.innerHTML = msgCard('나의 도서관 — 설정 필요', 'Apps Script(library-api.gs) 배포 후 config.js 의 LIBRARY_API_URL 을 설정해 주세요.'); return; }
     var furl = url + (window.LIBRARY_FOLDER_ID ? ((url.indexOf('?') >= 0 ? '&' : '?') + 'folderId=' + encodeURIComponent(window.LIBRARY_FOLDER_ID)) : '');
     if (_libCache) { dashboard(_libCache); return; }
-    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">도서관을 불러오는 중… <span style="color:#9aa5b1">(처음엔 시간이 걸릴 수 있어요)</span></p></div>';
-    fetch(furl).then(function (r) { return r.json(); }).then(function (d) {
-      if (!d || !d.ok) throw new Error((d && d.error) || '목록을 불러오지 못했습니다.');
-      _libCache = (d.books || []).map(norm);
-      dashboard(_libCache);
-    }).catch(function (e) { panel.innerHTML = msgCard('불러오기 실패', (e && e.message) || '도서관을 불러오지 못했습니다.'); });
+    var cached = libLoadLS();
+    if (cached) { _libCache = cached; dashboard(_libCache); doFetch(true); return; }   // 저장된 목록 즉시 표시 + 뒤에서 갱신
+    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">도서관을 불러오는 중… <span style="color:#9aa5b1">(처음 한 번만 걸리고, 다음부터는 바로 열립니다)</span></p></div>';
+    doFetch(false);
+    function doFetch(silent) {
+      var prevN = _libCache ? _libCache.length : -1;
+      fetch(furl).then(function (r) { return r.json(); }).then(function (d) {
+        if (!d || !d.ok) { if (!silent) panel.innerHTML = msgCard('불러오기 실패', (d && d.error) || '목록을 불러오지 못했습니다.'); return; }
+        var fresh = (d.books || []).map(norm);
+        _libCache = fresh; libSaveLS(fresh);
+        if (!silent) dashboard(fresh);
+        else if (fresh.length !== prevN && panel.querySelector('#lib_recos')) dashboard(fresh);   // 변경 있을 때만 조용히 새로고침
+      }).catch(function (e) { if (!silent) panel.innerHTML = msgCard('불러오기 실패', (e && e.message) || '도서관을 불러오지 못했습니다.'); });
+    }
 
     function norm(b) {
       var t = String(b.title == null ? '' : b.title).replace(/\+/g, ' ').replace(/\s+/g, ' ').trim();
