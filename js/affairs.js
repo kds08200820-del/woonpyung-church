@@ -918,6 +918,7 @@ console.log('[affairs.js] v20260701di');
   var _libCache = null;
   // 파일명 키워드 기반 자동 분류(우선순위 순). 일치 없으면 성경책 이름 → 성경·주석, 그래도 없으면 기타.
   var LIB_CATS = [
+    ['정기간행물·잡지', /목회와신학|생명의\s*삶|월간목회|그말씀|디사이플|빛과소금|기독교사상|활천|현대종교|신학지남|날마다\s*솟는\s*샘물|말씀의\s*시간|매일성경|교회와신앙|갱신과부흥|개혁신앙|^20\d{4}|\d{1,2}\s*월\s*호|\d{4}\s*년\s*\d{1,2}\s*월/],
     ['신학·교리', /신학|교의|조직신학|변증|개혁주의|칼빈|교리|세계관|기독교\s*강요|성령론|기독론|구원론|예정|언약/],
     ['설교·예배', /설교|강단|예화|예배|찬양|찬송|예전|설교학/],
     ['상담·가정', /상담|치유|위로|중독|가정|부부|자녀|결혼|심리|애도/],
@@ -932,9 +933,12 @@ console.log('[affairs.js] v20260701di');
     for (i = 0; i < BIBLE_NT.length; i++) if (t.indexOf(BIBLE_NT[i]) >= 0) return true;
     return false;
   }
+  // 영문 성경책 이름 / 영문 주석 시리즈 코드 → 성경·주석
+  var LIB_BIBLE_EN = /\b(Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|Samuel|Kings|Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|Corinthians|Galatians|Ephesians|Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|Peter|Jude|Revelation)\b/i;
+  var LIB_SERIES = /\b(AOTC|BCBC|BCOTWP|BTCP|CNTUOT|CSC|DBS|ZECNT|NIGTC|PNTC|NIVAC|TOTC|TNTC|EBC|BST|UBC|WBC|NAC|NICOT|NICNT|BECNT)\b|BIBLE in Hand|SOLAS/;
   function libClassify(title) {
     for (var i = 0; i < LIB_CATS.length; i++) if (LIB_CATS[i][1].test(title)) return LIB_CATS[i][0];
-    if (libHasBibleBook(title)) return '성경·주석';
+    if (libHasBibleBook(title) || LIB_BIBLE_EN.test(title) || LIB_SERIES.test(title)) return '성경·주석';
     return '기타';
   }
   function libSeededPicks(books, n, seed) {
