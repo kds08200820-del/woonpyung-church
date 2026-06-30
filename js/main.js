@@ -154,6 +154,15 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     const dow = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"][d.getDay()];
     return `${m[1]}.${m[2]}.${m[3]} ${dow}`;
   }
+  // 서식(HTML) 원고 → 평문(QT 표시용). 평문이면 그대로.
+  function qtHtmlToText(html) {
+    if (html == null) return "";
+    const s = String(html);
+    if (!/<[a-z!][\s\S]*>/i.test(s)) return s;
+    const d = document.createElement("div");
+    d.innerHTML = s.replace(/<\/(p|div|h[1-6]|li|blockquote|tr)>/gi, "$&\n").replace(/<br\s*\/?>/gi, "\n");
+    return (d.textContent || "").replace(/\n{3,}/g, "\n\n").replace(/[ \t]+\n/g, "\n").trim();
+  }
   function rowToQtContent(r) {
     const dateStr = fmtKakaoDateFromIso(r.sermon_date);
     const out = [];
@@ -169,12 +178,14 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     out.push("");
     out.push("📝 묵상");
     out.push("");
-    out.push((r.content || "").trim());
+    out.push(qtHtmlToText(r.content).trim());
+    const prayer = qtHtmlToText(r.prayer).trim();
+    if (prayer) { out.push(""); out.push("🙏 기도"); out.push(""); out.push(prayer); }
     return out.join("\n");
   }
   function loadQtFromSupabase() {
     if (!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve(null);
-    const u = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/qt_published?select=sermon_date,title,scripture,qt_bible_text,content&order=sermon_date.desc&limit=180";
+    const u = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/qt_published?select=sermon_date,title,scripture,qt_bible_text,content,prayer&order=sermon_date.desc&limit=180";
     return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + window.SUPABASE_ANON_KEY } })
       .then((r) => r.ok ? r.json() : null)
       .then((rows) => {

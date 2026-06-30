@@ -17,7 +17,7 @@ drop view if exists public.qt_published;
 create view public.qt_published as
   select sermon_date, title, scripture,
          coalesce(nullif(btrim(qt_bible_text), ''), bible_text) as qt_bible_text,
-         content
+         content, prayer
   from public.sermons
   where service in ('매일 QT', '새벽기도')
     and sermon_date is not null

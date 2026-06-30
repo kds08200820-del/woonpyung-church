@@ -2091,6 +2091,8 @@ console.log('[affairs.js] v20260701di');
     lines.push('📝 묵상');
     lines.push('');
     lines.push(htmlToPlain(r.content).trim());
+    var prayer = htmlToPlain(r.prayer).trim();
+    if (prayer) { lines.push(''); lines.push('🙏 기도'); lines.push(''); lines.push(prayer); }
     return lines.join('\n');
   }
   function copyKakaoQt(r) {
