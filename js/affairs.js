@@ -981,7 +981,7 @@ console.log('[affairs.js] v20260701di');
     return '';
   }
   // 도서관 목록 로컬 캐시(즉시 표시용). 분류 규칙 바뀌면 LIB_CACHE_VER +1 → 옛 캐시 무효화.
-  var LIB_LS_KEY = 'wpc_lib_cache', LIB_CACHE_VER = 8;
+  var LIB_LS_KEY = 'wpc_lib_cache', LIB_CACHE_VER = 9;
   function libLoadLS() {
     try { var o = JSON.parse(localStorage.getItem(LIB_LS_KEY) || 'null'); return (o && o.v === LIB_CACHE_VER && o.books && o.books.length) ? o.books : null; } catch (e) { return null; }
   }
@@ -991,15 +991,48 @@ console.log('[affairs.js] v20260701di');
   var LIB_PALETTE = ['#0e7c5a', '#0a4a6e', '#7c5cbf', '#c0813a', '#3a7d8c', '#9c4a52', '#5a7d4a', '#475569', '#8a6d3b', '#5b5fa6', '#2f8f6b', '#7a5c8a', '#5a6675', '#a0522d', '#456b8c', '#6b8e23'];
 
   // ── 수동 분류 변경(드래그&드롭): Supabase library_overrides 에 저장(관리자 공유·영구). 자동분류보다 우선 ──
-  var LIB_OV = {};        // { book_id: category }
+  var LIB_OV = {};        // { book_id: {cat, sub} }  (sub=세부분류: 시리즈/종류)
   var LIB_DRAG = null;    // 드래그 중인 책 id
   function libLoadOverrides() {
-    return api('GET', 'library_overrides?select=book_id,category').then(function (rows) {
-      LIB_OV = {}; (rows || []).forEach(function (r) { LIB_OV[r.book_id] = r.category; }); return LIB_OV;
+    return api('GET', 'library_overrides?select=*').then(function (rows) {
+      LIB_OV = {}; (rows || []).forEach(function (r) { LIB_OV[r.book_id] = { cat: r.category, sub: r.subcat || '' }; }); return LIB_OV;
     }).catch(function () { return LIB_OV; });   // 테이블 미생성 등 → 자동분류만 사용
   }
-  function libSetOverride(id, cat) {
-    return api('POST', 'library_overrides', [{ book_id: String(id), category: cat }], 'resolution=merge-duplicates,return=minimal');
+  function libSetOverride(id, cat, sub) {
+    return api('POST', 'library_overrides', [{ book_id: String(id), category: cat, subcat: sub || null }], 'resolution=merge-duplicates,return=minimal');
+  }
+  // 분류 안 세부분류 정보: 성경·주석=시리즈, 정기간행물·잡지=종류. 없으면 null.
+  function libSubInfo(cat) {
+    if (cat === '성경·주석') return { field: 'series', label: '시리즈', tags: LIB_SERIES_TAG };
+    if (cat === '정기간행물·잡지') return { field: 'pub', label: '종류', tags: LIB_MAG_TAG };
+    return null;
+  }
+  // 책 1권에 자동분류 + 수동 override 적용(cat/series/pub 세팅). title 필요.
+  function libApplyOv(b) {
+    var ov = LIB_OV[b.id];
+    b.cat = (ov && ov.cat) || libClassify(b.title);
+    b.series = libSeries(b.title);
+    b.pub = libMag(b.title);
+    if (ov && ov.sub) {
+      if (b.cat === '성경·주석') b.series = ov.sub;
+      else if (b.cat === '정기간행물·잡지') b.pub = ov.sub;
+    }
+    return b;
+  }
+  // 세부분류 선택 팝업. cb(선택값) — 취소 시 호출 안 함.
+  function libSubPopup(cat, sub, bk, cb) {
+    var cur = bk[sub.field] || '';
+    var ov = document.createElement('div'); ov.className = 'lib-modal';
+    ov.innerHTML = '<div class="lib-modal-box"><div class="lib-modal-h">' + esc(cat) + ' · ' + esc(sub.label) + ' 선택</div>' +
+      '<div class="lib-modal-sub">‘' + esc(bk.title) + '’ 의 ' + esc(sub.label) + '을(를) 선택하세요</div>' +
+      '<div class="lib-modal-chips"><button class="lib-mchip' + (cur ? '' : ' on') + '" data-v="">지정 안 함(자동)</button>' +
+      sub.tags.map(function (s) { return '<button class="lib-mchip' + (s[0] === cur ? ' on' : '') + '" data-v="' + esc(s[0]) + '">' + esc(s[0]) + '</button>'; }).join('') +
+      '</div><div class="lib-modal-foot"><button class="lib-mcancel">취소</button></div></div>';
+    document.body.appendChild(ov);
+    function close() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    ov.querySelector('.lib-mcancel').onclick = close;
+    Array.prototype.forEach.call(ov.querySelectorAll('.lib-mchip'), function (b) { b.onclick = function () { var v = b.dataset.v; close(); cb(v); }; });
   }
   function libCatCounts(books) { var c = {}; books.forEach(function (b) { c[b.cat] = (c[b.cat] || 0) + 1; }); return c; }
   function libCatBarHtml(books, activeCat) {
@@ -1023,15 +1056,21 @@ console.log('[affairs.js] v20260701di');
         var id = (e.dataTransfer && e.dataTransfer.getData('text/plain')) || LIB_DRAG; LIB_DRAG = null;
         if (!id) return;
         var bk = null, i; for (i = 0; i < books.length; i++) { if (String(books[i].id) === String(id)) { bk = books[i]; break; } }
-        if (!bk || bk.cat === cat) return;
-        var from = bk.cat; el.classList.add('lib-saving');
-        libSetOverride(id, cat).then(function () {
-          LIB_OV[id] = cat; bk.cat = cat; libSaveLS(books); el.classList.remove('lib-saving');
-          if (opts.onMoved) opts.onMoved(bk, from, cat);
-        }).catch(function (err) {
-          el.classList.remove('lib-saving');
-          libToast('저장 실패: ' + ((err && err.message) || '오류') + ' — library_overrides 테이블을 확인하세요', true);
-        });
+        if (!bk) return;
+        var sub = libSubInfo(cat);
+        if (bk.cat === cat && !sub) return;   // 같은 분류 + 세부분류 없음 → 무시 (세부분류 있으면 재지정 허용)
+        function finish(chosenSub) {
+          var from = bk.cat; el.classList.add('lib-saving');
+          libSetOverride(id, cat, chosenSub).then(function () {
+            LIB_OV[id] = { cat: cat, sub: chosenSub || '' }; libApplyOv(bk); libSaveLS(books); el.classList.remove('lib-saving');
+            if (opts.onMoved) opts.onMoved(bk, from, cat, chosenSub);
+          }).catch(function (err) {
+            el.classList.remove('lib-saving');
+            libToast('저장 실패: ' + ((err && err.message) || '오류') + ' — library_overrides 테이블(subcat 컬럼)을 확인하세요', true);
+          });
+        }
+        if (sub) libSubPopup(cat, sub, bk, finish);
+        else finish(null);
       };
     });
   }
@@ -1061,7 +1100,7 @@ console.log('[affairs.js] v20260701di');
       var t = String(b.title == null ? '' : b.title).replace(/\+/g, ' ').replace(/\s+/g, ' ').trim();
       var a = b.author || '';
       if (!a) { var m = t.match(/^[\(\[]\s*([^\)\]]{1,24})\s*[\)\]]\s*(.+)$/); if (m) { a = m[1].trim(); t = m[2].trim(); } }
-      return { id: b.id, title: t || '(제목 없음)', author: a, cat: (LIB_OV[b.id] || libClassify(t)), series: libSeries(t), pub: libMag(t), key: (t + ' ' + a).toLowerCase() };
+      return libApplyOv({ id: b.id, title: t || '(제목 없음)', author: a, key: (t + ' ' + a).toLowerCase() });
     }
     var GRID_CSS = '<style>' +
       '@keyframes libfade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}' +
@@ -1115,6 +1154,17 @@ console.log('[affairs.js] v20260701di');
       // 이동 완료 토스트
       '.lib-toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(8px);background:#13314e;color:#fff;padding:11px 22px;border-radius:999px;font-size:.86rem;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.28);z-index:99999;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease}' +
       '.lib-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}' +
+      // 세부분류 선택 팝업
+      '.lib-modal{position:fixed;inset:0;background:rgba(15,30,50,.45);display:flex;align-items:center;justify-content:center;z-index:100000;animation:libfade .15s ease}' +
+      '.lib-modal-box{background:#fff;border-radius:16px;padding:22px 22px 18px;max-width:560px;width:calc(100% - 40px);max-height:80vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.32)}' +
+      '.lib-modal-h{font-size:1.06rem;font-weight:800;color:#13314e;letter-spacing:-.01em}' +
+      '.lib-modal-sub{font-size:.82rem;color:#7b8794;margin:5px 0 15px;line-height:1.4}' +
+      '.lib-modal-chips{display:flex;flex-wrap:wrap;gap:8px}' +
+      '.lib-mchip{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:8px 15px;font-size:.85rem;cursor:pointer;font-family:inherit;color:#33415c;font-weight:600;transition:all .15s}' +
+      '.lib-mchip:hover{border-color:#0e7c5a;color:#0c5a42;background:#f3faf6}' +
+      '.lib-mchip.on{background:linear-gradient(135deg,#11785a,#0c4030);color:#fff;border-color:transparent}' +
+      '.lib-modal-foot{margin-top:16px;text-align:right}' +
+      '.lib-mcancel{border:1px solid #e2e8f0;background:#f3f6fa;color:#475569;font-weight:700;border-radius:999px;padding:8px 18px;cursor:pointer;font-family:inherit}.lib-mcancel:hover{background:#e7edf4}' +
       '</style>';
     function card(bk) {
       var t = esc(bk.title), a = esc(bk.author);
@@ -1147,7 +1197,7 @@ console.log('[affairs.js] v20260701di');
       bindCards(panel.querySelector('#lib_recos'));
       libBindCatBar(panel.querySelector('.lib-cats'), books, {
         onNavigate: function (cat) { openList(books, cat, ''); },
-        onMoved: function (bk, from, to) { dashboard(books); libToast('‘' + bk.title + '’ → ' + to); }
+        onMoved: function (bk, from, to, sub) { dashboard(books); libToast('‘' + bk.title + '’ → ' + to + (sub ? ' · ' + sub : '')); }
       });
       var rer = 0;
       panel.querySelector('#lib_reroll').onclick = function () { rer++; var box = panel.querySelector('#lib_recos'); box.innerHTML = libSeededPicks(books, 6, seed + rer * 7919).map(card).join(''); bindCards(box); };
@@ -1201,9 +1251,9 @@ console.log('[affairs.js] v20260701di');
       }
       libBindCatBar(panel.querySelector('.lib-cats'), books, {
         onNavigate: function (c) { if (c !== curCat) listView(books, c, '', close); },
-        onMoved: function (bk, from, to) {
+        onMoved: function (bk, from, to, sub) {
           curList = build(panel.querySelector('#lib_q2').value.trim().toLowerCase());
-          render(); refreshCatBar(); libToast('‘' + bk.title + '’ → ' + to);
+          render(); refreshCatBar(); libToast('‘' + bk.title + '’ → ' + to + (sub ? ' · ' + sub : ''));
         }
       });
       moreBtn.onclick = function () { shown += PAGE; render(); };
@@ -1223,7 +1273,7 @@ console.log('[affairs.js] v20260701di');
     // 수동 분류 변경(overrides)을 _libCache 에 다시 입혀 카운트·목록을 최신화. 대시보드면 재렌더.
     function applyOverrides() {
       if (!_libCache) return; var changed = false;
-      _libCache.forEach(function (b) { var c = LIB_OV[b.id] || libClassify(b.title); if (c !== b.cat) { b.cat = c; changed = true; } });
+      _libCache.forEach(function (b) { var pc = b.cat, ps = b.series, pp = b.pub; libApplyOv(b); if (b.cat !== pc || b.series !== ps || b.pub !== pp) changed = true; });
       if (changed) { libSaveLS(_libCache); if (panel.querySelector('#lib_recos')) dashboard(_libCache); }
     }
 

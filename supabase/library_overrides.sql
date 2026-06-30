@@ -8,8 +8,12 @@
 create table if not exists public.library_overrides (
   book_id    text primary key,          -- 구글 드라이브 파일 ID
   category   text not null,             -- 옮긴 분류 이름
+  subcat     text,                      -- 세부분류(시리즈/종류). 없으면 자동
   updated_at timestamptz not null default now()
 );
+
+-- 이미 만들어 둔 경우에도 안전하게 세부분류 컬럼 추가(재실행 가능)
+alter table public.library_overrides add column if not exists subcat text;
 
 alter table public.library_overrides enable row level security;
 
