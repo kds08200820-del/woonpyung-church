@@ -348,13 +348,25 @@
         } catch (e) {}
         const headers = { apikey: window.SUPABASE_ANON_KEY };
         if (token) headers.Authorization = "Bearer " + token;
-        // 관리자(admins 테이블)면 헤더 '관리자' 메뉴 노출
+        // 관리자(admins 테이블)면 헤더 '관리자' 메뉴 노출 + 목회행정 바로가기 버튼 삽입
         fetch(window.SUPABASE_URL + "/rest/v1/admins?uid=eq." + uid + "&select=uid", { headers })
           .then((r) => (r.ok ? r.json() : null))
           .then((rows) => {
             if (rows && rows.length) {
               const el = document.getElementById("navAdmin");
               if (el) el.style.display = "";
+              // auth-card 안에 목회행정 바로가기 버튼 추가 (중복 방지)
+              const card = document.querySelector(".auth-card");
+              if (card && !card.querySelector(".ac-admin-go")) {
+                const a = document.createElement("a");
+                a.href = "affairs.html";
+                a.className = "ac-admin-go";
+                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:#032257;color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:background .18s";
+                a.onmouseenter = function () { this.style.background = "#1a4080"; };
+                a.onmouseleave = function () { this.style.background = "#032257"; };
+                a.innerHTML = "<span>⚙</span><span>목회행정</span>";
+                card.appendChild(a);
+              }
             }
           })
           .catch(() => {});
