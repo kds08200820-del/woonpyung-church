@@ -1621,13 +1621,13 @@ console.log('[affairs.js] v20260701di');
         '</style>' +
         '<header style="position:sticky;top:0;z-index:6;background:linear-gradient(180deg,#ffffff 0%,#f7f9fc 100%);border-bottom:1px solid #e1e6ef;box-shadow:0 2px 10px rgba(3,34,87,.06)">' +
         '<div style="margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
-        '<button class="btn btn-line" id="se_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
         '<div style="flex:1;min-width:160px;text-align:center;line-height:1.25">' +
         '<div style="font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.22rem;color:var(--accent,#032257);letter-spacing:-.01em">설교 매니저</div>' +
         '<div style="font-size:.72rem;color:#9aa5b1;margin-top:2px;letter-spacing:.02em">설교문을 쓰고 · QT·예배 순서를 함께 준비해 아이패드로 내보냅니다</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">' +
-        '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 임시저장</button>' +
+        '<button class="btn btn-line" id="se_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
+        '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 저장</button>' +
         '<button class="btn btn-line" id="se_kakao" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">💬 카카오톡 복사</button>' +
         '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 내보내기</button>' +
         '</div>' +
@@ -1898,11 +1898,7 @@ console.log('[affairs.js] v20260701di');
       }
       ov.querySelector('#se_save').onclick = function () { save(null); };
       ov.querySelector('#se_export').onclick = function () {
-        var alsoQt = qtOn();
-        if (alsoQt && !ov.querySelector('#se_qt_bible').value.trim()) {
-          if (!confirm('우리말성경(QT) 본문이 비어 있습니다. QT 출력을 건너뛰고 새벽(개역개정)만 내보낼까요?\n\n[취소]를 누르면 우리말성경 본문을 먼저 입력하세요.')) return;
-          alsoQt = false;
-        }
+        var alsoQt = false;   // 내보내기는 설교문(개역개정)만 — QT는 내보내지 않음
         // 창은 클릭 즉시(사용자 제스처) 동기로 열어야 팝업 차단을 피함 — 저장 후 내용 주입
         var w1 = window.open('', '_blank');
         var w2 = alsoQt ? window.open('', '_blank') : null;
