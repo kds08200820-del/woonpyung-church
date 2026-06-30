@@ -1685,6 +1685,7 @@ console.log('[affairs.js] v20260701di');
         '</div>' +
         '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 위 도구로 굵게·제목·인용·색·목록 등 서식을 적용할 수 있습니다."></div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
+        '<div class="af-field" style="margin-top:14px"><label>🙏 기도 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">설교 원고 뒤에 함께 출력됩니다</span></label><textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등)" style="min-height:120px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.prayer || '') + '</textarea></div>' +
         '<input type="hidden" id="se_media" value="' + esc(rec.media_url || '') + '"><input type="hidden" id="se_file" value="' + esc(rec.file_url || '') + '">' +
         '</div>' +
         '<div class="sed-aside-r"><div class="qtc-card">' +
@@ -1871,6 +1872,7 @@ console.log('[affairs.js] v20260701di');
           scripture: ov.querySelector('#se_scripture').value.trim() || null,
           preacher: ov.querySelector('#se_preacher').value.trim() || null,
           content: ov.querySelector('#se_content').value || null,
+          prayer: (ov.querySelector('#se_prayer') ? ov.querySelector('#se_prayer').value : '') || null,
           bible_text: (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '') || null,
           qt_bible_text: (qtOn() && ov.querySelector('#se_qt_bible') ? ov.querySelector('#se_qt_bible').value : '') || null,
           media_url: ov.querySelector('#se_media').value || null,
@@ -2069,6 +2071,23 @@ console.log('[affairs.js] v20260701di');
       if (!bodyBlocks.length) bodyBlocks = [_craw];
       bodyIsHtml = true;
     } else { bodyBlocks = _craw.split('\n'); }
+    // 🙏 기도: 설교 원고 뒤에 이어 붙임
+    var prayerRaw = (r.prayer || '').trim();
+    if (prayerRaw) {
+      function _eh(x) { return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+      if (bodyIsHtml) {
+        bodyBlocks.push('<h2 class="lt-prayer-h">🙏 기도</h2>');
+        if (/<(p|div|h[1-6]|br|span|b|i|u|strong|em)\b/i.test(prayerRaw)) {
+          var _pt = document.createElement('div'); _pt.innerHTML = prayerRaw;
+          Array.prototype.forEach.call(_pt.childNodes, function (n) { if (n.nodeType === 1) { if ((n.outerHTML || '').trim()) bodyBlocks.push(n.outerHTML); } else if (n.nodeType === 3 && n.textContent.trim()) bodyBlocks.push('<p>' + _eh(n.textContent) + '</p>'); });
+        } else {
+          prayerRaw.split(/\n{2,}/).forEach(function (p) { if (p.trim()) bodyBlocks.push('<p>' + _eh(p).replace(/\n/g, '<br>') + '</p>'); });
+        }
+      } else {
+        bodyBlocks.push('', '🙏 기도');
+        prayerRaw.split('\n').forEach(function (l) { bodyBlocks.push(l); });
+      }
+    }
     var bodyLinesJson = JSON.stringify(bodyBlocks).replace(/</g, '\\u003c');
 
     // 예배 순서 한 항목의 전문(교독문·사도신경·주기도문·성경봉독·가사/기도문 자동 펼침)
@@ -2157,6 +2176,7 @@ console.log('[affairs.js] v20260701di');
       '.body p{margin:.5em 0}.body ul,.body ol{margin:.5em 0;padding-left:1.5em}.body li{margin:.2em 0}',
       '.body blockquote{border-left:4px solid #d8cbab;margin:.6em 0;padding:.2em 0 .2em 16px;color:#6b5d3e;font-style:italic}body.dark .body blockquote{border-left-color:#5a513a;color:#cbb98a}',
       '.body mark{padding:0 2px;border-radius:2px}.body hr{border:none;border-top:1px solid #d8cbab;margin:.9em 0}body.dark .body hr{border-top-color:#3a3d44}',
+      '.body .lt-prayer-h{font-size:1.18em;font-weight:800;color:#7a5d27;margin:1em 0 .35em;padding-top:.6em;border-top:2px solid #e4dcc9}body.dark .body .lt-prayer-h{color:#e0c98a;border-top-color:#3a3d44}',
       /* 페이지 표시기 */
       '#pg_ind{flex-shrink:0;font-size:12px;color:#9a8f78;min-width:44px;text-align:center;display:none}',
       'body.paged #pg_ind{display:block}',
