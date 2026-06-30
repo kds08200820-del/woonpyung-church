@@ -1537,6 +1537,8 @@ console.log('[affairs.js] v20260701di');
     var WTPL = {}, smView = 'list', smRows = [], calYM = null;
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요예배': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#64748b'; }
+    function orderCount(r) { try { var a = JSON.parse(r.worship_order || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
+    function hasOrder(r) { return orderCount(r) > 0; }
     api('GET', 'worship_templates?select=*').then(function (rows) { WTPL = {}; (rows || []).forEach(function (r) { WTPL[r.service] = r.items || []; }); }).catch(function () {});
     panel.innerHTML =
       '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">' +
@@ -1565,10 +1567,25 @@ console.log('[affairs.js] v20260701di');
       Array.prototype.forEach.call(box.querySelectorAll('.sm-title'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-edit'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-del'), function (b) { b.onclick = function () { if (!confirm('이 설교를 삭제할까요?')) return; api('DELETE', 'sermons?id=eq.' + b.dataset.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.sm-orderdel'), function (b) { b.onclick = function () { if (!confirm('이 날짜의 예배 순서를 삭제할까요?\n(설교 내용은 설교관리에 그대로 남습니다)')) return; api('PATCH', 'sermons?id=eq.' + b.dataset.id, { worship_order: null }, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.cal-item'), function (el) { el.onclick = function (e) { e.stopPropagation(); sermonEditor(byId[el.dataset.id]); }; });
     }
     function renderTable() {
-      var listBox = panel.querySelector('#sm_list'), rows = smRows;
+      var listBox = panel.querySelector('#sm_list');
+      if (worshipMode) {
+        var wrows = smRows.filter(hasOrder);
+        if (!wrows.length) { listBox.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">작성된 예배 순서가 없습니다. <b>예배 순서 작성</b>을 누르거나 위 달력에서 날짜를 클릭해 시작하세요.</p></div>'; return; }
+        listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>예배 (' + wrows.length + '건)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>순서</th><th>관리</th></tr></thead><tbody>' +
+          wrows.map(function (r) {
+            var c = svcColor(r.service), ds = fmtD(r.sermon_date), n = orderCount(r);
+            return '<tr><td style="white-space:nowrap">' + esc(ds) + '</td><td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td>' +
+              '<td><b class="sm-edit" data-id="' + esc(r.id) + '" title="클릭하면 예배 순서를 엽니다" style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목없음)') + '</b></td>' +
+              '<td style="white-space:nowrap">' + esc(r.scripture || '') + '</td><td style="white-space:nowrap">' + n + '항목</td>' +
+              '<td style="white-space:nowrap"><button class="btn btn-solid sm-read" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 발표</button> <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button> <button class="btn btn-line sm-orderdel" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">순서삭제</button></td></tr>';
+          }).join('') + '</tbody></table></div></div>';
+        wireRows(listBox); return;
+      }
+      var rows = smRows;
       if (!rows.length) { listBox.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">등록된 설교가 없습니다. <b>설교 시작</b>으로 작성해 보세요.</p></div>'; return; }
       var todayS = today();
       listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>설교 (' + rows.length + '편)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>오늘의 말씀(QT)</th><th>관리</th></tr></thead><tbody>' +
@@ -1594,12 +1611,12 @@ console.log('[affairs.js] v20260701di');
       if (!calYM) { var t = new Date(); calYM = { y: t.getFullYear(), m: t.getMonth() }; }
       var y = calYM.y, m = calYM.m, startDow = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
       var todayStr = today();
-      var byDate = {}; smRows.forEach(function (r) { var d = fmtD(r.sermon_date); if (d) (byDate[d] = byDate[d] || []).push(r); });
+      var byDate = {}; smRows.forEach(function (r) { if (worshipMode && !hasOrder(r)) return; var d = fmtD(r.sermon_date); if (d) (byDate[d] = byDate[d] || []).push(r); });
       var legend = Object.keys(SERVICE_COLORS).map(function (s) { return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:.74rem;margin:0 9px 4px 0"><span style="width:11px;height:11px;border-radius:3px;background:' + SERVICE_COLORS[s] + '"></span>' + esc(s) + '</span>'; }).join('');
       var wd = ['일', '월', '화', '수', '목', '금', '토'];
       var html = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
         '<div style="display:flex;align-items:center;gap:8px"><button class="btn btn-line" id="cal_prev" style="padding:3px 11px">‹</button><b style="font-size:1.05rem;min-width:110px;text-align:center">' + y + '년 ' + (m + 1) + '월</b><button class="btn btn-line" id="cal_next" style="padding:3px 11px">›</button><button class="btn btn-line" id="cal_today" style="padding:3px 10px;font-size:.8rem">오늘</button></div>' +
-        '<div style="display:flex;flex-wrap:wrap;align-items:center"><span style="font-size:.72rem;color:#9aa5b1;margin-right:10px">날짜 클릭 → 설교 작성</span>' + legend + '</div></div>' +
+        '<div style="display:flex;flex-wrap:wrap;align-items:center"><span style="font-size:.72rem;color:#9aa5b1;margin-right:10px">날짜 클릭 → ' + (worshipMode ? '예배 순서 작성' : '설교 작성') + '</span>' + legend + '</div></div>' +
         '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' +
         wd.map(function (w, i) { return '<div style="text-align:center;font-size:.78rem;font-weight:700;color:' + (i === 0 ? '#c0392b' : (i === 6 ? '#2563eb' : '#7b8794')) + ';padding:4px 0">' + w + '</div>'; }).join('');
       for (var b = 0; b < startDow; b++) html += '<div></div>';
@@ -1612,7 +1629,7 @@ console.log('[affairs.js] v20260701di');
           : '<span style="font-size:.78rem;color:' + dnumColor + '">' + dd + '</span>';
         html += '<div class="cal-day" data-date="' + ds + '" title="' + ds + ' — 이 날짜로 설교 작성" style="min-height:86px;border:1px solid ' + (isToday ? '#2f5d50' : '#eef1f5') + ';border-radius:8px;padding:4px 5px;background:' + (isToday ? '#f1f7f5' : '#fff') + ';cursor:pointer;transition:background .12s">' + dnum + items + '</div>';
       }
-      html += '</div><div style="font-size:.72rem;color:#9aa5b1;margin-top:8px">＋ 빈 날짜를 클릭하면 그 날짜로 새 설교를, 설교 칸을 클릭하면 해당 설교를 엽니다.</div></div>';
+      html += '</div><div style="font-size:.72rem;color:#9aa5b1;margin-top:8px">' + (worshipMode ? '＋ 빈 날짜를 클릭하면 그 날짜로 새 예배 순서를, 예배 칸을 클릭하면 해당 예배를 엽니다.' : '＋ 빈 날짜를 클릭하면 그 날짜로 새 설교를, 설교 칸을 클릭하면 해당 설교를 엽니다.') + '</div></div>';
       calBox.innerHTML = html;
       panel.querySelector('#cal_prev').onclick = function () { var nm = m - 1, ny = y; if (nm < 0) { nm = 11; ny--; } calYM = { y: ny, m: nm }; renderCalendar(); };
       panel.querySelector('#cal_next').onclick = function () { var nm = m + 1, ny = y; if (nm > 11) { nm = 0; ny++; } calYM = { y: ny, m: nm }; renderCalendar(); };
