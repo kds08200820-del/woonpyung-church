@@ -2017,13 +2017,13 @@ console.log('[affairs.js] v20260701di');
         fetch(SB.replace(/\/$/, '') + '/functions/v1/bulletin-ai', {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token, 'apikey': AK },
           body: JSON.stringify({ mode: 'prayer', content: content })
-        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
           .then(function (o) {
             btn.disabled = false; btn.textContent = old;
-            if (!o.ok) { msg.style.color = '#c0392b'; msg.textContent = '기도문 생성 실패: ' + ((o.j && o.j.error) || '') + ((o.j && o.j.detail) ? ' (' + o.j.detail + ')' : '') + ' — bulletin-ai 재배포가 필요할 수 있습니다.'; return; }
+            if (!o.ok) { msg.style.color = '#c0392b'; msg.textContent = '기도문 생성 실패: ' + ((o.j && o.j.error) || ('HTTP ' + o.status)) + ((o.j && o.j.detail) ? ' (' + o.j.detail + ')' : ''); return; }
             var txt = (o.j && o.j.result || '').trim();
             if (txt) { ov.querySelector('#se_prayer').value = txt; msg.style.color = 'green'; msg.textContent = '✓ 기도문을 생성했습니다 (' + txt.replace(/\s/g, '').length + '자) — 확인 후 다듬어 주세요.'; }
-            else { msg.style.color = '#c0392b'; msg.textContent = '생성 결과가 비어 있습니다. 잠시 후 다시 시도해 주세요.'; }
+            else { msg.style.color = '#c0392b'; msg.textContent = '생성 결과가 비어 있습니다 — bulletin-ai 함수가 ‘기도(prayer) 모드’ 최신 코드로 재배포됐는지 확인해 주세요.'; }
           })
           .catch(function (e) { btn.disabled = false; btn.textContent = old; msg.style.color = '#c0392b'; msg.textContent = '호출 실패: ' + e.message + ' (bulletin-ai Edge Function 배포 필요)'; });
       };
