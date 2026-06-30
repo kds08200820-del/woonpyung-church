@@ -1657,6 +1657,12 @@ console.log('[affairs.js] v20260701di');
         '.sed-aside-r{position:absolute;right:24px;top:22px;width:300px}' +
         '.sed-mode-sermon .sed-aside{display:none}' +          // 설교 매니저: 예배 순서 숨김
         '.sed-mode-worship .sed-aside-r{display:none}' +        // 예배 매니저: 생명의삶 자동분류 숨김
+        '.sed-mode-worship .se-hide-worship{display:none}' +   // 예배 매니저: 설교 본문·원고·기도·QT 숨김
+        '.sed-wrap.sed-mode-worship{display:flex;flex-direction:column}' +
+        '.sed-wrap.sed-mode-worship .sed-form{order:1;max-width:780px;margin:0 auto;width:100%}' +
+        '.sed-wrap.sed-mode-worship .sed-aside{order:2;position:static;left:auto;top:auto;width:100%;max-width:880px;margin:4px auto 0}' +
+        '.sed-mode-worship .sed-aside>.af-field>label{font-size:1.35rem}' +
+        '.sed-mode-worship #se_order .od-row{padding:10px 12px;margin-bottom:8px}' +
         '.qtc-card{border:1px solid #e1e6ef;border-radius:12px;background:#fff;padding:14px 15px;box-shadow:0 4px 14px rgba(3,34,87,.05)}' +
         '.qtc-h{font-size:1.02rem;font-weight:800;color:var(--accent,#032257);display:flex;align-items:center;gap:5px}' +
         '.qtc-sub{font-size:.74rem;color:#9aa5b1;margin:5px 0 9px;line-height:1.45}' +
@@ -1714,16 +1720,16 @@ console.log('[affairs.js] v20260701di');
         '<div class="af-field"><label>일자</label><input type="date" id="se_date" value="' + esc(fmtD(rec.sermon_date) || today()) + '"></div>' +
         '<div class="af-field"><label>예배</label><select id="se_service"><option value="">선택</option>' + svcOpts + '</select></div>' +
         '<div class="af-field"><label>설교자</label><input type="text" id="se_preacher" value="' + esc(rec.preacher || '김동석 목사') + '"></div>' +
-        '<div class="af-field"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e">📲 함께 만들기</label></div>' +
+        '<div class="af-field se-hide-worship"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e">📲 함께 만들기</label></div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
         '</div>' +
         '<div class="sed-row2">' +
         '<div class="af-field"><label>제목</label><input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" style="font-size:1.1rem;font-weight:700"></div>' +
         '<div class="af-field"><label>본문(성경) <a href="' + esc(SERMON_TOOLS[0].url) + '" target="_blank" rel="noopener" style="font-weight:400;font-size:.74rem;color:#1f6feb">📖 검색</a></label><input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="예: 요한복음 3:16"></div>' +
         '</div>' +
-        '<div class="af-field" style="margin-bottom:10px"><label>📖 성경 본문 — 개역개정 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">새벽기도회·주일 설교 등에 사용</span></label><textarea id="se_bible" placeholder="개역개정 본문을 입력/붙여넣으세요. (예: 1 태초에 하나님이 천지를 창조하시니라 …)" style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.bible_text || '') + '</textarea></div>' +
-        '<div class="af-field" id="se_qt_bible_wrap" style="margin-bottom:12px;display:none"><label>📲 성경 본문 — 우리말성경 (QT 전용) <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">QT 내보내기·카카오톡 양식에 사용</span></label><textarea id="se_qt_bible" placeholder="우리말성경 본문을 입력/붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
-        '<div class="af-field"><label>설교 원고 <span class="se-count" id="se_count">0단어 · 0자</span></label>' +
+        '<div class="af-field se-hide-worship" style="margin-bottom:10px"><label>📖 성경 본문 — 개역개정 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">새벽기도회·주일 설교 등에 사용</span></label><textarea id="se_bible" placeholder="개역개정 본문을 입력/붙여넣으세요. (예: 1 태초에 하나님이 천지를 창조하시니라 …)" style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.bible_text || '') + '</textarea></div>' +
+        '<div class="af-field se-hide-worship" id="se_qt_bible_wrap" style="margin-bottom:12px;display:none"><label>📲 성경 본문 — 우리말성경 (QT 전용) <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">QT 내보내기·카카오톡 양식에 사용</span></label><textarea id="se_qt_bible" placeholder="우리말성경 본문을 입력/붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
+        '<div class="af-field se-hide-worship"><label>설교 원고 <span class="se-count" id="se_count">0단어 · 0자</span></label>' +
         '<div class="se-toolbar" id="se_tb">' +
         '<button type="button" data-cmd="undo" title="실행취소">↶</button><button type="button" data-cmd="redo" title="다시실행">↷</button>' +
         '<span class="se-sep"></span>' +
@@ -1752,7 +1758,7 @@ console.log('[affairs.js] v20260701di');
         '</div>' +
         '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 위 도구로 굵게·제목·인용·색·목록 등 서식을 적용할 수 있습니다."></div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
-        '<div class="af-field" style="margin-top:14px"><label style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🙏 기도 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#5b34a8;border-color:#cdbce6">✨ AI 생성</button></label><textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘✨ AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:120px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.prayer || '') + '</textarea></div>' +
+        '<div class="af-field se-hide-worship" style="margin-top:14px"><label style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🙏 기도<span style="font-weight:400;font-size:.74rem;color:#9aa5b1">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#5b34a8;border-color:#cdbce6">✨ AI 생성</button></label><textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘✨ AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:120px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.prayer || '') + '</textarea></div>' +
         '<input type="hidden" id="se_media" value="' + esc(rec.media_url || '') + '"><input type="hidden" id="se_file" value="' + esc(rec.file_url || '') + '">' +
         '</div>' +
         '<div class="sed-aside-r"><div class="qtc-card">' +
