@@ -1441,6 +1441,23 @@ console.log('[affairs.js] v20260701di');
         '.sed-form{max-width:760px;margin:0 auto}' +
         '.sed-qt{display:flex;align-items:center;gap:7px;background:#fff7e3;border:1px solid #e8cd86;border-radius:8px;padding:0 11px;height:40px;font-size:.84rem;font-weight:500;color:#8a6d1f;cursor:pointer;user-select:none}' +
         '.sed-row2{display:grid;grid-template-columns:2.3fr 1fr;gap:12px;margin-bottom:12px}' +
+        // 설교 원고 리치 에디터
+        '.se-toolbar{display:flex;flex-wrap:wrap;gap:2px;align-items:center;background:#f7f9fc;border:1px solid #e1e6ef;border-bottom:none;border-radius:9px 9px 0 0;padding:6px 8px;position:sticky;top:60px;z-index:5}' +
+        '.se-toolbar button{font:inherit;font-size:.84rem;border:1px solid transparent;background:none;border-radius:6px;padding:5px 8px;cursor:pointer;color:#33415c;line-height:1;min-width:30px;transition:background .12s}' +
+        '.se-toolbar button:hover{background:#e6edf7}.se-toolbar button:active{background:#d8e2f0}' +
+        '.se-toolbar select{font:inherit;font-size:.8rem;border:1px solid #dde3ec;border-radius:6px;padding:5px 6px;background:#fff;cursor:pointer}' +
+        '.se-sep{width:1px;height:18px;background:#dde3ec;margin:0 4px}' +
+        '.se-color{position:relative;display:inline-flex;align-items:center;font-size:.84rem;border-radius:6px;padding:5px 8px;cursor:pointer;color:#33415c}.se-color:hover{background:#e6edf7}' +
+        '.se-color input{position:absolute;left:0;bottom:-2px;width:100%;height:3px;opacity:0;cursor:pointer}' +
+        '.se-color b{display:inline-block;border-bottom:3px solid currentColor;line-height:1.05}' +
+        '.se-editor{min-height:52vh;border:1px solid #e1e6ef;border-radius:0 0 9px 9px;padding:20px 22px;font-size:1.05rem;line-height:1.95;font-family:\'Noto Serif KR\',serif;background:#fff;outline:none;color:#1a1a1a}' +
+        '.se-editor:focus{border-color:#9db4d6;box-shadow:0 0 0 3px rgba(60,110,200,.08)}' +
+        '.se-editor:empty:before{content:attr(data-ph);color:#aab3c0}' +
+        '.se-editor h2{font-size:1.42em;font-weight:800;margin:.6em 0 .3em;color:#0a2c5c}' +
+        '.se-editor h3{font-size:1.18em;font-weight:700;margin:.5em 0 .25em;color:#13314e}' +
+        '.se-editor blockquote{border-left:4px solid #cdd7e3;margin:.5em 0;padding:.15em 0 .15em 14px;color:#475569}' +
+        '.se-editor p{margin:.45em 0}.se-editor ul,.se-editor ol{margin:.45em 0;padding-left:1.5em}.se-editor mark{padding:0 1px}' +
+        '.se-count{font-weight:400;font-size:.74rem;color:#9aa5b1;margin-left:8px}' +
         '@media(max-width:1240px){.sed-aside{position:static;left:auto;top:auto;width:auto;max-width:760px;margin:0 auto 20px}.sed-form{max-width:760px}}' +
         '@media(max-width:560px){.sed-row2{grid-template-columns:1fr}}' +
         '</style>' +
@@ -1448,8 +1465,8 @@ console.log('[affairs.js] v20260701di');
         '<div style="margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
         '<button class="btn btn-line" id="se_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
         '<div style="flex:1;min-width:160px;text-align:center;line-height:1.25">' +
-        '<div style="font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.22rem;color:var(--accent,#032257);letter-spacing:-.01em">예배 준비 도우미</div>' +
-        '<div style="font-size:.72rem;color:#9aa5b1;margin-top:2px;letter-spacing:.02em">설교문과 QT를 함께 준비하고 아이패드로 내보냅니다</div>' +
+        '<div style="font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.22rem;color:var(--accent,#032257);letter-spacing:-.01em">설교 매니저</div>' +
+        '<div style="font-size:.72rem;color:#9aa5b1;margin-top:2px;letter-spacing:.02em">설교문을 쓰고 · QT·예배 순서를 함께 준비해 아이패드로 내보냅니다</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">' +
         '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 임시저장</button>' +
@@ -1481,7 +1498,35 @@ console.log('[affairs.js] v20260701di');
         '</div>' +
         '<div class="af-field" style="margin-bottom:10px"><label>📖 성경 본문 — 개역개정 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">새벽기도회·주일 설교 등에 사용</span></label><textarea id="se_bible" placeholder="개역개정 본문을 입력/붙여넣으세요. (예: 1 태초에 하나님이 천지를 창조하시니라 …)" style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.bible_text || '') + '</textarea></div>' +
         '<div class="af-field" id="se_qt_bible_wrap" style="margin-bottom:12px;display:none"><label>📲 성경 본문 — 우리말성경 (QT 전용) <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">QT 내보내기·카카오톡 양식에 사용</span></label><textarea id="se_qt_bible" placeholder="우리말성경 본문을 입력/붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
-        '<div class="af-field"><label>설교 원고</label><textarea id="se_content" placeholder="설교 원고를 작성하세요. 줄바꿈·문단이 그대로 설교문에 반영됩니다." style="min-height:50vh;line-height:1.8;font-size:1.02rem">' + esc(rec.content || '') + '</textarea></div>' +
+        '<div class="af-field"><label>설교 원고 <span class="se-count" id="se_count">0단어 · 0자</span></label>' +
+        '<div class="se-toolbar" id="se_tb">' +
+        '<button type="button" data-cmd="undo" title="실행취소">↶</button><button type="button" data-cmd="redo" title="다시실행">↷</button>' +
+        '<span class="se-sep"></span>' +
+        '<select id="se_block" title="문단 스타일"><option value="p">본문</option><option value="h2">제목</option><option value="h3">소제목</option><option value="blockquote">인용</option></select>' +
+        '<span class="se-sep"></span>' +
+        '<button type="button" data-cmd="bold" title="굵게" style="font-weight:800">B</button>' +
+        '<button type="button" data-cmd="italic" title="기울임" style="font-style:italic">I</button>' +
+        '<button type="button" data-cmd="underline" title="밑줄" style="text-decoration:underline">U</button>' +
+        '<button type="button" data-cmd="strikeThrough" title="취소선" style="text-decoration:line-through">S</button>' +
+        '<span class="se-sep"></span>' +
+        '<button type="button" data-cmd="insertUnorderedList" title="글머리 목록">• 목록</button>' +
+        '<button type="button" data-cmd="insertOrderedList" title="번호 목록">1. 목록</button>' +
+        '<span class="se-sep"></span>' +
+        '<button type="button" data-cmd="justifyLeft" title="왼쪽 정렬">⯇</button>' +
+        '<button type="button" data-cmd="justifyCenter" title="가운데 정렬">≡</button>' +
+        '<button type="button" data-cmd="justifyRight" title="오른쪽 정렬">⯈</button>' +
+        '<span class="se-sep"></span>' +
+        '<label class="se-color" title="글자색"><b>가</b><input type="color" id="se_fore" value="#0a2c5c"></label>' +
+        '<label class="se-color" title="형광펜" style="background:#fff7cc"><b style="border-bottom-color:#f4d03f">밑줄</b><input type="color" id="se_hi" value="#fff59d"></label>' +
+        '<button type="button" data-cmd="removeFormat" title="서식 지우기">✕ 서식</button>' +
+        '<span class="se-sep"></span>' +
+        '<button type="button" id="se_ins_bible" title="본문 칸의 성경 구절을 굵게 삽입">📖 구절</button>' +
+        '<button type="button" data-cmd="insertHorizontalRule" title="구분선">— 구분선</button>' +
+        '<span class="se-sep"></span>' +
+        '<button type="button" id="se_present" title="발표자 모드(큰 글씨·페이지·전체화면)로 미리보기" style="color:#0a6b4f;font-weight:700">🎤 발표자 모드</button>' +
+        '</div>' +
+        '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 위 도구로 굵게·제목·인용·색·목록 등 서식을 적용할 수 있습니다."></div>' +
+        '<textarea id="se_content" style="display:none"></textarea></div>' +
         '<input type="hidden" id="se_media" value="' + esc(rec.media_url || '') + '"><input type="hidden" id="se_file" value="' + esc(rec.file_url || '') + '">' +
         '</div></div>';
       document.body.appendChild(ov);
@@ -1709,7 +1754,56 @@ console.log('[affairs.js] v20260701di');
       ov.querySelector('#se_kakao').onclick = function () {
         save(function (saved) { copyKakaoQt(saved); });
       };
+
+      // ── 설교 원고 리치 에디터(contenteditable) ──
+      var ed = ov.querySelector('#se_editor'), hid = ov.querySelector('#se_content'), cntEl = ov.querySelector('#se_count');
+      (function initEditor() {
+        var raw = rec.content || '';
+        if (/<(p|div|h[1-6]|ul|ol|li|blockquote|br|span|mark|b|i|strong|em|u|s|font)\b/i.test(raw)) ed.innerHTML = raw;        // 이미 서식 있는 원고
+        else if (raw.trim()) ed.innerHTML = raw.split(/\n{2,}/).map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join('');  // 기존 평문 → 문단
+        else ed.innerHTML = '';
+        syncContent();
+      })();
+      function syncContent() {
+        hid.value = ed.innerHTML;
+        var t = (ed.innerText || '').replace(/ /g, ' ').trim();
+        var words = t ? t.split(/\s+/).length : 0, chars = t.replace(/\s/g, '').length;
+        cntEl.textContent = words + '단어 · ' + chars + '자';
+      }
+      ed.addEventListener('input', syncContent);
+      try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
+      function exec(cmd, val) { ed.focus(); try { document.execCommand(cmd, false, val == null ? null : val); } catch (e) {} syncContent(); }
+      Array.prototype.forEach.call(ov.querySelectorAll('#se_tb [data-cmd]'), function (b) {
+        b.onmousedown = function (e) { e.preventDefault(); };   // 선택영역 유지
+        b.onclick = function () { exec(b.dataset.cmd); };
+      });
+      ov.querySelector('#se_block').onchange = function () { exec('formatBlock', this.value === 'p' ? 'P' : this.value.toUpperCase()); this.selectedIndex = 0; };
+      ov.querySelector('#se_fore').oninput = function () { exec('foreColor', this.value); };
+      ov.querySelector('#se_hi').oninput = function () { exec('hiliteColor', this.value); };
+      ov.querySelector('#se_ins_bible').onmousedown = function (e) { e.preventDefault(); };
+      ov.querySelector('#se_ins_bible').onclick = function () {
+        var s = (ov.querySelector('#se_scripture').value || '').trim();
+        if (!s) { var m = ov.querySelector('#se_msg'); m.style.color = '#c0392b'; m.textContent = '먼저 위 ‘본문(성경)’ 칸에 구절을 입력하세요.'; return; }
+        exec('insertHTML', '<p><b>' + esc(s) + '</b></p>');
+      };
+      ov.querySelector('#se_present').onclick = function () {
+        syncContent();
+        var w = window.open('', '_blank');
+        if (!w) { var m = ov.querySelector('#se_msg'); m.style.color = '#c0392b'; m.textContent = '팝업이 차단되었습니다 — 발표자 모드를 위해 팝업을 허용해 주세요.'; return; }
+        try { w.document.write('<p style="font-family:sans-serif;color:#7b8794;padding:24px">발표자 모드 준비 중…</p>'); } catch (_) {}
+        sermonReadingView(gather(), { qt: false, win: w, present: true });
+      };
     }
+  }
+
+  // 서식(HTML) 원고 → 평문(카카오톡 등). 평문이면 그대로.
+  function htmlToPlain(html) {
+    if (html == null) return '';
+    var s = String(html);
+    if (!/<[a-z!][\s\S]*>/i.test(s)) return s;
+    var d = document.createElement('div');
+    d.innerHTML = s.replace(/<\/(p|div|h[1-6]|li|blockquote|tr)>/gi, '$&\n').replace(/<br\s*\/?>/gi, '\n');
+    return (d.textContent || '').replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
   }
 
   // QT 카카오톡 발송 양식 (텍스트) — 클립보드에 복사
@@ -1731,7 +1825,7 @@ console.log('[affairs.js] v20260701di');
     lines.push('');
     lines.push('📝 묵상');
     lines.push('');
-    lines.push((r.content || '').trim());
+    lines.push(htmlToPlain(r.content).trim());
     return lines.join('\n');
   }
   function copyKakaoQt(r) {
@@ -1762,7 +1856,21 @@ console.log('[affairs.js] v20260701di');
     var bibleLabel = qtMode ? '성경 본문 (우리말성경)' : '성경 본문 (개역개정)';
     var bibleHtml = bibleSrc ? '<div class="bible"><div class="bible-t">■ ' + bibleLabel + (r.scripture ? ' <span style="font-weight:400;color:#9a8f78">' + esc(r.scripture) + '</span>' : '') + '</div>' + esc(bibleSrc).replace(/\n/g, '<br>') + '</div>' : '';
     // 설교 원고는 페이지 모드에서 화면 높이에 맞춰 동적으로 분할됨(아래 JS). '<' 이스케이프로 </script> 차단
-    var bodyLinesJson = JSON.stringify((r.content || '').split('\n')).replace(/</g, '\\u003c');
+    // 설교 원고: 서식(HTML) 원고면 블록 단위로, 옛 평문이면 줄 단위로 분할(하위호환)
+    var _craw = r.content || '';
+    var _isHtml = /<(p|div|h[1-6]|ul|ol|li|blockquote|br|span|mark|b|i|strong|em|u|s|font)\b/i.test(_craw);
+    var bodyIsHtml = false, bodyBlocks;
+    if (_isHtml) {
+      var _tmp = document.createElement('div'); _tmp.innerHTML = _craw;
+      bodyBlocks = [];
+      Array.prototype.forEach.call(_tmp.childNodes, function (n) {
+        if (n.nodeType === 1) { if ((n.outerHTML || '').trim()) bodyBlocks.push(n.outerHTML); }
+        else if (n.nodeType === 3 && n.textContent.trim()) bodyBlocks.push('<p>' + n.textContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>');
+      });
+      if (!bodyBlocks.length) bodyBlocks = [_craw];
+      bodyIsHtml = true;
+    } else { bodyBlocks = _craw.split('\n'); }
+    var bodyLinesJson = JSON.stringify(bodyBlocks).replace(/</g, '\\u003c');
 
     // 예배 순서 한 항목의 전문(교독문·사도신경·주기도문·성경봉독·가사/기도문 자동 펼침)
     function itemContent(it) {
@@ -1845,6 +1953,11 @@ console.log('[affairs.js] v20260701di');
       '.pg-img .img-pg-t{font-family:"Noto Sans KR",sans-serif;font-size:.75em;color:#7a5d27;font-weight:700;margin-bottom:10px;text-align:center}',
       '.pg-img img{max-width:100%;max-height:calc(100% - 40px);object-fit:contain;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.1)}',
       '.body{white-space:normal}',
+      '.body h1,.body h2{font-size:1.32em;font-weight:800;margin:.6em 0 .3em;line-height:1.4;color:#10243f}body.dark .body h1,body.dark .body h2{color:#e8edf6}',
+      '.body h3{font-size:1.14em;font-weight:700;margin:.5em 0 .25em;color:#1b3a5c}body.dark .body h3{color:#9bbcf0}',
+      '.body p{margin:.5em 0}.body ul,.body ol{margin:.5em 0;padding-left:1.5em}.body li{margin:.2em 0}',
+      '.body blockquote{border-left:4px solid #d8cbab;margin:.6em 0;padding:.2em 0 .2em 16px;color:#6b5d3e;font-style:italic}body.dark .body blockquote{border-left-color:#5a513a;color:#cbb98a}',
+      '.body mark{padding:0 2px;border-radius:2px}.body hr{border:none;border-top:1px solid #d8cbab;margin:.9em 0}body.dark .body hr{border-top-color:#3a3d44}',
       /* 페이지 표시기 */
       '#pg_ind{flex-shrink:0;font-size:12px;color:#9a8f78;min-width:44px;text-align:center;display:none}',
       'body.paged #pg_ind{display:block}',
@@ -1874,11 +1987,11 @@ console.log('[affairs.js] v20260701di');
 
     var js = '(function(){' +
       'var b=document.body,s=22,deck=document.getElementById("deck"),track=document.getElementById("track"),ind=document.getElementById("pg_ind");' +
-      'var BODY=' + bodyLinesJson + ';' +
+      'var BODY=' + bodyLinesJson + ';var HTML=' + (bodyIsHtml ? 'true' : 'false') + ';' +
       'var curPg=0,total=0,reflowTimer=null;' +
       'function eh(x){return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}' +
-      'function lineHtml(x){return (x?eh(x):"")+"<br>";}' +
-      'function fullBodyHtml(){return BODY.map(function(x){return x?eh(x):"";}).join("<br>");}' +
+      'function lineHtml(x){return HTML?(x||""):((x?eh(x):"")+"<br>");}' +
+      'function fullBodyHtml(){return HTML?BODY.join(""):BODY.map(function(x){return x?eh(x):"";}).join("<br>");}' +
       'function mkBodyPage(){var pg=document.createElement("div");pg.className="pg pg-body";var inr=document.createElement("div");inr.className="body";pg.appendChild(inr);return pg;}' +
       /* 설교 원고를 현재 화면 높이에 맞춰 분할(페이지 모드) 또는 한 덩어리(스크롤 모드) */
       'function buildBody(){' +
