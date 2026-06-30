@@ -918,7 +918,7 @@ console.log('[affairs.js] v20260701di');
   var _libCache = null;
   // 파일명 키워드 기반 자동 분류(우선순위 순). 일치 없으면 성경책 이름 → 성경·주석, 그래도 없으면 기타.
   var LIB_CATS = [
-    ['정기간행물·잡지', /목회와신학|생명의\s*삶|월간목회|그말씀|디사이플|빛과소금|기독교사상|활천|현대종교|신학지남|날마다\s*솟는\s*샘물|말씀의\s*시간|매일성경|교회와신앙|갱신과부흥|개혁신앙|^20\d{4}|\d{1,2}\s*월\s*호|\d{4}\s*년\s*\d{1,2}\s*월/],
+    ['정기간행물·잡지', /목회와신학|생명의\s*삶|월간목회|그말씀|디사이플|빛과소금|기독교사상|활천|현대종교|신학지남|날마다\s*솟는\s*샘물|매일성경|교회와신앙|갱신과부흥|개혁신앙|^20\d{4}|\d{1,2}\s*월\s*호|\d{4}\s*년\s*\d{1,2}\s*월/],
     ['교육', /기독교교육|교회교육|교회학교|주일학교|교육학|교수법|교사용|학습자용|교재|공과|커리큘럼|교리교육|양육교재|훈련교재/],
     ['AI·디지털', /인공지능|챗GPT|ChatGPT|\bGPT\b|메타버스|머신러닝|딥러닝|빅데이터|알고리즘|디지털|\bAI\b/],
     ['경영·경제', /경영|경제|마케팅|회계|재무|투자|자본주의|매니지먼트|버핏|노믹스|재테크/],
@@ -968,7 +968,7 @@ console.log('[affairs.js] v20260701di');
   // 정기간행물·잡지 종류 태그(하위 필터용). 이름 우선, 날짜만 있으면 월간 묵상·QT.
   var LIB_MAG_TAG = [
     ['월간목회', /월간목회/], ['목회와신학', /목회와신학/], ['생명의삶', /생명의\s*삶/], ['디사이플', /디사이플/],
-    ['그말씀', /그말씀/], ['날마다 솟는 샘물', /날마다\s*솟는\s*샘물/], ['말씀의 시간', /말씀의\s*시간/], ['빛과소금', /빛과소금/],
+    ['그말씀', /그말씀/], ['날마다 솟는 샘물', /날마다\s*솟는\s*샘물/], ['빛과소금', /빛과소금/],
     ['기독교사상', /기독교사상/], ['활천', /활천/], ['현대종교', /현대종교/], ['신학지남', /신학지남/], ['매일성경', /매일성경/],
     ['교회와신앙', /교회와신앙/], ['갱신과부흥', /갱신과부흥/], ['개혁신앙', /개혁신앙/], ['월간 묵상·QT', /^20\d{4}/]
   ];
@@ -1017,10 +1017,10 @@ console.log('[affairs.js] v20260701di');
         '<div><b style="font-size:1.1rem;color:var(--accent,#032257)">📚 나의 도서관</b>' +
         '<div style="font-size:.82rem;color:var(--ink-soft);margin-top:3px">총 <b>' + books.length + '권</b> · ' + catArr.length + '개 분류 · 표지 클릭 시 드라이브에서 열림(관리자 전용)</div></div>' +
         '<input type="text" id="lib_q" placeholder="🔍 제목·저자 검색" style="padding:9px 12px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:240px"></div>' +
-        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="color:var(--accent,#032257)">📖 오늘의 추천 <span style="font-weight:400;font-size:.8rem;color:#9aa5b1">' + ds + ' · 매일 바뀝니다</span></b><button class="btn btn-line" id="lib_reroll" style="padding:4px 11px;font-size:.8rem">다시</button></div><div class="lib-grid" id="lib_recos">' + picks.map(card).join('') + '</div></div>' +
         '<div class="fin-card"><b style="color:var(--accent,#032257)">🗂 분류별</b><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px">' +
         catArr.map(function (c) { return '<button class="lib-catcard" data-cat="' + esc(c[0]) + '"><div style="font-weight:700;color:#27364a">' + esc(c[0]) + '</div><div style="font-size:.8rem;color:#9aa5b1;margin-top:2px">' + c[1] + '권</div></button>'; }).join('') +
-        '</div></div>';
+        '</div></div>' +
+        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="color:var(--accent,#032257)">📖 오늘의 추천 <span style="font-weight:400;font-size:.8rem;color:#9aa5b1">' + ds + ' · 매일 바뀝니다</span></b><button class="btn btn-line" id="lib_reroll" style="padding:4px 11px;font-size:.8rem">다시</button></div><div class="lib-grid" id="lib_recos">' + picks.map(card).join('') + '</div></div>';
       bindCards(panel.querySelector('#lib_recos'));
       Array.prototype.forEach.call(panel.querySelectorAll('.lib-catcard'), function (b) { b.onclick = function () { listView(books, b.dataset.cat, ''); }; });
       var rer = 0;
