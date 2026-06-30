@@ -989,6 +989,59 @@ console.log('[affairs.js] v20260701di');
     try { localStorage.setItem(LIB_LS_KEY, JSON.stringify({ v: LIB_CACHE_VER, books: books })); } catch (e) { /* 용량초과 등 → 캐시 생략 */ }
   }
   var LIB_PALETTE = ['#0e7c5a', '#0a4a6e', '#7c5cbf', '#c0813a', '#3a7d8c', '#9c4a52', '#5a7d4a', '#475569', '#8a6d3b', '#5b5fa6', '#2f8f6b', '#7a5c8a', '#5a6675', '#a0522d', '#456b8c', '#6b8e23'];
+
+  // ── 수동 분류 변경(드래그&드롭): Supabase library_overrides 에 저장(관리자 공유·영구). 자동분류보다 우선 ──
+  var LIB_OV = {};        // { book_id: category }
+  var LIB_DRAG = null;    // 드래그 중인 책 id
+  function libLoadOverrides() {
+    return api('GET', 'library_overrides?select=book_id,category').then(function (rows) {
+      LIB_OV = {}; (rows || []).forEach(function (r) { LIB_OV[r.book_id] = r.category; }); return LIB_OV;
+    }).catch(function () { return LIB_OV; });   // 테이블 미생성 등 → 자동분류만 사용
+  }
+  function libSetOverride(id, cat) {
+    return api('POST', 'library_overrides', [{ book_id: String(id), category: cat }], 'resolution=merge-duplicates,return=minimal');
+  }
+  function libCatCounts(books) { var c = {}; books.forEach(function (b) { c[b.cat] = (c[b.cat] || 0) + 1; }); return c; }
+  function libCatBarHtml(books, activeCat) {
+    var counts = libCatCounts(books);
+    var order = LIB_CATS.map(function (c) { return c[0]; }).concat(['기타']);
+    var arr = order.filter(function (c) { return counts[c]; }).map(function (c) { return [c, counts[c]]; });
+    return '<div class="lib-cats">' + arr.map(function (c, i) {
+      return '<button class="lib-catcard' + (c[0] === activeCat ? ' on' : '') + '" data-cat="' + esc(c[0]) + '" style="--c:' + LIB_PALETTE[i % LIB_PALETTE.length] + '"><span class="lib-cat-name">' + esc(c[0]) + '</span><span class="lib-cat-cnt">' + c[1] + '권</span></button>';
+    }).join('') + '</div>';
+  }
+  // 분류 카드에 클릭(이동)·드롭(재분류) 연결. opts: {onNavigate(cat), onMoved(book,from,to)}
+  function libBindCatBar(container, books, opts) {
+    if (!container) return;
+    Array.prototype.forEach.call(container.querySelectorAll('.lib-catcard'), function (el) {
+      var cat = el.dataset.cat;
+      el.onclick = function () { if (!LIB_DRAG && opts.onNavigate) opts.onNavigate(cat); };
+      el.ondragover = function (e) { if (LIB_DRAG) { e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (x) {} el.classList.add('lib-drop'); } };
+      el.ondragleave = function () { el.classList.remove('lib-drop'); };
+      el.ondrop = function (e) {
+        e.preventDefault(); el.classList.remove('lib-drop');
+        var id = (e.dataTransfer && e.dataTransfer.getData('text/plain')) || LIB_DRAG; LIB_DRAG = null;
+        if (!id) return;
+        var bk = null, i; for (i = 0; i < books.length; i++) { if (String(books[i].id) === String(id)) { bk = books[i]; break; } }
+        if (!bk || bk.cat === cat) return;
+        var from = bk.cat; el.classList.add('lib-saving');
+        libSetOverride(id, cat).then(function () {
+          LIB_OV[id] = cat; bk.cat = cat; libSaveLS(books); el.classList.remove('lib-saving');
+          if (opts.onMoved) opts.onMoved(bk, from, cat);
+        }).catch(function (err) {
+          el.classList.remove('lib-saving');
+          libToast('저장 실패: ' + ((err && err.message) || '오류') + ' — library_overrides 테이블을 확인하세요', true);
+        });
+      };
+    });
+  }
+  var _libToastEl = null, _libToastTmr = null;
+  function libToast(msg, isErr) {
+    if (!_libToastEl) { _libToastEl = document.createElement('div'); _libToastEl.className = 'lib-toast'; document.body.appendChild(_libToastEl); }
+    _libToastEl.textContent = msg; _libToastEl.style.background = isErr ? '#b4232a' : '#13314e';
+    _libToastEl.classList.add('show'); clearTimeout(_libToastTmr);
+    _libToastTmr = setTimeout(function () { if (_libToastEl) _libToastEl.classList.remove('show'); }, isErr ? 4500 : 1900);
+  }
   function renderLibrary(panel) {
     var url = window.LIBRARY_API_URL;
     if (!url) { panel.innerHTML = msgCard('나의 도서관 — 설정 필요', 'Apps Script(library-api.gs) 배포 후 config.js 의 LIBRARY_API_URL 을 설정해 주세요.'); return; }
@@ -1008,7 +1061,7 @@ console.log('[affairs.js] v20260701di');
       var t = String(b.title == null ? '' : b.title).replace(/\+/g, ' ').replace(/\s+/g, ' ').trim();
       var a = b.author || '';
       if (!a) { var m = t.match(/^[\(\[]\s*([^\)\]]{1,24})\s*[\)\]]\s*(.+)$/); if (m) { a = m[1].trim(); t = m[2].trim(); } }
-      return { id: b.id, title: t || '(제목 없음)', author: a, cat: libClassify(t), series: libSeries(t), pub: libMag(t), key: (t + ' ' + a).toLowerCase() };
+      return { id: b.id, title: t || '(제목 없음)', author: a, cat: (LIB_OV[b.id] || libClassify(t)), series: libSeries(t), pub: libMag(t), key: (t + ' ' + a).toLowerCase() };
     }
     var GRID_CSS = '<style>' +
       '@keyframes libfade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}' +
@@ -1047,21 +1100,37 @@ console.log('[affairs.js] v20260701di');
       '.lib-more{border:1px solid #e2e8f0;background:#fff;color:#33415c;font-weight:700;border-radius:999px;padding:10px 26px;cursor:pointer;font-family:inherit;transition:all .15s}.lib-more:hover{border-color:#0e7c5a;color:#0c5a42}' +
       '.lib-cnt{font-size:.8rem;color:#9aa5b1;margin-top:9px}' +
       '.lib-reroll{border:1px solid #e2e8f0;background:#fff;color:#475569;font-weight:700;border-radius:999px;padding:5px 14px;font-size:.8rem;cursor:pointer;font-family:inherit}.lib-reroll:hover{border-color:#0e7c5a;color:#0c5a42}' +
+      // 드래그&드롭 분류 이동
+      '.lib-card[draggable]{cursor:grab}.lib-card:active{cursor:grabbing}' +
+      '.lib-card.lib-dragging{opacity:.35}' +
+      '.lib-catcard.on{border-color:var(--c,#0e7c5a);box-shadow:0 6px 18px color-mix(in srgb,var(--c,#0e7c5a) 18%,transparent)}' +
+      '.lib-catcard.lib-saving{opacity:.55}' +
+      'body.lib-dnd .lib-cats .lib-catcard{border-style:dashed;border-color:var(--c,#0e7c5a)}' +
+      '.lib-catcard.lib-drop{border-style:solid !important;transform:translateY(-3px);box-shadow:0 0 0 3px color-mix(in srgb,var(--c,#0e7c5a) 38%,#fff),0 12px 26px rgba(15,37,64,.16)}' +
+      // 목록 화면 상단 고정 분류 바
+      '.lib-catbar{position:sticky;top:0;z-index:6;background:rgba(255,255,255,.97);backdrop-filter:saturate(1.2) blur(2px);padding:10px 0 12px;margin-bottom:14px;border-bottom:1px solid #eef1f5}' +
+      '.lib-catbar-hint{font-size:.74rem;font-weight:700;color:#9aa5b1;margin:0 2px 9px}' +
+      '.lib-catbar .lib-cats{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:9px}' +
+      '.lib-catbar .lib-catcard{padding:11px 13px 10px}.lib-catbar .lib-cat-name{font-size:.9rem}.lib-catbar .lib-cat-cnt{margin-top:6px}' +
+      // 이동 완료 토스트
+      '.lib-toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(8px);background:#13314e;color:#fff;padding:11px 22px;border-radius:999px;font-size:.86rem;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.28);z-index:99999;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease}' +
+      '.lib-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}' +
       '</style>';
     function card(bk) {
       var t = esc(bk.title), a = esc(bk.author);
-      return '<button class="lib-card" data-id="' + esc(bk.id) + '"><div class="lib-coverwrap"><img class="lib-cover" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(bk.id) + '&sz=w320" onerror="this.style.visibility=\'hidden\'" alt="' + t + '"></div><div class="lib-t">' + t + '</div>' + (a ? '<div class="lib-a">' + a + '</div>' : '') + '</button>';
+      return '<button class="lib-card" draggable="true" data-id="' + esc(bk.id) + '" data-cat="' + esc(bk.cat) + '" title="끌어서 분류 이동 · 눌러서 열기"><div class="lib-coverwrap"><img class="lib-cover" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(bk.id) + '&sz=w320" onerror="this.style.visibility=\'hidden\'" alt="' + t + '"></div><div class="lib-t">' + t + '</div>' + (a ? '<div class="lib-a">' + a + '</div>' : '') + '</button>';
     }
     function bindCards(box) {
       Array.prototype.forEach.call(box.querySelectorAll('.lib-card'), function (b) {
-        b.onclick = function () { window.open('https://drive.google.com/file/d/' + b.dataset.id + '/view', '_blank', 'noopener'); };
+        b.onclick = function () { if (b.dataset.dragged) { b.dataset.dragged = ''; return; } window.open('https://drive.google.com/file/d/' + b.dataset.id + '/view', '_blank', 'noopener'); };
+        b.ondragstart = function (e) { LIB_DRAG = b.dataset.id; b.dataset.dragged = '1'; try { e.dataTransfer.setData('text/plain', b.dataset.id); e.dataTransfer.effectAllowed = 'move'; } catch (x) {} b.classList.add('lib-dragging'); document.body.classList.add('lib-dnd'); };
+        b.ondragend = function () { b.classList.remove('lib-dragging'); document.body.classList.remove('lib-dnd'); LIB_DRAG = null; Array.prototype.forEach.call(document.querySelectorAll('.lib-catcard.lib-drop'), function (x) { x.classList.remove('lib-drop'); }); };
       });
     }
 
     function dashboard(books) {
-      var counts = {}; books.forEach(function (b) { counts[b.cat] = (counts[b.cat] || 0) + 1; });
-      var order = LIB_CATS.map(function (c) { return c[0]; }).concat(['기타']);
-      var catArr = order.filter(function (c) { return counts[c]; }).map(function (c) { return [c, counts[c]]; });
+      var catArr = libCatBarHtml(books, '');
+      var nCats = (libCatBarHtml(books, '').match(/lib-catcard/g) || []).length;
       var dt = new Date(), seed = dt.getFullYear() * 372 + dt.getMonth() * 31 + dt.getDate();
       var ds = dt.getFullYear() + '.' + pad2(dt.getMonth() + 1) + '.' + pad2(dt.getDate());
       var picks = libSeededPicks(books, 6, seed);
@@ -1069,14 +1138,17 @@ console.log('[affairs.js] v20260701di');
         '<div class="lib-hero"><div class="lib-hero-in"><div>' +
         '<div class="lib-eyebrow">MY LIBRARY</div>' +
         '<div class="lib-htitle">나의 도서관</div>' +
-        '<div class="lib-hsub">총 ' + books.length + '권 · ' + catArr.length + '개 분류 · 표지를 누르면 드라이브에서 열립니다</div></div>' +
+        '<div class="lib-hsub">총 ' + books.length + '권 · ' + nCats + '개 분류 · 표지를 누르면 드라이브에서 열립니다</div></div>' +
         '<input type="text" id="lib_q" class="lib-search" placeholder="🔍 제목·저자 검색"></div></div>' +
-        '<div class="lib-sec"><div class="lib-sec-h"><span>🗂 분류별</span></div><div class="lib-cats">' +
-        catArr.map(function (c, i) { return '<button class="lib-catcard" data-cat="' + esc(c[0]) + '" style="--c:' + LIB_PALETTE[i % LIB_PALETTE.length] + '"><span class="lib-cat-name">' + esc(c[0]) + '</span><span class="lib-cat-cnt">' + c[1] + '권</span></button>'; }).join('') +
-        '</div></div>' +
+        '<div class="lib-sec"><div class="lib-sec-h"><span>🗂 분류별 <span class="lib-sec-sub">책을 분류 칸으로 끌어다 놓으면 분류가 바뀝니다</span></span></div>' +
+        catArr +
+        '</div>' +
         '<div class="lib-sec"><div class="lib-sec-h"><span>📖 오늘의 추천 <span class="lib-sec-sub">' + ds + ' · 매일 바뀝니다</span></span><button class="lib-reroll" id="lib_reroll">↻ 다시</button></div><div class="lib-grid" id="lib_recos">' + picks.map(card).join('') + '</div></div></div>';
       bindCards(panel.querySelector('#lib_recos'));
-      Array.prototype.forEach.call(panel.querySelectorAll('.lib-catcard'), function (b) { b.onclick = function () { openList(books, b.dataset.cat, ''); }; });
+      libBindCatBar(panel.querySelector('.lib-cats'), books, {
+        onNavigate: function (cat) { openList(books, cat, ''); },
+        onMoved: function (bk, from, to) { dashboard(books); libToast('‘' + bk.title + '’ → ' + to); }
+      });
       var rer = 0;
       panel.querySelector('#lib_reroll').onclick = function () { rer++; var box = panel.querySelector('#lib_recos'); box.innerHTML = libSeededPicks(books, 6, seed + rer * 7919).map(card).join(''); bindCards(box); };
       var tmr = null;
@@ -1106,6 +1178,7 @@ console.log('[affairs.js] v20260701di');
         '<div class="lib-bar"><div style="display:flex;align-items:center;gap:12px"><button class="lib-back" id="lib_back">‹ 도서관</button>' +
         '<span class="lib-ltitle">' + (cat ? esc(cat) : '검색: ' + esc(q)) + '</span></div>' +
         '<input type="text" id="lib_q2" placeholder="🔍 이 안에서 검색" value="' + esc(q) + '" style="padding:9px 14px;border:1px solid #e2e8f0;border-radius:999px;font:inherit;min-width:200px;outline:none"></div>' +
+        '<div class="lib-catbar"><div class="lib-catbar-hint">🗂 분류 · 책을 칸으로 끌어다 놓으면 이동</div>' + libCatBarHtml(books, curCat) + '</div>' +
         subBar +
         '<div class="lib-grid" id="lib_grid"></div>' +
         '<div style="text-align:center;margin:22px 0"><button class="lib-more" id="lib_more">더 보기</button><div class="lib-cnt" id="lib_cnt"></div></div></div>';
@@ -1117,6 +1190,22 @@ console.log('[affairs.js] v20260701di');
         cntEl.textContent = vis + ' / ' + total + '권';
         moreBtn.style.display = vis < total ? '' : 'none';
       }
+      function refreshCatBar() {
+        var counts = libCatCounts(books);
+        Array.prototype.forEach.call(panel.querySelectorAll('.lib-catcard'), function (el) {
+          var c = el.dataset.cat, pill = el.querySelector('.lib-cat-cnt');
+          if (pill) pill.textContent = (counts[c] || 0) + '권';
+          el.style.display = counts[c] ? '' : 'none';
+          if (c === curCat) el.classList.add('on'); else el.classList.remove('on');
+        });
+      }
+      libBindCatBar(panel.querySelector('.lib-cats'), books, {
+        onNavigate: function (c) { if (c !== curCat) listView(books, c, '', close); },
+        onMoved: function (bk, from, to) {
+          curList = build(panel.querySelector('#lib_q2').value.trim().toLowerCase());
+          render(); refreshCatBar(); libToast('‘' + bk.title + '’ → ' + to);
+        }
+      });
       moreBtn.onclick = function () { shown += PAGE; render(); };
       panel.querySelector('#lib_back').onclick = function () { if (close) close(); else dashboard(books); };
       Array.prototype.forEach.call(panel.querySelectorAll('.lib-schip'), function (b) {
@@ -1131,7 +1220,16 @@ console.log('[affairs.js] v20260701di');
       render();
     }
 
+    // 수동 분류 변경(overrides)을 _libCache 에 다시 입혀 카운트·목록을 최신화. 대시보드면 재렌더.
+    function applyOverrides() {
+      if (!_libCache) return; var changed = false;
+      _libCache.forEach(function (b) { var c = LIB_OV[b.id] || libClassify(b.title); if (c !== b.cat) { b.cat = c; changed = true; } });
+      if (changed) { libSaveLS(_libCache); if (panel.querySelector('#lib_recos')) dashboard(_libCache); }
+    }
+
     // 모든 헬퍼·스타일 정의 후 실행 (캐시 즉시 렌더 시 GRID_CSS 등이 정의돼 있도록)
+    // 분류 변경 내역은 병렬로 불러와(즉시 렌더를 막지 않음) 도착하면 다시 입힘.
+    libLoadOverrides().then(applyOverrides);
     if (_libCache) { dashboard(_libCache); return; }
     var cached = libLoadLS();
     if (cached) { _libCache = cached; dashboard(_libCache); doFetch(true); return; }   // 저장된 목록 즉시 표시 + 뒤에서 갱신
