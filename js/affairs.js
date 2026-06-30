@@ -566,11 +566,11 @@ console.log('[affairs.js] v20260701di');
         }).join('');
       }
 
-      var recent = rows.slice(0, 6).map(function (r) {
+      var recent = rows.slice(0, 6).map(function (r, i) {
         return '<div style="display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid #f0f0f0">' +
           '<div style="flex:0 0 84px;font-size:.8rem;color:#9aa5b1">' + esc(fmtD(r.sermon_date)) + '</div>' +
           '<div style="flex:0 0 76px"><span class="fin-pill">' + esc(r.service || '-') + '</span></div>' +
-          '<div style="flex:1;min-width:0"><div style="font-weight:700;color:#27364a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.title || '(제목 없음)') + '</div>' +
+          '<div style="flex:1;min-width:0"><div class="rc-title" data-idx="' + i + '" title="클릭해서 내용 보기" style="font-weight:700;color:var(--accent,#032257);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목 없음)') + '</div>' +
           (r.scripture ? '<div style="font-size:.78rem;color:#7b8794">' + esc(r.scripture) + '</div>' : '') + '</div></div>';
       }).join('') || '<p style="color:#9aa5b1;font-size:.86rem">아직 설교 기록이 없습니다.</p>';
 
@@ -617,18 +617,39 @@ console.log('[affairs.js] v20260701di');
       Array.prototype.forEach.call(panel.querySelectorAll('.cov-cell.on[data-book]'), function (el) {
         el.onclick = function () { bookSermonsModal(el.dataset.book, coverList[el.dataset.book] || []); };
       });
+      // 최근 설교 제목 클릭 → 내용 보기
+      Array.prototype.forEach.call(panel.querySelectorAll('.rc-title'), function (t) { t.onclick = function () { sermonContentModal(rows[Number(t.dataset.idx)]); }; });
+    }
+
+    // 설교 한 편 내용 보기(제목·본문·묵상). 뒤로가기로 닫혀 목록으로 돌아감.
+    function sermonContentModal(r) {
+      if (!r) return;
+      var meta = [r.service, fmtD(r.sermon_date), r.scripture].filter(Boolean).map(esc).join(' · ');
+      var raw = r.content || '';
+      var isHtml = /<(p|div|h[1-6]|ul|ol|li|blockquote|br|span|mark|b|i|strong|em|u|s|font)\b/i.test(raw);
+      var body = raw.trim() ? (isHtml ? raw : '<p>' + esc(raw).replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>') + '</p>') : '<p style="color:#9aa5b1">내용이 없습니다.</p>';
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.55);z-index:9750;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:760px;width:100%;padding:24px 26px;box-shadow:0 24px 60px rgba(0,0,0,.32)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257);font-size:1.3rem;font-family:\'Noto Serif KR\',serif;line-height:1.35">' + esc(r.title || '(제목 없음)') + '</h3><button class="btn btn-line" id="sc_close" style="padding:5px 13px;white-space:nowrap">‹ 목록</button></div>' +
+        (meta ? '<div style="font-size:.82rem;color:#7b8794;margin-bottom:15px">' + meta + '</div>' : '') +
+        '<div style="line-height:1.95;font-size:1.02rem;color:#1f2937;font-family:\'Noto Serif KR\',serif;max-height:68vh;overflow:auto">' + body + '</div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#sc_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     }
 
     function bookSermonsModal(book, list) {
       var SVC_C = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요기도회': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
       var ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
-      var items = (list || []).map(function (r) {
+      var items = (list || []).map(function (r, i) {
         var c = SVC_C[r.service] || '#64748b';
         return '<div style="display:flex;gap:10px;align-items:baseline;padding:9px 2px;border-bottom:1px solid #f0f0f0">' +
           '<div style="flex:0 0 84px;font-size:.8rem;color:#9aa5b1;white-space:nowrap">' + esc(fmtD(r.sermon_date)) + '</div>' +
           '<div style="flex:0 0 72px"><span class="fin-pill" style="background:' + c + '1a;color:' + c + '">' + esc(r.service || '-') + '</span></div>' +
-          '<div style="flex:1;min-width:0"><div style="font-weight:700;color:#27364a">' + esc(r.title || '(제목 없음)') + '</div>' +
+          '<div style="flex:1;min-width:0"><div class="bk-title" data-idx="' + i + '" title="클릭해서 내용 보기" style="font-weight:700;color:var(--accent,#032257);cursor:pointer;text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목 없음)') + '</div>' +
           (r.scripture ? '<div style="font-size:.78rem;color:#7b8794">' + esc(r.scripture) + '</div>' : '') + '</div></div>';
       }).join('');
       ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:700px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
@@ -638,6 +659,7 @@ console.log('[affairs.js] v20260701di');
       var close = pushBackClose(function () { ov.remove(); });
       ov.querySelector('#bk_close').onclick = close;
       ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      Array.prototype.forEach.call(ov.querySelectorAll('.bk-title'), function (t) { t.onclick = function () { sermonContentModal((list || [])[Number(t.dataset.idx)]); }; });
     }
   }
 
