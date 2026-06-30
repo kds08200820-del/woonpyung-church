@@ -165,7 +165,7 @@ console.log('[affairs.js] v20260701di');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['suggest', '설교 제안'], ['sermon', '설교관리'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['library', '나의 도서관'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['library', '나의 도서관'], ['settings', '설정']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -213,7 +213,7 @@ console.log('[affairs.js] v20260701di');
     });
     var p = document.getElementById('afPanel');
     if (tab === 'dashboard') renderSermonDashboard(p);
-    else if (tab === 'suggest') renderSermonSuggest(p);
+    else if (tab === 'illus') renderIllustrations(p);
     else if (tab === 'sermon') renderSermon(p);
     else if (tab === 'bulletin') renderBulletinAdmin(p);
     else if (tab === 'library') renderLibrary(p);
@@ -1417,6 +1417,39 @@ console.log('[affairs.js] v20260701di');
     });
   }
 
+  // 예화 클립 탭(전체 페이지): 보관된 예화 클립 정리·검색·복사·삭제
+  function renderIllustrations(panel) {
+    panel.innerHTML =
+      '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">' +
+      '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">🗂 예화 클립</b>' +
+      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">생명의삶 자동분류에서 모은 예화 클립입니다. 설교 작성 중 오른쪽 ‘예화 클립 모음 보기’에서 원고에 삽입할 수 있습니다.</div></div>' +
+      '<input type="text" id="il_q" placeholder="🔍 내용·본문·출처 검색" style="padding:9px 13px;border:1px solid #e2e8f0;border-radius:9px;font:inherit;min-width:230px;outline:none"></div>' +
+      '<div id="il_list"><p class="qt-loading">불러오는 중…</p></div>';
+    var all = [];
+    function draw() {
+      var q = (panel.querySelector('#il_q').value || '').trim().toLowerCase();
+      var rows = all.filter(function (r) { return !q || ((r.content || '') + (r.scripture || '') + (r.source || '') + (r.title || '')).toLowerCase().indexOf(q) >= 0; });
+      var box = panel.querySelector('#il_list');
+      if (!all.length) { box.innerHTML = '<div class="fin-card"><p style="color:#9aa5b1;margin:0">보관된 예화 클립이 없습니다. <b>설교관리 → 설교 시작</b> 후 오른쪽 ‘생명의삶 자동분류’로 자료를 분류하면 예화 클립이 여기에 모입니다.</p></div>'; return; }
+      box.innerHTML = '<div class="fin-card" style="margin-bottom:10px"><b>예화 클립 (' + all.length + '개)</b></div>' + (rows.length ? rows.map(function (r) {
+        var head = [fmtD(r.ref_date), r.scripture, r.title].filter(Boolean).map(esc).join(' · ');
+        return '<div class="fin-card" style="padding:15px 17px">' +
+          (head ? '<div style="font-size:.77rem;color:#7b8794;margin-bottom:7px">' + head + '</div>' : '') +
+          '<div style="white-space:pre-wrap;line-height:1.75;font-size:.94rem;color:#1f2937">' + esc(r.content || '') + '</div>' +
+          (r.source ? '<div style="font-size:.82rem;color:#7a5d27;margin-top:8px">— ' + esc(r.source) + '</div>' : '') +
+          '<div style="display:flex;gap:6px;margin-top:11px"><button class="btn btn-line il-copy" data-id="' + esc(r.id) + '" style="padding:4px 12px;font-size:.78rem">📋 복사</button>' +
+          '<button class="btn btn-line il-del" data-id="' + esc(r.id) + '" style="padding:4px 12px;font-size:.78rem">삭제</button></div></div>';
+      }).join('') : '<p style="color:#9aa5b1;padding:6px 2px">검색 결과가 없습니다.</p>');
+      var byId = {}; all.forEach(function (r) { byId[r.id] = r; });
+      Array.prototype.forEach.call(box.querySelectorAll('.il-copy'), function (b) { b.onclick = function () { var r = byId[b.dataset.id]; var t = (r.content || '') + (r.source ? '\n— ' + r.source : ''); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { b.textContent = '✓ 복사됨'; }, function () { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); b.textContent = '✓ 복사됨'; } catch (e) {} document.body.removeChild(ta); }); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.il-del'), function (b) { b.onclick = function () { if (!confirm('이 예화 클립을 삭제할까요?')) return; api('DELETE', 'sermon_illustrations?id=eq.' + b.dataset.id, null, 'return=minimal').then(function () { all = all.filter(function (r) { return String(r.id) !== String(b.dataset.id); }); draw(); }).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
+    }
+    panel.querySelector('#il_q').oninput = draw;
+    api('GET', 'sermon_illustrations?select=*&order=ref_date.desc,created_at.desc').then(function (rows) { all = rows || []; draw(); }).catch(function (e) {
+      panel.querySelector('#il_list').innerHTML = /42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message) ? msgCard('테이블 준비 필요', 'Supabase ▸ SQL Editor 에서 supabase/sermon_illustrations.sql 을 1회 실행해 주세요.') : msgCard('조회 실패', e.message);
+    });
+  }
+
   function renderSermon(panel) {
     var WTPL = {}, smView = 'list', smRows = [], calYM = null;
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요예배': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
@@ -1427,14 +1460,10 @@ console.log('[affairs.js] v20260701di');
       '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">설교 작성·관리</b>' +
       '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">캘린더에서 <b>날짜를 클릭</b>하면 그 날짜로 바로 설교를 준비할 수 있고, 아래 <b>목록</b>에서도 관리됩니다.</div></div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-      '<button class="btn btn-line" id="sm_illus" style="padding:11px 16px;font-size:.95rem">🗂 예화 클립</button>' +
-      '<button class="btn btn-line" id="sm_qtimport" style="padding:11px 16px;font-size:.95rem">📥 생명의 삶 가져오기</button>' +
       '<button class="btn btn-solid" id="sm_start" style="padding:11px 22px;font-size:1rem">✍️ 설교 시작</button></div></div>' +
       '<div id="sm_cal"></div>' +
       '<div id="sm_list"><p class="qt-loading">불러오는 중…</p></div>';
     panel.querySelector('#sm_start').onclick = function () { sermonEditor(null); };
-    panel.querySelector('#sm_qtimport').onclick = function () { qtImportModal(); };
-    panel.querySelector('#sm_illus').onclick = function () { illustrationsModal(); };
     if (pendingSermon) { var _pp = pendingSermon; pendingSermon = null; sermonEditor(_pp); }   // 설교 제안에서 넘어온 prefill
 
     function loadList() {
