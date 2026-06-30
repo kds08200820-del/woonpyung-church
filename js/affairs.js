@@ -2196,7 +2196,9 @@ console.log('[affairs.js] v20260701di');
     // ── 페이지 구성: 표지 → 예배 순서(항목당 1페이지) → (말씀강해 뒤) 설교 원고 동적 ──
     var pages = [];
     pages.push('<div class="pg pg-fixed pg-cover"><h1>' + esc(r.title || '(제목 없음)') + '</h1>' + (r.scripture ? '<div class="scr">' + esc(r.scripture) + '</div>' : '') + (meta ? '<div class="meta">' + meta + '</div>' : '') + '</div>');
-    if (!qtMode && wOrder.length) {
+    // 예배 순서 페이지는 정식 예배(주일·수요기도회·금요·특별집회)에만. 새벽기도·매일 QT 등은 성경 본문 페이지로.
+    var ORDER_SERVICES = { '주일 낮 예배': 1, '주일 밤 예배': 1, '수요기도회': 1, '수요예배': 1, '금요기도회': 1, '특별집회': 1 };
+    if (!qtMode && wOrder.length && ORDER_SERVICES[r.service]) {
       var total = wOrder.length;
       wOrder.forEach(function (it, i) {
         var label = it.label || '항목';
