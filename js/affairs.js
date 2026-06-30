@@ -989,11 +989,6 @@ console.log('[affairs.js] v20260701di');
     var url = window.LIBRARY_API_URL;
     if (!url) { panel.innerHTML = msgCard('나의 도서관 — 설정 필요', 'Apps Script(library-api.gs) 배포 후 config.js 의 LIBRARY_API_URL 을 설정해 주세요.'); return; }
     var furl = url + (window.LIBRARY_FOLDER_ID ? ((url.indexOf('?') >= 0 ? '&' : '?') + 'folderId=' + encodeURIComponent(window.LIBRARY_FOLDER_ID)) : '');
-    if (_libCache) { dashboard(_libCache); return; }
-    var cached = libLoadLS();
-    if (cached) { _libCache = cached; dashboard(_libCache); doFetch(true); return; }   // 저장된 목록 즉시 표시 + 뒤에서 갱신
-    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">도서관을 불러오는 중… <span style="color:#9aa5b1">(처음 한 번만 걸리고, 다음부터는 바로 열립니다)</span></p></div>';
-    doFetch(false);
     function doFetch(silent) {
       var prevN = _libCache ? _libCache.length : -1;
       fetch(furl).then(function (r) { return r.json(); }).then(function (d) {
@@ -1129,6 +1124,13 @@ console.log('[affairs.js] v20260701di');
       panel.querySelector('#lib_q2').oninput = function () { var v = this.value.trim().toLowerCase(); clearTimeout(tmr); tmr = setTimeout(function () { curList = build(v); shown = PAGE; render(); }, 250); };
       render();
     }
+
+    // 모든 헬퍼·스타일 정의 후 실행 (캐시 즉시 렌더 시 GRID_CSS 등이 정의돼 있도록)
+    if (_libCache) { dashboard(_libCache); return; }
+    var cached = libLoadLS();
+    if (cached) { _libCache = cached; dashboard(_libCache); doFetch(true); return; }   // 저장된 목록 즉시 표시 + 뒤에서 갱신
+    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">도서관을 불러오는 중… <span style="color:#9aa5b1">(처음 한 번만 걸리고, 다음부터는 바로 열립니다)</span></p></div>';
+    doFetch(false);
   }
 
   function renderSermon(panel) {
