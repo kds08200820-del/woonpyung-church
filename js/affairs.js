@@ -1637,7 +1637,16 @@ console.log('[affairs.js] v20260701di');
       Array.prototype.forEach.call(calBox.querySelectorAll('.cal-day'), function (cell) {
         cell.onmouseenter = function () { cell.style.background = '#eef4ff'; };
         cell.onmouseleave = function () { cell.style.background = (cell.dataset.date === todayStr) ? '#f1f7f5' : '#fff'; };
-        cell.onclick = function () { sermonEditor({ sermon_date: cell.dataset.date }); };
+        cell.onclick = function () {
+          var ds = cell.dataset.date;
+          if (worshipMode) {
+            // 그 날짜의 기존 설교(주일 낮 예배 우선)에 예배 순서를 붙임 — 새 빈 레코드 방지(설교 본문 유지)
+            var exist = smRows.filter(function (r) { return fmtD(r.sermon_date) === ds; });
+            var pick = null, i; for (i = 0; i < exist.length; i++) { if (exist[i].service === '주일 낮 예배') { pick = exist[i]; break; } }
+            if (!pick && exist.length) pick = exist[0];
+            sermonEditor(pick || { sermon_date: ds, service: '주일 낮 예배' });
+          } else { sermonEditor({ sermon_date: ds }); }
+        };
       });
       wireRows(calBox);
     }
@@ -1702,7 +1711,8 @@ console.log('[affairs.js] v20260701di');
         '<button class="btn btn-line" id="se_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
         '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 저장</button>' +
         '<button class="btn btn-line" id="se_kakao" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">💬 카카오톡 복사</button>' +
-        '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 내보내기</button>' +
+        '<button class="btn btn-line" id="se_preview" style="padding:8px 13px;border-radius:9px">👁 미리보기</button>' +
+        '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 저장 후 내보내기</button>' +
         '</div>' +
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
         '</div></header>' +
@@ -1970,24 +1980,29 @@ console.log('[affairs.js] v20260701di');
           });
       }
       ov.querySelector('#se_save').onclick = function () { save(null); };
+      // 👁 미리보기 — 저장 없이 현재 화면 그대로 아이패드 보기로 미리 확인(설교 본문 포함)
+      ov.querySelector('#se_preview').onclick = function () {
+        var msg = ov.querySelector('#se_msg');
+        var w = window.open('', '_blank');
+        if (!w) { msg.style.color = '#c0392b'; msg.textContent = '팝업이 차단되었습니다 — 미리보기를 위해 팝업을 허용해 주세요.'; return; }
+        try { w.document.write('<p style="font-family:sans-serif;color:#7b8794;padding:24px">미리보기 준비 중…</p>'); } catch (_) { }
+        sermonReadingView(gather(), { qt: false, win: w });
+        msg.style.color = '#7b8794'; msg.textContent = '👁 미리보기를 열었습니다(저장 안 됨). 확인 후 ‘저장 후 내보내기’를 누르세요.';
+      };
       ov.querySelector('#se_export').onclick = function () {
-        var alsoQt = false;   // 내보내기는 설교문(개역개정)만 — QT는 내보내지 않음
+        var msg = ov.querySelector('#se_msg');
+        var data = gather();
+        if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = '내보내기 전에 일자와 제목을 입력해 주세요.'; var t = ov.querySelector(!data.title ? '#se_title' : '#se_date'); if (t) t.focus(); return; }
         // 창은 클릭 즉시(사용자 제스처) 동기로 열어야 팝업 차단을 피함 — 저장 후 내용 주입
         var w1 = window.open('', '_blank');
-        var w2 = alsoQt ? window.open('', '_blank') : null;
-        if (!w1) { var m = ov.querySelector('#se_msg'); m.style.color = '#c0392b'; m.textContent = '팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.'; return; }
-        if (alsoQt && !w2) { var m2 = ov.querySelector('#se_msg'); m2.style.color = '#c0392b'; m2.textContent = 'QT 창이 차단되었습니다 — 주소창의 팝업 차단을 허용해 주세요. (새벽은 정상 출력)'; }
-        // 저장이 끝나기 전 빈 창에 안내
-        function loading(w) { if (w) { try { w.document.write('<p style="font-family:sans-serif;color:#7b8794;padding:24px">저장 후 내보내는 중입니다…</p>'); } catch (_) { } } }
-        loading(w1); loading(w2);
+        if (!w1) { msg.style.color = '#c0392b'; msg.textContent = '팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.'; return; }
+        try { w1.document.write('<p style="font-family:sans-serif;color:#7b8794;padding:24px">저장 후 내보내는 중입니다…</p>'); } catch (_) { }
         save(function (saved) {
-          sermonReadingView(saved, { qt: false, win: w1 });           // ① 새벽 — 개역개정 (예배 순서 포함)
-          if (alsoQt && w2) sermonReadingView(saved, { qt: true, win: w2 }); // ② QT — 우리말성경 (예배 순서 제외)
+          sermonReadingView(saved, { qt: false, win: w1 });   // 설교문(개역개정) + 예배 순서(정식 예배) + 설교 본문
         }, function (e) {
-          // 저장 실패 시 빈 창 대신 원인을 창에 표시
-          var html = '<div style="font-family:sans-serif;color:#c0392b;padding:24px;line-height:1.7">저장에 실패해 내보내기를 완료하지 못했습니다.<br><br><b>' + esc(e && e.message ? e.message : e) + '</b><br><br>※ Supabase SQL Editor에서 <b>supabase/sermons_extra.sql</b> 을 1회 실행했는지 확인해 주세요. (설교 본문·QT 컬럼이 없으면 저장이 실패합니다)</div>';
+          var isCol = /column|PGRST204|schema cache|Could not find|qt_bible_text|bible_text|prayer|worship_order/i.test((e && e.message) || '');
+          var html = '<div style="font-family:sans-serif;color:#c0392b;padding:24px;line-height:1.7">저장에 실패해 내보내기를 완료하지 못했습니다.<br><br><b>' + esc(e && e.message ? e.message : e) + '</b>' + (isCol ? '<br><br>※ Supabase SQL Editor에서 <b>supabase/sermons_extra.sql</b> 을 1회 실행해 주세요(설교 본문·기도·QT 컬럼 추가).' : '') + '</div>';
           try { if (w1) { w1.document.body.innerHTML = html; } } catch (_) { }
-          try { if (w2) { w2.document.body.innerHTML = html; } } catch (_) { }
         });
       };
       ov.querySelector('#se_kakao').onclick = function () {
