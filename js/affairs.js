@@ -984,6 +984,7 @@ console.log('[affairs.js] v20260701di');
   function libSaveLS(books) {
     try { localStorage.setItem(LIB_LS_KEY, JSON.stringify({ v: LIB_CACHE_VER, books: books })); } catch (e) { /* 용량초과 등 → 캐시 생략 */ }
   }
+  var LIB_PALETTE = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#3b82f6', '#14b8a6', '#a855f7', '#f97316', '#0ea5e9', '#84cc16'];
   function renderLibrary(panel) {
     var url = window.LIBRARY_API_URL;
     if (!url) { panel.innerHTML = msgCard('나의 도서관 — 설정 필요', 'Apps Script(library-api.gs) 배포 후 config.js 의 LIBRARY_API_URL 을 설정해 주세요.'); return; }
@@ -1010,10 +1011,45 @@ console.log('[affairs.js] v20260701di');
       if (!a) { var m = t.match(/^[\(\[]\s*([^\)\]]{1,24})\s*[\)\]]\s*(.+)$/); if (m) { a = m[1].trim(); t = m[2].trim(); } }
       return { id: b.id, title: t || '(제목 없음)', author: a, cat: libClassify(t), series: libSeries(t), pub: libMag(t), key: (t + ' ' + a).toLowerCase() };
     }
-    var GRID_CSS = '<style>.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}.lib-card{cursor:pointer;text-align:left;background:none;border:0;padding:0;font-family:inherit}.lib-cover{width:100%;aspect-ratio:3/4;border-radius:8px;background:#eef2f7;object-fit:cover;border:1px solid #e3e7ee;box-shadow:0 2px 8px rgba(3,34,87,.08)}.lib-card:hover .lib-cover{box-shadow:0 5px 16px rgba(3,34,87,.18)}.lib-t{font-size:.86rem;font-weight:700;color:#27364a;margin-top:7px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.lib-a{font-size:.78rem;color:#9aa5b1;margin-top:1px}.lib-catcard{cursor:pointer;border:1px solid #e3e7ee;border-radius:10px;padding:13px 14px;background:#fff;text-align:left;font-family:inherit}.lib-catcard:hover{border-color:#1f6feb;background:#f5f9ff}.lib-schip{border:1px solid #dfe5ee;background:#fff;border-radius:999px;padding:4px 11px;font-size:.8rem;cursor:pointer;font-family:inherit;color:#3a4a63}.lib-schip:hover{border-color:#1f6feb}.lib-schip.on{background:var(--accent,#032257);color:#fff;border-color:var(--accent,#032257)}</style>';
+    var GRID_CSS = '<style>' +
+      '@keyframes libfade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}' +
+      '.lib-hero{position:relative;overflow:hidden;border-radius:20px;padding:30px 28px;margin-bottom:22px;color:#fff;background:linear-gradient(120deg,#03204a 0%,#0a4a6e 55%,#0e8f7e 100%);box-shadow:0 14px 38px rgba(3,34,87,.28);animation:libfade .4s ease}' +
+      '.lib-hero::after{content:"";position:absolute;right:-50px;top:-60px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%)}' +
+      '.lib-hero-in{position:relative;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}' +
+      '.lib-eyebrow{font-size:.72rem;letter-spacing:.22em;font-weight:700;color:#ffd98a}' +
+      '.lib-htitle{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin:5px 0 0;font-family:\'Noto Serif KR\',serif}' +
+      '.lib-hsub{font-size:.86rem;color:rgba(255,255,255,.82);margin-top:7px}' +
+      '.lib-search{padding:12px 17px;border:0;border-radius:999px;font:inherit;min-width:240px;background:rgba(255,255,255,.16);color:#fff;outline:none}' +
+      '.lib-search::placeholder{color:rgba(255,255,255,.72)}.lib-search:focus{background:rgba(255,255,255,.26)}' +
+      '.lib-sec{margin-bottom:26px}' +
+      '.lib-sec-h{display:flex;justify-content:space-between;align-items:center;font-size:1.06rem;font-weight:800;color:#0f2540;letter-spacing:-.01em;margin-bottom:13px}' +
+      '.lib-sec-sub{font-size:.78rem;font-weight:500;color:#9aa5b1}' +
+      '.lib-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:12px}' +
+      '.lib-catcard{position:relative;overflow:hidden;cursor:pointer;border:1px solid #eaeef4;border-radius:15px;padding:15px 16px 14px;background:#fff;text-align:left;font-family:inherit;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;animation:libfade .35s ease both}' +
+      '.lib-catcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c,#6366f1)}' +
+      '.lib-catcard:hover{transform:translateY(-4px);box-shadow:0 12px 26px rgba(15,37,64,.13);border-color:var(--c,#6366f1)}' +
+      '.lib-cat-name{display:block;font-weight:800;color:#1f2937;font-size:.97rem}' +
+      '.lib-cat-cnt{display:inline-block;margin-top:9px;font-size:.74rem;font-weight:800;padding:3px 10px;border-radius:999px;background:#f1f5f9;background:color-mix(in srgb,var(--c,#6366f1) 13%,#fff);color:var(--c,#475569)}' +
+      '.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:18px}' +
+      '.lib-card{cursor:pointer;text-align:left;background:none;border:0;padding:0;font-family:inherit;animation:libfade .35s ease both}' +
+      '.lib-coverwrap{position:relative;border-radius:12px;overflow:hidden;box-shadow:0 6px 18px rgba(15,37,64,.14);transition:transform .2s ease,box-shadow .2s ease;background:#eef2f7}' +
+      '.lib-card:hover .lib-coverwrap{transform:translateY(-5px);box-shadow:0 16px 34px rgba(15,37,64,.26)}' +
+      '.lib-cover{display:block;width:100%;aspect-ratio:3/4;object-fit:cover}' +
+      '.lib-t{font-size:.86rem;font-weight:700;color:#1f2937;margin-top:9px;line-height:1.32;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
+      '.lib-a{font-size:.77rem;color:#9aa5b1;margin-top:2px}' +
+      '.lib-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px}' +
+      '.lib-back{display:inline-flex;align-items:center;gap:5px;border:0;background:#eef2f7;color:#33415c;font-weight:700;border-radius:999px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:.86rem;transition:background .15s}.lib-back:hover{background:#e2e8f2}' +
+      '.lib-ltitle{font-size:1.25rem;font-weight:800;color:#0f2540;letter-spacing:-.01em}' +
+      '.lib-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px;align-items:center}.lib-chips .lbl{font-size:.78rem;color:#7b8794;font-weight:800;margin-right:2px}' +
+      '.lib-schip{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:5px 13px;font-size:.8rem;cursor:pointer;font-family:inherit;color:#475569;font-weight:600;transition:all .15s}.lib-schip:hover{border-color:#6366f1;color:#4338ca}' +
+      '.lib-schip.on{background:linear-gradient(120deg,#4338ca,#0891b2);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(67,56,202,.3)}' +
+      '.lib-more{border:1px solid #e2e8f0;background:#fff;color:#33415c;font-weight:700;border-radius:999px;padding:10px 26px;cursor:pointer;font-family:inherit;transition:all .15s}.lib-more:hover{border-color:#6366f1;color:#4338ca}' +
+      '.lib-cnt{font-size:.8rem;color:#9aa5b1;margin-top:9px}' +
+      '.lib-reroll{border:1px solid #e2e8f0;background:#fff;color:#475569;font-weight:700;border-radius:999px;padding:5px 14px;font-size:.8rem;cursor:pointer;font-family:inherit}.lib-reroll:hover{border-color:#6366f1;color:#4338ca}' +
+      '</style>';
     function card(bk) {
       var t = esc(bk.title), a = esc(bk.author);
-      return '<button class="lib-card" data-id="' + esc(bk.id) + '"><img class="lib-cover" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(bk.id) + '&sz=w320" onerror="this.style.visibility=\'hidden\'" alt="' + t + '"><div class="lib-t">' + t + '</div>' + (a ? '<div class="lib-a">' + a + '</div>' : '') + '</button>';
+      return '<button class="lib-card" data-id="' + esc(bk.id) + '"><div class="lib-coverwrap"><img class="lib-cover" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(bk.id) + '&sz=w320" onerror="this.style.visibility=\'hidden\'" alt="' + t + '"></div><div class="lib-t">' + t + '</div>' + (a ? '<div class="lib-a">' + a + '</div>' : '') + '</button>';
     }
     function bindCards(box) {
       Array.prototype.forEach.call(box.querySelectorAll('.lib-card'), function (b) {
@@ -1029,14 +1065,15 @@ console.log('[affairs.js] v20260701di');
       var ds = dt.getFullYear() + '.' + pad2(dt.getMonth() + 1) + '.' + pad2(dt.getDate());
       var picks = libSeededPicks(books, 6, seed);
       panel.innerHTML = GRID_CSS +
-        '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
-        '<div><b style="font-size:1.1rem;color:var(--accent,#032257)">📚 나의 도서관</b>' +
-        '<div style="font-size:.82rem;color:var(--ink-soft);margin-top:3px">총 <b>' + books.length + '권</b> · ' + catArr.length + '개 분류 · 표지 클릭 시 드라이브에서 열림(관리자 전용)</div></div>' +
-        '<input type="text" id="lib_q" placeholder="🔍 제목·저자 검색" style="padding:9px 12px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:240px"></div>' +
-        '<div class="fin-card"><b style="color:var(--accent,#032257)">🗂 분류별</b><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px">' +
-        catArr.map(function (c) { return '<button class="lib-catcard" data-cat="' + esc(c[0]) + '"><div style="font-weight:700;color:#27364a">' + esc(c[0]) + '</div><div style="font-size:.8rem;color:#9aa5b1;margin-top:2px">' + c[1] + '권</div></button>'; }).join('') +
+        '<div class="lib-hero"><div class="lib-hero-in"><div>' +
+        '<div class="lib-eyebrow">MY LIBRARY</div>' +
+        '<div class="lib-htitle">나의 도서관</div>' +
+        '<div class="lib-hsub">총 ' + books.length + '권 · ' + catArr.length + '개 분류 · 표지를 누르면 드라이브에서 열립니다</div></div>' +
+        '<input type="text" id="lib_q" class="lib-search" placeholder="🔍 제목·저자 검색"></div></div>' +
+        '<div class="lib-sec"><div class="lib-sec-h"><span>🗂 분류별</span></div><div class="lib-cats">' +
+        catArr.map(function (c, i) { return '<button class="lib-catcard" data-cat="' + esc(c[0]) + '" style="--c:' + LIB_PALETTE[i % LIB_PALETTE.length] + '"><span class="lib-cat-name">' + esc(c[0]) + '</span><span class="lib-cat-cnt">' + c[1] + '권</span></button>'; }).join('') +
         '</div></div>' +
-        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="color:var(--accent,#032257)">📖 오늘의 추천 <span style="font-weight:400;font-size:.8rem;color:#9aa5b1">' + ds + ' · 매일 바뀝니다</span></b><button class="btn btn-line" id="lib_reroll" style="padding:4px 11px;font-size:.8rem">다시</button></div><div class="lib-grid" id="lib_recos">' + picks.map(card).join('') + '</div></div>';
+        '<div class="lib-sec"><div class="lib-sec-h"><span>📖 오늘의 추천 <span class="lib-sec-sub">' + ds + ' · 매일 바뀝니다</span></span><button class="lib-reroll" id="lib_reroll">↻ 다시</button></div><div class="lib-grid" id="lib_recos">' + picks.map(card).join('') + '</div></div>';
       bindCards(panel.querySelector('#lib_recos'));
       Array.prototype.forEach.call(panel.querySelectorAll('.lib-catcard'), function (b) { b.onclick = function () { openList(books, b.dataset.cat, ''); }; });
       var rer = 0;
@@ -1061,17 +1098,16 @@ console.log('[affairs.js] v20260701di');
       if (subField) {
         var sc = {}; books.forEach(function (b) { if (b.cat === curCat && b[subField]) sc[b[subField]] = (sc[b[subField]] || 0) + 1; });
         var arr = subOrder.map(function (s) { return s[0]; }).filter(function (s) { return sc[s]; }).map(function (s) { return [s, sc[s]]; });
-        if (arr.length) subBar = '<div class="fin-card" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span style="font-size:.8rem;color:#7b8794;font-weight:700;margin-right:2px">' + subLabel + '</span><button class="lib-schip on" data-s="">전체</button>' + arr.map(function (x) { return '<button class="lib-schip" data-s="' + esc(x[0]) + '">' + esc(x[0]) + ' ' + x[1] + '</button>'; }).join('') + '</div>';
+        if (arr.length) subBar = '<div class="lib-chips"><span class="lbl">' + subLabel + '</span><button class="lib-schip on" data-s="">전체</button>' + arr.map(function (x) { return '<button class="lib-schip" data-s="' + esc(x[0]) + '">' + esc(x[0]) + ' ' + x[1] + '</button>'; }).join('') + '</div>';
       }
       var curList = build(q);
       panel.innerHTML = GRID_CSS +
-        '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
-        '<div style="display:flex;align-items:center;gap:10px"><button class="btn btn-line" id="lib_back" style="padding:7px 13px">‹ 도서관</button>' +
-        '<b style="color:var(--accent,#032257)">' + (cat ? esc(cat) : '검색: ' + esc(q)) + '</b></div>' +
-        '<input type="text" id="lib_q2" placeholder="🔍 이 안에서 검색" value="' + esc(q) + '" style="padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:200px"></div>' +
+        '<div class="lib-bar"><div style="display:flex;align-items:center;gap:12px"><button class="lib-back" id="lib_back">‹ 도서관</button>' +
+        '<span class="lib-ltitle">' + (cat ? esc(cat) : '검색: ' + esc(q)) + '</span></div>' +
+        '<input type="text" id="lib_q2" placeholder="🔍 이 안에서 검색" value="' + esc(q) + '" style="padding:9px 14px;border:1px solid #e2e8f0;border-radius:999px;font:inherit;min-width:200px;outline:none"></div>' +
         subBar +
         '<div class="lib-grid" id="lib_grid"></div>' +
-        '<div style="text-align:center;margin:18px 0"><button class="btn btn-line" id="lib_more" style="padding:9px 24px">더 보기</button><div id="lib_cnt" style="font-size:.8rem;color:#9aa5b1;margin-top:7px"></div></div>';
+        '<div style="text-align:center;margin:22px 0"><button class="lib-more" id="lib_more">더 보기</button><div class="lib-cnt" id="lib_cnt"></div></div>';
       var grid = panel.querySelector('#lib_grid'), moreBtn = panel.querySelector('#lib_more'), cntEl = panel.querySelector('#lib_cnt');
       function render() {
         var total = curList.length, vis = Math.min(shown, total);
