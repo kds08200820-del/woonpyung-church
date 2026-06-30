@@ -3189,11 +3189,12 @@ console.log('[affairs.js] v20260701di');
     panel.innerHTML =
       '<style>' +
       '.bv-wrap{display:flex;height:calc(100vh - 210px);min-height:500px;border:1px solid #e3e7ee;border-radius:0 0 12px 12px;overflow:hidden;background:#fff}' +
-      '.bv-books{width:68px;flex-shrink:0;overflow-y:auto;background:#1a2b4a;padding:5px 3px}' +
-      '.bv-bb{display:block;width:100%;padding:5px 2px;background:none;border:none;color:#8ea8cc;font-size:.72rem;font-weight:700;cursor:pointer;border-radius:5px;text-align:center;margin:1px 0;line-height:1.3}' +
+      '.bv-books{width:114px;flex-shrink:0;overflow-y:auto;background:#1a2b4a;padding:6px 5px}' +
+      '.bv-sep{font-size:.6rem;color:#6a8aae;padding:7px 2px 3px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}' +
+      '.bv-grp{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:6px}' +
+      '.bv-bb{padding:5px 2px;background:none;border:none;color:#8ea8cc;font-size:.72rem;font-weight:700;cursor:pointer;border-radius:5px;text-align:center;line-height:1.3;word-break:keep-all}' +
       '.bv-bb:hover{background:#2a3f60;color:#c8d8f0}' +
       '.bv-bb.on{background:#3a6db5;color:#fff}' +
-      '.bv-sep{font-size:.58rem;color:#4a6080;text-align:center;padding:6px 2px 2px;font-weight:700;letter-spacing:.06em}' +
       '.bv-chaps{width:50px;flex-shrink:0;overflow-y:auto;background:#f4f7fb;padding:5px 3px;border-right:1px solid #e3e7ee}' +
       '.bv-cb{display:block;width:100%;padding:4px 2px;background:none;border:none;color:#3a4a63;font-size:.8rem;font-weight:600;cursor:pointer;border-radius:4px;text-align:center;margin:1px 0}' +
       '.bv-cb:hover{background:#dde6f5}' +
@@ -3222,12 +3223,17 @@ console.log('[affairs.js] v20260701di');
     var textEl  = panel.querySelector('#bv_text');
 
     function renderBooks() {
-      var html = '<div class="bv-sep">구약</div>';
-      BBLK.forEach(function (b) {
-        if (b[0] === 40) html += '<div class="bv-sep" style="margin-top:5px">신약</div>';
-        html += '<button class="bv-bb' + (b[0] === bvBook ? ' on' : '') + '" data-n="' + b[0] + '">' + b[2] + '</button>';
-      });
-      booksEl.innerHTML = html;
+      var ot = BBLK.filter(function (b) { return b[4] === 'ot'; });
+      var nt = BBLK.filter(function (b) { return b[4] === 'nt'; });
+      function grpHTML(list) {
+        return '<div class="bv-grp">' +
+          list.map(function (b) {
+            return '<button class="bv-bb' + (b[0] === bvBook ? ' on' : '') + '" data-n="' + b[0] + '">' + b[2] + '</button>';
+          }).join('') + '</div>';
+      }
+      booksEl.innerHTML =
+        '<div class="bv-sep">구약</div>' + grpHTML(ot) +
+        '<div class="bv-sep">신약</div>' + grpHTML(nt);
       Array.prototype.forEach.call(booksEl.querySelectorAll('.bv-bb'), function (btn) {
         btn.onclick = function () { selectBook(Number(btn.dataset.n)); };
       });
