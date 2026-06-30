@@ -914,65 +914,115 @@ console.log('[affairs.js] v20260701di');
     }
   }
 
-  // ── 나의 도서관: 구글 드라이브 폴더의 책을 표지 그리드로 (관리자 전용, 대량 대응) ──
+  // ── 나의 도서관: 분류·추천·검색 대시보드 (구글 드라이브, 관리자 전용) ──
   var _libCache = null;
+  // 파일명 키워드 기반 자동 분류(우선순위 순). 일치 없으면 성경책 이름 → 성경·주석, 그래도 없으면 기타.
+  var LIB_CATS = [
+    ['신학·교리', /신학|교의|조직신학|변증|개혁주의|칼빈|교리|세계관|기독교\s*강요|성령론|기독론|구원론|예정|언약/],
+    ['설교·예배', /설교|강단|예화|예배|찬양|찬송|예전|설교학/],
+    ['상담·가정', /상담|치유|위로|중독|가정|부부|자녀|결혼|심리|애도/],
+    ['선교·전도', /선교|전도|복음화|땅끝|제자훈련/],
+    ['목회·교회', /목회|교회|노회|총회|규정|정관|회의|행정|리더십|당회|장로|집사|세미나|성장/],
+    ['교회사·인물', /교회사|역사|전기|인물|종교개혁|루터|어거스틴|아우구스티누스|청교도|위인/],
+    ['신앙·경건', /경건|큐티|묵상|기도|영성|확신|회복|은혜|믿음|신앙|영적|제자|소그룹|훈련/],
+    ['성경·주석', /주석|강해|틴데일|NICOT|NICNT|WBC|NAC|BECNT|100주년|현대성서|성경|개역|원어|구약|신약|히브리어|헬라어/i]
+  ];
+  function libHasBibleBook(t) {
+    var i; for (i = 0; i < BIBLE_OT.length; i++) if (t.indexOf(BIBLE_OT[i]) >= 0) return true;
+    for (i = 0; i < BIBLE_NT.length; i++) if (t.indexOf(BIBLE_NT[i]) >= 0) return true;
+    return false;
+  }
+  function libClassify(title) {
+    for (var i = 0; i < LIB_CATS.length; i++) if (LIB_CATS[i][1].test(title)) return LIB_CATS[i][0];
+    if (libHasBibleBook(title)) return '성경·주석';
+    return '기타';
+  }
+  function libSeededPicks(books, n, seed) {
+    var picks = [], used = {}, s = seed % 2147483647; if (s <= 0) s += 2147483646;
+    var guard = 0;
+    while (picks.length < n && picks.length < books.length && guard < n * 40) {
+      s = (s * 16807) % 2147483647; var idx = s % books.length;
+      if (!used[idx]) { used[idx] = 1; picks.push(books[idx]); }
+      guard++;
+    }
+    return picks;
+  }
   function renderLibrary(panel) {
     var url = window.LIBRARY_API_URL;
-    if (!url) {
-      panel.innerHTML = msgCard('나의 도서관 — 설정 필요', '구글 드라이브 책 폴더를 연결하려면 Apps Script(apps-script/library-api.gs)를 배포한 뒤, 그 웹앱 주소를 config.js 의 LIBRARY_API_URL 에 넣어주세요.');
-      return;
-    }
+    if (!url) { panel.innerHTML = msgCard('나의 도서관 — 설정 필요', 'Apps Script(library-api.gs) 배포 후 config.js 의 LIBRARY_API_URL 을 설정해 주세요.'); return; }
     var furl = url + (window.LIBRARY_FOLDER_ID ? ((url.indexOf('?') >= 0 ? '&' : '?') + 'folderId=' + encodeURIComponent(window.LIBRARY_FOLDER_ID)) : '');
-    if (_libCache) { draw(_libCache); return; }   // 같은 세션 재방문 시 즉시
-    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">도서관을 불러오는 중… <span style="color:#9aa5b1">(책이 많으면 처음엔 1~2분 걸릴 수 있어요)</span></p></div>';
+    if (_libCache) { dashboard(_libCache); return; }
+    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">도서관을 불러오는 중… <span style="color:#9aa5b1">(처음엔 시간이 걸릴 수 있어요)</span></p></div>';
     fetch(furl).then(function (r) { return r.json(); }).then(function (d) {
       if (!d || !d.ok) throw new Error((d && d.error) || '목록을 불러오지 못했습니다.');
       _libCache = (d.books || []).map(norm);
-      draw(_libCache);
+      dashboard(_libCache);
     }).catch(function (e) { panel.innerHTML = msgCard('불러오기 실패', (e && e.message) || '도서관을 불러오지 못했습니다.'); });
 
-    // 파일명에서 제목/저자 정리: "+"→공백, 선두 (저자)/[저자] 분리
     function norm(b) {
       var t = String(b.title == null ? '' : b.title).replace(/\+/g, ' ').replace(/\s+/g, ' ').trim();
       var a = b.author || '';
       if (!a) { var m = t.match(/^[\(\[]\s*([^\)\]]{1,24})\s*[\)\]]\s*(.+)$/); if (m) { a = m[1].trim(); t = m[2].trim(); } }
-      return { id: b.id, title: t || '(제목 없음)', author: a, key: (t + ' ' + a).toLowerCase() };
+      return { id: b.id, title: t || '(제목 없음)', author: a, cat: libClassify(t), key: (t + ' ' + a).toLowerCase() };
     }
+    var GRID_CSS = '<style>.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}.lib-card{cursor:pointer;text-align:left;background:none;border:0;padding:0;font-family:inherit}.lib-cover{width:100%;aspect-ratio:3/4;border-radius:8px;background:#eef2f7;object-fit:cover;border:1px solid #e3e7ee;box-shadow:0 2px 8px rgba(3,34,87,.08)}.lib-card:hover .lib-cover{box-shadow:0 5px 16px rgba(3,34,87,.18)}.lib-t{font-size:.86rem;font-weight:700;color:#27364a;margin-top:7px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.lib-a{font-size:.78rem;color:#9aa5b1;margin-top:1px}.lib-catcard{cursor:pointer;border:1px solid #e3e7ee;border-radius:10px;padding:13px 14px;background:#fff;text-align:left;font-family:inherit}.lib-catcard:hover{border-color:#1f6feb;background:#f5f9ff}</style>';
     function card(bk) {
       var t = esc(bk.title), a = esc(bk.author);
-      return '<button class="lib-card" data-id="' + esc(bk.id) + '">' +
-        '<img class="lib-cover" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(bk.id) + '&sz=w320" onerror="this.style.visibility=\'hidden\'" alt="' + t + '">' +
-        '<div class="lib-t">' + t + '</div>' + (a ? '<div class="lib-a">' + a + '</div>' : '') + '</button>';
+      return '<button class="lib-card" data-id="' + esc(bk.id) + '"><img class="lib-cover" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(bk.id) + '&sz=w320" onerror="this.style.visibility=\'hidden\'" alt="' + t + '"><div class="lib-t">' + t + '</div>' + (a ? '<div class="lib-a">' + a + '</div>' : '') + '</button>';
     }
-    function draw(books) {
-      var PAGE = 60, shown = PAGE, filter = '';
-      panel.innerHTML =
-        '<style>.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}' +
-        '.lib-card{cursor:pointer;text-align:left;background:none;border:0;padding:0;font-family:inherit}' +
-        '.lib-cover{width:100%;aspect-ratio:3/4;border-radius:8px;background:#eef2f7;object-fit:cover;border:1px solid #e3e7ee;box-shadow:0 2px 8px rgba(3,34,87,.08)}' +
-        '.lib-card:hover .lib-cover{box-shadow:0 5px 16px rgba(3,34,87,.18)}' +
-        '.lib-t{font-size:.86rem;font-weight:700;color:#27364a;margin-top:7px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
-        '.lib-a{font-size:.78rem;color:#9aa5b1;margin-top:1px}</style>' +
+    function bindCards(box) {
+      Array.prototype.forEach.call(box.querySelectorAll('.lib-card'), function (b) {
+        b.onclick = function () { window.open('https://drive.google.com/file/d/' + b.dataset.id + '/view', '_blank', 'noopener'); };
+      });
+    }
+
+    function dashboard(books) {
+      var counts = {}; books.forEach(function (b) { counts[b.cat] = (counts[b.cat] || 0) + 1; });
+      var order = LIB_CATS.map(function (c) { return c[0]; }).concat(['기타']);
+      var catArr = order.filter(function (c) { return counts[c]; }).map(function (c) { return [c, counts[c]]; });
+      var dt = new Date(), seed = dt.getFullYear() * 372 + dt.getMonth() * 31 + dt.getDate();
+      var ds = dt.getFullYear() + '.' + pad2(dt.getMonth() + 1) + '.' + pad2(dt.getDate());
+      var picks = libSeededPicks(books, 6, seed);
+      panel.innerHTML = GRID_CSS +
         '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
-        '<div><b style="font-size:1.06rem;color:var(--accent,#032257)">📚 나의 도서관</b>' +
-        '<div style="font-size:.82rem;color:var(--ink-soft);margin-top:3px">구글 드라이브의 책 <b>' + books.length + '권</b> · 검색해서 찾고, 표지를 클릭하면 드라이브에서 열립니다(관리자 전용)</div></div>' +
+        '<div><b style="font-size:1.1rem;color:var(--accent,#032257)">📚 나의 도서관</b>' +
+        '<div style="font-size:.82rem;color:var(--ink-soft);margin-top:3px">총 <b>' + books.length + '권</b> · ' + catArr.length + '개 분류 · 표지 클릭 시 드라이브에서 열림(관리자 전용)</div></div>' +
         '<input type="text" id="lib_q" placeholder="🔍 제목·저자 검색" style="padding:9px 12px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:240px"></div>' +
+        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="color:var(--accent,#032257)">📖 오늘의 추천 <span style="font-weight:400;font-size:.8rem;color:#9aa5b1">' + ds + ' · 매일 바뀝니다</span></b><button class="btn btn-line" id="lib_reroll" style="padding:4px 11px;font-size:.8rem">다시</button></div><div class="lib-grid" id="lib_recos">' + picks.map(card).join('') + '</div></div>' +
+        '<div class="fin-card"><b style="color:var(--accent,#032257)">🗂 분류별</b><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px">' +
+        catArr.map(function (c) { return '<button class="lib-catcard" data-cat="' + esc(c[0]) + '"><div style="font-weight:700;color:#27364a">' + esc(c[0]) + '</div><div style="font-size:.8rem;color:#9aa5b1;margin-top:2px">' + c[1] + '권</div></button>'; }).join('') +
+        '</div></div>';
+      bindCards(panel.querySelector('#lib_recos'));
+      Array.prototype.forEach.call(panel.querySelectorAll('.lib-catcard'), function (b) { b.onclick = function () { listView(books, b.dataset.cat, ''); }; });
+      var rer = 0;
+      panel.querySelector('#lib_reroll').onclick = function () { rer++; var box = panel.querySelector('#lib_recos'); box.innerHTML = libSeededPicks(books, 6, seed + rer * 7919).map(card).join(''); bindCards(box); };
+      var tmr = null;
+      panel.querySelector('#lib_q').oninput = function () { var v = this.value.trim(); clearTimeout(tmr); tmr = setTimeout(function () { if (v) listView(books, '', v.toLowerCase()); }, 250); };
+    }
+
+    function listView(books, cat, q) {
+      var curCat = cat, PAGE = 60, shown = PAGE;
+      function build(qq) { return books.filter(function (b) { return (!curCat || b.cat === curCat) && (!qq || b.key.indexOf(qq) >= 0); }); }
+      var curList = build(q);
+      panel.innerHTML = GRID_CSS +
+        '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
+        '<div style="display:flex;align-items:center;gap:10px"><button class="btn btn-line" id="lib_back" style="padding:7px 13px">‹ 도서관</button>' +
+        '<b style="color:var(--accent,#032257)">' + (cat ? esc(cat) : '검색: ' + esc(q)) + '</b></div>' +
+        '<input type="text" id="lib_q2" placeholder="🔍 이 안에서 검색" value="' + esc(q) + '" style="padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:200px"></div>' +
         '<div class="lib-grid" id="lib_grid"></div>' +
         '<div style="text-align:center;margin:18px 0"><button class="btn btn-line" id="lib_more" style="padding:9px 24px">더 보기</button><div id="lib_cnt" style="font-size:.8rem;color:#9aa5b1;margin-top:7px"></div></div>';
       var grid = panel.querySelector('#lib_grid'), moreBtn = panel.querySelector('#lib_more'), cntEl = panel.querySelector('#lib_cnt');
-      function filtered() { return filter ? books.filter(function (b) { return b.key.indexOf(filter) >= 0; }) : books; }
       function render() {
-        var list = filtered(), total = list.length, vis = Math.min(shown, total);
-        grid.innerHTML = total ? list.slice(0, vis).map(card).join('') : '<p style="color:#9aa5b1;grid-column:1/-1;padding:10px">검색 결과가 없습니다.</p>';
-        Array.prototype.forEach.call(grid.querySelectorAll('.lib-card'), function (b) {
-          b.onclick = function () { window.open('https://drive.google.com/file/d/' + b.dataset.id + '/view', '_blank', 'noopener'); };
-        });
-        cntEl.textContent = vis + ' / ' + total + '권' + (filter ? ' (검색결과)' : '');
+        var total = curList.length, vis = Math.min(shown, total);
+        grid.innerHTML = total ? curList.slice(0, vis).map(card).join('') : '<p style="color:#9aa5b1;grid-column:1/-1;padding:10px">결과가 없습니다.</p>';
+        bindCards(grid);
+        cntEl.textContent = vis + ' / ' + total + '권';
         moreBtn.style.display = vis < total ? '' : 'none';
       }
       moreBtn.onclick = function () { shown += PAGE; render(); };
+      panel.querySelector('#lib_back').onclick = function () { dashboard(books); };
       var tmr = null;
-      panel.querySelector('#lib_q').oninput = function () { var v = this.value.trim().toLowerCase(); clearTimeout(tmr); tmr = setTimeout(function () { filter = v; shown = PAGE; render(); }, 200); };
+      panel.querySelector('#lib_q2').oninput = function () { var v = this.value.trim().toLowerCase(); clearTimeout(tmr); tmr = setTimeout(function () { curList = build(v); shown = PAGE; render(); }, 250); };
       render();
     }
   }
