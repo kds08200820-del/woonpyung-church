@@ -554,7 +554,7 @@ console.log('[affairs.js] v20260701di');
       var svcHTML = svcArr.map(function (x) {
         var w = Math.round(x[1] / svcMax * 100);
         return '<div style="display:flex;align-items:center;gap:10px;margin:6px 0">' +
-          '<div style="flex:0 0 96px;font-size:.84rem;color:#3a4a63;font-weight:600;text-align:right">' + esc(x[0]) + '</div>' +
+          '<div class="svc-label" data-svc="' + esc(x[0]) + '" style="flex:0 0 96px;font-size:.84rem;color:#3a4a63;font-weight:600;text-align:right;cursor:pointer;text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(x[0]) + '</div>' +
           '<div style="flex:1;background:#eef2f7;border-radius:6px;height:16px;overflow:hidden"><div style="width:' + w + '%;height:100%;background:linear-gradient(90deg,#3a6db5,#032257)"></div></div>' +
           '<div style="flex:0 0 42px;font-size:.82rem;font-weight:700;color:#3a4a63">' + x[1] + '편</div></div>';
       }).join('') || '<p style="color:#9aa5b1;font-size:.86rem">아직 설교 기록이 없습니다.</p>';
@@ -619,6 +619,9 @@ console.log('[affairs.js] v20260701di');
       });
       // 최근 설교 제목 클릭 → 내용 보기
       Array.prototype.forEach.call(panel.querySelectorAll('.rc-title'), function (t) { t.onclick = function () { sermonContentModal(rows[Number(t.dataset.idx)]); }; });
+      Array.prototype.forEach.call(panel.querySelectorAll('.svc-label[data-svc]'), function (el) {
+        el.onclick = function () { svcCalendarModal(el.dataset.svc, rows); };
+      });
     }
 
     // 설교 한 편 내용 보기(제목·본문·묵상). 뒤로가기로 닫혀 목록으로 돌아감.
@@ -660,6 +663,121 @@ console.log('[affairs.js] v20260701di');
       ov.querySelector('#bk_close').onclick = close;
       ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
       Array.prototype.forEach.call(ov.querySelectorAll('.bk-title'), function (t) { t.onclick = function () { sermonContentModal((list || [])[Number(t.dataset.idx)]); }; });
+    }
+
+    function svcCalendarModal(svc, allRows) {
+      var filtered = allRows.filter(function (r) { return r.service === svc; });
+      var yearMap = {};
+      filtered.forEach(function (r) {
+        var d = String(r.sermon_date || '').slice(0, 10);
+        if (!d) return;
+        var parts = d.split('-');
+        var y = parts[0], m = parseInt(parts[1], 10), day = parseInt(parts[2], 10);
+        if (!y || !m || !day) return;
+        if (!yearMap[y]) yearMap[y] = {};
+        if (!yearMap[y][m]) yearMap[y][m] = {};
+        if (!yearMap[y][m][day]) yearMap[y][m][day] = [];
+        yearMap[y][m][day].push(r);
+      });
+      var years = Object.keys(yearMap).sort(function (a, b) { return Number(b) - Number(a); });
+      if (!years.length) return;
+      var selYear = years[0];
+      var DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
+
+      function buildCalGrid(y) {
+        var mData = yearMap[y] || {};
+        var out = '';
+        for (var m = 1; m <= 12; m++) {
+          var dSet = mData[m] || {};
+          var first = new Date(Number(y), m - 1, 1);
+          var startDow = first.getDay();
+          var daysInMonth = new Date(Number(y), m, 0).getDate();
+          var hasAny = Object.keys(dSet).length > 0;
+          var cells = '<div style="font-size:.76rem;font-weight:700;color:#3a4a63;margin-bottom:4px;text-align:center">' + m + '월</div>';
+          cells += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:2px">';
+          DOW_KO.forEach(function (dk, i) {
+            var tc = i === 0 ? '#e74c3c' : i === 6 ? '#3a6db5' : '#9aa5b1';
+            cells += '<div style="text-align:center;font-size:.62rem;font-weight:700;color:' + tc + '">' + dk + '</div>';
+          });
+          cells += '</div>';
+          cells += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+          for (var si = 0; si < startDow; si++) cells += '<div></div>';
+          for (var day2 = 1; day2 <= daysInMonth; day2++) {
+            var dow = (startDow + day2 - 1) % 7;
+            var tc2 = dow === 0 ? '#e74c3c' : dow === 6 ? '#3a6db5' : '#3a4a63';
+            if (dSet[day2]) {
+              cells += '<div class="sv-day" data-y="' + y + '" data-m="' + m + '" data-d="' + day2 + '" style="text-align:center;font-size:.7rem;font-weight:800;background:#032257;color:#fff;border-radius:4px;padding:2px 1px;cursor:pointer;line-height:1.6" title="' + dSet[day2].length + '편 — 클릭하여 보기">' + day2 + '</div>';
+            } else {
+              cells += '<div style="text-align:center;font-size:.7rem;color:' + tc2 + ';padding:2px 1px;line-height:1.6">' + day2 + '</div>';
+            }
+          }
+          cells += '</div>';
+          out += '<div style="background:' + (hasAny ? '#f0f5ff' : '#f7f9fc') + ';border:1px solid ' + (hasAny ? '#9bbcf3' : '#e3e7ee') + ';border-radius:9px;padding:9px 7px">' + cells + '</div>';
+        }
+        return out;
+      }
+
+      function buildTabs(curY) {
+        return years.map(function (y) {
+          var active = y === curY;
+          return '<button class="sv-ytab" data-y="' + y + '" style="padding:5px 14px;border:none;border-radius:999px;cursor:pointer;font-size:.84rem;font-weight:700;' + (active ? 'background:#032257;color:#fff' : 'background:#eef2f7;color:#3a4a63') + '">' + y + '년</button>';
+        }).join('');
+      }
+
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:900px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+        '<h3 style="margin:0;color:var(--accent,#032257)">📅 ' + esc(svc) + ' <span style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + filtered.length + '편</span></h3>' +
+        '<button class="btn btn-line" id="sv_close" style="padding:3px 11px">닫기</button></div>' +
+        '<div id="sv_tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">' + buildTabs(selYear) + '</div>' +
+        '<div id="sv_cal" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px;max-height:72vh;overflow:auto;padding-bottom:4px">' + buildCalGrid(selYear) + '</div>' +
+        '</div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#sv_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+
+      function rebind() {
+        Array.prototype.forEach.call(ov.querySelectorAll('.sv-ytab'), function (btn) {
+          btn.onclick = function () {
+            selYear = btn.dataset.y;
+            ov.querySelector('#sv_tabs').innerHTML = buildTabs(selYear);
+            ov.querySelector('#sv_cal').innerHTML = buildCalGrid(selYear);
+            rebind();
+          };
+        });
+        Array.prototype.forEach.call(ov.querySelectorAll('.sv-day'), function (cell) {
+          cell.onclick = function () {
+            var y = cell.dataset.y, m = parseInt(cell.dataset.m, 10), d = parseInt(cell.dataset.d, 10);
+            var dayRows = (yearMap[y] && yearMap[y][m] && yearMap[y][m][d]) || [];
+            dayListModal(y + '년 ' + m + '월 ' + d + '일', dayRows);
+          };
+        });
+      }
+      rebind();
+    }
+
+    function dayListModal(label, list) {
+      var ov2 = document.createElement('div');
+      ov2.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.4);z-index:9720;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      var items = (list || []).map(function (r, i) {
+        return '<div style="padding:9px 2px;border-bottom:1px solid #f0f0f0">' +
+          '<div class="dl-title" data-idx="' + i + '" style="font-weight:700;color:var(--accent,#032257);cursor:pointer;text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목 없음)') + '</div>' +
+          (r.scripture ? '<div style="font-size:.78rem;color:#7b8794">' + esc(r.scripture) + '</div>' : '') + '</div>';
+      }).join('');
+      ov2.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+        '<h3 style="margin:0;font-size:1rem;color:var(--accent,#032257)">' + esc(label) + '</h3>' +
+        '<button class="btn btn-line" id="dl_close" style="padding:3px 11px">닫기</button></div>' +
+        '<div style="max-height:60vh;overflow:auto">' + (items || '<p style="color:#9aa5b1">기록 없음</p>') + '</div></div>';
+      document.body.appendChild(ov2);
+      var close2 = pushBackClose(function () { ov2.remove(); });
+      ov2.querySelector('#dl_close').onclick = close2;
+      ov2.addEventListener('click', function (e) { if (e.target === ov2) close2(); });
+      Array.prototype.forEach.call(ov2.querySelectorAll('.dl-title'), function (t) {
+        t.onclick = function () { sermonContentModal((list || [])[Number(t.dataset.idx)]); };
+      });
     }
   }
 
