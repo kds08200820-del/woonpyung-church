@@ -165,7 +165,7 @@ console.log('[affairs.js] v20260701di');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['library', '나의 도서관'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['library', '나의 도서관'], ['settings', '설정']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -215,6 +215,7 @@ console.log('[affairs.js] v20260701di');
     if (tab === 'dashboard') renderSermonDashboard(p);
     else if (tab === 'illus') renderIllustrations(p);
     else if (tab === 'sermon') renderSermon(p);
+    else if (tab === 'worship') renderSermon(p, { worship: true });
     else if (tab === 'bulletin') renderBulletinAdmin(p);
     else if (tab === 'library') renderLibrary(p);
     else if (tab === 'settings') renderSettings(p);
@@ -1531,17 +1532,18 @@ console.log('[affairs.js] v20260701di');
     });
   }
 
-  function renderSermon(panel) {
+  function renderSermon(panel, opts) {
+    var worshipMode = !!(opts && opts.worship);
     var WTPL = {}, smView = 'list', smRows = [], calYM = null;
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요예배': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#64748b'; }
     api('GET', 'worship_templates?select=*').then(function (rows) { WTPL = {}; (rows || []).forEach(function (r) { WTPL[r.service] = r.items || []; }); }).catch(function () {});
     panel.innerHTML =
       '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">' +
-      '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">설교 작성·관리</b>' +
-      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">캘린더에서 <b>날짜를 클릭</b>하면 그 날짜로 바로 설교를 준비할 수 있고, 아래 <b>목록</b>에서도 관리됩니다.</div></div>' +
+      '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">' + (worshipMode ? '예배 준비·관리' : '설교 작성·관리') + '</b>' +
+      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">' + (worshipMode ? '캘린더에서 <b>날짜를 클릭</b>하면 그 날짜의 <b>예배 순서</b>를 짜고 아이패드로 발표할 수 있습니다. (주일 낮 예배 중심)' : '캘린더에서 <b>날짜를 클릭</b>하면 그 날짜로 바로 설교를 준비할 수 있고, 아래 <b>목록</b>에서도 관리됩니다.') + '</div></div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
-      '<button class="btn btn-solid" id="sm_start" style="padding:11px 22px;font-size:1rem">✍️ 설교 시작</button></div></div>' +
+      '<button class="btn btn-solid" id="sm_start" style="padding:11px 22px;font-size:1rem">' + (worshipMode ? '🎼 예배 순서 작성' : '✍️ 설교 시작') + '</button></div></div>' +
       '<div id="sm_cal"></div>' +
       '<div id="sm_list"><p class="qt-loading">불러오는 중…</p></div>';
     panel.querySelector('#sm_start').onclick = function () { sermonEditor(null); };
@@ -1635,6 +1637,8 @@ console.log('[affairs.js] v20260701di');
         '.sed-wrap{position:relative;padding:22px 24px 70px}' +
         '.sed-aside{position:absolute;left:24px;top:22px;width:268px}' +
         '.sed-aside-r{position:absolute;right:24px;top:22px;width:300px}' +
+        '.sed-mode-sermon .sed-aside{display:none}' +          // 설교 매니저: 예배 순서 숨김
+        '.sed-mode-worship .sed-aside-r{display:none}' +        // 예배 매니저: 생명의삶 자동분류 숨김
         '.qtc-card{border:1px solid #e1e6ef;border-radius:12px;background:#fff;padding:14px 15px;box-shadow:0 4px 14px rgba(3,34,87,.05)}' +
         '.qtc-h{font-size:1.02rem;font-weight:800;color:var(--accent,#032257);display:flex;align-items:center;gap:5px}' +
         '.qtc-sub{font-size:.74rem;color:#9aa5b1;margin:5px 0 9px;line-height:1.45}' +
@@ -1667,8 +1671,8 @@ console.log('[affairs.js] v20260701di');
         '<header style="position:sticky;top:0;z-index:6;background:linear-gradient(180deg,#ffffff 0%,#f7f9fc 100%);border-bottom:1px solid #e1e6ef;box-shadow:0 2px 10px rgba(3,34,87,.06)">' +
         '<div style="margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
         '<div style="flex:1;min-width:160px;text-align:center;line-height:1.25">' +
-        '<div style="font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.22rem;color:var(--accent,#032257);letter-spacing:-.01em">설교 매니저</div>' +
-        '<div style="font-size:.72rem;color:#9aa5b1;margin-top:2px;letter-spacing:.02em">설교문을 쓰고 · QT·예배 순서를 함께 준비해 아이패드로 내보냅니다</div>' +
+        '<div style="font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.22rem;color:var(--accent,#032257);letter-spacing:-.01em">' + (worshipMode ? '예배 매니저' : '설교 매니저') + '</div>' +
+        '<div style="font-size:.72rem;color:#9aa5b1;margin-top:2px;letter-spacing:.02em">' + (worshipMode ? '예배 순서를 짜고 아이패드로 발표·내보냅니다 (주일 낮 예배 중심)' : '설교문을 쓰고 · QT를 함께 준비해 아이패드로 내보냅니다') + '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">' +
         '<button class="btn btn-line" id="se_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
@@ -1678,7 +1682,7 @@ console.log('[affairs.js] v20260701di');
         '</div>' +
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
         '</div></header>' +
-        '<div class="sed-wrap">' +
+        '<div class="sed-wrap ' + (worshipMode ? 'sed-mode-worship' : 'sed-mode-sermon') + '">' +
         '<div class="sed-aside"><div class="af-field" style="margin:0">' +
         '<label style="font-size:1.18rem;font-weight:700;color:var(--accent,#032257);margin-bottom:2px">📋 예배 순서</label>' +
         '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·CCM·항목을 추가하고 드래그로 정렬 · 항목에 📎 파일 첨부</div>' +
