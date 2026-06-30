@@ -1038,14 +1038,19 @@ console.log('[affairs.js] v20260701di');
         '</div></div>' +
         '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="color:var(--accent,#032257)">📖 오늘의 추천 <span style="font-weight:400;font-size:.8rem;color:#9aa5b1">' + ds + ' · 매일 바뀝니다</span></b><button class="btn btn-line" id="lib_reroll" style="padding:4px 11px;font-size:.8rem">다시</button></div><div class="lib-grid" id="lib_recos">' + picks.map(card).join('') + '</div></div>';
       bindCards(panel.querySelector('#lib_recos'));
-      Array.prototype.forEach.call(panel.querySelectorAll('.lib-catcard'), function (b) { b.onclick = function () { listView(books, b.dataset.cat, ''); }; });
+      Array.prototype.forEach.call(panel.querySelectorAll('.lib-catcard'), function (b) { b.onclick = function () { openList(books, b.dataset.cat, ''); }; });
       var rer = 0;
       panel.querySelector('#lib_reroll').onclick = function () { rer++; var box = panel.querySelector('#lib_recos'); box.innerHTML = libSeededPicks(books, 6, seed + rer * 7919).map(card).join(''); bindCards(box); };
       var tmr = null;
-      panel.querySelector('#lib_q').oninput = function () { var v = this.value.trim(); clearTimeout(tmr); tmr = setTimeout(function () { if (v) listView(books, '', v.toLowerCase()); }, 250); };
+      panel.querySelector('#lib_q').oninput = function () { var v = this.value.trim(); clearTimeout(tmr); tmr = setTimeout(function () { if (v) openList(books, '', v.toLowerCase()); }, 250); };
     }
 
-    function listView(books, cat, q) {
+    // 분류/검색 화면 진입: 브라우저 히스토리에 한 단계 쌓아 '뒤로가기'가 대시보드로 오게 함
+    function openList(books, cat, q) {
+      var close = pushBackClose(function () { if (tab === 'library') dashboard(books); });
+      listView(books, cat, q, close);
+    }
+    function listView(books, cat, q, close) {
       var curCat = cat, curSub = '', PAGE = 60, shown = PAGE;
       // 분류 안 하위 필터: 성경·주석=시리즈, 정기간행물·잡지=종류
       var subField = (cat === '성경·주석') ? 'series' : (cat === '정기간행물·잡지') ? 'pub' : '';
@@ -1076,7 +1081,7 @@ console.log('[affairs.js] v20260701di');
         moreBtn.style.display = vis < total ? '' : 'none';
       }
       moreBtn.onclick = function () { shown += PAGE; render(); };
-      panel.querySelector('#lib_back').onclick = function () { dashboard(books); };
+      panel.querySelector('#lib_back').onclick = function () { if (close) close(); else dashboard(books); };
       Array.prototype.forEach.call(panel.querySelectorAll('.lib-schip'), function (b) {
         b.onclick = function () {
           curSub = b.dataset.s; shown = PAGE;
