@@ -17,8 +17,12 @@
   <style>
     .fin-wrap{max-width:1280px}
     .fin-tabs{display:flex;gap:6px;border-bottom:2px solid var(--line,#e3e7ee);margin:8px 0 20px;flex-wrap:wrap}
-    .fin-tabs button{background:none;border:none;padding:10px 16px;font-weight:700;color:var(--ink-soft,#7b8794);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:inherit}
-    .fin-tabs button.active{color:var(--accent,#032257);border-bottom-color:var(--accent,#032257)}
+    .fin-tabs button{position:relative;background:none;border:none;padding:10px 16px;font-weight:700;color:var(--ink-soft,#7b8794);cursor:pointer;font-family:inherit;transition:color .2s ease,transform .2s ease}
+    .fin-tabs button::after{content:"";position:absolute;left:14px;right:14px;bottom:-2px;height:3px;border-radius:3px;background:var(--accent,#032257);transform:scaleX(0);transform-origin:center;transition:transform .28s cubic-bezier(.4,0,.2,1)}
+    .fin-tabs button:hover{color:var(--accent,#032257);transform:translateY(-1px)}
+    .fin-tabs button:hover::after{transform:scaleX(1)}
+    .fin-tabs button.active{color:var(--accent,#032257)}
+    .fin-tabs button.active::after{transform:scaleX(1)}
     .fin-card{background:#fff;border:1px solid var(--line,#e3e7ee);border-radius:12px;padding:18px;margin-bottom:18px}
     .fin-table{width:100%;border-collapse:collapse;font-size:.9rem}
     .fin-table th,.fin-table td{padding:8px 9px;border-bottom:1px solid var(--line,#eef1f5);text-align:left;white-space:nowrap}
