@@ -32,3 +32,9 @@ window.FINANCE_API_URL = "https://script.google.com/macros/s/AKfycbxdwH46NrPMVvk
    아래 값은 실제 이메일을 숨기는 FormSubmit '별칭(alias)'으로, 이미 활성화 완료됨.
    비어 있으면 이메일 알림만 꺼지고, 신청·관리자 조회는 정상 동작합니다. */
 window.FORMSUBMIT_EMAIL = "a1f1dbcdaacadfa2efd1e9872a575b67";
+
+/* --- 나의 도서관(구글 드라이브 책 목록 Apps Script 웹앱) ---
+   apps-script/library-api.gs 를 본인 계정에 배포한 뒤(폴더 ID 입력),
+   받은 웹앱 주소(/exec)를 아래에 넣으세요.
+   비어 있으면 목회행정 '나의 도서관'은 "설정 필요"로 표시됩니다(사이트는 정상). */
+window.LIBRARY_API_URL = "";

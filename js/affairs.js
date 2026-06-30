@@ -165,7 +165,7 @@ console.log('[affairs.js] v20260701di');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['suggest', '설교 제안'], ['sermon', '설교관리'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['suggest', '설교 제안'], ['sermon', '설교관리'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['library', '나의 도서관'], ['settings', '설정']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -216,6 +216,7 @@ console.log('[affairs.js] v20260701di');
     else if (tab === 'suggest') renderSermonSuggest(p);
     else if (tab === 'sermon') renderSermon(p);
     else if (tab === 'bulletin') renderBulletinAdmin(p);
+    else if (tab === 'library') renderLibrary(p);
     else if (tab === 'settings') renderSettings(p);
     else renderManager(p, TYPES[tab]);
   }
@@ -910,6 +911,53 @@ console.log('[affairs.js] v20260701di');
       ov.querySelector('#qi_paste').value = String(initialText);
       ov.querySelector('#qi_parse').click();
       var prev = ov.querySelector('#qi_prev'); if (prev && prev.scrollIntoView) setTimeout(function () { prev.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
+    }
+  }
+
+  // ── 나의 도서관: 구글 드라이브 폴더의 책을 표지 그리드로 (관리자 전용) ──
+  function renderLibrary(panel) {
+    var url = window.LIBRARY_API_URL;
+    if (!url) {
+      panel.innerHTML = msgCard('나의 도서관 — 설정 필요', '구글 드라이브 책 폴더를 연결하려면 Apps Script(apps-script/library-api.gs)를 배포한 뒤, 그 웹앱 주소를 config.js 의 LIBRARY_API_URL 에 넣어주세요.');
+      return;
+    }
+    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">도서관을 불러오는 중…</p></div>';
+    fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d || !d.ok) throw new Error((d && d.error) || '목록을 불러오지 못했습니다.');
+      draw(d.books || []);
+    }).catch(function (e) { panel.innerHTML = msgCard('불러오기 실패', (e && e.message) || '도서관을 불러오지 못했습니다.'); });
+
+    function card(bk) {
+      var t = esc(bk.title || '(제목 없음)'), a = esc(bk.author || '');
+      var key = ((bk.title || '') + ' ' + (bk.author || '')).toLowerCase();
+      return '<button class="lib-card" data-id="' + esc(bk.id) + '" data-s="' + esc(key) + '">' +
+        '<img class="lib-cover" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(bk.id) + '&sz=w320" onerror="this.style.visibility=\'hidden\'" alt="' + t + '">' +
+        '<div class="lib-t">' + t + '</div>' + (a ? '<div class="lib-a">' + a + '</div>' : '') + '</button>';
+    }
+    function draw(books) {
+      var head = '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
+        '<div><b style="font-size:1.06rem;color:var(--accent,#032257)">📚 나의 도서관</b>' +
+        '<div style="font-size:.82rem;color:var(--ink-soft);margin-top:3px">구글 드라이브의 책 ' + books.length + '권 · 표지를 클릭하면 드라이브에서 열립니다(관리자 전용)</div></div>' +
+        '<input type="text" id="lib_q" placeholder="🔍 제목·저자 검색" style="padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:200px"></div>';
+      if (!books.length) { panel.innerHTML = head + msgCard('책이 없습니다', '드라이브 폴더에 책(PDF 등)을 넣으면 여기에 표시됩니다.'); return; }
+      panel.innerHTML = head +
+        '<style>.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}' +
+        '.lib-card{cursor:pointer;text-align:left;background:none;border:0;padding:0;font-family:inherit}' +
+        '.lib-cover{width:100%;aspect-ratio:3/4;border-radius:8px;background:#eef2f7;object-fit:cover;border:1px solid #e3e7ee;box-shadow:0 2px 8px rgba(3,34,87,.08)}' +
+        '.lib-card:hover .lib-cover{box-shadow:0 5px 16px rgba(3,34,87,.18)}' +
+        '.lib-t{font-size:.86rem;font-weight:700;color:#27364a;margin-top:7px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
+        '.lib-a{font-size:.78rem;color:#9aa5b1;margin-top:1px}</style>' +
+        '<div class="lib-grid" id="lib_grid">' + books.map(card).join('') + '</div>';
+      var grid = panel.querySelector('#lib_grid');
+      Array.prototype.forEach.call(grid.querySelectorAll('.lib-card'), function (b) {
+        b.onclick = function () { window.open('https://drive.google.com/file/d/' + b.dataset.id + '/view', '_blank', 'noopener'); };
+      });
+      panel.querySelector('#lib_q').oninput = function () {
+        var s = this.value.trim().toLowerCase();
+        Array.prototype.forEach.call(grid.querySelectorAll('.lib-card'), function (b) {
+          b.style.display = (!s || b.dataset.s.indexOf(s) >= 0) ? '' : 'none';
+        });
+      };
     }
   }
 
