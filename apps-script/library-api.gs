@@ -17,7 +17,7 @@
  *   5) (테스트) 함수 listBooksTest 를 한 번 실행해 권한 승인 + 로그로 목록 확인
  ****************************************************************/
 
-var FOLDER_ID = '여기에_폴더_ID';   // ← '나의 도서관' 폴더 ID
+var FOLDER_ID = '여기에_폴더_ID';   // ← 폴더 ID(권장) 또는 폴더 이름. 예: 'abcd1234...' 또는 '나의 도서관'
 
 // 표지/열람 대상으로 보여줄 파일 확장자(원하면 추가)
 var BOOK_EXT = /\.(pdf|epub|hwp|hwpx|docx?|txt)$/i;
@@ -32,9 +32,19 @@ function doGet(e) {
   }
 }
 
+/** 폴더 ID 또는 폴더 이름으로 폴더를 찾는다(ID 우선, 없으면 이름으로 검색) */
+function resolveFolder_(idOrName) {
+  if (/^[A-Za-z0-9_\-]{20,}$/.test(idOrName)) {        // ID 형태면 ID로
+    return DriveApp.getFolderById(idOrName);
+  }
+  var it = DriveApp.getFoldersByName(idOrName);         // 아니면 이름으로
+  if (it.hasNext()) return it.next();
+  throw new Error('폴더를 찾을 수 없습니다: ' + idOrName + ' (폴더 ID를 권장합니다)');
+}
+
 /** 폴더(및 하위 폴더 1단계)의 책 파일을 모아 반환 */
 function listBooks_(folderId) {
-  var folder = DriveApp.getFolderById(folderId);
+  var folder = resolveFolder_(folderId);
   var out = [];
   collectFiles_(folder, '', out);
   // 하위 폴더 1단계까지 분류로 포함

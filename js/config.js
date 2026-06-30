@@ -37,4 +37,7 @@ window.FORMSUBMIT_EMAIL = "a1f1dbcdaacadfa2efd1e9872a575b67";
    apps-script/library-api.gs 를 본인 계정에 배포한 뒤(폴더 ID 입력),
    받은 웹앱 주소(/exec)를 아래에 넣으세요.
    비어 있으면 목회행정 '나의 도서관'은 "설정 필요"로 표시됩니다(사이트는 정상). */
-window.LIBRARY_API_URL = "";
+window.LIBRARY_API_URL = "https://script.google.com/macros/s/AKfycby7e_8SmhXLpzOZMrpaMFo5dsoT27qf7Y5jfLr9Ud20CfmOfMTHEos08KmOcv7X3dkY/exec";
+/* 책 폴더 ID(또는 이름). 비우면 Apps Script 안의 FOLDER_ID 사용.
+   드라이브 폴더 주소 .../folders/XXXX 의 XXXX 부분. */
+window.LIBRARY_FOLDER_ID = "1AvTRhMLV1ZSIBTSEEa-SbXKhE8U1V67V";

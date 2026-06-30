@@ -914,50 +914,66 @@ console.log('[affairs.js] v20260701di');
     }
   }
 
-  // ── 나의 도서관: 구글 드라이브 폴더의 책을 표지 그리드로 (관리자 전용) ──
+  // ── 나의 도서관: 구글 드라이브 폴더의 책을 표지 그리드로 (관리자 전용, 대량 대응) ──
+  var _libCache = null;
   function renderLibrary(panel) {
     var url = window.LIBRARY_API_URL;
     if (!url) {
       panel.innerHTML = msgCard('나의 도서관 — 설정 필요', '구글 드라이브 책 폴더를 연결하려면 Apps Script(apps-script/library-api.gs)를 배포한 뒤, 그 웹앱 주소를 config.js 의 LIBRARY_API_URL 에 넣어주세요.');
       return;
     }
-    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">도서관을 불러오는 중…</p></div>';
-    fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+    var furl = url + (window.LIBRARY_FOLDER_ID ? ((url.indexOf('?') >= 0 ? '&' : '?') + 'folderId=' + encodeURIComponent(window.LIBRARY_FOLDER_ID)) : '');
+    if (_libCache) { draw(_libCache); return; }   // 같은 세션 재방문 시 즉시
+    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:34px"><p class="qt-loading">도서관을 불러오는 중… <span style="color:#9aa5b1">(책이 많으면 처음엔 1~2분 걸릴 수 있어요)</span></p></div>';
+    fetch(furl).then(function (r) { return r.json(); }).then(function (d) {
       if (!d || !d.ok) throw new Error((d && d.error) || '목록을 불러오지 못했습니다.');
-      draw(d.books || []);
+      _libCache = (d.books || []).map(norm);
+      draw(_libCache);
     }).catch(function (e) { panel.innerHTML = msgCard('불러오기 실패', (e && e.message) || '도서관을 불러오지 못했습니다.'); });
 
+    // 파일명에서 제목/저자 정리: "+"→공백, 선두 (저자)/[저자] 분리
+    function norm(b) {
+      var t = String(b.title == null ? '' : b.title).replace(/\+/g, ' ').replace(/\s+/g, ' ').trim();
+      var a = b.author || '';
+      if (!a) { var m = t.match(/^[\(\[]\s*([^\)\]]{1,24})\s*[\)\]]\s*(.+)$/); if (m) { a = m[1].trim(); t = m[2].trim(); } }
+      return { id: b.id, title: t || '(제목 없음)', author: a, key: (t + ' ' + a).toLowerCase() };
+    }
     function card(bk) {
-      var t = esc(bk.title || '(제목 없음)'), a = esc(bk.author || '');
-      var key = ((bk.title || '') + ' ' + (bk.author || '')).toLowerCase();
-      return '<button class="lib-card" data-id="' + esc(bk.id) + '" data-s="' + esc(key) + '">' +
+      var t = esc(bk.title), a = esc(bk.author);
+      return '<button class="lib-card" data-id="' + esc(bk.id) + '">' +
         '<img class="lib-cover" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(bk.id) + '&sz=w320" onerror="this.style.visibility=\'hidden\'" alt="' + t + '">' +
         '<div class="lib-t">' + t + '</div>' + (a ? '<div class="lib-a">' + a + '</div>' : '') + '</button>';
     }
     function draw(books) {
-      var head = '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
-        '<div><b style="font-size:1.06rem;color:var(--accent,#032257)">📚 나의 도서관</b>' +
-        '<div style="font-size:.82rem;color:var(--ink-soft);margin-top:3px">구글 드라이브의 책 ' + books.length + '권 · 표지를 클릭하면 드라이브에서 열립니다(관리자 전용)</div></div>' +
-        '<input type="text" id="lib_q" placeholder="🔍 제목·저자 검색" style="padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:200px"></div>';
-      if (!books.length) { panel.innerHTML = head + msgCard('책이 없습니다', '드라이브 폴더에 책(PDF 등)을 넣으면 여기에 표시됩니다.'); return; }
-      panel.innerHTML = head +
+      var PAGE = 60, shown = PAGE, filter = '';
+      panel.innerHTML =
         '<style>.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px}' +
         '.lib-card{cursor:pointer;text-align:left;background:none;border:0;padding:0;font-family:inherit}' +
         '.lib-cover{width:100%;aspect-ratio:3/4;border-radius:8px;background:#eef2f7;object-fit:cover;border:1px solid #e3e7ee;box-shadow:0 2px 8px rgba(3,34,87,.08)}' +
         '.lib-card:hover .lib-cover{box-shadow:0 5px 16px rgba(3,34,87,.18)}' +
         '.lib-t{font-size:.86rem;font-weight:700;color:#27364a;margin-top:7px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
         '.lib-a{font-size:.78rem;color:#9aa5b1;margin-top:1px}</style>' +
-        '<div class="lib-grid" id="lib_grid">' + books.map(card).join('') + '</div>';
-      var grid = panel.querySelector('#lib_grid');
-      Array.prototype.forEach.call(grid.querySelectorAll('.lib-card'), function (b) {
-        b.onclick = function () { window.open('https://drive.google.com/file/d/' + b.dataset.id + '/view', '_blank', 'noopener'); };
-      });
-      panel.querySelector('#lib_q').oninput = function () {
-        var s = this.value.trim().toLowerCase();
+        '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
+        '<div><b style="font-size:1.06rem;color:var(--accent,#032257)">📚 나의 도서관</b>' +
+        '<div style="font-size:.82rem;color:var(--ink-soft);margin-top:3px">구글 드라이브의 책 <b>' + books.length + '권</b> · 검색해서 찾고, 표지를 클릭하면 드라이브에서 열립니다(관리자 전용)</div></div>' +
+        '<input type="text" id="lib_q" placeholder="🔍 제목·저자 검색" style="padding:9px 12px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:240px"></div>' +
+        '<div class="lib-grid" id="lib_grid"></div>' +
+        '<div style="text-align:center;margin:18px 0"><button class="btn btn-line" id="lib_more" style="padding:9px 24px">더 보기</button><div id="lib_cnt" style="font-size:.8rem;color:#9aa5b1;margin-top:7px"></div></div>';
+      var grid = panel.querySelector('#lib_grid'), moreBtn = panel.querySelector('#lib_more'), cntEl = panel.querySelector('#lib_cnt');
+      function filtered() { return filter ? books.filter(function (b) { return b.key.indexOf(filter) >= 0; }) : books; }
+      function render() {
+        var list = filtered(), total = list.length, vis = Math.min(shown, total);
+        grid.innerHTML = total ? list.slice(0, vis).map(card).join('') : '<p style="color:#9aa5b1;grid-column:1/-1;padding:10px">검색 결과가 없습니다.</p>';
         Array.prototype.forEach.call(grid.querySelectorAll('.lib-card'), function (b) {
-          b.style.display = (!s || b.dataset.s.indexOf(s) >= 0) ? '' : 'none';
+          b.onclick = function () { window.open('https://drive.google.com/file/d/' + b.dataset.id + '/view', '_blank', 'noopener'); };
         });
-      };
+        cntEl.textContent = vis + ' / ' + total + '권' + (filter ? ' (검색결과)' : '');
+        moreBtn.style.display = vis < total ? '' : 'none';
+      }
+      moreBtn.onclick = function () { shown += PAGE; render(); };
+      var tmr = null;
+      panel.querySelector('#lib_q').oninput = function () { var v = this.value.trim().toLowerCase(); clearTimeout(tmr); tmr = setTimeout(function () { filter = v; shown = PAGE; render(); }, 200); };
+      render();
     }
   }
 
