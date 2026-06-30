@@ -1685,7 +1685,7 @@ console.log('[affairs.js] v20260701di');
         '</div>' +
         '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 위 도구로 굵게·제목·인용·색·목록 등 서식을 적용할 수 있습니다."></div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
-        '<div class="af-field" style="margin-top:14px"><label>🙏 기도 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">설교 원고 뒤에 함께 출력됩니다</span></label><textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등)" style="min-height:120px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.prayer || '') + '</textarea></div>' +
+        '<div class="af-field" style="margin-top:14px"><label style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🙏 기도 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#5b34a8;border-color:#cdbce6">✨ AI 생성</button></label><textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘✨ AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:120px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.prayer || '') + '</textarea></div>' +
         '<input type="hidden" id="se_media" value="' + esc(rec.media_url || '') + '"><input type="hidden" id="se_file" value="' + esc(rec.file_url || '') + '">' +
         '</div>' +
         '<div class="sed-aside-r"><div class="qtc-card">' +
@@ -1962,6 +1962,29 @@ console.log('[affairs.js] v20260701di');
         if (!w) { var m = ov.querySelector('#se_msg'); m.style.color = '#c0392b'; m.textContent = '팝업이 차단되었습니다 — 발표자 모드를 위해 팝업을 허용해 주세요.'; return; }
         try { w.document.write('<p style="font-family:sans-serif;color:#7b8794;padding:24px">발표자 모드 준비 중…</p>'); } catch (_) {}
         sermonReadingView(gather(), { qt: false, win: w, present: true });
+      };
+
+      // ── 🙏 기도 AI 생성: 설교 원고 기반 300자 미만 기도문 ──
+      ov.querySelector('#se_prayer_ai').onclick = function () {
+        var s = sess(); var msg = ov.querySelector('#se_msg');
+        if (!s || !s.token) { msg.style.color = '#c0392b'; msg.textContent = '로그인이 필요합니다.'; return; }
+        var manuscript = htmlToPlain(hid.value || ed.innerHTML || '').trim();
+        var title = ov.querySelector('#se_title').value.trim(), scripture = ov.querySelector('#se_scripture').value.trim();
+        if (!manuscript && !scripture) { msg.style.color = '#c0392b'; msg.textContent = '설교 원고(또는 본문)를 먼저 입력하면 기도문을 생성합니다.'; return; }
+        var content = '설교 제목: ' + (title || '(없음)') + '\n본문: ' + (scripture || '(없음)') + '\n\n[설교 원고]\n' + (manuscript.slice(0, 6000) || '(없음)');
+        var btn = this, old = btn.textContent; btn.disabled = true; btn.textContent = '✨ 생성 중…'; msg.style.color = '#7b8794'; msg.textContent = 'AI가 기도문을 작성하는 중입니다… (10초 내외)';
+        fetch(SB.replace(/\/$/, '') + '/functions/v1/bulletin-ai', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token, 'apikey': AK },
+          body: JSON.stringify({ mode: 'prayer', content: content })
+        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (o) {
+            btn.disabled = false; btn.textContent = old;
+            if (!o.ok) { msg.style.color = '#c0392b'; msg.textContent = '기도문 생성 실패: ' + ((o.j && o.j.error) || '') + ((o.j && o.j.detail) ? ' (' + o.j.detail + ')' : '') + ' — bulletin-ai 재배포가 필요할 수 있습니다.'; return; }
+            var txt = (o.j && o.j.result || '').trim();
+            if (txt) { ov.querySelector('#se_prayer').value = txt; msg.style.color = 'green'; msg.textContent = '✓ 기도문을 생성했습니다 (' + txt.replace(/\s/g, '').length + '자) — 확인 후 다듬어 주세요.'; }
+            else { msg.style.color = '#c0392b'; msg.textContent = '생성 결과가 비어 있습니다. 잠시 후 다시 시도해 주세요.'; }
+          })
+          .catch(function (e) { btn.disabled = false; btn.textContent = old; msg.style.color = '#c0392b'; msg.textContent = '호출 실패: ' + e.message + ' (bulletin-ai Edge Function 배포 필요)'; });
       };
 
       // ── 생명의삶 자동분류 패널 ──
