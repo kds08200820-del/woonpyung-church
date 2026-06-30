@@ -924,11 +924,15 @@ console.log('[affairs.js] v20260701di');
     ['경영·경제', /경영|경제|마케팅|회계|재무|투자|자본주의|매니지먼트|버핏|노믹스|재테크/],
     ['신학·교리', /신학|교의|조직신학|변증|개혁주의|칼빈|교리|세계관|기독교\s*강요|성령론|기독론|구원론|예정|언약/],
     ['설교·예배', /설교|강단|예화|예배|찬양|찬송|예전|설교학/],
+    ['자녀교육·육아', /육아|자녀교육|자녀양육|엄마표|아빠표|훈육|사춘기|입시|영재|태교|하브루타|그림책|부모|문제행동/],
     ['상담·가정', /상담|치유|위로|중독|가정|부부|자녀|결혼|심리|애도/],
     ['선교·전도', /선교|전도|복음화|땅끝|제자훈련/],
     ['목회·교회', /목회|교회|노회|총회|규정|정관|회의|행정|리더십|당회|장로|집사|세미나|성장/],
     ['교회사·인물', /교회사|역사|전기|인물|종교개혁|루터|어거스틴|아우구스티누스|청교도|위인/],
+    ['역사', /세계사|한국사(?!회)|문명사|전쟁사|근현대사|근대사|조선왕조|일제강점|로마제국|십자군/],
     ['신앙·경건', /경건|큐티|묵상|기도|영성|확신|회복|은혜|믿음|신앙|영적|제자|소그룹|훈련/],
+    ['철학·사상', /철학|사상|형이상학|윤리학|논리학|인식론|존재론|헤겔|칸트|니체|플라톤|아리스토텔레스|소크라테스|실존주의|현상학|변증법|인문학|쇼펜하우어|스토아/],
+    ['소설·문학', /소설|장편|단편선|단편소설|단편집|시집|수필|동화|희곡|산문|우화|판타지|에세이|(?<![인천])문학/],
     ['성경·주석', /주석|강해|틴데일|NICOT|NICNT|WBC|NAC|BECNT|100주년|현대성서|성경|개역|원어|구약|신약|히브리어|헬라어/i]
   ];
   function libHasBibleBook(t) {
@@ -977,14 +981,14 @@ console.log('[affairs.js] v20260701di');
     return '';
   }
   // 도서관 목록 로컬 캐시(즉시 표시용). 분류 규칙 바뀌면 LIB_CACHE_VER +1 → 옛 캐시 무효화.
-  var LIB_LS_KEY = 'wpc_lib_cache', LIB_CACHE_VER = 7;
+  var LIB_LS_KEY = 'wpc_lib_cache', LIB_CACHE_VER = 8;
   function libLoadLS() {
     try { var o = JSON.parse(localStorage.getItem(LIB_LS_KEY) || 'null'); return (o && o.v === LIB_CACHE_VER && o.books && o.books.length) ? o.books : null; } catch (e) { return null; }
   }
   function libSaveLS(books) {
     try { localStorage.setItem(LIB_LS_KEY, JSON.stringify({ v: LIB_CACHE_VER, books: books })); } catch (e) { /* 용량초과 등 → 캐시 생략 */ }
   }
-  var LIB_PALETTE = ['#0e7c5a', '#0a4a6e', '#7c5cbf', '#c0813a', '#3a7d8c', '#9c4a52', '#5a7d4a', '#475569', '#8a6d3b', '#5b5fa6', '#2f8f6b', '#7a5c8a', '#5a6675'];
+  var LIB_PALETTE = ['#0e7c5a', '#0a4a6e', '#7c5cbf', '#c0813a', '#3a7d8c', '#9c4a52', '#5a7d4a', '#475569', '#8a6d3b', '#5b5fa6', '#2f8f6b', '#7a5c8a', '#5a6675', '#a0522d', '#456b8c', '#6b8e23'];
   function renderLibrary(panel) {
     var url = window.LIBRARY_API_URL;
     if (!url) { panel.innerHTML = msgCard('나의 도서관 — 설정 필요', 'Apps Script(library-api.gs) 배포 후 config.js 의 LIBRARY_API_URL 을 설정해 주세요.'); return; }
