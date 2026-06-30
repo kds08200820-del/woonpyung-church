@@ -1154,6 +1154,7 @@ console.log('[affairs.js] v20260701di');
       '.lib-catcard.lib-drop{border-style:solid !important;transform:translateY(-3px);box-shadow:0 0 0 3px color-mix(in srgb,var(--c,#0e7c5a) 38%,#fff),0 12px 26px rgba(15,37,64,.16)}' +
       // 목록 화면 상단 고정 분류 바
       '.lib-catbar{position:sticky;top:84px;z-index:6;background:rgba(255,255,255,.98);backdrop-filter:saturate(1.2) blur(2px);padding:10px 0 12px;margin-bottom:14px;border-bottom:1px solid #eef1f5}' +
+      '@media(max-width:640px){.lib-catbar{position:static;top:auto;backdrop-filter:none;margin-bottom:10px}}' +   // 모바일: 분류 바 고정 해제(스크롤되며 책이 보이게)
       '.lib-catbar-hint{font-size:.74rem;font-weight:700;color:#9aa5b1;margin:0 2px 9px}' +
       '.lib-catbar .lib-cats{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:9px}' +
       '.lib-catbar .lib-catcard{padding:11px 13px 10px}.lib-catbar .lib-cat-name{font-size:.9rem}.lib-catbar .lib-cat-cnt{margin-top:6px}' +
