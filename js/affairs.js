@@ -1388,6 +1388,14 @@ console.log('[affairs.js] v20260701di');
     return { author: author, book: book, publisher: publisher, raw: src };
   }
   function illusBookLine(r) { var s = parseIllusSource(r.source); return [s.author, s.book ? '「' + s.book + '」' : '', s.publisher ? '(' + s.publisher + ')' : ''].filter(Boolean).join(' '); }
+  // 저자·책·출판사 → 출처 문자열 "저자, 「책」(출판사)"
+  function composeIllusSource(author, book, publisher) {
+    author = (author || '').trim(); book = (book || '').trim(); publisher = (publisher || '').trim();
+    var s = author;
+    if (book) s += (s ? ', ' : '') + '「' + book + '」';
+    if (publisher) s += (s && !book ? ' ' : '') + '(' + publisher + ')';
+    return s.trim();
+  }
   function copyToClipboard(t, btn, okText) { (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { if (btn) btn.textContent = okText || '✓ 복사됨'; }, function () { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); if (btn) btn.textContent = okText || '✓ 복사됨'; } catch (e) {} document.body.removeChild(ta); }); }
 
   // 예화 클립 한 건 보기(전문)
@@ -1407,6 +1415,43 @@ console.log('[affairs.js] v20260701di');
     ov.querySelector('#iv_close').onclick = close;
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     ov.querySelector('#iv_copy').onclick = function () { copyToClipboard((r.content || '') + (r.source ? '\n— ' + r.source : ''), this); };
+  }
+
+  // 예화 클립 수정 모달. 저장 시 onSaved(updatedRow) 호출.
+  function illustrationEditModal(r, onSaved) {
+    var s = parseIllusSource(r.source);
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9800;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+    function fld(label, id, val, ph) { return '<div style="margin-bottom:10px"><label style="display:block;font-size:.78rem;color:#5a6b82;font-weight:700;margin-bottom:4px">' + label + '</label><input type="' + (id === 'ie_date' ? 'date' : 'text') + '" id="' + id + '" value="' + esc(val || '') + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + ' style="width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;outline:none"></div>'; }
+    ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:680px;width:100%;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="margin:0;color:var(--accent,#032257)">✏️ 예화 클립 수정</h3><button class="btn btn-line" id="ie_close" style="padding:3px 11px">닫기</button></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + fld('일자', 'ie_date', fmtD(r.ref_date)) + fld('본문(성경)', 'ie_scr', r.scripture, '예: 에스겔 33:1-9') + '</div>' +
+      fld('제목(책)', 'ie_book', s.book || r.title, '예: 이기는 신앙') +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' + fld('저자', 'ie_author', s.author, '예: 이권희') + fld('출판사', 'ie_pub', s.publisher, '예: 두란노') + '</div>' +
+      '<div style="margin-bottom:10px"><label style="display:block;font-size:.78rem;color:#5a6b82;font-weight:700;margin-bottom:4px">내용</label><textarea id="ie_content" style="width:100%;min-height:200px;padding:11px 13px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;line-height:1.7;outline:none;resize:vertical">' + esc(r.content || '') + '</textarea></div>' +
+      '<div id="ie_msg" class="fin-msg" style="min-height:0;margin-bottom:8px;text-align:right"></div>' +
+      '<div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-line" id="ie_cancel" style="padding:8px 16px">취소</button><button class="btn btn-solid" id="ie_save" style="padding:8px 20px;font-weight:700">💾 저장</button></div></div>';
+    document.body.appendChild(ov);
+    var close = pushBackClose(function () { ov.remove(); });
+    ov.querySelector('#ie_close').onclick = close;
+    ov.querySelector('#ie_cancel').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    ov.querySelector('#ie_save').onclick = function () {
+      var content = ov.querySelector('#ie_content').value.trim();
+      if (!content) { var m = ov.querySelector('#ie_msg'); m.style.color = '#c0392b'; m.textContent = '내용을 입력해 주세요.'; return; }
+      var payload = {
+        ref_date: ov.querySelector('#ie_date').value || null,
+        scripture: ov.querySelector('#ie_scr').value.trim() || null,
+        source: composeIllusSource(ov.querySelector('#ie_author').value, ov.querySelector('#ie_book').value, ov.querySelector('#ie_pub').value) || null,
+        content: content
+      };
+      var btn = this; btn.disabled = true; var msg = ov.querySelector('#ie_msg'); msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
+      api('PATCH', 'sermon_illustrations?id=eq.' + r.id, payload, 'return=representation').then(function (rows) {
+        var saved = (rows && rows[0]) || null;
+        for (var k in payload) r[k] = payload[k];
+        close(); if (onSaved) onSaved(saved || r);
+      }).catch(function (e) { btn.disabled = false; msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; });
+    };
   }
 
   // 예화 클립 검색·선택 모달. opts.onPick(row) 있으면 선택 버튼(라벨 opts.pickLabel) 노출.
@@ -1473,11 +1518,12 @@ console.log('[affairs.js] v20260701di');
             '<td style="white-space:nowrap">' + esc(s.author || '—') + '</td>' +
             '<td>' + esc(s.publisher || '—') + '</td>' +
             '<td style="white-space:nowrap">' + esc(r.scripture || '—') + '</td>' +
-            '<td style="white-space:nowrap"><button class="btn btn-solid il-view" data-id="' + esc(r.id) + '" style="padding:4px 12px;font-size:.78rem">📖 보기</button> <button class="btn btn-line il-del" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">삭제</button></td></tr>';
+            '<td style="white-space:nowrap"><button class="btn btn-solid il-view" data-id="' + esc(r.id) + '" style="padding:4px 12px;font-size:.78rem">📖 보기</button> <button class="btn btn-line il-edit" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">✏️ 수정</button> <button class="btn btn-line il-del" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">삭제</button></td></tr>';
         }).join('') : '<tr><td colspan="6" style="color:#9aa5b1;padding:10px">검색 결과가 없습니다.</td></tr>') +
         '</tbody></table></div></div>';
       var byId = {}; all.forEach(function (r) { byId[r.id] = r; });
       Array.prototype.forEach.call(box.querySelectorAll('.il-view'), function (b) { b.onclick = function () { illustrationViewModal(byId[b.dataset.id]); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.il-edit'), function (b) { b.onclick = function () { illustrationEditModal(byId[b.dataset.id], function (updated) { for (var i = 0; i < all.length; i++) { if (String(all[i].id) === String(updated.id)) { all[i] = updated; break; } } draw(); }); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.il-del'), function (b) { b.onclick = function () { if (!confirm('이 예화 클립을 삭제할까요?')) return; api('DELETE', 'sermon_illustrations?id=eq.' + b.dataset.id, null, 'return=minimal').then(function () { all = all.filter(function (r) { return String(r.id) !== String(b.dataset.id); }); draw(); }).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
     }
     panel.querySelector('#il_q').oninput = draw;
