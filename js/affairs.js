@@ -981,7 +981,7 @@ console.log('[affairs.js] v20260701di');
     return '';
   }
   // 도서관 목록 로컬 캐시(즉시 표시용). 분류 규칙 바뀌면 LIB_CACHE_VER +1 → 옛 캐시 무효화.
-  var LIB_LS_KEY = 'wpc_lib_cache', LIB_CACHE_VER = 9;
+  var LIB_LS_KEY = 'wpc_lib_cache', LIB_CACHE_VER = 10;
   function libLoadLS() {
     try { var o = JSON.parse(localStorage.getItem(LIB_LS_KEY) || 'null'); return (o && o.v === LIB_CACHE_VER && o.books && o.books.length) ? o.books : null; } catch (e) { return null; }
   }
@@ -993,6 +993,8 @@ console.log('[affairs.js] v20260701di');
   // ── 수동 분류 변경(드래그&드롭): Supabase library_overrides 에 저장(관리자 공유·영구). 자동분류보다 우선 ──
   var LIB_OV = {};        // { book_id: {cat, sub} }  (sub=세부분류: 시리즈/종류)
   var LIB_DRAG = null;    // 드래그 중인 책 id
+  var LIB_TRASH = '휴지통';      // 삭제 대기 보관함(특수 분류)
+  var LIB_DELETED = '__deleted__'; // 영구 삭제(목록에서 숨김)
   function libLoadOverrides() {
     return api('GET', 'library_overrides?select=*').then(function (rows) {
       LIB_OV = {}; (rows || []).forEach(function (r) { LIB_OV[r.book_id] = { cat: r.category, sub: r.subcat || '' }; }); return LIB_OV;
@@ -1039,9 +1041,12 @@ console.log('[affairs.js] v20260701di');
     var counts = libCatCounts(books);
     var order = LIB_CATS.map(function (c) { return c[0]; }).concat(['기타']);
     var arr = order.filter(function (c) { return counts[c]; }).map(function (c) { return [c, counts[c]]; });
-    return '<div class="lib-cats">' + arr.map(function (c, i) {
+    var cards = arr.map(function (c, i) {
       return '<button class="lib-catcard' + (c[0] === activeCat ? ' on' : '') + '" data-cat="' + esc(c[0]) + '" style="--c:' + LIB_PALETTE[i % LIB_PALETTE.length] + '"><span class="lib-cat-name">' + esc(c[0]) + '</span><span class="lib-cat-cnt">' + c[1] + '권</span></button>';
-    }).join('') + '</div>';
+    }).join('');
+    // 휴지통: 항상 표시(드롭 대상)
+    cards += '<button class="lib-catcard lib-trashcard' + (activeCat === LIB_TRASH ? ' on' : '') + '" data-cat="' + LIB_TRASH + '" style="--c:#b4232a"><span class="lib-cat-name">🗑 휴지통</span><span class="lib-cat-cnt">' + (counts[LIB_TRASH] || 0) + '권</span></button>';
+    return '<div class="lib-cats">' + cards + '</div>';
   }
   // 분류 카드에 클릭(이동)·드롭(재분류) 연결. opts: {onNavigate(cat), onMoved(book,from,to)}
   function libBindCatBar(container, books, opts) {
@@ -1089,7 +1094,7 @@ console.log('[affairs.js] v20260701di');
       var prevN = _libCache ? _libCache.length : -1;
       fetch(furl).then(function (r) { return r.json(); }).then(function (d) {
         if (!d || !d.ok) { if (!silent) panel.innerHTML = msgCard('불러오기 실패', (d && d.error) || '목록을 불러오지 못했습니다.'); return; }
-        var fresh = (d.books || []).map(norm);
+        var fresh = (d.books || []).map(norm).filter(function (b) { return b.cat !== LIB_DELETED; });
         _libCache = fresh; libSaveLS(fresh);
         if (!silent) dashboard(fresh);
         else if (fresh.length !== prevN && panel.querySelector('#lib_recos')) dashboard(fresh);   // 변경 있을 때만 조용히 새로고침
@@ -1147,7 +1152,7 @@ console.log('[affairs.js] v20260701di');
       'body.lib-dnd .lib-cats .lib-catcard{border-style:dashed;border-color:var(--c,#0e7c5a)}' +
       '.lib-catcard.lib-drop{border-style:solid !important;transform:translateY(-3px);box-shadow:0 0 0 3px color-mix(in srgb,var(--c,#0e7c5a) 38%,#fff),0 12px 26px rgba(15,37,64,.16)}' +
       // 목록 화면 상단 고정 분류 바
-      '.lib-catbar{position:sticky;top:0;z-index:6;background:rgba(255,255,255,.97);backdrop-filter:saturate(1.2) blur(2px);padding:10px 0 12px;margin-bottom:14px;border-bottom:1px solid #eef1f5}' +
+      '.lib-catbar{position:sticky;top:84px;z-index:6;background:rgba(255,255,255,.98);backdrop-filter:saturate(1.2) blur(2px);padding:10px 0 12px;margin-bottom:14px;border-bottom:1px solid #eef1f5}' +
       '.lib-catbar-hint{font-size:.74rem;font-weight:700;color:#9aa5b1;margin:0 2px 9px}' +
       '.lib-catbar .lib-cats{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:9px}' +
       '.lib-catbar .lib-catcard{padding:11px 13px 10px}.lib-catbar .lib-cat-name{font-size:.9rem}.lib-catbar .lib-cat-cnt{margin-top:6px}' +
@@ -1165,6 +1170,13 @@ console.log('[affairs.js] v20260701di');
       '.lib-mchip.on{background:linear-gradient(135deg,#11785a,#0c4030);color:#fff;border-color:transparent}' +
       '.lib-modal-foot{margin-top:16px;text-align:right}' +
       '.lib-mcancel{border:1px solid #e2e8f0;background:#f3f6fa;color:#475569;font-weight:700;border-radius:999px;padding:8px 18px;cursor:pointer;font-family:inherit}.lib-mcancel:hover{background:#e7edf4}' +
+      // 휴지통
+      '.lib-trashcard .lib-cat-name{color:#b4232a}' +
+      '.lib-trashcard .lib-cat-cnt{background:color-mix(in srgb,#b4232a 12%,#fff);color:#b4232a}' +
+      '.lib-trashbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#fff5f4;border:1px solid #f1cfcb;border-radius:12px;padding:11px 15px;margin-bottom:16px;font-size:.84rem;color:#8a3a36}' +
+      '.lib-empty{border:1px solid #d9534f;background:#d9534f;color:#fff;font-weight:700;border-radius:999px;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:.83rem;white-space:nowrap}.lib-empty:hover{background:#c9302c}' +
+      '.lib-titem{display:flex;flex-direction:column}' +
+      '.lib-del{margin-top:7px;border:1px solid #f0c8c5;background:#fff5f4;color:#b4232a;font-weight:700;border-radius:8px;padding:6px 0;cursor:pointer;font-family:inherit;font-size:.76rem}.lib-del:hover{background:#fde6e3;border-color:#e0a09b}' +
       '</style>';
     function card(bk) {
       var t = esc(bk.title), a = esc(bk.author);
@@ -1180,15 +1192,17 @@ console.log('[affairs.js] v20260701di');
 
     function dashboard(books) {
       var catArr = libCatBarHtml(books, '');
-      var nCats = (libCatBarHtml(books, '').match(/lib-catcard/g) || []).length;
+      var counts = libCatCounts(books);
+      var nCats = LIB_CATS.map(function (c) { return c[0]; }).concat(['기타']).filter(function (c) { return counts[c]; }).length;
+      var visible = books.filter(function (b) { return b.cat !== LIB_TRASH; });
       var dt = new Date(), seed = dt.getFullYear() * 372 + dt.getMonth() * 31 + dt.getDate();
       var ds = dt.getFullYear() + '.' + pad2(dt.getMonth() + 1) + '.' + pad2(dt.getDate());
-      var picks = libSeededPicks(books, 6, seed);
+      var picks = libSeededPicks(visible, 6, seed);
       panel.innerHTML = GRID_CSS + '<div class="lib-root">' +
         '<div class="lib-hero"><div class="lib-hero-in"><div>' +
         '<div class="lib-eyebrow">MY LIBRARY</div>' +
         '<div class="lib-htitle">나의 도서관</div>' +
-        '<div class="lib-hsub">총 ' + books.length + '권 · ' + nCats + '개 분류 · 표지를 누르면 드라이브에서 열립니다</div></div>' +
+        '<div class="lib-hsub">총 ' + visible.length + '권 · ' + nCats + '개 분류 · 표지를 누르면 드라이브에서 열립니다</div></div>' +
         '<input type="text" id="lib_q" class="lib-search" placeholder="🔍 제목·저자 검색"></div></div>' +
         '<div class="lib-sec"><div class="lib-sec-h"><span>🗂 분류별 <span class="lib-sec-sub">책을 분류 칸으로 끌어다 놓으면 분류가 바뀝니다</span></span></div>' +
         catArr +
@@ -1212,31 +1226,58 @@ console.log('[affairs.js] v20260701di');
     }
     function listView(books, cat, q, close) {
       var curCat = cat, curSub = '', PAGE = 60, shown = PAGE;
+      var isTrash = (cat === LIB_TRASH);
       // 분류 안 하위 필터: 성경·주석=시리즈, 정기간행물·잡지=종류
       var subField = (cat === '성경·주석') ? 'series' : (cat === '정기간행물·잡지') ? 'pub' : '';
       var subOrder = (subField === 'series') ? LIB_SERIES_TAG : (subField === 'pub') ? LIB_MAG_TAG : [];
       var subLabel = (subField === 'pub') ? '종류' : '시리즈';
       function build(qq) { return books.filter(function (b) { return (!curCat || b.cat === curCat) && (!curSub || b[subField] === curSub) && (!qq || b.key.indexOf(qq) >= 0); }); }
+      function curQ() { var el = panel.querySelector('#lib_q2'); return el ? el.value.trim().toLowerCase() : ''; }
       var subBar = '';
       if (subField) {
         var sc = {}; books.forEach(function (b) { if (b.cat === curCat && b[subField]) sc[b[subField]] = (sc[b[subField]] || 0) + 1; });
         var arr = subOrder.map(function (s) { return s[0]; }).filter(function (s) { return sc[s]; }).map(function (s) { return [s, sc[s]]; });
         if (arr.length) subBar = '<div class="lib-chips"><span class="lbl">' + subLabel + '</span><button class="lib-schip on" data-s="">전체</button>' + arr.map(function (x) { return '<button class="lib-schip" data-s="' + esc(x[0]) + '">' + esc(x[0]) + ' ' + x[1] + '</button>'; }).join('') + '</div>';
       }
+      var trashBar = isTrash ? '<div class="lib-trashbar"><span>🗑 삭제할 책을 모아둔 곳입니다. 다른 분류 칸으로 끌어다 놓으면 <b>복원</b>됩니다.</span><button class="lib-empty" id="lib_empty">휴지통 비우기 (영구 삭제)</button></div>' : '';
       var curList = build(q);
       panel.innerHTML = GRID_CSS + '<div class="lib-root">' +
         '<div class="lib-bar"><div style="display:flex;align-items:center;gap:12px"><button class="lib-back" id="lib_back">‹ 도서관</button>' +
-        '<span class="lib-ltitle">' + (cat ? esc(cat) : '검색: ' + esc(q)) + '</span></div>' +
+        '<span class="lib-ltitle">' + (isTrash ? '🗑 휴지통' : (cat ? esc(cat) : '검색: ' + esc(q))) + '</span></div>' +
         '<input type="text" id="lib_q2" placeholder="🔍 이 안에서 검색" value="' + esc(q) + '" style="padding:9px 14px;border:1px solid #e2e8f0;border-radius:999px;font:inherit;min-width:200px;outline:none"></div>' +
-        '<div class="lib-catbar"><div class="lib-catbar-hint">🗂 분류 · 책을 칸으로 끌어다 놓으면 이동</div>' + libCatBarHtml(books, curCat) + '</div>' +
-        subBar +
+        '<div class="lib-catbar"><div class="lib-catbar-hint">🗂 분류 · 책을 칸으로 끌어다 놓으면 이동 · 휴지통에 넣으면 삭제 대기</div>' + libCatBarHtml(books, curCat) + '</div>' +
+        trashBar + subBar +
         '<div class="lib-grid" id="lib_grid"></div>' +
         '<div style="text-align:center;margin:22px 0"><button class="lib-more" id="lib_more">더 보기</button><div class="lib-cnt" id="lib_cnt"></div></div></div>';
       var grid = panel.querySelector('#lib_grid'), moreBtn = panel.querySelector('#lib_more'), cntEl = panel.querySelector('#lib_cnt');
+      // 상단 고정 분류 바를 사이트 고정헤더 아래로 내림(가려져 드롭 못 하던 문제)
+      (function () { var hdr = document.querySelector('header.header') || document.querySelector('header'); var bar = panel.querySelector('.lib-catbar'); if (hdr && bar) bar.style.top = Math.round(hdr.getBoundingClientRect().height) + 'px'; })();
+      function delBook(id) {
+        if (!window.confirm('이 책을 도서관에서 영구 삭제할까요?\n(드라이브 원본 파일은 그대로 남고, 도서관 목록에서만 사라집니다)')) return;
+        libSetOverride(id, LIB_DELETED).then(function () {
+          LIB_OV[id] = { cat: LIB_DELETED, sub: '' };
+          for (var i = 0; i < books.length; i++) { if (String(books[i].id) === String(id)) { books.splice(i, 1); break; } }
+          libSaveLS(books); curList = build(curQ()); render(); refreshCatBar(); libToast('영구 삭제됨');
+        }).catch(function (err) { libToast('삭제 실패: ' + ((err && err.message) || '오류'), true); });
+      }
+      function emptyTrash() {
+        var ids = books.filter(function (b) { return b.cat === LIB_TRASH; }).map(function (b) { return b.id; });
+        if (!ids.length) { libToast('휴지통이 비어 있습니다'); return; }
+        if (!window.confirm('휴지통의 ' + ids.length + '권을 모두 영구 삭제할까요?\n(드라이브 원본은 남고 도서관에서만 사라집니다)')) return;
+        var rows = ids.map(function (id) { return { book_id: String(id), category: LIB_DELETED, subcat: null }; });
+        api('POST', 'library_overrides', rows, 'resolution=merge-duplicates,return=minimal').then(function () {
+          ids.forEach(function (id) { LIB_OV[id] = { cat: LIB_DELETED, sub: '' }; });
+          for (var i = books.length - 1; i >= 0; i--) { if (books[i].cat === LIB_TRASH) books.splice(i, 1); }
+          libSaveLS(books); curList = build(curQ()); render(); refreshCatBar(); libToast(ids.length + '권 영구 삭제됨');
+        }).catch(function (err) { libToast('삭제 실패: ' + ((err && err.message) || '오류'), true); });
+      }
       function render() {
         var total = curList.length, vis = Math.min(shown, total);
-        grid.innerHTML = total ? curList.slice(0, vis).map(card).join('') : '<p style="color:#9aa5b1;grid-column:1/-1;padding:10px">결과가 없습니다.</p>';
+        if (!total) { grid.innerHTML = '<p style="color:#9aa5b1;grid-column:1/-1;padding:10px">' + (isTrash ? '휴지통이 비어 있습니다.' : '결과가 없습니다.') + '</p>'; }
+        else if (isTrash) { grid.innerHTML = curList.slice(0, vis).map(function (bk) { return '<div class="lib-titem">' + card(bk) + '<button class="lib-del" data-id="' + esc(bk.id) + '">영구 삭제</button></div>'; }).join(''); }
+        else { grid.innerHTML = curList.slice(0, vis).map(card).join(''); }
         bindCards(grid);
+        if (isTrash) Array.prototype.forEach.call(grid.querySelectorAll('.lib-del'), function (btn) { btn.onclick = function (e) { e.stopPropagation(); delBook(btn.dataset.id); }; });
         cntEl.textContent = vis + ' / ' + total + '권';
         moreBtn.style.display = vis < total ? '' : 'none';
       }
@@ -1245,24 +1286,26 @@ console.log('[affairs.js] v20260701di');
         Array.prototype.forEach.call(panel.querySelectorAll('.lib-catcard'), function (el) {
           var c = el.dataset.cat, pill = el.querySelector('.lib-cat-cnt');
           if (pill) pill.textContent = (counts[c] || 0) + '권';
-          el.style.display = counts[c] ? '' : 'none';
+          el.style.display = (counts[c] || c === LIB_TRASH) ? '' : 'none';   // 휴지통은 비어도 항상 표시
           if (c === curCat) el.classList.add('on'); else el.classList.remove('on');
         });
       }
       libBindCatBar(panel.querySelector('.lib-cats'), books, {
         onNavigate: function (c) { if (c !== curCat) listView(books, c, '', close); },
         onMoved: function (bk, from, to, sub) {
-          curList = build(panel.querySelector('#lib_q2').value.trim().toLowerCase());
-          render(); refreshCatBar(); libToast('‘' + bk.title + '’ → ' + to + (sub ? ' · ' + sub : ''));
+          curList = build(curQ());
+          render(); refreshCatBar();
+          libToast(to === LIB_TRASH ? ('‘' + bk.title + '’ 휴지통으로') : ('‘' + bk.title + '’ → ' + to + (sub ? ' · ' + sub : '')));
         }
       });
       moreBtn.onclick = function () { shown += PAGE; render(); };
       panel.querySelector('#lib_back').onclick = function () { if (close) close(); else dashboard(books); };
+      if (isTrash) panel.querySelector('#lib_empty').onclick = emptyTrash;
       Array.prototype.forEach.call(panel.querySelectorAll('.lib-schip'), function (b) {
         b.onclick = function () {
           curSub = b.dataset.s; shown = PAGE;
           Array.prototype.forEach.call(panel.querySelectorAll('.lib-schip'), function (x) { x.className = (x === b) ? 'lib-schip on' : 'lib-schip'; });
-          curList = build(panel.querySelector('#lib_q2').value.trim().toLowerCase()); render();
+          curList = build(curQ()); render();
         };
       });
       var tmr = null;
@@ -1274,6 +1317,9 @@ console.log('[affairs.js] v20260701di');
     function applyOverrides() {
       if (!_libCache) return; var changed = false;
       _libCache.forEach(function (b) { var pc = b.cat, ps = b.series, pp = b.pub; libApplyOv(b); if (b.cat !== pc || b.series !== ps || b.pub !== pp) changed = true; });
+      var before = _libCache.length;
+      _libCache = _libCache.filter(function (b) { return b.cat !== LIB_DELETED; });
+      if (_libCache.length !== before) changed = true;
       if (changed) { libSaveLS(_libCache); if (panel.querySelector('#lib_recos')) dashboard(_libCache); }
     }
 
