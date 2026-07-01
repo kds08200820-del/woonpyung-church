@@ -487,7 +487,9 @@ function actionExportSermonPdf_(req) {
   var doc = DocumentApp.create(date + ' ' + title);
   var body = doc.getBody();
   body.clear();
-  body.setMarginTop(60).setMarginBottom(60).setMarginLeft(64).setMarginRight(64);
+  // 아이패드(4:3 화면) 보기에 맞춘 페이지: 576×768pt(3:4 비율) · 여백 상하 44 / 좌우 48pt
+  body.setPageWidth(576).setPageHeight(768);
+  body.setMarginTop(44).setMarginBottom(44).setMarginLeft(48).setMarginRight(48);
 
   // 제목 (가운데, 크게)
   setP_(body.appendParagraph(title), { size: 26, bold: true, font: SERIF, color: INK, align: 'center', after: 6 });

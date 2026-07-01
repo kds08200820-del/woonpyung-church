@@ -2237,14 +2237,39 @@ console.log('[affairs.js] v20260701dj');
         '.rp-tabs button{flex:1;font:inherit;font-size:.8rem;font-weight:700;padding:8px 3px;border:1px solid #dde3ec;background:#fff;color:#5b6b7d;border-radius:9px;cursor:pointer}' +
         '.rp-tabs button.on{background:var(--accent,#032257);color:#fff;border-color:var(--accent,#032257)}' +
         '.rp-paperwrap{overflow:hidden;display:flex;justify-content:center}' +
-        // PDF 미리보기 원고지 — Apps Script exportSermonPdf(A4 · 60/64pt 여백 · 26/11/14/16pt)와 동일 비율(0.87px/pt)
-        '.rp-paper{width:520px;min-height:735px;background:#fff;color:#1a1a1a;box-shadow:0 10px 34px rgba(0,0,0,.5);padding:52px 56px;box-sizing:border-box;transform-origin:top center;font-family:\'Noto Serif KR\',serif;word-break:keep-all;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 734px,#e3e3e3 734px,#e3e3e3 735px)}' +
-        '.rp-paper .pdf-t{font-size:22.7px;font-weight:700;text-align:center;line-height:1.35;margin:0 0 5px}' +
-        '.rp-paper .pdf-meta{font-size:9.6px;color:#8a8f99;text-align:center;margin:0 0 14px}' +
-        '.rp-paper .pdf-hr{border:none;border-top:1px solid #c9ced6;margin:10px 0}' +
-        '.rp-paper .pdf-h{font-size:10.5px;font-weight:700;color:#1f3a63;margin:14px 0 7px}' +
-        '.rp-paper .pdf-bible{font-size:12.2px;color:#33445c;line-height:1.55;margin:0 0 3px;padding-left:5px}' +
-        '.rp-paper .pdf-p{font-size:14px;color:#1a1a1a;line-height:1.7;margin:0 0 10px}' +
+        // PDF 미리보기 — 아이패드(3:4) 페이지, Apps Script exportSermonPdf(576×768pt·여백 44/48pt)와 동일 비율(0.903px/pt)
+        // CSS 다단(column)으로 실제 페이지처럼 넘겨봄: 한 단 = 한 페이지 본문, 줄이 잘리지 않음
+        '.rp-paper{width:520px;height:693px;background:#fff;color:#1a1a1a;box-shadow:0 10px 34px rgba(0,0,0,.5);padding:40px 43px;box-sizing:border-box;transform-origin:top center;font-family:\'Noto Serif KR\',serif;word-break:keep-all;overflow:hidden}' +
+        '.rp-flow{height:613px;column-width:434px;column-gap:86px;column-fill:auto;transition:transform .22s ease}' +
+        '.rp-paper .pdf-t{font-size:23.5px;font-weight:700;text-align:center;line-height:1.35;margin:0 0 5px}' +
+        '.rp-paper .pdf-meta{font-size:9.9px;color:#8a8f99;text-align:center;margin:0 0 13px}' +
+        '.rp-paper .pdf-hr{border:none;border-top:1px solid #c9ced6;margin:9px 0}' +
+        '.rp-paper .pdf-h{font-size:10.8px;font-weight:700;color:#1f3a63;margin:13px 0 7px}' +
+        '.rp-paper .pdf-bible{font-size:12.6px;color:#33445c;line-height:1.55;margin:0 0 3px;padding-left:5px}' +
+        '.rp-paper .pdf-p{font-size:14.4px;color:#1a1a1a;line-height:1.7;margin:0 0 10px}' +
+        '.rp-nav{display:flex;align-items:center;justify-content:center;gap:12px;padding:9px 0 0}' +
+        '.rp-nav button{font:inherit;font-size:.82rem;padding:4px 14px;border:1px solid #dde3ec;background:#fff;border-radius:8px;cursor:pointer;color:#33415c}' +
+        '.rp-nav button:disabled{opacity:.35;cursor:default}' +
+        '.sed-dark .rp-nav button{background:#161d29;border-color:#2a3547;color:#c3cede}' +
+        '.rp-nav b{font-size:.8rem;color:#8b96a5;min-width:52px;text-align:center;font-weight:600}' +
+        // ── 설교 원고: MS Word 스타일 페이지 뷰(회색 캔버스·흰 용지·㎜ 눈금자·용지/배율) ──
+        '.wd-bar{display:flex;align-items:center;gap:7px;font-size:.76rem;color:#5b6b7d;background:#f1f3f4;border:1px solid #d5dae2;border-bottom:none;border-radius:10px 10px 0 0;padding:6px 12px;flex-wrap:wrap}' +
+        '.wd-bar select{font:inherit;font-size:.76rem;border:1px solid #cfd6e0;border-radius:7px;padding:4px 6px;background:#fff;cursor:pointer;color:#33415c}' +
+        '.wd-bar b{min-width:42px;color:#33415c}' +
+        '.wd-scroll{background:#e6e9ee;border:1px solid #d5dae2;border-radius:0 0 10px 10px;overflow:auto;padding:14px 8px 30px;max-height:80vh}' +
+        '.wd-sheet{width:-webkit-max-content;width:max-content;margin:0 auto}' +
+        '.wd-rowh{display:flex}' +
+        '.wd-corner{width:23px;height:22px;flex:none}' +
+        '#wd_rh{display:block;background:#f6f7f9;border:1px solid #cfd6e0;border-bottom:none;box-sizing:content-box}' +
+        '.wd-rowb{display:flex;align-items:flex-start}' +
+        '#wd_rv{display:block;background:#f6f7f9;border:1px solid #cfd6e0;border-right:none;flex:none;box-sizing:content-box}' +
+        '.wd-page{background:#fff;box-shadow:0 4px 18px rgba(30,40,60,.28);border:1px solid #cbd2dd;box-sizing:border-box}' +
+        '.wd-page .se-editor{border:none;border-radius:0;background:transparent;min-height:0;box-shadow:none}' +
+        '.wd-page .se-editor:focus{border:none;box-shadow:none;outline:none}' +
+        '.sed-dark .wd-bar{background:#1a2230;border-color:#2a3547;color:#8fa0b5}' +
+        '.sed-dark .wd-bar select{background:#131a25;border-color:#2a3547;color:#c3cede}' +
+        '.sed-dark .wd-bar b{color:#c3cede}' +
+        '.sed-dark .wd-scroll{background:#0d1118;border-color:#242e3e}' +
         '.rp-paper img{max-width:100%}' +
         '.rp-pageinfo{text-align:center;font-size:.74rem;color:#8b96a5;padding:8px 0 2px}' +
         '.sed-sb{display:flex;align-items:center;gap:18px;padding:7px 18px;font-size:.76rem;flex:none}' +
@@ -2276,7 +2301,7 @@ console.log('[affairs.js] v20260701dj');
         '.sed-dark .bd-doc b{color:#cdd8e8}.sed-dark .bd-doc span{color:#75839a}' +
         '.sed-dark .bd-doc.cur{border-color:#3f639f;box-shadow:0 0 0 2px rgba(70,120,200,.25)}' +
         '.sed-dark .sed-main{flex:1;min-width:0;overflow-y:auto;padding:26px 30px 70px;background:radial-gradient(900px 420px at 50% -8%,#1c2431 0%,#141922 62%)}' +
-        '.sed-dark .sed-form{max-width:900px;border-color:#0a0e14;box-shadow:0 22px 70px rgba(0,0,0,.55)}' +
+        '.sed-dark .sed-form{max-width:1060px;border-color:#0a0e14;box-shadow:0 22px 70px rgba(0,0,0,.55)}' +   // A4(794px)+눈금자 페이지 뷰가 들어가는 폭
         '.sed-dark .sed-aside-r{position:static;right:auto;top:auto;width:392px;flex:none;overflow-y:auto;background:#10151d;border-left:1px solid #242e3e;padding:12px 12px 26px}' +
         '.sed-dark .rp-tabs button{background:#161d29;border-color:#2a3547;color:#8394ab}' +
         '.sed-dark .rp-tabs button.on{background:#2c4a86;border-color:#2c4a86;color:#fff}' +
@@ -2459,7 +2484,18 @@ console.log('[affairs.js] v20260701dj');
         '<textarea id="se_qt_bible" placeholder="우리말성경 본문을 붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
         '</div></div>' +
         '<div class="af-field se-hide-worship"><label>설교 원고 <span class="se-count" id="se_count">0단어 · 0자</span></label>' +
-        '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 상단 리본의 도구로 굵게·제목·인용·색·목록·메모·이미지 등 서식을 적용할 수 있습니다."></div>' +
+        // MS Word 스타일 페이지 뷰: 용지·배율 조절 + ㎜ 눈금자 + 흰 용지 위 작성
+        '<div class="wd-bar">' +
+        '<span>용지</span><select id="wd_paper"><option value="A4">A4 (210×297㎜)</option><option value="iPad">아이패드 (180×240㎜)</option><option value="Letter">레터 (216×279㎜)</option><option value="B5">B5 (176×250㎜)</option></select>' +
+        '<span style="margin-left:8px">여백</span><select id="wd_margin"><option value="15">좁게 (15㎜)</option><option value="20" selected>보통 (20㎜)</option><option value="25">넓게 (25㎜)</option></select>' +
+        '<span style="margin-left:8px">배율</span><input type="range" id="wd_zoom" min="50" max="160" value="100" style="width:130px"><b id="wd_zoom_v">100%</b>' +
+        '</div>' +
+        '<div class="wd-scroll"><div class="wd-sheet" id="wd_sheet">' +
+        '<div class="wd-rowh"><div class="wd-corner"></div><canvas id="wd_rh" height="22"></canvas></div>' +
+        '<div class="wd-rowb"><canvas id="wd_rv" width="22"></canvas>' +
+        '<div class="wd-page" id="wd_page"><div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 상단 리본의 도구로 굵게·제목·인용·색·목록·메모·이미지 등 서식을 적용할 수 있습니다."></div></div>' +
+        '</div>' +
+        '</div></div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
         '<div class="af-field se-hide-worship" style="margin-top:14px"><label style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🙏 기도<span style="font-weight:400;font-size:.74rem;color:#9aa5b1">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#5b34a8;border-color:#cdbce6">✨ AI 생성</button></label><textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘✨ AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:120px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.prayer || '') + '</textarea></div>' +
         '</div></main>' +
@@ -2467,8 +2503,9 @@ console.log('[affairs.js] v20260701dj');
         '<aside class="sed-aside-r">' +
         '<div class="rp-tabs"><button type="button" class="rp-tab on" data-p="prev">📄 PDF 미리보기</button><button type="button" class="rp-tab" data-p="qtc">📥 자동분류</button></div>' +
         '<div class="rp-pane" id="rp_prev">' +
-        '<div class="rp-paperwrap" id="rp_paperwrap"><div class="rp-paper" id="rp_paper"></div></div>' +
-        '<div class="rp-pageinfo" id="rp_pageinfo">1 페이지 · 실제 PDF 내보내기와 동일한 양식</div>' +
+        '<div class="rp-paperwrap" id="rp_paperwrap"><div class="rp-paper" id="rp_paper"><div class="rp-flow" id="rp_flow"></div></div></div>' +
+        '<div class="rp-nav"><button type="button" id="rp_pg_prev" title="이전 페이지">◀</button><b id="rp_pg">1 / 1</b><button type="button" id="rp_pg_next" title="다음 페이지">▶</button></div>' +
+        '<div class="rp-pageinfo" id="rp_pageinfo">아이패드 크기(3:4) · 실제 PDF 내보내기와 동일한 양식</div>' +
         '</div>' +
         '<div class="rp-pane" id="rp_qtc" style="display:none"><div class="qtc-card">' +
         '<div class="qtc-h">📥 생명의삶 자동분류</div>' +
@@ -3346,14 +3383,89 @@ console.log('[affairs.js] v20260701dj');
           };
         })();
 
+        // ── MS Word 스타일 페이지 뷰: 용지 크기·여백·배율 + ㎜ 눈금자 ──
+        (function wdPageView() {
+          var wdPage = ov.querySelector('#wd_page'), wdSheet = ov.querySelector('#wd_sheet');
+          var rh = ov.querySelector('#wd_rh'), rv = ov.querySelector('#wd_rv');
+          var paperSel = ov.querySelector('#wd_paper'), marginSel = ov.querySelector('#wd_margin'), zoomR = ov.querySelector('#wd_zoom'), zoomLbl = ov.querySelector('#wd_zoom_v');
+          if (!wdPage || !wdSheet || !rh || !rv) return;
+          var MMPX = 96 / 25.4;   // 1㎜ = 3.78px (CSS 96dpi)
+          var PAPERS = { A4: [210, 297], iPad: [180, 240], Letter: [216, 279], B5: [176, 250] };
+          var LSK = 'wpWdPage1';
+          var prefs = { paper: 'A4', margin: 20, zoom: 100 };
+          try { var sv = JSON.parse(localStorage.getItem(LSK) || 'null'); if (sv) { if (PAPERS[sv.paper]) prefs.paper = sv.paper; prefs.margin = Number(sv.margin) || 20; prefs.zoom = Number(sv.zoom) || 100; } } catch (e) { }
+          function drawRuler(cv, lenPx, mgnPx, vertical) {
+            var TH = 22;
+            if (vertical) { cv.width = TH; cv.height = lenPx; cv.style.height = lenPx + 'px'; }
+            else { cv.width = lenPx; cv.height = TH; cv.style.width = lenPx + 'px'; }
+            var c = cv.getContext('2d');
+            c.clearRect(0, 0, cv.width, cv.height);
+            // 여백 밖=회색, 본문 영역=흰색 (워드처럼)
+            c.fillStyle = '#e3e7ed'; c.fillRect(0, 0, cv.width, cv.height);
+            c.fillStyle = '#ffffff';
+            if (vertical) c.fillRect(0, mgnPx, TH, lenPx - 2 * mgnPx); else c.fillRect(mgnPx, 0, lenPx - 2 * mgnPx, TH);
+            c.strokeStyle = '#8d99a8'; c.fillStyle = '#5b6b7d'; c.font = '9px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+            var mmTotal = Math.floor(lenPx / MMPX);
+            c.beginPath();
+            for (var m = 0; m <= mmTotal; m++) {
+              if (m % 2 === 1 && MMPX < 4) continue;   // 1㎜ 눈금은 촘촘하면 2㎜ 간격으로
+              var p = Math.round(m * MMPX) + 0.5;
+              var tick = (m % 10 === 0) ? 9 : (m % 5 === 0 ? 6 : 3);
+              if (vertical) { c.moveTo(TH - 1 - tick, p); c.lineTo(TH - 1, p); }
+              else { c.moveTo(p, TH - 1 - tick); c.lineTo(p, TH - 1); }
+              if (m % 10 === 0 && m > 0 && m < mmTotal) {   // ㎝ 숫자
+                if (vertical) c.fillText(String(m / 10), 8, p - 7);
+                else c.fillText(String(m / 10), p - 8, 7);
+              }
+            }
+            c.stroke();
+          }
+          function applyPage() {
+            var sz = PAPERS[prefs.paper] || PAPERS.A4;
+            var pw = Math.round(sz[0] * MMPX), ph = Math.round(sz[1] * MMPX), mg = Math.round(prefs.margin * MMPX);
+            wdPage.style.width = pw + 'px';
+            wdPage.style.minHeight = ph + 'px';
+            // 페이지 경계선(다음 장 시작 위치)
+            wdPage.style.backgroundImage = 'repeating-linear-gradient(to bottom,transparent 0,transparent ' + (ph - 1) + 'px,#dfe3ea ' + (ph - 1) + 'px,#dfe3ea ' + ph + 'px)';
+            ed.style.padding = mg + 'px';
+            ed.style.minHeight = (ph - 2 * mg) + 'px';
+            drawRuler(rh, pw, mg, false);
+            drawRuler(rv, ph, mg, true);
+            try { wdSheet.style.zoom = String(prefs.zoom / 100); } catch (e) { }
+            if (zoomLbl) zoomLbl.textContent = prefs.zoom + '%';
+            if (paperSel) paperSel.value = prefs.paper;
+            if (marginSel) marginSel.value = String(prefs.margin);
+            if (zoomR) zoomR.value = prefs.zoom;
+            try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { }
+          }
+          if (paperSel) paperSel.onchange = function () { prefs.paper = this.value; applyPage(); };
+          if (marginSel) marginSel.onchange = function () { prefs.margin = Number(this.value) || 20; applyPage(); };
+          if (zoomR) zoomR.oninput = function () { prefs.zoom = Number(this.value) || 100; applyPage(); };
+          applyPage();
+        })();
+
         // ── 발표자 모드: 저장 없이 현재 화면 그대로 아이패드 발표 보기 ──
         var presBtn = ov.querySelector('#se_present');
         if (presBtn) presBtn.onclick = function () { sermonReadingView(gather(), { qt: false }); };
 
         // ── 우측 원고지 미리보기 + 하단 상태바(페이지·단어·글자·맞춤) ──
         var rpPaper = ov.querySelector('#rp_paper'), rpWrap = ov.querySelector('#rp_paperwrap'), rpInfo = ov.querySelector('#rp_pageinfo');
+        var rpFlow = ov.querySelector('#rp_flow'), pgEl = ov.querySelector('#rp_pg'), pgPrev = ov.querySelector('#rp_pg_prev'), pgNext = ov.querySelector('#rp_pg_next');
         var sbCount = ov.querySelector('#sb_count'), zoomIn = ov.querySelector('#sb_zoom'), zoomV = ov.querySelector('#sb_zoom_v');
-        var PAGE_H = 735;   // 520px 폭 = A4(595pt) × 0.87 → 한 쪽 높이 735px
+        var PG_INW = 434, PG_GAP = 86, PG_STRIDE = PG_INW + PG_GAP;   // 한 페이지 본문 폭 + 여백×2 = 페이지 넘김 간격
+        var pgIdx = 0, pgTotal = 1;
+        function updatePg() {
+          if (!rpFlow) return;
+          pgTotal = Math.max(1, Math.round((rpFlow.scrollWidth + PG_GAP) / PG_STRIDE));
+          if (pgIdx > pgTotal - 1) pgIdx = pgTotal - 1;
+          if (pgIdx < 0) pgIdx = 0;
+          rpFlow.style.transform = 'translateX(' + (-pgIdx * PG_STRIDE) + 'px)';
+          if (pgEl) pgEl.textContent = (pgIdx + 1) + ' / ' + pgTotal;
+          if (pgPrev) pgPrev.disabled = (pgIdx <= 0);
+          if (pgNext) pgNext.disabled = (pgIdx >= pgTotal - 1);
+        }
+        if (pgPrev) pgPrev.onclick = function () { pgIdx--; updatePg(); };
+        if (pgNext) pgNext.onclick = function () { pgIdx++; updatePg(); };
         function applyZoom() {
           if (!rpPaper) return;
           var z = Number((zoomIn && zoomIn.value) || 66) / 100;
@@ -3388,12 +3500,12 @@ console.log('[affairs.js] v20260701dj');
           }
           html += '<div class="pdf-h">설교 원고</div>';
           paras.forEach(function (p) { var x = p.replace(/\n/g, ' ').trim(); if (x) html += '<p class="pdf-p">' + esc(x) + '</p>'; });
-          rpPaper.innerHTML = html;
-          var pages = Math.max(1, Math.ceil(rpPaper.scrollHeight / PAGE_H));
-          if (rpInfo) rpInfo.textContent = pages + ' 페이지 · 실제 PDF 내보내기와 동일한 양식';
+          if (rpFlow) rpFlow.innerHTML = html;
+          updatePg();
+          if (rpInfo) rpInfo.textContent = '아이패드 크기(3:4) · 실제 PDF 내보내기와 동일한 양식';
           var txt = (ed.innerText || '').trim();
           var words = txt ? txt.split(/\s+/).length : 0, chars = txt.replace(/\s/g, '').length;
-          if (sbCount) sbCount.textContent = pages + ' 페이지 · ' + words + ' 단어 · ' + chars + ' 글자';
+          if (sbCount) sbCount.textContent = pgTotal + ' 페이지 · ' + words + ' 단어 · ' + chars + ' 글자';
           applyZoom();
         }
         if (zoomIn) zoomIn.oninput = applyZoom;
