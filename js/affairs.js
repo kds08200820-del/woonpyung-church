@@ -2313,8 +2313,12 @@ console.log('[affairs.js] v20260701dj');
         '.sed-dark .bd-seritem{color:#aab8cc}.sed-dark .bd-seritem:hover{background:#1b2536}' +
         '.sed-dark .bd-seritem.on{background:#1a2c4d;color:#9ec1f7}' +
         '.sed-dark .bd-seritem span{color:#6d7c92}' +
-        // 같은 시리즈의 설교 — 시리즈를 여러 개 골라도 이 박스 하나 안에서만 스크롤(끝없이 안 늘어남)
-        '.bd-serdocs{max-height:230px;overflow-y:auto;padding-right:3px}' +
+        // 시리즈 섹션 소제목 + 박스(추가된 시리즈 · 같은 시리즈의 설교) — 둘 다 이 박스 안에서만 스크롤(끝없이 안 늘어남)
+        '.bd-boxhead{font-size:.72rem;font-weight:700;color:#75839a;margin:10px 0 4px}' +
+        '.bd-serchipsbox{min-height:34px;max-height:110px;overflow-y:auto;border:1px solid #e3e8f0;border-radius:9px;padding:6px 7px;background:#fff}' +
+        '.sed-dark .bd-serchipsbox{background:#141b27;border-color:#2a3547}' +
+        '.bd-serdocs{max-height:230px;overflow-y:auto;padding-right:3px;border:1px solid #e3e8f0;border-radius:9px;padding:7px}' +
+        '.sed-dark .bd-serdocs{border-color:#2a3547}' +
         // ── QT 체크박스 정렬(.af-field label의 display:block이 이기던 문제) ──
         '.af-field label.sed-qt{display:flex;align-items:center;gap:8px;margin-bottom:0;font-weight:600}' +
         // ── 예배 매니저: 제목·본문은 리본 2줄째로 이동했으므로 빈 폼 카드 숨김 ──
@@ -2530,13 +2534,16 @@ console.log('[affairs.js] v20260701dj');
         '<div class="af-field"><label>설교 분류(예배)</label><select id="se_service"><option value="">선택</option>' + svcOpts + '</select>' +
         '<input type="text" id="se_svc_custom" placeholder="새 분류 이름 (예: 청년예배)" style="display:none;margin-top:6px" title="기타를 고른 뒤 새 분류 이름을 적으면 그 이름으로 저장되고, 다음부터 분류 목록에 나타납니다"></div>' +
         // 시리즈: 분류 바로 다음 — 입력하면 기존 시리즈가 자동완성으로 뜸
+        // 순서: ①입력+추가(클릭하면 기존 시리즈 목록 드롭다운) ②추가된 시리즈 목록 박스 ③같은 시리즈의 설교(스크롤) 박스
         '<div class="af-field se-hide-worship"><label>📚 시리즈 <span style="font-weight:400">(여러 개 선택 가능)</span></label>' +
-        '<div id="se_series_chips" style="margin-bottom:4px"></div>' +
         '<div class="bd-serwrap">' +
         '<div style="display:flex;gap:5px"><input type="text" id="se_series_in" placeholder="시리즈 추가 · 클릭하면 목록에서 선택" autocomplete="off" style="flex:1"><button type="button" class="btn btn-line" id="se_series_add" style="padding:6px 11px;font-size:.8rem;flex:none">＋ 추가</button></div>' +
         '<div id="se_series_list" class="bd-serlist"></div>' +
         '</div>' +
-        '<div id="se_series_docs" class="bd-serdocs" style="margin-top:7px"></div>' +
+        '<div class="bd-boxhead">추가된 시리즈</div>' +
+        '<div id="se_series_chips" class="bd-serchipsbox"></div>' +
+        '<div class="bd-boxhead">같은 시리즈의 설교</div>' +
+        '<div id="se_series_docs" class="bd-serdocs"></div>' +
         '</div>' +
         '<div class="af-field"><label>설교자</label><input type="text" id="se_preacher" value="' + esc(rec.preacher || '김동석 목사') + '"></div>' +
         '<div class="af-field se-hide-worship"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e;margin:0;flex:none">함께 만들기</label></div>' +
@@ -3401,7 +3408,11 @@ console.log('[affairs.js] v20260701dj');
               if (pp) pp.style.display = 'none';
               if (bb) bb.classList.remove('on');
             });
-            if (willOpen) { p.style.display = ''; b.classList.add('on'); }
+            if (willOpen) {
+              p.style.display = ''; b.classList.add('on');
+              // '본문 텍스트'를 누를 때마다 우리말성경 체크는 항상 꺼짐이 기본값(직전에 켜뒀어도 다시 열면 초기화)
+              if (bid === 'se_pn_bible' && wmChk) { wmChk.checked = false; syncQt(); }
+            }
           };
         });
 
