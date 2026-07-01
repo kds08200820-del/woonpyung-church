@@ -683,7 +683,7 @@ if (homeBulletin && typeof BULLETINS !== "undefined" && BULLETINS.length) {
   const orderItems = (b.order || []).map((o) => `<li>${o}</li>`).join("");
   const newsItems = (b.news || []).slice(0, 3).map((n) => `<li><strong>${n.title}</strong>${n.detail}</li>`).join("");
   homeBulletin.innerHTML = `
-    <div class="hb-card reveal">
+    <div class="hb-card">
       <div class="hb-hd">
         <span class="hb-hd-week">${b.week} · 주일 낮 예배</span>
         <span class="hb-hd-date">${b.dateLabel}</span>
