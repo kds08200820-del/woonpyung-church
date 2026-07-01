@@ -1785,7 +1785,8 @@ console.log('[affairs.js] v20260701dj');
 
   function renderSermon(panel, opts) {
     var worshipMode = !!(opts && opts.worship);
-    var WTPL = {}, smView = 'list', smRows = [], calYM = null, smTableState = { svc: '전체', year: '전체', month: '전체', sort: 'desc', perPage: 20, page: 1 };
+    var _now = new Date();   // 목록 기본 필터: 오늘 기준 연·월
+    var WTPL = {}, smView = 'list', smRows = [], calYM = null, smTableState = { svc: '전체', year: String(_now.getFullYear()), month: pad2(_now.getMonth() + 1), sort: 'desc', perPage: 20, page: 1 };
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요기도회': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#64748b'; }
     function orderCount(r) { try { var a = JSON.parse(r.worship_order || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
@@ -1926,6 +1927,7 @@ console.log('[affairs.js] v20260701dj');
         var y = (r.sermon_date || '').slice(0, 4);
         if (y) yearSet[y] = true;
       });
+      yearSet[String(new Date().getFullYear())] = true;   // 올해는 자료가 없어도 항상 선택 가능(기본 필터와 일치)
       var svcs = ['전체'].concat(svcOrder.filter(function (s) { return svcSet[s]; }));
       var yrs = ['전체'].concat(Object.keys(yearSet).sort(function (a, b) { return b.localeCompare(a); }));
 
