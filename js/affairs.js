@@ -1769,7 +1769,7 @@ console.log('[affairs.js] v20260701dj');
 
   function renderSermon(panel, opts) {
     var worshipMode = !!(opts && opts.worship);
-    var WTPL = {}, smView = 'list', smRows = [], calYM = null, smTableState = { svc: '전체', year: '전체', sort: 'desc', perPage: 20, page: 1 };
+    var WTPL = {}, smView = 'list', smRows = [], calYM = null, smTableState = { svc: '전체', year: '전체', month: '전체', sort: 'desc', perPage: 20, page: 1 };
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요기도회': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#64748b'; }
     function orderCount(r) { try { var a = JSON.parse(r.worship_order || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
@@ -1914,14 +1914,18 @@ console.log('[affairs.js] v20260701dj');
       var yrs = ['전체'].concat(Object.keys(yearSet).sort(function (a, b) { return b.localeCompare(a); }));
 
       // ── 필터·정렬 적용 ──
-      var filtSvc = smTableState.svc, filtYear = smTableState.year;
+      var filtSvc = smTableState.svc, filtYear = smTableState.year, filtMonth = smTableState.month;
+      var monthOn = (filtMonth !== '전체');
       var sortDir = smTableState.sort, perPage = smTableState.perPage, page = smTableState.page;
       var filtered = smRows.filter(function (r) {
         var svcOk = (filtSvc === '전체') || (r.service === filtSvc);
         var yearOk = (filtYear === '전체') || ((r.sermon_date || '').slice(0, 4) === filtYear);
-        return svcOk && yearOk;
+        var monthOk = !monthOn || ((r.sermon_date || '').slice(5, 7) === filtMonth);
+        return svcOk && yearOk && monthOk;
       }).slice().sort(function (a, b) {
         var da = a.sermon_date || '', db = b.sermon_date || '';
+        // 특정 월을 고르면 항상 1일→31일 순서(오름차순)로 표기
+        if (monthOn) return da.localeCompare(db);
         if (sortDir === 'asc') return da.localeCompare(db);
         // 최신순 = '오늘 기준' — 오늘·과거를 최신순으로 먼저, 미래(게시예정)는 가까운 날부터 뒤에
         var td = today();
@@ -1942,7 +1946,12 @@ console.log('[affairs.js] v20260701dj');
         svcs.map(function (s) { return '<option value="' + esc(s) + '"' + (s === filtSvc ? ' selected' : '') + '>' + esc(s === '전체' ? '전체 예배' : s) + '</option>'; }).join('') + '</select>';
       var yrSel = '<select id="sm_flt_yr" style="padding:5px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;font-size:.84rem;cursor:pointer">' +
         yrs.map(function (y) { return '<option value="' + esc(y) + '"' + (y === filtYear ? ' selected' : '') + '>' + (y === '전체' ? '전체 연도' : y + '년') + '</option>'; }).join('') + '</select>';
-      var sortBtn = '<button id="sm_sort_btn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem" title="최신순: 오늘·최근 설교를 위로, 게시예정(미래)은 가까운 날부터 아래로">' + (sortDir === 'desc' ? '▼ 최신순(오늘 기준)' : '▲ 오래된순') + '</button>';
+      var moList = ['전체', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+      var moSel = '<select id="sm_flt_mo" style="padding:5px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;font-size:.84rem;cursor:pointer">' +
+        moList.map(function (mo) { return '<option value="' + mo + '"' + (mo === filtMonth ? ' selected' : '') + '>' + (mo === '전체' ? '전체 월' : parseInt(mo, 10) + '월') + '</option>'; }).join('') + '</select>';
+      var sortBtn = monthOn
+        ? '<button id="sm_sort_btn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#8a93a0;cursor:default" title="월을 선택하면 1일→31일 순으로 정렬됩니다" disabled>▲ 1일→31일 순</button>'
+        : '<button id="sm_sort_btn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem" title="최신순: 오늘·최근 설교를 위로, 게시예정(미래)은 가까운 날부터 아래로">' + (sortDir === 'desc' ? '▼ 최신순(오늘 기준)' : '▲ 오래된순') + '</button>';
       var ppSel = '<select id="sm_per_page" style="padding:5px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;font-size:.84rem;cursor:pointer">' +
         [20, 30, 50].map(function (n) { return '<option value="' + n + '"' + (n === perPage ? ' selected' : '') + '>' + n + '개씩</option>'; }).join('') + '</select>';
       var info = '<span style="font-size:.83rem;color:#9aa5b1">' + total + '편 / ' + pageRows.length + '편 표시</span>';
@@ -1991,7 +2000,7 @@ console.log('[affairs.js] v20260701dj');
       listBox.innerHTML =
         '<div class="fin-card">' +
         '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef1f5">' +
-        '<b style="font-size:.95rem">설교</b>' + svcSel + yrSel + sortBtn + ppSel +
+        '<b style="font-size:.95rem">설교</b>' + svcSel + yrSel + moSel + sortBtn + ppSel +
         '<button id="sm_bulk_urm" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#0d6b5e;border-color:#0d9488">📥 우리말 일괄입력</button>' +
         '<button id="sm_conv_dawn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#8a4a00;border-color:#d97706">🔁 새벽기도→QT 전환</button>' +
         '<span style="margin-left:auto">' + info + '</span></div>' +
@@ -2004,7 +2013,9 @@ console.log('[affairs.js] v20260701dj');
       wireRows(listBox);
       listBox.querySelector('#sm_flt_svc').onchange = function () { smTableState.svc = this.value; smTableState.page = 1; renderTable(); };
       listBox.querySelector('#sm_flt_yr').onchange = function () { smTableState.year = this.value; smTableState.page = 1; renderTable(); };
-      listBox.querySelector('#sm_sort_btn').onclick = function () { smTableState.sort = smTableState.sort === 'desc' ? 'asc' : 'desc'; renderTable(); };
+      listBox.querySelector('#sm_flt_mo').onchange = function () { smTableState.month = this.value; smTableState.page = 1; renderTable(); };
+      var sortBtnEl = listBox.querySelector('#sm_sort_btn');
+      if (sortBtnEl && !sortBtnEl.disabled) sortBtnEl.onclick = function () { smTableState.sort = smTableState.sort === 'desc' ? 'asc' : 'desc'; renderTable(); };
       listBox.querySelector('#sm_per_page').onchange = function () { smTableState.perPage = Number(this.value); smTableState.page = 1; renderTable(); };
       var bulkUrmBtn = listBox.querySelector('#sm_bulk_urm'); if (bulkUrmBtn) bulkUrmBtn.onclick = bulkFillUrm;
       var convDawnBtn = listBox.querySelector('#sm_conv_dawn'); if (convDawnBtn) convDawnBtn.onclick = bulkConvertDawnToQt;
