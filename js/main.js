@@ -676,6 +676,41 @@ if (homeSermon && typeof BULLETINS !== "undefined" && BULLETINS.length) {
     <a class="btn btn-line" href="word.html">설교 더 보기 →</a>`;
 }
 
+// ===== 4b. 홈 '이번 주 주보' 미리보기 =====
+const homeBulletin = document.getElementById("homeBulletin");
+if (homeBulletin && typeof BULLETINS !== "undefined" && BULLETINS.length) {
+  const b = BULLETINS[0];
+  const orderItems = (b.order || []).map((o) => `<li>${o}</li>`).join("");
+  const newsItems = (b.news || []).slice(0, 3).map((n) => `<li><strong>${n.title}</strong>${n.detail}</li>`).join("");
+  homeBulletin.innerHTML = `
+    <div class="hb-card reveal">
+      <div class="hb-hd">
+        <span class="hb-hd-week">${b.week} · 주일 낮 예배</span>
+        <span class="hb-hd-date">${b.dateLabel}</span>
+      </div>
+      <div class="hb-body">
+        <div class="hb-col">
+          <p class="hb-col-title">예배 순서</p>
+          <ol class="hb-order">${orderItems}</ol>
+        </div>
+        <div class="hb-col">
+          <p class="hb-col-title">이 주의 말씀 강해</p>
+          <ul class="hb-extra">
+            <li>${b.wed || ""}</li>
+            <li>${b.dawn || ""}</li>
+            <li>${b.qt || ""}</li>
+          </ul>
+          ${newsItems ? `<p class="hb-col-title">한 주의 소식</p><ul class="hb-news">${newsItems}</ul>` : ""}
+        </div>
+      </div>
+      <div class="hb-ft">
+        <button class="btn btn-line" id="homeBulletinBtn">주보 전체 보기 →</button>
+      </div>
+    </div>`;
+  const hbBtn = document.getElementById("homeBulletinBtn");
+  if (hbBtn) hbBtn.onclick = () => openBulletin(0);
+}
+
 // ===== 5. 새가족 등록 폼 (welcome) =====
 const newcomerForm = document.getElementById("newcomerForm");
 if (newcomerForm) {
