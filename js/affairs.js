@@ -2101,10 +2101,13 @@ console.log('[affairs.js] v20260701dj');
         '.sed-form .af-field input,.sed-form .af-field select,.sed-form .af-field textarea{border:1px solid #e3e8f0;border-radius:9px;transition:border-color .15s,box-shadow .15s}' +
         '.sed-form .af-field input:focus,.sed-form .af-field select:focus,.sed-form .af-field textarea:focus{border-color:#9db4d6;box-shadow:0 0 0 3px rgba(60,110,200,.08);outline:none}' +
         '.sed-form .af-field label{font-weight:600;color:#5b6b7d}' +
-        // 왼쪽 성경 보기 패널 (설교 모드 전용)
-        '.sed-aside-l{position:absolute;left:24px;top:22px;width:304px}' +
-        '.sed-mode-worship .sed-aside-l{display:none}' +
-        '.mb-card{border:1px solid #e5e9f0;border-radius:14px;background:#fff;box-shadow:0 6px 24px rgba(3,34,87,.06);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 128px)}' +
+        // 왼쪽 성경 보기 팝업 (버튼으로 열고 닫음 · 스크롤해도 고정)
+        '.sed-aside-l{position:fixed;left:18px;top:74px;width:326px;z-index:9600;display:none}' +
+        '.sed-aside-l.open{display:block;animation:mbpop .16s ease}' +
+        '@keyframes mbpop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}' +
+        '.sed-mode-worship .sed-aside-l{display:none!important}' +
+        '.mb-close{margin-left:auto;border:none;background:none;font-size:1.05rem;line-height:1;color:#9aa5b1;cursor:pointer;padding:2px 4px;border-radius:6px}.mb-close:hover{background:#eceff4;color:#33415c}' +
+        '.mb-card{border:1px solid #d7e0ee;border-radius:14px;background:#fff;box-shadow:0 18px 50px rgba(3,34,87,.22);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 92px)}' +
         '.mb-head{font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.02rem;color:var(--accent,#032257);padding:13px 15px 12px;border-bottom:1px solid #eef1f5;background:linear-gradient(180deg,#fbfcfe 0%,#f3f7fb 100%);display:flex;align-items:center;gap:6px}' +
         '.mb-trans{display:flex;gap:5px;padding:11px 12px 7px}' +
         '.mb-trans button{flex:1;padding:6px 4px;border:1px solid #dde3ec;background:#fff;border-radius:999px;font:inherit;font-size:.79rem;font-weight:700;cursor:pointer;color:#3a4a63;transition:.14s}' +
@@ -2140,9 +2143,8 @@ console.log('[affairs.js] v20260701dj');
         '.se-editor p{margin:.45em 0}.se-editor ul,.se-editor ol{margin:.45em 0;padding-left:1.5em}.se-editor mark{padding:0 1px}' +
         '.se-count{font-weight:400;font-size:.74rem;color:#9aa5b1;margin-left:8px}' +
         '@media(max-width:1560px){.sed-aside-r{position:static;right:auto;top:auto;width:auto;max-width:820px;margin:0 auto 18px}}' +
-        '@media(max-width:1360px){.sed-aside-l{position:static;left:auto;top:auto;width:auto;max-width:820px;margin:0 auto 18px}.mb-card{max-height:460px}}' +
         '@media(max-width:1240px){.sed-aside{position:static;left:auto;top:auto;width:auto;max-width:820px;margin:0 auto 20px}.sed-form{max-width:820px}}' +
-        '@media(max-width:560px){.sed-row2{grid-template-columns:1fr}}' +
+        '@media(max-width:560px){.sed-row2{grid-template-columns:1fr}.sed-aside-l{left:8px;right:8px;width:auto;top:64px}}' +
         '</style>' +
         '<header style="position:sticky;top:0;z-index:6;background:linear-gradient(180deg,#ffffff 0%,#f7f9fc 100%);border-bottom:1px solid #e1e6ef;box-shadow:0 2px 10px rgba(3,34,87,.06)">' +
         '<div style="margin:0 auto;padding:11px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
@@ -2161,8 +2163,8 @@ console.log('[affairs.js] v20260701dj');
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
         '</div></header>' +
         '<div class="sed-wrap ' + (worshipMode ? 'sed-mode-worship' : 'sed-mode-sermon') + '">' +
-        (worshipMode ? '' : '<div class="sed-aside-l"><div class="mb-card">' +
-          '<div class="mb-head">📖 성경 보기</div>' +
+        (worshipMode ? '' : '<div class="sed-aside-l" id="se_bible_pop"><div class="mb-card">' +
+          '<div class="mb-head">📖 성경 보기<button type="button" class="mb-close" id="mb_close" title="닫기">✕</button></div>' +
           '<div class="mb-trans"><button data-v="gyr" class="on">개역개정</button><button data-v="urm">우리말성경</button></div>' +
           '<div class="mb-selrow"><select id="mb_book"></select><select id="mb_chap"></select></div>' +
           '<div class="mb-text" id="mb_text"><p class="mb-hint">성경책과 장을 고르면 본문이 표시됩니다.</p></div>' +
@@ -2229,6 +2231,7 @@ console.log('[affairs.js] v20260701dj');
         '<button type="button" id="se_ins_bible" title="본문 칸의 성경 구절을 굵게 삽입">📖 구절</button>' +
         '<button type="button" data-cmd="insertHorizontalRule" title="구분선">— 구분선</button>' +
         '<span class="se-sep"></span>' +
+        '<button type="button" id="se_bible_open" title="성경을 왼쪽 팝업으로 열기 (스크롤해도 고정)" style="color:#1d4ed8;font-weight:700">📖 성경</button>' +
         '<button type="button" id="se_present" title="발표자 모드(큰 글씨·페이지·전체화면)로 미리보기" style="color:#0a6b4f;font-weight:700">🎤 발표자 모드</button>' +
         '</div>' +
         '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 위 도구로 굵게·제목·인용·색·목록 등 서식을 적용할 수 있습니다."></div>' +
@@ -2577,6 +2580,19 @@ console.log('[affairs.js] v20260701dj');
           var msg = ov.querySelector('#se_msg'); if (msg) { msg.style.color = '#0d6b5e'; msg.textContent = '📖 ' + bk[1] + ' ' + mbChap + '장을 본문칸에 넣었습니다.'; }
         };
         fillChaps(); show();
+        // ── 성경 팝업 열기/닫기 (툴바 📖 성경 버튼) ──
+        var pop = ov.querySelector('#se_bible_pop'), openBtn = ov.querySelector('#se_bible_open'), closeBtn = ov.querySelector('#mb_close');
+        function openPop() {
+          // 본문칸에 적힌 구절이 있으면 그 책·장으로 맞춰서 연다
+          var pref = parseRef(scInp ? scInp.value : '');
+          if (pref && (pref.bookId !== mbBook || pref.ch !== mbChap)) { mbBook = pref.bookId; mbChap = pref.ch; bookSel.value = mbBook; fillChaps(); show(); }
+          if (pop) pop.classList.add('open');
+          if (openBtn) openBtn.style.background = '#dbe9ff';
+        }
+        function closePop() { if (pop) pop.classList.remove('open'); if (openBtn) openBtn.style.background = ''; }
+        if (openBtn) openBtn.onclick = function () { if (pop && pop.classList.contains('open')) closePop(); else openPop(); };
+        if (closeBtn) closeBtn.onclick = closePop;
+        ov.addEventListener('keydown', function (e) { if (e.key === 'Escape' && pop && pop.classList.contains('open')) closePop(); });
       })();
 
       function gather() {
