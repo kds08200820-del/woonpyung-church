@@ -159,6 +159,39 @@ console.log('[gyojeok.js] v20260701di');
     if (u) return '<img src="' + esc(u) + '" alt="" style="width:' + size + 'px;height:' + size + 'px;border-radius:12px;object-fit:cover;border:1px solid #e3e7ee">';
     return '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:12px;background:#eef2f7;display:flex;align-items:center;justify-content:center;color:#9aa5b1;font-size:1.6rem;border:1px solid #e3e7ee">👤</div>';
   }
+  /* ── 진행중인 교육 조회(Supabase edu_records, 관리자 세션으로 직접 조회) ── */
+  function sbToken() {
+    try {
+      var ref = new URL(window.SUPABASE_URL).hostname.split('.')[0];
+      var raw = localStorage.getItem('sb-' + ref + '-auth-token');
+      if (!raw) return null;
+      var s = JSON.parse(raw); s = s.currentSession || s;
+      return s && s.access_token;
+    } catch (e) { return null; }
+  }
+  function todayStr() { var d = new Date(); function p(n) { return ('0' + n).slice(-2); } return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+  var EDU_CACHE = null;
+  function loadOngoingEdu() {
+    if (EDU_CACHE) return Promise.resolve(EDU_CACHE);
+    if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return Promise.resolve([]);
+    var tok = sbToken(); if (!tok) return Promise.resolve([]);
+    var t = todayStr();
+    return fetch(window.SUPABASE_URL + '/rest/v1/edu_records?select=id,title,cohort,class_name,edu_date,end_date,participants&edu_date=lte.' + t, {
+      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + tok }
+    }).then(function (r) { return r.ok ? r.json() : []; }).then(function (rows) {
+      EDU_CACHE = (rows || []).filter(function (r) { return !r.end_date || r.end_date >= t; });
+      return EDU_CACHE;
+    }).catch(function () { return []; });
+  }
+  function eduOf(matchKey) {
+    if (!EDU_CACHE || !matchKey) return [];
+    return EDU_CACHE.filter(function (r) {
+      var parts = []; try { parts = JSON.parse(r.participants || '[]'); } catch (e) {}
+      return parts.some(function (p) { return p.key && p.key === matchKey; });
+    });
+  }
+  function eduLabel(r) { return esc(r.title) + (r.cohort ? ' · ' + esc(r.cohort) : '') + (r.class_name ? ' · ' + esc(r.class_name) : ''); }
+
   function showDetail(m) {
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:24px 16px;overflow:auto';
@@ -184,11 +217,19 @@ console.log('[gyojeok.js] v20260701di');
         '</div><div style="flex:1;min-width:240px">' +
         row('세대주', cur['세대주']) + row('세대주와 관계', cur['관계']) + row('배우자', cur['배우자']) + row('회원상태', cur['회원상태']) + row('임직일', cur['임직일']) +
         '</div></div>' + (cur['주소'] ? row('주소', cur['주소']) : '') + (groupsOf(cur).length ? '<div style="margin-top:12px"><div style="color:#7b8794;font-size:.85rem;margin-bottom:5px">소속 그룹</div>' + groupsOf(cur).map(function (g) { return '<span class="fin-pill" style="background:#e8f0fb;color:#2b5797;margin:0 6px 6px 0;display:inline-block">' + esc(g) + '</span>'; }).join('') + '</div>' : '') +
+        '<div id="gd_edu" style="margin-top:12px"></div>' +
         '<div style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="color:var(--accent,#032257)">가족 관계</b><button class="btn btn-line" id="gd_family" style="padding:3px 12px;font-size:.8rem">👪 가족 구성/수정</button></div><div style="overflow:auto;margin-top:6px"><table class="fin-table" style="font-size:.86rem"><thead><tr><th>이름</th><th>관계</th><th>생년월일</th><th>직책</th></tr></thead><tbody>' + famRows + '</tbody></table></div></div>';
       box.querySelector('#gd_close').onclick = close;
       box.querySelector('#gd_edit').onclick = function () { editMode(cur); };
       box.querySelector('#gd_family').onclick = function () { familyMode(cur); };
       Array.prototype.forEach.call(box.querySelectorAll('.gd-fam'), function (a) { a.onclick = function (e) { e.preventDefault(); var f = ALL.filter(function (x) { return String(x['매칭키']) === a.dataset.key; })[0]; if (f) viewMode(f); }; });
+      loadOngoingEdu().then(function () {
+        var el = box.querySelector('#gd_edu'); if (!el) return;
+        var list = eduOf(cur['매칭키']);
+        if (!list.length) return;
+        el.innerHTML = '<div style="color:#7b8794;font-size:.85rem;margin-bottom:5px">📚 진행중인 교육</div>' +
+          list.map(function (r) { return '<span class="fin-pill" style="background:#eef2f7;color:#3a4a63;margin:0 6px 6px 0;display:inline-block">' + eduLabel(r) + '</span>'; }).join('');
+      });
     }
 
     function editMode(cur) {

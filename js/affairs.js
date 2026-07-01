@@ -3611,7 +3611,7 @@ console.log('[affairs.js] v20260701dj');
         .catch(function (e) {
           var box = panel.querySelector('#edu_list');
           if (/does not exist|42P01|schema cache/i.test(e.message))
-            box.innerHTML = msgCard('테이블 준비 필요', 'Supabase SQL Editor에서 affairs_modules.sql을 실행해 주세요.');
+            box.innerHTML = msgCard('테이블 준비 필요', 'Supabase SQL Editor에서 affairs_modules.sql, edu_extra.sql을 실행해 주세요.');
           else box.innerHTML = msgCard('조회 실패', e.message);
         });
     }
@@ -3644,6 +3644,10 @@ console.log('[affairs.js] v20260701dj');
         '<button type="button" id="edu_add_p" class="btn btn-line" style="padding:4px 13px;font-size:.82rem">＋ 추가</button></div>' +
         '<div id="edu_pbox" style="display:flex;flex-wrap:wrap;gap:6px;min-height:46px;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;background:#fafbfc;align-items:flex-start"></div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:5px">추가 버튼을 누르면 입력창이 생깁니다. 이름을 입력하면 교적부에서 검색합니다. Enter 또는 선택으로 추가됩니다.</div>' +
+        '</div>' +
+        '<div style="margin-bottom:20px">' +
+        '<label style="font-size:.82rem;color:var(--ink-soft);font-weight:600;display:block;margin-bottom:8px">📁 강의 자료실 <span style="font-weight:400;color:#9aa5b1">(수강생만 접근 가능)</span></label>' +
+        '<div id="edu_mat_box">' + (rec.id ? '<p class="qt-loading">불러오는 중…</p>' : '<p style="color:#9aa5b1;font-size:.83rem;padding:10px;border:1px dashed #dfe5ee;border-radius:8px">먼저 저장한 뒤 자료를 첨부할 수 있습니다.</p>') + '</div>' +
         '</div>' +
         '<div style="display:flex;gap:10px;align-items:center">' +
         '<button type="button" id="edu_save_btn" class="btn btn-solid" style="padding:10px 24px">저장</button>' +
@@ -3833,12 +3837,22 @@ console.log('[affairs.js] v20260701dj');
           participants: JSON.stringify(participants)
         };
         msgEl.style.color = '#7b8794'; msgEl.textContent = '저장 중…';
+        var isNew = !rec.id;
         var pr = rec.id
           ? api('PATCH', 'edu_records?id=eq.' + rec.id, data, 'return=minimal')
-          : api('POST', 'edu_records', data, 'return=minimal');
-        pr.then(function () {
+          : api('POST', 'edu_records', data, 'return=representation');
+        pr.then(function (rows) {
           msgEl.style.color = 'green'; msgEl.textContent = '✓ 저장되었습니다';
-          setTimeout(function () { closeOv(); loadList(); }, 600);
+          if (isNew && rows && rows[0] && rows[0].id) {
+            rec.id = rows[0].id;
+            var h3 = ov.querySelector('h3'); if (h3) h3.textContent = '교육 수정';
+            var matBox = ov.querySelector('#edu_mat_box'); if (matBox) matBox.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
+            loadMaterials();
+            loadList();
+            setTimeout(function () { msgEl.textContent = ''; }, 2000);
+          } else {
+            setTimeout(function () { closeOv(); loadList(); }, 600);
+          }
         }).catch(function (e) {
           msgEl.style.color = '#c0392b';
           msgEl.textContent = '저장 실패: ' + e.message;
@@ -3847,7 +3861,95 @@ console.log('[affairs.js] v20260701dj');
         });
       };
 
+      // ── 강의 자료실(수강생만 접근) — Supabase Storage 'edu_materials' 버킷 ──
+      function encPath(p) { return String(p).split('/').map(encodeURIComponent).join('/'); }
+      function fmtSize(n) { if (!n && n !== 0) return ''; if (n < 1024) return n + ' B'; if (n < 1048576) return (n / 1024).toFixed(0) + ' KB'; return (n / 1048576).toFixed(1) + ' MB'; }
+      function matIcon(name) {
+        var e = (String(name).split('.').pop() || '').toLowerCase();
+        if (e === 'pdf') return '📕'; if (['hwp', 'hwpx'].indexOf(e) >= 0) return '📄'; if (['doc', 'docx'].indexOf(e) >= 0) return '📘';
+        if (['xls', 'xlsx', 'csv'].indexOf(e) >= 0) return '📊'; if (['ppt', 'pptx'].indexOf(e) >= 0) return '📙';
+        if (['png', 'jpg', 'jpeg', 'gif', 'webp'].indexOf(e) >= 0) return '🖼️'; if (['mp3', 'wav', 'm4a'].indexOf(e) >= 0) return '🎵'; if (['mp4', 'mov'].indexOf(e) >= 0) return '🎬';
+        return '📎';
+      }
+      function loadMaterials() {
+        var box = ov.querySelector('#edu_mat_box'); if (!box || !rec.id) return;
+        api('GET', 'edu_materials?edu_id=eq.' + rec.id + '&select=*&order=created_at.desc')
+          .then(function (rows) {
+            rows = rows || [];
+            box.innerHTML =
+              '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">' +
+              '<input type="file" id="edu_mat_file" multiple style="display:none">' +
+              '<button type="button" id="edu_mat_pick" class="btn btn-line" style="padding:5px 13px;font-size:.82rem">📎 파일 추가</button>' +
+              '<span id="edu_mat_upmsg" style="font-size:.8rem;color:#7b8794"></span></div>' +
+              (rows.length ? '<div style="border:1px solid #eef1f5;border-radius:8px;overflow:hidden">' + rows.map(function (r) {
+                return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 11px;border-bottom:1px solid #f0f3f7;font-size:.86rem">' +
+                  '<span>' + matIcon(r.title) + ' ' + esc(r.title) + (r.size ? ' <span style="color:#9aa5b1;font-size:.76rem">· ' + fmtSize(r.size) + '</span>' : '') + '</span>' +
+                  '<span style="display:flex;gap:10px;align-items:center"><a href="#" class="mat-dl" data-id="' + esc(r.id) + '" style="color:var(--accent,#032257)">다운로드</a><b class="mat-del" data-id="' + esc(r.id) + '" style="cursor:pointer;color:#c0392b;font-size:.8rem">삭제</b></span></div>';
+              }).join('') + '</div>' : '<p style="color:#9aa5b1;font-size:.83rem;padding:8px 0">등록된 자료가 없습니다.</p>');
+            var byId = {}; rows.forEach(function (r) { byId[r.id] = r; });
+            var upmsg = box.querySelector('#edu_mat_upmsg');
+            box.querySelector('#edu_mat_pick').onclick = function () { box.querySelector('#edu_mat_file').click(); };
+            box.querySelector('#edu_mat_file').onchange = function (e) {
+              var files = Array.prototype.slice.call(e.target.files || []);
+              if (!files.length) return;
+              (function next(i) {
+                if (i >= files.length) { upmsg.style.color = 'green'; upmsg.textContent = '✓ 업로드 완료'; loadMaterials(); return; }
+                var f = files[i];
+                upmsg.style.color = '#7b8794'; upmsg.textContent = '「' + f.name + '」 업로드 중… (' + (i + 1) + '/' + files.length + ')';
+                uploadMaterial(f).then(function () { next(i + 1); }).catch(function (err) { upmsg.style.color = '#c0392b'; upmsg.textContent = '업로드 실패: ' + err.message; });
+              })(0);
+            };
+            Array.prototype.forEach.call(box.querySelectorAll('.mat-dl'), function (a) {
+              a.onclick = function (e) {
+                e.preventDefault(); var r = byId[a.dataset.id]; if (!r) return;
+                var old = a.textContent; a.textContent = '준비 중…';
+                signedMaterialUrl(r.path, r.title).then(function (u) { window.open(u, '_blank'); a.textContent = old; }).catch(function (err) { alert('다운로드 오류: ' + err.message); a.textContent = old; });
+              };
+            });
+            Array.prototype.forEach.call(box.querySelectorAll('.mat-del'), function (b) {
+              b.onclick = function () {
+                var r = byId[b.dataset.id]; if (!r) return;
+                if (!confirm('「' + r.title + '」 자료를 삭제할까요?')) return;
+                var s = sess();
+                fetch(SB + '/storage/v1/object/edu_materials/' + encPath(r.path), { method: 'DELETE', headers: { apikey: AK, Authorization: 'Bearer ' + (s && s.token) } })
+                  .catch(function () {})
+                  .then(function () { return api('DELETE', 'edu_materials?id=eq.' + r.id, null, 'return=minimal'); })
+                  .then(loadMaterials)
+                  .catch(function (err) { alert('삭제 실패: ' + err.message); });
+              };
+            });
+          })
+          .catch(function (e) {
+            if (/does not exist|42P01|schema cache/i.test(e.message))
+              box.innerHTML = '<p style="color:#c0392b;font-size:.83rem">테이블 준비 필요 — Supabase SQL Editor에서 supabase/edu_extra.sql 을 실행해 주세요.</p>';
+            else box.innerHTML = '<p style="color:#c0392b;font-size:.83rem">조회 실패: ' + esc(e.message) + '</p>';
+          });
+      }
+      function uploadMaterial(file) {
+        var s = sess();
+        if (!s || !s.token) return Promise.reject(new Error('로그인이 필요합니다.'));
+        var key = rec.id + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '_' + file.name;
+        return fetch(SB + '/storage/v1/object/edu_materials/' + encPath(key), {
+          method: 'POST',
+          headers: { apikey: AK, Authorization: 'Bearer ' + s.token, 'x-upsert': 'true', 'Content-Type': file.type || 'application/octet-stream' },
+          body: file
+        }).then(function (r) {
+          if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); });
+          return api('POST', 'edu_materials', { edu_id: rec.id, title: file.name, path: key, size: file.size }, 'return=minimal');
+        });
+      }
+      function signedMaterialUrl(path, title) {
+        var s = sess();
+        return fetch(SB + '/storage/v1/object/sign/edu_materials/' + encPath(path), {
+          method: 'POST', headers: { apikey: AK, Authorization: 'Bearer ' + (s && s.token), 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 3600 })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+          if (!d || !d.signedURL) throw new Error(d && d.message || '서명 URL 생성 실패');
+          return SB + '/storage/v1' + d.signedURL + '&download=' + encodeURIComponent(title || '');
+        });
+      }
+
       renderParts();
+      if (rec.id) loadMaterials();
     }
 
     loadList();

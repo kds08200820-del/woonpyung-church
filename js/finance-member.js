@@ -71,6 +71,7 @@ console.log('[finance-member.js] v20260701di');
   function renderMember(me) {
     body.innerHTML =
       '<p style="font-size:.95rem;margin-bottom:14px;">✓ <b>정회원</b>' + (me.memberName ? ' · ' + esc(me.memberName) + '님' : '') + '</p>' +
+      '<div id="myEdu"></div>' +
       '<div id="offeringList"><p class="qt-loading">헌금 내역을 불러오는 중…</p></div>' +
       '<div id="familyTree" style="margin-top:20px"></div>';
     if (me.canFinance) {
@@ -81,6 +82,69 @@ console.log('[finance-member.js] v20260701di');
     }
     loadOfferings(me);
     loadFamily(me);
+    loadMyEdu(me);
+  }
+
+  // ── 현재 수강 중인 교육 + 강의 자료실(본인이 참석자로 등록된 경우만 RLS로 조회됨) ──
+  function todayStr() { var d = new Date(); function p(n) { return ('0' + n).slice(-2); } return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+  function fmtSize(n) { if (!n && n !== 0) return ''; if (n < 1024) return n + ' B'; if (n < 1048576) return (n / 1024).toFixed(0) + ' KB'; return (n / 1048576).toFixed(1) + ' MB'; }
+  function eduLabel(r) { return esc(r.title) + (r.cohort ? ' · ' + esc(r.cohort) : '') + (r.class_name ? ' · ' + esc(r.class_name) : ''); }
+  function loadMyEdu(me) {
+    var el = document.getElementById('myEdu'); if (!el) return;
+    var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, tok = (window.WPF && WPF.token && WPF.token());
+    if (!url || !ak || !tok) return;
+    var t = todayStr();
+    fetch(url + '/rest/v1/edu_records?select=id,title,cohort,class_name,edu_date,end_date,teacher&edu_date=lte.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (rows) {
+        var ongoing = (rows || []).filter(function (r) { return !r.end_date || r.end_date >= t; });
+        if (!ongoing.length) { el.innerHTML = ''; return; }
+        el.innerHTML = '<div class="form-card" style="margin-bottom:18px;padding:16px 18px;">' +
+          '<h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">📚 현재 수강 중인 교육</h3>' +
+          ongoing.map(function (r) {
+            return '<div class="my-edu-item" data-id="' + esc(r.id) + '" style="border:1px solid #e8edf3;border-radius:10px;padding:10px 12px;margin-bottom:8px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" class="my-edu-head">' +
+              '<b style="font-size:.92rem">' + eduLabel(r) + '</b>' +
+              '<span style="font-size:.78rem;color:#9aa5b1">' + esc(r.teacher || '') + ' ▾</span></div>' +
+              '<div class="my-edu-body" hidden style="margin-top:8px;font-size:.83rem"></div></div>';
+          }).join('') + '</div>';
+        Array.prototype.forEach.call(el.querySelectorAll('.my-edu-item'), function (box) {
+          var head = box.querySelector('.my-edu-head'), bodyEl = box.querySelector('.my-edu-body');
+          var loaded = false;
+          head.onclick = function () {
+            bodyEl.hidden = !bodyEl.hidden;
+            if (!bodyEl.hidden && !loaded) { loaded = true; loadMyEduMaterials(box.dataset.id, bodyEl, tok, url, ak); }
+          };
+        });
+      })
+      .catch(function () { el.innerHTML = ''; });
+  }
+  function loadMyEduMaterials(eduId, bodyEl, tok, url, ak) {
+    bodyEl.innerHTML = '<p class="qt-loading">자료 불러오는 중…</p>';
+    fetch(url + '/rest/v1/edu_materials?edu_id=eq.' + eduId + '&select=*&order=created_at.desc', { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (rows) {
+        rows = rows || [];
+        if (!rows.length) { bodyEl.innerHTML = '<p style="color:#9aa5b1">등록된 자료가 없습니다.</p>'; return; }
+        bodyEl.innerHTML = rows.map(function (r) {
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid #f0f3f7">' +
+            '<span>📎 ' + esc(r.title) + (r.size ? ' <span style="color:#9aa5b1;font-size:.76rem">· ' + fmtSize(r.size) + '</span>' : '') + '</span>' +
+            '<a href="#" class="my-mat-dl" data-path="' + esc(r.path) + '" data-title="' + esc(r.title) + '" style="color:var(--accent,#032257)">다운로드</a></div>';
+        }).join('');
+        Array.prototype.forEach.call(bodyEl.querySelectorAll('.my-mat-dl'), function (a) {
+          a.onclick = function (e) {
+            e.preventDefault(); var old = a.textContent; a.textContent = '준비 중…';
+            fetch(url + '/storage/v1/object/sign/edu_materials/' + a.dataset.path.split('/').map(encodeURIComponent).join('/'), {
+              method: 'POST', headers: { apikey: ak, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 3600 })
+            }).then(function (r) { return r.json(); }).then(function (d) {
+              a.textContent = old;
+              if (!d || !d.signedURL) { alert('다운로드 오류: ' + (d && d.message || '알 수 없는 오류')); return; }
+              window.open(url + '/storage/v1' + d.signedURL + '&download=' + encodeURIComponent(a.dataset.title || ''), '_blank');
+            }).catch(function (err) { a.textContent = old; alert('다운로드 오류: ' + err.message); });
+          };
+        });
+      })
+      .catch(function () { bodyEl.innerHTML = '<p style="color:#9aa5b1">자료를 불러오지 못했습니다.</p>'; });
   }
 
   // ── 우리 가족 가계도(읽기 전용) ──
