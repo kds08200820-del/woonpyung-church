@@ -108,7 +108,7 @@ console.log('[dashboard.js] v20260701da');
   function renderDashboard(me) {
     root.innerHTML =
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;">' +
-      '<h2 style="margin:0;font-size:1.15rem;color:var(--accent,#032257);">' + esc(me.memberName || '') + '님, 환영합니다 🙏</h2>' +
+      '<h2 id="dashWelcome" style="margin:0;font-size:1.15rem;color:var(--accent,#032257);">' + esc(me.memberName || '') + '님, 환영합니다 🙏</h2>' +
       '</div>' +
       '<div id="myEdu" style="margin-bottom:26px;"></div>' +
       '<div id="qtProgress" style="margin-bottom:26px;"></div>' +
@@ -119,6 +119,7 @@ console.log('[dashboard.js] v20260701da');
       '<section style="margin-bottom:26px;"><div class="section-head"><span class="eyebrow">THIS WEEK</span><h2>이번 주 주보</h2></div><div id="homeBulletin"></div></section>' +
       '<div class="form-card" style="margin-bottom:26px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">💝 헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
       '<div id="familyTree" style="margin-bottom:26px;"></div>';
+    loadWelcomeName(me);
     loadMyEdu(me);
     loadQtProgress(me);
     loadTodayQt(me);
@@ -126,6 +127,23 @@ console.log('[dashboard.js] v20260701da');
     loadHomeBulletin();
     loadOfferings(me);
     loadFamily(me);
+  }
+
+  // 이름 옆에 직책(profiles.role)을 붙여 표시
+  function loadWelcomeName(me) {
+    var el = document.getElementById('dashWelcome'); if (!el) return;
+    var uid = sbUser() && sbUser().id;
+    var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, tok = (window.WPF && WPF.token && WPF.token());
+    if (!uid || !url || !ak || !tok) return;
+    fetch(url + '/rest/v1/profiles?id=eq.' + uid + '&select=name,role', { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (rows) {
+        var row = rows && rows[0]; if (!row) return;
+        var nm = me.memberName || row.name || '';
+        var disp = row.role ? (nm + ' ' + row.role) : nm;
+        el.textContent = disp + '님, 환영합니다 🙏';
+      })
+      .catch(function () {});
   }
 
   /* ================= 이번 주 말씀 / 주보 (main.js 홈 위젯을 대시보드에서 직접 채움) ================= */
