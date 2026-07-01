@@ -59,20 +59,20 @@ console.log('[dashboard.js] v20260701da');
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;">' +
       '<h2 style="margin:0;font-size:1.15rem;color:var(--accent,#032257);">' + esc(me.memberName || '') + '님, 환영합니다 🙏</h2>' +
       '</div>' +
+      '<div id="myEdu" style="margin-bottom:26px;"></div>' +
+      '<div id="qtProgress" style="margin-bottom:26px;"></div>' +
       '<div id="dashQt" style="margin-bottom:26px;"></div>' +
       '<section style="margin-bottom:26px;"><div class="section-head"><span class="eyebrow">THIS SUNDAY</span><h2>이번 주 말씀</h2></div><div class="home-sermon" id="homeSermon"></div></section>' +
       '<section style="margin-bottom:26px;"><div class="section-head"><span class="eyebrow">THIS WEEK</span><h2>이번 주 주보</h2></div><div id="homeBulletin"></div></section>' +
-      '<div id="myEdu" style="margin-bottom:26px;"></div>' +
       '<div class="form-card" style="margin-bottom:26px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">💝 헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
-      '<div id="familyTree" style="margin-bottom:26px;"></div>' +
-      '<div id="qtProgress" style="margin-bottom:26px;"></div>';
+      '<div id="familyTree" style="margin-bottom:26px;"></div>';
+    loadMyEdu(me);
+    loadQtProgress(me);
     loadTodayQt(me);
     loadHomeSermon();
     loadHomeBulletin();
-    loadMyEdu(me);
     loadOfferings(me);
     loadFamily(me);
-    loadQtProgress(me);
   }
 
   /* ================= 이번 주 말씀 / 주보 (main.js 홈 위젯을 대시보드에서 직접 채움) ================= */
@@ -170,8 +170,8 @@ console.log('[dashboard.js] v20260701da');
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (rows) {
         var ongoing = (rows || []).filter(function (r) { return !r.end_date || r.end_date >= t; });
+        if (!ongoing.length) { el.innerHTML = ''; return; }
         var box = '<div class="form-card" style="padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">📚 진행중인 교육</h3>';
-        if (!ongoing.length) { el.innerHTML = box + '<p style="color:#9aa5b1;font-size:.88rem;margin:0;">현재 등록된 교육이 없습니다.</p></div>'; return; }
         el.innerHTML = box + ongoing.map(function (r) {
           return '<div class="my-edu-item" data-id="' + esc(r.id) + '" style="border:1px solid #e8edf3;border-radius:10px;padding:10px 12px;margin-bottom:8px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" class="my-edu-head">' +
