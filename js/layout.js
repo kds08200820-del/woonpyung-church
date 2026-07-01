@@ -4,6 +4,7 @@
    ============================================================ */
 (function () {
   const NAV = [
+    { href: "dashboard.html", label: "대시보드", memberOnly: true },
     { href: "welcome.html", label: "처음 오셨나요", sub: [
       { href: "welcome.html#worship", label: "예배 안내" },
       { href: "welcome.html#directions", label: "교회 가는 길" },
@@ -26,8 +27,6 @@
       { href: "community.html#board", label: "함께 나누는 글" },
       { href: "community.html#qna", label: "삶의 질문" },
       { href: "community.html#album", label: "교회 앨범·소식" },
-    ] },
-    { href: "prayer.html", label: "기도나눔", sub: [
       { href: "prayer.html#thisweek", label: "이번 주 기도 제목" },
       { href: "prayer.html#howpray", label: "이렇게 기도합니다" },
       { href: "prayer.html#request", label: "기도 부탁" },
@@ -52,7 +51,7 @@
   // ===== 헤더 =====
   const navLinks = NAV.map((n) => {
     const active = path === n.href.split("#")[0] ? ' class="active"' : "";
-    const admAttr = n.adminOnly ? ' id="navAdmin" style="display:none"' : "";
+    const admAttr = n.adminOnly ? ' id="navAdmin" style="display:none"' : (n.memberOnly ? ' id="navMember" style="display:none"' : "");
     if (!n.sub) return `<div class="nav-item"${admAttr}><a href="${n.href}"${active}>${n.label}</a></div>`;
     const subs = n.sub.map((s) => `<a href="${s.href}">${s.label}</a>`).join("");
     return `<div class="nav-item has-sub"${admAttr}>
@@ -87,7 +86,7 @@
           <span class="logo-kr">운평장로교회</span>
           <span class="logo-en">UNPYEONG PRESBYTERIAN CHURCH · SINCE 1964</span>
         </div>
-        <nav class="footer-nav">${NAV.map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="bylaws.html">정관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
+        <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="bylaws.html">정관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
         <div class="footer-actions">
           <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">💬 카카오톡 채널 추가</a>
           <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">💝 온라인헌금</a>
@@ -365,6 +364,28 @@
                 a.onmouseenter = function () { this.style.background = "#1a4080"; };
                 a.onmouseleave = function () { this.style.background = "#032257"; };
                 a.innerHTML = "<span>⚙</span><span>목회행정</span>";
+                card.appendChild(a);
+              }
+            }
+          })
+          .catch(() => {});
+        // 정회원(member_links.member_status)이면 헤더 '대시보드' 메뉴 노출
+        fetch(window.SUPABASE_URL + "/rest/v1/member_links?user_id=eq." + uid + "&select=member_status", { headers })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((rows) => {
+            const row = rows && rows[0];
+            if (row && row.member_status === "정회원") {
+              const el = document.getElementById("navMember");
+              if (el) el.style.display = "";
+              const card = document.querySelector(".auth-card");
+              if (card && !card.querySelector(".ac-dash-go")) {
+                const a = document.createElement("a");
+                a.href = "dashboard.html";
+                a.className = "ac-dash-go";
+                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:#032257;color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:background .18s";
+                a.onmouseenter = function () { this.style.background = "#1a4080"; };
+                a.onmouseleave = function () { this.style.background = "#032257"; };
+                a.innerHTML = "<span>🏠</span><span>대시보드</span>";
                 card.appendChild(a);
               }
             }
