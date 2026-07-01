@@ -1988,7 +1988,7 @@ console.log('[affairs.js] v20260701dj');
         return '<tr><td style="text-align:center;color:#9aa5b1;font-size:.8rem">' + num + '</td>' +
           '<td style="white-space:nowrap">' + esc(ds) + '</td>' +
           '<td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td>' +
-          '<td><b class="sm-title" data-id="' + esc(r.id) + '" style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목없음)') + '</b></td>' +
+          '<td style="min-width:11em;word-break:keep-all"><b class="sm-title" data-id="' + esc(r.id) + '" style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목없음)') + '</b></td>' +
           '<td style="white-space:nowrap">' + esc(r.scripture || '') + '</td>' +
           '<td style="white-space:nowrap">' + qtCell + '</td>' +
           '<td style="white-space:nowrap"><button class="btn btn-solid sm-read" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 보기</button>' +
@@ -2004,7 +2004,7 @@ console.log('[affairs.js] v20260701dj');
         '<button id="sm_bulk_urm" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#0d6b5e;border-color:#0d9488">📥 우리말 일괄입력</button>' +
         '<button id="sm_conv_dawn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#8a4a00;border-color:#d97706">🔁 새벽기도→QT 전환</button>' +
         '<span style="margin-left:auto">' + info + '</span></div>' +
-        '<div style="overflow:auto"><table class="fin-table"><thead><tr>' +
+        '<div style="overflow:auto;-webkit-overflow-scrolling:touch"><table class="fin-table" style="min-width:660px"><thead><tr>' +
         '<th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>오늘의 말씀(QT)</th><th>관리</th>' +
         '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
         (pageBtns ? '<div style="display:flex;justify-content:center;gap:4px;margin-top:14px;flex-wrap:wrap">' + pageBtns + '</div>' : '') +
