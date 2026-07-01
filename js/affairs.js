@@ -2254,7 +2254,7 @@ console.log('[affairs.js] v20260701dj');
         '.sed-dark .rp-nav button{background:#161d29;border-color:#2a3547;color:#c3cede}' +
         '.rp-nav b{font-size:.8rem;color:#8b96a5;min-width:52px;text-align:center;font-weight:600}' +
         // ── 설교 원고: MS Word처럼 캔버스 위 용지만 — 박스 없음, ㎜ 눈금자는 용지에 밀착, 꺾쇠 여백 가이드 ──
-        '.wd-area{width:-webkit-max-content;width:max-content;margin:8px auto 0}' +
+        '.wd-area{width:-webkit-max-content;width:max-content;margin:8px auto 0;transform-origin:top center}' +
         '.wd-rowh{display:flex}' +
         '.wd-corner{width:20px;height:20px;flex:none}' +
         '#wd_rh{display:block;background:#f1f3f4;border-radius:3px 3px 0 0}' +
@@ -2337,7 +2337,7 @@ console.log('[affairs.js] v20260701dj');
         '.sed-dark .bd-doc{background:#141b27;border-color:#242e3e}' +
         '.sed-dark .bd-doc b{color:#cdd8e8}.sed-dark .bd-doc span{color:#75839a}' +
         '.sed-dark .bd-doc.cur{border-color:#3f639f;box-shadow:0 0 0 2px rgba(70,120,200,.25)}' +
-        '.sed-dark .sed-main{flex:1;min-width:0;overflow-y:auto;padding:26px 30px 70px;background:radial-gradient(900px 420px at 50% -8%,#1c2431 0%,#141922 62%)}' +
+        '.sed-dark .sed-main{flex:1;min-width:0;overflow-y:auto;overflow-x:auto;padding:26px 30px 70px;background:radial-gradient(900px 420px at 50% -8%,#1c2431 0%,#141922 62%)}' +
         // 설교 매니저: 흰 카드 제거 — 문서(용지)가 캔버스 위에 바로 놓임. 폭은 상단 툴바와 같은 기준으로 가득
         '.sed-dark .sed-form{max-width:none;background:transparent;border:none;box-shadow:none;padding:0 0 30px;border-radius:0}' +
         '.sed-dark .sed-form textarea{background:#161d29;border:1px solid #2a3547;color:#dde5f0;border-radius:9px}' +
@@ -3498,6 +3498,7 @@ console.log('[affairs.js] v20260701dj');
           var rh = ov.querySelector('#wd_rh'), rv = ov.querySelector('#wd_rv');
           var paperSel = ov.querySelector('#wd_paper'), marginSel = ov.querySelector('#wd_margin'), zoomR = ov.querySelector('#wd_zoom'), zoomLbl = ov.querySelector('#wd_zoom_v');
           if (!wdPage || !wdSheet || !rh || !rv) return;
+          var MMPX = 96 / 25.4;   // 1㎜ = 3.78px(96dpi) — 화면 크기와 무관한 고정 물리 크기, 배율은 이 전체를 확대/축소
           var PAPERS = { A4: [210, 297], iPad: [180, 240], Letter: [216, 279], B5: [176, 250] };
           var LSK = 'wpWdPage1';
           var prefs = { paper: 'A4', margin: 20, zoom: 100 };
@@ -3530,22 +3531,17 @@ console.log('[affairs.js] v20260701dj');
           }
           function applyPage() {
             var sz = PAPERS[prefs.paper] || PAPERS.A4;
-            // 용지 폭 = 화면(툴바 기준) 폭에 고정 — 배율은 용지 안의 '내용'만 키우고 줄임
-            var avail = (wdSheet.parentElement && wdSheet.parentElement.clientWidth) || 820;
-            var pw = Math.max(360, avail - 20);                    // 세로 눈금자(20px) 제외
-            var pxmm = pw / sz[0];                                 // 이 화면에서 1㎜가 차지하는 px
-            var ph = Math.round(sz[1] * pxmm), mg = Math.round(prefs.margin * pxmm);
+            // 용지는 실제 물리 크기(㎜×96dpi) 고정 — 배율(zoom)이 전체(용지+눈금자)를 그대로 확대·축소(유동적)
+            var pw = Math.round(sz[0] * MMPX), ph = Math.round(sz[1] * MMPX), mg = Math.round(prefs.margin * MMPX);
             var z = (Number(prefs.zoom) || 100) / 100;
             wdPage.style.width = pw + 'px';
             wdPage.style.minHeight = ph + 'px';
-            wdPage.style.padding = mg + 'px';                      // 여백은 용지(실제 px)에 — 배율과 무관하게 고정
-            // 페이지 경계선(다음 장 시작 위치)
+            wdPage.style.padding = mg + 'px';
+            // 페이지 경계선(다음 장 시작 위치) — 내용이 길어지면 계속 반복되어 다음 장 표시
             wdPage.style.backgroundImage = 'repeating-linear-gradient(to bottom,transparent 0,transparent ' + (ph - 1) + 'px,#dfe3ea ' + (ph - 1) + 'px,#dfe3ea ' + ph + 'px)';
             ed.style.padding = '0';
-            try { ed.style.zoom = String(z); } catch (e) { }       // 내용만 확대/축소
-            ed.style.minHeight = Math.round((ph - 2 * mg) / z) + 'px';
-            drawRuler(rh, pw, mg, false, pxmm);
-            drawRuler(rv, ph, mg, true, pxmm);
+            drawRuler(rh, pw, mg, false, MMPX);
+            drawRuler(rv, ph, mg, true, MMPX);
             // 워드처럼 여백 모서리에 꺾쇠(⌐) 가이드 — 본문 영역 네 귀퉁이 바깥쪽으로
             var off = (mg - 18) + 'px';
             var tl = wdPage.querySelector('.wd-tl'), tr = wdPage.querySelector('.wd-tr'), bl = wdPage.querySelector('.wd-bl'), br = wdPage.querySelector('.wd-br');
@@ -3553,6 +3549,8 @@ console.log('[affairs.js] v20260701dj');
             if (tr) { tr.style.top = off; tr.style.right = off; }
             if (bl) { bl.style.bottom = off; bl.style.left = off; }
             if (br) { br.style.bottom = off; br.style.right = off; }
+            // 배율 = 용지+눈금자 전체를 transform으로 확대/축소(내용은 건드리지 않음 — 잘림·미스매치 없음)
+            wdSheet.style.transform = 'scale(' + z + ')';
             if (zoomLbl) zoomLbl.textContent = prefs.zoom + '%';
             if (paperSel) paperSel.value = prefs.paper;
             if (marginSel) marginSel.value = String(prefs.margin);
@@ -3563,12 +3561,6 @@ console.log('[affairs.js] v20260701dj');
           if (marginSel) marginSel.onchange = function () { prefs.margin = Number(this.value) || 20; applyPage(); };
           if (zoomR) zoomR.oninput = function () { prefs.zoom = Number(this.value) || 100; applyPage(); };
           applyPage();
-          // 창 크기가 바뀌면 용지 폭을 다시 화면에 맞춤
-          var rsT = null;
-          window.addEventListener('resize', function onRs() {
-            if (!document.body.contains(ov)) { window.removeEventListener('resize', onRs); return; }
-            clearTimeout(rsT); rsT = setTimeout(applyPage, 200);
-          });
         })();
 
         // ── 발표자 모드: 저장 없이 현재 화면 그대로 아이패드 발표 보기 ──
