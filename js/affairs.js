@@ -2077,6 +2077,25 @@ console.log('[affairs.js] v20260701dj');
       ov.style.cssText = 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto';
       var svcList = SVC_OPTS.slice(); if (rec.service && svcList.indexOf(rec.service) < 0) svcList.unshift(rec.service);   // 옛 명칭(예: 수요예배) 보존
       var svcOpts = svcList.map(function (o) { return '<option' + (o === (rec.service || '') ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+      // 설교 원고 글꼴 — 모두 오픈폰트 라이선스(상업적 무료). [표시명, CSS font-family]
+      var SED_FONTS = [
+        ['본명조', "'Noto Serif KR',serif"],
+        ['본고딕', "'Noto Sans KR',sans-serif"],
+        ['나눔명조', "'Nanum Myeongjo',serif"],
+        ['나눔고딕', "'Nanum Gothic',sans-serif"],
+        ['고운바탕', "'Gowun Batang',serif"],
+        ['송명', "'Song Myung',serif"],
+        ['IBM 고딕', "'IBM Plex Sans KR',sans-serif"],
+        ['개구(손글씨)', "'Gaegu',cursive"],
+        ['나눔펜(손글씨)', "'Nanum Pen Script',cursive"]
+      ];
+      var fontOptsHtml = '<option value="" disabled selected>글꼴</option>' + SED_FONTS.map(function (f) {
+        return '<option value="' + f[1].replace(/"/g, '&quot;') + '" style="font-family:' + f[1] + '">' + esc(f[0]) + '</option>';
+      }).join('');
+      var SED_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48];
+      var sizeOptsHtml = SED_SIZES.map(function (s) { return '<option value="' + s + '"' + (s === 18 ? ' selected' : '') + '>' + s + '</option>'; }).join('');
+      var FORE_COLORS = ['#1a1a1a', '#0a2c5c', '#1d6fb8', '#0d7a4f', '#0e8a74', '#b8860b', '#d97706', '#c0392b', '#d81b60', '#8e44ad', '#5b6b7d', '#ffffff'];
+      var HI_COLORS = ['#fff59d', '#ffe0a3', '#c8f7d4', '#bfe3ff', '#f8c9d4', '#e6d6ff', '#e2e8f0', 'transparent'];
       ov.innerHTML =
         '<style>' +
         '.sed-wrap{position:relative;padding:22px 24px 70px}' +
@@ -2102,9 +2121,8 @@ console.log('[affairs.js] v20260701dj');
         '.sed-form .af-field input:focus,.sed-form .af-field select:focus,.sed-form .af-field textarea:focus{border-color:#9db4d6;box-shadow:0 0 0 3px rgba(60,110,200,.08);outline:none}' +
         '.sed-form .af-field label{font-weight:600;color:#5b6b7d}' +
         // 왼쪽 성경 보기 팝업 (버튼으로 열고 닫음 · 스크롤해도 고정)
-        '.sed-aside-l{position:fixed;left:18px;top:74px;width:326px;z-index:9600;display:none}' +
-        '.sed-aside-l.open{display:block;animation:mbpop .16s ease}' +
-        '@keyframes mbpop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}' +
+        '.sed-aside-l{position:fixed;left:18px;top:74px;width:326px;z-index:9600;opacity:0;visibility:hidden;transform:translateX(-26px);transition:opacity .26s ease,transform .32s cubic-bezier(.22,.61,.36,1),visibility .26s}' +
+        '.sed-aside-l.open{opacity:1;visibility:visible;transform:translateX(0)}' +
         '.sed-mode-worship .sed-aside-l{display:none!important}' +
         '.mb-close{margin-left:auto;border:none;background:none;font-size:1.05rem;line-height:1;color:#9aa5b1;cursor:pointer;padding:2px 4px;border-radius:6px}.mb-close:hover{background:#eceff4;color:#33415c}' +
         '.mb-card{border:1px solid #d7e0ee;border-radius:14px;background:#fff;box-shadow:0 18px 50px rgba(3,34,87,.22);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 92px)}' +
@@ -2134,6 +2152,24 @@ console.log('[affairs.js] v20260701dj');
         '.se-color{position:relative;display:inline-flex;align-items:center;font-size:.86rem;border-radius:7px;padding:6px 9px;cursor:pointer;color:#33415c}.se-color:hover{background:#eaf1fb}' +
         '.se-color input{position:absolute;left:0;bottom:-2px;width:100%;height:3px;opacity:0;cursor:pointer}' +
         '.se-color b{display:inline-block;border-bottom:3px solid currentColor;line-height:1.05}' +
+        // ── 리본 툴바 고급화 (글꼴·크기·색상) ──
+        '.se-grp{display:inline-flex;align-items:center;gap:1px}' +
+        '.se-selflat{font:inherit;font-size:.82rem;border:1px solid #dde3ec;border-radius:7px;padding:6px 8px;background:#fff;cursor:pointer;color:#33415c;max-width:118px}' +
+        '.se-selfont{min-width:96px}' +
+        '.se-size{display:inline-flex;align-items:center;border:1px solid #dde3ec;border-radius:7px;overflow:hidden;background:#fff;margin-left:2px}' +
+        '.se-size button{min-width:26px;padding:6px 0;border:none;border-radius:0;font-size:1rem;font-weight:700;color:#4a5b70;background:#f6f9fd}.se-size button:hover{background:#e6eefb}' +
+        '.se-size select{border:none;border-left:1px solid #eef1f5;border-right:1px solid #eef1f5;border-radius:0;padding:6px 4px;text-align:center;width:46px;font-size:.82rem;background:#fff;cursor:pointer;color:#33415c}' +
+        '.se-swbtn{display:inline-flex!important;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:34px!important;padding:4px 6px!important;line-height:1}' +
+        '.se-swbtn b{font-size:.9rem;font-weight:800;color:#33415c}' +
+        '.se-swbar{width:16px;height:4px;border-radius:2px;display:block}' +
+        '.se-hiico{font-size:.86rem;font-weight:800;color:#5a4a12;padding:0 3px;border-radius:3px;line-height:1.25}' +
+        '.se-caret{font-size:.6rem;color:#9aa5b1;position:absolute;right:2px;top:3px}' +
+        '.se-pop-wrap{position:relative;display:inline-flex}' +
+        '.se-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:40;background:#fff;border:1px solid #dde3ec;border-radius:12px;box-shadow:0 14px 40px rgba(3,34,87,.18);padding:9px;display:none;grid-template-columns:repeat(6,22px);gap:7px}' +
+        '.se-pop.open{display:grid}' +
+        '.se-pop .se-sw{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.14);cursor:pointer;padding:0;min-width:0;transition:transform .1s}.se-pop .se-sw:hover{transform:scale(1.14)}' +
+        '.se-pop .se-sw.se-none{background:repeating-linear-gradient(45deg,#fff,#fff 4px,#f1d0d0 4px,#f1d0d0 6px);position:relative}' +
+        '.se-bible-btn{color:#1d4ed8!important;font-weight:700}.se-bible-btn:hover{background:#dbe9ff!important}' +
         '.se-editor{min-height:56vh;border:1px solid #e3e8f0;border-radius:0 0 11px 11px;padding:26px 30px 34px;font-size:1.06rem;line-height:2;font-family:\'Noto Serif KR\',serif;background:#fff;outline:none;color:#1a1a1a}' +
         '.se-editor:focus{border-color:#c4d2e6;box-shadow:inset 0 1px 4px rgba(3,34,87,.04)}' +
         '.se-editor:empty:before{content:attr(data-ph);color:#aab3c0}' +
@@ -2208,31 +2244,35 @@ console.log('[affairs.js] v20260701dj');
         '</div></div>' +
         '<div class="af-field se-hide-worship"><label>설교 원고 <span class="se-count" id="se_count">0단어 · 0자</span></label>' +
         '<div class="se-toolbar" id="se_tb">' +
+        '<span class="se-grp">' +
         '<button type="button" data-cmd="undo" title="실행취소">↶</button><button type="button" data-cmd="redo" title="다시실행">↷</button>' +
-        '<span class="se-sep"></span>' +
-        '<select id="se_block" title="문단 스타일"><option value="p">본문</option><option value="h2">제목</option><option value="h3">소제목</option><option value="blockquote">인용</option></select>' +
-        '<span class="se-sep"></span>' +
+        '</span><span class="se-sep"></span>' +
+        '<span class="se-grp">' +
+        '<select id="se_block" class="se-selflat" title="문단 스타일"><option value="p">본문</option><option value="h2">제목</option><option value="h3">소제목</option><option value="blockquote">인용</option></select>' +
+        '<select id="se_font" class="se-selflat se-selfont" title="글꼴 · 모두 저작권 없는 오픈폰트">' + fontOptsHtml + '</select>' +
+        '<span class="se-size" title="글자 크기(px)"><button type="button" id="se_size_dn" title="작게">−</button><select id="se_size">' + sizeOptsHtml + '</select><button type="button" id="se_size_up" title="크게">+</button></span>' +
+        '</span><span class="se-sep"></span>' +
+        '<span class="se-grp">' +
         '<button type="button" data-cmd="bold" title="굵게" style="font-weight:800">B</button>' +
         '<button type="button" data-cmd="italic" title="기울임" style="font-style:italic">I</button>' +
         '<button type="button" data-cmd="underline" title="밑줄" style="text-decoration:underline">U</button>' +
         '<button type="button" data-cmd="strikeThrough" title="취소선" style="text-decoration:line-through">S</button>' +
-        '<span class="se-sep"></span>' +
+        '<span class="se-pop-wrap"><button type="button" class="se-swbtn" id="se_fore_btn" title="글자색"><b>가</b><i class="se-swbar" id="se_fore_bar" style="background:#c0392b"></i><span class="se-caret">▾</span></button><div class="se-pop" id="se_fore_pop"></div></span>' +
+        '<span class="se-pop-wrap"><button type="button" class="se-swbtn" id="se_hi_btn" title="형광펜"><b class="se-hiico" id="se_hi_ico" style="background:#fff59d">가</b><span class="se-caret">▾</span></button><div class="se-pop" id="se_hi_pop"></div></span>' +
+        '<button type="button" data-cmd="removeFormat" title="서식 지우기">✕ 서식</button>' +
+        '</span><span class="se-sep"></span>' +
+        '<span class="se-grp">' +
         '<button type="button" data-cmd="insertUnorderedList" title="글머리 목록">• 목록</button>' +
         '<button type="button" data-cmd="insertOrderedList" title="번호 목록">1. 목록</button>' +
-        '<span class="se-sep"></span>' +
         '<button type="button" data-cmd="justifyLeft" title="왼쪽 정렬">⯇</button>' +
         '<button type="button" data-cmd="justifyCenter" title="가운데 정렬">≡</button>' +
         '<button type="button" data-cmd="justifyRight" title="오른쪽 정렬">⯈</button>' +
-        '<span class="se-sep"></span>' +
-        '<label class="se-color" title="글자색"><b>가</b><input type="color" id="se_fore" value="#0a2c5c"></label>' +
-        '<label class="se-color" title="형광펜" style="background:#fff7cc"><b style="border-bottom-color:#f4d03f">밑줄</b><input type="color" id="se_hi" value="#fff59d"></label>' +
-        '<button type="button" data-cmd="removeFormat" title="서식 지우기">✕ 서식</button>' +
-        '<span class="se-sep"></span>' +
+        '</span><span class="se-sep"></span>' +
+        '<span class="se-grp">' +
         '<button type="button" id="se_ins_bible" title="본문 칸의 성경 구절을 굵게 삽입">📖 구절</button>' +
         '<button type="button" data-cmd="insertHorizontalRule" title="구분선">— 구분선</button>' +
-        '<span class="se-sep"></span>' +
-        '<button type="button" id="se_bible_open" title="성경을 왼쪽 팝업으로 열기 (스크롤해도 고정)" style="color:#1d4ed8;font-weight:700">📖 성경</button>' +
-        '<button type="button" id="se_present" title="발표자 모드(큰 글씨·페이지·전체화면)로 미리보기" style="color:#0a6b4f;font-weight:700">🎤 발표자 모드</button>' +
+        '<button type="button" id="se_bible_open" class="se-bible-btn" title="성경을 왼쪽에서 열기">📖 성경</button>' +
+        '</span>' +
         '</div>' +
         '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 위 도구로 굵게·제목·인용·색·목록 등 서식을 적용할 수 있습니다."></div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
@@ -2741,21 +2781,59 @@ console.log('[affairs.js] v20260701dj');
         b.onmousedown = function (e) { e.preventDefault(); };   // 선택영역 유지
         b.onclick = function () { exec(b.dataset.cmd); };
       });
-      ov.querySelector('#se_block').onchange = function () { exec('formatBlock', this.value === 'p' ? 'P' : this.value.toUpperCase()); this.selectedIndex = 0; };
-      ov.querySelector('#se_fore').oninput = function () { exec('foreColor', this.value); };
-      ov.querySelector('#se_hi').oninput = function () { exec('hiliteColor', this.value); };
+      // 셀렉트·팔레트 클릭 시 커서(선택영역)가 사라지지 않도록 보존
+      var savedRange = null;
+      function saveSel() { var s = window.getSelection(); if (s && s.rangeCount && ed.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange(); }
+      function restoreSel() { if (savedRange) { try { var s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); } catch (e) {} } }
+      ed.addEventListener('keyup', saveSel); ed.addEventListener('mouseup', saveSel); ed.addEventListener('input', saveSel);
+
+      ov.querySelector('#se_block').onchange = function () { ed.focus(); restoreSel(); exec('formatBlock', this.value === 'p' ? 'P' : this.value.toUpperCase()); this.selectedIndex = 0; };
+
+      // 글꼴 (모두 오픈폰트 라이선스)
+      var fontSel = ov.querySelector('#se_font');
+      if (fontSel) fontSel.onchange = function () { var v = this.value; if (!v) return; ed.focus(); restoreSel(); exec('fontName', v); this.selectedIndex = 0; };
+
+      // 글자 크기(px) — execCommand fontSize(7) 후 실제 px로 치환
+      var sizeSel = ov.querySelector('#se_size');
+      function applySize(px) {
+        ed.focus(); restoreSel();
+        try { document.execCommand('fontSize', false, '7'); } catch (e) {}
+        Array.prototype.forEach.call(ed.querySelectorAll('font[size="7"]'), function (f) { f.removeAttribute('size'); f.style.fontSize = px + 'px'; });
+        syncContent();
+      }
+      if (sizeSel) sizeSel.onchange = function () { applySize(Number(this.value)); };
+      var sizeDn = ov.querySelector('#se_size_dn'), sizeUp = ov.querySelector('#se_size_up');
+      if (sizeDn) { sizeDn.onmousedown = function (e) { e.preventDefault(); }; sizeDn.onclick = function () { if (sizeSel.selectedIndex > 0) sizeSel.selectedIndex--; applySize(Number(sizeSel.value)); }; }
+      if (sizeUp) { sizeUp.onmousedown = function (e) { e.preventDefault(); }; sizeUp.onclick = function () { if (sizeSel.selectedIndex < sizeSel.options.length - 1) sizeSel.selectedIndex++; applySize(Number(sizeSel.value)); }; }
+
+      // 색상 팔레트 (글자색 / 형광펜)
+      function buildPop(popEl, colors, onPick, noneLabel) {
+        popEl.innerHTML = colors.map(function (c) {
+          if (c === 'transparent') return '<button type="button" class="se-sw se-none" data-c="transparent" title="' + (noneLabel || '없음') + '"></button>';
+          return '<button type="button" class="se-sw" data-c="' + c + '" style="background:' + c + '" title="' + c + '"></button>';
+        }).join('');
+        Array.prototype.forEach.call(popEl.querySelectorAll('.se-sw'), function (b) {
+          b.onmousedown = function (e) { e.preventDefault(); };
+          b.onclick = function () { onPick(b.dataset.c); popEl.classList.remove('open'); };
+        });
+      }
+      function closeAllPops() { Array.prototype.forEach.call(ov.querySelectorAll('.se-pop'), function (p) { p.classList.remove('open'); }); }
+      function togglePop(popEl) { var was = popEl.classList.contains('open'); closeAllPops(); if (!was) popEl.classList.add('open'); }
+      var forePop = ov.querySelector('#se_fore_pop'), hiPop = ov.querySelector('#se_hi_pop');
+      var foreBar = ov.querySelector('#se_fore_bar'), hiIco = ov.querySelector('#se_hi_ico');
+      buildPop(forePop, FORE_COLORS, function (c) { ed.focus(); restoreSel(); exec('foreColor', c); if (foreBar) foreBar.style.background = c; });
+      buildPop(hiPop, HI_COLORS, function (c) { ed.focus(); restoreSel(); exec('hiliteColor', c === 'transparent' ? 'transparent' : c); if (hiIco && c !== 'transparent') hiIco.style.background = c; }, '형광 없음');
+      ov.querySelector('#se_fore_btn').onmousedown = function (e) { e.preventDefault(); };
+      ov.querySelector('#se_hi_btn').onmousedown = function (e) { e.preventDefault(); };
+      ov.querySelector('#se_fore_btn').onclick = function () { togglePop(forePop); };
+      ov.querySelector('#se_hi_btn').onclick = function () { togglePop(hiPop); };
+      ov.addEventListener('mousedown', function (e) { if (!e.target.closest || !e.target.closest('.se-pop-wrap')) closeAllPops(); });
+
       ov.querySelector('#se_ins_bible').onmousedown = function (e) { e.preventDefault(); };
       ov.querySelector('#se_ins_bible').onclick = function () {
         var s = (ov.querySelector('#se_scripture').value || '').trim();
         if (!s) { var m = ov.querySelector('#se_msg'); m.style.color = '#c0392b'; m.textContent = '먼저 위 ‘본문(성경)’ 칸에 구절을 입력하세요.'; return; }
         exec('insertHTML', '<p><b>' + esc(s) + '</b></p>');
-      };
-      ov.querySelector('#se_present').onclick = function () {
-        syncContent();
-        var w = window.open('', '_blank');
-        if (!w) { var m = ov.querySelector('#se_msg'); m.style.color = '#c0392b'; m.textContent = '팝업이 차단되었습니다 — 발표자 모드를 위해 팝업을 허용해 주세요.'; return; }
-        try { w.document.write('<p style="font-family:sans-serif;color:#7b8794;padding:24px">발표자 모드 준비 중…</p>'); } catch (_) {}
-        sermonReadingView(gather(), { qt: false, win: w, present: true });
       };
 
       // ── 🙏 기도 AI 생성: 설교 원고 기반 300자 미만 기도문 ──
