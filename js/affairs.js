@@ -2301,7 +2301,10 @@ console.log('[affairs.js] v20260701dj');
         '.bd-serhead span{font-weight:400;color:#6d7c92}' +
         '.rp-paper .pdf-series{font-size:9px;font-weight:700;color:#1f3a63;margin:0 0 6px;text-align:left}' +
         // ── 시리즈 선택 목록 ──
-        '.bd-serlist{margin-top:6px;max-height:150px;overflow:auto;border:1px solid #e3e8f0;border-radius:9px;padding:4px;background:#fff}' +
+        // 시리즈 선택 드롭다운 — 입력칸을 누르면 나타나는 팝업(스크롤), 평소엔 숨김 → 선택된 시리즈가 쌓여도 화면이 끝없이 안 늘어남
+        '.bd-serwrap{position:relative}' +
+        '.bd-serlist{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:32;max-height:190px;overflow:auto;border:1px solid #e3e8f0;border-radius:9px;padding:4px;background:#fff;box-shadow:0 12px 30px rgba(0,0,0,.22)}' +
+        '.bd-serlist.open{display:block}' +
         '.bd-seritem{display:block;width:100%;text-align:left;border:0;background:none;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:.8rem;color:#3a4a63}' +
         '.bd-seritem span{color:#9aa5b1;font-size:.7rem}' +
         '.bd-seritem:hover{background:#f2f6fc}' +
@@ -2310,6 +2313,8 @@ console.log('[affairs.js] v20260701dj');
         '.sed-dark .bd-seritem{color:#aab8cc}.sed-dark .bd-seritem:hover{background:#1b2536}' +
         '.sed-dark .bd-seritem.on{background:#1a2c4d;color:#9ec1f7}' +
         '.sed-dark .bd-seritem span{color:#6d7c92}' +
+        // 같은 시리즈의 설교 — 시리즈를 여러 개 골라도 이 박스 하나 안에서만 스크롤(끝없이 안 늘어남)
+        '.bd-serdocs{max-height:230px;overflow-y:auto;padding-right:3px}' +
         // ── QT 체크박스 정렬(.af-field label의 display:block이 이기던 문제) ──
         '.af-field label.sed-qt{display:flex;align-items:center;gap:8px;margin-bottom:0;font-weight:600}' +
         // ── 예배 매니저: 제목·본문은 리본 2줄째로 이동했으므로 빈 폼 카드 숨김 ──
@@ -2526,9 +2531,11 @@ console.log('[affairs.js] v20260701dj');
         // 시리즈: 분류 바로 다음 — 입력하면 기존 시리즈가 자동완성으로 뜸
         '<div class="af-field se-hide-worship"><label>📚 시리즈 <span style="font-weight:400">(여러 개 선택 가능)</span></label>' +
         '<div id="se_series_chips" style="margin-bottom:4px"></div>' +
-        '<div style="display:flex;gap:5px"><input type="text" id="se_series_in" placeholder="시리즈 추가" style="flex:1"><button type="button" class="btn btn-line" id="se_series_add" style="padding:6px 11px;font-size:.8rem;flex:none">＋ 추가</button></div>' +
+        '<div class="bd-serwrap">' +
+        '<div style="display:flex;gap:5px"><input type="text" id="se_series_in" placeholder="시리즈 추가 · 클릭하면 목록에서 선택" autocomplete="off" style="flex:1"><button type="button" class="btn btn-line" id="se_series_add" style="padding:6px 11px;font-size:.8rem;flex:none">＋ 추가</button></div>' +
         '<div id="se_series_list" class="bd-serlist"></div>' +
-        '<div id="se_series_docs" style="margin-top:7px"></div>' +
+        '</div>' +
+        '<div id="se_series_docs" class="bd-serdocs" style="margin-top:7px"></div>' +
         '</div>' +
         '<div class="af-field"><label>설교자</label><input type="text" id="se_preacher" value="' + esc(rec.preacher || '김동석 목사') + '"></div>' +
         '<div class="af-field se-hide-worship"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e;margin:0;flex:none">함께 만들기</label></div>' +
@@ -3309,22 +3316,30 @@ console.log('[affairs.js] v20260701dj');
         var allSeries = {};
         (smRows || []).forEach(function (r) { String(r.series || '').split(',').forEach(function (s) { s = s.trim(); if (s) allSeries[s] = (allSeries[s] || 0) + 1; }); });
         function splitSer(v) { return String(v || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean); }
-        function renderSeries() {
-          chipsBox.innerHTML = seriesArr.length ? seriesArr.map(function (s, i) { return '<span class="bd-chip">' + esc(s) + '<button type="button" data-i="' + i + '" title="제거">✕</button></span>'; }).join('') : '<span style="font-size:.74rem;color:#75839a">아직 시리즈가 없습니다.</span>';
-          Array.prototype.forEach.call(chipsBox.querySelectorAll('button'), function (b) { b.onclick = function () { seriesArr.splice(Number(b.dataset.i), 1); renderSeries(); }; });
-          // 등록된 모든 시리즈 목록 — 클릭해서 선택/해제
+        // 시리즈 선택 드롭다운 열기/닫기(입력칸을 누르면 뜨고, 밖을 누르면 닫힘)
+        function openSerDrop() { serList.classList.add('open'); renderSerList(); }
+        function closeSerDrop() { serList.classList.remove('open'); }
+        // 드롭다운 목록만 다시 그림(입력한 글자로 걸러짐) — 체크된 시리즈를 골라도 목록은 계속 스크롤 가능한 이 박스 하나 안에 있음
+        function renderSerList() {
+          var q = (serIn.value || '').trim().toLowerCase();
           var names = {}; Object.keys(allSeries).forEach(function (s) { names[s] = 1; }); seriesArr.forEach(function (s) { names[s] = 1; });
           var all = Object.keys(names).sort();
+          if (q) all = all.filter(function (s) { return s.toLowerCase().indexOf(q) >= 0; });
           serList.innerHTML = all.length
             ? all.map(function (s) { var on = seriesArr.indexOf(s) >= 0; return '<button type="button" class="bd-seritem' + (on ? ' on' : '') + '" data-s="' + esc(s) + '">' + (on ? '✓ ' : '') + esc(s) + (allSeries[s] ? ' <span>(' + allSeries[s] + ')</span>' : '') + '</button>'; }).join('')
-            : '<div style="font-size:.74rem;color:#75839a;padding:5px 7px">아직 등록된 시리즈가 없습니다 — 위에 입력해 추가하세요.</div>';
+            : (q ? '<div style="font-size:.74rem;color:#75839a;padding:5px 7px">일치하는 시리즈가 없습니다. ‘＋ 추가’를 누르면 새로 만듭니다.</div>' : '<div style="font-size:.74rem;color:#75839a;padding:5px 7px">아직 등록된 시리즈가 없습니다 — 입력 후 ‘＋ 추가’를 누르세요.</div>');
           Array.prototype.forEach.call(serList.querySelectorAll('.bd-seritem'), function (b) {
             b.onclick = function () {
               var s = b.dataset.s, i = seriesArr.indexOf(s);
               if (i >= 0) seriesArr.splice(i, 1); else seriesArr.push(s);
-              renderSeries();
+              serIn.value = '';
+              renderSerList(); renderChipsAndDocs();
             };
           });
+        }
+        function renderChipsAndDocs() {
+          chipsBox.innerHTML = seriesArr.length ? seriesArr.map(function (s, i) { return '<span class="bd-chip">' + esc(s) + '<button type="button" data-i="' + i + '" title="제거">✕</button></span>'; }).join('') : '<span style="font-size:.74rem;color:#75839a">아직 시리즈가 없습니다.</span>';
+          Array.prototype.forEach.call(chipsBox.querySelectorAll('button'), function (b) { b.onclick = function () { seriesArr.splice(Number(b.dataset.i), 1); renderChipsAndDocs(); if (serList.classList.contains('open')) renderSerList(); }; });
           // 시리즈별 그룹 + 일자순 자동 넘버링 — 지금 작성 중인 설교도 제 순번 자리에 표시(연속성 관리)
           if (!seriesArr.length) {
             docsBox.innerHTML = '<div style="font-size:.76rem;color:#75839a">시리즈를 추가하면 같은 시리즈의 설교(제목·본문)가 번호와 함께 표시됩니다.</div>';
@@ -3359,14 +3374,19 @@ console.log('[affairs.js] v20260701dj');
             };
           });
         }
-        function addSeries() { var v = (serIn.value || '').trim(); if (!v) return; if (seriesArr.indexOf(v) < 0) seriesArr.push(v); serIn.value = ''; renderSeries(); }
+        function renderSeries() { renderSerList(); renderChipsAndDocs(); }
+        function addSeries() { var v = (serIn.value || '').trim(); if (!v) return; if (seriesArr.indexOf(v) < 0) seriesArr.push(v); serIn.value = ''; renderSerList(); renderChipsAndDocs(); }
         ov.querySelector('#se_series_add').onclick = addSeries;
-        serIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addSeries(); } });
+        serIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addSeries(); } else if (e.key === 'Escape') { closeSerDrop(); } });
+        serIn.addEventListener('focus', openSerDrop);
+        serIn.addEventListener('click', openSerDrop);
+        serIn.addEventListener('input', renderSerList);
+        ov.addEventListener('mousedown', function (e) { if (!e.target.closest || !e.target.closest('.bd-serwrap')) closeSerDrop(); });
         renderSeries();
-        // 일자·제목이 바뀌면 시리즈 순번(넘버링)도 갱신
-        ov.querySelector('#se_date').addEventListener('change', renderSeries);
+        // 일자·제목이 바뀌면 시리즈 순번(넘버링)도 갱신(드롭다운 목록 자체는 그대로 둠)
+        ov.querySelector('#se_date').addEventListener('change', renderChipsAndDocs);
         var serTitleT = null;
-        ov.querySelector('#se_title').addEventListener('input', function () { clearTimeout(serTitleT); serTitleT = setTimeout(renderSeries, 500); });
+        ov.querySelector('#se_title').addEventListener('input', function () { clearTimeout(serTitleT); serTitleT = setTimeout(renderChipsAndDocs, 500); });
 
         // ── 리본 패널 토글: 📖 본문 텍스트 / 🙏 기도 (하나만 열림) ──
         var pnMap = { se_pn_bible: 'pn_bible', se_pn_prayer: 'pn_prayer' };
