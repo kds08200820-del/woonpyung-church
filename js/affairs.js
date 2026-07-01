@@ -2304,20 +2304,37 @@ console.log('[affairs.js] v20260701dj');
         if (!ref) return;
         var p = parseRef(ref);
         if (!p) { if (bibleLoading) bibleLoading.textContent = '구절 형식 오류 (예: 창1:1-5)'; return; }
+        var bk = BBLK[p.bookId - 1];
+        if (!bk) { if (bibleLoading) bibleLoading.textContent = '성경책을 찾을 수 없습니다'; return; }
         if (bibleLoading) bibleLoading.textContent = '불러오는 중…';
-        var url = 'https://bolls.life/get-text/KRV/' + p.bookId + '/' + p.ch + '/';
-        fetch(url)
-          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
-          .then(function (data) {
-            var arr = Array.isArray(data) ? data : [];
-            var lines = arr
-              .filter(function (v) { return v.verse >= p.from && v.verse <= p.to; })
-              .map(function (v) { return v.verse + ' ' + (v.text || '').trim(); });
-            var bEl = ov.querySelector('#se_bible');
-            if (bEl) bEl.value = lines.join('\n');
-            if (bibleLoading) bibleLoading.textContent = lines.length ? ('✓ ' + lines.length + '절') : '해당 구절 없음';
+        var bookKey = bk[2];
+        function extractLines(data) {
+          var chap = (data[bookKey] || [])[p.ch - 1] || [];
+          var lines = [];
+          for (var vi = p.from; vi <= p.to; vi++) {
+            var t = chap[vi - 1];
+            if (t) lines.push(vi + ' ' + t.trim());
+          }
+          return lines;
+        }
+        function loadBible(trans) {
+          var cached = trans === 'gyr' ? window.BIBLE_GYR : window.BIBLE_URM;
+          if (cached) return Promise.resolve(cached);
+          return fetch('data/bible-' + trans + '.json')
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+            .then(function (d) { if (trans === 'gyr') window.BIBLE_GYR = d; else window.BIBLE_URM = d; return d; });
+        }
+        Promise.all([loadBible('gyr'), loadBible('urm')])
+          .then(function (res) {
+            var gLines = extractLines(res[0]);
+            var uLines = extractLines(res[1]);
+            var bEl  = ov.querySelector('#se_bible');
+            var qtEl = ov.querySelector('#se_qt_bible');
+            if (bEl)  bEl.value  = gLines.join('\n');
+            if (qtEl) qtEl.value = uLines.join('\n');
+            if (bibleLoading) bibleLoading.textContent = gLines.length ? ('✓ ' + gLines.length + '절') : '해당 구절 없음';
           })
-          .catch(function () { if (bibleLoading) bibleLoading.textContent = '불러오기 실패 — 수동 입력 바랍니다'; });
+          .catch(function (e) { if (bibleLoading) bibleLoading.textContent = '불러오기 실패 — ' + (e.message || '오류'); });
       }
       if (fetchBtn) fetchBtn.onclick = doFetchBible;
       if (scInp) scInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doFetchBible(); } });
