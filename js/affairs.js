@@ -2120,7 +2120,7 @@ console.log('[affairs.js] v20260701dj');
         '<button class="btn btn-line" id="se_kakao" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">💬 카카오톡 복사</button>' +
         '<button class="btn btn-line" id="se_preview" style="padding:8px 13px;border-radius:9px">👁 미리보기</button>' +
         (worshipMode ? '' : '<button class="btn btn-line" id="se_pdf" style="padding:8px 13px;border-radius:9px">📄 PDF 내보내기</button>') +
-        '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 저장 후 내보내기</button>' +
+        (worshipMode ? '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 저장 후 내보내기</button>' : '') +
         '</div>' +
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
         '</div></header>' +
@@ -2357,7 +2357,11 @@ console.log('[affairs.js] v20260701dj');
         if (loadTpl(svc, true)) return;
         if (svc === '주일 낮 예배') { order = sundayPresetOrder(); renderOrder(); }
       }
-      ov.querySelector('#se_service').addEventListener('change', function () { autoFillOrder(this.value); });
+      ov.querySelector('#se_service').addEventListener('change', function () {
+        autoFillOrder(this.value);
+        // 새벽기도 선택 시 → 'QT 함께 만들기' 자동 활성화
+        if (this.value === '새벽기도') { var qt = ov.querySelector('#se_qt_toggle'); if (qt && !qt.checked) { qt.checked = true; if (typeof syncQt === 'function') syncQt(); } }
+      });
       if (!rec.id) autoFillOrder(ov.querySelector('#se_service').value); // 새 설교 → 자동
 
       // 교독문·찬송가 선택 → 예배 순서에 항목으로 추가(드래그·파일 가능)
@@ -2401,7 +2405,7 @@ console.log('[affairs.js] v20260701dj');
         if (kakaoBtn) kakaoBtn.style.display = qtOn() ? '' : 'none';
       }
       if (qtToggle) {
-        qtToggle.checked = !!(rec.qt_bible_text || rec.service === '매일 QT');
+        qtToggle.checked = !!(rec.qt_bible_text || rec.service === '매일 QT' || rec.service === '새벽기도');
         qtToggle.onchange = syncQt;
       }
       if (wmChk) {
@@ -2502,13 +2506,42 @@ console.log('[affairs.js] v20260701dj');
           worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, body: o.body || '', fixed: !!o.fixed, noexport: !!o.noexport, images: o.images || undefined }; })) : null)
         };
       }
+      // 새벽기도 + 'QT 함께 만들기' 체크 시 → 매일 QT를 별도 목록에 함께 저장
+      function shouldPairQt() { return ov.querySelector('#se_service').value === '새벽기도' && qtOn(); }
+      function pairQt(mainData, done) {
+        var qtData = {
+          sermon_date: mainData.sermon_date, service: '매일 QT',
+          title: mainData.title, scripture: mainData.scripture, preacher: mainData.preacher,
+          content: mainData.content, bible_text: mainData.bible_text, qt_bible_text: mainData.qt_bible_text
+        };
+        api('GET', 'sermons?select=id&service=eq.' + encodeURIComponent('매일 QT') + '&sermon_date=eq.' + encodeURIComponent(mainData.sermon_date) + '&limit=1')
+          .then(function (rows) {
+            return (rows && rows[0])
+              ? api('PATCH', 'sermons?id=eq.' + rows[0].id, qtData, 'return=minimal')
+              : api('POST', 'sermons', qtData, 'return=minimal');
+          })
+          .then(function () { if (done) done(true); })
+          .catch(function () { if (done) done(false); });
+      }
       function save(then, onErr) {
         var data = gather();
         var msg = ov.querySelector('#se_msg');
         if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = '일자와 제목은 필수입니다.'; if (onErr) onErr(new Error('일자·제목 필수')); return; }
         msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
         var p = rec.id ? api('PATCH', 'sermons?id=eq.' + rec.id, data, 'return=representation') : api('POST', 'sermons', data, 'return=representation');
-        p.then(function (rows) { var saved = (rows && rows[0]) || data; if (rows && rows[0]) rec.id = rows[0].id; msg.style.color = 'green'; msg.textContent = '✓ 저장되었습니다'; loadList(); if (then) then(saved); })
+        p.then(function (rows) {
+          var saved = (rows && rows[0]) || data; if (rows && rows[0]) rec.id = rows[0].id;
+          if (shouldPairQt()) {
+            msg.style.color = '#7b8794'; msg.textContent = '새벽기도 저장됨 · QT 함께 저장 중…';
+            pairQt(data, function (ok) {
+              msg.style.color = ok ? 'green' : '#c0392b';
+              msg.textContent = ok ? '✓ 새벽기도 · 매일 QT 함께 저장되었습니다' : '✓ 새벽기도 저장됨 — QT 저장 실패, 다시 시도해 주세요';
+              loadList(); if (then) then(saved);
+            });
+          } else {
+            msg.style.color = 'green'; msg.textContent = '✓ 저장되었습니다'; loadList(); if (then) then(saved);
+          }
+        })
           .catch(function (e) {
             msg.style.color = '#c0392b';
             var hint = /qt_bible_text|bible_text|column|PGRST204|schema cache|Could not find/i.test(e.message || '') ? ' — Supabase에서 supabase/sermons_extra.sql 을 1회 실행해 주세요(설교 본문·QT 컬럼 추가).' : '';
@@ -2524,9 +2557,10 @@ console.log('[affairs.js] v20260701dj');
         if (!w) { msg.style.color = '#c0392b'; msg.textContent = '팝업이 차단되었습니다 — 미리보기를 위해 팝업을 허용해 주세요.'; return; }
         try { w.document.write('<p style="font-family:sans-serif;color:#7b8794;padding:24px">미리보기 준비 중…</p>'); } catch (_) { }
         sermonReadingView(gather(), { qt: false, win: w });
-        msg.style.color = '#7b8794'; msg.textContent = '👁 미리보기를 열었습니다(저장 안 됨). 확인 후 ‘저장 후 내보내기’를 누르세요.';
+        msg.style.color = '#7b8794'; msg.textContent = worshipMode ? '👁 미리보기를 열었습니다(저장 안 됨). 확인 후 ‘저장 후 내보내기’를 누르세요.' : '👁 미리보기를 열었습니다(저장 안 됨). 확인 후 ‘저장’을 누르세요.';
       };
-      ov.querySelector('#se_export').onclick = function () {
+      var exportBtn = ov.querySelector('#se_export');
+      if (exportBtn) exportBtn.onclick = function () {
         var msg = ov.querySelector('#se_msg');
         var data = gather();
         if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = '내보내기 전에 일자와 제목을 입력해 주세요.'; var t = ov.querySelector(!data.title ? '#se_title' : '#se_date'); if (t) t.focus(); return; }

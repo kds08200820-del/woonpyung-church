@@ -475,11 +475,11 @@ function actionExportSermonPdf_(req) {
   var contentHtml = String(req.contentHtml || '');
 
   var y = date.slice(0, 4);
-  var m = parseInt(date.slice(5, 7), 10);
-  var monthFolderName = y + '년 ' + m + '월';
-
-  var rootFolder = getOrCreateFolder_(DriveApp.getRootFolder(), '설교');
-  var monthFolder = getOrCreateFolder_(rootFolder, monthFolderName);
+  // 폴더 구조: '{연도}설교 / {예배명} / {일자 제목}.pdf'  (예: 2026설교/새벽기도/2026-07-02 폭풍 속의 주.pdf)
+  var rootName = y + '설교';
+  var svcName = (service || '기타').replace(/[\\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() || '기타';
+  var rootFolder = getOrCreateFolder_(DriveApp.getRootFolder(), rootName);
+  var targetFolder = getOrCreateFolder_(rootFolder, svcName);
 
   var SERIF = 'Noto Serif KR';
   var NAVY = '#1f3a63', INK = '#1a1a1a', SUB = '#8a8f99', BIBLE = '#33445c';
@@ -525,10 +525,10 @@ function actionExportSermonPdf_(req) {
   var pdfBlob = docFile.getAs('application/pdf');
   var fileName = date + ' ' + title + '.pdf';
   pdfBlob.setName(fileName);
-  var pdfFile = monthFolder.createFile(pdfBlob);
+  var pdfFile = targetFolder.createFile(pdfBlob);
   docFile.setTrashed(true); // 중간 생성된 구글 문서는 정리
 
-  return { ok: true, url: pdfFile.getUrl(), fileName: fileName, folder: '설교/' + monthFolderName };
+  return { ok: true, url: pdfFile.getUrl(), fileName: fileName, folder: rootName + '/' + svcName };
 }
 
 // 문단 스타일 적용 헬퍼 (Google Docs)
