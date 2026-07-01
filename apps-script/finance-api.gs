@@ -471,6 +471,7 @@ function actionExportSermonPdf_(req) {
   var service = String(req.service || '');
   var preacher = String(req.preacher || '');
   var scripture = String(req.scripture || '');
+  var bibleText = String(req.bibleText || '');
   var contentHtml = String(req.contentHtml || '');
 
   var y = date.slice(0, 4);
@@ -480,16 +481,44 @@ function actionExportSermonPdf_(req) {
   var rootFolder = getOrCreateFolder_(DriveApp.getRootFolder(), '설교');
   var monthFolder = getOrCreateFolder_(rootFolder, monthFolderName);
 
+  var SERIF = 'Noto Serif KR';
+  var NAVY = '#1f3a63', INK = '#1a1a1a', SUB = '#8a8f99', BIBLE = '#33445c';
+
   var doc = DocumentApp.create(date + ' ' + title);
   var body = doc.getBody();
   body.clear();
-  body.appendParagraph(title).setHeading(DocumentApp.ParagraphHeading.TITLE);
-  var meta = [date, service, scripture, preacher].filter(function (s) { return s; }).join('  ·  ');
-  if (meta) body.appendParagraph(meta);
+  body.setMarginTop(60).setMarginBottom(60).setMarginLeft(64).setMarginRight(64);
+
+  // 제목 (가운데, 크게)
+  setP_(body.appendParagraph(title), { size: 26, bold: true, font: SERIF, color: INK, align: 'center', after: 6 });
+
+  // 메타 (일자 · 예배 · 본문 · 설교자)
+  var meta = [fmtDateK_(date), service, scripture, preacher].filter(function (s) { return s; }).join('   ·   ');
+  if (meta) setP_(body.appendParagraph(meta), { size: 11, font: SERIF, color: SUB, align: 'center', after: 16 });
+
   body.appendHorizontalRule();
+
+  // 성경 본문(개역개정)
+  if (bibleText.replace(/\s/g, '')) {
+    setP_(body.appendParagraph('성경 본문  ·  개역개정'), { size: 12, bold: true, font: SERIF, color: NAVY, before: 16, after: 8 });
+    bibleText.split(/\n+/).forEach(function (line) {
+      line = line.replace(/\s+$/, '').trim();
+      if (!line) return;
+      setP_(body.appendParagraph(line), { size: 14, font: SERIF, color: BIBLE, lineSpacing: 1.55, after: 3, indentStart: 6 });
+    });
+    body.appendHorizontalRule();
+  }
+
+  // 설교 원고 (본문 16pt)
+  setP_(body.appendParagraph('설교 원고'), { size: 12, bold: true, font: SERIF, color: NAVY, before: 16, after: 10 });
   var plain = htmlToPlainText_(contentHtml);
   var paras = plain.length ? plain.split(/\n{2,}/) : ['(설교 원고가 비어 있습니다)'];
-  paras.forEach(function (p) { body.appendParagraph(p.replace(/\n/g, ' ')); });
+  paras.forEach(function (p) {
+    var t = p.replace(/\n/g, ' ').trim();
+    if (!t) return;
+    setP_(body.appendParagraph(t), { size: 16, font: SERIF, color: INK, lineSpacing: 1.7, after: 12 });
+  });
+
   doc.saveAndClose();
 
   var docFile = DriveApp.getFileById(doc.getId());
@@ -500,6 +529,34 @@ function actionExportSermonPdf_(req) {
   docFile.setTrashed(true); // 중간 생성된 구글 문서는 정리
 
   return { ok: true, url: pdfFile.getUrl(), fileName: fileName, folder: '설교/' + monthFolderName };
+}
+
+// 문단 스타일 적용 헬퍼 (Google Docs)
+function setP_(p, o) {
+  o = o || {};
+  var A = DocumentApp.Attribute, at = {};
+  if (o.size != null) at[A.FONT_SIZE] = o.size;
+  if (o.bold != null) at[A.BOLD] = o.bold;
+  if (o.italic != null) at[A.ITALIC] = o.italic;
+  if (o.font != null) at[A.FONT_FAMILY] = o.font;
+  if (o.color != null) at[A.FOREGROUND_COLOR] = o.color;
+  if (o.lineSpacing != null) at[A.LINE_SPACING] = o.lineSpacing;
+  if (o.before != null) at[A.SPACING_BEFORE] = o.before;
+  if (o.after != null) at[A.SPACING_AFTER] = o.after;
+  if (o.indentStart != null) at[A.INDENT_START] = o.indentStart;
+  p.setAttributes(at);
+  if (o.align === 'center') p.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  else if (o.align === 'right') p.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+  return p;
+}
+
+// "2026-07-02" → "2026년 7월 2일 (목)"
+function fmtDateK_(ymd) {
+  var mm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || ''));
+  if (!mm) return String(ymd || '');
+  var wd = ['일', '월', '화', '수', '목', '금', '토'];
+  var d = new Date(Number(mm[1]), Number(mm[2]) - 1, Number(mm[3]));
+  return mm[1] + '년 ' + Number(mm[2]) + '월 ' + Number(mm[3]) + '일 (' + wd[d.getDay()] + ')';
 }
 
 function getOrCreateFolder_(parent, name) {

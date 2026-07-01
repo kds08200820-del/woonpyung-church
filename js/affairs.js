@@ -2555,6 +2555,7 @@ console.log('[affairs.js] v20260701dj');
             service: saved.service || '',
             preacher: saved.preacher || '',
             scripture: saved.scripture || '',
+            bibleText: saved.bible_text || '',
             contentHtml: saved.content || ''
           }).then(function (r) {
             pdfBtn.disabled = false; pdfBtn.textContent = old;
