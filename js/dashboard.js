@@ -207,6 +207,16 @@ console.log('[dashboard.js] v20260701da');
       })
       .catch(function () { el.innerHTML = '<p style="color:#c0392b;font-size:.88rem;">큐티를 불러오지 못했습니다.</p>'; });
   }
+  function fetchAmenRank(t, ak, tok, url) {
+    return fetch(url + '/rest/v1/rpc/qt_check_rank', {
+      method: 'POST', headers: { apikey: ak, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_date: t })
+    }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  }
+  function amenDoneHTML(rank) {
+    return '<span class="qtc-amen-done">✓ 오늘의 큐티를 마치고 아멘 하셨습니다' +
+      (rank ? ' · <b style="color:#0d9488">오늘 ' + rank + '번째</b>' : '') + '</span>';
+  }
   function loadAmenState(me, t) {
     var box = document.getElementById('dashAmenBox'); if (!box) return;
     var uid = sbUser() && sbUser().id, tok = WPF.token();
@@ -215,7 +225,11 @@ console.log('[dashboard.js] v20260701da');
     fetch(url + '/rest/v1/qt_checks?select=id&check_date=eq.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (rows) {
-        if (rows && rows.length) { box.innerHTML = '<span class="qtc-amen-done">✓ 오늘의 큐티를 마치고 아멘 하셨습니다</span>'; return; }
+        if (rows && rows.length) {
+          box.innerHTML = amenDoneHTML(null);
+          fetchAmenRank(t, ak, tok, url).then(function (rank) { if (rank) box.innerHTML = amenDoneHTML(rank); });
+          return;
+        }
         box.innerHTML = '<label><input type="checkbox" id="dashAmenChk"> 🙏 기도문까지 읽고, 오늘의 큐티에 아멘 합니다</label>';
         var chk = document.getElementById('dashAmenChk');
         if (chk) chk.onchange = function () {
@@ -226,7 +240,8 @@ console.log('[dashboard.js] v20260701da');
             body: JSON.stringify({ user_id: uid, check_date: t })
           }).then(function (r) {
             if (!r.ok && r.status !== 409) return r.text().then(function (txt) { throw new Error(txt); });
-            box.innerHTML = '<span class="qtc-amen-done">✓ 오늘의 큐티를 마치고 아멘 하셨습니다</span>';
+            box.innerHTML = amenDoneHTML(null);
+            fetchAmenRank(t, ak, tok, url).then(function (rank) { if (rank) box.innerHTML = amenDoneHTML(rank); });
           }).catch(function (e) {
             chk.disabled = false; chk.checked = false;
             var msg = (e && e.message) || '';
