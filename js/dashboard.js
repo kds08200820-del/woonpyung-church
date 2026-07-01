@@ -213,9 +213,27 @@ console.log('[dashboard.js] v20260701da');
       body: JSON.stringify({ p_date: t })
     }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
   }
+  var AMEN_MSG_FIRST = [
+    '오늘 1번째 아멘을 하셨네요! 오늘 하루도 말씀 안에서 승리하세요! 🏆',
+    '가장 먼저 아멘하셨어요! 오늘의 첫 열매가 되셨습니다 🌱',
+    '1등으로 아멘! 부지런한 새벽이 복되다 하셨죠 ✨',
+    '오늘의 첫 아멘의 주인공입니다! 은혜가 넘치는 하루 되세요 🙌'
+  ];
+  var AMEN_MSG_NEXT = [
+    '오늘 {n}번째 아멘을 하셨네요! 축하합니다 🎉',
+    '{n}번째로 함께해 주셨네요! 오늘도 은혜 충만하세요 🙏',
+    '말씀과 함께한 {n}번째 발걸음이에요! 오늘 하루도 평안하세요 🌿',
+    '{n}번째 아멘, 참 귀합니다! 늘 강건하시길 축복합니다 💚',
+    '오늘 {n}번째로 큐티를 마치셨네요! 주님과 동행하는 하루 되세요 ✨'
+  ];
+  function pickAmenMessage(rank) {
+    if (!rank) return '✓ 오늘의 큐티를 마치고 아멘 하셨습니다';
+    var pool = rank === 1 ? AMEN_MSG_FIRST : AMEN_MSG_NEXT;
+    var msg = pool[Math.floor(Math.random() * pool.length)];
+    return msg.replace('{n}', rank);
+  }
   function amenDoneHTML(rank) {
-    return '<span class="qtc-amen-done">✓ 오늘의 큐티를 마치고 아멘 하셨습니다' +
-      (rank ? ' · <b style="color:#0d9488">오늘 ' + rank + '번째</b>' : '') + '</span>';
+    return '<span class="qtc-amen-done">✓ ' + esc(pickAmenMessage(rank)) + '</span>';
   }
   function loadAmenState(me, t) {
     var box = document.getElementById('dashAmenBox'); if (!box) return;
