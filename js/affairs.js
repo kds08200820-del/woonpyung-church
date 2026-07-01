@@ -1947,12 +1947,17 @@ console.log('[affairs.js] v20260701dj');
       if (totalPages > 1) {
         var from = Math.max(1, page - 2), to = Math.min(totalPages, from + 4);
         from = Math.max(1, to - 4);
-        if (page > 1) pageBtns += '<button class="sm-pg" data-pg="' + (page - 1) + '" style="padding:4px 11px;border:1px solid #dfe5ee;border-radius:6px;background:#fff;cursor:pointer;font-size:.84rem">‹</button>';
+        function pgBtn(pg, label) {
+          return '<button class="sm-pg" data-pg="' + pg + '" style="padding:4px 11px;border:1px solid #dfe5ee;border-radius:6px;background:#fff;cursor:pointer;font-size:.84rem">' + label + '</button>';
+        }
+        if (page > 10) pageBtns += pgBtn(Math.max(1, page - 10), '«10');
+        if (page > 1) pageBtns += pgBtn(page - 1, '‹');
         for (var pi = from; pi <= to; pi++) {
           var isActive = pi === page;
           pageBtns += '<button class="sm-pg" data-pg="' + pi + '" style="padding:4px 11px;border:1px solid ' + (isActive ? 'var(--accent,#032257)' : '#dfe5ee') + ';border-radius:6px;background:' + (isActive ? 'var(--accent,#032257)' : '#fff') + ';color:' + (isActive ? '#fff' : 'inherit') + ';cursor:pointer;font-size:.84rem;font-weight:' + (isActive ? '700' : '400') + '">' + pi + '</button>';
         }
-        if (page < totalPages) pageBtns += '<button class="sm-pg" data-pg="' + (page + 1) + '" style="padding:4px 11px;border:1px solid #dfe5ee;border-radius:6px;background:#fff;cursor:pointer;font-size:.84rem">›</button>';
+        if (page < totalPages) pageBtns += pgBtn(page + 1, '›');
+        if (page <= totalPages - 10) pageBtns += pgBtn(Math.min(totalPages, page + 10), '10»');
       }
 
       // ── 테이블 행 ──
