@@ -3,7 +3,7 @@
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
  * 콘솔: [finance-api.js] v20260701di (Supabase)
  */
-console.log('[finance-api.js] v20260701di (Supabase)');
+console.log('[finance-api.js] v20260701lib14 (Supabase + exportSermonPdf→AppsScript)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -53,6 +53,23 @@ window.WPF = (function () {
       });
     }
     return next(0);
+  }
+
+  // ── Apps Script(/exec) 직접 호출 ──
+  // Supabase로 대체 불가한 기능(구글드라이브 PDF 생성 등)은 기존 Apps Script 백엔드를 그대로 사용.
+  // Content-Type: text/plain 으로 프리플라이트(OPTIONS) 회피. 토큰은 Supabase access_token.
+  function appsScript(action, params) {
+    var url = window.FINANCE_API_URL || '';
+    if (!url) return Promise.reject(new Error('FINANCE_API_URL 미설정'));
+    var payload = { action: action, token: token() };
+    if (params) { for (var k in params) { if (Object.prototype.hasOwnProperty.call(params, k)) payload[k] = params[k]; } }
+    return fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var j; try { j = JSON.parse(t); } catch (e) { throw new Error('서버 응답을 해석할 수 없습니다.'); }
+        if (!j || !j.ok) throw new Error((j && j.error) || '요청이 실패했습니다.');
+        return j;
+      });
   }
 
   // ── 매핑 헬퍼 (Supabase 컬럼 ↔ 기존 한글 키) ──
@@ -215,6 +232,8 @@ window.WPF = (function () {
       }
       case 'cancelReceipt':
         return rest('PATCH', 'donation_receipts?id=eq.' + encodeURIComponent(params.id), { status: 'cancelled', cancelled_at: new Date().toISOString() }, 'return=minimal').then(function () { return { ok: true }; });
+      case 'exportSermonPdf':
+        return appsScript('exportSermonPdf', params);
       default:
         return Promise.reject(new Error('unknown action: ' + action));
     }
