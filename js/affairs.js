@@ -1996,7 +1996,7 @@ console.log('[affairs.js] v20260701dj');
       var tableRows = pageRows.map(function (r, i) {
         var num = baseIdx + i + 1;
         var c = svcColor(r.service);
-        var isQt = (r.service === '매일 QT' || r.service === '새벽기도');
+        var isQt = (r.service === '매일 QT');   // 게시는 매일 QT만 (새벽기도는 비게시 — 2026-07 정책)
         var ds = fmtD(r.sermon_date);
         var hasUri = !!(r.qt_bible_text && r.qt_bible_text.trim());
         var qtCell;
