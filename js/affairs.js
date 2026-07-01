@@ -1838,6 +1838,34 @@ console.log('[affairs.js] v20260701dj');
         .catch(function () { alert('우리말성경 데이터 로드 실패'); if (btn) { btn.disabled = false; btn.textContent = '📥 우리말 일괄입력'; } });
     }
 
+    // ── 새벽기도 → 매일 QT 예배종류 일괄 전환 ──
+    function bulkConvertDawnToQt() {
+      var todo = smRows.filter(function (r) { return r.service === '새벽기도'; });
+      if (!todo.length) { alert('전환할 "새벽기도" 항목이 없습니다.'); return; }
+      if (!confirm('"새벽기도" ' + todo.length + '개를 모두 "매일 QT"로 전환합니다.\n계속할까요?')) return;
+      var btn = panel.querySelector('#sm_conv_dawn');
+      if (btn) { btn.disabled = true; }
+      var CHUNK = 50;
+      var ids = todo.map(function (r) { return r.id; });
+      var chunks = [];
+      for (var i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+      var done = 0, failed = 0, ci = 0;
+      function next() {
+        if (btn) btn.textContent = '전환 중 ' + Math.min(done + failed, ids.length) + '/' + ids.length + '…';
+        if (ci >= chunks.length) {
+          if (btn) { btn.disabled = false; btn.textContent = '🔁 새벽기도→QT 전환'; }
+          loadList();
+          alert('완료 — ' + done + '개를 "매일 QT"로 전환했습니다.' + (failed ? '\n실패 ' + failed + '개' : ''));
+          return;
+        }
+        var chunk = chunks[ci++];
+        api('PATCH', 'sermons?id=in.(' + chunk.join(',') + ')', { service: '매일 QT' }, 'return=minimal')
+          .then(function () { done += chunk.length; next(); })
+          .catch(function () { failed += chunk.length; next(); });
+      }
+      next();
+    }
+
     function loadList() {
       api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) { smRows = rows || []; renderView(); }).catch(function (e) {
         var listBox = panel.querySelector('#sm_list');
@@ -1955,6 +1983,7 @@ console.log('[affairs.js] v20260701dj');
         '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef1f5">' +
         '<b style="font-size:.95rem">설교</b>' + svcSel + yrSel + sortBtn + ppSel +
         '<button id="sm_bulk_urm" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#0d6b5e;border-color:#0d9488">📥 우리말 일괄입력</button>' +
+        '<button id="sm_conv_dawn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#8a4a00;border-color:#d97706">🔁 새벽기도→QT 전환</button>' +
         '<span style="margin-left:auto">' + info + '</span></div>' +
         '<div style="overflow:auto"><table class="fin-table"><thead><tr>' +
         '<th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>오늘의 말씀(QT)</th><th>관리</th>' +
@@ -1968,6 +1997,7 @@ console.log('[affairs.js] v20260701dj');
       listBox.querySelector('#sm_sort_btn').onclick = function () { smTableState.sort = smTableState.sort === 'desc' ? 'asc' : 'desc'; renderTable(); };
       listBox.querySelector('#sm_per_page').onchange = function () { smTableState.perPage = Number(this.value); smTableState.page = 1; renderTable(); };
       var bulkUrmBtn = listBox.querySelector('#sm_bulk_urm'); if (bulkUrmBtn) bulkUrmBtn.onclick = bulkFillUrm;
+      var convDawnBtn = listBox.querySelector('#sm_conv_dawn'); if (convDawnBtn) convDawnBtn.onclick = bulkConvertDawnToQt;
       Array.prototype.forEach.call(listBox.querySelectorAll('.sm-pg'), function (btn) {
         btn.onclick = function () { smTableState.page = Number(btn.dataset.pg); renderTable(); };
       });
