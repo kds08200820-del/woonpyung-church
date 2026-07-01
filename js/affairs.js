@@ -220,6 +220,7 @@ console.log('[affairs.js] v20260701dj');
     else if (tab === 'library') renderLibrary(p);
     else if (tab === 'bible') renderBibleViewer(p);
     else if (tab === 'settings') renderSettings(p);
+    else if (tab === 'edu') renderEdu(p);
     else renderManager(p, TYPES[tab]);
   }
 
@@ -340,7 +341,7 @@ console.log('[affairs.js] v20260701dj');
       e.preventDefault();
       var rec = collect(form, type);
       var nme = form.querySelector('[data-k="member_name"]');
-      rec.member_key = (nme && nme.dataset.memberKey) ? nme.dataset.memberKey : null; // 교적 매칭키(관계 연결)
+      if (hasMember) { rec.member_key = (nme && nme.dataset.memberKey) ? nme.dataset.memberKey : null; } // 교적 매칭키(관계 연결)
       if (!rec[type.dateCol] || (hasMember && !rec.member_name)) { msg.style.color = '#c0392b'; msg.textContent = hasMember ? '일자와 대상자는 필수입니다.' : '일자는 필수입니다.'; return; }
       msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
       var p = editId
@@ -3549,6 +3550,196 @@ console.log('[affairs.js] v20260701dj');
     renderBooks();
     renderChaps();
     loadAndShow();
+  }
+
+  // ====================================================================
+  //  교육관리 — 교육 개설 / 참석자 연동
+  // ====================================================================
+  function renderEdu(panel) {
+    panel.innerHTML =
+      '<div class="fin-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">' +
+      '<div><b style="font-size:1.08rem;color:var(--accent,#032257)">교육 관리</b>' +
+      '<div style="font-size:.84rem;color:var(--ink-soft);margin-top:4px">교육 과정을 개설하고 참석자(이수자)를 교적부에 연동합니다.</div></div>' +
+      '<button class="btn btn-solid" id="edu_new_btn" style="padding:10px 20px">✏️ 교육 개설</button></div>' +
+      '<div id="edu_list"><p class="qt-loading">불러오는 중…</p></div>';
+
+    panel.querySelector('#edu_new_btn').onclick = function () { eduEditor(null); };
+
+    function loadList() {
+      api('GET', 'edu_records?select=*&order=edu_date.desc,created_at.desc')
+        .then(function (rows) {
+          var box = panel.querySelector('#edu_list');
+          if (!rows || !rows.length) {
+            box.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">개설된 교육이 없습니다. 위 <b>교육 개설</b>로 시작하세요.</p></div>'; return;
+          }
+          box.innerHTML =
+            '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b>교육 목록 (' + rows.length + '건)</b></div>' +
+            '<div style="overflow:auto"><table class="fin-table"><thead><tr>' +
+            '<th>교육명</th><th>기간</th><th>대상/부서</th><th>강사</th><th>참석자</th><th>관리</th>' +
+            '</tr></thead><tbody>' +
+            rows.map(function (r) {
+              var parts = [];
+              try { parts = JSON.parse(r.participants || '[]'); } catch (e) {}
+              var s = r.edu_date || '', e2 = r.end_date || '';
+              var period = s + (e2 && e2 !== s ? ' ~ ' + e2 : '');
+              return '<tr>' +
+                '<td><b class="edu-edit" data-id="' + esc(r.id) + '" style="cursor:pointer;color:var(--accent,#032257)">' + esc(r.title || '(제목없음)') + '</b></td>' +
+                '<td style="white-space:nowrap">' + esc(period) + '</td>' +
+                '<td>' + esc(r.target || '') + '</td>' +
+                '<td>' + esc(r.teacher || '') + '</td>' +
+                '<td style="max-width:260px">' + (parts.length ? parts.map(function (p) {
+                  return '<span class="fin-pill" style="background:#e8f6ee;color:#1e874b;margin:1px">' + esc(p.name) + (p.key ? ' 🔗' : '') + '</span>';
+                }).join('') : '<span style="color:#c5ccd6">—</span>') + '</td>' +
+                '<td style="white-space:nowrap"><button class="btn btn-line edu-edit" data-id="' + esc(r.id) + '" style="padding:3px 9px;font-size:.78rem">수정</button>' +
+                ' <button class="btn btn-line edu-del" data-id="' + esc(r.id) + '" style="padding:3px 9px;font-size:.78rem">삭제</button></td></tr>';
+            }).join('') + '</tbody></table></div></div>';
+          var byId = {}; rows.forEach(function (r) { byId[r.id] = r; });
+          Array.prototype.forEach.call(box.querySelectorAll('.edu-edit'), function (b) {
+            b.onclick = function () { eduEditor(byId[b.dataset.id]); };
+          });
+          Array.prototype.forEach.call(box.querySelectorAll('.edu-del'), function (b) {
+            b.onclick = function () {
+              if (!confirm('이 교육 과정을 삭제할까요?')) return;
+              api('DELETE', 'edu_records?id=eq.' + b.dataset.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); });
+            };
+          });
+        })
+        .catch(function (e) {
+          var box = panel.querySelector('#edu_list');
+          if (/does not exist|42P01|schema cache/i.test(e.message))
+            box.innerHTML = msgCard('테이블 준비 필요', 'Supabase SQL Editor에서 affairs_modules.sql을 실행해 주세요.');
+          else box.innerHTML = msgCard('조회 실패', e.message);
+        });
+    }
+
+    function eduEditor(rec) {
+      rec = rec || {};
+      var participants = [];
+      try { participants = JSON.parse(rec.participants || '[]'); } catch (e) {}
+
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 16px 60px';
+      ov.innerHTML =
+        '<div style="background:#fff;border-radius:14px;width:100%;max-width:700px;box-shadow:0 8px 40px rgba(0,0,0,.22);padding:28px 24px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
+        '<h3 style="margin:0;color:var(--accent,#032257)">' + (rec.id ? '교육 수정' : '교육 개설') + '</h3>' +
+        '<button type="button" id="edu_xbtn" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#9aa5b1;line-height:1">×</button></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:18px">' +
+        '<div class="af-field" style="grid-column:1/-1"><label>교육명</label><input type="text" id="edu_f_title" value="' + esc(rec.title || '') + '" placeholder="예: 새가족반, 제자훈련 1기" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field"><label>시작일</label><input type="date" id="edu_f_start" value="' + esc(rec.edu_date || today()) + '" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field"><label>종료일</label><input type="date" id="edu_f_end" value="' + esc(rec.end_date || '') + '" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field"><label>대상/부서</label><input type="text" id="edu_f_target" value="' + esc(rec.target || '') + '" placeholder="예: 새가족, 중등부" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field"><label>강사/인도자</label><input type="text" id="edu_f_teacher" value="' + esc(rec.teacher || '') + '" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field" style="grid-column:1/-1"><label>내용/비고</label><textarea id="edu_f_content" style="min-height:70px;width:100%;box-sizing:border-box">' + esc(rec.content || '') + '</textarea></div>' +
+        '</div>' +
+        '<div style="margin-bottom:20px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<label style="font-size:.82rem;color:var(--ink-soft);font-weight:600">참석자 / 이수자 <span id="edu_pcnt" style="color:var(--accent,#032257)">(' + participants.length + '명)</span></label>' +
+        '<button type="button" id="edu_add_p" class="btn btn-line" style="padding:4px 13px;font-size:.82rem">＋ 추가</button></div>' +
+        '<div id="edu_pbox" style="display:flex;flex-wrap:wrap;gap:6px;min-height:46px;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;background:#fafbfc;align-items:flex-start"></div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:5px">추가 버튼을 누르면 입력창이 생깁니다. 이름을 입력하면 교적부에서 검색합니다. Enter 또는 선택으로 추가됩니다.</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;align-items:center">' +
+        '<button type="button" id="edu_save_btn" class="btn btn-solid" style="padding:10px 24px">저장</button>' +
+        '<button type="button" id="edu_cancel_btn" class="btn btn-line" style="padding:10px 18px">닫기</button>' +
+        '<span id="edu_msg" style="font-size:.85rem"></span></div></div>';
+
+      document.body.appendChild(ov);
+
+      var pbox = ov.querySelector('#edu_pbox');
+      var pcnt = ov.querySelector('#edu_pcnt');
+
+      function renderParts() {
+        pbox.innerHTML = participants.map(function (p, i) {
+          return '<span style="display:inline-flex;align-items:center;gap:5px;background:#e8f6ee;color:#155e32;border-radius:999px;padding:5px 11px;font-size:.83rem;font-weight:600">' +
+            esc(p.name) + (p.key ? ' <span style="font-size:.68rem;opacity:.55">🔗</span>' : '') +
+            ' <b data-rm="' + i + '" style="cursor:pointer;opacity:.45;font-size:.9rem;margin-left:1px">×</b></span>';
+        }).join('');
+        Array.prototype.forEach.call(pbox.querySelectorAll('[data-rm]'), function (b) {
+          b.onclick = function () { participants.splice(Number(b.dataset.rm), 1); renderParts(); if (pcnt) pcnt.textContent = '(' + participants.length + '명)'; };
+        });
+        if (pcnt) pcnt.textContent = '(' + participants.length + '명)';
+      }
+
+      function addPartInput() {
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'position:relative;display:inline-block;vertical-align:middle';
+        var inp = document.createElement('input');
+        inp.type = 'text'; inp.placeholder = '이름 검색…';
+        inp.style.cssText = 'padding:5px 10px;border:2px solid #3a6db5;border-radius:6px;font:inherit;font-size:.85rem;width:130px;outline:none';
+        inp.setAttribute('autocomplete', 'off');
+        wrap.appendChild(inp); pbox.appendChild(wrap); inp.focus();
+        var pop = null, hi = -1, matches = [];
+        function closePop() { if (pop) { pop.remove(); pop = null; hi = -1; } }
+        function pickMember(m) { participants.push({ name: m.name, key: m.key || '' }); wrap.remove(); renderParts(); }
+        function pickRaw() { var n = inp.value.trim(); if (n) { participants.push({ name: n, key: '' }); } wrap.remove(); renderParts(); }
+        inp.addEventListener('input', function () {
+          closePop();
+          var q = inp.value.trim().toLowerCase(); if (!q || !MEMBERS.length) return;
+          matches = MEMBERS.filter(function (m) { return (m.name || '').toLowerCase().indexOf(q) >= 0; }).slice(0, 8);
+          if (!matches.length) return;
+          pop = document.createElement('div'); pop.className = 'fin-sugg'; pop.style.zIndex = '950';
+          matches.forEach(function (m) {
+            var d = document.createElement('div');
+            d.innerHTML = esc(m.name) + (memberLine(m) ? ' <span style="color:#9aa5b1;font-size:.78rem">' + esc(memberLine(m)) + '</span>' : '');
+            d.onmousedown = function (e) { e.preventDefault(); pickMember(m); };
+            pop.appendChild(d);
+          });
+          wrap.appendChild(pop);
+        });
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); if (pop && matches.length) pickMember(matches[hi >= 0 ? hi : 0]); else pickRaw(); return; }
+          if (e.key === 'Escape') { wrap.remove(); return; }
+          if (!pop) return;
+          var rows = pop.querySelectorAll('div');
+          if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); }
+          else return;
+          Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); });
+        });
+        inp.addEventListener('blur', function () { setTimeout(function () { if (wrap.parentNode) pickRaw(); }, 220); });
+      }
+
+      ov.querySelector('#edu_add_p').onclick = addPartInput;
+      function closeOv() { ov.remove(); }
+      ov.querySelector('#edu_xbtn').onclick = closeOv;
+      ov.querySelector('#edu_cancel_btn').onclick = closeOv;
+      ov.addEventListener('click', function (e) { if (e.target === ov) closeOv(); });
+
+      ov.querySelector('#edu_save_btn').onclick = function () {
+        var title = ov.querySelector('#edu_f_title').value.trim();
+        var start = ov.querySelector('#edu_f_start').value;
+        var msgEl = ov.querySelector('#edu_msg');
+        if (!title || !start) { msgEl.style.color = '#c0392b'; msgEl.textContent = '교육명과 시작일은 필수입니다.'; return; }
+        var data = {
+          title: title,
+          edu_date: start,
+          end_date: ov.querySelector('#edu_f_end').value || null,
+          target: ov.querySelector('#edu_f_target').value.trim() || null,
+          teacher: ov.querySelector('#edu_f_teacher').value.trim() || null,
+          content: ov.querySelector('#edu_f_content').value || null,
+          attendance: String(participants.length),
+          participants: JSON.stringify(participants)
+        };
+        msgEl.style.color = '#7b8794'; msgEl.textContent = '저장 중…';
+        var pr = rec.id
+          ? api('PATCH', 'edu_records?id=eq.' + rec.id, data, 'return=minimal')
+          : api('POST', 'edu_records', data, 'return=minimal');
+        pr.then(function () {
+          msgEl.style.color = 'green'; msgEl.textContent = '✓ 저장되었습니다';
+          setTimeout(function () { closeOv(); loadList(); }, 600);
+        }).catch(function (e) {
+          msgEl.style.color = '#c0392b';
+          msgEl.textContent = '저장 실패: ' + e.message;
+          if (/participants|end_date/i.test(e.message))
+            msgEl.textContent += ' — Supabase SQL Editor에서 컬럼을 추가해 주세요.';
+        });
+      };
+
+      renderParts();
+    }
+
+    loadList();
   }
 
   // ====================================================================
