@@ -2269,6 +2269,12 @@ console.log('[affairs.js] v20260701dj');
         '.wd-tr{border-left-width:1px;border-bottom-width:1px}' +
         '.wd-bl{border-right-width:1px;border-top-width:1px}' +
         '.wd-br{border-left-width:1px;border-top-width:1px}' +
+        // 페이지 구분(실제로 내용을 다음 장으로 밀어내는 빈 칸) — 워드처럼 눈에 보이는 간격으로 페이지가 나뉨
+        '.pg-break-spacer{display:block;user-select:none;pointer-events:none}' +
+        // 페이지 번호 레이어(편집 불가 오버레이, 페이지마다 하단 중앙에 표시)
+        '.wd-pagenum-layer{position:absolute;left:0;right:0;top:0;pointer-events:none}' +
+        '.wd-pagenum-item{position:absolute;left:0;right:0;text-align:center;font:12px/1 \'Noto Serif KR\',serif;color:#9aa5b1}' +
+        '.sed-dark .wd-pagenum-item{color:#6d7c92}' +
         // ── 리본 2줄째(제목·본문·불러오기·용지·여백·배율) ──
         '.sed-ribbon2{padding-top:0}' +
         '.sed-r2{display:flex;align-items:center;gap:7px;flex-wrap:wrap;width:100%;max-width:1400px;background:linear-gradient(180deg,#ffffff 0%,#f5f8fc 100%);border:1px solid #e3e8f0;border-radius:11px;padding:7px 10px}' +
@@ -2467,6 +2473,9 @@ console.log('[affairs.js] v20260701dj');
         '<span class="r2-lbl wd-ctl">용지</span><select id="wd_paper" class="se-selflat wd-ctl"><option value="A4">A4 (210×297㎜)</option><option value="iPad">아이패드 (180×240㎜)</option><option value="Letter">레터 (216×279㎜)</option><option value="B5">B5 (176×250㎜)</option></select>' +
         '<span class="r2-lbl wd-ctl">여백</span><select id="wd_margin" class="se-selflat wd-ctl"><option value="15">좁게 (15㎜)</option><option value="20" selected>보통 (20㎜)</option><option value="25">넓게 (25㎜)</option></select>' +
         '<span class="r2-lbl wd-ctl">배율</span><input type="range" id="wd_zoom" class="wd-ctl" min="50" max="160" value="100" style="width:110px"><b id="wd_zoom_v" class="r2-lbl wd-ctl" style="min-width:38px">100%</b>' +
+        '<span class="r2-lbl wd-ctl">페이지 번호</span><select id="wd_pgnum" class="se-selflat wd-ctl">' +
+        '<option value="off">없음</option><option value="num">1</option><option value="numTotal">1 / N</option><option value="dash">- 1 -</option><option value="kr">1페이지</option><option value="paren">(1)</option>' +
+        '</select>' +
         '</div></div>' +
         // ── 접이식 패널: 출력되는 성경 본문 / 기도 (리본 버튼으로 열고 닫음 — 원고 영역과 분리) ──
         '<div class="sed-panel" id="pn_bible" style="display:none"><div class="sed-panel-in">' +
@@ -2542,6 +2551,7 @@ console.log('[affairs.js] v20260701dj');
         '<div class="wd-page" id="wd_page">' +
         '<i class="wd-crop wd-tl"></i><i class="wd-crop wd-tr"></i><i class="wd-crop wd-bl"></i><i class="wd-crop wd-br"></i>' +
         '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 상단 리본의 도구로 굵게·제목·인용·색·목록·메모·이미지 등 서식을 적용할 수 있습니다."></div>' +
+        '<div class="wd-pagenum-layer" id="wd_pgnum_layer"></div>' +
         '</div></div>' +
         '</div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
@@ -3492,17 +3502,24 @@ console.log('[affairs.js] v20260701dj');
           };
         })();
 
-        // ── MS Word 스타일 페이지 뷰: 용지 크기·여백·배율 + ㎜ 눈금자 ──
+        // ── MS Word 스타일 페이지 뷰: 용지 크기·여백·배율 + ㎜ 눈금자 + 실제 페이지 구분(간격) + 페이지 번호 ──
         (function wdPageView() {
           var wdPage = ov.querySelector('#wd_page'), wdSheet = ov.querySelector('#wd_area');
           var rh = ov.querySelector('#wd_rh'), rv = ov.querySelector('#wd_rv');
-          var paperSel = ov.querySelector('#wd_paper'), marginSel = ov.querySelector('#wd_margin'), zoomR = ov.querySelector('#wd_zoom'), zoomLbl = ov.querySelector('#wd_zoom_v');
+          var pgnumLayer = ov.querySelector('#wd_pgnum_layer');
+          var paperSel = ov.querySelector('#wd_paper'), marginSel = ov.querySelector('#wd_margin'), zoomR = ov.querySelector('#wd_zoom'), zoomLbl = ov.querySelector('#wd_zoom_v'), pgnumSel = ov.querySelector('#wd_pgnum');
           if (!wdPage || !wdSheet || !rh || !rv) return;
           var MMPX = 96 / 25.4;   // 1㎜ = 3.78px(96dpi) — 화면 크기와 무관한 고정 물리 크기, 배율은 이 전체를 확대/축소
+          var GAP = 26;           // 페이지 사이 간격(워드처럼 눈에 보이게 실제로 벌어짐)
           var PAPERS = { A4: [210, 297], iPad: [180, 240], Letter: [216, 279], B5: [176, 250] };
+          var PGNUM_FMT = { num: '{i}', numTotal: '{i} / {n}', dash: '- {i} -', kr: '{i}페이지', paren: '({i})' };
           var LSK = 'wpWdPage1';
-          var prefs = { paper: 'A4', margin: 20, zoom: 100 };
-          try { var sv = JSON.parse(localStorage.getItem(LSK) || 'null'); if (sv) { if (PAPERS[sv.paper]) prefs.paper = sv.paper; prefs.margin = Number(sv.margin) || 20; prefs.zoom = Number(sv.zoom) || 100; } } catch (e) { }
+          var prefs = { paper: 'A4', margin: 20, zoom: 100, pgnum: 'off' };
+          try { var sv = JSON.parse(localStorage.getItem(LSK) || 'null'); if (sv) { if (PAPERS[sv.paper]) prefs.paper = sv.paper; prefs.margin = Number(sv.margin) || 20; prefs.zoom = Number(sv.zoom) || 100; if (PGNUM_FMT[sv.pgnum] || sv.pgnum === 'off') prefs.pgnum = sv.pgnum; } } catch (e) { }
+          function metrics() {
+            var sz = PAPERS[prefs.paper] || PAPERS.A4;
+            return { pw: Math.round(sz[0] * MMPX), ph: Math.round(sz[1] * MMPX), mg: Math.round(prefs.margin * MMPX) };
+          }
           function drawRuler(cv, lenPx, mgnPx, vertical, pxmm) {
             var TH = 20;
             if (vertical) { cv.width = TH; cv.height = lenPx; cv.style.height = lenPx + 'px'; }
@@ -3530,15 +3547,13 @@ console.log('[affairs.js] v20260701dj');
             c.stroke();
           }
           function applyPage() {
-            var sz = PAPERS[prefs.paper] || PAPERS.A4;
-            // 용지는 실제 물리 크기(㎜×96dpi) 고정 — 배율(zoom)이 전체(용지+눈금자)를 그대로 확대·축소(유동적)
-            var pw = Math.round(sz[0] * MMPX), ph = Math.round(sz[1] * MMPX), mg = Math.round(prefs.margin * MMPX);
+            var m = metrics(), pw = m.pw, ph = m.ph, mg = m.mg;
             var z = (Number(prefs.zoom) || 100) / 100;
             wdPage.style.width = pw + 'px';
             wdPage.style.minHeight = ph + 'px';
             wdPage.style.padding = mg + 'px';
-            // 페이지 경계선(다음 장 시작 위치) — 내용이 길어지면 계속 반복되어 다음 장 표시
-            wdPage.style.backgroundImage = 'repeating-linear-gradient(to bottom,transparent 0,transparent ' + (ph - 1) + 'px,#dfe3ea ' + (ph - 1) + 'px,#dfe3ea ' + ph + 'px)';
+            // 페이지 경계 — 흰 용지 → 얇은 경계선 → 어두운 간격(GAP)으로 실제로 벌어져 보임(반복해서 다음 장들도 표시)
+            wdPage.style.backgroundImage = 'repeating-linear-gradient(to bottom,#ffffff 0,#ffffff ' + (ph - 2) + 'px,#c7ccd6 ' + (ph - 2) + 'px,#c7ccd6 ' + ph + 'px,#242a34 ' + ph + 'px,#242a34 ' + (ph + GAP) + 'px)';
             ed.style.padding = '0';
             drawRuler(rh, pw, mg, false, MMPX);
             drawRuler(rv, ph, mg, true, MMPX);
@@ -3555,12 +3570,59 @@ console.log('[affairs.js] v20260701dj');
             if (paperSel) paperSel.value = prefs.paper;
             if (marginSel) marginSel.value = String(prefs.margin);
             if (zoomR) zoomR.value = prefs.zoom;
+            if (pgnumSel) pgnumSel.value = prefs.pgnum;
             try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { }
+            repaginate();
+          }
+          // 실제 페이지 나눔: 원고 안의 문단(최상위 블록)을 훑어 한 쪽 분량을 넘기면 그 앞에 '빈 칸(간격)'을 끼워 다음 장으로 밀어냄
+          // — 배경의 흰 용지/간격 줄무늬와 정확히 맞물려 진짜 워드처럼 페이지가 눈에 보이게 나뉜다.
+          // 참고: 한 문단이 통째로 한 쪽보다 길면(드묾) 그 문단은 나누지 않음(문단 중간 강제분할은 하지 않음).
+          function repaginate() {
+            var m = metrics(), ph = m.ph, mg = m.mg;
+            var pageInnerH = ph - 2 * mg;
+            Array.prototype.slice.call(ed.querySelectorAll('.pg-break-spacer')).forEach(function (n) { n.remove(); });
+            var kids = Array.prototype.slice.call(ed.children);
+            var pageEndY = mg + pageInnerH;   // 현재 페이지의 본문 하단 경계(wd-page 기준 y좌표)
+            var totalPages = 1, firstOnPage = true;
+            kids.forEach(function (k) {
+              // .se-editor(ed)는 position:static이라 k의 offsetParent는 곧바로 position:relative인 wd-page — k.offsetTop이 이미 wd-page 기준 좌표
+              var top = k.offsetTop, bottom = top + k.offsetHeight;
+              if (bottom > pageEndY + 0.5) {
+                if (firstOnPage) { firstOnPage = false; return; }   // 한 문단이 한 쪽보다 길면 분할하지 않고 그냥 흘러넘김
+                var sp = document.createElement('div');
+                sp.className = 'pg-break-spacer';
+                sp.contentEditable = 'false';
+                sp.style.height = Math.max(0, Math.round(pageEndY - top) + 2 * mg + GAP) + 'px';
+                ed.insertBefore(sp, k);
+                pageEndY += ph + GAP;
+                totalPages++;
+                firstOnPage = true;
+              } else {
+                firstOnPage = false;
+              }
+            });
+            renderPageNums(totalPages, ph);
+          }
+          function renderPageNums(totalPages, ph) {
+            if (!pgnumLayer) return;
+            var fmt = PGNUM_FMT[prefs.pgnum];
+            if (!fmt) { pgnumLayer.innerHTML = ''; return; }
+            var html = '';
+            for (var i = 1; i <= totalPages; i++) {
+              var y = (i - 1) * (ph + GAP) + ph - 26;   // 페이지 하단 여백 안(대략 중앙)
+              var txt = fmt.replace('{i}', i).replace('{n}', totalPages);
+              html += '<div class="wd-pagenum-item" style="top:' + y + 'px">' + esc(txt) + '</div>';
+            }
+            pgnumLayer.innerHTML = html;
           }
           if (paperSel) paperSel.onchange = function () { prefs.paper = this.value; applyPage(); };
           if (marginSel) marginSel.onchange = function () { prefs.margin = Number(this.value) || 20; applyPage(); };
           if (zoomR) zoomR.oninput = function () { prefs.zoom = Number(this.value) || 100; applyPage(); };
+          if (pgnumSel) pgnumSel.onchange = function () { prefs.pgnum = this.value; try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { } repaginate(); };
           applyPage();
+          // 원고를 입력할 때마다(디바운스) 페이지 나눔·페이지 번호를 다시 계산
+          var rpgT = null;
+          ed.addEventListener('input', function () { clearTimeout(rpgT); rpgT = setTimeout(repaginate, 350); });
         })();
 
         // ── 발표자 모드: 저장 없이 현재 화면 그대로 아이패드 발표 보기 ──
