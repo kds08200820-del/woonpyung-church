@@ -665,8 +665,12 @@ console.log('[affairs.js] v20260701dj');
         .then(function (rows) {
           var nameById = {}; (rows || []).forEach(function (r) { nameById[r.user_id] = r.member_name; });
           var names = ids.map(function (id) { return nameById[id] || '(이름 미확인)'; }).sort(function (a, b) { return a.localeCompare(b, 'ko'); });
-          listEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
-            names.map(function (n) { return '<span class="fin-pill" style="background:#e8f6ee;color:#1e874b">' + esc(n) + '</span>'; }).join('') + '</div>';
+          listEl.innerHTML = '<div style="border:1px solid #eef1f5;border-radius:10px;overflow:hidden">' +
+            names.map(function (n, i) {
+              return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;' + (i ? 'border-top:1px solid #f0f3f7;' : '') + '">' +
+                '<span style="flex:0 0 28px;color:#9aa5b1;font-size:.8rem;text-align:center">' + (i + 1) + '</span>' +
+                '<span style="font-weight:600;color:#1f2937">' + esc(n) + '</span></div>';
+            }).join('') + '</div>';
         })
         .catch(function (e) { listEl.innerHTML = '<p style="color:#c0392b">명단 조회 실패: ' + esc(e.message) + '</p>'; });
     }
