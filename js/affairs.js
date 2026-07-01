@@ -2095,28 +2095,53 @@ console.log('[affairs.js] v20260701dj');
         '.qtc-sub{font-size:.74rem;color:#9aa5b1;margin:5px 0 9px;line-height:1.45}' +
         '.qtc-paste{width:100%;min-height:148px;border:1px solid #e2e8f0;border-radius:8px;padding:9px 11px;font:inherit;font-size:.82rem;line-height:1.5;outline:none;resize:vertical}.qtc-paste:focus{border-color:#9db4d6}' +
         '.qtc-rrow{font-size:.76rem;color:#41607f;background:#f3f7fc;border-radius:7px;padding:5px 9px;margin-top:5px;display:flex;gap:6px}.qtc-rrow b{color:#0a2c5c}' +
-        '.sed-form{max-width:760px;margin:0 auto}' +
+        // 문서(설교 원고) 페이지 — MS Word 스타일: 회색 캔버스 위 흰 페이지
+        '.sed-form{max-width:820px;margin:0 auto;background:#fff;border:1px solid #e7ebf2;border-radius:16px;box-shadow:0 12px 44px rgba(3,34,87,.09),0 2px 6px rgba(3,34,87,.04);padding:32px 42px 42px}' +
+        '.sed-mode-worship .sed-form{padding:26px 32px 34px}' +
+        '.sed-form .af-field input,.sed-form .af-field select,.sed-form .af-field textarea{border:1px solid #e3e8f0;border-radius:9px;transition:border-color .15s,box-shadow .15s}' +
+        '.sed-form .af-field input:focus,.sed-form .af-field select:focus,.sed-form .af-field textarea:focus{border-color:#9db4d6;box-shadow:0 0 0 3px rgba(60,110,200,.08);outline:none}' +
+        '.sed-form .af-field label{font-weight:600;color:#5b6b7d}' +
+        // 왼쪽 성경 보기 패널 (설교 모드 전용)
+        '.sed-aside-l{position:absolute;left:24px;top:22px;width:304px}' +
+        '.sed-mode-worship .sed-aside-l{display:none}' +
+        '.mb-card{border:1px solid #e5e9f0;border-radius:14px;background:#fff;box-shadow:0 6px 24px rgba(3,34,87,.06);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 128px)}' +
+        '.mb-head{font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.02rem;color:var(--accent,#032257);padding:13px 15px 12px;border-bottom:1px solid #eef1f5;background:linear-gradient(180deg,#fbfcfe 0%,#f3f7fb 100%);display:flex;align-items:center;gap:6px}' +
+        '.mb-trans{display:flex;gap:5px;padding:11px 12px 7px}' +
+        '.mb-trans button{flex:1;padding:6px 4px;border:1px solid #dde3ec;background:#fff;border-radius:999px;font:inherit;font-size:.79rem;font-weight:700;cursor:pointer;color:#3a4a63;transition:.14s}' +
+        '.mb-trans button:hover{border-color:#b9c6da}' +
+        '.mb-trans button.on{background:var(--accent,#032257);color:#fff;border-color:var(--accent,#032257)}' +
+        '.mb-selrow{display:flex;gap:6px;padding:3px 12px 11px}' +
+        '.mb-selrow select{padding:7px 8px;border:1px solid #dde3ec;border-radius:8px;font:inherit;font-size:.82rem;cursor:pointer;background:#fff}' +
+        '.mb-selrow #mb_book{flex:1}.mb-selrow #mb_chap{width:74px}' +
+        '.mb-text{flex:1;overflow-y:auto;padding:6px 15px 15px;font-family:\'Noto Serif KR\',serif;border-top:1px solid #f0f3f7;background:#fdfcf8}' +
+        '.mb-thead{font-size:.8rem;font-weight:700;color:var(--accent,#032257);padding:10px 0 8px;border-bottom:1px solid #eceff4;margin-bottom:9px;display:flex;justify-content:space-between;align-items:baseline}' +
+        '.mb-thead span:last-child{font-size:.7rem;color:#9aa5b1;font-weight:400}' +
+        '.mb-verse{margin-bottom:6px;font-size:.92rem;line-height:1.85;color:#22303f}' +
+        '.mb-vn{display:inline-block;font-size:.64rem;font-weight:800;color:#3a6db5;min-width:20px;vertical-align:top;margin-top:4px}' +
+        '.mb-hint{color:#9aa5b1;font-size:.84rem;padding:16px 4px;font-style:italic}' +
+        '.mb-ins{margin:0;border:none;border-top:1px solid #eef1f5;background:#f7faff;color:#0d6b5e;font:inherit;font-size:.8rem;font-weight:700;padding:10px;cursor:pointer;transition:.14s}.mb-ins:hover{background:#edf4ff}' +
         '.sed-qt{display:flex;align-items:center;gap:7px;background:#fff7e3;border:1px solid #e8cd86;border-radius:8px;padding:0 11px;height:40px;font-size:.84rem;font-weight:500;color:#8a6d1f;cursor:pointer;user-select:none}' +
         '.sed-row2{display:grid;grid-template-columns:2.3fr 1fr;gap:12px;margin-bottom:12px}' +
         // 설교 원고 리치 에디터
-        '.se-toolbar{display:flex;flex-wrap:wrap;gap:2px;align-items:center;background:#f7f9fc;border:1px solid #e1e6ef;border-bottom:none;border-radius:9px 9px 0 0;padding:6px 8px;position:sticky;top:60px;z-index:5}' +
-        '.se-toolbar button{font:inherit;font-size:.84rem;border:1px solid transparent;background:none;border-radius:6px;padding:5px 8px;cursor:pointer;color:#33415c;line-height:1;min-width:30px;transition:background .12s}' +
-        '.se-toolbar button:hover{background:#e6edf7}.se-toolbar button:active{background:#d8e2f0}' +
-        '.se-toolbar select{font:inherit;font-size:.8rem;border:1px solid #dde3ec;border-radius:6px;padding:5px 6px;background:#fff;cursor:pointer}' +
-        '.se-sep{width:1px;height:18px;background:#dde3ec;margin:0 4px}' +
-        '.se-color{position:relative;display:inline-flex;align-items:center;font-size:.84rem;border-radius:6px;padding:5px 8px;cursor:pointer;color:#33415c}.se-color:hover{background:#e6edf7}' +
+        '.se-toolbar{display:flex;flex-wrap:wrap;gap:1px;align-items:center;background:linear-gradient(180deg,#ffffff 0%,#f5f8fc 100%);border:1px solid #e3e8f0;border-bottom:none;border-radius:11px 11px 0 0;padding:7px 9px;position:sticky;top:60px;z-index:5;box-shadow:0 1px 0 rgba(3,34,87,.03)}' +
+        '.se-toolbar button{font:inherit;font-size:.86rem;border:1px solid transparent;background:none;border-radius:7px;padding:6px 9px;cursor:pointer;color:#33415c;line-height:1;min-width:32px;transition:background .12s,box-shadow .12s}' +
+        '.se-toolbar button:hover{background:#eaf1fb;box-shadow:inset 0 0 0 1px #dbe6f5}.se-toolbar button:active{background:#d8e2f0}' +
+        '.se-toolbar select{font:inherit;font-size:.82rem;border:1px solid #dde3ec;border-radius:7px;padding:6px 8px;background:#fff;cursor:pointer;color:#33415c}' +
+        '.se-sep{width:1px;height:20px;background:#e0e6ef;margin:0 5px}' +
+        '.se-color{position:relative;display:inline-flex;align-items:center;font-size:.86rem;border-radius:7px;padding:6px 9px;cursor:pointer;color:#33415c}.se-color:hover{background:#eaf1fb}' +
         '.se-color input{position:absolute;left:0;bottom:-2px;width:100%;height:3px;opacity:0;cursor:pointer}' +
         '.se-color b{display:inline-block;border-bottom:3px solid currentColor;line-height:1.05}' +
-        '.se-editor{min-height:52vh;border:1px solid #e1e6ef;border-radius:0 0 9px 9px;padding:20px 22px;font-size:1.05rem;line-height:1.95;font-family:\'Noto Serif KR\',serif;background:#fff;outline:none;color:#1a1a1a}' +
-        '.se-editor:focus{border-color:#9db4d6;box-shadow:0 0 0 3px rgba(60,110,200,.08)}' +
+        '.se-editor{min-height:56vh;border:1px solid #e3e8f0;border-radius:0 0 11px 11px;padding:26px 30px 34px;font-size:1.06rem;line-height:2;font-family:\'Noto Serif KR\',serif;background:#fff;outline:none;color:#1a1a1a}' +
+        '.se-editor:focus{border-color:#c4d2e6;box-shadow:inset 0 1px 4px rgba(3,34,87,.04)}' +
         '.se-editor:empty:before{content:attr(data-ph);color:#aab3c0}' +
         '.se-editor h2{font-size:1.42em;font-weight:800;margin:.6em 0 .3em;color:#0a2c5c}' +
         '.se-editor h3{font-size:1.18em;font-weight:700;margin:.5em 0 .25em;color:#13314e}' +
         '.se-editor blockquote{border-left:4px solid #cdd7e3;margin:.5em 0;padding:.15em 0 .15em 14px;color:#475569}' +
         '.se-editor p{margin:.45em 0}.se-editor ul,.se-editor ol{margin:.45em 0;padding-left:1.5em}.se-editor mark{padding:0 1px}' +
         '.se-count{font-weight:400;font-size:.74rem;color:#9aa5b1;margin-left:8px}' +
-        '@media(max-width:1480px){.sed-aside-r{position:static;right:auto;top:auto;width:auto;max-width:760px;margin:0 auto 18px}}' +
-        '@media(max-width:1240px){.sed-aside{position:static;left:auto;top:auto;width:auto;max-width:760px;margin:0 auto 20px}.sed-form{max-width:760px}}' +
+        '@media(max-width:1560px){.sed-aside-r{position:static;right:auto;top:auto;width:auto;max-width:820px;margin:0 auto 18px}}' +
+        '@media(max-width:1360px){.sed-aside-l{position:static;left:auto;top:auto;width:auto;max-width:820px;margin:0 auto 18px}.mb-card{max-height:460px}}' +
+        '@media(max-width:1240px){.sed-aside{position:static;left:auto;top:auto;width:auto;max-width:820px;margin:0 auto 20px}.sed-form{max-width:820px}}' +
         '@media(max-width:560px){.sed-row2{grid-template-columns:1fr}}' +
         '</style>' +
         '<header style="position:sticky;top:0;z-index:6;background:linear-gradient(180deg,#ffffff 0%,#f7f9fc 100%);border-bottom:1px solid #e1e6ef;box-shadow:0 2px 10px rgba(3,34,87,.06)">' +
@@ -2136,6 +2161,13 @@ console.log('[affairs.js] v20260701dj');
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
         '</div></header>' +
         '<div class="sed-wrap ' + (worshipMode ? 'sed-mode-worship' : 'sed-mode-sermon') + '">' +
+        (worshipMode ? '' : '<div class="sed-aside-l"><div class="mb-card">' +
+          '<div class="mb-head">📖 성경 보기</div>' +
+          '<div class="mb-trans"><button data-v="gyr" class="on">개역개정</button><button data-v="urm">우리말성경</button></div>' +
+          '<div class="mb-selrow"><select id="mb_book"></select><select id="mb_chap"></select></div>' +
+          '<div class="mb-text" id="mb_text"><p class="mb-hint">성경책과 장을 고르면 본문이 표시됩니다.</p></div>' +
+          '<button type="button" class="mb-ins" id="mb_insert" title="현재 보고 있는 장을 위 본문(성경) 칸에 넣습니다">＋ 이 장을 본문칸에 넣기</button>' +
+          '</div></div>') +
         '<div class="sed-aside"><div class="af-field" style="margin:0">' +
         '<label style="font-size:1.18rem;font-weight:700;color:var(--accent,#032257);margin-bottom:2px">📋 예배 순서</label>' +
         '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·CCM·항목을 추가하고 드래그로 정렬 · 항목에 📎 파일 첨부</div>' +
@@ -2498,6 +2530,54 @@ console.log('[affairs.js] v20260701dj');
       }
       if (fetchBtn) fetchBtn.onclick = doFetchBible;
       if (scInp) scInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doFetchBible(); } });
+
+      // ── 왼쪽 성경 보기 패널 (설교 모드 전용) ──
+      if (!worshipMode) (function () {
+        var bookSel = ov.querySelector('#mb_book'), chapSel = ov.querySelector('#mb_chap');
+        var textEl = ov.querySelector('#mb_text'), insBtn = ov.querySelector('#mb_insert');
+        if (!bookSel || !chapSel || !textEl) return;
+        var mbTrans = 'gyr', mbBook = 1, mbChap = 1;
+        var pref = parseRef(scInp ? scInp.value : ''); if (pref) { mbBook = pref.bookId; mbChap = pref.ch; }
+        bookSel.innerHTML = BBLK.map(function (b) { return '<option value="' + b[0] + '"' + (b[0] === mbBook ? ' selected' : '') + '>' + esc(b[1]) + '</option>'; }).join('');
+        function fillChaps() {
+          var bk = BBLK[mbBook - 1], h = '';
+          for (var c = 1; c <= bk[3]; c++) h += '<option value="' + c + '"' + (c === mbChap ? ' selected' : '') + '>' + c + '장</option>';
+          chapSel.innerHTML = h;
+        }
+        function mbLoad(trans) {
+          var cached = trans === 'gyr' ? window.BIBLE_GYR : window.BIBLE_URM;
+          if (cached) return Promise.resolve(cached);
+          return fetch('data/bible-' + trans + '.json').then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+            .then(function (d) { if (trans === 'gyr') window.BIBLE_GYR = d; else window.BIBLE_URM = d; return d; });
+        }
+        function show() {
+          var bk = BBLK[mbBook - 1];
+          textEl.innerHTML = '<p class="mb-hint">불러오는 중…</p>';
+          mbLoad(mbTrans).then(function (data) {
+            var verses = (data[bk[2]] || [])[mbChap - 1] || [];
+            var tname = mbTrans === 'gyr' ? '개역개정' : '우리말성경';
+            var html = '<div class="mb-thead"><span>' + esc(bk[1]) + ' ' + mbChap + '장</span><span>' + tname + ' · ' + verses.length + '절</span></div>';
+            html += verses.map(function (v, i) { return '<div class="mb-verse"><span class="mb-vn">' + (i + 1) + '</span>' + esc(v) + '</div>'; }).join('');
+            if (!verses.length) html += '<p class="mb-hint">해당 장의 데이터가 없습니다.</p>';
+            textEl.innerHTML = html; textEl.scrollTop = 0;
+          }).catch(function () { textEl.innerHTML = '<p class="mb-hint" style="color:#c0392b">성경 데이터를 불러오지 못했습니다.</p>'; });
+        }
+        bookSel.onchange = function () { mbBook = Number(this.value); mbChap = 1; fillChaps(); show(); };
+        chapSel.onchange = function () { mbChap = Number(this.value); show(); };
+        Array.prototype.forEach.call(ov.querySelectorAll('.mb-trans button'), function (b) {
+          b.onclick = function () { mbTrans = b.dataset.v; Array.prototype.forEach.call(ov.querySelectorAll('.mb-trans button'), function (x) { x.classList.toggle('on', x.dataset.v === mbTrans); }); show(); };
+        });
+        if (insBtn) insBtn.onclick = function () {
+          var bk = BBLK[mbBook - 1];
+          var bEl = ov.querySelector('#se_bible');
+          if (bEl && bEl.value.trim() && !confirm('본문(성경) 칸을 ' + bk[1] + ' ' + mbChap + '장 전체로 바꿀까요?')) return;
+          if (scInp) scInp.value = bk[1] + ' ' + mbChap + '장';
+          mbLoad('gyr').then(function (g) { var gv = (g[bk[2]] || [])[mbChap - 1] || []; if (bEl) bEl.value = gv.map(function (v, i) { return (i + 1) + ' ' + v; }).join('\n'); });
+          if (qtOn() || wmOn()) mbLoad('urm').then(function (u) { var uv = (u[bk[2]] || [])[mbChap - 1] || []; var qEl = ov.querySelector('#se_qt_bible'); if (qEl) qEl.value = uv.map(function (v, i) { return (i + 1) + ' ' + v; }).join('\n'); });
+          var msg = ov.querySelector('#se_msg'); if (msg) { msg.style.color = '#0d6b5e'; msg.textContent = '📖 ' + bk[1] + ' ' + mbChap + '장을 본문칸에 넣었습니다.'; }
+        };
+        fillChaps(); show();
+      })();
 
       function gather() {
         return {
