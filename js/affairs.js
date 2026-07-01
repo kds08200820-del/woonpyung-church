@@ -1922,8 +1922,13 @@ console.log('[affairs.js] v20260701dj');
         return svcOk && yearOk;
       }).slice().sort(function (a, b) {
         var da = a.sermon_date || '', db = b.sermon_date || '';
-        var cmp = da.localeCompare(db);
-        return sortDir === 'asc' ? cmp : -cmp;
+        if (sortDir === 'asc') return da.localeCompare(db);
+        // 최신순 = '오늘 기준' — 오늘·과거를 최신순으로 먼저, 미래(게시예정)는 가까운 날부터 뒤에
+        var td = today();
+        var aFut = da > td, bFut = db > td;
+        if (aFut !== bFut) return aFut ? 1 : -1;        // 미래는 항상 과거·오늘 뒤로
+        if (aFut) return da.localeCompare(db);          // 미래끼리: 가까운 날(오름차순) 먼저
+        return db.localeCompare(da);                    // 과거·오늘끼리: 최신(내림차순) 먼저
       });
       var total = filtered.length;
       var totalPages = Math.max(1, Math.ceil(total / perPage));
@@ -1937,7 +1942,7 @@ console.log('[affairs.js] v20260701dj');
         svcs.map(function (s) { return '<option value="' + esc(s) + '"' + (s === filtSvc ? ' selected' : '') + '>' + esc(s === '전체' ? '전체 예배' : s) + '</option>'; }).join('') + '</select>';
       var yrSel = '<select id="sm_flt_yr" style="padding:5px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;font-size:.84rem;cursor:pointer">' +
         yrs.map(function (y) { return '<option value="' + esc(y) + '"' + (y === filtYear ? ' selected' : '') + '>' + (y === '전체' ? '전체 연도' : y + '년') + '</option>'; }).join('') + '</select>';
-      var sortBtn = '<button id="sm_sort_btn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem">' + (sortDir === 'desc' ? '▼ 최신순' : '▲ 오래된순') + '</button>';
+      var sortBtn = '<button id="sm_sort_btn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem" title="최신순: 오늘·최근 설교를 위로, 게시예정(미래)은 가까운 날부터 아래로">' + (sortDir === 'desc' ? '▼ 최신순(오늘 기준)' : '▲ 오래된순') + '</button>';
       var ppSel = '<select id="sm_per_page" style="padding:5px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;font-size:.84rem;cursor:pointer">' +
         [20, 30, 50].map(function (n) { return '<option value="' + n + '"' + (n === perPage ? ' selected' : '') + '>' + n + '개씩</option>'; }).join('') + '</select>';
       var info = '<span style="font-size:.83rem;color:#9aa5b1">' + total + '편 / ' + pageRows.length + '편 표시</span>';
