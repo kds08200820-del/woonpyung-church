@@ -67,10 +67,45 @@ console.log('[dashboard.js] v20260701da');
       '<div id="familyTree" style="margin-bottom:26px;"></div>' +
       '<div id="qtProgress" style="margin-bottom:26px;"></div>';
     loadTodayQt(me);
+    loadHomeSermon();
+    loadHomeBulletin();
     loadMyEdu(me);
     loadOfferings(me);
     loadFamily(me);
     loadQtProgress(me);
+  }
+
+  /* ================= 이번 주 말씀 / 주보 (main.js 홈 위젯을 대시보드에서 직접 채움) ================= */
+  // main.js는 페이지 로드 시 1회만 #homeSermon/#homeBulletin을 채우는데, 대시보드는
+  // 로그인 확인 후 비동기로 이 요소들을 나중에 만들기 때문에 그 타이밍을 놓친다.
+  // 그래서 같은 BULLETINS 데이터로 대시보드가 직접 채운다.
+  function loadHomeSermon() {
+    var el = document.getElementById('homeSermon');
+    if (!el || typeof BULLETINS === 'undefined' || !BULLETINS.length) return;
+    var b = BULLETINS[0];
+    el.innerHTML =
+      '<span class="hs-date">' + b.dateLabel + ' · 주일 낮 예배</span>' +
+      '<h3 class="hs-title">' + b.title + '</h3>' +
+      '<p class="hs-ref">' + b.scripture + ' · ' + b.preacher + '</p>' +
+      '<blockquote class="hs-quote">' + b.quote + '</blockquote>' +
+      '<a class="btn btn-line" href="word.html#sermon">설교 더 보기 →</a>';
+  }
+  function loadHomeBulletin() {
+    var el = document.getElementById('homeBulletin');
+    if (!el || typeof BULLETINS === 'undefined' || !BULLETINS.length) return;
+    var b = BULLETINS[0];
+    var orderItems = (b.order || []).map(function (o) { return '<li>' + o + '</li>'; }).join('');
+    var newsItems = (b.news || []).slice(0, 3).map(function (n) { return '<li><strong>' + n.title + '</strong>' + n.detail + '</li>'; }).join('');
+    el.innerHTML =
+      '<div class="hb-card reveal">' +
+      '<div class="hb-hd"><span class="hb-hd-week">' + b.week + ' · 주일 낮 예배</span><span class="hb-hd-date">' + b.dateLabel + '</span></div>' +
+      '<div class="hb-body">' +
+      '<div class="hb-col"><p class="hb-col-title">예배 순서</p><ol class="hb-order">' + orderItems + '</ol></div>' +
+      '<div class="hb-col"><p class="hb-col-title">이 주의 말씀 강해</p><ul class="hb-extra"><li>' + (b.wed || '') + '</li><li>' + (b.dawn || '') + '</li><li>' + (b.qt || '') + '</li></ul>' +
+      (newsItems ? '<p class="hb-col-title">한 주의 소식</p><ul class="hb-news">' + newsItems + '</ul>' : '') +
+      '</div></div>' +
+      '<div class="hb-ft"><a class="btn btn-line" href="word.html#archive">주보 전체 보기 →</a></div>' +
+      '</div>';
   }
 
   /* ================= 오늘의 큐티 + 아멘 체크 ================= */
