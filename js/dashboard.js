@@ -152,7 +152,15 @@ console.log('[dashboard.js] v20260701da');
           }).then(function (r) {
             if (!r.ok && r.status !== 409) return r.text().then(function (txt) { throw new Error(txt); });
             box.innerHTML = '<span style="color:#1e874b;font-weight:700;font-size:.92rem;">✓ 오늘의 큐티를 마치고 아멘 하셨습니다</span>';
-          }).catch(function () { chk.disabled = false; chk.checked = false; alert('저장에 실패했습니다. 다시 시도해 주세요.'); });
+          }).catch(function (e) {
+            chk.disabled = false; chk.checked = false;
+            var msg = (e && e.message) || '';
+            if (/does not exist|42P01|schema cache|Could not find the table/i.test(msg)) {
+              alert('저장에 실패했습니다 — Supabase에 qt_checks 테이블이 아직 없습니다.\n관리자는 supabase/qt_checks.sql 을 Supabase SQL Editor에서 1회 실행해 주세요.');
+            } else {
+              alert('저장에 실패했습니다: ' + (msg || '알 수 없는 오류') + '\n다시 시도해 주세요.');
+            }
+          });
         };
       })
       .catch(function () { box.innerHTML = ''; });
