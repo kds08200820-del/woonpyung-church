@@ -2019,8 +2019,6 @@ console.log('[affairs.js] v20260701dj');
         '<div class="fin-card">' +
         '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef1f5">' +
         '<b style="font-size:.95rem">설교</b>' + svcSel + yrSel + moSel + sortBtn + ppSel +
-        '<button id="sm_bulk_urm" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#0d6b5e;border-color:#0d9488">📥 우리말 일괄입력</button>' +
-        '<button id="sm_conv_dawn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#8a4a00;border-color:#d97706">🔁 새벽기도→QT 전환</button>' +
         '<span style="margin-left:auto">' + info + '</span></div>' +
         '<div style="overflow:auto;-webkit-overflow-scrolling:touch"><table class="fin-table" style="min-width:660px"><thead><tr>' +
         '<th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>오늘의 말씀(QT)</th><th>관리</th>' +
@@ -2035,8 +2033,6 @@ console.log('[affairs.js] v20260701dj');
       var sortBtnEl = listBox.querySelector('#sm_sort_btn');
       if (sortBtnEl && !sortBtnEl.disabled) sortBtnEl.onclick = function () { smTableState.sort = smTableState.sort === 'desc' ? 'asc' : 'desc'; renderTable(); };
       listBox.querySelector('#sm_per_page').onchange = function () { smTableState.perPage = Number(this.value); smTableState.page = 1; renderTable(); };
-      var bulkUrmBtn = listBox.querySelector('#sm_bulk_urm'); if (bulkUrmBtn) bulkUrmBtn.onclick = bulkFillUrm;
-      var convDawnBtn = listBox.querySelector('#sm_conv_dawn'); if (convDawnBtn) convDawnBtn.onclick = bulkConvertDawnToQt;
       Array.prototype.forEach.call(listBox.querySelectorAll('.sm-pg'), function (btn) {
         btn.onclick = function () { smTableState.page = Number(btn.dataset.pg); renderTable(); };
       });
