@@ -22,6 +22,40 @@ console.log('[dashboard.js] v20260701da');
       return '<div class="qtc-verse"><span>' + esc(ln) + '</span></div>';
     }).join('');
   }
+  // ── 갓피아(GODpia) 성경 듣기 딥링크 (main.js의 QT 위젯 내부 스코프라 접근 불가 → 자체 보유) ──
+  var GODPIA_BASE = 'https://www.godpia.com/read/reading.asp';
+  var GODPIA_VOL = {
+    '창세기':'gen','출애굽기':'exo','레위기':'lev','민수기':'num','신명기':'deu',
+    '여호수아':'jos','사사기':'jdg','룻기':'rut','사무엘상':'1sa','사무엘하':'2sa',
+    '열왕기상':'1ki','열왕기하':'2ki','역대상':'1ch','역대하':'2ch','에스라':'ezr',
+    '느헤미야':'neh','에스더':'est','욥기':'job','시편':'psa','잠언':'pro',
+    '전도서':'ecc','아가':'sng','이사야':'isa','예레미야':'jer','예레미야애가':'lam',
+    '에스겔':'ezk','다니엘':'dan','호세아':'hos','요엘':'jol','아모스':'amo',
+    '오바댜':'oba','요나':'jnh','미가':'mic','나훔':'nam','하박국':'hab',
+    '스바냐':'zep','학개':'hag','스가랴':'zec','말라기':'mal','마태복음':'mat',
+    '마가복음':'mrk','누가복음':'luk','요한복음':'jhn','사도행전':'act','로마서':'rom',
+    '고린도전서':'1co','고린도후서':'2co','갈라디아서':'gal','에베소서':'eph','빌립보서':'php',
+    '골로새서':'col','데살로니가전서':'1th','데살로니가후서':'2th','디모데전서':'1ti','디모데후서':'2ti',
+    '디도서':'tit','빌레몬서':'phm','히브리서':'heb','야고보서':'jas','베드로전서':'1pe',
+    '베드로후서':'2pe','요한일서':'1jn','요한이서':'2jn','요한삼서':'3jn','유다서':'jud','요한계시록':'rev',
+    '창':'gen','출':'exo','레':'lev','민':'num','신':'deu','수':'jos','삿':'jdg','룻':'rut',
+    '삼상':'1sa','삼하':'2sa','왕상':'1ki','왕하':'2ki','대상':'1ch','대하':'2ch','스':'ezr',
+    '느':'neh','에':'est','욥':'job','시':'psa','잠':'pro','전':'ecc','아':'sng','사':'isa',
+    '렘':'jer','애':'lam','겔':'ezk','단':'dan','호':'hos','욜':'jol','암':'amo','옵':'oba',
+    '욘':'jnh','미':'mic','나':'nam','합':'hab','습':'zep','학':'hag','슥':'zec','말':'mal',
+    '마':'mat','막':'mrk','눅':'luk','요':'jhn','행':'act','롬':'rom','고전':'1co','고후':'2co',
+    '갈':'gal','엡':'eph','빌':'php','골':'col','살전':'1th','살후':'2th','딤전':'1ti','딤후':'2ti',
+    '딛':'tit','몬':'phm','히':'heb','약':'jas','벧전':'1pe','벧후':'2pe','요일':'1jn','요이':'2jn',
+    '요삼':'3jn','유':'jud','계':'rev'
+  };
+  function godpiaUrl(ref) {
+    if (!ref) return GODPIA_BASE;
+    var m = String(ref).replace(/\s+/g, ' ').trim().match(/([가-힣]+)\s*(\d+)\s*[:：]/);
+    if (!m) return GODPIA_BASE;
+    var code = GODPIA_VOL[m[1]];
+    return code ? (GODPIA_BASE + '?vol=' + code + '&chap=' + m[2]) : GODPIA_BASE;
+  }
+
   // 묵상/기도(HTML 또는 줄바꿈 텍스트)를 문단 블록으로 변환
   function toParaHTML(text) {
     var s = String(text || '');
@@ -137,15 +171,21 @@ console.log('[dashboard.js] v20260701da');
       .then(function (rows) {
         var q = rows && rows[0];
         if (!q) { el.innerHTML = '<div class="qt-today"><p class="qt-loading">오늘 등록된 큐티가 아직 없습니다.</p></div>'; return; }
+        var dotDate = t.replace(/-/g, '.');
+        var listenHref = (typeof godpiaUrl === 'function') ? godpiaUrl(q.scripture) : 'https://www.godpia.com/read/reading.asp';
         el.innerHTML =
           '<div class="qt-today">' +
           '<button type="button" class="qt-card-today" id="dashQtOpen">' +
-          '<span class="qt-badge">오늘의 QT · ' + esc(t) + '</span>' +
+          '<span class="qt-badge">오늘의 QT · ' + esc(dotDate) + '</span>' +
           (q.title ? '<h3 class="qt-card-title">' + esc(q.title) + '</h3>' : '') +
           (q.scripture ? '<p class="qt-card-ref">' + esc(q.scripture) + '</p>' : '') +
           '<span class="qt-card-more">묵상 전문 읽기 →</span>' +
           '</button>' +
           '<div id="dashQtFull" hidden style="margin-top:18px"></div>' +
+          '</div>' +
+          '<div class="qt-listen-wrap">' +
+          '<a class="qt-listen-btn" href="' + esc(listenHref) + '" target="_blank" rel="noopener noreferrer">🎧 말씀 듣기</a>' +
+          (q.scripture ? '<p class="qt-listen-note">갓피아(GODpia)에서 ‘' + esc(q.scripture) + '’ 말씀을 들어요</p>' : '<p class="qt-listen-note">갓피아(GODpia) 성경 듣기로 이동합니다</p>') +
           '</div>';
         var opened = false;
         document.getElementById('dashQtOpen').onclick = function () {
