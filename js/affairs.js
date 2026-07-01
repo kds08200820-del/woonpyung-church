@@ -1998,10 +1998,24 @@ console.log('[affairs.js] v20260701dj');
         '</div>' +
         '<div class="sed-row2">' +
         '<div class="af-field"><label>제목</label><input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" style="font-size:1.1rem;font-weight:700"></div>' +
-        '<div class="af-field"><label>본문(성경) <a href="' + esc(SERMON_TOOLS[0].url) + '" target="_blank" rel="noopener" style="font-weight:400;font-size:.74rem;color:#1f6feb">📖 검색</a></label><input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="예: 요한복음 3:16"></div>' +
+        '<div class="af-field"><label>본문(성경)</label>' +
+        '<div style="display:flex;gap:6px">' +
+        '<input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="예: 창1:1-5, 나훔 2:8-13" style="flex:1">' +
+        '<button type="button" id="se_fetch_btn" class="btn btn-line" style="padding:7px 11px;font-size:.8rem;white-space:nowrap;flex-shrink:0" title="입력한 구절의 개역개정 본문을 자동으로 불러옵니다">📥 불러오기</button>' +
+        '</div></div>' +
         '</div>' +
-        '<div class="af-field se-hide-worship" style="margin-bottom:10px"><label>📖 성경 본문 — 개역개정 <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">새벽기도회·주일 설교 등에 사용</span></label><textarea id="se_bible" placeholder="개역개정 본문을 입력/붙여넣으세요. (예: 1 태초에 하나님이 천지를 창조하시니라 …)" style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.bible_text || '') + '</textarea></div>' +
-        '<div class="af-field se-hide-worship" id="se_qt_bible_wrap" style="margin-bottom:12px;display:none"><label>📲 성경 본문 — 우리말성경 (QT 전용) <span style="font-weight:400;font-size:.74rem;color:#9aa5b1">QT 내보내기·카카오톡 양식에 사용</span></label><textarea id="se_qt_bible" placeholder="우리말성경 본문을 입력/붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
+        '<div class="se-hide-worship" style="margin-bottom:12px">' +
+        '<div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">' +
+        '<span style="font-size:.82rem;font-weight:700;color:#5b6b7d">📖 성경 본문</span>' +
+        '<label style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#0d6b5e"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488"' + (rec.qt_bible_text ? ' checked' : '') + '> 우리말성경</label>' +
+        '<span id="se_bible_loading" style="font-size:.75rem;color:#9aa5b1;margin-left:4px"></span>' +
+        '</div>' +
+        '<div id="se_bible_cols" style="display:grid;grid-template-columns:' + (rec.qt_bible_text ? '1fr 1fr' : '1fr') + ';gap:12px">' +
+        '<div><div style="font-size:.73rem;color:#9aa5b1;font-weight:600;margin-bottom:3px">개역개정</div>' +
+        '<textarea id="se_bible" placeholder="[📥 불러오기]를 누르거나 직접 붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.bible_text || '') + '</textarea></div>' +
+        '<div id="se_qt_bible_wrap" style="' + (rec.qt_bible_text ? '' : 'display:none') + '"><div style="font-size:.73rem;color:#9aa5b1;font-weight:600;margin-bottom:3px">우리말성경 <span style="font-weight:400">(직접 입력)</span></div>' +
+        '<textarea id="se_qt_bible" placeholder="우리말성경 본문을 붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
+        '</div></div>' +
         '<div class="af-field se-hide-worship"><label>설교 원고 <span class="se-count" id="se_count">0단어 · 0자</span></label>' +
         '<div class="se-toolbar" id="se_tb">' +
         '<button type="button" data-cmd="undo" title="실행취소">↶</button><button type="button" data-cmd="redo" title="다시실행">↷</button>' +
@@ -2230,14 +2244,85 @@ console.log('[affairs.js] v20260701dj');
       // QT 내보내기 체크박스: 켜면 우리말성경 본문칸·카카오톡 버튼 표시
       var qtToggle = ov.querySelector('#se_qt_toggle');
       var qtWrap = ov.querySelector('#se_qt_bible_wrap');
+      var wmChk = ov.querySelector('#se_woorimal_chk');
+      var bibleColsEl = ov.querySelector('#se_bible_cols');
       var kakaoBtn = ov.querySelector('#se_kakao');
       function qtOn() { return !!(qtToggle && qtToggle.checked); }
-      function syncQt() { var on = qtOn(); if (qtWrap) qtWrap.style.display = on ? '' : 'none'; if (kakaoBtn) kakaoBtn.style.display = on ? '' : 'none'; }
+      function wmOn() { return !!(wmChk && wmChk.checked); }
+      function syncQt() {
+        var showW = qtOn() || wmOn();
+        if (qtWrap) qtWrap.style.display = showW ? '' : 'none';
+        if (bibleColsEl) bibleColsEl.style.gridTemplateColumns = showW ? '1fr 1fr' : '1fr';
+        if (kakaoBtn) kakaoBtn.style.display = qtOn() ? '' : 'none';
+      }
       if (qtToggle) {
         qtToggle.checked = !!(rec.qt_bible_text || rec.service === '매일 QT');
         qtToggle.onchange = syncQt;
       }
+      if (wmChk) {
+        wmChk.onchange = syncQt;
+      }
       syncQt();
+
+      // ── 성경 본문 자동 불러오기 (개역개정, getbible.net API) ──
+      var BOOK_IDS = {
+        '창세기':1,'창':1,'출애굽기':2,'출':2,'레위기':3,'레':3,'민수기':4,'민':4,
+        '신명기':5,'신':5,'여호수아':6,'수':6,'사사기':7,'삿':7,'룻기':8,'룻':8,
+        '사무엘상':9,'삼상':9,'사무엘하':10,'삼하':10,'열왕기상':11,'왕상':11,
+        '열왕기하':12,'왕하':12,'역대상':13,'대상':13,'역대하':14,'대하':14,
+        '에스라':15,'스':15,'느헤미야':16,'느':16,'에스더':17,'에':17,'욥기':18,'욥':18,
+        '시편':19,'시':19,'잠언':20,'잠':20,'전도서':21,'전':21,'아가':22,'아':22,
+        '이사야':23,'사':23,'예레미야':24,'렘':24,'예레미야애가':25,'애가':25,'애':25,
+        '에스겔':26,'겔':26,'다니엘':27,'단':27,'호세아':28,'호':28,'요엘':29,'욜':29,
+        '아모스':30,'암':30,'오바댜':31,'옵':31,'요나':32,'욘':32,'미가':33,'미':33,
+        '나훔':34,'나':34,'하박국':35,'합':35,'스바냐':36,'습':36,'학개':37,'학':37,
+        '스가랴':38,'슥':38,'말라기':39,'말':39,
+        '마태복음':40,'마':40,'마가복음':41,'막':41,'누가복음':42,'눅':42,
+        '요한복음':43,'요':43,'사도행전':44,'행':44,'로마서':45,'롬':45,
+        '고린도전서':46,'고전':46,'고린도후서':47,'고후':47,'갈라디아서':48,'갈':48,
+        '에베소서':49,'엡':49,'빌립보서':50,'빌':50,'골로새서':51,'골':51,
+        '데살로니가전서':52,'살전':52,'데살로니가후서':53,'살후':53,
+        '디모데전서':54,'딤전':54,'디모데후서':55,'딤후':55,'디도서':56,'딛':56,
+        '빌레몬서':57,'몬':57,'히브리서':58,'히':58,'야고보서':59,'약':59,
+        '베드로전서':60,'벧전':60,'베드로후서':61,'벧후':61,
+        '요한일서':62,'요일':62,'요한이서':63,'요이':63,'요한삼서':64,'요삼':64,
+        '유다서':65,'유':65,'요한계시록':66,'계':66,'계시록':66
+      };
+      function parseRef(ref) {
+        var s = (ref || '').trim().replace(/\s+/g, ' ');
+        var m = s.match(/^([가-힣]+)\s*(\d+)\s*[:장]\s*(\d+)(?:\s*[-~]\s*(\d+))?/);
+        if (!m) return null;
+        var bookId = BOOK_IDS[m[1].replace(/\s/g, '')];
+        if (!bookId) return null;
+        return { bookId: bookId, ch: parseInt(m[2], 10), from: parseInt(m[3], 10), to: m[4] ? parseInt(m[4], 10) : parseInt(m[3], 10) };
+      }
+      var fetchBtn = ov.querySelector('#se_fetch_btn');
+      var scInp = ov.querySelector('#se_scripture');
+      var bibleLoading = ov.querySelector('#se_bible_loading');
+      function doFetchBible() {
+        var ref = scInp ? scInp.value.trim() : '';
+        if (!ref) return;
+        var p = parseRef(ref);
+        if (!p) { if (bibleLoading) bibleLoading.textContent = '구절 형식 오류 (예: 창1:1-5)'; return; }
+        if (bibleLoading) bibleLoading.textContent = '불러오는 중…';
+        var url = 'https://getbible.net/v2/korean/' + p.bookId + '/' + p.ch + '.json';
+        fetch(url)
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+          .then(function (data) {
+            var vv = (data && data.verses) ? data.verses : {};
+            var lines = [];
+            for (var vi = p.from; vi <= p.to; vi++) {
+              var v = vv[String(vi)];
+              if (v) lines.push(vi + ' ' + (v.verse || v.text || '').trim());
+            }
+            var bEl = ov.querySelector('#se_bible');
+            if (bEl) bEl.value = lines.join('\n');
+            if (bibleLoading) bibleLoading.textContent = lines.length ? ('✓ ' + lines.length + '절') : '해당 구절 없음';
+          })
+          .catch(function () { if (bibleLoading) bibleLoading.textContent = '불러오기 실패 — 수동 입력 바랍니다'; });
+      }
+      if (fetchBtn) fetchBtn.onclick = doFetchBible;
+      if (scInp) scInp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doFetchBible(); } });
 
       function gather() {
         return {
