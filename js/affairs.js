@@ -2264,7 +2264,7 @@ console.log('[affairs.js] v20260701dj');
       }
       syncQt();
 
-      // ── 성경 본문 자동 불러오기 (개역개정, getbible.net API) ──
+      // ── 성경 본문 자동 불러오기 (개역한글, bolls.life API) ──
       var BOOK_IDS = {
         '창세기':1,'창':1,'출애굽기':2,'출':2,'레위기':3,'레':3,'민수기':4,'민':4,
         '신명기':5,'신':5,'여호수아':6,'수':6,'사사기':7,'삿':7,'룻기':8,'룻':8,
@@ -2305,16 +2305,14 @@ console.log('[affairs.js] v20260701dj');
         var p = parseRef(ref);
         if (!p) { if (bibleLoading) bibleLoading.textContent = '구절 형식 오류 (예: 창1:1-5)'; return; }
         if (bibleLoading) bibleLoading.textContent = '불러오는 중…';
-        var url = 'https://getbible.net/v2/korean/' + p.bookId + '/' + p.ch + '.json';
+        var url = 'https://bolls.life/get-text/KRV/' + p.bookId + '/' + p.ch + '/';
         fetch(url)
           .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
           .then(function (data) {
-            var vv = (data && data.verses) ? data.verses : {};
-            var lines = [];
-            for (var vi = p.from; vi <= p.to; vi++) {
-              var v = vv[String(vi)];
-              if (v) lines.push(vi + ' ' + (v.verse || v.text || '').trim());
-            }
+            var arr = Array.isArray(data) ? data : [];
+            var lines = arr
+              .filter(function (v) { return v.verse >= p.from && v.verse <= p.to; })
+              .map(function (v) { return v.verse + ' ' + (v.text || '').trim(); });
             var bEl = ov.querySelector('#se_bible');
             if (bEl) bEl.value = lines.join('\n');
             if (bibleLoading) bibleLoading.textContent = lines.length ? ('✓ ' + lines.length + '절') : '해당 구절 없음';
