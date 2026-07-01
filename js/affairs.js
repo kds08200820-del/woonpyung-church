@@ -2281,6 +2281,17 @@ console.log('[affairs.js] v20260701dj');
         '.sed-dark .r2-btn{background:#1a2330;border-color:#2a3547;color:#c3cede}' +
         '.sed-dark .r2-lbl{color:#8394ab}' +
         '.sed-lightov .wd-ctl{display:none}' +   // 예배 매니저에서는 용지·여백·배율 숨김
+        '.sed-lightov .r2-sm{display:none}' +    // 예배 매니저에서는 본문 텍스트·기도 패널 버튼 숨김
+        '.r2-btn.on{background:#2c4a86;border-color:#2c4a86;color:#fff}' +
+        // ── 접이식 패널(성경 본문 텍스트 · 기도) — 리본과 같은 다크 바 ──
+        '.sed-panel{background:#10151d;border-bottom:1px solid #242e3e;padding:10px 16px 14px;flex:none;max-height:44vh;overflow-y:auto}' +
+        '.sed-panel-in{max-width:1100px;margin:0 auto}' +
+        '.sed-panel textarea{background:#161d29;border:1px solid #2a3547;color:#dde5f0;border-radius:9px;padding:9px 11px;font:inherit;resize:vertical}' +
+        '.sed-panel textarea:focus{border-color:#3f5578;outline:none}' +
+        // ── 시리즈 목록 머리글 + PDF 시리즈 줄 ──
+        '.bd-serhead{font-size:.74rem;font-weight:700;color:#8fa0b5;margin:9px 0 5px}' +
+        '.bd-serhead span{font-weight:400;color:#6d7c92}' +
+        '.rp-paper .pdf-series{font-size:9px;font-weight:700;color:#1f3a63;margin:0 0 6px;text-align:left}' +
         // ── 시리즈 선택 목록 ──
         '.bd-serlist{margin-top:6px;max-height:150px;overflow:auto;border:1px solid #e3e8f0;border-radius:9px;padding:4px;background:#fff}' +
         '.bd-seritem{display:block;width:100%;text-align:left;border:0;background:none;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:.8rem;color:#3a4a63}' +
@@ -2449,10 +2460,29 @@ console.log('[affairs.js] v20260701dj');
         '<input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" class="r2-title">' +
         '<input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="본문(성경) — 예: 창1:1-5" class="r2-scrip">' +
         '<button type="button" id="se_fetch_btn" class="r2-btn" title="입력한 구절의 개역개정 본문을 자동으로 불러옵니다">📥 불러오기</button>' +
+        '<button type="button" id="se_pn_bible" class="r2-btn r2-sm" title="출력되는 성경 본문(개역개정·우리말) 열기/닫기">📖 본문 텍스트</button>' +
+        '<button type="button" id="se_pn_prayer" class="r2-btn r2-sm" title="설교 후 기도문 열기/닫기">🙏 기도</button>' +
         '<span class="se-sep wd-ctl"></span>' +
         '<span class="r2-lbl wd-ctl">용지</span><select id="wd_paper" class="se-selflat wd-ctl"><option value="A4">A4 (210×297㎜)</option><option value="iPad">아이패드 (180×240㎜)</option><option value="Letter">레터 (216×279㎜)</option><option value="B5">B5 (176×250㎜)</option></select>' +
         '<span class="r2-lbl wd-ctl">여백</span><select id="wd_margin" class="se-selflat wd-ctl"><option value="15">좁게 (15㎜)</option><option value="20" selected>보통 (20㎜)</option><option value="25">넓게 (25㎜)</option></select>' +
         '<span class="r2-lbl wd-ctl">배율</span><input type="range" id="wd_zoom" class="wd-ctl" min="50" max="160" value="100" style="width:110px"><b id="wd_zoom_v" class="r2-lbl wd-ctl" style="min-width:38px">100%</b>' +
+        '</div></div>' +
+        // ── 접이식 패널: 출력되는 성경 본문 / 기도 (리본 버튼으로 열고 닫음 — 원고 영역과 분리) ──
+        '<div class="sed-panel" id="pn_bible" style="display:none"><div class="sed-panel-in">' +
+        '<div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">' +
+        '<span style="font-size:.82rem;font-weight:700;color:#8fa0b5">📖 성경 본문 <span style="font-weight:400;color:#6d7c92">(PDF·아이패드에 출력되는 본문)</span></span>' +
+        '<label style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#4fae95"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488;margin:0"' + (rec.qt_bible_text ? ' checked' : '') + '> 우리말성경</label>' +
+        '<span id="se_bible_loading" style="font-size:.75rem;color:#9aa5b1;margin-left:4px"></span>' +
+        '</div>' +
+        '<div id="se_bible_cols" style="display:grid;grid-template-columns:' + (rec.qt_bible_text ? '1fr 1fr' : '1fr') + ';gap:12px">' +
+        '<div><div style="font-size:.73rem;color:#75839a;font-weight:600;margin-bottom:3px">개역개정</div>' +
+        '<textarea id="se_bible" placeholder="[📥 불러오기]를 누르거나 직접 붙여넣으세요." style="min-height:150px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.bible_text || '') + '</textarea></div>' +
+        '<div id="se_qt_bible_wrap" style="' + (rec.qt_bible_text ? '' : 'display:none') + '"><div style="font-size:.73rem;color:#75839a;font-weight:600;margin-bottom:3px">우리말성경 <span style="font-weight:400">(직접 입력)</span></div>' +
+        '<textarea id="se_qt_bible" placeholder="우리말성경 본문을 붙여넣으세요." style="min-height:150px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
+        '</div></div></div>' +
+        '<div class="sed-panel" id="pn_prayer" style="display:none"><div class="sed-panel-in">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-size:.82rem;font-weight:700;color:#8fa0b5">🙏 기도</span><span style="font-weight:400;font-size:.74rem;color:#6d7c92">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#b79df1;border-color:#4a3d73;background:#1b2431">✨ AI 생성</button></div>' +
+        '<textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘✨ AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:130px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.prayer || '') + '</textarea>' +
         '</div></div>' +
         '<div class="sed-wrap ' + (worshipMode ? 'sed-mode-worship' : 'sed-mode-sermon') + '">' +
         (worshipMode ? '' : '<div class="sed-aside-l" id="se_bible_pop"><div class="mb-card">' +
@@ -2502,19 +2532,8 @@ console.log('[affairs.js] v20260701dj');
         '</aside>' +
         '<main class="sed-main">' +
         '<div class="sed-form">' +
-        '<div class="se-hide-worship" style="margin-bottom:12px">' +
-        '<div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">' +
-        '<span style="font-size:.82rem;font-weight:700;color:#8fa0b5">📖 성경 본문</span>' +
-        '<label style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#4fae95"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488;margin:0"' + (rec.qt_bible_text ? ' checked' : '') + '> 우리말성경</label>' +
-        '<span id="se_bible_loading" style="font-size:.75rem;color:#9aa5b1;margin-left:4px"></span>' +
-        '</div>' +
-        '<div id="se_bible_cols" style="display:grid;grid-template-columns:' + (rec.qt_bible_text ? '1fr 1fr' : '1fr') + ';gap:12px">' +
-        '<div><div style="font-size:.73rem;color:#9aa5b1;font-weight:600;margin-bottom:3px">개역개정</div>' +
-        '<textarea id="se_bible" placeholder="[📥 불러오기]를 누르거나 직접 붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.bible_text || '') + '</textarea></div>' +
-        '<div id="se_qt_bible_wrap" style="' + (rec.qt_bible_text ? '' : 'display:none') + '"><div style="font-size:.73rem;color:#9aa5b1;font-weight:600;margin-bottom:3px">우리말성경 <span style="font-weight:400">(직접 입력)</span></div>' +
-        '<textarea id="se_qt_bible" placeholder="우리말성경 본문을 붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
-        '</div></div>' +
-        '<div class="af-field se-hide-worship"><label>설교 원고 <span class="se-count" id="se_count">0단어 · 0자</span></label>' +
+        // 설교 원고: 줄자와 용지 외에 아무것도 없이 — 글쓰기에 집중 (성경 본문·기도는 상단 리본 패널로 이동)
+        '<div class="se-hide-worship"><span class="se-count" id="se_count" style="display:none"></span>' +
         // MS Word처럼: 캔버스 위에 용지만 — ㎜ 눈금자는 용지에 바로 붙고, 꺾쇠(⌐)로 여백 가이드 표시
         '<div class="wd-area" id="wd_area">' +
         '<div class="wd-rowh"><div class="wd-corner"></div><canvas id="wd_rh" height="20"></canvas></div>' +
@@ -2525,7 +2544,6 @@ console.log('[affairs.js] v20260701dj');
         '</div></div>' +
         '</div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
-        '<div class="af-field se-hide-worship" style="margin-top:14px"><label style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🙏 기도<span style="font-weight:400;font-size:.74rem;color:#9aa5b1">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#b79df1;border-color:#4a3d73;background:#1b2431">✨ AI 생성</button></label><textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘✨ AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:120px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.prayer || '') + '</textarea></div>' +
         '</div></main>' +
         // ── 우측 패널: 원고지 미리보기 / 생명의삶 자동분류 ──
         '<aside class="sed-aside-r">' +
@@ -3068,7 +3086,8 @@ console.log('[affairs.js] v20260701dj');
             preacher: saved.preacher || '',
             scripture: saved.scripture || '',
             bibleText: saved.bible_text || '',
-            contentHtml: saved.content || ''
+            contentHtml: saved.content || '',
+            seriesLine: seriesLineInfo()   // 시리즈 · N번째 설교 (제목 왼쪽 위 출력)
           }).then(function (r) {
             pdfBtn.disabled = false; pdfBtn.textContent = old;
             msg.style.color = 'green';
@@ -3240,6 +3259,20 @@ console.log('[affairs.js] v20260701dj');
         var d = new Date(), h = d.getHours(), ap = h < 12 ? '오전' : '오후'; h = h % 12 || 12;
         el.textContent = '저장됨 ' + ap + ' ' + String(h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
       }
+      // 시리즈 · 몇 번째 설교 — 첫(대표) 시리즈 안에서 일자순 자동 넘버링 (예: "룻기 강해 · 5번째 설교")
+      function seriesLineInfo() {
+        if (!seriesArr || !seriesArr.length) return '';
+        var prim = seriesArr[0];
+        var d = ov.querySelector('#se_date').value || '';
+        var no = 1;
+        (smRows || []).forEach(function (r) {
+          if (String(r.id) === String(rec.id)) return;
+          var rs = String(r.series || '').split(',').map(function (s) { return s.trim(); });
+          if (rs.indexOf(prim) < 0) return;
+          if (r.sermon_date && d && r.sermon_date <= d) no++;
+        });
+        return prim + ' · ' + no + '번째 설교' + (seriesArr.length > 1 ? ' (' + seriesArr.slice(1).join(', ') + ')' : '');
+      }
       if (!worshipMode) (function initStudio() {
         // ── 좌측 바인더 탭 (정보/시리즈/첨부) ──
         var bdPanes = { info: ov.querySelector('#bd_info'), attach: ov.querySelector('#bd_attach') };
@@ -3280,17 +3313,32 @@ console.log('[affairs.js] v20260701dj');
               renderSeries();
             };
           });
-          var docs = [];
-          if (seriesArr.length) (smRows || []).forEach(function (r) {
-            var rs = splitSer(r.series);
-            var hit = false; rs.forEach(function (s) { if (seriesArr.indexOf(s) >= 0) hit = true; });
-            if (hit) docs.push(r);
-          });
-          docs.sort(function (a, b) { return String(a.sermon_date || '').localeCompare(String(b.sermon_date || '')); });
-          docsBox.innerHTML = docs.length
-            ? docs.map(function (r) { return '<button type="button" class="bd-doc' + (String(r.id) === String(rec.id) ? ' cur' : '') + '" data-id="' + esc(r.id) + '"><b>' + esc(r.title || '(제목없음)') + '</b><span>' + esc(fmtD(r.sermon_date) || '') + (r.scripture ? ' · ' + esc(r.scripture) : '') + '</span></button>'; }).join('')
-            : '<div style="font-size:.76rem;color:#75839a">' + (seriesArr.length ? '같은 시리즈의 다른 설교가 아직 없습니다.' : '시리즈를 추가하면 같은 시리즈의 설교가 여기에 표시됩니다.') + '</div>';
-          Array.prototype.forEach.call(docsBox.querySelectorAll('.bd-doc'), function (b) {
+          // 시리즈별 그룹 + 일자순 자동 넘버링 — 지금 작성 중인 설교도 제 순번 자리에 표시(연속성 관리)
+          if (!seriesArr.length) {
+            docsBox.innerHTML = '<div style="font-size:.76rem;color:#75839a">시리즈를 추가하면 같은 시리즈의 설교(제목·본문)가 번호와 함께 표시됩니다.</div>';
+          } else {
+            var d0 = ov.querySelector('#se_date').value || '';
+            var curTitle = ov.querySelector('#se_title') ? ov.querySelector('#se_title').value.trim() : '';
+            function curItem(n) { return '<div class="bd-doc cur" style="cursor:default"><b>' + n + '. ' + esc(curTitle || '(지금 작성 중)') + ' <span style="font-weight:400">— 이번 설교</span></b><span>' + esc(fmtD(d0) || '날짜 미정') + '</span></div>'; }
+            var htmlD = '';
+            seriesArr.forEach(function (sname) {
+              var ds = [];
+              (smRows || []).forEach(function (r) { if (splitSer(r.series).indexOf(sname) >= 0) ds.push(r); });
+              ds.sort(function (a, b) { return String(a.sermon_date || '').localeCompare(String(b.sermon_date || '')); });
+              var isSaved = ds.some(function (r) { return String(r.id) === String(rec.id); });
+              htmlD += '<div class="bd-serhead">📚 ' + esc(sname) + ' <span>· ' + (ds.length + (isSaved ? 0 : 1)) + '편</span></div>';
+              var no = 0, curDone = false;
+              ds.forEach(function (r) {
+                if (!isSaved && !curDone && (!r.sermon_date || !d0 || String(r.sermon_date) > d0)) { no++; curDone = true; htmlD += curItem(no); }
+                no++;
+                var isCur = String(r.id) === String(rec.id);
+                htmlD += '<button type="button" class="bd-doc' + (isCur ? ' cur' : '') + '" data-id="' + esc(r.id) + '"><b>' + no + '. ' + esc(r.title || '(제목없음)') + (isCur ? ' <span style="font-weight:400">— 이번 설교</span>' : '') + '</b><span>' + esc(fmtD(r.sermon_date) || '') + (r.scripture ? ' · ' + esc(r.scripture) : '') + '</span></button>';
+              });
+              if (!isSaved && !curDone) { no++; htmlD += curItem(no); }
+            });
+            docsBox.innerHTML = htmlD;
+          }
+          Array.prototype.forEach.call(docsBox.querySelectorAll('.bd-doc[data-id]'), function (b) {
             b.onclick = function () {
               if (String(b.dataset.id) === String(rec.id)) return;
               var found = null; (smRows || []).forEach(function (r) { if (String(r.id) === String(b.dataset.id)) found = r; });
@@ -3303,6 +3351,26 @@ console.log('[affairs.js] v20260701dj');
         ov.querySelector('#se_series_add').onclick = addSeries;
         serIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addSeries(); } });
         renderSeries();
+        // 일자·제목이 바뀌면 시리즈 순번(넘버링)도 갱신
+        ov.querySelector('#se_date').addEventListener('change', renderSeries);
+        var serTitleT = null;
+        ov.querySelector('#se_title').addEventListener('input', function () { clearTimeout(serTitleT); serTitleT = setTimeout(renderSeries, 500); });
+
+        // ── 리본 패널 토글: 📖 본문 텍스트 / 🙏 기도 (하나만 열림) ──
+        var pnMap = { se_pn_bible: 'pn_bible', se_pn_prayer: 'pn_prayer' };
+        Object.keys(pnMap).forEach(function (bid) {
+          var b = ov.querySelector('#' + bid), p = ov.querySelector('#' + pnMap[bid]);
+          if (!b || !p) return;
+          b.onclick = function () {
+            var willOpen = (p.style.display === 'none');
+            Object.keys(pnMap).forEach(function (k) {
+              var pp = ov.querySelector('#' + pnMap[k]), bb = ov.querySelector('#' + k);
+              if (pp) pp.style.display = 'none';
+              if (bb) bb.classList.remove('on');
+            });
+            if (willOpen) { p.style.display = ''; b.classList.add('on'); }
+          };
+        });
 
         // ── 첨부: 파일 업로드 ──
         var fupBtn = ov.querySelector('#se_file_up');
@@ -3537,7 +3605,8 @@ console.log('[affairs.js] v20260701dj');
           var bible = (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '').trim();
           var plain = htmlToPlain(hid.value || '').trim();
           var paras = plain ? plain.split(/\n{2,}/) : ['(설교 원고가 비어 있습니다)'];
-          var html = '<div class="pdf-t">' + esc(t) + '</div>';
+          var sLine = seriesLineInfo();
+          var html = (sLine ? '<div class="pdf-series">📚 ' + esc(sLine) + '</div>' : '') + '<div class="pdf-t">' + esc(t) + '</div>';
           if (meta) html += '<div class="pdf-meta">' + esc(meta) + '</div>';
           html += '<hr class="pdf-hr">';
           if (bible.replace(/\s/g, '')) {

@@ -491,6 +491,10 @@ function actionExportSermonPdf_(req) {
   body.setPageWidth(576).setPageHeight(768);
   body.setMarginTop(44).setMarginBottom(44).setMarginLeft(48).setMarginRight(48);
 
+  // 시리즈 · 몇 번째 설교 (제목 왼쪽 위, 작게)
+  var seriesLine = String(req.seriesLine || '');
+  if (seriesLine) setP_(body.appendParagraph('📚 ' + seriesLine), { size: 10, bold: true, font: SERIF, color: NAVY, after: 4 });
+
   // 제목 (가운데, 크게)
   setP_(body.appendParagraph(title), { size: 26, bold: true, font: SERIF, color: INK, align: 'center', after: 6 });
 
