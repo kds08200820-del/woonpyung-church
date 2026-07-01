@@ -2252,24 +2252,49 @@ console.log('[affairs.js] v20260701dj');
         '.rp-nav button:disabled{opacity:.35;cursor:default}' +
         '.sed-dark .rp-nav button{background:#161d29;border-color:#2a3547;color:#c3cede}' +
         '.rp-nav b{font-size:.8rem;color:#8b96a5;min-width:52px;text-align:center;font-weight:600}' +
-        // ── 설교 원고: MS Word 스타일 페이지 뷰(회색 캔버스·흰 용지·㎜ 눈금자·용지/배율) ──
-        '.wd-bar{display:flex;align-items:center;gap:7px;font-size:.76rem;color:#5b6b7d;background:#f1f3f4;border:1px solid #d5dae2;border-bottom:none;border-radius:10px 10px 0 0;padding:6px 12px;flex-wrap:wrap}' +
-        '.wd-bar select{font:inherit;font-size:.76rem;border:1px solid #cfd6e0;border-radius:7px;padding:4px 6px;background:#fff;cursor:pointer;color:#33415c}' +
-        '.wd-bar b{min-width:42px;color:#33415c}' +
-        '.wd-scroll{background:#e6e9ee;border:1px solid #d5dae2;border-radius:0 0 10px 10px;overflow:auto;padding:14px 8px 30px;max-height:80vh}' +
-        '.wd-sheet{width:-webkit-max-content;width:max-content;margin:0 auto}' +
+        // ── 설교 원고: MS Word처럼 캔버스 위 용지만 — 박스 없음, ㎜ 눈금자는 용지에 밀착, 꺾쇠 여백 가이드 ──
+        '.wd-area{width:-webkit-max-content;width:max-content;margin:8px auto 0}' +
         '.wd-rowh{display:flex}' +
-        '.wd-corner{width:23px;height:22px;flex:none}' +
-        '#wd_rh{display:block;background:#f6f7f9;border:1px solid #cfd6e0;border-bottom:none;box-sizing:content-box}' +
+        '.wd-corner{width:20px;height:20px;flex:none}' +
+        '#wd_rh{display:block;background:#f1f3f4;border-radius:3px 3px 0 0}' +
         '.wd-rowb{display:flex;align-items:flex-start}' +
-        '#wd_rv{display:block;background:#f6f7f9;border:1px solid #cfd6e0;border-right:none;flex:none;box-sizing:content-box}' +
-        '.wd-page{background:#fff;box-shadow:0 4px 18px rgba(30,40,60,.28);border:1px solid #cbd2dd;box-sizing:border-box}' +
+        '#wd_rv{display:block;background:#f1f3f4;border-radius:3px 0 0 3px;flex:none}' +
+        '.wd-page{background:#fff;box-shadow:0 6px 26px rgba(0,0,0,.5);box-sizing:border-box;position:relative}' +
         '.wd-page .se-editor{border:none;border-radius:0;background:transparent;min-height:0;box-shadow:none}' +
         '.wd-page .se-editor:focus{border:none;box-shadow:none;outline:none}' +
-        '.sed-dark .wd-bar{background:#1a2230;border-color:#2a3547;color:#8fa0b5}' +
-        '.sed-dark .wd-bar select{background:#131a25;border-color:#2a3547;color:#c3cede}' +
-        '.sed-dark .wd-bar b{color:#c3cede}' +
-        '.sed-dark .wd-scroll{background:#0d1118;border-color:#242e3e}' +
+        // 워드식 꺾쇠 여백 가이드(본문 영역 네 귀퉁이)
+        '.wd-crop{position:absolute;width:17px;height:17px;pointer-events:none;border:0 solid #aeb7c4;display:block}' +
+        '.wd-tl{border-right-width:1px;border-bottom-width:1px}' +
+        '.wd-tr{border-left-width:1px;border-bottom-width:1px}' +
+        '.wd-bl{border-right-width:1px;border-top-width:1px}' +
+        '.wd-br{border-left-width:1px;border-top-width:1px}' +
+        // ── 리본 2줄째(제목·본문·불러오기·용지·여백·배율) ──
+        '.sed-ribbon2{padding-top:0}' +
+        '.sed-r2{display:flex;align-items:center;gap:7px;flex-wrap:wrap;width:100%;max-width:1400px;background:linear-gradient(180deg,#ffffff 0%,#f5f8fc 100%);border:1px solid #e3e8f0;border-radius:11px;padding:7px 10px}' +
+        '.sed-r2 input[type=text]{font:inherit;font-size:.9rem;border:1px solid #dde3ec;border-radius:8px;padding:7px 10px;background:#fff;color:#22303f}' +
+        '.r2-title{flex:2;min-width:180px;font-weight:700}' +
+        '.r2-scrip{flex:1;min-width:150px}' +
+        '.r2-btn{font:inherit;font-size:.82rem;border:1px solid #dde3ec;background:#fff;border-radius:8px;padding:7px 11px;cursor:pointer;color:#33415c;white-space:nowrap}' +
+        '.r2-lbl{font-size:.76rem;color:#8a93a0;white-space:nowrap}' +
+        '.sed-dark .sed-r2{background:linear-gradient(180deg,#1d2634,#171f2b);border-color:#2a3547}' +
+        '.sed-dark .sed-r2 input[type=text]{background:#131a25;border-color:#2a3547;color:#dde5f0}' +
+        '.sed-dark .r2-btn{background:#1a2330;border-color:#2a3547;color:#c3cede}' +
+        '.sed-dark .r2-lbl{color:#8394ab}' +
+        '.sed-lightov .wd-ctl{display:none}' +   // 예배 매니저에서는 용지·여백·배율 숨김
+        // ── 시리즈 선택 목록 ──
+        '.bd-serlist{margin-top:6px;max-height:150px;overflow:auto;border:1px solid #e3e8f0;border-radius:9px;padding:4px;background:#fff}' +
+        '.bd-seritem{display:block;width:100%;text-align:left;border:0;background:none;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:.8rem;color:#3a4a63}' +
+        '.bd-seritem span{color:#9aa5b1;font-size:.7rem}' +
+        '.bd-seritem:hover{background:#f2f6fc}' +
+        '.bd-seritem.on{background:#e8f0fc;color:#1d4ed8;font-weight:700}' +
+        '.sed-dark .bd-serlist{background:#141b27;border-color:#2a3547}' +
+        '.sed-dark .bd-seritem{color:#aab8cc}.sed-dark .bd-seritem:hover{background:#1b2536}' +
+        '.sed-dark .bd-seritem.on{background:#1a2c4d;color:#9ec1f7}' +
+        '.sed-dark .bd-seritem span{color:#6d7c92}' +
+        // ── QT 체크박스 정렬(.af-field label의 display:block이 이기던 문제) ──
+        '.af-field label.sed-qt{display:flex;align-items:center;gap:8px;margin-bottom:0;font-weight:600}' +
+        // ── 예배 매니저: 제목·본문은 리본 2줄째로 이동했으므로 빈 폼 카드 숨김 ──
+        '.sed-mode-worship .sed-form{display:none}' +
         '.rp-paper img{max-width:100%}' +
         '.rp-pageinfo{text-align:center;font-size:.74rem;color:#8b96a5;padding:8px 0 2px}' +
         '.sed-sb{display:flex;align-items:center;gap:18px;padding:7px 18px;font-size:.76rem;flex:none}' +
@@ -2292,7 +2317,7 @@ console.log('[affairs.js] v20260701dj');
         '.sed-dark .sed-binder{width:274px;flex:none;overflow-y:auto;background:#10151d;border-right:1px solid #242e3e;padding:14px 13px 26px}' +
         '.sed-dark .sed-binder .af-field label{color:#8394ab}' +
         '.sed-dark .sed-binder .af-field input,.sed-dark .sed-binder .af-field select,.sed-dark .sed-binder .af-field textarea{background:#161d29;border:1px solid #2a3547;color:#dde5f0}' +
-        '.sed-dark .sed-qt{background:#2b2413;border-color:#5c4a1d;color:#d9b45c}' +
+        '.sed-dark .sed-qt{background:#161d29;border-color:#2a3547;color:#c9d4e4}' +   // 주변 입력칸과 같은 색
         '.sed-dark .bd-tabs button{background:#161d29;border-color:#2a3547;color:#8394ab}' +
         '.sed-dark .bd-tabs button.on{background:#2c4a86;border-color:#2c4a86;color:#fff}' +
         '.sed-dark .bd-chip{background:#1a2740;border-color:#2f4570;color:#a9c3ec}' +
@@ -2301,7 +2326,11 @@ console.log('[affairs.js] v20260701dj');
         '.sed-dark .bd-doc b{color:#cdd8e8}.sed-dark .bd-doc span{color:#75839a}' +
         '.sed-dark .bd-doc.cur{border-color:#3f639f;box-shadow:0 0 0 2px rgba(70,120,200,.25)}' +
         '.sed-dark .sed-main{flex:1;min-width:0;overflow-y:auto;padding:26px 30px 70px;background:radial-gradient(900px 420px at 50% -8%,#1c2431 0%,#141922 62%)}' +
-        '.sed-dark .sed-form{max-width:1060px;border-color:#0a0e14;box-shadow:0 22px 70px rgba(0,0,0,.55)}' +   // A4(794px)+눈금자 페이지 뷰가 들어가는 폭
+        // 설교 매니저: 흰 카드 제거 — 문서(용지)가 캔버스 위에 바로 놓임
+        '.sed-dark .sed-form{max-width:1100px;background:transparent;border:none;box-shadow:none;padding:0 0 30px;border-radius:0}' +
+        '.sed-dark .sed-form textarea{background:#161d29;border:1px solid #2a3547;color:#dde5f0;border-radius:9px}' +
+        '.sed-dark .sed-form .af-field label,.sed-dark .sed-form label{color:#8394ab}' +
+        '.sed-dark .se-count{color:#6d7c92}' +
         '.sed-dark .sed-aside-r{position:static;right:auto;top:auto;width:392px;flex:none;overflow-y:auto;background:#10151d;border-left:1px solid #242e3e;padding:12px 12px 26px}' +
         '.sed-dark .rp-tabs button{background:#161d29;border-color:#2a3547;color:#8394ab}' +
         '.sed-dark .rp-tabs button.on{background:#2c4a86;border-color:#2c4a86;color:#fff}' +
@@ -2415,6 +2444,16 @@ console.log('[affairs.js] v20260701dj');
         '</span><span class="se-sep"></span>' +
         '<span class="se-grp"><button type="button" id="se_tb_reset" title="도구 배치 초기화 — 도구는 꾹 눌러 끌면 위치를 바꿀 수 있습니다">↺</button></span>' +
         '</div></div>' +
+        // ── 리본 2줄째: 제목·본문(성경)·불러오기 + 용지·여백·배율 (예배 매니저에서는 제목·본문만) ──
+        '<div class="sed-ribbon sed-ribbon2"><div class="sed-r2">' +
+        '<input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" class="r2-title">' +
+        '<input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="본문(성경) — 예: 창1:1-5" class="r2-scrip">' +
+        '<button type="button" id="se_fetch_btn" class="r2-btn" title="입력한 구절의 개역개정 본문을 자동으로 불러옵니다">📥 불러오기</button>' +
+        '<span class="se-sep wd-ctl"></span>' +
+        '<span class="r2-lbl wd-ctl">용지</span><select id="wd_paper" class="se-selflat wd-ctl"><option value="A4">A4 (210×297㎜)</option><option value="iPad">아이패드 (180×240㎜)</option><option value="Letter">레터 (216×279㎜)</option><option value="B5">B5 (176×250㎜)</option></select>' +
+        '<span class="r2-lbl wd-ctl">여백</span><select id="wd_margin" class="se-selflat wd-ctl"><option value="15">좁게 (15㎜)</option><option value="20" selected>보통 (20㎜)</option><option value="25">넓게 (25㎜)</option></select>' +
+        '<span class="r2-lbl wd-ctl">배율</span><input type="range" id="wd_zoom" class="wd-ctl" min="50" max="160" value="100" style="width:110px"><b id="wd_zoom_v" class="r2-lbl wd-ctl" style="min-width:38px">100%</b>' +
+        '</div></div>' +
         '<div class="sed-wrap ' + (worshipMode ? 'sed-mode-worship' : 'sed-mode-sermon') + '">' +
         (worshipMode ? '' : '<div class="sed-aside-l" id="se_bible_pop"><div class="mb-card">' +
           '<div class="mb-head">📖 성경 보기<button type="button" class="mb-close" id="mb_set_btn" title="보기 설정(배경·글씨 크기·줄간격)">⚙</button><button type="button" class="mb-close" id="mb_close" title="닫기" style="margin-left:0">✕</button></div>' +
@@ -2446,8 +2485,8 @@ console.log('[affairs.js] v20260701dj');
         // 시리즈: 분류 바로 다음 — 입력하면 기존 시리즈가 자동완성으로 뜸
         '<div class="af-field se-hide-worship"><label>📚 시리즈 <span style="font-weight:400">(여러 개 선택 가능)</span></label>' +
         '<div id="se_series_chips" style="margin-bottom:4px"></div>' +
-        '<div style="display:flex;gap:5px"><input type="text" id="se_series_in" list="se_series_dl" placeholder="시리즈 이름 입력·선택" style="flex:1"><button type="button" class="btn btn-line" id="se_series_add" style="padding:6px 11px;font-size:.8rem;flex:none">＋</button></div>' +
-        '<datalist id="se_series_dl"></datalist>' +
+        '<div style="display:flex;gap:5px"><input type="text" id="se_series_in" placeholder="시리즈 추가" style="flex:1"><button type="button" class="btn btn-line" id="se_series_add" style="padding:6px 11px;font-size:.8rem;flex:none">＋ 추가</button></div>' +
+        '<div id="se_series_list" class="bd-serlist"></div>' +
         '<div id="se_series_docs" style="margin-top:7px"></div>' +
         '</div>' +
         '<div class="af-field"><label>설교자</label><input type="text" id="se_preacher" value="' + esc(rec.preacher || '김동석 목사') + '"></div>' +
@@ -2463,18 +2502,10 @@ console.log('[affairs.js] v20260701dj');
         '</aside>' +
         '<main class="sed-main">' +
         '<div class="sed-form">' +
-        '<div class="sed-row2">' +
-        '<div class="af-field"><label>제목</label><input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" style="font-size:1.1rem;font-weight:700"></div>' +
-        '<div class="af-field"><label>본문(성경)</label>' +
-        '<div style="display:flex;gap:6px">' +
-        '<input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="예: 창1:1-5, 나훔 2:8-13" style="flex:1">' +
-        '<button type="button" id="se_fetch_btn" class="btn btn-line" style="padding:7px 11px;font-size:.8rem;white-space:nowrap;flex-shrink:0" title="입력한 구절의 개역개정 본문을 자동으로 불러옵니다">📥 불러오기</button>' +
-        '</div></div>' +
-        '</div>' +
         '<div class="se-hide-worship" style="margin-bottom:12px">' +
         '<div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">' +
-        '<span style="font-size:.82rem;font-weight:700;color:#5b6b7d">📖 성경 본문</span>' +
-        '<label style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#0d6b5e"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488"' + (rec.qt_bible_text ? ' checked' : '') + '> 우리말성경</label>' +
+        '<span style="font-size:.82rem;font-weight:700;color:#8fa0b5">📖 성경 본문</span>' +
+        '<label style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#4fae95"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488;margin:0"' + (rec.qt_bible_text ? ' checked' : '') + '> 우리말성경</label>' +
         '<span id="se_bible_loading" style="font-size:.75rem;color:#9aa5b1;margin-left:4px"></span>' +
         '</div>' +
         '<div id="se_bible_cols" style="display:grid;grid-template-columns:' + (rec.qt_bible_text ? '1fr 1fr' : '1fr') + ';gap:12px">' +
@@ -2484,20 +2515,17 @@ console.log('[affairs.js] v20260701dj');
         '<textarea id="se_qt_bible" placeholder="우리말성경 본문을 붙여넣으세요." style="min-height:120px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
         '</div></div>' +
         '<div class="af-field se-hide-worship"><label>설교 원고 <span class="se-count" id="se_count">0단어 · 0자</span></label>' +
-        // MS Word 스타일 페이지 뷰: 용지·배율 조절 + ㎜ 눈금자 + 흰 용지 위 작성
-        '<div class="wd-bar">' +
-        '<span>용지</span><select id="wd_paper"><option value="A4">A4 (210×297㎜)</option><option value="iPad">아이패드 (180×240㎜)</option><option value="Letter">레터 (216×279㎜)</option><option value="B5">B5 (176×250㎜)</option></select>' +
-        '<span style="margin-left:8px">여백</span><select id="wd_margin"><option value="15">좁게 (15㎜)</option><option value="20" selected>보통 (20㎜)</option><option value="25">넓게 (25㎜)</option></select>' +
-        '<span style="margin-left:8px">배율</span><input type="range" id="wd_zoom" min="50" max="160" value="100" style="width:130px"><b id="wd_zoom_v">100%</b>' +
-        '</div>' +
-        '<div class="wd-scroll"><div class="wd-sheet" id="wd_sheet">' +
-        '<div class="wd-rowh"><div class="wd-corner"></div><canvas id="wd_rh" height="22"></canvas></div>' +
-        '<div class="wd-rowb"><canvas id="wd_rv" width="22"></canvas>' +
-        '<div class="wd-page" id="wd_page"><div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 상단 리본의 도구로 굵게·제목·인용·색·목록·메모·이미지 등 서식을 적용할 수 있습니다."></div></div>' +
-        '</div>' +
+        // MS Word처럼: 캔버스 위에 용지만 — ㎜ 눈금자는 용지에 바로 붙고, 꺾쇠(⌐)로 여백 가이드 표시
+        '<div class="wd-area" id="wd_area">' +
+        '<div class="wd-rowh"><div class="wd-corner"></div><canvas id="wd_rh" height="20"></canvas></div>' +
+        '<div class="wd-rowb"><canvas id="wd_rv" width="20"></canvas>' +
+        '<div class="wd-page" id="wd_page">' +
+        '<i class="wd-crop wd-tl"></i><i class="wd-crop wd-tr"></i><i class="wd-crop wd-bl"></i><i class="wd-crop wd-br"></i>' +
+        '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 상단 리본의 도구로 굵게·제목·인용·색·목록·메모·이미지 등 서식을 적용할 수 있습니다."></div>' +
         '</div></div>' +
+        '</div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
-        '<div class="af-field se-hide-worship" style="margin-top:14px"><label style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🙏 기도<span style="font-weight:400;font-size:.74rem;color:#9aa5b1">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#5b34a8;border-color:#cdbce6">✨ AI 생성</button></label><textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘✨ AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:120px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.prayer || '') + '</textarea></div>' +
+        '<div class="af-field se-hide-worship" style="margin-top:14px"><label style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">🙏 기도<span style="font-weight:400;font-size:.74rem;color:#9aa5b1">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#b79df1;border-color:#4a3d73;background:#1b2431">✨ AI 생성</button></label><textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘✨ AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:120px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif">' + esc(rec.prayer || '') + '</textarea></div>' +
         '</div></main>' +
         // ── 우측 패널: 원고지 미리보기 / 생명의삶 자동분류 ──
         '<aside class="sed-aside-r">' +
@@ -3232,14 +3260,26 @@ console.log('[affairs.js] v20260701dj');
         });
 
         // ── 시리즈: 칩 + 자동완성 + 같은 시리즈 설교 탐색(폴더) ──
-        var chipsBox = ov.querySelector('#se_series_chips'), serIn = ov.querySelector('#se_series_in'), serDl = ov.querySelector('#se_series_dl'), docsBox = ov.querySelector('#se_series_docs');
+        var chipsBox = ov.querySelector('#se_series_chips'), serIn = ov.querySelector('#se_series_in'), serList = ov.querySelector('#se_series_list'), docsBox = ov.querySelector('#se_series_docs');
         var allSeries = {};
         (smRows || []).forEach(function (r) { String(r.series || '').split(',').forEach(function (s) { s = s.trim(); if (s) allSeries[s] = (allSeries[s] || 0) + 1; }); });
         function splitSer(v) { return String(v || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean); }
         function renderSeries() {
           chipsBox.innerHTML = seriesArr.length ? seriesArr.map(function (s, i) { return '<span class="bd-chip">' + esc(s) + '<button type="button" data-i="' + i + '" title="제거">✕</button></span>'; }).join('') : '<span style="font-size:.74rem;color:#75839a">아직 시리즈가 없습니다.</span>';
           Array.prototype.forEach.call(chipsBox.querySelectorAll('button'), function (b) { b.onclick = function () { seriesArr.splice(Number(b.dataset.i), 1); renderSeries(); }; });
-          serDl.innerHTML = Object.keys(allSeries).sort().filter(function (s) { return seriesArr.indexOf(s) < 0; }).map(function (s) { return '<option value="' + esc(s) + '">'; }).join('');
+          // 등록된 모든 시리즈 목록 — 클릭해서 선택/해제
+          var names = {}; Object.keys(allSeries).forEach(function (s) { names[s] = 1; }); seriesArr.forEach(function (s) { names[s] = 1; });
+          var all = Object.keys(names).sort();
+          serList.innerHTML = all.length
+            ? all.map(function (s) { var on = seriesArr.indexOf(s) >= 0; return '<button type="button" class="bd-seritem' + (on ? ' on' : '') + '" data-s="' + esc(s) + '">' + (on ? '✓ ' : '') + esc(s) + (allSeries[s] ? ' <span>(' + allSeries[s] + ')</span>' : '') + '</button>'; }).join('')
+            : '<div style="font-size:.74rem;color:#75839a;padding:5px 7px">아직 등록된 시리즈가 없습니다 — 위에 입력해 추가하세요.</div>';
+          Array.prototype.forEach.call(serList.querySelectorAll('.bd-seritem'), function (b) {
+            b.onclick = function () {
+              var s = b.dataset.s, i = seriesArr.indexOf(s);
+              if (i >= 0) seriesArr.splice(i, 1); else seriesArr.push(s);
+              renderSeries();
+            };
+          });
           var docs = [];
           if (seriesArr.length) (smRows || []).forEach(function (r) {
             var rs = splitSer(r.series);
@@ -3385,7 +3425,7 @@ console.log('[affairs.js] v20260701dj');
 
         // ── MS Word 스타일 페이지 뷰: 용지 크기·여백·배율 + ㎜ 눈금자 ──
         (function wdPageView() {
-          var wdPage = ov.querySelector('#wd_page'), wdSheet = ov.querySelector('#wd_sheet');
+          var wdPage = ov.querySelector('#wd_page'), wdSheet = ov.querySelector('#wd_area');
           var rh = ov.querySelector('#wd_rh'), rv = ov.querySelector('#wd_rv');
           var paperSel = ov.querySelector('#wd_paper'), marginSel = ov.querySelector('#wd_margin'), zoomR = ov.querySelector('#wd_zoom'), zoomLbl = ov.querySelector('#wd_zoom_v');
           if (!wdPage || !wdSheet || !rh || !rv) return;
@@ -3395,7 +3435,7 @@ console.log('[affairs.js] v20260701dj');
           var prefs = { paper: 'A4', margin: 20, zoom: 100 };
           try { var sv = JSON.parse(localStorage.getItem(LSK) || 'null'); if (sv) { if (PAPERS[sv.paper]) prefs.paper = sv.paper; prefs.margin = Number(sv.margin) || 20; prefs.zoom = Number(sv.zoom) || 100; } } catch (e) { }
           function drawRuler(cv, lenPx, mgnPx, vertical) {
-            var TH = 22;
+            var TH = 20;
             if (vertical) { cv.width = TH; cv.height = lenPx; cv.style.height = lenPx + 'px'; }
             else { cv.width = lenPx; cv.height = TH; cv.style.width = lenPx + 'px'; }
             var c = cv.getContext('2d');
@@ -3431,6 +3471,13 @@ console.log('[affairs.js] v20260701dj');
             ed.style.minHeight = (ph - 2 * mg) + 'px';
             drawRuler(rh, pw, mg, false);
             drawRuler(rv, ph, mg, true);
+            // 워드처럼 여백 모서리에 꺾쇠(⌐) 가이드 — 본문 영역 네 귀퉁이 바깥쪽으로
+            var off = (mg - 18) + 'px';
+            var tl = wdPage.querySelector('.wd-tl'), tr = wdPage.querySelector('.wd-tr'), bl = wdPage.querySelector('.wd-bl'), br = wdPage.querySelector('.wd-br');
+            if (tl) { tl.style.top = off; tl.style.left = off; }
+            if (tr) { tr.style.top = off; tr.style.right = off; }
+            if (bl) { bl.style.bottom = off; bl.style.left = off; }
+            if (br) { br.style.bottom = off; br.style.right = off; }
             try { wdSheet.style.zoom = String(prefs.zoom / 100); } catch (e) { }
             if (zoomLbl) zoomLbl.textContent = prefs.zoom + '%';
             if (paperSel) paperSel.value = prefs.paper;
