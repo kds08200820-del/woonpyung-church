@@ -595,6 +595,10 @@ console.log('[affairs.js] v20260701dj');
         statCard(yr + '년 설교', thisYear, '올해 누적', '#1f6feb') +
         statCard('이번 달', thisMonth, ym, '#2e8b57') +
         statCard('성경 커버리지', covDone + '/' + covTotal + '권', pct + '% · 구약 ' + otDone + ' · 신약 ' + ntDone, '#c0392b') +
+        '<div class="fin-card" id="qtAttendCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📋 오늘 QT 출석</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#0d9488;line-height:1.1;margin-top:4px" id="qtAttendNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">아멘 한 사람 · 눌러서 명단 보기</div></div>' +
         '</div>' +
         '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
         '<b style="color:var(--accent,#032257)">📖 성경 권별 커버리지</b>' +
@@ -624,6 +628,47 @@ console.log('[affairs.js] v20260701dj');
       Array.prototype.forEach.call(panel.querySelectorAll('.svc-label[data-svc]'), function (el) {
         el.onclick = function () { svcCalendarModal(el.dataset.svc, rows); };
       });
+      loadQtAttendance(panel);
+    }
+
+    // ── QT 출석부: 오늘 아멘 체크한 인원 수 + 명단 ──
+    function loadQtAttendance(panel) {
+      var numEl = panel.querySelector('#qtAttendNum');
+      var card = panel.querySelector('#qtAttendCard');
+      if (!numEl || !card) return;
+      var t = today();
+      api('GET', 'qt_checks?select=user_id&check_date=eq.' + t)
+        .then(function (checks) {
+          checks = checks || [];
+          numEl.textContent = checks.length + '명';
+          card.onclick = function () { qtAttendanceModal(t, checks); };
+        })
+        .catch(function () { numEl.textContent = '–'; numEl.style.color = '#c0392b'; card.style.cursor = 'default'; });
+    }
+
+    function qtAttendanceModal(dateStr, checks) {
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="margin:0;color:var(--accent,#032257)">📋 ' + esc(fmtD(dateStr)) + ' QT 출석 <span style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + checks.length + '명</span></h3><button class="btn btn-line" id="qa_close" style="padding:3px 11px">닫기</button></div>' +
+        '<div id="qa_list" style="max-height:60vh;overflow:auto"><p class="qt-loading">명단을 불러오는 중…</p></div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#qa_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+
+      var listEl = ov.querySelector('#qa_list');
+      var ids = checks.map(function (c) { return c.user_id; }).filter(Boolean);
+      if (!ids.length) { listEl.innerHTML = '<p style="color:#9aa5b1">아직 아멘 한 사람이 없습니다.</p>'; return; }
+      var inlist = ids.map(function (id) { return '"' + id + '"'; }).join(',');
+      api('GET', 'member_links?select=user_id,member_name&user_id=in.(' + inlist + ')')
+        .then(function (rows) {
+          var nameById = {}; (rows || []).forEach(function (r) { nameById[r.user_id] = r.member_name; });
+          var names = ids.map(function (id) { return nameById[id] || '(이름 미확인)'; }).sort(function (a, b) { return a.localeCompare(b, 'ko'); });
+          listEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+            names.map(function (n) { return '<span class="fin-pill" style="background:#e8f6ee;color:#1e874b">' + esc(n) + '</span>'; }).join('') + '</div>';
+        })
+        .catch(function (e) { listEl.innerHTML = '<p style="color:#c0392b">명단 조회 실패: ' + esc(e.message) + '</p>'; });
     }
 
     // 설교 한 편 내용 보기(제목·본문·묵상). 뒤로가기로 닫혀 목록으로 돌아감.
