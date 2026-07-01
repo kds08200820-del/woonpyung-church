@@ -3563,11 +3563,13 @@ console.log('[affairs.js] v20260701dj');
       '<button class="btn btn-solid" id="edu_new_btn" style="padding:10px 20px">✏️ 교육 개설</button></div>' +
       '<div id="edu_list"><p class="qt-loading">불러오는 중…</p></div>';
 
+    var eduAllRows = [];
     panel.querySelector('#edu_new_btn').onclick = function () { eduEditor(null); };
 
     function loadList() {
       api('GET', 'edu_records?select=*&order=edu_date.desc,created_at.desc')
         .then(function (rows) {
+          eduAllRows = rows || [];
           var box = panel.querySelector('#edu_list');
           if (!rows || !rows.length) {
             box.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">개설된 교육이 없습니다. 위 <b>교육 개설</b>로 시작하세요.</p></div>'; return;
@@ -3575,7 +3577,7 @@ console.log('[affairs.js] v20260701dj');
           box.innerHTML =
             '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b>교육 목록 (' + rows.length + '건)</b></div>' +
             '<div style="overflow:auto"><table class="fin-table"><thead><tr>' +
-            '<th>교육명</th><th>기간</th><th>대상/부서</th><th>강사</th><th>참석자</th><th>관리</th>' +
+            '<th>교육명</th><th>기수</th><th>반</th><th>기간</th><th>대상/부서</th><th>강사</th><th>참석자</th><th>관리</th>' +
             '</tr></thead><tbody>' +
             rows.map(function (r) {
               var parts = [];
@@ -3584,6 +3586,8 @@ console.log('[affairs.js] v20260701dj');
               var period = s + (e2 && e2 !== s ? ' ~ ' + e2 : '');
               return '<tr>' +
                 '<td><b class="edu-edit" data-id="' + esc(r.id) + '" style="cursor:pointer;color:var(--accent,#032257)">' + esc(r.title || '(제목없음)') + '</b></td>' +
+                '<td style="white-space:nowrap">' + (r.cohort ? '<span class="fin-pill">' + esc(r.cohort) + '</span>' : '<span style="color:#c5ccd6">—</span>') + '</td>' +
+                '<td style="white-space:nowrap">' + esc(r.class_name || '') + '</td>' +
                 '<td style="white-space:nowrap">' + esc(period) + '</td>' +
                 '<td>' + esc(r.target || '') + '</td>' +
                 '<td>' + esc(r.teacher || '') + '</td>' +
@@ -3625,7 +3629,9 @@ console.log('[affairs.js] v20260701dj');
         '<h3 style="margin:0;color:var(--accent,#032257)">' + (rec.id ? '교육 수정' : '교육 개설') + '</h3>' +
         '<button type="button" id="edu_xbtn" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#9aa5b1;line-height:1">×</button></div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:18px">' +
-        '<div class="af-field" style="grid-column:1/-1"><label>교육명</label><input type="text" id="edu_f_title" value="' + esc(rec.title || '') + '" placeholder="예: 새가족반, 제자훈련 1기" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field" style="grid-column:1/-1;position:relative"><label>교육명</label><input type="text" id="edu_f_title" autocomplete="off" value="' + esc(rec.title || '') + '" placeholder="예: 새가족반, 제자훈련반" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field"><label>기수</label><input type="text" id="edu_f_cohort" value="' + esc(rec.cohort || '') + '" placeholder="예: 1기" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field" style="position:relative"><label>반</label><input type="text" id="edu_f_class" autocomplete="off" value="' + esc(rec.class_name || '') + '" placeholder="예: 목요일 반" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field"><label>시작일</label><input type="date" id="edu_f_start" value="' + esc(rec.edu_date || today()) + '" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field"><label>종료일</label><input type="date" id="edu_f_end" value="' + esc(rec.end_date || '') + '" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field"><label>대상/부서</label><input type="text" id="edu_f_target" value="' + esc(rec.target || '') + '" placeholder="예: 새가족, 중등부" style="width:100%;box-sizing:border-box"></div>' +
@@ -3701,6 +3707,109 @@ console.log('[affairs.js] v20260701dj');
       }
 
       ov.querySelector('#edu_add_p').onclick = addPartInput;
+
+      // ── 교육명 자동완성 (기존 교육 추천) + 기수 자동 제안 ──
+      (function setupTitleSuggest() {
+        var titleInp = ov.querySelector('#edu_f_title');
+        var cohortInp = ov.querySelector('#edu_f_cohort');
+        var field = titleInp.closest('.af-field');
+        var pop = null, hi = -1, matches = [];
+        function closePop() { if (pop) { pop.remove(); pop = null; hi = -1; } }
+        function uniqueTitles(q) {
+          var seen = {}, list = [];
+          eduAllRows.forEach(function (r) {
+            var t = (r.title || '').trim();
+            if (!t || seen[t]) return;
+            if (q && t.toLowerCase().indexOf(q) < 0) return;
+            seen[t] = true; list.push(t);
+          });
+          return list.slice(0, 8);
+        }
+        function suggestCohort(t) {
+          if (cohortInp.value.trim()) return; // 이미 입력했으면 건드리지 않음
+          var nums = [];
+          eduAllRows.forEach(function (r) {
+            if ((r.title || '').trim() !== t) return;
+            var m = String(r.cohort || '').match(/\d+/);
+            if (m) nums.push(parseInt(m[0], 10));
+          });
+          if (nums.length) cohortInp.value = (Math.max.apply(null, nums) + 1) + '기';
+        }
+        function pick(t) { titleInp.value = t; closePop(); suggestCohort(t); }
+        titleInp.addEventListener('input', function () {
+          closePop();
+          var q = titleInp.value.trim().toLowerCase();
+          matches = uniqueTitles(q);
+          if (!matches.length) return;
+          pop = document.createElement('div'); pop.className = 'fin-sugg';
+          matches.forEach(function (t) {
+            var cnt = eduAllRows.filter(function (r) { return (r.title || '').trim() === t; }).length;
+            var d = document.createElement('div');
+            d.innerHTML = esc(t) + ' <span style="color:#9aa5b1;font-size:.78rem">기존 ' + cnt + '회 개설</span>';
+            d.onmousedown = function (e) { e.preventDefault(); pick(t); };
+            pop.appendChild(d);
+          });
+          field.appendChild(pop);
+        });
+        titleInp.addEventListener('focus', function () { if (!titleInp.value.trim()) titleInp.dispatchEvent(new Event('input')); });
+        titleInp.addEventListener('keydown', function (e) {
+          if (!pop) return; var rows = pop.querySelectorAll('div');
+          if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); }
+          else if (e.key === 'Enter') { if (matches.length && hi >= 0) { e.preventDefault(); pick(matches[hi]); } return; }
+          else if (e.key === 'Escape') { closePop(); return; }
+          else return;
+          Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); });
+        });
+        titleInp.addEventListener('blur', function () { setTimeout(closePop, 180); });
+      })();
+
+      // ── 반 자동완성 (같은 교육명의 기존 반 추천) ──
+      (function setupClassSuggest() {
+        var classInp = ov.querySelector('#edu_f_class');
+        var titleInp = ov.querySelector('#edu_f_title');
+        var field = classInp.closest('.af-field');
+        var pop = null, hi = -1, matches = [];
+        function closePop() { if (pop) { pop.remove(); pop = null; hi = -1; } }
+        function uniqueClasses(q) {
+          var t = titleInp.value.trim();
+          var seen = {}, list = [];
+          eduAllRows.forEach(function (r) {
+            var c = (r.class_name || '').trim();
+            if (!c || seen[c]) return;
+            if (t && (r.title || '').trim() !== t) return;
+            if (q && c.toLowerCase().indexOf(q) < 0) return;
+            seen[c] = true; list.push(c);
+          });
+          return list.slice(0, 8);
+        }
+        function pick(c) { classInp.value = c; closePop(); }
+        classInp.addEventListener('input', function () {
+          closePop();
+          var q = classInp.value.trim().toLowerCase();
+          matches = uniqueClasses(q);
+          if (!matches.length) return;
+          pop = document.createElement('div'); pop.className = 'fin-sugg';
+          matches.forEach(function (c) {
+            var d = document.createElement('div'); d.textContent = c;
+            d.onmousedown = function (e) { e.preventDefault(); pick(c); };
+            pop.appendChild(d);
+          });
+          field.appendChild(pop);
+        });
+        classInp.addEventListener('focus', function () { if (!classInp.value.trim()) classInp.dispatchEvent(new Event('input')); });
+        classInp.addEventListener('keydown', function (e) {
+          if (!pop) return; var rows = pop.querySelectorAll('div');
+          if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); }
+          else if (e.key === 'Enter') { if (matches.length && hi >= 0) { e.preventDefault(); pick(matches[hi]); } return; }
+          else if (e.key === 'Escape') { closePop(); return; }
+          else return;
+          Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); });
+        });
+        classInp.addEventListener('blur', function () { setTimeout(closePop, 180); });
+      })();
+
       function closeOv() { ov.remove(); }
       ov.querySelector('#edu_xbtn').onclick = closeOv;
       ov.querySelector('#edu_cancel_btn').onclick = closeOv;
@@ -3713,6 +3822,8 @@ console.log('[affairs.js] v20260701dj');
         if (!title || !start) { msgEl.style.color = '#c0392b'; msgEl.textContent = '교육명과 시작일은 필수입니다.'; return; }
         var data = {
           title: title,
+          cohort: ov.querySelector('#edu_f_cohort').value.trim() || null,
+          class_name: ov.querySelector('#edu_f_class').value.trim() || null,
           edu_date: start,
           end_date: ov.querySelector('#edu_f_end').value || null,
           target: ov.querySelector('#edu_f_target').value.trim() || null,
@@ -3731,7 +3842,7 @@ console.log('[affairs.js] v20260701dj');
         }).catch(function (e) {
           msgEl.style.color = '#c0392b';
           msgEl.textContent = '저장 실패: ' + e.message;
-          if (/participants|end_date/i.test(e.message))
+          if (/participants|end_date|cohort|class_name/i.test(e.message))
             msgEl.textContent += ' — Supabase SQL Editor에서 컬럼을 추가해 주세요.';
         });
       };
