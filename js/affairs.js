@@ -1719,7 +1719,7 @@ console.log('[affairs.js] v20260701dj');
 
   function renderSermon(panel, opts) {
     var worshipMode = !!(opts && opts.worship);
-    var WTPL = {}, smView = 'list', smRows = [], calYM = null;
+    var WTPL = {}, smView = 'list', smRows = [], calYM = null, smTableState = { svc: '전체', year: '전체', sort: 'desc', perPage: 20, page: 1 };
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요기도회': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#64748b'; }
     function orderCount(r) { try { var a = JSON.parse(r.worship_order || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
@@ -1760,35 +1760,113 @@ console.log('[affairs.js] v20260701dj');
       if (worshipMode) {
         var wrows = smRows.filter(hasOrder);
         if (!wrows.length) { listBox.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">작성된 예배 순서가 없습니다. <b>예배 순서 작성</b>을 누르거나 위 달력에서 날짜를 클릭해 시작하세요.</p></div>'; return; }
-        listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>예배 (' + wrows.length + '건)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>순서</th><th>관리</th></tr></thead><tbody>' +
-          wrows.map(function (r) {
+        listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>예배 (' + wrows.length + '건)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>순서</th><th>관리</th></tr></thead><tbody>' +
+          wrows.map(function (r, i) {
             var c = svcColor(r.service), ds = fmtD(r.sermon_date), n = orderCount(r);
-            return '<tr><td style="white-space:nowrap">' + esc(ds) + '</td><td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td>' +
+            return '<tr><td style="text-align:center;color:#9aa5b1;font-size:.8rem">' + (i + 1) + '</td><td style="white-space:nowrap">' + esc(ds) + '</td><td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td>' +
               '<td><b class="sm-edit" data-id="' + esc(r.id) + '" title="클릭하면 예배 순서를 엽니다" style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목없음)') + '</b></td>' +
               '<td style="white-space:nowrap">' + esc(r.scripture || '') + '</td><td style="white-space:nowrap">' + n + '항목</td>' +
               '<td style="white-space:nowrap"><button class="btn btn-solid sm-read" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 발표</button> <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button> <button class="btn btn-line sm-orderdel" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">순서삭제</button></td></tr>';
           }).join('') + '</tbody></table></div></div>';
         wireRows(listBox); return;
       }
-      var rows = smRows;
-      if (!rows.length) { listBox.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">등록된 설교가 없습니다. <b>설교 시작</b>으로 작성해 보세요.</p></div>'; return; }
+      if (!smRows.length) { listBox.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">등록된 설교가 없습니다. <b>설교 시작</b>으로 작성해 보세요.</p></div>'; return; }
+
+      // ── 고유 예배종류·연도 추출 ──
+      var svcOrder = Object.keys(SERVICE_COLORS);
+      var svcSet = {}, yearSet = {};
+      smRows.forEach(function (r) {
+        if (r.service) svcSet[r.service] = true;
+        var y = (r.sermon_date || '').slice(0, 4);
+        if (y) yearSet[y] = true;
+      });
+      var svcs = ['전체'].concat(svcOrder.filter(function (s) { return svcSet[s]; }));
+      var yrs = ['전체'].concat(Object.keys(yearSet).sort(function (a, b) { return b.localeCompare(a); }));
+
+      // ── 필터·정렬 적용 ──
+      var filtSvc = smTableState.svc, filtYear = smTableState.year;
+      var sortDir = smTableState.sort, perPage = smTableState.perPage, page = smTableState.page;
+      var filtered = smRows.filter(function (r) {
+        var svcOk = (filtSvc === '전체') || (r.service === filtSvc);
+        var yearOk = (filtYear === '전체') || ((r.sermon_date || '').slice(0, 4) === filtYear);
+        return svcOk && yearOk;
+      }).slice().sort(function (a, b) {
+        var da = a.sermon_date || '', db = b.sermon_date || '';
+        var cmp = da.localeCompare(db);
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+      var total = filtered.length;
+      var totalPages = Math.max(1, Math.ceil(total / perPage));
+      if (page > totalPages) { page = smTableState.page = 1; }
+      var baseIdx = (page - 1) * perPage;
+      var pageRows = filtered.slice(baseIdx, baseIdx + perPage);
       var todayS = today();
-      listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>설교 (' + rows.length + '편)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>오늘의 말씀(QT)</th><th>관리</th></tr></thead><tbody>' +
-        rows.map(function (r) {
-          var c = svcColor(r.service);
-          var isQt = (r.service === '매일 QT' || r.service === '새벽기도');
-          var ds = fmtD(r.sermon_date);
-          var hasUri = !!(r.qt_bible_text && r.qt_bible_text.trim());
-          var qtCell;
-          if (!isQt) { qtCell = '<span style="color:#cbd2db">—</span>'; }
-          else if (ds && ds <= todayS) { qtCell = '<span class="fin-pill" style="background:#e6f4ea;color:#1e874b">🟢 게시중</span>' + (hasUri ? '' : '<div style="font-size:.7rem;color:#c0392b;margin-top:2px">우리말 미입력</div>'); }
-          else { qtCell = '<span class="fin-pill" style="background:#fff4e0;color:#a8742a">🕒 ' + esc(ds) + ' 게시예정</span>' + (hasUri ? '' : '<div style="font-size:.7rem;color:#c0392b;margin-top:2px">우리말 미입력</div>'); }
-          return '<tr><td style="white-space:nowrap">' + esc(ds) + '</td><td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td><td><b class="sm-title" data-id="' + esc(r.id) + '" title="클릭하면 설교를 엽니다" style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목없음)') + '</b></td><td style="white-space:nowrap">' + esc(r.scripture || '') + '</td><td style="white-space:nowrap">' + qtCell + '</td>' +
-            '<td style="white-space:nowrap"><button class="btn btn-solid sm-read" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 보기</button>' +
-            (isQt ? ' <button class="btn btn-line sm-qt" data-id="' + esc(r.id) + '" title="우리말성경 QT로 보기" style="padding:4px 9px;font-size:.78rem;background:#fff8e6;border-color:#e6c97a">📲 QT</button> <button class="btn btn-line sm-kakao" data-id="' + esc(r.id) + '" title="카카오톡 발송 양식 복사" style="padding:4px 9px;font-size:.78rem;background:#fff8c4;border-color:#f4d641">💬 톡 복사</button>' : '') +
-            ' <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button> <button class="btn btn-line sm-del" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">삭제</button></td></tr>';
-        }).join('') + '</tbody></table></div></div>';
+
+      // ── 컨트롤 바 ──
+      var svcSel = '<select id="sm_flt_svc" style="padding:5px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;font-size:.84rem;cursor:pointer">' +
+        svcs.map(function (s) { return '<option value="' + esc(s) + '"' + (s === filtSvc ? ' selected' : '') + '>' + esc(s === '전체' ? '전체 예배' : s) + '</option>'; }).join('') + '</select>';
+      var yrSel = '<select id="sm_flt_yr" style="padding:5px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;font-size:.84rem;cursor:pointer">' +
+        yrs.map(function (y) { return '<option value="' + esc(y) + '"' + (y === filtYear ? ' selected' : '') + '>' + (y === '전체' ? '전체 연도' : y + '년') + '</option>'; }).join('') + '</select>';
+      var sortBtn = '<button id="sm_sort_btn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem">' + (sortDir === 'desc' ? '▼ 최신순' : '▲ 오래된순') + '</button>';
+      var ppSel = '<select id="sm_per_page" style="padding:5px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;font-size:.84rem;cursor:pointer">' +
+        [20, 30, 50].map(function (n) { return '<option value="' + n + '"' + (n === perPage ? ' selected' : '') + '>' + n + '개씩</option>'; }).join('') + '</select>';
+      var info = '<span style="font-size:.83rem;color:#9aa5b1">' + total + '편 / ' + pageRows.length + '편 표시</span>';
+
+      // ── 페이지네이션 ──
+      var pageBtns = '';
+      if (totalPages > 1) {
+        var from = Math.max(1, page - 2), to = Math.min(totalPages, from + 4);
+        from = Math.max(1, to - 4);
+        if (page > 1) pageBtns += '<button class="sm-pg" data-pg="' + (page - 1) + '" style="padding:4px 11px;border:1px solid #dfe5ee;border-radius:6px;background:#fff;cursor:pointer;font-size:.84rem">‹</button>';
+        for (var pi = from; pi <= to; pi++) {
+          var isActive = pi === page;
+          pageBtns += '<button class="sm-pg" data-pg="' + pi + '" style="padding:4px 11px;border:1px solid ' + (isActive ? 'var(--accent,#032257)' : '#dfe5ee') + ';border-radius:6px;background:' + (isActive ? 'var(--accent,#032257)' : '#fff') + ';color:' + (isActive ? '#fff' : 'inherit') + ';cursor:pointer;font-size:.84rem;font-weight:' + (isActive ? '700' : '400') + '">' + pi + '</button>';
+        }
+        if (page < totalPages) pageBtns += '<button class="sm-pg" data-pg="' + (page + 1) + '" style="padding:4px 11px;border:1px solid #dfe5ee;border-radius:6px;background:#fff;cursor:pointer;font-size:.84rem">›</button>';
+      }
+
+      // ── 테이블 행 ──
+      var tableRows = pageRows.map(function (r, i) {
+        var num = baseIdx + i + 1;
+        var c = svcColor(r.service);
+        var isQt = (r.service === '매일 QT' || r.service === '새벽기도');
+        var ds = fmtD(r.sermon_date);
+        var hasUri = !!(r.qt_bible_text && r.qt_bible_text.trim());
+        var qtCell;
+        if (!isQt) { qtCell = '<span style="color:#cbd2db">—</span>'; }
+        else if (ds && ds <= todayS) { qtCell = '<span class="fin-pill" style="background:#e6f4ea;color:#1e874b">🟢 게시중</span>' + (hasUri ? '' : '<div style="font-size:.7rem;color:#c0392b;margin-top:2px">우리말 미입력</div>'); }
+        else { qtCell = '<span class="fin-pill" style="background:#fff4e0;color:#a8742a">🕒 ' + esc(ds) + ' 게시예정</span>' + (hasUri ? '' : '<div style="font-size:.7rem;color:#c0392b;margin-top:2px">우리말 미입력</div>'); }
+        return '<tr><td style="text-align:center;color:#9aa5b1;font-size:.8rem">' + num + '</td>' +
+          '<td style="white-space:nowrap">' + esc(ds) + '</td>' +
+          '<td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td>' +
+          '<td><b class="sm-title" data-id="' + esc(r.id) + '" style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목없음)') + '</b></td>' +
+          '<td style="white-space:nowrap">' + esc(r.scripture || '') + '</td>' +
+          '<td style="white-space:nowrap">' + qtCell + '</td>' +
+          '<td style="white-space:nowrap"><button class="btn btn-solid sm-read" data-id="' + esc(r.id) + '" style="padding:4px 11px;font-size:.78rem">📖 보기</button>' +
+          (isQt ? ' <button class="btn btn-line sm-qt" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem;background:#fff8e6;border-color:#e6c97a">📲 QT</button> <button class="btn btn-line sm-kakao" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem;background:#fff8c4;border-color:#f4d641">💬 톡 복사</button>' : '') +
+          ' <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button>' +
+          ' <button class="btn btn-line sm-del" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">삭제</button></td></tr>';
+      }).join('');
+
+      listBox.innerHTML =
+        '<div class="fin-card">' +
+        '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef1f5">' +
+        '<b style="font-size:.95rem">설교</b>' + svcSel + yrSel + sortBtn + ppSel +
+        '<span style="margin-left:auto">' + info + '</span></div>' +
+        '<div style="overflow:auto"><table class="fin-table"><thead><tr>' +
+        '<th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>오늘의 말씀(QT)</th><th>관리</th>' +
+        '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
+        (pageBtns ? '<div style="display:flex;justify-content:center;gap:4px;margin-top:14px;flex-wrap:wrap">' + pageBtns + '</div>' : '') +
+        '</div>';
+
       wireRows(listBox);
+      listBox.querySelector('#sm_flt_svc').onchange = function () { smTableState.svc = this.value; smTableState.page = 1; renderTable(); };
+      listBox.querySelector('#sm_flt_yr').onchange = function () { smTableState.year = this.value; smTableState.page = 1; renderTable(); };
+      listBox.querySelector('#sm_sort_btn').onclick = function () { smTableState.sort = smTableState.sort === 'desc' ? 'asc' : 'desc'; renderTable(); };
+      listBox.querySelector('#sm_per_page').onchange = function () { smTableState.perPage = Number(this.value); smTableState.page = 1; renderTable(); };
+      Array.prototype.forEach.call(listBox.querySelectorAll('.sm-pg'), function (btn) {
+        btn.onclick = function () { smTableState.page = Number(btn.dataset.pg); renderTable(); };
+      });
     }
     function renderCalendar() {
       var calBox = panel.querySelector('#sm_cal');
