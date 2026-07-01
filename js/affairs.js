@@ -2487,13 +2487,14 @@ console.log('[affairs.js] v20260701dj');
         '<div class="sed-panel" id="pn_bible" style="display:none"><div class="sed-panel-in">' +
         '<div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">' +
         '<span style="font-size:.82rem;font-weight:700;color:#8fa0b5">📖 성경 본문 <span style="font-weight:400;color:#6d7c92">(PDF·아이패드에 출력되는 본문)</span></span>' +
-        '<label style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#4fae95"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488;margin:0"' + (rec.qt_bible_text ? ' checked' : '') + '> 우리말성경</label>' +
+        '<label style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#4fae95"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488;margin:0"> 우리말성경</label>' +
         '<span id="se_bible_loading" style="font-size:.75rem;color:#9aa5b1;margin-left:4px"></span>' +
         '</div>' +
-        '<div id="se_bible_cols" style="display:grid;grid-template-columns:' + (rec.qt_bible_text ? '1fr 1fr' : '1fr') + ';gap:12px">' +
+        // 우리말성경 체크는 항상 꺼진 상태가 기본값 — 매일 QT/새벽기도(qtOn)일 때만 처음부터 2단으로 보임(체크와 무관하게), 아래 syncQt()가 실제 표시를 정함
+        '<div id="se_bible_cols" style="display:grid;grid-template-columns:' + ((rec.service === '매일 QT' || rec.service === '새벽기도') ? '1fr 1fr' : '1fr') + ';gap:12px">' +
         '<div><div style="font-size:.73rem;color:#75839a;font-weight:600;margin-bottom:3px">개역개정</div>' +
         '<textarea id="se_bible" placeholder="[📥 불러오기]를 누르거나 직접 붙여넣으세요." style="min-height:150px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.bible_text || '') + '</textarea></div>' +
-        '<div id="se_qt_bible_wrap" style="' + (rec.qt_bible_text ? '' : 'display:none') + '"><div style="font-size:.73rem;color:#75839a;font-weight:600;margin-bottom:3px">우리말성경 <span style="font-weight:400">(직접 입력)</span></div>' +
+        '<div id="se_qt_bible_wrap" style="' + ((rec.service === '매일 QT' || rec.service === '새벽기도') ? '' : 'display:none') + '"><div style="font-size:.73rem;color:#75839a;font-weight:600;margin-bottom:3px">우리말성경 <span style="font-weight:400">(직접 입력)</span></div>' +
         '<textarea id="se_qt_bible" placeholder="우리말성경 본문을 붙여넣으세요." style="min-height:150px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
         '</div></div></div>' +
         '<div class="sed-panel" id="pn_prayer" style="display:none"><div class="sed-panel-in">' +
