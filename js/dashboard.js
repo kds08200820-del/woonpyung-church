@@ -573,8 +573,16 @@ console.log('[dashboard.js] v20260701da');
         return fetch(url + '/rest/v1/qt_published?select=sermon_date,title,scripture,qt_bible_text,content,prayer&sermon_date=in.(' + inlist + ')&order=sermon_date.desc', { headers: { apikey: ak, Authorization: 'Bearer ' + ak } })
           .then(function (r) { return r.ok ? r.json() : []; })
           .then(function (rows) {
-            var covered = {}, byBook = {};
+            // 같은 날짜에 중복 게시된 큐티가 있으면 하루=1건으로 합침(내용이 더 채워진 레코드 우선)
+            var seen = {}, uniq = [];
+            function score(r) { return (r.content ? 1 : 0) + (r.qt_bible_text ? 1 : 0) + (r.prayer ? 1 : 0); }
             (rows || []).forEach(function (r) {
+              var k = r.sermon_date;
+              if (!(k in seen)) { seen[k] = uniq.length; uniq.push(r); }
+              else if (score(r) > score(uniq[seen[k]])) uniq[seen[k]] = r;
+            });
+            var covered = {}, byBook = {};
+            uniq.forEach(function (r) {
               var bk = bookOf(r.scripture); if (!bk) return;
               covered[bk] = (covered[bk] || 0) + 1;
               (byBook[bk] = byBook[bk] || []).push(r);
