@@ -1736,6 +1736,58 @@ console.log('[affairs.js] v20260701dj');
     panel.querySelector('#sm_start').onclick = function () { sermonEditor(null); };
     if (pendingSermon) { var _pp = pendingSermon; pendingSermon = null; sermonEditor(_pp); }   // 설교 제안에서 넘어온 prefill
 
+    // ── 우리말성경 일괄입력 헬퍼 ──
+    var BKEYS = ['창','출','레','민','신','수','삿','룻','삼상','삼하','왕상','왕하','대상','대하','스','느','에','욥','시','잠','전','아','사','렘','애','겔','단','호','욜','암','옵','욘','미','나','합','습','학','슥','말','마','막','눅','요','행','롬','고전','고후','갈','엡','빌','골','살전','살후','딤전','딤후','딛','몬','히','약','벧전','벧후','요일','요이','요삼','유','계'];
+    var BMAP2 = {'창세기':1,'창':1,'출애굽기':2,'출':2,'레위기':3,'레':3,'민수기':4,'민':4,'신명기':5,'신':5,'여호수아':6,'수':6,'사사기':7,'삿':7,'룻기':8,'룻':8,'사무엘상':9,'삼상':9,'사무엘하':10,'삼하':10,'열왕기상':11,'왕상':11,'열왕기하':12,'왕하':12,'역대상':13,'대상':13,'역대하':14,'대하':14,'에스라':15,'스':15,'느헤미야':16,'느':16,'에스더':17,'에':17,'욥기':18,'욥':18,'시편':19,'시':19,'잠언':20,'잠':20,'전도서':21,'전':21,'아가':22,'아':22,'이사야':23,'사':23,'예레미야':24,'렘':24,'예레미야애가':25,'애가':25,'애':25,'에스겔':26,'겔':26,'다니엘':27,'단':27,'호세아':28,'호':28,'요엘':29,'욜':29,'아모스':30,'암':30,'오바댜':31,'옵':31,'요나':32,'욘':32,'미가':33,'미':33,'나훔':34,'나':34,'하박국':35,'합':35,'스바냐':36,'습':36,'학개':37,'학':37,'스가랴':38,'슥':38,'말라기':39,'말':39,'마태복음':40,'마':40,'마가복음':41,'막':41,'누가복음':42,'눅':42,'요한복음':43,'요':43,'사도행전':44,'행':44,'로마서':45,'롬':45,'고린도전서':46,'고전':46,'고린도후서':47,'고후':47,'갈라디아서':48,'갈':48,'에베소서':49,'엡':49,'빌립보서':50,'빌':50,'골로새서':51,'골':51,'데살로니가전서':52,'살전':52,'데살로니가후서':53,'살후':53,'디모데전서':54,'딤전':54,'디모데후서':55,'딤후':55,'디도서':56,'딛':56,'빌레몬서':57,'몬':57,'히브리서':58,'히':58,'야고보서':59,'약':59,'베드로전서':60,'벧전':60,'베드로후서':61,'벧후':61,'요한일서':62,'요일':62,'요한이서':63,'요이':63,'요한삼서':64,'요삼':64,'유다서':65,'유':65,'요한계시록':66,'계':66,'계시록':66};
+    function parseScripRef(ref) {
+      var s = (ref || '').trim().replace(/\s+/g, ' ');
+      var m = s.match(/^([가-힣]+)\s*(\d+)\s*[:장]\s*(\d+)(?:\s*[-~]\s*(\d+))?/);
+      if (!m) return null;
+      var bid = BMAP2[m[1].replace(/\s/g, '')];
+      if (!bid) return null;
+      return { bookId: bid, ch: parseInt(m[2], 10), from: parseInt(m[3], 10), to: m[4] ? parseInt(m[4], 10) : parseInt(m[3], 10) };
+    }
+    function bulkFillUrm() {
+      var todo = smRows.filter(function (r) {
+        return !r.qt_bible_text && r.scripture;
+      });
+      if (!todo.length) { alert('우리말 미입력 항목이 없습니다.'); return; }
+      if (!confirm('우리말성경 미입력 ' + todo.length + '개를 자동 입력합니다.\n잠시 시간이 걸릴 수 있습니다. 계속할까요?')) return;
+      var btn = panel.querySelector('#sm_bulk_urm');
+      function proceed(urm) {
+        var done = 0, skipped = [], idx = 0;
+        function next() {
+          if (btn) btn.textContent = '처리 중 ' + (done + skipped.length) + '/' + todo.length + '…';
+          if (idx >= todo.length) {
+            if (btn) { btn.textContent = '📥 우리말 일괄입력'; btn.disabled = false; }
+            loadList();
+            alert('완료 — ' + done + '개 입력 성공' + (skipped.length ? '\n파싱 불가 ' + skipped.length + '개: ' + skipped.join(', ') : ''));
+            return;
+          }
+          var r = todo[idx++];
+          var p = parseScripRef(r.scripture);
+          var key = p ? BKEYS[p.bookId - 1] : null;
+          if (!p || !key) { skipped.push(r.scripture || '?'); next(); return; }
+          var chap = (urm[key] || [])[p.ch - 1] || [];
+          var lines = [];
+          for (var vi = p.from; vi <= p.to; vi++) { var t = chap[vi - 1]; if (t) lines.push(vi + ' ' + t.trim()); }
+          if (!lines.length) { skipped.push(r.scripture || '?'); next(); return; }
+          var text = lines.join('\n');
+          api('PATCH', 'sermons?id=eq.' + r.id, { qt_bible_text: text }, 'return=minimal')
+            .then(function () { r.qt_bible_text = text; done++; next(); })
+            .catch(function () { skipped.push(r.scripture || '?'); next(); });
+        }
+        if (btn) btn.disabled = true;
+        next();
+      }
+      if (window.BIBLE_URM) { proceed(window.BIBLE_URM); return; }
+      if (btn) { btn.disabled = true; btn.textContent = 'JSON 로드 중…'; }
+      fetch('data/bible-urm.json')
+        .then(function (r) { return r.json(); })
+        .then(function (d) { window.BIBLE_URM = d; proceed(d); })
+        .catch(function () { alert('우리말성경 데이터 로드 실패'); if (btn) { btn.disabled = false; btn.textContent = '📥 우리말 일괄입력'; } });
+    }
+
     function loadList() {
       api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) { smRows = rows || []; renderView(); }).catch(function (e) {
         var listBox = panel.querySelector('#sm_list');
@@ -1852,6 +1904,7 @@ console.log('[affairs.js] v20260701dj');
         '<div class="fin-card">' +
         '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef1f5">' +
         '<b style="font-size:.95rem">설교</b>' + svcSel + yrSel + sortBtn + ppSel +
+        '<button id="sm_bulk_urm" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#0d6b5e;border-color:#0d9488">📥 우리말 일괄입력</button>' +
         '<span style="margin-left:auto">' + info + '</span></div>' +
         '<div style="overflow:auto"><table class="fin-table"><thead><tr>' +
         '<th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>오늘의 말씀(QT)</th><th>관리</th>' +
@@ -1864,6 +1917,7 @@ console.log('[affairs.js] v20260701dj');
       listBox.querySelector('#sm_flt_yr').onchange = function () { smTableState.year = this.value; smTableState.page = 1; renderTable(); };
       listBox.querySelector('#sm_sort_btn').onclick = function () { smTableState.sort = smTableState.sort === 'desc' ? 'asc' : 'desc'; renderTable(); };
       listBox.querySelector('#sm_per_page').onchange = function () { smTableState.perPage = Number(this.value); smTableState.page = 1; renderTable(); };
+      var bulkUrmBtn = listBox.querySelector('#sm_bulk_urm'); if (bulkUrmBtn) bulkUrmBtn.onclick = bulkFillUrm;
       Array.prototype.forEach.call(listBox.querySelectorAll('.sm-pg'), function (btn) {
         btn.onclick = function () { smTableState.page = Number(btn.dataset.pg); renderTable(); };
       });
@@ -2349,7 +2403,7 @@ console.log('[affairs.js] v20260701dj');
           content: ov.querySelector('#se_content').value || null,
           prayer: (ov.querySelector('#se_prayer') ? ov.querySelector('#se_prayer').value : '') || null,
           bible_text: (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '') || null,
-          qt_bible_text: (qtOn() && ov.querySelector('#se_qt_bible') ? ov.querySelector('#se_qt_bible').value : '') || null,
+          qt_bible_text: ((qtOn() || wmOn()) && ov.querySelector('#se_qt_bible') ? ov.querySelector('#se_qt_bible').value : '') || null,
           media_url: ov.querySelector('#se_media').value || null,
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
