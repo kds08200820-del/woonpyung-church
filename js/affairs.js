@@ -2239,7 +2239,8 @@ console.log('[affairs.js] v20260701dj');
         '.rp-paperwrap{overflow:hidden;display:flex;justify-content:center}' +
         // PDF 미리보기 — 아이패드(3:4) 페이지, Apps Script exportSermonPdf(576×768pt·여백 44/48pt)와 동일 비율(0.903px/pt)
         // CSS 다단(column)으로 실제 페이지처럼 넘겨봄: 한 단 = 한 페이지 본문, 줄이 잘리지 않음
-        '.rp-paper{width:520px;height:693px;background:#fff;color:#1a1a1a;box-shadow:0 10px 34px rgba(0,0,0,.5);padding:40px 43px;box-sizing:border-box;transform-origin:top center;font-family:\'Noto Serif KR\',serif;word-break:keep-all;overflow:hidden}' +
+        // flex:none 필수 — paperwrap(flex)이 종이를 패널 폭으로 찌그러뜨리면 단 간격이 어긋나 페이지가 반쪽씩 잘림
+        '.rp-paper{width:520px;height:693px;flex:none;background:#fff;color:#1a1a1a;box-shadow:0 10px 34px rgba(0,0,0,.5);padding:40px 43px;box-sizing:border-box;transform-origin:top center;font-family:\'Noto Serif KR\',serif;word-break:keep-all;overflow:hidden}' +
         '.rp-flow{height:613px;column-width:434px;column-gap:86px;column-fill:auto;transition:transform .22s ease}' +
         '.rp-paper .pdf-t{font-size:23.5px;font-weight:700;text-align:center;line-height:1.35;margin:0 0 5px}' +
         '.rp-paper .pdf-meta{font-size:9.9px;color:#8a8f99;text-align:center;margin:0 0 13px}' +
@@ -2259,7 +2260,7 @@ console.log('[affairs.js] v20260701dj');
         '#wd_rh{display:block;background:#f1f3f4;border-radius:3px 3px 0 0}' +
         '.wd-rowb{display:flex;align-items:flex-start}' +
         '#wd_rv{display:block;background:#f1f3f4;border-radius:3px 0 0 3px;flex:none}' +
-        '.wd-page{background:#fff;box-shadow:0 6px 26px rgba(0,0,0,.5);box-sizing:border-box;position:relative}' +
+        '.wd-page{background:#fff;box-shadow:0 6px 26px rgba(0,0,0,.5);box-sizing:border-box;position:relative;background-origin:border-box}' +
         '.wd-page .se-editor{border:none;border-radius:0;background:transparent;min-height:0;box-shadow:none}' +
         '.wd-page .se-editor:focus{border:none;box-shadow:none;outline:none}' +
         // 워드식 꺾쇠 여백 가이드(본문 영역 네 귀퉁이)
@@ -2337,8 +2338,8 @@ console.log('[affairs.js] v20260701dj');
         '.sed-dark .bd-doc b{color:#cdd8e8}.sed-dark .bd-doc span{color:#75839a}' +
         '.sed-dark .bd-doc.cur{border-color:#3f639f;box-shadow:0 0 0 2px rgba(70,120,200,.25)}' +
         '.sed-dark .sed-main{flex:1;min-width:0;overflow-y:auto;padding:26px 30px 70px;background:radial-gradient(900px 420px at 50% -8%,#1c2431 0%,#141922 62%)}' +
-        // 설교 매니저: 흰 카드 제거 — 문서(용지)가 캔버스 위에 바로 놓임
-        '.sed-dark .sed-form{max-width:1100px;background:transparent;border:none;box-shadow:none;padding:0 0 30px;border-radius:0}' +
+        // 설교 매니저: 흰 카드 제거 — 문서(용지)가 캔버스 위에 바로 놓임. 폭은 상단 툴바와 같은 기준으로 가득
+        '.sed-dark .sed-form{max-width:none;background:transparent;border:none;box-shadow:none;padding:0 0 30px;border-radius:0}' +
         '.sed-dark .sed-form textarea{background:#161d29;border:1px solid #2a3547;color:#dde5f0;border-radius:9px}' +
         '.sed-dark .sed-form .af-field label,.sed-dark .sed-form label{color:#8394ab}' +
         '.sed-dark .se-count{color:#6d7c92}' +
@@ -3497,12 +3498,11 @@ console.log('[affairs.js] v20260701dj');
           var rh = ov.querySelector('#wd_rh'), rv = ov.querySelector('#wd_rv');
           var paperSel = ov.querySelector('#wd_paper'), marginSel = ov.querySelector('#wd_margin'), zoomR = ov.querySelector('#wd_zoom'), zoomLbl = ov.querySelector('#wd_zoom_v');
           if (!wdPage || !wdSheet || !rh || !rv) return;
-          var MMPX = 96 / 25.4;   // 1㎜ = 3.78px (CSS 96dpi)
           var PAPERS = { A4: [210, 297], iPad: [180, 240], Letter: [216, 279], B5: [176, 250] };
           var LSK = 'wpWdPage1';
           var prefs = { paper: 'A4', margin: 20, zoom: 100 };
           try { var sv = JSON.parse(localStorage.getItem(LSK) || 'null'); if (sv) { if (PAPERS[sv.paper]) prefs.paper = sv.paper; prefs.margin = Number(sv.margin) || 20; prefs.zoom = Number(sv.zoom) || 100; } } catch (e) { }
-          function drawRuler(cv, lenPx, mgnPx, vertical) {
+          function drawRuler(cv, lenPx, mgnPx, vertical, pxmm) {
             var TH = 20;
             if (vertical) { cv.width = TH; cv.height = lenPx; cv.style.height = lenPx + 'px'; }
             else { cv.width = lenPx; cv.height = TH; cv.style.width = lenPx + 'px'; }
@@ -3513,11 +3513,11 @@ console.log('[affairs.js] v20260701dj');
             c.fillStyle = '#ffffff';
             if (vertical) c.fillRect(0, mgnPx, TH, lenPx - 2 * mgnPx); else c.fillRect(mgnPx, 0, lenPx - 2 * mgnPx, TH);
             c.strokeStyle = '#8d99a8'; c.fillStyle = '#5b6b7d'; c.font = '9px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-            var mmTotal = Math.floor(lenPx / MMPX);
+            var mmTotal = Math.floor(lenPx / pxmm);
             c.beginPath();
             for (var m = 0; m <= mmTotal; m++) {
-              if (m % 2 === 1 && MMPX < 4) continue;   // 1㎜ 눈금은 촘촘하면 2㎜ 간격으로
-              var p = Math.round(m * MMPX) + 0.5;
+              if (m % 2 === 1 && pxmm < 4) continue;   // 1㎜ 눈금은 촘촘하면 2㎜ 간격으로
+              var p = Math.round(m * pxmm) + 0.5;
               var tick = (m % 10 === 0) ? 9 : (m % 5 === 0 ? 6 : 3);
               if (vertical) { c.moveTo(TH - 1 - tick, p); c.lineTo(TH - 1, p); }
               else { c.moveTo(p, TH - 1 - tick); c.lineTo(p, TH - 1); }
@@ -3530,15 +3530,22 @@ console.log('[affairs.js] v20260701dj');
           }
           function applyPage() {
             var sz = PAPERS[prefs.paper] || PAPERS.A4;
-            var pw = Math.round(sz[0] * MMPX), ph = Math.round(sz[1] * MMPX), mg = Math.round(prefs.margin * MMPX);
+            // 용지 폭 = 화면(툴바 기준) 폭에 고정 — 배율은 용지 안의 '내용'만 키우고 줄임
+            var avail = (wdSheet.parentElement && wdSheet.parentElement.clientWidth) || 820;
+            var pw = Math.max(360, avail - 20);                    // 세로 눈금자(20px) 제외
+            var pxmm = pw / sz[0];                                 // 이 화면에서 1㎜가 차지하는 px
+            var ph = Math.round(sz[1] * pxmm), mg = Math.round(prefs.margin * pxmm);
+            var z = (Number(prefs.zoom) || 100) / 100;
             wdPage.style.width = pw + 'px';
             wdPage.style.minHeight = ph + 'px';
+            wdPage.style.padding = mg + 'px';                      // 여백은 용지(실제 px)에 — 배율과 무관하게 고정
             // 페이지 경계선(다음 장 시작 위치)
             wdPage.style.backgroundImage = 'repeating-linear-gradient(to bottom,transparent 0,transparent ' + (ph - 1) + 'px,#dfe3ea ' + (ph - 1) + 'px,#dfe3ea ' + ph + 'px)';
-            ed.style.padding = mg + 'px';
-            ed.style.minHeight = (ph - 2 * mg) + 'px';
-            drawRuler(rh, pw, mg, false);
-            drawRuler(rv, ph, mg, true);
+            ed.style.padding = '0';
+            try { ed.style.zoom = String(z); } catch (e) { }       // 내용만 확대/축소
+            ed.style.minHeight = Math.round((ph - 2 * mg) / z) + 'px';
+            drawRuler(rh, pw, mg, false, pxmm);
+            drawRuler(rv, ph, mg, true, pxmm);
             // 워드처럼 여백 모서리에 꺾쇠(⌐) 가이드 — 본문 영역 네 귀퉁이 바깥쪽으로
             var off = (mg - 18) + 'px';
             var tl = wdPage.querySelector('.wd-tl'), tr = wdPage.querySelector('.wd-tr'), bl = wdPage.querySelector('.wd-bl'), br = wdPage.querySelector('.wd-br');
@@ -3546,7 +3553,6 @@ console.log('[affairs.js] v20260701dj');
             if (tr) { tr.style.top = off; tr.style.right = off; }
             if (bl) { bl.style.bottom = off; bl.style.left = off; }
             if (br) { br.style.bottom = off; br.style.right = off; }
-            try { wdSheet.style.zoom = String(prefs.zoom / 100); } catch (e) { }
             if (zoomLbl) zoomLbl.textContent = prefs.zoom + '%';
             if (paperSel) paperSel.value = prefs.paper;
             if (marginSel) marginSel.value = String(prefs.margin);
@@ -3557,6 +3563,12 @@ console.log('[affairs.js] v20260701dj');
           if (marginSel) marginSel.onchange = function () { prefs.margin = Number(this.value) || 20; applyPage(); };
           if (zoomR) zoomR.oninput = function () { prefs.zoom = Number(this.value) || 100; applyPage(); };
           applyPage();
+          // 창 크기가 바뀌면 용지 폭을 다시 화면에 맞춤
+          var rsT = null;
+          window.addEventListener('resize', function onRs() {
+            if (!document.body.contains(ov)) { window.removeEventListener('resize', onRs); return; }
+            clearTimeout(rsT); rsT = setTimeout(applyPage, 200);
+          });
         })();
 
         // ── 발표자 모드: 저장 없이 현재 화면 그대로 아이패드 발표 보기 ──
