@@ -1,8 +1,8 @@
 /* affairs.js — 행정관리(관리자 전용): 심방관리 · 상담관리
  * 데이터는 Supabase(visitations/counsels, 관리자 RLS)에 저장.
- * 콘솔: [affairs.js] v20260701di
+ * 콘솔: [affairs.js] v20260701dj
  */
-console.log('[affairs.js] v20260701di');
+console.log('[affairs.js] v20260701dj');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -682,47 +682,54 @@ console.log('[affairs.js] v20260701di');
       });
       var years = Object.keys(yearMap).sort(function (a, b) { return Number(b) - Number(a); });
       if (!years.length) return;
-      var selYear = years[0];
+      var selYearNum = Number(years[0]);
       var DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
       function buildCalGrid(y) {
-        var mData = yearMap[y] || {};
+        var ys = String(y);
+        var mData = yearMap[ys] || {};
+        var hasYearData = Object.keys(mData).length > 0;
         var out = '';
-        for (var m = 1; m <= 12; m++) {
-          var dSet = mData[m] || {};
-          var first = new Date(Number(y), m - 1, 1);
-          var startDow = first.getDay();
-          var daysInMonth = new Date(Number(y), m, 0).getDate();
-          var hasAny = Object.keys(dSet).length > 0;
-          var cells = '<div style="font-size:.76rem;font-weight:700;color:#3a4a63;margin-bottom:4px;text-align:center">' + m + '월</div>';
-          cells += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:2px">';
-          DOW_KO.forEach(function (dk, i) {
-            var tc = i === 0 ? '#e74c3c' : i === 6 ? '#3a6db5' : '#9aa5b1';
-            cells += '<div style="text-align:center;font-size:.62rem;font-weight:700;color:' + tc + '">' + dk + '</div>';
-          });
-          cells += '</div>';
-          cells += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
-          for (var si = 0; si < startDow; si++) cells += '<div></div>';
-          for (var day2 = 1; day2 <= daysInMonth; day2++) {
-            var dow = (startDow + day2 - 1) % 7;
-            var tc2 = dow === 0 ? '#e74c3c' : dow === 6 ? '#3a6db5' : '#3a4a63';
-            if (dSet[day2]) {
-              cells += '<div class="sv-day" data-y="' + y + '" data-m="' + m + '" data-d="' + day2 + '" style="text-align:center;font-size:.7rem;font-weight:800;background:#032257;color:#fff;border-radius:4px;padding:2px 1px;cursor:pointer;line-height:1.6" title="' + dSet[day2].length + '편 — 클릭하여 보기">' + day2 + '</div>';
-            } else {
-              cells += '<div style="text-align:center;font-size:.7rem;color:' + tc2 + ';padding:2px 1px;line-height:1.6">' + day2 + '</div>';
+        if (!hasYearData) {
+          out = '<div style="grid-column:1/-1;text-align:center;padding:48px 0;color:#b0b8c4;font-size:.95rem">' + y + '년 설교 데이터가 없습니다.</div>';
+        } else {
+          for (var m = 1; m <= 12; m++) {
+            var dSet = mData[m] || {};
+            var first = new Date(y, m - 1, 1);
+            var startDow = first.getDay();
+            var daysInMonth = new Date(y, m, 0).getDate();
+            var hasAny = Object.keys(dSet).length > 0;
+            var cells = '<div style="font-size:.76rem;font-weight:700;color:#3a4a63;margin-bottom:4px;text-align:center">' + m + '월</div>';
+            cells += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:2px">';
+            DOW_KO.forEach(function (dk, i) {
+              var tc = i === 0 ? '#e74c3c' : i === 6 ? '#3a6db5' : '#9aa5b1';
+              cells += '<div style="text-align:center;font-size:.62rem;font-weight:700;color:' + tc + '">' + dk + '</div>';
+            });
+            cells += '</div>';
+            cells += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">';
+            for (var si = 0; si < startDow; si++) cells += '<div></div>';
+            for (var day2 = 1; day2 <= daysInMonth; day2++) {
+              var dow = (startDow + day2 - 1) % 7;
+              var tc2 = dow === 0 ? '#e74c3c' : dow === 6 ? '#3a6db5' : '#3a4a63';
+              if (dSet[day2]) {
+                cells += '<div class="sv-day" data-y="' + ys + '" data-m="' + m + '" data-d="' + day2 + '" style="text-align:center;font-size:.7rem;font-weight:800;background:#032257;color:#fff;border-radius:4px;padding:2px 1px;cursor:pointer;line-height:1.6" title="' + dSet[day2].length + '편 — 클릭하여 보기">' + day2 + '</div>';
+              } else {
+                cells += '<div style="text-align:center;font-size:.7rem;color:' + tc2 + ';padding:2px 1px;line-height:1.6">' + day2 + '</div>';
+              }
             }
+            cells += '</div>';
+            out += '<div style="background:' + (hasAny ? '#f0f5ff' : '#f7f9fc') + ';border:1px solid ' + (hasAny ? '#9bbcf3' : '#e3e7ee') + ';border-radius:9px;padding:9px 7px">' + cells + '</div>';
           }
-          cells += '</div>';
-          out += '<div style="background:' + (hasAny ? '#f0f5ff' : '#f7f9fc') + ';border:1px solid ' + (hasAny ? '#9bbcf3' : '#e3e7ee') + ';border-radius:9px;padding:9px 7px">' + cells + '</div>';
         }
         return out;
       }
 
-      function buildTabs(curY) {
-        return years.map(function (y) {
-          var active = y === curY;
-          return '<button class="sv-ytab" data-y="' + y + '" style="padding:5px 14px;border:none;border-radius:999px;cursor:pointer;font-size:.84rem;font-weight:700;' + (active ? 'background:#032257;color:#fff' : 'background:#eef2f7;color:#3a4a63') + '">' + y + '년</button>';
-        }).join('');
+      function buildYearNav(y) {
+        var hasData = !!yearMap[String(y)];
+        var dot = hasData ? ' <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#4ade80;vertical-align:middle;margin-left:3px" title="설교 데이터 있음"></span>' : '';
+        return '<button id="sv_prev" style="background:#eef2f7;border:none;border-radius:999px;padding:5px 14px;cursor:pointer;font-size:.84rem;font-weight:700;color:#3a4a63">◀ 이전년</button>' +
+          '<span style="font-size:1.05rem;font-weight:800;color:#032257;min-width:80px;text-align:center">' + y + '년' + dot + '</span>' +
+          '<button id="sv_next" style="background:#eef2f7;border:none;border-radius:999px;padding:5px 14px;cursor:pointer;font-size:.84rem;font-weight:700;color:#3a4a63">다음년 ▶</button>';
       }
 
       var ov = document.createElement('div');
@@ -731,8 +738,8 @@ console.log('[affairs.js] v20260701di');
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
         '<h3 style="margin:0;color:var(--accent,#032257)">📅 ' + esc(svc) + ' <span style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + filtered.length + '편</span></h3>' +
         '<button class="btn btn-line" id="sv_close" style="padding:3px 11px">닫기</button></div>' +
-        '<div id="sv_tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">' + buildTabs(selYear) + '</div>' +
-        '<div id="sv_cal" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px;max-height:72vh;overflow:auto;padding-bottom:4px">' + buildCalGrid(selYear) + '</div>' +
+        '<div id="sv_nav" style="display:flex;align-items:center;gap:12px;margin-bottom:14px">' + buildYearNav(selYearNum) + '</div>' +
+        '<div id="sv_cal" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px;max-height:72vh;overflow:auto;padding-bottom:4px">' + buildCalGrid(selYearNum) + '</div>' +
         '</div>';
       document.body.appendChild(ov);
       var close = pushBackClose(function () { ov.remove(); });
@@ -740,14 +747,20 @@ console.log('[affairs.js] v20260701di');
       ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
 
       function rebind() {
-        Array.prototype.forEach.call(ov.querySelectorAll('.sv-ytab'), function (btn) {
-          btn.onclick = function () {
-            selYear = btn.dataset.y;
-            ov.querySelector('#sv_tabs').innerHTML = buildTabs(selYear);
-            ov.querySelector('#sv_cal').innerHTML = buildCalGrid(selYear);
-            rebind();
-          };
-        });
+        var btnPrev = ov.querySelector('#sv_prev');
+        var btnNext = ov.querySelector('#sv_next');
+        if (btnPrev) btnPrev.onclick = function () {
+          selYearNum -= 1;
+          ov.querySelector('#sv_nav').innerHTML = buildYearNav(selYearNum);
+          ov.querySelector('#sv_cal').innerHTML = buildCalGrid(selYearNum);
+          rebind();
+        };
+        if (btnNext) btnNext.onclick = function () {
+          selYearNum += 1;
+          ov.querySelector('#sv_nav').innerHTML = buildYearNav(selYearNum);
+          ov.querySelector('#sv_cal').innerHTML = buildCalGrid(selYearNum);
+          rebind();
+        };
         Array.prototype.forEach.call(ov.querySelectorAll('.sv-day'), function (cell) {
           cell.onclick = function () {
             var y = cell.dataset.y, m = parseInt(cell.dataset.m, 10), d = parseInt(cell.dataset.d, 10);
