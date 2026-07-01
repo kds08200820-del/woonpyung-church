@@ -100,12 +100,14 @@ console.log('[dashboard.js] v20260701da');
     var el = document.getElementById('homeSermon');
     if (!el || typeof BULLETINS === 'undefined' || !BULLETINS.length) return;
     var b = BULLETINS[0];
+    el.style.cursor = 'pointer';
+    el.title = '클릭해서 설교 요약 보기';
     el.innerHTML =
       '<span class="hs-date">' + b.dateLabel + ' · 주일 낮 예배</span>' +
       '<h3 class="hs-title">' + b.title + '</h3>' +
       '<p class="hs-ref">' + b.scripture + ' · ' + b.preacher + '</p>' +
-      '<blockquote class="hs-quote">' + b.quote + '</blockquote>' +
-      '<a class="btn btn-line" href="word.html#sermon">설교 더 보기 →</a>';
+      '<blockquote class="hs-quote">' + b.quote + '</blockquote>';
+    el.onclick = function () { if (typeof openSermonSummary === 'function') openSermonSummary(0); };
   }
   function loadHomeBulletin() {
     var el = document.getElementById('homeBulletin');
@@ -519,8 +521,12 @@ console.log('[dashboard.js] v20260701da');
     function showBookQt(book, rows, detail) {
       if (!detail) return;
       detail.innerHTML = '<div style="border-top:1px solid #eef1f5;margin-top:16px;padding-top:14px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
         '<b style="font-size:.92rem;color:var(--accent,#032257);">' + esc(book) + ' — 읽은 큐티 ' + rows.length + '건</b>' +
+        '<button type="button" id="qtProgDetailClose" class="btn btn-line" style="padding:3px 12px;font-size:.78rem;white-space:nowrap;">✕ 닫기</button></div>' +
         '<div style="margin-top:10px;">' + rows.map(entryHTML).join('') + '</div></div>';
+      var closeBtn = detail.querySelector('#qtProgDetailClose');
+      if (closeBtn) closeBtn.onclick = function () { detail.innerHTML = ''; };
       Array.prototype.forEach.call(detail.querySelectorAll('.qtc-bookentry'), function (card) {
         var r = rows[Number(card.dataset.i)];
         var body = card.querySelector('.qtc-bookentry-body');
