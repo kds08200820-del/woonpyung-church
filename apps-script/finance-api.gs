@@ -116,6 +116,7 @@ function doPost(e) {
     if (action === 'updateVoucher') return json_(actionUpdateVoucher_(req));
     if (action === 'deleteVoucher') return json_(actionDeleteVoucher_(req));
     if (action === 'clearVouchers') return json_(actionClearVouchers_(req));
+    if (action === 'exportSermonPdf') return json_(actionExportSermonPdf_(req));
     return json_({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
@@ -458,6 +459,64 @@ function actionDeleteVoucher_(req) {
     if (String(data[i][0]) === String(req.id)) { sh.deleteRow(i + 1); return { ok: true }; }
   }
   return { ok: false, error: '전표를 찾을 수 없습니다: ' + req.id };
+}
+
+// 설교문을 PDF로 만들어 구글드라이브 "설교 ▸ YYYY년 M월" 폴더에 저장(관리자 전용)
+function actionExportSermonPdf_(req) {
+  var user = verifyUser_(req.token);
+  requireAdmin_(user.id);
+  var date = String(req.date || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('일자 형식이 올바르지 않습니다(YYYY-MM-DD).');
+  var title = String(req.title || '(제목없음)');
+  var service = String(req.service || '');
+  var preacher = String(req.preacher || '');
+  var scripture = String(req.scripture || '');
+  var contentHtml = String(req.contentHtml || '');
+
+  var y = date.slice(0, 4);
+  var m = parseInt(date.slice(5, 7), 10);
+  var monthFolderName = y + '년 ' + m + '월';
+
+  var rootFolder = getOrCreateFolder_(DriveApp.getRootFolder(), '설교');
+  var monthFolder = getOrCreateFolder_(rootFolder, monthFolderName);
+
+  var doc = DocumentApp.create(date + ' ' + title);
+  var body = doc.getBody();
+  body.clear();
+  body.appendParagraph(title).setHeading(DocumentApp.ParagraphHeading.TITLE);
+  var meta = [date, service, scripture, preacher].filter(function (s) { return s; }).join('  ·  ');
+  if (meta) body.appendParagraph(meta);
+  body.appendHorizontalRule();
+  var plain = htmlToPlainText_(contentHtml);
+  var paras = plain.length ? plain.split(/\n{2,}/) : ['(설교 원고가 비어 있습니다)'];
+  paras.forEach(function (p) { body.appendParagraph(p.replace(/\n/g, ' ')); });
+  doc.saveAndClose();
+
+  var docFile = DriveApp.getFileById(doc.getId());
+  var pdfBlob = docFile.getAs('application/pdf');
+  var fileName = date + ' ' + title + '.pdf';
+  pdfBlob.setName(fileName);
+  var pdfFile = monthFolder.createFile(pdfBlob);
+  docFile.setTrashed(true); // 중간 생성된 구글 문서는 정리
+
+  return { ok: true, url: pdfFile.getUrl(), fileName: fileName, folder: '설교/' + monthFolderName };
+}
+
+function getOrCreateFolder_(parent, name) {
+  var it = parent.getFoldersByName(name);
+  if (it.hasNext()) return it.next();
+  return parent.createFolder(name);
+}
+
+// 리치텍스트(HTML) → 평문(줄바꿈 유지, 구글 문서용)
+function htmlToPlainText_(html) {
+  if (!html) return '';
+  var s = String(html);
+  s = s.replace(/<\/(p|div|h[1-6]|li|blockquote|tr)>/gi, '$&\n');
+  s = s.replace(/<br\s*\/?>/gi, '\n');
+  s = s.replace(/<[^>]+>/g, '');
+  s = s.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  return s.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /* ============================================================

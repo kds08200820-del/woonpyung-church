@@ -2114,6 +2114,7 @@ console.log('[affairs.js] v20260701dj');
         '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 저장</button>' +
         '<button class="btn btn-line" id="se_kakao" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">💬 카카오톡 복사</button>' +
         '<button class="btn btn-line" id="se_preview" style="padding:8px 13px;border-radius:9px">👁 미리보기</button>' +
+        (worshipMode ? '' : '<button class="btn btn-line" id="se_pdf" style="padding:8px 13px;border-radius:9px">📄 PDF 내보내기</button>') +
         '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 저장 후 내보내기</button>' +
         '</div>' +
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
@@ -2538,6 +2539,37 @@ console.log('[affairs.js] v20260701dj');
       };
       ov.querySelector('#se_kakao').onclick = function () {
         save(function (saved) { copyKakaoQt(saved); });
+      };
+      var pdfBtn = ov.querySelector('#se_pdf');
+      if (pdfBtn) pdfBtn.onclick = function () {
+        var msg = ov.querySelector('#se_msg');
+        var data = gather();
+        if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = 'PDF 내보내기 전에 일자와 제목을 입력해 주세요.'; return; }
+        if (!(window.WPF && window.FINANCE_API_URL)) { msg.style.color = '#c0392b'; msg.textContent = 'PDF 내보내기는 재정 API 설정 후 이용할 수 있습니다.'; return; }
+        var old = pdfBtn.textContent; pdfBtn.disabled = true; pdfBtn.textContent = '저장 중…';
+        save(function (saved) {
+          pdfBtn.textContent = 'PDF 생성 중…';
+          WPF.call('exportSermonPdf', {
+            date: saved.sermon_date,
+            title: saved.title || '',
+            service: saved.service || '',
+            preacher: saved.preacher || '',
+            scripture: saved.scripture || '',
+            contentHtml: saved.content || ''
+          }).then(function (r) {
+            pdfBtn.disabled = false; pdfBtn.textContent = old;
+            msg.style.color = 'green';
+            msg.innerHTML = '✓ PDF 저장됨 — "' + esc(r.folder) + '" 폴더 · <a href="' + esc(r.url) + '" target="_blank" rel="noopener">열어보기 →</a>';
+          }).catch(function (e) {
+            pdfBtn.disabled = false; pdfBtn.textContent = old;
+            msg.style.color = '#c0392b';
+            var m = (e && e.message) || '';
+            msg.textContent = /unknown action/i.test(m) ? 'PDF 내보내기는 Apps Script 재배포 후 이용할 수 있습니다.' : ('PDF 내보내기 실패: ' + m);
+          });
+        }, function (e) {
+          pdfBtn.disabled = false; pdfBtn.textContent = old;
+          msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + (e && e.message ? e.message : e);
+        });
       };
 
       // ── 설교 원고 리치 에디터(contenteditable) ──
