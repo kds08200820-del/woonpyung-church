@@ -1589,7 +1589,8 @@ console.log('[affairs.js] v20260701dj');
     var iJit = findEq('본문과 설교 잇기', iGuide >= 0 ? iGuide : 0), iApply = findEq('적용', iGuide >= 0 ? iGuide : 0);
     var sermonEnd = iJit >= 0 ? iJit : (iApply >= 0 ? iApply : -1);
     var sermonLines = titleIdx >= 0 ? block(titleIdx, sermonEnd) : [];
-    var iYehwa = findEq('예화 클립'), illusLines = iYehwa >= 0 ? block(iYehwa, -1) : [];
+    var iSunday = findEq('주일설교');   // 주일 QT에만 있는 별도 설교 블록(예화 클립 뒤)
+    var iYehwa = findEq('예화 클립'), illusLines = iYehwa >= 0 ? block(iYehwa, iSunday >= 0 ? iSunday : -1) : [];
     function toHtml(arr) {
       var chunks = [], cur = [];
       arr.forEach(function (l) { if (!l.trim()) { if (cur.length) { chunks.push(cur); cur = []; } } else cur.push(l); });
@@ -1600,7 +1601,22 @@ console.log('[affairs.js] v20260701dj');
         return '<p>' + esc(c.join(' ').trim()) + '</p>';
       }).join('');
     }
-    return { date: date, scripture: scripture, gaeyeok: gaeyeok, woorimal: woorimal, title: title, sermonHtml: toHtml(sermonLines), illustration: illusLines.join('\n').trim() };
+    // 주일 QT: 주일설교 블록에서 제목·본문(성구)·설교 원고를 추출 → '주일 낮 예배'로 분류
+    var sunday = null;
+    if (iSunday >= 0) {
+      var sTitle = '', sScr = '', sBodyStart = -1, seen = 0;
+      for (var si = iSunday + 1; si < trim.length; si++) {
+        if (!trim[si]) continue;
+        var sm2 = trim[si].match(/^([가-힣]+\s*\d+:\d+(?:[~\-]\d+)?)\s*$/);
+        if (sm2) { sScr = sm2[1].replace(/~/g, '-').replace(/\s+/g, ' '); sBodyStart = si; break; }  // 성구 줄 = 본문
+        seen++;
+        if (seen === 1) sTitle = trim[si];            // 첫 줄 = 설교 제목
+        else { sBodyStart = si - 1; break; }          // 성구 없이 둘째 줄 → 그 줄부터 본문
+      }
+      var sBody = sBodyStart >= 0 ? block(sBodyStart, -1) : [];
+      if (sTitle || sBody.length) sunday = { title: sTitle, scripture: sScr, sermonHtml: toHtml(sBody) };
+    }
+    return { date: date, scripture: scripture, gaeyeok: gaeyeok, woorimal: woorimal, title: title, sermonHtml: toHtml(sermonLines), illustration: illusLines.join('\n').trim(), sunday: sunday };
   }
   // 예화 클립을 보관함(sermon_illustrations)에 저장(같은 날짜면 덮어씀). 출처(「…」)는 분리.
   function saveIllustration(p, onDone, onErr) {
@@ -2867,21 +2883,38 @@ console.log('[affairs.js] v20260701dj');
         var msg = ov.querySelector('#qtc_msg'), result = ov.querySelector('#qtc_result');
         var p = parseSaengmyeong(raw);
         if (!p.gaeyeok && !p.title && !p.scripture) { msg.style.color = '#c0392b'; msg.textContent = '인식할 수 없습니다. 생명의삶 자료 전체(날짜·개역개정·우리말·설교 길잡이 포함)를 붙여넣어 주세요.'; result.innerHTML = ''; return; }
-        if (p.date) ov.querySelector('#se_date').value = p.date;
-        ov.querySelector('#se_service').value = '매일 QT';
-        var qtToggle = ov.querySelector('#se_qt_toggle'); if (qtToggle) { qtToggle.checked = true; syncQt(); }
-        if (p.scripture) ov.querySelector('#se_scripture').value = p.scripture;
-        if (p.title) ov.querySelector('#se_title').value = p.title;
-        if (p.gaeyeok && ov.querySelector('#se_bible')) ov.querySelector('#se_bible').value = p.gaeyeok;
-        if (p.woorimal && ov.querySelector('#se_qt_bible')) ov.querySelector('#se_qt_bible').value = p.woorimal;
-        if (p.sermonHtml) { ed.innerHTML = p.sermonHtml; syncContent(); }
         function row(label, val) { return '<div class="qtc-rrow"><b>' + label + '</b><span>' + (val ? esc(val) : '—') + '</span></div>'; }
-        result.innerHTML = row('날짜', p.date) + row('본문', p.scripture) + row('제목', p.title) +
-          row('개역개정', p.gaeyeok ? (p.gaeyeok.split('\n').length + '절') : '') +
-          row('우리말', p.woorimal ? (p.woorimal.split('\n').length + '절') : '') +
-          row('설교 원고', p.sermonHtml ? '입력됨' : '') +
-          row('예화 클립', p.illustration ? (p.illustration.length + '자') : '없음');
-        msg.style.color = 'green'; msg.textContent = '✓ 자동 입력 완료. 내용을 확인하고 저장/내보내기 하세요.';
+        if (p.date) ov.querySelector('#se_date').value = p.date;
+        if (p.sunday && (p.sunday.title || p.sunday.sermonHtml)) {
+          // ── 주일(일요일) QT: 주일설교를 축출해 '주일 낮 예배'로 분류 ──
+          var sun = p.sunday;
+          ov.querySelector('#se_service').value = '주일 낮 예배';
+          var qtToggleS = ov.querySelector('#se_qt_toggle'); if (qtToggleS) { qtToggleS.checked = false; syncQt(); }
+          if (sun.scripture) ov.querySelector('#se_scripture').value = sun.scripture;
+          if (sun.title) ov.querySelector('#se_title').value = sun.title;
+          if (sun.sermonHtml) { ed.innerHTML = sun.sermonHtml; syncContent(); }
+          // 주일설교 본문(예: 시편 107:1-43)에 맞춰 개역개정·우리말 성경을 자동으로 불러옴
+          if (sun.scripture && typeof doFetchBible === 'function') doFetchBible();
+          result.innerHTML = row('분류', '주일 낮 예배 (주일설교 축출)') + row('날짜', p.date) + row('본문', sun.scripture) + row('제목', sun.title) +
+            row('설교 원고', sun.sermonHtml ? '입력됨' : '') +
+            row('예화 클립', p.illustration ? (p.illustration.length + '자') : '없음');
+          msg.style.color = 'green'; msg.textContent = '✓ 주일설교를 축출해 ‘주일 낮 예배’로 분류했습니다. 본문 성경도 자동으로 불러왔습니다. 내용을 확인하고 저장하세요.';
+        } else {
+          // ── 평일 매일 QT ──
+          ov.querySelector('#se_service').value = '매일 QT';
+          var qtToggle = ov.querySelector('#se_qt_toggle'); if (qtToggle) { qtToggle.checked = true; syncQt(); }
+          if (p.scripture) ov.querySelector('#se_scripture').value = p.scripture;
+          if (p.title) ov.querySelector('#se_title').value = p.title;
+          if (p.gaeyeok && ov.querySelector('#se_bible')) ov.querySelector('#se_bible').value = p.gaeyeok;
+          if (p.woorimal && ov.querySelector('#se_qt_bible')) ov.querySelector('#se_qt_bible').value = p.woorimal;
+          if (p.sermonHtml) { ed.innerHTML = p.sermonHtml; syncContent(); }
+          result.innerHTML = row('날짜', p.date) + row('본문', p.scripture) + row('제목', p.title) +
+            row('개역개정', p.gaeyeok ? (p.gaeyeok.split('\n').length + '절') : '') +
+            row('우리말', p.woorimal ? (p.woorimal.split('\n').length + '절') : '') +
+            row('설교 원고', p.sermonHtml ? '입력됨' : '') +
+            row('예화 클립', p.illustration ? (p.illustration.length + '자') : '없음');
+          msg.style.color = 'green'; msg.textContent = '✓ 자동 입력 완료. 내용을 확인하고 저장/내보내기 하세요.';
+        }
         if (p.illustration) {
           saveIllustration(p, function () { msg.textContent = '✓ 자동 입력 완료 · 🗂 예화 클립도 보관함에 저장되었습니다.'; }, function (e) {
             msg.style.color = '#c0392b';
