@@ -113,7 +113,9 @@ console.log('[dashboard.js] v20260701da');
       '<div id="myEdu" style="margin-bottom:26px;"></div>' +
       '<div id="qtProgress" style="margin-bottom:26px;"></div>' +
       '<div id="dashQt" style="margin-bottom:26px;"></div>' +
+      '<hr class="dash-divider">' +
       '<section style="margin-bottom:26px;"><div class="section-head"><span class="eyebrow">THIS SUNDAY</span><h2>이번 주 말씀</h2></div><div class="home-sermon" id="homeSermon"></div></section>' +
+      '<hr class="dash-divider">' +
       '<section style="margin-bottom:26px;"><div class="section-head"><span class="eyebrow">THIS WEEK</span><h2>이번 주 주보</h2></div><div id="homeBulletin"></div></section>' +
       '<div class="form-card" style="margin-bottom:26px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">💝 헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
       '<div id="familyTree" style="margin-bottom:26px;"></div>';
