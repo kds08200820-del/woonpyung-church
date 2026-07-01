@@ -15,6 +15,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20260701lib13" />
   <style>
+    /* 대시보드 내 모든 박스의 폭을 QT 진행표(.form-card 기본 680px)와 동일하게 정렬 */
+    #dashRoot .form-card,
+    #dashRoot .home-sermon,
+    #dashRoot .qt-today,
+    #dashRoot .hb-card{max-width:680px;width:100%;margin-left:auto;margin-right:auto;box-sizing:border-box}
     .hb-card{max-width:860px;margin:0 auto;border:1px solid var(--line,#e3e7ee);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(3,34,87,.07)}
     .hb-hd{display:flex;justify-content:space-between;align-items:center;background:var(--accent,#032257);color:#fff;padding:14px 26px}
     .hb-hd-week{font-weight:700;font-size:.9rem;letter-spacing:.04em}
@@ -67,6 +72,6 @@
   <script src="js/layout.js?v=20260701lib15"></script>
   <script src="js/main.js?v=20260701lib31"></script>
   <script src="js/finance-api.js?v=20260701lib13"></script>
-  <script src="js/dashboard.js?v=20260701lib6"></script>
+  <script src="js/dashboard.js?v=20260701lib7"></script>
 </body>
 </html>

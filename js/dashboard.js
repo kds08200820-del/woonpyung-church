@@ -125,27 +125,43 @@ console.log('[dashboard.js] v20260701da');
       '</div>';
   }
 
-  /* ================= 오늘의 큐티 + 아멘 체크 ================= */
+  /* ================= 오늘의 큐티 (홈 화면과 동일한 카드) + 아멘 체크 ================= */
   function loadTodayQt(me) {
     var el = document.getElementById('dashQt'); if (!el) return;
-    el.innerHTML = '<p class="qt-loading">오늘의 큐티를 불러오는 중…</p>';
+    el.innerHTML = '<div class="qt-today"><p class="qt-loading">오늘의 말씀을 불러오는 중입니다…</p></div>';
     var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, t = todayStr();
     fetch(url + '/rest/v1/qt_published?select=*&sermon_date=eq.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + ak } })
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (rows) {
         var q = rows && rows[0];
-        if (!q) { el.innerHTML = '<div class="form-card qtc-card"><span class="qtc-badge">📖 오늘의 큐티</span><p style="color:#9aa5b1;font-size:.88rem;margin:14px 0 0;">오늘 등록된 큐티가 아직 없습니다.</p></div>'; return; }
+        if (!q) { el.innerHTML = '<div class="qt-today"><p class="qt-loading">오늘 등록된 큐티가 아직 없습니다.</p></div>'; return; }
         el.innerHTML =
-          '<div class="form-card qtc-card">' +
-          '<span class="qtc-badge">📖 오늘의 큐티</span>' +
-          (q.title ? '<p class="qtc-title">' + esc(q.title) + '</p>' : '') +
-          (q.scripture ? '<p class="qtc-ref">' + esc(q.scripture) + '</p>' : '') +
-          (q.qt_bible_text ? '<div class="qtc-bible">' + bibleVersesHTML(q.qt_bible_text) + '</div>' : '') +
-          (q.content ? '<div class="qtc-head">📝 묵상</div><div class="qtc-body">' + toParaHTML(q.content) + '</div>' : '') +
-          (q.prayer ? '<div class="qtc-head">🙏 기도</div><div class="qtc-body">' + toParaHTML(q.prayer) + '</div>' : '') +
-          '<div id="dashAmenBox" class="qtc-amen"></div>' +
+          '<div class="qt-today">' +
+          '<button type="button" class="qt-card-today" id="dashQtOpen">' +
+          '<span class="qt-badge">오늘의 QT · ' + esc(t) + '</span>' +
+          (q.title ? '<h3 class="qt-card-title">' + esc(q.title) + '</h3>' : '') +
+          (q.scripture ? '<p class="qt-card-ref">' + esc(q.scripture) + '</p>' : '') +
+          '<span class="qt-card-more">묵상 전문 읽기 →</span>' +
+          '</button>' +
+          '<div id="dashQtFull" hidden style="margin-top:18px"></div>' +
           '</div>';
-        loadAmenState(me, t);
+        var opened = false;
+        document.getElementById('dashQtOpen').onclick = function () {
+          opened = !opened;
+          var full = document.getElementById('dashQtFull');
+          full.hidden = !opened;
+          if (opened && !full.dataset.loaded) {
+            full.dataset.loaded = '1';
+            full.innerHTML =
+              '<div class="form-card qtc-card">' +
+              (q.qt_bible_text ? '<div class="qtc-bible">' + bibleVersesHTML(q.qt_bible_text) + '</div>' : '') +
+              (q.content ? '<div class="qtc-head">📝 묵상</div><div class="qtc-body">' + toParaHTML(q.content) + '</div>' : '') +
+              (q.prayer ? '<div class="qtc-head">🙏 기도</div><div class="qtc-body">' + toParaHTML(q.prayer) + '</div>' : '') +
+              '<div id="dashAmenBox" class="qtc-amen"></div>' +
+              '</div>';
+            loadAmenState(me, t);
+          }
+        };
       })
       .catch(function () { el.innerHTML = '<p style="color:#c0392b;font-size:.88rem;">큐티를 불러오지 못했습니다.</p>'; });
   }
