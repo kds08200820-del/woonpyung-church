@@ -13,6 +13,23 @@ console.log('[dashboard.js] v20260701da');
   function pad2(n) { return ('0' + n).slice(-2); }
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
 
+  // 성경 본문(줄마다 "번호 내용")을 절 목록으로 정돈
+  function bibleVersesHTML(text) {
+    var lines = String(text || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    return lines.map(function (ln) {
+      var m = ln.match(/^(\d+)\s*(.*)$/);
+      if (m) return '<div class="qtc-verse"><span class="qtc-vn">' + m[1] + '</span><span>' + esc(m[2]) + '</span></div>';
+      return '<div class="qtc-verse"><span>' + esc(ln) + '</span></div>';
+    }).join('');
+  }
+  // 묵상/기도(HTML 또는 줄바꿈 텍스트)를 문단 블록으로 변환
+  function toParaHTML(text) {
+    var s = String(text || '');
+    if (!s.trim()) return '';
+    if (/<[a-z][\s\S]*>/i.test(s)) return s; // 이미 HTML(리치텍스트)이면 그대로
+    return s.split(/\n{2,}/).map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join('');
+  }
+
   function sbUser() {
     try {
       var ref = new URL(window.SUPABASE_URL).hostname.split('.')[0];
@@ -97,7 +114,7 @@ console.log('[dashboard.js] v20260701da');
     var orderItems = (b.order || []).map(function (o) { return '<li>' + o + '</li>'; }).join('');
     var newsItems = (b.news || []).slice(0, 3).map(function (n) { return '<li><strong>' + n.title + '</strong>' + n.detail + '</li>'; }).join('');
     el.innerHTML =
-      '<div class="hb-card reveal">' +
+      '<div class="hb-card">' +
       '<div class="hb-hd"><span class="hb-hd-week">' + b.week + ' · 주일 낮 예배</span><span class="hb-hd-date">' + b.dateLabel + '</span></div>' +
       '<div class="hb-body">' +
       '<div class="hb-col"><p class="hb-col-title">예배 순서</p><ol class="hb-order">' + orderItems + '</ol></div>' +
@@ -117,16 +134,16 @@ console.log('[dashboard.js] v20260701da');
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (rows) {
         var q = rows && rows[0];
-        if (!q) { el.innerHTML = '<div class="form-card" style="padding:16px 18px;"><h3 style="margin:0 0 6px;font-size:1rem;color:var(--accent,#032257);">📖 오늘의 큐티</h3><p style="color:#9aa5b1;font-size:.88rem;margin:0;">오늘 등록된 큐티가 아직 없습니다.</p></div>'; return; }
+        if (!q) { el.innerHTML = '<div class="form-card qtc-card"><span class="qtc-badge">📖 오늘의 큐티</span><p style="color:#9aa5b1;font-size:.88rem;margin:14px 0 0;">오늘 등록된 큐티가 아직 없습니다.</p></div>'; return; }
         el.innerHTML =
-          '<div class="form-card" style="padding:18px 20px;">' +
-          '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📖 오늘의 큐티</h3>' +
-          (q.title ? '<p style="font-weight:700;margin:8px 0 2px;">' + esc(q.title) + '</p>' : '') +
-          (q.scripture ? '<p style="color:#7b8794;font-size:.86rem;margin:0 0 12px;">' + esc(q.scripture) + '</p>' : '') +
-          (q.qt_bible_text ? '<div style="background:#fafbfc;border:1px solid #eef1f5;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:.92rem;line-height:1.85;white-space:pre-line;">' + esc(q.qt_bible_text) + '</div>' : '') +
-          (q.content ? '<div style="margin-bottom:14px;"><div style="font-size:.8rem;color:#7b8794;font-weight:700;margin-bottom:5px;">📝 묵상</div><div style="font-size:.92rem;line-height:1.8;">' + q.content + '</div></div>' : '') +
-          (q.prayer ? '<div style="margin-bottom:16px;"><div style="font-size:.8rem;color:#7b8794;font-weight:700;margin-bottom:5px;">🙏 기도</div><div style="font-size:.92rem;line-height:1.8;">' + q.prayer + '</div></div>' : '') +
-          '<div id="dashAmenBox" style="border-top:1px solid #eef1f5;padding-top:14px;"></div>' +
+          '<div class="form-card qtc-card">' +
+          '<span class="qtc-badge">📖 오늘의 큐티</span>' +
+          (q.title ? '<p class="qtc-title">' + esc(q.title) + '</p>' : '') +
+          (q.scripture ? '<p class="qtc-ref">' + esc(q.scripture) + '</p>' : '') +
+          (q.qt_bible_text ? '<div class="qtc-bible">' + bibleVersesHTML(q.qt_bible_text) + '</div>' : '') +
+          (q.content ? '<div class="qtc-head">📝 묵상</div><div class="qtc-body">' + toParaHTML(q.content) + '</div>' : '') +
+          (q.prayer ? '<div class="qtc-head">🙏 기도</div><div class="qtc-body">' + toParaHTML(q.prayer) + '</div>' : '') +
+          '<div id="dashAmenBox" class="qtc-amen"></div>' +
           '</div>';
         loadAmenState(me, t);
       })
@@ -140,8 +157,8 @@ console.log('[dashboard.js] v20260701da');
     fetch(url + '/rest/v1/qt_checks?select=id&check_date=eq.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (rows) {
-        if (rows && rows.length) { box.innerHTML = '<span style="color:#1e874b;font-weight:700;font-size:.92rem;">✓ 오늘의 큐티를 마치고 아멘 하셨습니다</span>'; return; }
-        box.innerHTML = '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.92rem;font-weight:600;"><input type="checkbox" id="dashAmenChk" style="width:18px;height:18px;cursor:pointer;"> 🙏 기도문까지 읽고, 오늘의 큐티에 아멘 합니다</label>';
+        if (rows && rows.length) { box.innerHTML = '<span class="qtc-amen-done">✓ 오늘의 큐티를 마치고 아멘 하셨습니다</span>'; return; }
+        box.innerHTML = '<label><input type="checkbox" id="dashAmenChk"> 🙏 기도문까지 읽고, 오늘의 큐티에 아멘 합니다</label>';
         var chk = document.getElementById('dashAmenChk');
         if (chk) chk.onchange = function () {
           if (!chk.checked) return;
@@ -151,7 +168,7 @@ console.log('[dashboard.js] v20260701da');
             body: JSON.stringify({ user_id: uid, check_date: t })
           }).then(function (r) {
             if (!r.ok && r.status !== 409) return r.text().then(function (txt) { throw new Error(txt); });
-            box.innerHTML = '<span style="color:#1e874b;font-weight:700;font-size:.92rem;">✓ 오늘의 큐티를 마치고 아멘 하셨습니다</span>';
+            box.innerHTML = '<span class="qtc-amen-done">✓ 오늘의 큐티를 마치고 아멘 하셨습니다</span>';
           }).catch(function (e) {
             chk.disabled = false; chk.checked = false;
             var msg = (e && e.message) || '';
@@ -432,7 +449,7 @@ console.log('[dashboard.js] v20260701da');
   }
   function loadQtProgress(me) {
     var el = document.getElementById('qtProgress'); if (!el) return;
-    el.innerHTML = '<div class="form-card" style="padding:16px 18px;"><h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📊 QT 진행표</h3><p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">아멘한 큐티의 말씀 본문이 성경 66권 중 어디를 지나왔는지 보여줍니다.</p><div id="qtProgGrid"><p class="qt-loading">불러오는 중…</p></div></div>';
+    el.innerHTML = '<div class="form-card" style="padding:16px 18px;"><h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📊 QT 진행표</h3><p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">아멘한 큐티의 말씀 본문이 성경 66권 중 어디를 지나왔는지 보여줍니다. 표시된 책을 누르면 그때 읽은 큐티를 다시 볼 수 있습니다.</p><div id="qtProgGrid"><p class="qt-loading">불러오는 중…</p></div><div id="qtProgDetail"></div></div>';
     var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, tok = (window.WPF && WPF.token && WPF.token());
     var uid = sbUser() && sbUser().id;
     if (!uid || !tok) { el.querySelector('#qtProgGrid').innerHTML = ''; return; }
@@ -440,32 +457,70 @@ console.log('[dashboard.js] v20260701da');
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (checks) {
         var dates = (checks || []).map(function (c) { return c.check_date; }).filter(Boolean);
-        if (!dates.length) { drawGrid({}); return; }
+        if (!dates.length) { drawGrid({}, {}); return; }
         var inlist = dates.map(function (d) { return '"' + d + '"'; }).join(',');
-        return fetch(url + '/rest/v1/qt_published?select=sermon_date,scripture&sermon_date=in.(' + inlist + ')', { headers: { apikey: ak, Authorization: 'Bearer ' + ak } })
+        return fetch(url + '/rest/v1/qt_published?select=sermon_date,title,scripture,qt_bible_text,content,prayer&sermon_date=in.(' + inlist + ')&order=sermon_date.desc', { headers: { apikey: ak, Authorization: 'Bearer ' + ak } })
           .then(function (r) { return r.ok ? r.json() : []; })
           .then(function (rows) {
-            var covered = {};
-            (rows || []).forEach(function (r) { var bk = bookOf(r.scripture); if (bk) covered[bk] = (covered[bk] || 0) + 1; });
-            drawGrid(covered);
+            var covered = {}, byBook = {};
+            (rows || []).forEach(function (r) {
+              var bk = bookOf(r.scripture); if (!bk) return;
+              covered[bk] = (covered[bk] || 0) + 1;
+              (byBook[bk] = byBook[bk] || []).push(r);
+            });
+            drawGrid(covered, byBook);
           });
       })
-      .catch(function () { drawGrid({}); });
+      .catch(function () { drawGrid({}, {}); });
     function grpHTML(list, covered) {
       return '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px;">' +
         list.map(function (b) {
           var n = covered[b] || 0;
           var on = n > 0;
-          return '<div title="' + esc(b) + (on ? ' · ' + n + '회' : '') + '" style="padding:7px 4px;text-align:center;border-radius:6px;font-size:.74rem;font-weight:700;background:' + (on ? '#0d9488' : '#eef2f7') + ';color:' + (on ? '#fff' : '#9aa5b1') + ';word-break:keep-all;line-height:1.3;">' + esc(b) + (on ? '<div style="font-size:.64rem;font-weight:400;opacity:.85;">' + n + '회</div>' : '') + '</div>';
+          return '<div class="qtc-bookcell' + (on ? ' on' : '') + '" data-book="' + esc(b) + '" title="' + esc(b) + (on ? ' · ' + n + '회 · 눌러서 보기' : '') + '" style="padding:7px 4px;text-align:center;border-radius:6px;font-size:.74rem;font-weight:700;background:' + (on ? '#0d9488' : '#eef2f7') + ';color:' + (on ? '#fff' : '#9aa5b1') + ';word-break:keep-all;line-height:1.3;' + (on ? 'cursor:pointer;' : '') + '">' + esc(b) + (on ? '<div style="font-size:.64rem;font-weight:400;opacity:.85;">' + n + '회</div>' : '') + '</div>';
         }).join('') + '</div>';
     }
-    function drawGrid(covered) {
+    function entryHTML(r, i) {
+      return '<div class="qtc-bookentry" data-i="' + i + '" style="border:1px solid #e8edf3;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+        '<b style="font-size:.9rem;">' + esc(r.title || '') + '</b>' +
+        '<span style="font-size:.76rem;color:#9aa5b1;">' + esc(r.sermon_date) + ' ▾</span></div>' +
+        (r.scripture ? '<div style="font-size:.8rem;color:var(--accent,#032257);margin-top:2px;">' + esc(r.scripture) + '</div>' : '') +
+        '<div class="qtc-bookentry-body" hidden style="margin-top:10px;"></div></div>';
+    }
+    function drawGrid(covered, byBook) {
       var grid = el.querySelector('#qtProgGrid'); if (!grid) return;
+      var detail = el.querySelector('#qtProgDetail');
       var totalCovered = BIBLE_OT.concat(BIBLE_NT).filter(function (b) { return covered[b]; }).length;
       grid.innerHTML =
         '<p style="font-size:.85rem;color:#3a4a63;margin:0 0 10px;font-weight:600;">' + totalCovered + ' / 66권 커버</p>' +
         '<div style="margin-bottom:6px;font-size:.76rem;color:#9aa5b1;font-weight:700;">구약</div>' + grpHTML(BIBLE_OT, covered) +
         '<div style="margin:14px 0 6px;font-size:.76rem;color:#9aa5b1;font-weight:700;">신약</div>' + grpHTML(BIBLE_NT, covered);
+      Array.prototype.forEach.call(grid.querySelectorAll('.qtc-bookcell.on'), function (cell) {
+        cell.onclick = function () { showBookQt(cell.dataset.book, byBook[cell.dataset.book] || [], detail); };
+      });
+    }
+    function showBookQt(book, rows, detail) {
+      if (!detail) return;
+      detail.innerHTML = '<div style="border-top:1px solid #eef1f5;margin-top:16px;padding-top:14px;">' +
+        '<b style="font-size:.92rem;color:var(--accent,#032257);">' + esc(book) + ' — 읽은 큐티 ' + rows.length + '건</b>' +
+        '<div style="margin-top:10px;">' + rows.map(entryHTML).join('') + '</div></div>';
+      Array.prototype.forEach.call(detail.querySelectorAll('.qtc-bookentry'), function (card) {
+        var r = rows[Number(card.dataset.i)];
+        var body = card.querySelector('.qtc-bookentry-body');
+        var loaded = false;
+        card.onclick = function () {
+          body.hidden = !body.hidden;
+          if (!body.hidden && !loaded) {
+            loaded = true;
+            body.innerHTML =
+              (r.qt_bible_text ? '<div class="qtc-bible">' + bibleVersesHTML(r.qt_bible_text) + '</div>' : '') +
+              (r.content ? '<div class="qtc-head">📝 묵상</div><div class="qtc-body">' + toParaHTML(r.content) + '</div>' : '') +
+              (r.prayer ? '<div class="qtc-head">🙏 기도</div><div class="qtc-body">' + toParaHTML(r.prayer) + '</div>' : '');
+          }
+        };
+      });
+      detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
 
