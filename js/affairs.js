@@ -2098,6 +2098,9 @@ console.log('[affairs.js] v20260701dj');
     // 설교 작성 페이지(전체화면)
     function sermonEditor(rec) {
       rec = rec || {};
+      // 생명의삶 자동분류 등 ed.innerHTML을 코드로 바꿔치기하는 곳에서 페이지 나눔을 다시 계산하도록 호출하는 훅
+      // (wdPageView() IIFE 안에서 실제 함수가 대입됨 — 'input' 이벤트가 안 나는 프로그램적 변경 후 반드시 호출해야 함)
+      var wdRepaginate = null;
       var ov = document.createElement('div');
       ov.className = worshipMode ? 'sed-lightov' : 'sed-dark';   // 설교 매니저 = 다크 스튜디오, 예배 매니저 = 기존 라이트
       ov.style.cssText = worshipMode
@@ -3248,7 +3251,7 @@ console.log('[affairs.js] v20260701dj');
           var qtToggleS = ov.querySelector('#se_qt_toggle'); if (qtToggleS) { qtToggleS.checked = false; syncQt(); }
           if (sun.scripture) ov.querySelector('#se_scripture').value = sun.scripture;
           if (sun.title) ov.querySelector('#se_title').value = sun.title;
-          if (sun.sermonHtml) { ed.innerHTML = sun.sermonHtml; syncContent(); }
+          if (sun.sermonHtml) { ed.innerHTML = sun.sermonHtml; syncContent(); if (typeof wdRepaginate === 'function') wdRepaginate(); }
           // 주일설교 본문(예: 시편 107:1-43)에 맞춰 개역개정·우리말 성경을 자동으로 불러옴
           if (sun.scripture && typeof doFetchBible === 'function') doFetchBible();
           result.innerHTML = row('분류', '주일 낮 예배 (주일설교 축출)') + row('날짜', p.date) + row('본문', sun.scripture) + row('제목', sun.title) +
@@ -3263,7 +3266,7 @@ console.log('[affairs.js] v20260701dj');
           if (p.title) ov.querySelector('#se_title').value = p.title;
           if (p.gaeyeok && ov.querySelector('#se_bible')) ov.querySelector('#se_bible').value = p.gaeyeok;
           if (p.woorimal && ov.querySelector('#se_qt_bible')) ov.querySelector('#se_qt_bible').value = p.woorimal;
-          if (p.sermonHtml) { ed.innerHTML = p.sermonHtml; syncContent(); }
+          if (p.sermonHtml) { ed.innerHTML = p.sermonHtml; syncContent(); if (typeof wdRepaginate === 'function') wdRepaginate(); }
           result.innerHTML = row('날짜', p.date) + row('본문', p.scripture) + row('제목', p.title) +
             row('개역개정', p.gaeyeok ? (p.gaeyeok.split('\n').length + '절') : '') +
             row('우리말', p.woorimal ? (p.woorimal.split('\n').length + '절') : '') +
@@ -3480,6 +3483,7 @@ console.log('[affairs.js] v20260701dj');
           Array.prototype.forEach.call(ed.querySelectorAll('*'), function (el) { el.style.fontFamily = ''; el.style.fontSize = ''; el.style.color = ''; el.style.backgroundColor = ''; });
           ed.style.lineHeight = ''; ed.style.letterSpacing = '';
           syncContent(); renderPreview();
+          if (typeof wdRepaginate === 'function') wdRepaginate();   // 글자 크기가 바뀌면 문단 높이도 바뀌므로 페이지 나눔 재계산
         };
         var illIns = ov.querySelector('#se_ill_ins');
         if (illIns) illIns.onclick = function () { ov.querySelector('#qtc_illus').click(); };
@@ -3623,10 +3627,31 @@ console.log('[affairs.js] v20260701dj');
           // 실제 페이지 나눔: 원고 안의 문단(최상위 블록)을 훑어 한 쪽 분량을 넘기면 그 앞에 '빈 칸(간격)'을 끼워 다음 장으로 밀어냄
           // — 배경의 흰 용지/간격 줄무늬와 정확히 맞물려 진짜 워드처럼 페이지가 눈에 보이게 나뉜다.
           // 참고: 한 문단이 통째로 한 쪽보다 길면(드묾) 그 문단은 나누지 않음(문단 중간 강제분할은 하지 않음).
+          // 최상위에 문단 태그 없이 떠 있는 텍스트/인라인(예: 붙여넣기로 들어온 원본)을 <p>로 감싸 — 그래야 페이지 나눔 계산에 잡힘
+          // 연속된 텍스트/인라인은 하나의 <p>로 묶고(한 줄이 여러 문단으로 쪼개지지 않게), 블록 사이의 순수 공백은 제거(빈 문단 방지)
+          var BLOCK_TAGS = /^(P|DIV|H1|H2|H3|H4|H5|H6|UL|OL|BLOCKQUOTE|HR|TABLE|FIGURE|PRE)$/;
+          function normalizeTopLevel() {
+            var node = ed.firstChild, wrapper = null;
+            while (node) {
+              var next = node.nextSibling;
+              var isBlank = node.nodeType === 3 && !node.textContent.trim();
+              var isInline = (node.nodeType === 3 && !isBlank) || (node.nodeType === 1 && !node.classList.contains('pg-break-spacer') && !BLOCK_TAGS.test(node.tagName));
+              if (isBlank) {
+                if (wrapper) wrapper.appendChild(node); else ed.removeChild(node);
+              } else if (isInline) {
+                if (!wrapper) { wrapper = document.createElement('p'); ed.insertBefore(wrapper, node); }
+                wrapper.appendChild(node);
+              } else {
+                wrapper = null;
+              }
+              node = next;
+            }
+          }
           function repaginate() {
             var m = metrics(), ph = m.ph, mg = m.mg;
             var pageInnerH = ph - 2 * mg;
             Array.prototype.slice.call(ed.querySelectorAll('.pg-break-spacer')).forEach(function (n) { n.remove(); });
+            normalizeTopLevel();
             var kids = Array.prototype.slice.call(ed.children);
             var pageEndY = mg + pageInnerH;   // 현재 페이지의 본문 하단 경계(wd-page 기준 y좌표)
             var totalPages = 1, firstOnPage = true;
@@ -3669,6 +3694,7 @@ console.log('[affairs.js] v20260701dj');
           if (marginSel) marginSel.onchange = function () { prefs.margin = Number(this.value) || 20; applyPage(); };
           if (zoomR) zoomR.oninput = function () { prefs.zoom = Number(this.value) || 100; applyPage(); };
           if (pgnumSel) pgnumSel.onchange = function () { prefs.pgnum = this.value; try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { } repaginate(); };
+          wdRepaginate = repaginate;   // 생명의삶 자동분류 등 코드로 ed.innerHTML을 바꿔치기하는 곳에서 재호출할 수 있게 바깥에 노출
           applyPage();
           // 원고를 입력할 때마다(디바운스) 페이지 나눔·페이지 번호를 다시 계산
           var rpgT = null;
