@@ -2807,7 +2807,8 @@ console.log('[affairs.js] v20260701dj');
         if (kakaoBtn) kakaoBtn.style.display = qtOn() ? '' : 'none';
       }
       if (qtToggle) {
-        qtToggle.checked = !!(rec.qt_bible_text || rec.service === '매일 QT' || rec.service === '새벽기도');
+        // 체크 여부는 '이 예배 종류가 QT류인가'로만 결정 — 과거에 우리말 데이터가 남아있다고 해서 자동으로 켜지지 않음(다른 종류로 바뀐 설교에서 오작동 방지)
+        qtToggle.checked = !!(rec.service === '매일 QT' || rec.service === '새벽기도');
         qtToggle.onchange = syncQt;
       }
       if (wmChk) {
@@ -2998,7 +2999,8 @@ console.log('[affairs.js] v20260701dj');
           content: ov.querySelector('#se_content').value || null,
           prayer: (ov.querySelector('#se_prayer') ? ov.querySelector('#se_prayer').value : '') || null,
           bible_text: (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '') || null,
-          qt_bible_text: ((qtOn() || wmOn()) && ov.querySelector('#se_qt_bible') ? ov.querySelector('#se_qt_bible').value : '') || null,
+          // 체크박스는 화면에 보이고 안 보이고만 결정 — 저장은 칸에 실제로 있는 값 그대로(체크 꺼졌다고 기존 우리말 데이터가 지워지면 안 됨)
+          qt_bible_text: (ov.querySelector('#se_qt_bible') ? ov.querySelector('#se_qt_bible').value : '') || null,
           media_url: ov.querySelector('#se_media').value || null,
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
