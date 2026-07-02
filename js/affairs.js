@@ -3398,7 +3398,7 @@ console.log('[affairs.js] v20260701dj');
                 if (!isSaved && !curDone && (!r.sermon_date || !d0 || String(r.sermon_date) > d0)) { no++; curDone = true; htmlD += curItem(no); }
                 no++;
                 var isCur = String(r.id) === String(rec.id);
-                htmlD += '<button type="button" class="bd-doc' + (isCur ? ' cur' : '') + '" data-id="' + esc(r.id) + '"><b>' + no + '. ' + esc(r.title || '(제목없음)') + (isCur ? ' <span style="font-weight:400">— 이번 설교</span>' : '') + '</b><span>' + esc(fmtD(r.sermon_date) || '') + (r.scripture ? ' · ' + esc(r.scripture) : '') + '</span></button>';
+                htmlD += '<button type="button" class="bd-doc' + (isCur ? ' cur' : '') + '" data-id="' + esc(r.id) + '"' + (isCur ? '' : ' title="새 창(읽기용)으로 열립니다 — 지금 작성 중인 문서는 그대로 유지됩니다"') + '><b>' + no + '. ' + esc(r.title || '(제목없음)') + (isCur ? ' <span style="font-weight:400">— 이번 설교</span>' : ' <span style="font-weight:400;font-size:.68rem;color:#8fa0b5">↗ 새 창</span>') + '</b><span>' + esc(fmtD(r.sermon_date) || '') + (r.scripture ? ' · ' + esc(r.scripture) : '') + '</span></button>';
               });
               if (!isSaved && !curDone) { no++; htmlD += curItem(no); }
             });
@@ -3408,8 +3408,8 @@ console.log('[affairs.js] v20260701dj');
             b.onclick = function () {
               if (String(b.dataset.id) === String(rec.id)) return;
               var found = null; (smRows || []).forEach(function (r) { if (String(r.id) === String(b.dataset.id)) found = r; });
-              // close()는 history.back()(비동기 popstate)으로 닫히므로, 새 편집기는 닫힘이 끝난 뒤에 열어야 함
-              if (found) { close(); setTimeout(function () { sermonEditor(found); }, 160); }
+              // 현재 작업 문서를 닫지 않고, 선택한 시리즈 설교를 '새 창(읽기용)'으로 열어 참고만 함
+              if (found) sermonReadingView(found, { qt: false });
             };
           });
         }
