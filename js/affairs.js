@@ -2101,6 +2101,9 @@ console.log('[affairs.js] v20260701dj');
       // 생명의삶 자동분류 등 ed.innerHTML을 코드로 바꿔치기하는 곳에서 페이지 나눔을 다시 계산하도록 호출하는 훅
       // (wdPageView() IIFE 안에서 실제 함수가 대입됨 — 'input' 이벤트가 안 나는 프로그램적 변경 후 반드시 호출해야 함)
       var wdRepaginate = null;
+      // 저장·미리보기용으로 '깨끗한' 원고 HTML을 돌려주는 훅 — 페이지 나눔 간격(.pg-break-spacer)과
+      // 페이지 넘김용으로 쪼갠 조각(.pg-cont)을 모두 원상복구해, 원래 문단 구조 그대로의 HTML을 준다(wdPageView에서 대입).
+      var wdCleanHtml = null;
       var ov = document.createElement('div');
       ov.className = worshipMode ? 'sed-lightov' : 'sed-dark';   // 설교 매니저 = 다크 스튜디오, 예배 매니저 = 기존 라이트
       ov.style.cssText = worshipMode
@@ -2256,13 +2259,8 @@ console.log('[affairs.js] v20260701dj');
         '.rp-nav button:disabled{opacity:.35;cursor:default}' +
         '.sed-dark .rp-nav button{background:#161d29;border-color:#2a3547;color:#c3cede}' +
         '.rp-nav b{font-size:.8rem;color:#8b96a5;min-width:52px;text-align:center;font-weight:600}' +
-        // ── 설교 원고: MS Word처럼 캔버스 위 용지만 — 박스 없음, ㎜ 눈금자는 용지에 밀착, 꺾쇠 여백 가이드 ──
+        // ── 설교 원고: 구글 문서처럼 캔버스 위 흰 용지만 — 줄자 없음, 꺾쇠 여백 가이드 ──
         '.wd-area{width:-webkit-max-content;width:max-content;margin:8px auto 0;transform-origin:top center}' +
-        '.wd-rowh{display:flex}' +
-        '.wd-corner{width:20px;height:20px;flex:none}' +
-        '#wd_rh{display:block;background:#f1f3f4;border-radius:3px 3px 0 0}' +
-        '.wd-rowb{display:flex;align-items:flex-start}' +
-        '#wd_rv{display:block;background:#f1f3f4;border-radius:3px 0 0 3px;flex:none}' +
         '.wd-page{background:#fff;box-shadow:0 6px 26px rgba(0,0,0,.5);box-sizing:border-box;position:relative;background-origin:border-box}' +
         '.wd-page .se-editor{border:none;border-radius:0;background:transparent;min-height:0;box-shadow:none}' +
         '.wd-page .se-editor:focus{border:none;box-shadow:none;outline:none}' +
@@ -2273,8 +2271,11 @@ console.log('[affairs.js] v20260701dj');
         '.wd-tr{border-left-width:1px;border-bottom-width:1px}' +
         '.wd-bl{border-right-width:1px;border-top-width:1px}' +
         '.wd-br{border-left-width:1px;border-top-width:1px}' +
-        // 페이지 구분(실제로 내용을 다음 장으로 밀어내는 빈 칸) — 워드처럼 눈에 보이는 간격으로 페이지가 나뉨
+        // 페이지 구분(실제로 내용을 다음 장으로 밀어내는 빈 칸) — 구글 문서처럼 눈에 보이는 간격으로 페이지가 나뉨
         '.pg-break-spacer{display:block;user-select:none;pointer-events:none}' +
+        // 문단이 페이지 경계에서 줄 단위로 쪼개졌을 때: 앞조각은 아래 여백 0, 이어지는 조각(.pg-cont)은 위 여백 0 → 이어진 줄이 다음 페이지 맨 위에 정확히 붙음
+        '.se-editor [data-splitbase]{margin-bottom:0}' +
+        '.se-editor .pg-cont{margin-top:0}' +
         // Ctrl+Enter로 넣는 수동 페이지 나눔 표시 — 워드처럼 점선+라벨, 클릭 선택·삭제(Backspace/Delete) 가능
         '.pg-manual-break{position:relative;height:0;border-top:1.5px dashed #9fb0cc;margin:18px 0 20px;user-select:none}' +
         '.pg-manual-break::after{content:"⌐ 페이지 나눔 ⌐";position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#fff;padding:0 8px;font:600 10px/1 \'Noto Sans KR\',sans-serif;color:#7a8aa8;white-space:nowrap}' +
@@ -2564,17 +2565,14 @@ console.log('[affairs.js] v20260701dj');
         '</aside>' +
         '<main class="sed-main">' +
         '<div class="sed-form">' +
-        // 설교 원고: 줄자와 용지 외에 아무것도 없이 — 글쓰기에 집중 (성경 본문·기도는 상단 리본 패널로 이동)
+        // 구글 문서처럼: 회색 캔버스 위 흰 용지만 — 줄자 없음, 글쓰기에 집중 (성경 본문·기도는 상단 리본 패널로 이동)
         '<div class="se-hide-worship"><span class="se-count" id="se_count" style="display:none"></span>' +
-        // MS Word처럼: 캔버스 위에 용지만 — ㎜ 눈금자는 용지에 바로 붙고, 꺾쇠(⌐)로 여백 가이드 표시
         '<div class="wd-area" id="wd_area">' +
-        '<div class="wd-rowh"><div class="wd-corner"></div><canvas id="wd_rh" height="20"></canvas></div>' +
-        '<div class="wd-rowb"><canvas id="wd_rv" width="20"></canvas>' +
         '<div class="wd-page" id="wd_page">' +
         '<div class="wd-crop-layer" id="wd_crop_layer"></div>' +
         '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 상단 리본의 도구로 굵게·제목·인용·색·목록·메모·이미지 등 서식을 적용할 수 있습니다."></div>' +
         '<div class="wd-pagenum-layer" id="wd_pgnum_layer"></div>' +
-        '</div></div>' +
+        '</div>' +
         '</div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
         '</div></main>' +
@@ -2763,8 +2761,11 @@ console.log('[affairs.js] v20260701dj');
       ov.querySelector('#se_service').addEventListener('change', function () {
         autoFillOrder(this.value);
         syncSvcCustom();
-        // 새벽기도 선택 시 → 'QT 함께 만들기' 자동 활성화
-        if (this.value === '새벽기도') { var qt = ov.querySelector('#se_qt_toggle'); if (qt && !qt.checked) { qt.checked = true; if (typeof syncQt === 'function') syncQt(); } }
+        // 매일 QT·새벽기도 선택 시 → 'QT 함께 만들기'·'우리말성경' 자동 켜짐 (다른 종류로 바꾸면 우리말성경 꺼짐)
+        var qtSvc = (this.value === '매일 QT' || this.value === '새벽기도');
+        if (qtToggle) qtToggle.checked = qtSvc;
+        if (wmChk) wmChk.checked = qtSvc;
+        syncQt();
       });
       syncSvcCustom();
       if (!rec.id) autoFillOrder(ov.querySelector('#se_service').value); // 새 설교 → 자동
@@ -2803,18 +2804,21 @@ console.log('[affairs.js] v20260701dj');
       var kakaoBtn = ov.querySelector('#se_kakao');
       function qtOn() { return !!(qtToggle && qtToggle.checked); }
       function wmOn() { return !!(wmChk && wmChk.checked); }
+      // 우리말성경 본문 칸(2단)은 오직 '우리말성경' 체크박스로만 열고 닫는다 — 끄면 즉시 사라짐
       function syncQt() {
-        var showW = qtOn() || wmOn();
+        var showW = wmOn();
         if (qtWrap) qtWrap.style.display = showW ? '' : 'none';
         if (bibleColsEl) bibleColsEl.style.gridTemplateColumns = showW ? '1fr 1fr' : '1fr';
         if (kakaoBtn) kakaoBtn.style.display = qtOn() ? '' : 'none';
       }
+      var isQtSvc = (rec.service === '매일 QT' || rec.service === '새벽기도');
       if (qtToggle) {
         // 체크 여부는 '이 예배 종류가 QT류인가'로만 결정 — 과거에 우리말 데이터가 남아있다고 해서 자동으로 켜지지 않음(다른 종류로 바뀐 설교에서 오작동 방지)
-        qtToggle.checked = !!(rec.service === '매일 QT' || rec.service === '새벽기도');
+        qtToggle.checked = isQtSvc;
         qtToggle.onchange = syncQt;
       }
       if (wmChk) {
+        wmChk.checked = isQtSvc;   // QT·새벽기도면 우리말성경 기본 켜짐, 그 외엔 꺼짐
         wmChk.onchange = syncQt;
       }
       syncQt();
@@ -2999,9 +3003,9 @@ console.log('[affairs.js] v20260701dj');
           title: ov.querySelector('#se_title').value.trim() || null,
           scripture: ov.querySelector('#se_scripture').value.trim() || null,
           preacher: ov.querySelector('#se_preacher').value.trim() || null,
-          // 저장 시 자동 계산된 페이지 나눔 간격(.pg-break-spacer)은 빼고 저장 — 용지·여백·배율에 따라 매번 새로 계산되는 임시값이라 저장하면 안 됨
-          // (Ctrl+Enter로 넣은 '.pg-manual-break' 수동 나눔 표시는 실제 사용자 의도라 그대로 저장)
-          content: (function () { var c = ed.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.pg-break-spacer'), function (n) { n.remove(); }); return c.innerHTML || null; })(),
+          // 저장은 페이지 나눔 흔적(자동 간격 .pg-break-spacer, 페이지 넘김용 조각 .pg-cont)을 모두 원상복구한 깨끗한 HTML로
+          // — 용지·여백·배율마다 달라지는 임시 레이아웃은 저장하지 않음. (Ctrl+Enter 수동 나눔 .pg-manual-break은 사용자 의도라 보존)
+          content: (wdCleanHtml ? wdCleanHtml() : (function () { var c = ed.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.pg-break-spacer'), function (n) { n.remove(); }); return c.innerHTML; })()) || null,
           prayer: (ov.querySelector('#se_prayer') ? ov.querySelector('#se_prayer').value : '') || null,
           bible_text: (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '') || null,
           // 체크박스는 화면에 보이고 안 보이고만 결정 — 저장은 칸에 실제로 있는 값 그대로(체크 꺼졌다고 기존 우리말 데이터가 지워지면 안 됨)
@@ -3151,7 +3155,7 @@ console.log('[affairs.js] v20260701dj');
         syncContent();
       })();
       function syncContent() {
-        hid.value = ed.innerHTML;
+        hid.value = wdCleanHtml ? wdCleanHtml() : ed.innerHTML;   // 저장·미리보기엔 페이지 나눔 흔적을 뺀 깨끗한 HTML
         var t = (ed.innerText || '').replace(/ /g, ' ').trim();
         var words = t ? t.split(/\s+/).length : 0, chars = t.replace(/\s/g, '').length;
         cntEl.textContent = words + '단어 · ' + chars + '자';
@@ -3418,11 +3422,7 @@ console.log('[affairs.js] v20260701dj');
               if (pp) pp.style.display = 'none';
               if (bb) bb.classList.remove('on');
             });
-            if (willOpen) {
-              p.style.display = ''; b.classList.add('on');
-              // '본문 텍스트'를 누를 때마다 우리말성경 체크는 항상 꺼짐이 기본값(직전에 켜뒀어도 다시 열면 초기화)
-              if (bid === 'se_pn_bible' && wmChk) { wmChk.checked = false; syncQt(); }
-            }
+            if (willOpen) { p.style.display = ''; b.classList.add('on'); }   // 우리말성경 체크 상태는 그대로 유지(예배 종류가 정한 기본값·사용자 선택 존중)
           };
         });
 
@@ -3546,15 +3546,14 @@ console.log('[affairs.js] v20260701dj');
           };
         })();
 
-        // ── MS Word 스타일 페이지 뷰: 용지 크기·여백·배율 + ㎜ 눈금자 + 실제 페이지 구분(간격) + 페이지 번호 ──
+        // ── 구글 문서 스타일 페이지 뷰: 용지 크기·여백·배율 + 실제 페이지 구분(간격) + 꺾쇠 여백 가이드 + 페이지 번호 ──
         (function wdPageView() {
           var wdPage = ov.querySelector('#wd_page'), wdSheet = ov.querySelector('#wd_area');
-          var rh = ov.querySelector('#wd_rh'), rv = ov.querySelector('#wd_rv');
           var pgnumLayer = ov.querySelector('#wd_pgnum_layer'), cropLayer = ov.querySelector('#wd_crop_layer');
           var paperSel = ov.querySelector('#wd_paper'), marginSel = ov.querySelector('#wd_margin'), zoomR = ov.querySelector('#wd_zoom'), zoomLbl = ov.querySelector('#wd_zoom_v'), pgnumSel = ov.querySelector('#wd_pgnum');
-          if (!wdPage || !wdSheet || !rh || !rv) return;
+          if (!wdPage || !wdSheet) return;
           var MMPX = 96 / 25.4;   // 1㎜ = 3.78px(96dpi) — 화면 크기와 무관한 고정 물리 크기, 배율은 이 전체를 확대/축소
-          var GAP = 26;           // 페이지 사이 간격(워드처럼 눈에 보이게 실제로 벌어짐)
+          var GAP = 26;           // 페이지 사이 간격(구글 문서처럼 눈에 보이게 실제로 벌어짐)
           var PAPERS = { A4: [210, 297], iPad: [180, 240], Letter: [216, 279], B5: [176, 250] };
           var PGNUM_FMT = { num: '{i}', numTotal: '{i} / {n}', dash: '- {i} -', kr: '{i}페이지', paren: '({i})' };
           var LSK = 'wpWdPage1';
@@ -3563,38 +3562,6 @@ console.log('[affairs.js] v20260701dj');
           function metrics() {
             var sz = PAPERS[prefs.paper] || PAPERS.A4;
             return { pw: Math.round(sz[0] * MMPX), ph: Math.round(sz[1] * MMPX), mg: Math.round(prefs.margin * MMPX) };
-          }
-          // pages>1(세로 눈금자 전용) — 페이지마다 0부터 다시 시작하는 눈금을 반복해 그리고, 사이 간격은 어둡게 채워 다음 페이지와 구분
-          function drawRuler(cv, lenPx, mgnPx, vertical, pxmm, pages, gapPx) {
-            pages = pages || 1; gapPx = gapPx || 0;
-            var TH = 20;
-            var total = vertical ? (pages * lenPx + (pages - 1) * gapPx) : lenPx;
-            if (vertical) { cv.width = TH; cv.height = total; cv.style.height = total + 'px'; }
-            else { cv.width = total; cv.height = TH; cv.style.width = total + 'px'; }
-            var c = cv.getContext('2d');
-            c.clearRect(0, 0, cv.width, cv.height);
-            var mmTotal = Math.floor(lenPx / pxmm);
-            for (var p = 0; p < pages; p++) {
-              var base = vertical ? p * (lenPx + gapPx) : 0;
-              // 여백 밖=회색, 본문 영역=흰색 (워드처럼) — 이 페이지 몫만
-              c.fillStyle = '#e3e7ed'; if (vertical) c.fillRect(0, base, TH, lenPx); else c.fillRect(0, 0, cv.width, TH);
-              c.fillStyle = '#ffffff';
-              if (vertical) c.fillRect(0, base + mgnPx, TH, lenPx - 2 * mgnPx); else c.fillRect(mgnPx, 0, lenPx - 2 * mgnPx, TH);
-              c.strokeStyle = '#8d99a8'; c.fillStyle = '#5b6b7d'; c.font = '9px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-              c.beginPath();
-              for (var m = 0; m <= mmTotal; m++) {
-                if (m % 2 === 1 && pxmm < 4) continue;   // 1㎜ 눈금은 촘촘하면 2㎜ 간격으로
-                var pos = Math.round(m * pxmm) + 0.5;
-                var tick = (m % 10 === 0) ? 9 : (m % 5 === 0 ? 6 : 3);
-                if (vertical) { var y = base + pos; c.moveTo(TH - 1 - tick, y); c.lineTo(TH - 1, y); } else { c.moveTo(pos, TH - 1 - tick); c.lineTo(pos, TH - 1); }
-                if (m % 10 === 0 && m > 0 && m < mmTotal) {   // ㎝ 숫자
-                  if (vertical) c.fillText(String(m / 10), 8, base + pos - 7);
-                  else c.fillText(String(m / 10), pos - 8, 7);
-                }
-              }
-              c.stroke();
-              if (vertical && gapPx > 0 && p < pages - 1) { c.fillStyle = '#242a34'; c.fillRect(0, base + lenPx, TH, gapPx); }   // 페이지 사이 간격
-            }
           }
           // 페이지마다(용지 네 귀퉁이) 꺾쇠(⌐) 여백 가이드를 반복 생성
           function renderCropMarks(totalPages, ph, mg) {
@@ -3619,9 +3586,8 @@ console.log('[affairs.js] v20260701dj');
             // 페이지 경계 — 흰 용지 → 얇은 경계선 → 어두운 간격(GAP)으로 실제로 벌어져 보임(반복해서 다음 장들도 표시)
             wdPage.style.backgroundImage = 'repeating-linear-gradient(to bottom,#ffffff 0,#ffffff ' + (ph - 2) + 'px,#c7ccd6 ' + (ph - 2) + 'px,#c7ccd6 ' + ph + 'px,#242a34 ' + ph + 'px,#242a34 ' + (ph + GAP) + 'px)';
             ed.style.padding = '0';
-            drawRuler(rh, pw, mg, false, MMPX);   // 가로 눈금자는 페이지 폭이 모두 같으므로 1장만
-            // 세로 눈금자·꺾쇠 가이드·페이지 번호는 실제 페이지 수를 알아야 하므로 repaginate()에서 그림
-            // 배율 = 용지+눈금자 전체를 transform으로 확대/축소(내용은 건드리지 않음 — 잘림·미스매치 없음)
+            // 꺾쇠 가이드·페이지 번호는 실제 페이지 수를 알아야 하므로 repaginate()에서 그림
+            // 배율 = 용지 전체를 transform으로 확대/축소(내용은 건드리지 않음 — 잘림·미스매치 없음)
             wdSheet.style.transform = 'scale(' + z + ')';
             if (zoomLbl) zoomLbl.textContent = prefs.zoom + '%';
             if (paperSel) paperSel.value = prefs.paper;
@@ -3654,38 +3620,114 @@ console.log('[affairs.js] v20260701dj');
               node = next;
             }
           }
+          // ── 구글 문서처럼 '문단을 페이지 경계에서 줄 단위로 쪼갬' ──
+          // 페이지를 넘길 때, 한 문단이 경계에 걸치면 통째로 다음 장으로 밀지 않고, 넘치는 줄부터 새 조각(.pg-cont)으로 나눠
+          // 앞부분은 이번 페이지에, 뒷부분은 다음 페이지 맨 위에서 이어지게 한다(진짜 구글 문서 페이지 흐름).
+          function mergeSplitsIn(root) {
+            // 이전 계산에서 쪼갠 조각(.pg-cont)을 원래 문단(data-splitbase) 하나로 되돌림 — 한 문단의 모든 조각은 gid 하나를 공유
+            var bases = {};
+            Array.prototype.slice.call(root.querySelectorAll('[data-splitbase]')).forEach(function (b) { bases[b.getAttribute('data-splitbase')] = b; });
+            Array.prototype.slice.call(root.querySelectorAll('.pg-cont')).forEach(function (c) {
+              var gid = c.getAttribute('data-splitcont'), base = bases[gid];
+              if (base) { while (c.firstChild) base.appendChild(c.firstChild); }
+              c.remove();
+            });
+            Array.prototype.slice.call(root.querySelectorAll('[data-splitbase]')).forEach(function (b) { b.removeAttribute('data-splitbase'); b.normalize(); });
+          }
+          function pageScale() { var t = (wdSheet.style.transform || '').match(/scale\(([\d.]+)\)/); return t ? parseFloat(t[1]) : 1; }
+          var GIDC = 0;
+          // 문단 p를, page 기준 y좌표 limitY 를 넘는 줄부터 새 문단(.pg-cont)으로 분리. 연속 조각 반환 / 'ALL'(첫 줄부터 넘침) / null(안 넘침)
+          function splitParagraphAt(p, limitY) {
+            var scale = pageScale();
+            var pRectTop = p.getBoundingClientRect().top, pTopLayout = p.offsetTop;
+            // 실제 줄 상자들(Range.getClientRects = 줄마다 하나) — 줄 '바닥'이 한도를 넘지 않는 줄까지만 이번 페이지에(바닥 기준이라 하단 여백 침범 없음)
+            var lrng = document.createRange(); lrng.selectNodeContents(p); var lr = lrng.getClientRects();
+            if (!lr.length) return null;
+            var lines = [];
+            for (var li = 0; li < lr.length; li++) lines.push({ top: pTopLayout + (lr[li].top - pRectTop) / scale, bottom: pTopLayout + (lr[li].bottom - pRectTop) / scale });
+            var firstBad = -1;
+            for (var li2 = 0; li2 < lines.length; li2++) { if (lines[li2].bottom > limitY + 0.5) { firstBad = li2; break; } }
+            if (firstBad < 0) return null;           // 모든 줄이 들어감
+            if (firstBad === 0) return 'ALL';        // 첫 줄부터 안 들어감 → 통째로 다음 페이지
+            var targetTop = lines[firstBad].top;
+            var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null), nodes = [], total = 0, tn;
+            while (tn = walker.nextNode()) { nodes.push({ node: tn, start: total, len: tn.data.length }); total += tn.data.length; }
+            if (total === 0) return null;
+            function posAt(idx) { for (var i = 0; i < nodes.length; i++) { if (idx <= nodes[i].start + nodes[i].len) return { node: nodes[i].node, offset: idx - nodes[i].start }; } var L = nodes[nodes.length - 1]; return { node: L.node, offset: L.len }; }
+            function topAt(idx) { var pos = posAt(idx); var r = document.createRange(); r.setStart(pos.node, pos.offset); r.setEnd(pos.node, pos.offset); var rects = r.getClientRects(); var rect = rects.length ? rects[rects.length - 1] : r.getBoundingClientRect(); return pTopLayout + (rect.top - pRectTop) / scale; }
+            var lo = 0, hi = total, splitIdx = total;   // 넘치는 첫 줄의 시작 문자 오프셋(top은 offset에 단조 증가 → 이분 탐색)
+            while (lo < hi) { var midI = (lo + hi) >> 1; if (topAt(midI) >= targetTop - 0.5) { splitIdx = midI; hi = midI; } else lo = midI + 1; }
+            if (splitIdx >= total || splitIdx <= 0) return 'ALL';
+            var pos = posAt(splitIdx);
+            var range = document.createRange(); range.setStart(pos.node, pos.offset); range.setEndAfter(p.lastChild);
+            var frag = range.extractContents();
+            var cont = document.createElement('p'); cont.className = 'pg-cont';
+            var gid = p.getAttribute('data-splitbase') || p.getAttribute('data-splitcont');   // 조각들은 원래 문단 gid 하나 공유(체인 금지)
+            if (!gid) { gid = 'g' + (++GIDC); p.setAttribute('data-splitbase', gid); }
+            cont.setAttribute('data-splitcont', gid);
+            cont.appendChild(frag);
+            p.parentNode.insertBefore(cont, p.nextSibling);
+            return cont;
+          }
+          // 커서를 전역 문자 오프셋으로 저장/복원 (분할·병합이 텍스트 순서를 보존하므로 안정적)
+          function caretGlobalOffset() {
+            var s = window.getSelection(); if (!s || !s.rangeCount) return -1;
+            var r = s.getRangeAt(0); if (!ed.contains(r.startContainer)) return -1;
+            var pre = document.createRange(); pre.selectNodeContents(ed); pre.setEnd(r.startContainer, r.startOffset);
+            return pre.toString().length;
+          }
+          function restoreCaret(gOff) {
+            if (gOff < 0) return;
+            var walker = document.createTreeWalker(ed, NodeFilter.SHOW_TEXT, null), acc = 0, tn;
+            while (tn = walker.nextNode()) { if (acc + tn.data.length >= gOff) { var r = document.createRange(); r.setStart(tn, gOff - acc); r.collapse(true); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); return; } acc += tn.data.length; }
+          }
+          // 저장·미리보기용 깨끗한 HTML: 간격·조각을 원상복구한 사본에서 뽑음(실제 편집기 ed는 건드리지 않음)
+          function cleanHtml() {
+            var c = ed.cloneNode(true);
+            Array.prototype.forEach.call(c.querySelectorAll('.pg-break-spacer'), function (n) { n.remove(); });
+            mergeSplitsIn(c);
+            return c.innerHTML;
+          }
+          wdCleanHtml = cleanHtml;
           function repaginate() {
             var m = metrics(), ph = m.ph, mg = m.mg;
             var pageInnerH = ph - 2 * mg;
+            var hadFocus = (document.activeElement === ed);
+            var gOff = hadFocus ? caretGlobalOffset() : -1;
             Array.prototype.slice.call(ed.querySelectorAll('.pg-break-spacer')).forEach(function (n) { n.remove(); });
+            mergeSplitsIn(ed);      // 이전 페이지 나눔 조각을 원래 문단으로 되돌린 뒤 처음부터 다시 계산
             normalizeTopLevel();
-            var kids = Array.prototype.slice.call(ed.children);
             var pageEndY = mg + pageInnerH;   // 현재 페이지의 본문 하단 경계(wd-page 기준 y좌표)
-            var totalPages = 1;
-            var forceBreakAfter = false;   // Ctrl+Enter로 넣은 '페이지 나눔' 표시를 만나면 바로 다음 요소부터 새 페이지 강제
-            kids.forEach(function (k) {
-              if (k.classList && k.classList.contains('pg-manual-break')) { forceBreakAfter = true; return; }
-              // .se-editor(ed)는 position:static이라 k의 offsetParent는 곧바로 position:relative인 wd-page — k.offsetTop이 이미 wd-page 기준 좌표
+            var totalPages = 1, forceBreakAfter = false;
+            var kids = Array.prototype.slice.call(ed.children), i = 0, guard = 0;
+            while (i < kids.length && guard++ < 4000) {
+              var k = kids[i];
+              if (k.classList && k.classList.contains('pg-manual-break')) { forceBreakAfter = true; i++; continue; }
+              if (k.classList && k.classList.contains('pg-break-spacer')) { i++; continue; }
               var top = k.offsetTop, bottom = top + k.offsetHeight;
-              var overflow = bottom > pageEndY + 0.5;
-              var fitsOnFreshPage = k.offsetHeight <= pageInnerH;   // 온전한 빈 페이지 하나에는 들어갈 크기인가
-              if (forceBreakAfter || (overflow && fitsOnFreshPage)) {
+              if (forceBreakAfter || bottom > pageEndY + 0.5) {
+                // 이 문단을 현재 페이지 한도에서 줄 단위로 분리 시도 (수동 나눔·비문단은 통째로)
+                var breakBefore = k;
+                if (!forceBreakAfter && k.tagName === 'P') {
+                  var res = splitParagraphAt(k, pageEndY);
+                  if (res && res !== 'ALL') breakBefore = res;   // 넘치는 뒷부분(.pg-cont) 앞에서 나눔
+                }
                 var sp = document.createElement('div');
-                sp.className = 'pg-break-spacer';
-                sp.contentEditable = 'false';
-                sp.style.height = Math.max(0, Math.round(pageEndY - top) + 2 * mg + GAP) + 'px';
-                ed.insertBefore(sp, k);
-                pageEndY += ph + GAP;
-                totalPages++;
-                forceBreakAfter = false;
+                sp.className = 'pg-break-spacer'; sp.contentEditable = 'false';
+                sp.style.height = Math.max(0, Math.round(pageEndY - breakBefore.offsetTop) + 2 * mg + GAP) + 'px';
+                ed.insertBefore(sp, breakBefore);
+                pageEndY += ph + GAP; totalPages++; forceBreakAfter = false;
+                kids = Array.prototype.slice.call(ed.children);
+                i = kids.indexOf(breakBefore);   // 새 페이지 첫 조각부터 다시(그 조각도 또 넘칠 수 있음)
+                continue;
               }
-              // overflow && !fitsOnFreshPage → 문단 자체가 한 페이지보다 커서 나눌 수 없음(드묾) — 나누지 않고 그대로 흘려보냄
-            });
-            // 마지막 장의 글이 짧아도 흰 용지 자체는 항상 '온전한 한 장'으로 보이게(배경·눈금자·꺾쇠와 정확히 맞물림 — 실제 워드처럼)
+              i++;
+            }
+            // 마지막 장의 글이 짧아도 흰 용지 자체는 항상 '온전한 한 장'으로 보이게(배경·꺾쇠와 정확히 맞물림 — 구글 문서처럼)
             wdPage.style.minHeight = (totalPages * ph + (totalPages - 1) * GAP) + 'px';
-            drawRuler(rv, ph, mg, true, MMPX, totalPages, GAP);
             renderCropMarks(totalPages, ph, mg);
             renderPageNums(totalPages, ph);
+            if (hadFocus) restoreCaret(gOff);
           }
           // Ctrl+Enter — 커서 다음의 글 전체가 다음 페이지로 넘어가도록 수동 페이지 나눔 삽입
           function insertManualBreak() {
@@ -3724,6 +3766,8 @@ console.log('[affairs.js] v20260701dj');
           if (pgnumSel) pgnumSel.onchange = function () { prefs.pgnum = this.value; try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { } repaginate(); };
           wdRepaginate = repaginate;   // 생명의삶 자동분류 등 코드로 ed.innerHTML을 바꿔치기하는 곳에서 재호출할 수 있게 바깥에 노출
           applyPage();
+          // 웹폰트(본명조 등)가 늦게 로드되면 줄 높이가 바뀌므로, 로드 완료 후 페이지 나눔을 한 번 더 정확히 다시 계산
+          try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { repaginate(); }); } catch (e) { }
           // 원고를 입력할 때마다(디바운스) 페이지 나눔·페이지 번호를 다시 계산
           var rpgT = null;
           // 페이지 나눔이 방금 커서 위치 바로 앞에 '간격(spacer)'을 끼워 넣으면, 화면은 그대로인데 실제 내용은 그 아래로 밀려나
@@ -3737,7 +3781,16 @@ console.log('[affairs.js] v20260701dj');
               if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
             } catch (e) { }
           }
-          ed.addEventListener('input', function () { clearTimeout(rpgT); rpgT = setTimeout(function () { repaginate(); keepCaretVisible(); }, 350); });
+          // 한글 IME 조합 중에는 DOM을 건드리면 조합이 깨지므로 페이지 나눔을 미룸
+          var composing = false;
+          function runRepaginate() {
+            if (composing) { clearTimeout(rpgT); rpgT = setTimeout(runRepaginate, 200); return; }   // 조합 끝날 때까지 대기
+            repaginate(); keepCaretVisible();
+          }
+          function schedRepaginate() { clearTimeout(rpgT); rpgT = setTimeout(runRepaginate, 350); }
+          ed.addEventListener('compositionstart', function () { composing = true; });
+          ed.addEventListener('compositionend', function () { composing = false; schedRepaginate(); });
+          ed.addEventListener('input', schedRepaginate);
         })();
 
         // ── 발표자 모드: 저장 없이 현재 화면 그대로 아이패드 발표 보기 ──
