@@ -3698,7 +3698,18 @@ console.log('[affairs.js] v20260701dj');
           applyPage();
           // 원고를 입력할 때마다(디바운스) 페이지 나눔·페이지 번호를 다시 계산
           var rpgT = null;
-          ed.addEventListener('input', function () { clearTimeout(rpgT); rpgT = setTimeout(repaginate, 350); });
+          // 페이지 나눔이 방금 커서 위치 바로 앞에 '간격(spacer)'을 끼워 넣으면, 화면은 그대로인데 실제 내용은 그 아래로 밀려나
+          // 마치 '글이 사라진 것처럼' 보임 — 다시 계산한 뒤 커서 위치를 화면 안으로 스크롤해 맞춰줌(내용은 그대로, 위치만 보정)
+          function keepCaretVisible() {
+            try {
+              var s = window.getSelection();
+              if (!s || !s.rangeCount) return;
+              var node = s.focusNode; if (!node) return;
+              var el = node.nodeType === 3 ? node.parentElement : node;
+              if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            } catch (e) { }
+          }
+          ed.addEventListener('input', function () { clearTimeout(rpgT); rpgT = setTimeout(function () { repaginate(); keepCaretVisible(); }, 350); });
         })();
 
         // ── 발표자 모드: 저장 없이 현재 화면 그대로 아이패드 발표 보기 ──
