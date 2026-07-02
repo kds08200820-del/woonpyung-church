@@ -3167,10 +3167,13 @@ console.log('[affairs.js] v20260701dj');
         b.onmousedown = function (e) { e.preventDefault(); };   // 선택영역 유지
         b.onclick = function () { exec(b.dataset.cmd); };
       });
-      // 셀렉트·팔레트 클릭 시 커서(선택영역)가 사라지지 않도록 보존
-      var savedRange = null;
-      function saveSel() { var s = window.getSelection(); if (s && s.rangeCount && ed.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange(); }
-      function restoreSel() { if (savedRange) { try { var s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); } catch (e) {} } }
+      // 셀렉트·팔레트 클릭 시 선택영역 보존 — 노드 참조가 아니라 '전역 문자 오프셋'으로 저장한다.
+      // (페이지 나눔이 조각을 합치거나 다시 쪼개면 노드가 갈아치워져 참조형 Range는 무효가 됨 → 색상이 엉뚱한 곳에 적용되던 오류)
+      var savedSel = null;
+      function selToGlobal(container, offset) { var pre = document.createRange(); pre.selectNodeContents(ed); try { pre.setEnd(container, offset); } catch (e) { return -1; } return pre.toString().length; }
+      function globalToPos(g) { if (g < 0) return null; var w = document.createTreeWalker(ed, NodeFilter.SHOW_TEXT, null), acc = 0, x, last = null; while (x = w.nextNode()) { last = x; if (acc + x.data.length >= g) return { node: x, offset: g - acc }; acc += x.data.length; } return last ? { node: last, offset: last.data.length } : null; }
+      function saveSel() { var s = window.getSelection(); if (s && s.rangeCount && ed.contains(s.anchorNode)) { var r = s.getRangeAt(0); savedSel = { s: selToGlobal(r.startContainer, r.startOffset), e: selToGlobal(r.endContainer, r.endOffset) }; } }
+      function restoreSel() { if (!savedSel || savedSel.s < 0) return; var a = globalToPos(savedSel.s), b = globalToPos(savedSel.e); if (!a || !b) return; try { var r = document.createRange(); r.setStart(a.node, a.offset); r.setEnd(b.node, b.offset); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (e) { } }
       ed.addEventListener('keyup', saveSel); ed.addEventListener('mouseup', saveSel); ed.addEventListener('input', saveSel);
 
       ov.querySelector('#se_block').onchange = function () { ed.focus(); restoreSel(); exec('formatBlock', this.value === 'p' ? 'P' : this.value.toUpperCase()); this.selectedIndex = 0; };
