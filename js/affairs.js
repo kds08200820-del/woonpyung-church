@@ -2275,6 +2275,9 @@ console.log('[affairs.js] v20260701dj');
         '.wd-br{border-left-width:1px;border-top-width:1px}' +
         // 페이지 구분(실제로 내용을 다음 장으로 밀어내는 빈 칸) — 워드처럼 눈에 보이는 간격으로 페이지가 나뉨
         '.pg-break-spacer{display:block;user-select:none;pointer-events:none}' +
+        // Ctrl+Enter로 넣는 수동 페이지 나눔 표시 — 워드처럼 점선+라벨, 클릭 선택·삭제(Backspace/Delete) 가능
+        '.pg-manual-break{position:relative;height:0;border-top:1.5px dashed #9fb0cc;margin:18px 0 20px;user-select:none}' +
+        '.pg-manual-break::after{content:"⌐ 페이지 나눔 ⌐";position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#fff;padding:0 8px;font:600 10px/1 \'Noto Sans KR\',sans-serif;color:#7a8aa8;white-space:nowrap}' +
         // 페이지 번호 레이어(편집 불가 오버레이, 페이지마다 하단 중앙에 표시)
         '.wd-pagenum-layer{position:absolute;left:0;right:0;top:0;pointer-events:none}' +
         '.wd-pagenum-item{position:absolute;left:0;right:0;text-align:center;font:12px/1 \'Noto Serif KR\',serif;color:#9aa5b1}' +
@@ -2996,7 +2999,9 @@ console.log('[affairs.js] v20260701dj');
           title: ov.querySelector('#se_title').value.trim() || null,
           scripture: ov.querySelector('#se_scripture').value.trim() || null,
           preacher: ov.querySelector('#se_preacher').value.trim() || null,
-          content: ov.querySelector('#se_content').value || null,
+          // 저장 시 자동 계산된 페이지 나눔 간격(.pg-break-spacer)은 빼고 저장 — 용지·여백·배율에 따라 매번 새로 계산되는 임시값이라 저장하면 안 됨
+          // (Ctrl+Enter로 넣은 '.pg-manual-break' 수동 나눔 표시는 실제 사용자 의도라 그대로 저장)
+          content: (function () { var c = ed.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.pg-break-spacer'), function (n) { n.remove(); }); return c.innerHTML || null; })(),
           prayer: (ov.querySelector('#se_prayer') ? ov.querySelector('#se_prayer').value : '') || null,
           bible_text: (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '') || null,
           // 체크박스는 화면에 보이고 안 보이고만 결정 — 저장은 칸에 실제로 있는 값 그대로(체크 꺼졌다고 기존 우리말 데이터가 지워지면 안 됨)
@@ -3656,12 +3661,15 @@ console.log('[affairs.js] v20260701dj');
             normalizeTopLevel();
             var kids = Array.prototype.slice.call(ed.children);
             var pageEndY = mg + pageInnerH;   // 현재 페이지의 본문 하단 경계(wd-page 기준 y좌표)
-            var totalPages = 1, firstOnPage = true;
+            var totalPages = 1;
+            var forceBreakAfter = false;   // Ctrl+Enter로 넣은 '페이지 나눔' 표시를 만나면 바로 다음 요소부터 새 페이지 강제
             kids.forEach(function (k) {
+              if (k.classList && k.classList.contains('pg-manual-break')) { forceBreakAfter = true; return; }
               // .se-editor(ed)는 position:static이라 k의 offsetParent는 곧바로 position:relative인 wd-page — k.offsetTop이 이미 wd-page 기준 좌표
               var top = k.offsetTop, bottom = top + k.offsetHeight;
-              if (bottom > pageEndY + 0.5) {
-                if (firstOnPage) { firstOnPage = false; return; }   // 한 문단이 한 쪽보다 길면 분할하지 않고 그냥 흘러넘김
+              var overflow = bottom > pageEndY + 0.5;
+              var fitsOnFreshPage = k.offsetHeight <= pageInnerH;   // 온전한 빈 페이지 하나에는 들어갈 크기인가
+              if (forceBreakAfter || (overflow && fitsOnFreshPage)) {
                 var sp = document.createElement('div');
                 sp.className = 'pg-break-spacer';
                 sp.contentEditable = 'false';
@@ -3669,10 +3677,9 @@ console.log('[affairs.js] v20260701dj');
                 ed.insertBefore(sp, k);
                 pageEndY += ph + GAP;
                 totalPages++;
-                firstOnPage = true;
-              } else {
-                firstOnPage = false;
+                forceBreakAfter = false;
               }
+              // overflow && !fitsOnFreshPage → 문단 자체가 한 페이지보다 커서 나눌 수 없음(드묾) — 나누지 않고 그대로 흘려보냄
             });
             // 마지막 장의 글이 짧아도 흰 용지 자체는 항상 '온전한 한 장'으로 보이게(배경·눈금자·꺾쇠와 정확히 맞물림 — 실제 워드처럼)
             wdPage.style.minHeight = (totalPages * ph + (totalPages - 1) * GAP) + 'px';
@@ -3680,6 +3687,25 @@ console.log('[affairs.js] v20260701dj');
             renderCropMarks(totalPages, ph, mg);
             renderPageNums(totalPages, ph);
           }
+          // Ctrl+Enter — 커서 다음의 글 전체가 다음 페이지로 넘어가도록 수동 페이지 나눔 삽입
+          function insertManualBreak() {
+            document.execCommand('insertParagraph');   // 커서 위치에서 문단을 정확히 둘로 나눔(브라우저 기본 동작 재사용 — 서식 보존)
+            var sel = window.getSelection();
+            if (sel && sel.rangeCount) {
+              var node = sel.getRangeAt(0).startContainer;
+              while (node && node.parentNode !== ed) node = node.parentNode;
+              if (node) {
+                var mk = document.createElement('div');
+                mk.className = 'pg-manual-break'; mk.contentEditable = 'false'; mk.setAttribute('data-pgbreak', '1');
+                ed.insertBefore(mk, node);
+              }
+            }
+            syncContent();
+            repaginate();
+          }
+          ed.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); insertManualBreak(); }
+          });
           function renderPageNums(totalPages, ph) {
             if (!pgnumLayer) return;
             var fmt = PGNUM_FMT[prefs.pgnum];
