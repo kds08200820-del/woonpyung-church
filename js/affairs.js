@@ -3686,22 +3686,27 @@ console.log('[affairs.js] v20260701dj');
             p.parentNode.insertBefore(cont, p.nextSibling);
             return cont;
           }
-          // 커서를 전역 문자 오프셋으로 저장/복원 (분할·병합이 텍스트 순서를 보존하므로 안정적)
-          function caretGlobalOffset() {
-            var s = window.getSelection(); if (!s || !s.rangeCount) return -1;
-            var r = s.getRangeAt(0); if (!ed.contains(r.startContainer)) return -1;
-            var pre = document.createRange(); pre.selectNodeContents(ed); pre.setEnd(r.startContainer, r.startOffset);
-            return pre.toString().length;
+          // 커서를 '표시 안 되는 마커 노드'로 저장/복원 — 병합·분할로 노드가 갈아치워져도 정확히 따라감.
+          // (전역 문자 오프셋 방식은 '문단 끝'과 '바로 다음 빈 문단 시작'을 구분 못 해서, 엔터로 새 문단 만든 뒤 커서가 앞 문단으로 되돌아가는 버그가 있었음)
+          function insertCaretMarker() {
+            var s = window.getSelection(); if (!s || !s.rangeCount) return null;
+            var r = s.getRangeAt(0); if (!ed.contains(r.startContainer)) return null;
+            var mk = document.createElement('span'); mk.setAttribute('data-caretmk', '1');   // 빈 인라인 스팬 — 줄 레이아웃에 영향 없음
+            var r2 = r.cloneRange(); r2.collapse(true);
+            try { r2.insertNode(mk); } catch (e) { return null; }
+            return mk;
           }
-          function restoreCaret(gOff) {
-            if (gOff < 0) return;
-            var walker = document.createTreeWalker(ed, NodeFilter.SHOW_TEXT, null), acc = 0, tn;
-            while (tn = walker.nextNode()) { if (acc + tn.data.length >= gOff) { var r = document.createRange(); r.setStart(tn, gOff - acc); r.collapse(true); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); return; } acc += tn.data.length; }
+          function restoreCaretMarker(mk) {
+            if (!mk) return;
+            if (!ed.contains(mk)) { if (mk.parentNode) mk.parentNode.removeChild(mk); return; }
+            var parent = mk.parentNode;
+            try { var r = document.createRange(); r.setStartAfter(mk); r.collapse(true); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { }
+            if (parent) { parent.removeChild(mk); if (parent.normalize) parent.normalize(); }
           }
           // 저장·미리보기용 깨끗한 HTML: 간격·조각을 원상복구한 사본에서 뽑음(실제 편집기 ed는 건드리지 않음)
           function cleanHtml() {
             var c = ed.cloneNode(true);
-            Array.prototype.forEach.call(c.querySelectorAll('.pg-break-spacer'), function (n) { n.remove(); });
+            Array.prototype.forEach.call(c.querySelectorAll('.pg-break-spacer, [data-caretmk]'), function (n) { n.remove(); });
             mergeSplitsIn(c);
             return c.innerHTML;
           }
@@ -3710,7 +3715,7 @@ console.log('[affairs.js] v20260701dj');
             var m = metrics(), ph = m.ph, mg = m.mg;
             var pageInnerH = ph - 2 * mg;
             var hadFocus = (document.activeElement === ed);
-            var gOff = hadFocus ? caretGlobalOffset() : -1;
+            var caretMk = hadFocus ? insertCaretMarker() : null;   // 병합·분할 전에 커서 자리에 마커를 심고, 끝나면 그 자리로 정확히 복원
             Array.prototype.slice.call(ed.querySelectorAll('.pg-break-spacer')).forEach(function (n) { n.remove(); });
             mergeSplitsIn(ed);      // 이전 페이지 나눔 조각을 원래 문단으로 되돌린 뒤 처음부터 다시 계산
             normalizeTopLevel();
@@ -3744,7 +3749,7 @@ console.log('[affairs.js] v20260701dj');
             wdPage.style.minHeight = (totalPages * ph + (totalPages - 1) * GAP) + 'px';
             renderCropMarks(totalPages, ph, mg);
             renderPageNums(totalPages, ph);
-            if (hadFocus) restoreCaret(gOff);
+            if (hadFocus) restoreCaretMarker(caretMk);
           }
           // Ctrl+Enter — 커서 다음의 글 전체가 다음 페이지로 넘어가도록 수동 페이지 나눔 삽입
           function insertManualBreak() {
