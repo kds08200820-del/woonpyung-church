@@ -2201,7 +2201,8 @@ console.log('[affairs.js] v20260701dj');
         '.se-hiico{font-size:.86rem;font-weight:800;color:#5a4a12;padding:0 3px;border-radius:3px;line-height:1.25}' +
         '.se-caret{font-size:.6rem;color:#9aa5b1;position:absolute;right:2px;top:3px}' +
         '.se-pop-wrap{position:relative;display:inline-flex}' +
-        '.se-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:40;background:#fff;border:1px solid #dde3ec;border-radius:12px;box-shadow:0 14px 40px rgba(3,34,87,.18);padding:9px;display:none;grid-template-columns:repeat(6,22px);gap:7px}' +
+        // 색상 팔레트 — 화면 기준(fixed)으로 띄워 리본의 overflow(가로 스크롤)에 잘리지 않게 함. 위치는 열 때 버튼 좌표로 계산
+        '.se-pop{position:fixed;z-index:9999;background:#fff;border:1px solid #dde3ec;border-radius:12px;box-shadow:0 14px 40px rgba(3,34,87,.28);padding:9px;display:none;grid-template-columns:repeat(6,22px);gap:7px}' +
         '.se-pop.open{display:grid}' +
         '.se-pop .se-sw{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.14);cursor:pointer;padding:0;min-width:0;transition:transform .1s}.se-pop .se-sw:hover{transform:scale(1.14)}' +
         '.se-pop .se-sw.se-none{background:repeating-linear-gradient(45deg,#fff,#fff 4px,#f1d0d0 4px,#f1d0d0 6px);position:relative}' +
@@ -3207,7 +3208,20 @@ console.log('[affairs.js] v20260701dj');
         });
       }
       function closeAllPops() { Array.prototype.forEach.call(ov.querySelectorAll('.se-pop'), function (p) { p.classList.remove('open'); }); }
-      function togglePop(popEl) { var was = popEl.classList.contains('open'); closeAllPops(); if (!was) popEl.classList.add('open'); }
+      function togglePop(popEl) {
+        var was = popEl.classList.contains('open'); closeAllPops();
+        if (!was) {
+          // 버튼 바로 아래에 화면 기준으로 위치(리본이 잘라먹지 않게) — 오른쪽 화면 밖으로 나가면 왼쪽으로 당김
+          var btn = popEl.previousElementSibling;
+          if (btn && btn.getBoundingClientRect) {
+            var r = btn.getBoundingClientRect();
+            var left = Math.min(r.left, window.innerWidth - 190);
+            popEl.style.top = (r.bottom + 6) + 'px';
+            popEl.style.left = Math.max(8, left) + 'px';
+          }
+          popEl.classList.add('open');
+        }
+      }
       var forePop = ov.querySelector('#se_fore_pop'), hiPop = ov.querySelector('#se_hi_pop');
       var foreBar = ov.querySelector('#se_fore_bar'), hiIco = ov.querySelector('#se_hi_ico');
       buildPop(forePop, FORE_COLORS, function (c) { ed.focus(); restoreSel(); exec('foreColor', c); if (foreBar) foreBar.style.background = c; });
