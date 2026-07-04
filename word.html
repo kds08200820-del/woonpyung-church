@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260701lib13" />
+  <link rel="stylesheet" href="css/style.css?v=20260704year1" />
 </head>
 <body>
 
@@ -145,6 +145,11 @@
     <div class="modal-box modal-box-qt" role="dialog" aria-modal="true" aria-label="매일 말씀 묵상">
       <button class="modal-close" data-close aria-label="닫기">&times;</button>
       <div class="qt-modal-v2">
+        <div class="qt-yearbar" id="qtYearBar" hidden>
+          <button class="qt-year-nav" id="qtYearNewer" type="button" aria-label="최근 연도로">‹</button>
+          <span class="qt-year-label" id="qtYearLabel"></span>
+          <button class="qt-year-nav" id="qtYearOlder" type="button" aria-label="지난 연도로">›</button>
+        </div>
         <div class="qt-datebar" id="qtDateList"></div>
         <div class="qt-detail" id="qtDetail"></div>
       </div>
@@ -182,6 +187,6 @@
   <script src="js/layout.js?v=20260701lib15"></script>
   <script src="js/counsel.js?v=20260701lib13"></script>
   <script src="js/bulletin-render.js?v=20260701lib13"></script>
-  <script src="js/main.js?v=20260701lib31"></script>
+  <script src="js/main.js?v=20260704year1"></script>
 </body>
 </html>

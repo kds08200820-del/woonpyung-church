@@ -143,6 +143,10 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
   if (!todayBox || !modal) return;
   const dateListEl = document.getElementById("qtDateList");
   const detailEl = document.getElementById("qtDetail");
+  const yearBarEl = document.getElementById("qtYearBar");
+  const yearLabelEl = document.getElementById("qtYearLabel");
+  const yearNewerBtn = document.getElementById("qtYearNewer"); // ‹ 최근 연도
+  const yearOlderBtn = document.getElementById("qtYearOlder"); // › 지난 연도
 
   let entries = []; // [{date, content, title, ref}] (최신 → 과거)
 
@@ -320,6 +324,40 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     return out;
   }
 
+  // 자료에 존재하는 연도 목록(최신 → 과거). entries는 최신순 정렬 상태.
+  function qtYears() {
+    const seen = [];
+    for (const e of entries) { const y = e.date.slice(0, 4); if (!seen.includes(y)) seen.push(y); }
+    return seen;
+  }
+  // 해당 연도에서 가장 최근 묵상 날짜(entries가 최신순이라 첫 매치)
+  function latestDateOfYear(y) {
+    const e = entries.find((x) => x.date.slice(0, 4) === y);
+    return e ? e.date : null;
+  }
+  // 연도 넘김 바 상태 갱신 — 현재 보고 있는 날짜의 연도를 표시하고 양끝에서 화살표 비활성화
+  function updateYearBar(activeDate) {
+    if (!yearBarEl) return;
+    if (!entries.length) { yearBarEl.hidden = true; return; }
+    yearBarEl.hidden = false;
+    const years = qtYears();
+    const y = String(activeDate).slice(0, 4);
+    if (yearLabelEl) yearLabelEl.textContent = y + "년";
+    const idx = years.indexOf(y);
+    if (yearNewerBtn) yearNewerBtn.disabled = idx <= 0;                       // 더 최근 연도 없음
+    if (yearOlderBtn) yearOlderBtn.disabled = idx < 0 || idx >= years.length - 1; // 더 지난 연도 없음
+  }
+  // dir: -1 = 최근 연도로, +1 = 지난 연도로
+  function jumpYear(dir) {
+    const years = qtYears();
+    const act = dateListEl.querySelector(".qt-dl-item.active");
+    const cy = act ? act.dataset.date.slice(0, 4) : (years[0] || "");
+    const target = years[years.indexOf(cy) + dir];
+    if (!target) return;
+    const d = latestDateOfYear(target);
+    if (d) showDetail(d);
+  }
+
   function buildDateList(activeDate) {
     dateListEl.innerHTML = entries
       .map((e) => `<button class="qt-dl-item${e.date === activeDate ? " active" : ""}" data-date="${e.date}">${e.date}</button>`)
@@ -346,6 +384,7 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     const act = dateListEl.querySelector(".qt-dl-item.active");
     if (act && act.scrollIntoView) act.scrollIntoView({ inline: "center", block: "nearest" });
     detailEl.scrollTop = 0;
+    updateYearBar(date);
   }
 
   function openModal(date) {
@@ -363,6 +402,8 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     const b = e.target.closest(".qt-dl-item");
     if (b) showDetail(b.dataset.date);
   });
+  if (yearNewerBtn) yearNewerBtn.addEventListener("click", () => jumpYear(-1));
+  if (yearOlderBtn) yearOlderBtn.addEventListener("click", () => jumpYear(1));
   modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeModal(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
 
