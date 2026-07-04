@@ -22,11 +22,9 @@
       { href: "story.html#communities", label: "그리스도의 몸 된 지체들" },
       { href: "story.html#groups", label: "섬김 부서" },
       { href: "story.html#history", label: "교회 연혁" },
-    ] },
-    { href: "community.html", label: "나눔터", sub: [
       { href: "community.html#board", label: "함께 나누는 글" },
       { href: "community.html#qna", label: "삶의 질문" },
-      { href: "community.html#album", label: "교회 앨범·소식" },
+      { href: "community.html#album", label: "우리들 소식" },
       { href: "prayer.html#thisweek", label: "이번 주 기도 제목" },
       { href: "prayer.html#howpray", label: "이렇게 기도합니다" },
       { href: "prayer.html#request", label: "기도 부탁" },
@@ -65,10 +63,7 @@
       <div class="nav-inner">
         <a href="index.html" class="logo">
           <img src="images/icon-192.png?v=20260625e" alt="" class="logo-mark" />
-          <span class="logo-txt">
-            <span class="logo-kr">운평장로교회</span>
-            <span class="logo-en">UNPYEONG CHURCH</span>
-          </span>
+          <span class="logo-kr">운평장로교회</span>
         </a>
         <nav class="nav-menu" id="navMenu">${navLinks}</nav>
         <button class="notify-btn" id="notifyBtn" type="button" title="알림 설정" aria-label="알림 설정">🔔</button>
