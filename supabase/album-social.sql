@@ -1,8 +1,12 @@
 -- ============================================================
---  우리들 소식 — 앨범 사진 좋아요 · 댓글 (인스타그램형 UI 지원)
---  Supabase → SQL Editor 에 붙여넣고 RUN 한 번만 실행하세요.
+--  우리들 소식 — 앨범 사진 좋아요 · 댓글 · 제목/날짜 (인스타그램형 UI 지원)
+--  Supabase → SQL Editor 에 붙여넣고 RUN 하세요. (여러 번 실행해도 안전)
 --  (album.sql 의 album_photos 테이블이 먼저 있어야 합니다.)
 -- ============================================================
+
+-- ── 사진 제목 · 사용자 지정 날짜(미지정 시 업로드일) ──────────
+alter table public.album_photos add column if not exists title      text;
+alter table public.album_photos add column if not exists event_date date;
 
 -- ── 좋아요 ─────────────────────────────────────────────
 create table if not exists public.album_likes (

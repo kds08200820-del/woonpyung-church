@@ -24,7 +24,7 @@
   <meta name="twitter:card" content="summary" />
 
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json?v=20260701lib13" />
+  <link rel="manifest" href="manifest.json?v=20260704news1" />
   <meta name="theme-color" content="#032257" />
   <link rel="icon" href="images/favicon-32.png?v=20260701lib13" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260701lib13" />
@@ -35,7 +35,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260701lib13" />
+  <link rel="stylesheet" href="css/style.css?v=20260704news1" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <style>
     .hb-card{max-width:860px;margin:0 auto;border:1px solid var(--line,#e3e7ee);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(3,34,87,.07)}
@@ -136,8 +136,25 @@
     </div>
   </section>
 
+  <!-- ===== 우리들 소식 (앨범 미리보기) ===== -->
+  <section class="section" id="homeNews">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">ALBUM & NEWS</span>
+        <h2>우리들 소식</h2>
+      </div>
+      <div class="hn-box" id="hnBox">
+        <div class="hn-carousel" id="hnCarousel"><p class="qt-loading">소식을 불러오는 중…</p></div>
+        <div class="hn-actions">
+          <button type="button" class="btn btn-line" id="hnMore">소식 더 보기</button>
+          <button type="button" class="hn-add" id="hnAdd" hidden>＋ 사진 올리기</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== 이번 주 주보 미리보기 ===== -->
-  <section class="section">
+  <section class="section section-alt">
     <div class="container">
       <div class="section-head">
         <span class="eyebrow">THIS WEEK</span>
@@ -470,5 +487,7 @@
   <script src="js/layout.js?v=20260701lib15"></script>
   <script src="js/counsel.js?v=20260701lib13"></script>
   <script src="js/main.js?v=20260701lib31"></script>
+  <script src="js/upload.js?v=20260704news1"></script>
+  <script src="js/home-news.js?v=20260704news1"></script>
 </body>
 </html>
