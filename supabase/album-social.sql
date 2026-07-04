@@ -72,7 +72,9 @@ create index if not exists album_comments_photo_idx on public.album_comments (ph
 
 -- ── 좋아요/댓글 수를 사진과 함께 한 번에 조회하는 뷰 ──────────
 --  (프런트에서 album_feed 로 사진+집계를 함께 읽습니다. 없으면 album_photos 로 폴백)
-create or replace view public.album_feed as
+--  title·event_date 컬럼 추가로 컬럼 순서가 바뀌므로 기존 뷰를 먼저 삭제 후 재생성
+drop view if exists public.album_feed;
+create view public.album_feed as
 select
   p.*,
   coalesce(l.cnt, 0) as like_count,
