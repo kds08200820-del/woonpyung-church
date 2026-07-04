@@ -15,7 +15,7 @@
     return;
   }
 
-  const CATEGORIES = ["주일 예배", "여름성경학교", "수련회", "지역 섬김", "전 성도 식사", "연합예배"];
+  const cats = () => (window.ChurchCategories ? window.ChurchCategories.list() : []);
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   function localSession() {
@@ -80,6 +80,7 @@
   const photoById = (id) => photos.find((p) => String(p.id) === String(id));
 
   async function load() {
+    if (window.ChurchCategories) { try { await window.ChurchCategories.load(); } catch (e) {} }
     try {
       photos = await api("GET", "album_feed?select=*&order=created_at.desc&limit=40") || [];
       social = true;
@@ -383,7 +384,7 @@
           <label class="up-f"><span>제목 <em>(선택)</em></span><input type="text" id="upTitle" maxlength="60" placeholder="예: 여름성경학교 첫째 날" /></label>
           <div class="up-row">
             <label class="up-f"><span>날짜</span><input type="date" id="upDate" /></label>
-            <label class="up-f"><span>카테고리</span><select id="upCat">${CATEGORIES.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select></label>
+            <label class="up-f"><span>카테고리 <button type="button" class="up-catmgr" id="upCatManage" hidden>＋ 카테고리 관리</button></span><select id="upCat">${cats().map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select></label>
           </div>
           <label class="up-f"><span>한 줄 소식 <em>(선택)</em></span><textarea id="upCap" rows="2" maxlength="300" placeholder="어떤 순간인가요?"></textarea></label>
         </div>
@@ -392,6 +393,20 @@
       </div>`;
     document.body.appendChild(upModal);
     upModal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-upclose")) closeUp(); });
+
+    // 관리자용 카테고리 관리 버튼 + 카테고리 변경 시 select 갱신
+    const catMgrBtn = upModal.querySelector("#upCatManage");
+    if (catMgrBtn && window.ChurchCategories) {
+      window.ChurchCategories.isAdmin().then((ok) => { if (ok) catMgrBtn.hidden = false; });
+      catMgrBtn.addEventListener("click", () => window.ChurchCategories.openManager());
+    }
+    function rebuildCatSelect() {
+      const sel = upModal.querySelector("#upCat"); if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = cats().map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
+      if (cats().indexOf(cur) >= 0) sel.value = cur;
+    }
+    window.addEventListener("church:categories-changed", rebuildCatSelect);
 
     const drop = upModal.querySelector("#upDrop");
     const input = upModal.querySelector("#upInput");

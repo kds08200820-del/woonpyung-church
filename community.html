@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260704album1" />
+  <link rel="stylesheet" href="css/style.css?v=20260704f" />
 </head>
 <body>
 
@@ -34,12 +34,23 @@
     <p>성도들이 글로 마음을 나누는 공간입니다. 기도 제목, 감사, 일상의 이야기를 함께 나눠요.</p>
   </section>
 
+  <section id="notice" class="block block-alt">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">NOTICE</span>
+        <h2>공지사항</h2>
+        <p>교회의 안내와 소식을 전합니다.</p>
+      </div>
+      <div class="nt-wrap" id="communityNoticeBox"><p class="qt-loading">공지를 불러오는 중…</p></div>
+    </div>
+  </section>
+
   <section id="board" class="block">
     <div class="container">
       <div class="board-top">
         <div class="block-head" style="margin-bottom:0;">
           <span class="eyebrow2">BOARD</span>
-          <h2>함께 나누는 글</h2>
+          <h2>게시판</h2>
           <p class="board-sub">기도요청 · 간증 · 함께 나누고 싶은 이야기를 자유롭게 남겨 주세요.</p>
         </div>
         <button class="btn btn-solid" id="boardWriteBtn">글쓰기</button>
@@ -150,8 +161,9 @@
         <p>사진과 짧은 글로 전하는 공동체의 일상.</p>
       </div>
 
-      <p class="album-hint" id="albumHint">로그인하시면 카드에 사진을 끌어다 놓거나 ‘＋ 사진’으로 올릴 수 있어요. 카드를 누르면 인스타그램처럼 넘겨 보고 좋아요·댓글을 남길 수 있습니다.</p>
+      <p class="album-hint" id="albumHint">로그인하시면 카드에 사진을 끌어다 놓거나 ‘＋ 사진’으로 올릴 수 있어요.</p>
       <a class="album-share-cta" href="share.html">📷 사진·인스타 공유로 올리기</a>
+      <button type="button" class="album-share-cta album-cat-manage" id="albumCatManage" hidden>⚙️ 카테고리 관리</button>
       <div class="album-grid" id="albumGrid" style="margin-bottom:44px;">
         <p class="qt-loading">앨범을 불러오는 중…</p>
       </div>
@@ -194,11 +206,13 @@
 
   <script src="js/config.js?v=20260701lib13"></script>
   <script src="js/bulletins.js?v=20260701lib13"></script>
-  <script src="js/layout.js?v=20260704e"></script>
+  <script src="js/layout.js?v=20260704f"></script>
   <script src="js/counsel.js?v=20260701lib13"></script>
   <script src="js/main.js?v=20260701lib31"></script>
   <script src="js/upload.js?v=20260701lib13"></script>
-  <script src="js/community.js?v=20260701lib13"></script>
-  <script src="js/album.js?v=20260704album1"></script>
+  <script src="js/community.js?v=20260704news2"></script>
+  <script src="js/categories.js?v=20260704news2"></script>
+  <script src="js/notices.js?v=20260704news2"></script>
+  <script src="js/album.js?v=20260704news2"></script>
 </body>
 </html>

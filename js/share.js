@@ -8,7 +8,7 @@
   const box = document.getElementById("shareBox");
   if (!box) return;
 
-  const CATEGORIES = ["주일 예배", "여름성경학교", "수련회", "지역 섬김", "전 성도 식사", "연합예배"];
+  const cats = () => (window.ChurchCategories ? window.ChurchCategories.list() : []);
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   function localSession() {
@@ -105,7 +105,7 @@
     }
 
     const previews = files.map((f) => `<img src="${URL.createObjectURL(f)}" alt="공유 사진" />`).join("");
-    const opts = CATEGORIES.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
+    const opts = cats().map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
     box.innerHTML = `
       <div class="share-card">
         <h3>우리들 소식에 올리기</h3>
@@ -159,6 +159,7 @@
   async function start() {
     if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) { noData(); return; }
     if (!currentUser()) { loginNeeded(); return; }
+    if (window.ChurchCategories) { try { await window.ChurchCategories.load(); } catch (e) {} }
     const payload = await idbRead();
     if (!payload) { noData(); return; }
     renderForm(payload);

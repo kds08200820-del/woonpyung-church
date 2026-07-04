@@ -15,7 +15,7 @@
     return;
   }
 
-  const CATEGORIES = ["주일 예배", "여름성경학교", "수련회", "지역 섬김", "전 성도 식사", "연합예배"];
+  const cats = () => (window.ChurchCategories ? window.ChurchCategories.list() : []);
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -81,6 +81,7 @@
   const photoById = (id) => photos.find((p) => String(p.id) === String(id));
 
   async function load() {
+    if (window.ChurchCategories) { try { await window.ChurchCategories.load(); } catch (e) {} }
     // 집계 뷰(album_feed) 우선, 없으면 album_photos 로 폴백
     try {
       photos = await api("GET", "album_feed?select=*&order=created_at.desc") || [];
@@ -104,7 +105,7 @@
 
   function render() {
     const loggedIn = !!currentUser();
-    grid.innerHTML = CATEGORIES.map((cat) => {
+    grid.innerHTML = cats().map((cat) => {
       const list = byCat(cat);
       const cover = list[0];
       const coverStyle = cover ? `style="background-image:url('${esc(cover.url)}')"` : "";
@@ -463,8 +464,17 @@
     touchX = touchY = null;
   });
 
+  // 관리자용 '카테고리 관리' 버튼(community.html의 #albumCatManage)
+  const catBtn = document.getElementById("albumCatManage");
+  if (catBtn && window.ChurchCategories) {
+    catBtn.addEventListener("click", () => window.ChurchCategories.openManager());
+    isAdminUser().then((ok) => { if (ok) catBtn.hidden = false; });
+  }
+  // 카테고리 변경 시 카드 다시 그리기
+  window.addEventListener("church:categories-changed", () => render());
+
   load();
 
   // 로그인/로그아웃 후 갱신(다른 스크립트가 발생시키는 이벤트에 대응)
-  window.addEventListener("church:auth", () => { _isAdmin = null; load(); });
+  window.addEventListener("church:auth", () => { _isAdmin = null; if (window.ChurchCategories) window.ChurchCategories.isAdmin().then(() => {}); load(); });
 })();

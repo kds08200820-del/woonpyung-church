@@ -183,6 +183,9 @@
     commentForm.addEventListener("submit", addComment);
   }
 
+  let boardData = [];
+  let boardExpanded = false;
+
   async function loadPosts() {
     if (loading) loading.hidden = false;
     let data;
@@ -197,18 +200,42 @@
       return;
     }
     if (loading) loading.hidden = true;
-    if (!data || !data.length) { list.innerHTML = `<p class="qt-loading">아직 글이 없습니다. 첫 글을 남겨보세요!</p>`; return; }
-    list.innerHTML = data.map((p) => `
-      <button class="board-item" data-id="${p.id}">
-        <div class="bi-top">
-          <h3>${esc(p.title)}</h3>
-          ${p.category ? `<span class="board-tag">${esc(p.category)}</span>` : ""}
-        </div>
-        <div class="bi-meta"><span>${esc(p.author_name)}</span><span>${fmtDate(p.created_at)}</span></div>
-      </button>`).join("");
-    list.querySelectorAll(".board-item").forEach((b) =>
+    boardData = data || [];
+    renderBoard();
+  }
+
+  // 최신 1개 카드(펼치기 전 기본)
+  function boardItemHtml(p) {
+    return `<button class="board-item" data-id="${p.id}">
+      <div class="bi-top"><h3>${esc(p.title)}</h3>${p.category ? `<span class="board-tag">${esc(p.category)}</span>` : ""}</div>
+      <div class="bi-meta"><span>${esc(p.author_name)}</span><span>${fmtDate(p.created_at)}</span></div>
+    </button>`;
+  }
+  // 전체 목록의 간결한 한 줄(한 눈에 보기)
+  function boardRowHtml(p) {
+    return `<button class="board-row" data-id="${p.id}">
+      <span class="br-title">${esc(p.title)}</span>
+      ${p.category ? `<span class="board-tag">${esc(p.category)}</span>` : ""}
+      <span class="br-meta">${esc(p.author_name)} · ${fmtDate(p.created_at)}</span>
+    </button>`;
+  }
+  function renderBoard() {
+    const data = boardData;
+    if (!data.length) { list.innerHTML = `<p class="qt-loading">아직 글이 없습니다. 첫 글을 남겨보세요!</p>`; return; }
+    if (!boardExpanded) {
+      let html = boardItemHtml(data[0]);
+      if (data.length > 1) html += `<div class="board-toggle-wrap"><button type="button" class="btn btn-line board-toggle" id="boardListToggle">목록으로 보기 · 전체 ${data.length}개</button></div>`;
+      list.innerHTML = html;
+    } else {
+      let html = `<div class="board-rows">${data.map(boardRowHtml).join("")}</div>`;
+      html += `<div class="board-toggle-wrap"><button type="button" class="btn btn-line board-toggle" id="boardListToggle">간략히 보기</button></div>`;
+      list.innerHTML = html;
+    }
+    list.querySelectorAll(".board-item, .board-row").forEach((b) =>
       b.addEventListener("click", () => openPost(b.dataset.id))
     );
+    const tg = document.getElementById("boardListToggle");
+    if (tg) tg.addEventListener("click", () => { boardExpanded = !boardExpanded; renderBoard(); });
   }
 
   async function openPost(id) {
