@@ -218,7 +218,8 @@
   let curCat = "";
   let curAdmin = false;
 
-  function closeGallery() { if (modal) { modal.hidden = true; document.body.style.overflow = ""; } }
+  function closeGalleryDom() { if (modal) { modal.hidden = true; document.body.style.overflow = ""; } }
+  function closeGallery() { if (window.ModalNav && window.ModalNav.close()) return; closeGalleryDom(); }
   if (modal) {
     modal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeGallery(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden && viewer.hidden) closeGallery(); });
@@ -226,6 +227,7 @@
 
   async function openGallery(cat) {
     if (!modal) return;
+    const wasOpen = !modal.hidden;
     curCat = cat;
     const list = byCat(cat);
     curAdmin = await isAdminUser();
@@ -241,6 +243,7 @@
       wireFeed(list);
     }
     modal.hidden = false; document.body.style.overflow = "hidden";
+    if (!wasOpen && window.ModalNav) window.ModalNav.open(closeGalleryDom);
   }
 
   function heartSvg(filled) {
@@ -393,8 +396,10 @@
     renderViewer();
     viewer.hidden = false;
     document.body.style.overflow = "hidden";
+    if (window.ModalNav) window.ModalNav.open(closeViewerDom);
   }
-  function closeViewer() { viewer.hidden = true; if (!modal.hidden) document.body.style.overflow = "hidden"; }
+  function closeViewerDom() { viewer.hidden = true; if (!modal.hidden) document.body.style.overflow = "hidden"; }
+  function closeViewer() { if (window.ModalNav && window.ModalNav.close()) return; closeViewerDom(); }
 
   function renderViewer() {
     const p = vList[vIdx]; if (!p) return;

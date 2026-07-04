@@ -210,10 +210,12 @@
     feedModal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeFeed(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && feedModal && !feedModal.hidden && viewer.hidden) closeFeed(); });
   }
-  function closeFeed() { if (feedModal) { feedModal.hidden = true; if (viewer.hidden) document.body.style.overflow = ""; } }
+  function closeFeedDom() { if (feedModal) { feedModal.hidden = true; if (viewer.hidden) document.body.style.overflow = ""; } }
+  function closeFeed() { if (window.ModalNav && window.ModalNav.close()) return; closeFeedDom(); }
 
   let feedAdmin = false;
   async function openFeed() {
+    const wasOpen = feedModal && !feedModal.hidden;
     if (!feedModal) buildFeedModal();
     feedAdmin = await isAdminUser();
     if (!photos.length) {
@@ -226,6 +228,7 @@
       wireFeed();
     }
     feedModal.hidden = false; document.body.style.overflow = "hidden";
+    if (!wasOpen && window.ModalNav) window.ModalNav.open(closeFeedDom);
   }
 
   function cardHtml(p, i) {
@@ -326,8 +329,9 @@
   document.body.appendChild(viewer);
   const vStage = viewer.querySelector('[data-role="stage"]');
   let vList = [], vIdx = 0;
-  function openViewer(list, idx) { vList = list; vIdx = idx || 0; renderViewer(); viewer.hidden = false; document.body.style.overflow = "hidden"; }
-  function closeViewer() { viewer.hidden = true; if (!feedModal || feedModal.hidden) document.body.style.overflow = ""; else document.body.style.overflow = "hidden"; }
+  function openViewer(list, idx) { vList = list; vIdx = idx || 0; renderViewer(); viewer.hidden = false; document.body.style.overflow = "hidden"; if (window.ModalNav) window.ModalNav.open(closeViewerDom); }
+  function closeViewerDom() { viewer.hidden = true; if (!feedModal || feedModal.hidden) document.body.style.overflow = ""; else document.body.style.overflow = "hidden"; }
+  function closeViewer() { if (window.ModalNav && window.ModalNav.close()) return; closeViewerDom(); }
   function renderViewer() {
     const p = vList[vIdx]; if (!p) return;
     vStage.innerHTML = `<img src="${esc(p.url)}" alt="${esc(titleOf(p))}" draggable="false" /><span class="igv-heartburst" aria-hidden="true">${heartSvg(true)}</span>`;

@@ -479,3 +479,29 @@
     if (slot) slot.innerHTML = '<span class="auth-pending" title="로그인 기능 준비 중">로그인</span>';
   }
 })();
+
+/* ============================================================
+   ModalNav — 모달 뒤로가기 처리(전 페이지 공통)
+   모달을 열면 history 항목을 하나 쌓고, 브라우저 '뒤로 가기'가
+   사이트 밖으로 나가지 않고 '최상단 모달만' 닫도록 한다.
+   사용: 열 때 ModalNav.open(닫는함수) / 닫기버튼·ESC·백드롭은 ModalNav.close()
+   ============================================================ */
+window.ModalNav = (function () {
+  var stack = [];
+  window.addEventListener("popstate", function () {
+    if (stack.length) { var fn = stack.pop(); try { fn(); } catch (e) {} }
+  });
+  return {
+    open: function (closeDom) {
+      if (typeof closeDom !== "function") return;
+      stack.push(closeDom);
+      try { history.pushState({ modal: stack.length }, ""); } catch (e) {}
+    },
+    close: function () {
+      if (!stack.length) return false;
+      try { history.back(); } catch (e) { var fn = stack.pop(); try { fn(); } catch (_) {} }
+      return true;
+    },
+    count: function () { return stack.length; }
+  };
+})();

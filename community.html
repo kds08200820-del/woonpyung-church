@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260704f" />
+  <link rel="stylesheet" href="css/style.css?v=20260705r2" />
 </head>
 <body>
 
@@ -32,6 +32,29 @@
     <p class="ph-eyebrow">COMMUNITY</p>
     <h1>나눔터</h1>
     <p>성도들이 글로 마음을 나누는 공간입니다. 기도 제목, 감사, 일상의 이야기를 함께 나눠요.</p>
+  </section>
+
+  <section id="album" class="block">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">ALBUM & NEWS</span>
+        <h2>우리들 소식</h2>
+        <p>사진과 짧은 글로 전하는 공동체의 일상.</p>
+      </div>
+
+      <p class="album-hint" id="albumHint">로그인하시면 카드에 사진을 끌어다 놓거나 ‘＋ 사진’으로 올릴 수 있어요.</p>
+      <a class="album-share-cta" href="share.html">📷 사진·인스타 공유로 올리기</a>
+      <button type="button" class="album-share-cta album-cat-manage" id="albumCatManage" hidden>⚙️ 카테고리 관리</button>
+      <div class="album-grid" id="albumGrid" style="margin-bottom:44px;">
+        <p class="qt-loading">앨범을 불러오는 중…</p>
+      </div>
+
+      <div class="news-list">
+        <article class="news-item"><span class="news-no">01</span><div><h4>교회 직분자 선출을 위한 기도</h4><p>하나님의 마음에 합한 직분자 선출과 온 교회의 화평과 기쁨을 위해 함께 기도해 주시기 바랍니다.</p></div></article>
+        <article class="news-item"><span class="news-no">02</span><div><h4>여름 사역을 위한 기도</h4><p>주일학교 여름성경학교, 중고등부·청년부 수련회를 위해 마음을 모아 주시기 바랍니다.</p></div></article>
+        <article class="news-item"><span class="news-no">03</span><div><h4>양금순 집사님 퇴원 감사</h4><p>무사히 퇴원하시어 집에서 가료 중이십니다. 기도해 주신 모든 분들께 감사드립니다.</p></div></article>
+      </div>
+    </div>
   </section>
 
   <section id="notice" class="block block-alt">
@@ -96,7 +119,6 @@
     </div>
   </section>
 
-  <!-- ===== 삶의 질문 Q&A ===== -->
   <section id="qna" class="block block-alt">
     <div class="container">
       <div class="block-head">
@@ -152,30 +174,6 @@
     </div>
   </section>
 
-  <!-- ===== 교회 앨범 · 소식 ===== -->
-  <section id="album" class="block">
-    <div class="container">
-      <div class="block-head">
-        <span class="eyebrow2">ALBUM & NEWS</span>
-        <h2>우리들 소식</h2>
-        <p>사진과 짧은 글로 전하는 공동체의 일상.</p>
-      </div>
-
-      <p class="album-hint" id="albumHint">로그인하시면 카드에 사진을 끌어다 놓거나 ‘＋ 사진’으로 올릴 수 있어요.</p>
-      <a class="album-share-cta" href="share.html">📷 사진·인스타 공유로 올리기</a>
-      <button type="button" class="album-share-cta album-cat-manage" id="albumCatManage" hidden>⚙️ 카테고리 관리</button>
-      <div class="album-grid" id="albumGrid" style="margin-bottom:44px;">
-        <p class="qt-loading">앨범을 불러오는 중…</p>
-      </div>
-
-      <div class="news-list">
-        <article class="news-item"><span class="news-no">01</span><div><h4>교회 직분자 선출을 위한 기도</h4><p>하나님의 마음에 합한 직분자 선출과 온 교회의 화평과 기쁨을 위해 함께 기도해 주시기 바랍니다.</p></div></article>
-        <article class="news-item"><span class="news-no">02</span><div><h4>여름 사역을 위한 기도</h4><p>주일학교 여름성경학교, 중고등부·청년부 수련회를 위해 마음을 모아 주시기 바랍니다.</p></div></article>
-        <article class="news-item"><span class="news-no">03</span><div><h4>양금순 집사님 퇴원 감사</h4><p>무사히 퇴원하시어 집에서 가료 중이십니다. 기도해 주신 모든 분들께 감사드립니다.</p></div></article>
-      </div>
-    </div>
-  </section>
-
   <!-- 앨범 갤러리 모달 -->
   <div class="modal" id="albumModal" hidden>
     <div class="modal-backdrop" data-close></div>
@@ -206,13 +204,13 @@
 
   <script src="js/config.js?v=20260701lib13"></script>
   <script src="js/bulletins.js?v=20260705sum"></script>
-  <script src="js/layout.js?v=20260704f"></script>
+  <script src="js/layout.js?v=20260705r2"></script>
   <script src="js/counsel.js?v=20260701lib13"></script>
   <script src="js/main.js?v=20260701lib31"></script>
   <script src="js/upload.js?v=20260701lib13"></script>
   <script src="js/community.js?v=20260704news2"></script>
   <script src="js/categories.js?v=20260704news2"></script>
-  <script src="js/notices.js?v=20260705clean"></script>
-  <script src="js/album.js?v=20260704news2"></script>
+  <script src="js/notices.js?v=20260705r2"></script>
+  <script src="js/album.js?v=20260705r2"></script>
 </body>
 </html>

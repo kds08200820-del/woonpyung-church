@@ -77,34 +77,47 @@ window.ChurchNotices = (function () {
 
     const wbtn = el.querySelector(".nt-write");
     if (wbtn) wbtn.addEventListener("click", openCompose);
-    el.querySelectorAll(".nt-del").forEach((b) => b.addEventListener("click", async () => {
+    el.querySelectorAll(".nt-del").forEach((b) => b.addEventListener("click", async (e) => {
+      e.stopPropagation();
       if (!confirm("이 공지를 삭제할까요?")) return;
       b.disabled = true;
       try { await api("DELETE", `notices?id=eq.${b.dataset.id}`, null, { Prefer: "return=minimal" }); await refresh(); }
-      catch (e) { b.disabled = false; alert("삭제 오류: " + e.message); }
+      catch (er) { b.disabled = false; alert("삭제 오류: " + er.message); }
     }));
-    // 홈 compact: 제목 클릭 시 community 공지로 이동
-    if (m.compact) el.querySelectorAll(".nt-item").forEach((it) => it.addEventListener("click", (e) => {
-      if (e.target.closest(".nt-del")) return;
-      location.href = "community.html#notice";
+    el.querySelectorAll(".nt-edit").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const n = notices.find((x) => String(x.id) === String(b.dataset.id));
+      if (n) openEdit(n);
+    }));
+    // 공지 클릭 → 그 자리에서 본문 펼치기/접기 (페이지 이동 없음)
+    el.querySelectorAll(".nt-toggle").forEach((t) => t.addEventListener("click", () => {
+      const card = t.closest(".nt-item"); if (!card) return;
+      const body = card.querySelector(".nt-body");
+      if (body) { body.hidden = !body.hidden; card.classList.toggle("open", !body.hidden); }
     }));
   }
 
   function noticeHtml(n, compact, admin) {
     const pin = n.pinned ? `<span class="nt-pin">📌 고정</span>` : "";
     const del = admin ? `<button type="button" class="nt-del" data-id="${n.id}" aria-label="삭제">삭제</button>` : "";
+    const edit = admin ? `<button type="button" class="nt-edit" data-id="${n.id}" aria-label="수정">수정</button>` : "";
+    const hasBody = n.body && n.body.trim();
     if (compact) {
       return `<div class="nt-item nt-compact${n.pinned ? " pinned" : ""}">
-        <div class="nt-line"><span class="nt-t">${pin}${esc(n.title)}</span><span class="nt-d">${esc(fmtDate(n.created_at))}</span></div>
-        ${del}
+        <button type="button" class="nt-toggle">
+          <span class="nt-t">${pin}${esc(n.title)}</span>
+          <span class="nt-d">${esc(fmtDate(n.created_at))}${hasBody ? ` <span class="nt-caret" aria-hidden="true">▾</span>` : ""}</span>
+        </button>
+        ${hasBody ? `<div class="nt-body" hidden>${nl2br(n.body)}</div>` : ""}
+        ${admin ? `<div class="nt-adminrow">${edit}${del}</div>` : ""}
       </div>`;
     }
     return `<article class="nt-item${n.pinned ? " pinned" : ""}">
       <header class="nt-head">
         <h4 class="nt-t">${pin}${esc(n.title)}</h4>
-        <div class="nt-meta"><span>${esc(n.author_name || "관리자")}</span><span>${esc(fmtDate(n.created_at))}</span>${del}</div>
+        <div class="nt-meta"><span>${esc(n.author_name || "관리자")}</span><span>${esc(fmtDate(n.created_at))}</span>${edit}${del}</div>
       </header>
-      ${n.body && n.body.trim() ? `<div class="nt-body">${nl2br(n.body)}</div>` : ""}
+      ${hasBody ? `<div class="nt-body">${nl2br(n.body)}</div>` : ""}
     </article>`;
   }
 
@@ -114,8 +127,9 @@ window.ChurchNotices = (function () {
     mounts.forEach((m) => renderInto(m, admin));
   }
 
-  /* ── 공지 작성 모달(관리자) ── */
+  /* ── 공지 작성/수정 모달(관리자) ── */
   let composeM = null;
+  let editingId = null;
   function buildCompose() {
     composeM = document.createElement("div");
     composeM.className = "modal"; composeM.hidden = true;
@@ -143,23 +157,43 @@ window.ChurchNotices = (function () {
       const pinned = composeM.querySelector("#ntPin").checked;
       if (!title) return;
       const st = composeM.querySelector("#ntStatus"); const btn = composeM.querySelector(".nt-submit");
-      btn.disabled = true; st.hidden = false; st.textContent = "등록 중…";
+      btn.disabled = true; st.hidden = false; st.textContent = editingId ? "수정 중…" : "등록 중…";
       try {
-        await api("POST", "notices", { title, body, pinned, user_id: me.id, author_name: displayName(me) }, { Prefer: "return=minimal" });
+        if (editingId) {
+          await api("PATCH", `notices?id=eq.${editingId}`, { title, body, pinned }, { Prefer: "return=minimal" });
+        } else {
+          await api("POST", "notices", { title, body, pinned, user_id: me.id, author_name: displayName(me) }, { Prefer: "return=minimal" });
+        }
         closeCompose();
-        composeM.querySelector("#ntForm").reset();
         await refresh();
-      } catch (er) { st.textContent = ""; btn.disabled = false; alert("공지 등록 오류: " + er.message); }
+      } catch (er) { st.textContent = ""; btn.disabled = false; alert("공지 저장 오류: " + er.message); }
       btn.disabled = false;
     });
+  }
+  function fillCompose(n) {
+    composeM.querySelector("#ntTitle").value = n ? (n.title || "") : "";
+    composeM.querySelector("#ntBody").value = n ? (n.body || "") : "";
+    composeM.querySelector("#ntPin").checked = n ? !!n.pinned : false;
+    composeM.querySelector(".m-title").textContent = n ? "공지 수정" : "공지 작성";
+    composeM.querySelector(".nt-submit").textContent = n ? "수정 저장" : "등록";
+    composeM.querySelector(".nt-submit").disabled = false;
+    const st = composeM.querySelector("#ntStatus"); st.hidden = true; st.textContent = "";
   }
   async function openCompose() {
     if (!(await isAdmin())) { alert("공지는 관리자만 작성할 수 있어요."); return; }
     if (!composeM) buildCompose();
+    editingId = null; fillCompose(null);
     composeM.hidden = false; document.body.style.overflow = "hidden";
     composeM.querySelector("#ntTitle").focus();
   }
-  function closeCompose() { if (composeM) { composeM.hidden = true; document.body.style.overflow = ""; } }
+  async function openEdit(n) {
+    if (!(await isAdmin())) { alert("공지는 관리자만 수정할 수 있어요."); return; }
+    if (!composeM) buildCompose();
+    editingId = n.id; fillCompose(n);
+    composeM.hidden = false; document.body.style.overflow = "hidden";
+    composeM.querySelector("#ntTitle").focus();
+  }
+  function closeCompose() { if (composeM) { composeM.hidden = true; document.body.style.overflow = ""; editingId = null; } }
 
   function mount(containerId, opts) {
     const el = document.getElementById(containerId);
