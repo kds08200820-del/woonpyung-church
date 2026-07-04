@@ -60,6 +60,11 @@ window.ChurchNotices = (function () {
   function renderInto(m, admin) {
     const el = m.el; if (!el) return;
     const list = m.compact ? notices.slice(0, m.limit || 3) : notices;
+    // 홈(compact): 공지가 없고 관리자도 아니면 섹션 자체를 숨김(빈 섹션 방지)
+    if (m.compact) {
+      const sec = el.closest("section");
+      if (sec) sec.style.display = (loaded && !notices.length && !admin) ? "none" : "";
+    }
     let html = "";
     if (admin) html += `<div class="nt-adminbar"><button type="button" class="btn btn-solid nt-write">＋ 공지 작성</button></div>`;
     if (!list.length) {

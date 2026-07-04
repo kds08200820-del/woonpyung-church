@@ -106,25 +106,23 @@ console.log('[dashboard.js] v20260701da');
   }
 
   function renderDashboard(me) {
+    var grp = 'font-family:"Noto Serif KR",serif;font-size:1.05rem;font-weight:700;color:var(--accent,#032257);margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent,#032257);';
     root.innerHTML =
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;">' +
       '<h2 id="dashWelcome" style="margin:0;font-size:1.15rem;color:var(--accent,#032257);">' + esc(me.memberName || '') + '님, 환영합니다 🙏</h2>' +
       '</div>' +
-      '<div id="myEdu" style="margin-bottom:26px;"></div>' +
-      '<div id="qtProgress" style="margin-bottom:26px;"></div>' +
-      '<div id="dashQt" style="margin-bottom:26px;"></div>' +
-      '<hr class="dash-divider">' +
-      '<section style="margin-bottom:26px;"><div class="section-head"><span class="eyebrow">THIS SUNDAY</span><h2>이번 주 말씀</h2></div><div class="home-sermon" id="homeSermon"></div></section>' +
-      '<hr class="dash-divider">' +
-      '<section style="margin-bottom:26px;"><div class="section-head"><span class="eyebrow">THIS WEEK</span><h2>이번 주 주보</h2></div><div id="homeBulletin"></div></section>' +
-      '<div class="form-card" style="margin-bottom:26px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">💝 헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
-      '<div id="familyTree" style="margin-bottom:26px;"></div>';
+      '<h2 style="' + grp + 'margin-top:6px;">🕊 나의 신앙생활</h2>' +
+      '<div id="dashQt" style="margin-bottom:22px;"></div>' +
+      '<div id="qtProgress" style="margin-bottom:22px;"></div>' +
+      '<div id="myEdu" style="margin-bottom:22px;"></div>' +
+      '<h2 style="' + grp + '">💒 나의 교회생활</h2>' +
+      '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">💝 헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
+      '<div id="familyTree" style="margin-bottom:22px;"></div>' +
+      '<p style="text-align:center;margin-top:14px;"><a class="btn btn-line" href="index.html#qt">이번 주 말씀·주보는 홈에서 보기 →</a></p>';
     loadWelcomeName(me);
-    loadMyEdu(me);
-    loadQtProgress(me);
     loadTodayQt(me);
-    loadHomeSermon();
-    loadHomeBulletin();
+    loadQtProgress(me);
+    loadMyEdu(me);
     loadOfferings(me);
     loadFamily(me);
   }
