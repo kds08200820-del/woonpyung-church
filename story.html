@@ -34,8 +34,191 @@
     <p>여기, 사람 냄새가 납니다. 성도들의 삶과 공동체의 온기를 나눕니다.</p>
   </section>
 
-  <!-- ===== 그리스도의 몸 된 지체들 (조직) ===== -->
-  <section id="groups" class="block">
+  <section id="album" class="block">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">ALBUM & NEWS</span>
+        <h2>우리들 소식</h2>
+        <p>사진과 짧은 글로 전하는 공동체의 일상.</p>
+      </div>
+      <div class="hn-box" id="hnBox">
+        <div class="hn-carousel" id="hnCarousel"><p class="qt-loading">소식을 불러오는 중…</p></div>
+        <div class="hn-actions">
+          <button type="button" class="btn btn-line" id="hnMore">소식 더 보기</button>
+          <button type="button" class="hn-add" id="hnAdd" hidden>＋ 사진 올리기</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="notice" class="block block-alt">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">NOTICE</span>
+        <h2>공지사항</h2>
+        <p>교회의 안내와 소식을 전합니다.</p>
+      </div>
+      <div class="nt-wrap" id="communityNoticeBox"><p class="qt-loading">공지를 불러오는 중…</p></div>
+    </div>
+  </section>
+
+  <section id="board" class="block">
+    <div class="container">
+      <div class="board-top">
+        <div class="block-head" style="margin-bottom:0;">
+          <span class="eyebrow2">BOARD</span>
+          <h2>게시판</h2>
+          <p class="board-sub">기도요청 · 간증 · 함께 나누고 싶은 이야기를 자유롭게 남겨 주세요.</p>
+        </div>
+        <button class="btn btn-solid" id="boardWriteBtn">글쓰기</button>
+      </div>
+
+      <!-- Supabase 미설정 시 안내 -->
+      <div class="member-lock" id="boardNotice" hidden style="margin-top:30px;">
+        <div class="lock-icon">🛠️</div>
+        <h3>나눔터 준비 중</h3>
+        <p>로그인·게시판 기능 연결(Supabase·카카오)이 완료되면 이곳에서 글을 나눌 수 있습니다.</p>
+        <p class="placeholder-note">* 설정값 입력 후 자동으로 활성화됩니다.</p>
+      </div>
+
+      <!-- 글쓰기 폼 -->
+      <form class="form-card board-form" id="boardForm" hidden style="margin-top:24px;">
+        <div class="form-field"><label>글 성격</label>
+          <select name="category" id="boardCategory">
+            <option value="기도요청">기도요청</option>
+            <option value="간증">간증</option>
+            <option value="감사">감사</option>
+            <option value="일상 나눔">일상 나눔</option>
+            <option value="질문">질문</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div class="form-field" id="boardCategoryEtcWrap" hidden><label>기타 (직접 입력)</label><input type="text" name="category_etc" id="boardCategoryEtc" maxlength="20" placeholder="예: 추천, 공지 등" /></div>
+        <div class="form-field"><label>제목</label><input type="text" name="title" required maxlength="100" placeholder="제목을 입력하세요" /></div>
+        <div class="form-field full"><label>내용</label><textarea name="content" rows="6" required placeholder="나누고 싶은 이야기를 적어주세요."></textarea></div>
+        <div class="form-field full" id="boardImageField" hidden>
+          <label>사진 첨부 <span style="font-weight:400;color:var(--muted)">(선택 · 자동으로 용량을 줄여 올립니다)</span></label>
+          <input type="file" id="boardImages" accept="image/*" multiple />
+          <div class="board-img-preview" id="boardImgPreview"></div>
+        </div>
+        <div class="form-actions" style="display:flex;gap:10px;">
+          <button type="submit" class="btn btn-solid">등록</button>
+          <button type="button" class="btn btn-line" id="boardCancel">취소</button>
+        </div>
+      </form>
+
+      <div class="board-list" id="boardList" style="margin-top:30px;">
+        <p class="qt-loading" id="boardLoading" hidden>글을 불러오는 중입니다…</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="request" class="block block-alt">
+    <div class="container">
+      <div class="prayer-request">
+        <span class="eyebrow2">PRAYER REQUEST</span>
+        <h2>기도 부탁이 있으신가요?</h2>
+        <p>나누기 어려운 마음, 홀로 짊어진 짐이 있다면 알려 주세요.</p>
+        <div class="cta-btns">
+          <a class="btn btn-solid" href="community.html">기도요청 게시판 바로가기 →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="thisweek" class="block">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">THIS WEEK</span>
+        <h2>이번 주 기도 제목</h2>
+        <p>온 교회가 한마음으로 올려 드리는 이번 주의 기도입니다.</p>
+      </div>
+      <div class="prayer-week" id="prayerThisWeek">
+        <p class="qt-loading">기도 제목을 불러오는 중입니다…</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="howpray" class="block block-alt">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">WE PRAY FOR</span>
+        <h2>이렇게 기도합니다</h2>
+        <p>좁게는 우리 공동체로부터, 넓게는 열방까지 — 그 기도의 지경을 함께 넓혀 갑니다.</p>
+      </div>
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>교회와 공동체</h3>
+          <p>강단과 예배, 직분자와 성도들의 믿음, 병중에 있는 지체들의 회복과 가정의 평안을 위해 기도합니다.</p>
+        </div>
+        <div class="info-card">
+          <h3>나라와 다음 세대</h3>
+          <p>이 땅의 교회와 위정자들, 그리고 주일학교·청년부 등 다음 세대가 믿음 안에서 자라가도록 기도합니다.</p>
+        </div>
+        <div class="info-card">
+          <h3>선교와 열방</h3>
+          <p>땅끝까지 복음이 전해지도록, 파송된 선교사와 아직 복음을 듣지 못한 영혼들을 위해 기도합니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="qna" class="block">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">LIFE Q&amp;A</span>
+        <h2>삶의 질문</h2>
+        <p>물질·건강·관계 — 일상의 고민에 신앙으로 답합니다.</p>
+      </div>
+      <div class="qna">
+
+        <h3 class="qna-cat">💰 물질</h3>
+        <div class="qna-item">
+          <button class="qna-q">헌금은 꼭 해야 하나요? <span class="qna-mark">+</span></button>
+          <div class="qna-a"><p>헌금은 의무가 아니라 감사의 표현입니다. 받은 은혜에 대한 자발적인 응답이지, 구원의 조건이나 부담이 되어서는 안 됩니다. 형편에 맞게, 기쁜 마음으로 드리는 것이 성경의 가르침입니다(고후 9:7).</p></div>
+        </div>
+        <div class="qna-item">
+          <button class="qna-q">빚이 있는데 어떻게 살아야 할까요? <span class="qna-mark">+</span></button>
+          <div class="qna-a"><p>성경은 성실함과 정직, 그리고 청지기 정신을 가르칩니다. 혼자 짊어지지 마시고 교역자·소그룹과 함께 의논하세요. 공동체는 정죄가 아니라 함께 길을 찾는 곳입니다.</p></div>
+        </div>
+        <div class="qna-item">
+          <button class="qna-q">돈 걱정에서 자유로워질 수 있을까요? <span class="qna-mark">+</span></button>
+          <div class="qna-a"><p>재물은 좋은 도구이지만 주인이 되면 우리를 노예로 삼습니다. “먼저 그의 나라와 그의 의를 구하라”(마 6:33)는 말씀은, 필요를 아시는 아버지를 신뢰하라는 초대입니다. 염려를 기도로 바꿀 때 마음의 자유가 찾아옵니다(빌 4:6-7).</p></div>
+        </div>
+
+        <h3 class="qna-cat">🌿 건강</h3>
+        <div class="qna-item">
+          <button class="qna-q">아무리 기도해도 병이 낫지 않습니다 <span class="qna-mark">+</span></button>
+          <div class="qna-a"><p>치유의 때와 방법은 하나님의 주권에 있습니다. 응답이 더디다고 버림받은 것이 아닙니다. 바울도 가시를 두고 세 번 간구했으나, 하나님은 “내 은혜가 네게 족하다”(고후 12:9)고 답하셨습니다. 낫는 것보다 더 깊은 동행이 그 자리에 있습니다.</p></div>
+        </div>
+        <div class="qna-item">
+          <button class="qna-q">가족이 큰 병을 얻었습니다. 어떻게 기도해야 하나요? <span class="qna-mark">+</span></button>
+          <div class="qna-a"><p>혼자 감당하지 마시고 교회에 알려 함께 기도하게 하세요. 회복을 구하되, 결과를 하나님의 선하신 뜻에 맡기는 기도가 우리를 평안케 합니다. 곁을 지키는 것 자체가 가장 큰 사랑이며, 공동체가 그 짐을 함께 집니다(갈 6:2).</p></div>
+        </div>
+        <div class="qna-item">
+          <button class="qna-q">몸도 마음도 지쳐 무기력합니다 <span class="qna-mark">+</span></button>
+          <div class="qna-a"><p>쉼은 게으름이 아니라 하나님이 정하신 리듬입니다. 엘리야가 탈진했을 때 하나님은 먼저 먹이고 재우셨습니다(왕상 19장). 잘 먹고 자고 쉬는 것도 신앙의 일부입니다. 모든 것을 짊어지려는 손을 잠시 내려놓고, 안식하는 법을 배워 갑시다.</p></div>
+        </div>
+
+        <h3 class="qna-cat">🤝 관계</h3>
+        <div class="qna-item">
+          <button class="qna-q">용서가 너무 어렵습니다 <span class="qna-mark">+</span></button>
+          <div class="qna-a"><p>용서는 단번의 감정이 아니라 오랜 과정일 때가 많습니다. 먼저 용서받은 자로서, 한 걸음씩 나아가는 것으로 충분합니다. 억지로 감정을 꾸미기보다, 그 사람을 하나님께 맡기는 것에서 시작할 수 있습니다. 함께 기도해 드리겠습니다.</p></div>
+        </div>
+        <div class="qna-item">
+          <button class="qna-q">가까운 사람과 갈등이 깊습니다 <span class="qna-mark">+</span></button>
+          <div class="qna-a"><p>“할 수 있거든 너희로서는 모든 사람과 더불어 화목하라”(롬 12:18). 관계 회복은 옳고 그름을 가리는 것보다, 먼저 손을 내미는 데서 시작됩니다. 혼자 풀기 어렵다면 교역자나 신뢰하는 지체의 중재를 구하세요. 화평은 함께 만들어 가는 것입니다.</p></div>
+        </div>
+        <div class="qna-item">
+          <button class="qna-q">교회 안에서도 외롭고 겉도는 느낌이에요 <span class="qna-mark">+</span></button>
+          <div class="qna-a"><p>공동체는 완성된 곳이 아니라 함께 자라가는 곳입니다. 큰 모임에서 외로움을 느낀다면, 작은 소그룹부터 한 걸음 들어와 보세요. 먼저 한 사람에게 마음을 여는 것이 시작입니다. 당신의 자리는 분명히 있습니다 — 교회는 당신을 기다리고 있습니다.</p></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section id="groups" class="block block-alt">
     <div class="container">
       <div class="block-head">
         <span class="eyebrow2">SMALL GROUPS</span>
@@ -51,7 +234,7 @@
     </div>
   </section>
 
-  <section id="history" class="block block-alt">
+  <section id="history" class="block">
     <div class="container">
       <div class="block-head">
         <span class="eyebrow2">HISTORY</span>
@@ -255,7 +438,7 @@
     </div>
   </section>
 
-  <section id="communities" class="block">
+  <section id="communities" class="block block-alt">
     <div class="container">
       <div class="block-head">
         <span class="eyebrow2">COMMUNITIES</span>
@@ -312,10 +495,33 @@
     </div>
   </section>
 
+  
+  <div class="modal" id="postModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-label="게시글">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="post-detail" id="postDetail"></div>
+      <div class="comments" id="commentsBox">
+        <h4 class="m-head">댓글</h4>
+        <div class="comment-list" id="commentList"></div>
+        <form class="comment-form" id="commentForm" hidden>
+          <input type="text" name="comment" required placeholder="따뜻한 댓글을 남겨주세요" />
+          <button type="submit" class="btn btn-solid">등록</button>
+        </form>
+        <p class="comment-login" id="commentLogin" hidden>댓글을 쓰려면 로그인해 주세요.</p>
+      </div>
+    </div>
+  </div>
+
   <script src="js/config.js?v=20260701lib13"></script>
   <script src="js/bulletins.js?v=20260705sum"></script>
-  <script src="js/layout.js?v=20260705r2"></script>
+  <script src="js/layout.js?v=20260705r3"></script>
   <script src="js/counsel.js?v=20260701lib13"></script>
   <script src="js/main.js?v=20260701lib31"></script>
+  <script src="js/upload.js?v=20260701lib13"></script>
+  <script src="js/community.js?v=20260704news2"></script>
+  <script src="js/categories.js?v=20260704news2"></script>
+  <script src="js/notices.js?v=20260705r3"></script>
+  <script src="js/home-news.js?v=20260705r2"></script>
 </body>
 </html>

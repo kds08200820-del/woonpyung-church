@@ -66,14 +66,14 @@
     });
   }
 
-  const goHome = '<a class="btn btn-outline" href="community.html#album">우리들 소식으로</a>';
+  const goHome = '<a class="btn btn-outline" href="story.html#album">우리들 소식으로</a>';
 
   function loginNeeded() {
     box.innerHTML = `
       <div class="share-card">
         <h3>로그인이 필요합니다</h3>
         <p class="share-note">사진을 올리려면 먼저 홈페이지에 로그인해 주세요. 로그인 후 다시 공유하시면 됩니다.</p>
-        <a class="btn btn-solid" href="community.html">로그인하러 가기</a>
+        <a class="btn btn-solid" href="story.html">로그인하러 가기</a>
       </div>`;
   }
 
