@@ -238,10 +238,7 @@ console.log('[dashboard.js] v20260705qtfallback');
           '</button>' +
           '<div id="dashQtFull" hidden style="margin-top:18px"></div>' +
           '</div>' +
-          '<div class="qt-listen-wrap">' +
-          '<a class="qt-listen-btn" href="' + esc(listenHref) + '" target="_blank" rel="noopener noreferrer">🎧 말씀 듣기</a>' +
-          (q.scripture ? '<p class="qt-listen-note">갓피아(GODpia)에서 ‘' + esc(q.scripture) + '’ 말씀을 들어요</p>' : '<p class="qt-listen-note">갓피아(GODpia) 성경 듣기로 이동합니다</p>') +
-          '</div>';
+          '<div class="qt-listen-wrap"><button type="button" class="qt-listen-btn" id="dashTtsBtn" style="border:0;cursor:pointer;font:inherit">🔊 오늘의 말씀 듣기</button></div>';
         var opened = false;
         document.getElementById('dashQtOpen').onclick = function () {
           opened = !opened;
@@ -259,6 +256,20 @@ console.log('[dashboard.js] v20260705qtfallback');
             loadAmenState(me, qDate);
           }
         };
+        // 🔊 오늘의 말씀 듣기 (본문·묵상·기도 낭독) — 모달과 동일
+        (function () {
+          var tb = document.getElementById('dashTtsBtn'); if (!tb) return;
+          if (!(window.WPCTts && window.WPCTts.supported)) { tb.style.display = 'none'; return; }
+          function plain(s) { if (!s) return ''; var d = document.createElement('div'); d.innerHTML = String(s); return (d.textContent || '').replace(/\s+/g, ' ').trim(); }
+          var parts = [];
+          if (q.title) parts.push(q.title);
+          if (q.scripture) parts.push(q.scripture);
+          if (q.qt_bible_text) parts.push(plain(q.qt_bible_text));
+          if (q.content) parts.push(plain(q.content));
+          if (q.prayer) parts.push(plain(q.prayer));
+          var readText = parts.join('. ');
+          tb.onclick = function () { window.WPCTts.toggle(readText, tb, '🔊 오늘의 말씀 듣기'); };
+        })();
       })
       .catch(function () { el.innerHTML = '<p style="color:#c0392b;font-size:.88rem;">큐티를 불러오지 못했습니다.</p>'; });
   }
