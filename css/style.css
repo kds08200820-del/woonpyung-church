@@ -52,12 +52,17 @@ ul { list-style: none; }
   letter-spacing: .28em; color: rgba(255,255,255,.7);
   transition: color .4s ease;
 }
-.logo-dash {
-  font-size: .74rem; font-weight: 600; letter-spacing: .02em; color: var(--gold);
-  margin-top: 1px; cursor: pointer; width: fit-content; transition: color .4s ease;
+.hdr-dash-btn {
+  display: inline-flex; align-items: center; margin-left: 10px; white-space: nowrap;
+  font-size: .8rem; font-weight: 600; color: #fff;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.34);
+  padding: 6px 14px; border-radius: 999px;
+  transition: background .25s ease, color .3s ease, border-color .3s ease;
 }
-.logo-dash:hover { text-decoration: underline; }
-#header.scrolled .logo-dash { color: var(--accent); }
+.hdr-dash-btn:hover { background: rgba(255,255,255,.24); }
+#header.scrolled .hdr-dash-btn { color: var(--accent); background: rgba(3,34,87,.07); border-color: rgba(3,34,87,.22); }
+#header.scrolled .hdr-dash-btn:hover { background: rgba(3,34,87,.14); }
+@media (max-width: 480px) { .hdr-dash-btn { margin-left: 8px; padding: 5px 11px; font-size: .76rem; } }
 .nav-menu { display: flex; gap: 22px; flex-wrap: nowrap; }
 .nav-menu a {
   font-size: .92rem; font-weight: 500; color: rgba(255,255,255,.92);
