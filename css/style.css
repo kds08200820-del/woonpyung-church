@@ -1522,13 +1522,21 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 }
 .book-cover-clickable:hover .book-peek, .book-cover-clickable:focus-visible .book-peek { opacity: 1; transform: translateX(-50%) translateY(0); }
 .book-preview-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  white-space: nowrap; text-decoration: none; max-width: 100%; box-sizing: border-box;
   margin-top: 18px; font-family: inherit; font-size: .92rem; font-weight: 600;
   background: var(--accent); color: #fff; border: 0; border-radius: 26px;
   padding: 12px 22px; cursor: pointer; transition: background .25s ease, transform .2s ease, box-shadow .25s ease;
   box-shadow: 0 8px 22px rgba(61,90,76,.28);
 }
 .book-preview-btn:hover { background: #32493e; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(61,90,76,.34); }
-@media (max-width: 680px) { .book-info { text-align: center; } .book-peek { opacity: 1; transform: translateX(-50%); } }
+@media (max-width: 680px) {
+  .book-info { text-align: center; }
+  .book-peek { opacity: 1; transform: translateX(-50%); }
+  /* 모바일: '곧 출간 예정' 알림과 버튼을 겹치지 않게 세로로 정렬(가운데) */
+  .book-info .book-note { display: block; width: fit-content; margin-left: auto; margin-right: auto; }
+  .book-info .book-preview-btn { margin-top: 14px; }
+}
 
 /* 모달 박스 (읽기 뷰) */
 .modal-box-book { max-width: 720px; padding: 0; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh; }
