@@ -240,23 +240,26 @@ console.log('[dashboard.js] v20260705qtfallback');
           '</div>' +
           '<div class="qt-listen-wrap"><button type="button" class="qt-listen-btn" id="dashTtsBtn" style="border:0;cursor:pointer;font:inherit">🔊 오늘의 말씀 듣기</button></div>';
         var opened = false;
+        function renderFullOnce() {
+          var full = document.getElementById('dashQtFull'); if (!full || full.dataset.loaded) return;
+          full.dataset.loaded = '1';
+          full.innerHTML =
+            '<div class="form-card qtc-card">' +
+            (q.qt_bible_text ? '<div class="qtc-bible">' + bibleVersesHTML(q.qt_bible_text) + '</div>' : '') +
+            (q.content ? '<div class="qtc-head">📝 묵상</div><div class="qtc-body">' + toParaHTML(q.content) + '</div>' : '') +
+            (q.prayer ? '<div class="qtc-head">🙏 기도</div><div class="qtc-body">' + toParaHTML(q.prayer) + '</div>' : '') +
+            '<div id="dashAmenBox" class="qtc-amen"></div>' +
+            '</div>';
+          loadAmenState(me, qDate);
+        }
+        function openFull() { var full = document.getElementById('dashQtFull'); if (!full) return; renderFullOnce(); opened = true; full.hidden = false; }
         document.getElementById('dashQtOpen').onclick = function () {
           opened = !opened;
           var full = document.getElementById('dashQtFull');
           full.hidden = !opened;
-          if (opened && !full.dataset.loaded) {
-            full.dataset.loaded = '1';
-            full.innerHTML =
-              '<div class="form-card qtc-card">' +
-              (q.qt_bible_text ? '<div class="qtc-bible">' + bibleVersesHTML(q.qt_bible_text) + '</div>' : '') +
-              (q.content ? '<div class="qtc-head">📝 묵상</div><div class="qtc-body">' + toParaHTML(q.content) + '</div>' : '') +
-              (q.prayer ? '<div class="qtc-head">🙏 기도</div><div class="qtc-body">' + toParaHTML(q.prayer) + '</div>' : '') +
-              '<div id="dashAmenBox" class="qtc-amen"></div>' +
-              '</div>';
-            loadAmenState(me, qDate);
-          }
+          if (opened) renderFullOnce();
         };
-        // 🔊 오늘의 말씀 듣기 (본문·묵상·기도 낭독) — 모달과 동일
+        // 🔊 오늘의 말씀 듣기 — 누르면 본문(묵상 전문)을 자동으로 펼치고 낭독
         (function () {
           var tb = document.getElementById('dashTtsBtn'); if (!tb) return;
           if (!(window.WPCTts && window.WPCTts.supported)) { tb.style.display = 'none'; return; }
@@ -268,7 +271,11 @@ console.log('[dashboard.js] v20260705qtfallback');
           if (q.content) parts.push(plain(q.content));
           if (q.prayer) parts.push(plain(q.prayer));
           var readText = parts.join('. ');
-          tb.onclick = function () { window.WPCTts.toggle(readText, tb, '🔊 오늘의 말씀 듣기'); };
+          tb.onclick = function () {
+            var starting = tb.textContent.indexOf('멈춤') < 0 && tb.textContent.indexOf('준비') < 0;
+            if (starting) { openFull(); try { document.getElementById('dashQtFull').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
+            window.WPCTts.toggle(readText, tb, '🔊 오늘의 말씀 듣기');
+          };
         })();
       })
       .catch(function () { el.innerHTML = '<p style="color:#c0392b;font-size:.88rem;">큐티를 불러오지 못했습니다.</p>'; });
