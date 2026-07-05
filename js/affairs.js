@@ -254,7 +254,7 @@ console.log('[affairs.js] v20260701dj');
         '<button class="btn ' + (active === 'all' ? 'btn-solid' : 'btn-line') + '" data-v="all" style="padding:6px 13px;font-size:.85rem">전체 목록</button>' +
         '</div></div>';
     }
-    function bindHeader() { Array.prototype.forEach.call(panel.querySelectorAll('[data-v]'), function (b) { b.onclick = function () { state.view = b.dataset.v; state.sel = null; draw(); }; }); }
+    function bindHeader() { Array.prototype.forEach.call(panel.querySelectorAll('[data-v]'), function (b) { b.onclick = function () { if (b.dataset.v !== state.view) navTo(b.dataset.v, null); }; }); }
     function memberIndex() {
       var map = {};
       MEMBERS.forEach(function (m) { var id = memMid(m); map[id] = { mid: id, name: m.name, group: m.group, role: m.role, count: 0, cats: {} }; });
@@ -279,8 +279,8 @@ console.log('[affairs.js] v20260701dj');
       var q = panel.querySelector('#ar_q');
       if (q) q.oninput = function () { state.q = this.value; var v = this.value.trim(); Array.prototype.forEach.call(panel.querySelectorAll('tbody tr[data-mid]'), function (tr) { tr.style.display = (!v || tr.getAttribute('data-search').indexOf(v) >= 0) ? '' : 'none'; }); };
       var nb = panel.querySelector('#ar_new');
-      if (nb) nb.onclick = function () { var nm = prompt('자료를 보관할 성도 이름을 입력하세요.'); if (nm && nm.trim()) { state.sel = 'name:' + nm.trim(); state.view = 'detail'; draw(); } };
-      Array.prototype.forEach.call(panel.querySelectorAll('[data-mid],[data-open]'), function (el) { el.onclick = function (e) { e.stopPropagation(); state.sel = el.dataset.open || el.dataset.mid; state.view = 'detail'; draw(); }; });
+      if (nb) nb.onclick = function () { var nm = prompt('자료를 보관할 성도 이름을 입력하세요.'); if (nm && nm.trim()) { navTo('detail', 'name:' + nm.trim()); } };
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-mid],[data-open]'), function (el) { el.onclick = function (e) { e.stopPropagation(); navTo('detail', el.dataset.open || el.dataset.mid); }; });
     }
     function drawDetail() {
       var mid = state.sel;
@@ -301,7 +301,7 @@ console.log('[affairs.js] v20260701dj');
           files.map(function (f) { return '<tr><td>' + esc(f.category || '') + '</td><td>' + esc(f.title || '') + '</td><td>' + (f.file_url ? '<a href="' + esc(f.file_url) + '" target="_blank" rel="noopener">' + esc(f.file_name || '열기') + '</a>' : '') + '</td><td style="white-space:nowrap">' + esc(ymd(f.doc_date) || ymd(f.created_at)) + '</td><td class="num">' + (f.file_size ? fmtBytes(f.file_size) : '') + '</td><td style="text-align:right"><button class="btn btn-line" data-del="' + esc(f.id) + '" style="padding:3px 9px;font-size:.78rem;color:#c0392b">삭제</button></td></tr>'; }).join('') +
           '</tbody></table>' : '<p style="color:#9aa5b1;padding:10px 2px">아직 보관된 자료가 없습니다. 위에서 파일을 올려보세요.</p>') + '</div></div>';
       bindHeader();
-      panel.querySelector('#ar_back').onclick = function () { state.view = 'members'; state.sel = null; draw(); };
+      panel.querySelector('#ar_back').onclick = function () { history.back(); };
       function doUpload(file) {
         var msg = panel.querySelector('#ar_msg');
         if (!file) return;
@@ -357,6 +357,14 @@ console.log('[affairs.js] v20260701dj');
       Array.prototype.forEach.call(panel.querySelectorAll('[data-del]'), function (b) { b.onclick = function () { delFile(b.dataset.del); }; });
     }
     function draw() { if (state.view === 'detail') return drawDetail(); if (state.view === 'all') return drawAll(); return drawMembers(); }
+    // 자료실 내부 화면 전환은 히스토리에 남겨, 브라우저 '뒤로'가 바로 이전 화면(성도목록)으로 가게 한다
+    // (안 그러면 상세에서 뒤로 시 목회행정 첫 탭으로 튐)
+    function navTo(view, sel) {
+      var pv = state.view, ps = state.sel;
+      state.view = view; state.sel = (sel === undefined ? null : sel);
+      draw();
+      pushBackClose(function () { state.view = pv; state.sel = ps; draw(); });
+    }
     load().then(draw).catch(function (e) {
       panel.innerHTML = /42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message || '') ? msgCard('자료실 준비 필요', 'Supabase ▸ SQL Editor 에서 supabase/member_files.sql 을 1회 실행해 주세요.') : msgCard('불러오기 실패', (e && e.message) || '자료를 불러오지 못했습니다.');
     });
