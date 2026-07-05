@@ -514,8 +514,7 @@ window.WPCTts = WPCTts;
         <span class="qt-d-date">${escQt(p.date || e.date)}</span>
         ${p.title ? `<h3 class="qt-d-title">${escQt(p.title)}</h3>` : ""}
         ${p.ref ? `<p class="qt-d-ref">${escQt(p.ref)}</p>` : ""}
-        ${p.ref ? `<a class="qt-d-listen" href="${godpiaUrl(p.ref)}" target="_blank" rel="noopener noreferrer">🎧 이 본문 듣기</a>` : ""}
-        <button type="button" class="qt-d-listen" id="qtTtsBtn" style="border:0;font:inherit;cursor:pointer;margin-left:8px">🔊 들어주기</button>
+        <button type="button" class="qt-d-listen" id="qtTtsBtn" style="border:0;font:inherit;cursor:pointer">🔊 오늘의 말씀 듣기</button>
       </div>
       ${secHtml || `<div class="qt-d-sec"><p>${escQt(e.content)}</p></div>`}
       <div id="qtAmenBox"></div>`;
@@ -530,7 +529,7 @@ window.WPCTts = WPCTts;
       (p.sections || []).forEach((s) => { const h = String(s.head || "").replace(/[^가-힣A-Za-z0-9\s]/g, " ").trim(); if (h) parts.push(h); if (s.body) parts.push(s.body); });
       let readText = parts.join(". ");
       if (!readText.trim()) readText = e.content;
-      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 들어주기");
+      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 오늘의 말씀 듣기");
     })();
     const items = [...dateListEl.querySelectorAll(".qt-dl-item")];
     items.forEach((b) => b.classList.toggle("active", b.dataset.date === date));
