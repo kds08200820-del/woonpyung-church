@@ -360,15 +360,16 @@ window.WPCTts = WPCTts;
       </button>`;
     document.getElementById("qtOpen").addEventListener("click", () => openModal(entry.date));
 
-    // '말씀 듣기' 버튼 → 오늘(또는 최근) 본문이 재생되는 갓피아 페이지로 연결
-    const listenBtn = document.querySelector(".qt-listen-btn");
-    if (listenBtn) {
-      listenBtn.href = godpiaUrl(entry.ref);
-      const note = document.querySelector(".qt-listen-note");
-      if (note) {
-        note.textContent = entry.ref
-          ? `갓피아(GODpia)에서 ‘${entry.ref}’ 말씀을 들어요`
-          : "갓피아(GODpia) 성경 듣기로 이동합니다";
+    // '오늘의 말씀 듣기'(TTS) → 본문 모달을 열어(팝업) 낭독 시작 (대시보드와 동일 컨셉)
+    const homeTts = document.getElementById("qtHomeTts");
+    if (homeTts) {
+      if (!(window.WPCTts && window.WPCTts.supported)) { homeTts.style.display = "none"; }
+      else {
+        homeTts.onclick = () => {
+          openModal(entry.date);                          // 오늘 큐티 본문 팝업(모달)
+          const mb = document.getElementById("qtTtsBtn"); // 모달 안의 낭독 버튼을 눌러 재생 시작
+          if (mb) mb.click();
+        };
       }
     }
   }
