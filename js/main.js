@@ -140,13 +140,15 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
 // 긴 글은 문장 단위로 나눠 순차 재생(크롬의 긴 발화 끊김 버그 회피). window.WPCTts.toggle/stop 로 사용.
 var WPCTts = (function () {
   var synth = window.speechSynthesis || null;
-  var queue = [], idx = 0, active = false, btnEl = null, btnLabel = "🔊 들어주기";
+  var btnEl = null, btnLabel = "🔊 들어주기", active = false, gen = 0;
+  var audio = null, queue = [], idx = 0, cache = {};
+  // ── 기본 음성(브라우저, AI 실패 시 대체) ──
   function koVoice() {
     if (!synth) return null;
     var vs = synth.getVoices() || [];
     return vs.filter(function (v) { return /^ko/i.test(v.lang || ""); }).sort(function (a, b) {
-      var score = function (v) { return /google|natural|neural|premium|yuna|siwoo|heami/i.test(v.name || "") ? 1 : 0; };
-      return score(b) - score(a);
+      var s = function (v) { return /google|natural|neural|premium|yuna|siwoo|heami/i.test(v.name || "") ? 1 : 0; };
+      return s(b) - s(a);
     })[0] || null;
   }
   function chunk(text) {
@@ -157,30 +159,61 @@ var WPCTts = (function () {
     if (buf) out.push(buf);
     return out.length ? out : [s];
   }
-  function next() {
-    if (!active) return;
-    if (idx >= queue.length) { stop(); return; }
+  function browserNext(myGen) {
+    if (!active || myGen !== gen) return;
+    if (idx >= queue.length) { reset(); return; }
     var u = new SpeechSynthesisUtterance(queue[idx]);
     u.lang = "ko-KR"; var v = koVoice(); if (v) u.voice = v; u.rate = 0.98; u.pitch = 1.0;
-    u.onend = function () { idx++; next(); };
-    u.onerror = function () { idx++; next(); };
+    u.onend = function () { idx++; browserNext(myGen); };
+    u.onerror = function () { idx++; browserNext(myGen); };
     synth.speak(u);
   }
-  function start(text, btn, label) {
-    if (!synth) { alert("이 브라우저는 음성 읽어주기를 지원하지 않습니다."); return; }
-    stop();
-    btnEl = btn || null; btnLabel = label || "🔊 들어주기";
-    queue = chunk(text); idx = 0; active = true;
+  function browserStart(text, myGen) {
+    if (!synth) { reset(); return; }
+    queue = chunk(text); idx = 0;
+    if (btnEl && myGen === gen) btnEl.textContent = "⏸ 멈춤 (기본 음성)";
+    browserNext(myGen);
+  }
+  // ── AI 음성(Gemini TTS via Edge Function) ──
+  function aiFetch(text) {
+    var ak = window.SUPABASE_ANON_KEY, sb = (window.SUPABASE_URL || "").replace(/\/$/, "");
+    if (!ak || !sb) return Promise.reject(new Error("no-config"));
+    var tok = (window.WPF && WPF.token && WPF.token()) || ak;
+    return fetch(sb + "/functions/v1/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: ak, Authorization: "Bearer " + tok },
+      body: JSON.stringify({ text: text })
+    }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t || ("HTTP " + r.status)); }); return r.blob(); });
+  }
+  function playBlob(url, myGen) {
+    if (!active || myGen !== gen) return;
+    stopAudio();
+    audio = new Audio(url);
+    audio.onended = function () { if (myGen === gen) reset(); };
+    audio.onerror = function () { if (myGen === gen) reset(); };
     if (btnEl) btnEl.textContent = "⏸ 낭독 멈춤";
-    next();
+    audio.play().catch(function () { });
   }
-  function stop() {
-    active = false; if (synth) { try { synth.cancel(); } catch (e) {} }
-    if (btnEl) btnEl.textContent = btnLabel;
+  function stopAudio() { if (audio) { try { audio.pause(); } catch (e) {} audio = null; } }
+  function reset() { active = false; if (btnEl) btnEl.textContent = btnLabel; }
+  function start(text, btn, label) {
+    stop();
+    btnEl = btn || null; btnLabel = label || "🔊 들어주기"; active = true;
+    var myGen = ++gen;
+    if (btnEl) btnEl.textContent = "⏳ 준비 중…";
+    if (cache[text]) { playBlob(cache[text], myGen); return; }
+    aiFetch(text).then(function (b) {
+      if (!active || myGen !== gen) return;
+      var url = URL.createObjectURL(b); cache[text] = url; playBlob(url, myGen);
+    }).catch(function () {
+      if (!active || myGen !== gen) return;
+      browserStart(text, myGen);   // AI(엣지함수) 미배포·실패 → 기본 음성으로 자동 대체
+    });
   }
+  function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } if (btnEl) btnEl.textContent = btnLabel; }
   function toggle(text, btn, label) { if (active) stop(); else start(text, btn, label); }
   window.addEventListener("pagehide", stop);
-  return { toggle: toggle, stop: stop, supported: !!synth };
+  return { toggle: toggle, stop: stop, supported: true };   // AI 또는 기본 음성 중 하나로 항상 동작
 })();
 window.WPCTts = WPCTts;
 
