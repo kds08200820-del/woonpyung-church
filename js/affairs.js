@@ -2228,6 +2228,15 @@ console.log('[affairs.js] v20260701dj');
         '.se-editor{border-radius:11px;border-top:1px solid #e3e8f0}' +
         '.se-editor h1{font-size:1.62em;font-weight:800;margin:.6em 0 .3em;color:#08213f}' +
         '.se-editor .se-note{background:#fef3c7;border-bottom:2px dotted #d4a53f;cursor:help}' +
+        // 성경 박스 드래그 중에는 원고·미리보기 선택 금지(선택이 박스 밖으로 새는 것 방지)
+        '.sed-nosel-editor .se-editor,.sed-nosel-editor .rp-paper,.sed-nosel-editor #rp_flow{-webkit-user-select:none!important;user-select:none!important}' +
+        '.mb-text,.mb-text .mb-verse{-webkit-user-select:text;user-select:text}' +
+        // ⚙ 자동저장 설정창(팝오버)
+        '.se-setpop{position:fixed;z-index:40;width:232px;background:#fff;border:1px solid #dde3ec;border-radius:11px;box-shadow:0 10px 30px rgba(3,34,87,.18);padding:12px 14px;color:#33415c;font-size:.86rem}' +
+        '.se-setpop-h{font-weight:800;color:var(--accent,#032257);margin-bottom:9px;font-size:.9rem}' +
+        '.se-setpop-row{display:flex;align-items:center;gap:7px;margin-bottom:8px}' +
+        '.se-setpop-row input[type=number]{font:inherit;border:1px solid #dde3ec;border-radius:6px;padding:4px 6px}' +
+        '.se-setpop-note{font-size:.74rem;color:#9aa5b1;line-height:1.5;margin-top:2px}' +
         '.se-editor img{max-width:100%;border-radius:6px}' +
         '.se-editor .se-video{color:#1d4ed8;font-weight:600}' +
         '.bd-tabs{display:flex;gap:4px;margin-bottom:12px}' +
@@ -2423,6 +2432,7 @@ console.log('[affairs.js] v20260701dj');
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">' +
         '<select id="se_status" class="sed-status" title="작성 상태">' + ['작성중', '수정중', '완료'].map(function (s) { return '<option' + (s === (rec.status || '작성중') ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>' +
         '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 저장</button>' +
+        (worshipMode ? '' : '<button class="btn btn-line" id="se_settings" title="자동 임시저장 설정" style="padding:8px 11px;border-radius:9px">⚙</button>') +
         '<button class="btn btn-line" id="se_kakao" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">💬 카카오톡 복사</button>' +
         '<button class="btn btn-line" id="se_preview" style="padding:8px 13px;border-radius:9px">👁 미리보기</button>' +
         (worshipMode ? '' : '<button class="btn btn-line" id="se_present" style="padding:8px 13px;border-radius:9px">🖥 발표자 모드</button>') +
@@ -2906,6 +2916,13 @@ console.log('[affairs.js] v20260701dj');
         if (!bookSel || !chapSel || !textEl) return;
         var mbTrans = 'gyr', mbBook = 1, mbChap = 1;
         var pref = parseRef(scInp ? scInp.value : ''); if (pref) { mbBook = pref.bookId; mbChap = pref.ch; }
+        // 성경 박스 안에서 절을 드래그로 선택할 때, 선택이 뒤쪽 원고로 새어 나가지 않도록
+        // 드래그하는 동안만 원고·미리보기를 선택 불가로 막는다(박스 밖으로 마우스가 나가도 원고가 잡히지 않음).
+        textEl.addEventListener('mousedown', function () {
+          ov.classList.add('sed-nosel-editor');
+          var onUp = function () { ov.classList.remove('sed-nosel-editor'); document.removeEventListener('mouseup', onUp); };
+          document.addEventListener('mouseup', onUp);
+        });
         bookSel.innerHTML = BBLK.map(function (b) { return '<option value="' + b[0] + '"' + (b[0] === mbBook ? ' selected' : '') + '>' + esc(b[1]) + '</option>'; }).join('');
         function fillChaps() {
           var bk = BBLK[mbBook - 1], h = '';
@@ -3177,11 +3194,33 @@ console.log('[affairs.js] v20260701dj');
       function restoreSel() { if (!savedSel || savedSel.s < 0) return; var a = globalToPos(savedSel.s), b = globalToPos(savedSel.e); if (!a || !b) return; try { var r = document.createRange(); r.setStart(a.node, a.offset); r.setEnd(b.node, b.offset); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (e) { } }
       ed.addEventListener('keyup', saveSel); ed.addEventListener('mouseup', saveSel); ed.addEventListener('input', saveSel);
 
+      // 툴바의 select(문단·글꼴·크기·줄간격·자간)를 누르면 편집기 포커스를 가져가 선택영역이 사라진다.
+      // 열리기 직전(mousedown/focus)에 현재 선택을 저장해 둬야 글꼴·문단 스타일이 실제로 적용된다.
+      // (이게 빠져 있어 '글꼴·도구가 안 먹는' 것처럼 보였음)
+      ['#se_block', '#se_font', '#se_size', '#se_lh', '#se_ls'].forEach(function (sel) {
+        var el = ov.querySelector(sel); if (!el) return;
+        el.addEventListener('mousedown', saveSel);
+        el.addEventListener('focus', saveSel);
+      });
+      // 선택 영역에 글꼴 입히기 — execCommand fontName은 따옴표·대체글꼴 값에서 불안정하므로,
+      // 명령 후 남는 <font face="…">를 실제 CSS font-family span으로 바꿔 글꼴이 확실히 적용되게 한다.
+      function applyFontFamily(css) {
+        ed.focus(); restoreSel();
+        var s = window.getSelection();
+        if (!s || !s.rangeCount || !ed.contains(s.anchorNode)) return;
+        try { document.execCommand('styleWithCSS', false, true); document.execCommand('fontName', false, css); } catch (e) {}
+        Array.prototype.forEach.call(ed.querySelectorAll('font[face]'), function (f) {
+          var sp = document.createElement('span'); sp.style.fontFamily = f.getAttribute('face'); sp.innerHTML = f.innerHTML;
+          f.parentNode.replaceChild(sp, f);
+        });
+        saveSel(); syncContent();
+      }
+
       ov.querySelector('#se_block').onchange = function () { ed.focus(); restoreSel(); exec('formatBlock', this.value === 'p' ? 'P' : this.value.toUpperCase()); this.selectedIndex = 0; };
 
       // 글꼴 (모두 오픈폰트 라이선스)
       var fontSel = ov.querySelector('#se_font');
-      if (fontSel) fontSel.onchange = function () { var v = this.value; if (!v) return; ed.focus(); restoreSel(); exec('fontName', v); this.selectedIndex = 0; };
+      if (fontSel) fontSel.onchange = function () { var v = this.value; if (!v) return; applyFontFamily(v); this.selectedIndex = 0; };
 
       // 글자 크기(px) — execCommand fontSize(7) 후 실제 px로 치환
       var sizeSel = ov.querySelector('#se_size');
@@ -3464,9 +3503,21 @@ console.log('[affairs.js] v20260701dj');
         var chkBtn = ov.querySelector('#se_chk');
         if (chkBtn) { chkBtn.onmousedown = function (e) { e.preventDefault(); }; chkBtn.onclick = function () { exec('insertText', '☐ '); }; }
         var lhSel = ov.querySelector('#se_lh');
-        if (lhSel) lhSel.onchange = function () { if (this.value) ed.style.lineHeight = this.value; };
+        if (lhSel) lhSel.onchange = function () {
+          if (!this.value) return;
+          ed.style.lineHeight = this.value;
+          // 문단마다 붙어 있던 개별 줄간격(붙여넣기 등)을 걷어내야 문서 전체 줄간격이 실제로 바뀐다
+          Array.prototype.forEach.call(ed.querySelectorAll('[style*="line-height"]'), function (el) { if (el !== ed) el.style.lineHeight = ''; });
+          syncContent();
+          if (typeof wdRepaginate === 'function') wdRepaginate();   // 줄 높이가 바뀌면 페이지 나눔도 다시 계산
+        };
         var lsSel = ov.querySelector('#se_ls');
-        if (lsSel) lsSel.onchange = function () { if (this.value !== '') ed.style.letterSpacing = this.value + 'px'; };
+        if (lsSel) lsSel.onchange = function () {
+          if (this.value === '') return;
+          ed.style.letterSpacing = this.value + 'px';
+          syncContent();
+          if (typeof wdRepaginate === 'function') wdRepaginate();
+        };
         var noteBtn = ov.querySelector('#se_note');
         if (noteBtn) {
           noteBtn.onmousedown = function (e) { e.preventDefault(); };
@@ -3667,15 +3718,27 @@ console.log('[affairs.js] v20260701dj');
             if (firstBad < 0) return null;           // 모든 줄이 들어감
             if (firstBad === 0) return 'ALL';        // 첫 줄부터 안 들어감 → 통째로 다음 페이지
             var targetTop = lines[firstBad].top;
-            var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null), nodes = [], total = 0, tn;
-            while (tn = walker.nextNode()) { nodes.push({ node: tn, start: total, len: tn.data.length }); total += tn.data.length; }
-            if (total === 0) return null;
-            function posAt(idx) { for (var i = 0; i < nodes.length; i++) { if (idx <= nodes[i].start + nodes[i].len) return { node: nodes[i].node, offset: idx - nodes[i].start }; } var L = nodes[nodes.length - 1]; return { node: L.node, offset: L.len }; }
-            function topAt(idx) { var pos = posAt(idx); var r = document.createRange(); r.setStart(pos.node, pos.offset); r.setEnd(pos.node, pos.offset); var rects = r.getClientRects(); var rect = rects.length ? rects[rects.length - 1] : r.getBoundingClientRect(); return pTopLayout + (rect.top - pRectTop) / scale; }
-            var lo = 0, hi = total, splitIdx = total;   // 넘치는 첫 줄의 시작 문자 오프셋(top은 offset에 단조 증가 → 이분 탐색)
-            while (lo < hi) { var midI = (lo + hi) >> 1; if (topAt(midI) >= targetTop - 0.5) { splitIdx = midI; hi = midI; } else lo = midI + 1; }
-            if (splitIdx >= total || splitIdx <= 0) return 'ALL';
-            var pos = posAt(splitIdx);
+            // 넘치는 첫 줄의 시작 위치를 찾는다. 먼저 caretRangeFromPoint로 한 번에(리플로 1회) 시도하고,
+            // 실패하면 문자 오프셋 이분 탐색으로 폴백 — 대량 문서에서 줄마다 getClientRects를 반복하던 지연을 줄인다.
+            var pos = null;
+            var badRect = lr[firstBad];
+            if (document.caretRangeFromPoint) {
+              try {
+                var cr = document.caretRangeFromPoint(badRect.left + 1, (badRect.top + badRect.bottom) / 2);
+                if (cr && p.contains(cr.startContainer) && cr.startContainer.nodeType === 3 && cr.startOffset > 0) pos = { node: cr.startContainer, offset: cr.startOffset };
+              } catch (e) { }
+            }
+            if (!pos) {
+              var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null), nodes = [], total = 0, tn;
+              while (tn = walker.nextNode()) { nodes.push({ node: tn, start: total, len: tn.data.length }); total += tn.data.length; }
+              if (total === 0) return null;
+              var posAt = function (idx) { for (var i = 0; i < nodes.length; i++) { if (idx <= nodes[i].start + nodes[i].len) return { node: nodes[i].node, offset: idx - nodes[i].start }; } var L = nodes[nodes.length - 1]; return { node: L.node, offset: L.len }; };
+              var topAt = function (idx) { var pp = posAt(idx); var r = document.createRange(); r.setStart(pp.node, pp.offset); r.setEnd(pp.node, pp.offset); var rects = r.getClientRects(); var rect = rects.length ? rects[rects.length - 1] : r.getBoundingClientRect(); return pTopLayout + (rect.top - pRectTop) / scale; };
+              var lo = 0, hi = total, splitIdx = total;   // 넘치는 첫 줄의 시작 문자 오프셋(top은 offset에 단조 증가 → 이분 탐색)
+              while (lo < hi) { var midI = (lo + hi) >> 1; if (topAt(midI) >= targetTop - 0.5) { splitIdx = midI; hi = midI; } else lo = midI + 1; }
+              if (splitIdx >= total || splitIdx <= 0) return 'ALL';
+              pos = posAt(splitIdx);
+            }
             var range = document.createRange(); range.setStart(pos.node, pos.offset); range.setEndAfter(p.lastChild);
             var frag = range.extractContents();
             var cont = document.createElement('p'); cont.className = 'pg-cont';
@@ -3809,7 +3872,8 @@ console.log('[affairs.js] v20260701dj');
             if (composing) { clearTimeout(rpgT); rpgT = setTimeout(runRepaginate, 200); return; }   // 조합 끝날 때까지 대기
             repaginate(); keepCaretVisible();
           }
-          function schedRepaginate() { clearTimeout(rpgT); rpgT = setTimeout(runRepaginate, 350); }
+          // 입력이 멈춘 뒤 다음 유휴/프레임에 페이지 나눔 — 타이핑 프레임을 막지 않아 체감 지연을 줄인다
+          function schedRepaginate() { clearTimeout(rpgT); rpgT = setTimeout(function () { (window.requestAnimationFrame || window.setTimeout)(runRepaginate); }, 450); }
           ed.addEventListener('compositionstart', function () { composing = true; });
           ed.addEventListener('compositionend', function () { composing = false; schedRepaginate(); });
           ed.addEventListener('input', schedRepaginate);
@@ -3882,7 +3946,7 @@ console.log('[affairs.js] v20260701dj');
         }
         if (zoomIn) zoomIn.oninput = applyZoom;
         var pvTimer = null;
-        function schedPreview() { clearTimeout(pvTimer); pvTimer = setTimeout(renderPreview, 380); }
+        function schedPreview() { clearTimeout(pvTimer); pvTimer = setTimeout(function () { (window.requestIdleCallback || window.requestAnimationFrame || window.setTimeout)(renderPreview); }, 650); }
         ed.addEventListener('input', schedPreview);
         ['#se_title', '#se_scripture', '#se_preacher', '#se_bible', '#se_svc_custom'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('input', schedPreview); });
         ov.querySelector('#se_service').addEventListener('change', schedPreview);
@@ -3890,16 +3954,61 @@ console.log('[affairs.js] v20260701dj');
         ov.querySelector('#qtc_run').addEventListener('click', function () { setTimeout(renderPreview, 350); });   // 자동분류 후 미리보기 갱신
         renderPreview();
 
-        // ── Ctrl+S 저장 + 자동저장(2분, 기존 문서만) ──
+        // ── Ctrl+S 저장 + 자동 임시저장(기본 10초, ⚙ 설정에서 조정) ──
         ov.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 's') { e.preventDefault(); save(null); } });
         var dirty = false;
         ov.addEventListener('input', function () { dirty = true; });
-        var asTimer = setInterval(function () {
-          if (!document.body.contains(ov)) { clearInterval(asTimer); return; }
-          if (!dirty || !rec.id) return;
-          if (!ov.querySelector('#se_date').value || !ov.querySelector('#se_title').value.trim()) return;
-          dirty = false; save(null);
-        }, 120000);
+        var AS_LSK = 'wpSermonAutosave';
+        var asCfg = { on: true, sec: 10 };
+        try { var asv = JSON.parse(localStorage.getItem(AS_LSK) || 'null'); if (asv) { asCfg.on = asv.on !== false; asCfg.sec = Math.max(5, Math.min(600, Number(asv.sec) || 10)); } } catch (e) { }
+        var asTimer = null, asSaving = false;
+        function asStamp(txt) { var el = ov.querySelector('#sb_saved'); if (el) el.textContent = txt; }
+        // 조용한 자동저장 — 새 문서/기존 문서 모두 저장(첫 저장 시 id 확보), 화면 하단에만 시각 표시
+        function quietSave() {
+          if (asSaving) return;
+          var data = gather();
+          if (!data.sermon_date || !data.title) return;   // 일자·제목이 없으면 조용히 건너뜀
+          asSaving = true; dirty = false;
+          var p = rec.id ? api('PATCH', 'sermons?id=eq.' + rec.id, data, 'return=representation') : api('POST', 'sermons', data, 'return=representation');
+          p.then(function (rows) {
+            if (rows && rows[0]) rec.id = rows[0].id;
+            asSaving = false;
+            var d = new Date(), h = d.getHours(), ap = h < 12 ? '오전' : '오후'; h = h % 12 || 12;
+            asStamp('자동저장됨 ' + ap + ' ' + String(h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'));
+          }).catch(function () { asSaving = false; dirty = true; asStamp('자동저장 대기 중…'); });
+        }
+        function startAutosave() {
+          if (asTimer) { clearInterval(asTimer); asTimer = null; }
+          if (!asCfg.on) return;
+          asTimer = setInterval(function () {
+            if (!document.body.contains(ov)) { clearInterval(asTimer); return; }
+            if (dirty) quietSave();
+          }, Math.max(5, asCfg.sec) * 1000);
+        }
+        startAutosave();
+        // ── ⚙ 자동저장 설정창 ──
+        (function autosaveSettings() {
+          var btn = ov.querySelector('#se_settings'); if (!btn) return;
+          var box = document.createElement('div'); box.className = 'se-setpop'; box.style.display = 'none';
+          box.innerHTML =
+            '<div class="se-setpop-h">⚙ 자동 임시저장</div>' +
+            '<label class="se-setpop-row"><input type="checkbox" id="as_on"' + (asCfg.on ? ' checked' : '') + '> 자동저장 사용</label>' +
+            '<div class="se-setpop-row">간격 <input type="number" id="as_sec" min="5" max="600" step="5" value="' + asCfg.sec + '"> 초마다</div>' +
+            '<div class="se-setpop-note">일자·제목이 채워진 뒤부터 자동으로 저장됩니다. (최소 5초 · 새 문서도 첫 저장 후 이어서 저장)</div>' +
+            '<div style="text-align:right;margin-top:9px"><button type="button" class="btn btn-solid" id="as_apply" style="padding:5px 14px;font-size:.82rem">적용</button></div>';
+          ov.appendChild(box);
+          function place() { var r = btn.getBoundingClientRect(); box.style.top = (r.bottom + 6) + 'px'; box.style.left = Math.max(8, Math.min(r.left - 90, window.innerWidth - 244)) + 'px'; }
+          btn.onclick = function () { if (box.style.display === 'none') { place(); box.style.display = 'block'; } else box.style.display = 'none'; };
+          box.querySelector('#as_apply').onclick = function () {
+            asCfg.on = box.querySelector('#as_on').checked;
+            asCfg.sec = Math.max(5, Math.min(600, Number(box.querySelector('#as_sec').value) || 10));
+            try { localStorage.setItem(AS_LSK, JSON.stringify(asCfg)); } catch (e) { }
+            startAutosave();
+            box.style.display = 'none';
+            asStamp(asCfg.on ? ('자동저장 켜짐 · ' + asCfg.sec + '초 간격') : '자동저장 꺼짐');
+          };
+          document.addEventListener('mousedown', function (e) { if (box.style.display !== 'none' && !box.contains(e.target) && e.target !== btn) box.style.display = 'none'; });
+        })();
       })();
     }
   }
