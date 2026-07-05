@@ -165,7 +165,7 @@ console.log('[affairs.js] v20260701dj');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '문서관리'], ['library', '나의 도서관'], ['bible', '📖 성경 보기'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '자료실'], ['library', '나의 도서관'], ['bible', '📖 성경 보기'], ['settings', '설정']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -221,7 +221,144 @@ console.log('[affairs.js] v20260701dj');
     else if (tab === 'bible') renderBibleViewer(p);
     else if (tab === 'settings') renderSettings(p);
     else if (tab === 'edu') renderEdu(p);
+    else if (tab === 'doc') renderArchive(p);
     else renderManager(p, TYPES[tab]);
+  }
+
+  // ═══════════════ 자료실 — 성도별 자료 보관·통합 관리 ═══════════════
+  var ARCH_CATS = ['학습', '세례증명서', '입교', '임직', '수료증', '출석/이수', '보고서', '숙제', '과제물', '신앙고백', '추천서', '기타'];
+  function renderArchive(panel) {
+    panel.innerHTML = msgCard('자료실', '불러오는 중…');
+    var state = { view: 'members', q: '', cat: '', sel: null };
+    var FILES = [];
+    function memMid(m) { return m.key || ('name:' + m.name); }
+    function fileMid(f) { return f.member_key || ('name:' + (f.member_name || '')); }
+    function ensureMembers() {
+      if (membersLoaded && MEMBERS.length) return Promise.resolve();
+      if (!window.WPF || !window.FINANCE_API_URL) return Promise.resolve();
+      return WPF.call('listGyojeok').then(function (r) {
+        MEMBERS = (r.members || []).map(function (m) { return { name: m['이름'], key: m['매칭키'], birth: ymd(m['생년월일']), role: m['직책'] || '', group: m['그룹'] || m['소속그룹'] || '', head: m['세대주'] || '', rel: m['관계'] || '' }; }).filter(function (m) { return m.name; });
+        membersLoaded = true;
+      }).catch(function () { });
+    }
+    function load() {
+      return Promise.all([ensureMembers(), api('GET', 'member_files?select=*&order=created_at.desc')]).then(function (res) { FILES = res[1] || []; });
+    }
+    function headerHTML(active) {
+      return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<h2 style="margin:0;color:var(--accent,#032257);font-size:1.2rem">🗂 자료실</h2>' +
+        '<span style="color:#9aa5b1;font-size:.82rem">성도별로 학습·세례증명서·수료증·보고서·과제물 등을 보관합니다</span>' +
+        '<div style="margin-left:auto;display:flex;gap:6px">' +
+        '<button class="btn ' + (active === 'members' ? 'btn-solid' : 'btn-line') + '" data-v="members" style="padding:6px 13px;font-size:.85rem">성도별 보기</button>' +
+        '<button class="btn ' + (active === 'all' ? 'btn-solid' : 'btn-line') + '" data-v="all" style="padding:6px 13px;font-size:.85rem">전체 목록</button>' +
+        '</div></div>';
+    }
+    function bindHeader() { Array.prototype.forEach.call(panel.querySelectorAll('[data-v]'), function (b) { b.onclick = function () { state.view = b.dataset.v; state.sel = null; draw(); }; }); }
+    function memberIndex() {
+      var map = {};
+      MEMBERS.forEach(function (m) { var id = memMid(m); map[id] = { mid: id, name: m.name, group: m.group, role: m.role, count: 0, cats: {} }; });
+      FILES.forEach(function (f) { var id = fileMid(f); if (!map[id]) map[id] = { mid: id, name: f.member_name || '(이름없음)', group: '', role: '', count: 0, cats: {} }; map[id].count++; var c = f.category || '기타'; map[id].cats[c] = (map[id].cats[c] || 0) + 1; });
+      return map;
+    }
+    function drawMembers() {
+      var map = memberIndex(), rows = Object.keys(map).map(function (k) { return map[k]; });
+      rows.sort(function (a, b) { if (b.count !== a.count) return b.count - a.count; return a.name.localeCompare(b.name, 'ko'); });
+      panel.innerHTML = headerHTML('members') +
+        '<div class="fin-card">' +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">' +
+        '<input id="ar_q" placeholder="이름·구역·직책 검색" value="' + esc(state.q) + '" style="flex:1;min-width:180px;padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
+        '<button class="btn btn-line" id="ar_new" style="padding:7px 13px;font-size:.83rem">＋ 이름으로 추가</button>' +
+        '<span style="color:#7b8794;font-size:.85rem">성도 ' + rows.length + '명 · 자료 ' + FILES.length + '건</span></div>' +
+        '<div style="overflow:auto;max-height:60vh"><table class="fin-table"><thead><tr><th>이름</th><th>구역/부서</th><th>직책</th><th class="num">자료</th><th>분류</th><th></th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          var cats = Object.keys(r.cats).map(function (c) { return '<span class="fin-pill" style="background:#eef2f7;color:#3a4a63">' + esc(c) + ' ' + r.cats[c] + '</span>'; }).join(' ');
+          return '<tr data-mid="' + esc(r.mid) + '" data-search="' + esc((r.name + ' ' + (r.group || '') + ' ' + (r.role || '')).trim()) + '" style="cursor:pointer"><td><b>' + esc(r.name) + '</b></td><td>' + esc(r.group || '') + '</td><td>' + esc(r.role || '') + '</td><td class="num">' + (r.count || '') + '</td><td>' + cats + '</td><td style="text-align:right"><button class="btn btn-line" data-open="' + esc(r.mid) + '" style="padding:3px 10px;font-size:.8rem">열기 ›</button></td></tr>';
+        }).join('') + '</tbody></table></div></div>';
+      bindHeader();
+      var q = panel.querySelector('#ar_q');
+      if (q) q.oninput = function () { state.q = this.value; var v = this.value.trim(); Array.prototype.forEach.call(panel.querySelectorAll('tbody tr[data-mid]'), function (tr) { tr.style.display = (!v || tr.getAttribute('data-search').indexOf(v) >= 0) ? '' : 'none'; }); };
+      var nb = panel.querySelector('#ar_new');
+      if (nb) nb.onclick = function () { var nm = prompt('자료를 보관할 성도 이름을 입력하세요.'); if (nm && nm.trim()) { state.sel = 'name:' + nm.trim(); state.view = 'detail'; draw(); } };
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-mid],[data-open]'), function (el) { el.onclick = function (e) { e.stopPropagation(); state.sel = el.dataset.open || el.dataset.mid; state.view = 'detail'; draw(); }; });
+    }
+    function drawDetail() {
+      var mid = state.sel;
+      var m = MEMBERS.filter(function (x) { return memMid(x) === mid; })[0];
+      var name = m ? m.name : (mid.indexOf('name:') === 0 ? mid.slice(5) : mid);
+      var files = FILES.filter(function (f) { return fileMid(f) === mid; });
+      panel.innerHTML = headerHTML('members') +
+        '<div class="fin-card"><button class="btn btn-line" id="ar_back" style="padding:5px 12px;font-size:.82rem">‹ 성도 목록</button>' +
+        '<h3 style="margin:10px 0 0;color:var(--accent,#032257)">' + esc(name) + ' <span style="font-weight:400;color:#7b8794;font-size:.86rem">' + esc(((m && m.group) || '') + ' ' + ((m && m.role) || '')).trim() + '</span></h3></div>' +
+        '<div class="fin-card"><div class="fin-grid" style="align-items:end">' +
+        '<div class="form-field"><label>분류</label><select id="ar_cat">' + ARCH_CATS.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="form-field"><label>자료 제목</label><input id="ar_title" placeholder="예: 2026 학습 수료증"></div>' +
+        '<div class="form-field"><label>일자(선택)</label><input type="date" id="ar_date"></div></div>' +
+        '<div id="ar_drop" style="border:2px dashed #cdd7e3;border-radius:11px;padding:18px;text-align:center;color:#5a6b82;cursor:pointer;margin-top:10px;transition:background .15s,border-color .15s">📎 파일을 여기로 <b>끌어다 놓거나</b> 클릭해서 선택 (PDF·이미지·문서 등)<input type="file" id="ar_file" style="display:none"></div>' +
+        '<div class="fin-msg" id="ar_msg" style="margin-top:8px"></div></div>' +
+        '<div class="fin-card"><b>보관 자료 ' + files.length + '건</b><div style="overflow:auto;margin-top:8px">' +
+        (files.length ? '<table class="fin-table"><thead><tr><th>분류</th><th>제목</th><th>파일</th><th>일자</th><th class="num">크기</th><th></th></tr></thead><tbody>' +
+          files.map(function (f) { return '<tr><td>' + esc(f.category || '') + '</td><td>' + esc(f.title || '') + '</td><td>' + (f.file_url ? '<a href="' + esc(f.file_url) + '" target="_blank" rel="noopener">' + esc(f.file_name || '열기') + '</a>' : '') + '</td><td style="white-space:nowrap">' + esc(ymd(f.doc_date) || ymd(f.created_at)) + '</td><td class="num">' + (f.file_size ? fmtSize(f.file_size) : '') + '</td><td style="text-align:right"><button class="btn btn-line" data-del="' + esc(f.id) + '" style="padding:3px 9px;font-size:.78rem;color:#c0392b">삭제</button></td></tr>'; }).join('') +
+          '</tbody></table>' : '<p style="color:#9aa5b1;padding:10px 2px">아직 보관된 자료가 없습니다. 위에서 파일을 올려보세요.</p>') + '</div></div>';
+      bindHeader();
+      panel.querySelector('#ar_back').onclick = function () { state.view = 'members'; state.sel = null; draw(); };
+      function doUpload(file) {
+        var msg = panel.querySelector('#ar_msg');
+        if (!file) return;
+        if (!(window.ChurchUpload && ChurchUpload.isReady())) { msg.style.color = '#c0392b'; msg.textContent = '업로드 서버가 설정되지 않았습니다.'; return; }
+        var cat = panel.querySelector('#ar_cat').value;
+        var title = panel.querySelector('#ar_title').value.trim() || file.name.replace(/\.[^.]+$/, '');
+        var dt = panel.querySelector('#ar_date').value || null;
+        msg.style.color = '#7b8794'; msg.textContent = '⬆ 업로드 중… ' + file.name;
+        ChurchUpload.upload(file, { folder: 'archive', compress: false }).then(function (res) {
+          var data = { member_key: (m && m.key) || null, member_name: name, category: cat, title: title, file_url: res.url, file_key: res.key || null, file_name: file.name, file_size: file.size || null, doc_date: dt };
+          return api('POST', 'member_files', data, 'return=representation');
+        }).then(function (rows) {
+          if (rows && rows[0]) FILES.unshift(rows[0]);
+          msg.style.color = 'green'; msg.textContent = '✓ ' + name + ' — ' + cat + ' 자료를 보관했습니다.';
+          drawDetail();
+        }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = /42P01|does not exist|schema cache|Could not find/i.test(e.message || '') ? '자료실 준비 필요 — supabase/member_files.sql 을 1회 실행해 주세요.' : ('업로드 실패: ' + (e.message || e)); });
+      }
+      var drop = panel.querySelector('#ar_drop'), fi = panel.querySelector('#ar_file');
+      if (drop && fi) {
+        drop.onclick = function () { fi.click(); };
+        fi.onchange = function () { if (fi.files && fi.files[0]) doUpload(fi.files[0]); fi.value = ''; };
+        ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = '#eef5ff'; drop.style.borderColor = '#7fa3d8'; }); });
+        ['dragleave', 'dragend'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = ''; drop.style.borderColor = '#cdd7e3'; }); });
+        drop.addEventListener('drop', function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = ''; drop.style.borderColor = '#cdd7e3'; var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) doUpload(f); });
+      }
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-del]'), function (b) { b.onclick = function () { delFile(b.dataset.del); }; });
+    }
+    function delFile(id) {
+      var f = FILES.filter(function (x) { return String(x.id) === String(id); })[0];
+      if (!confirm('이 자료를 삭제할까요? 되돌릴 수 없습니다.')) return;
+      api('DELETE', 'member_files?id=eq.' + id).then(function () {
+        FILES = FILES.filter(function (x) { return String(x.id) !== String(id); });
+        if (f && f.file_key && window.ChurchUpload && ChurchUpload.remove) { try { ChurchUpload.remove(f.file_key); } catch (e) { } }
+        draw();
+      }).catch(function (e) { alert('삭제 실패: ' + (e.message || e)); });
+    }
+    function drawAll() {
+      var q = state.q.trim(), cat = state.cat;
+      var list = FILES.slice();
+      if (cat) list = list.filter(function (f) { return (f.category || '') === cat; });
+      panel.innerHTML = headerHTML('all') +
+        '<div class="fin-card"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">' +
+        '<input id="ar_q" placeholder="이름·제목·분류 검색" value="' + esc(state.q) + '" style="flex:1;min-width:160px;padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
+        '<select id="ar_catf" style="padding:8px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="">전체 분류</option>' + ARCH_CATS.map(function (c) { return '<option' + (c === cat ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('') + '</select>' +
+        '<span style="color:#7b8794;font-size:.85rem">' + list.length + '건</span></div>' +
+        '<div style="overflow:auto;max-height:62vh"><table class="fin-table"><thead><tr><th>이름</th><th>분류</th><th>제목</th><th>파일</th><th>일자</th><th></th></tr></thead><tbody>' +
+        list.map(function (f) { return '<tr data-search="' + esc(((f.member_name || '') + ' ' + (f.title || '') + ' ' + (f.category || '')).trim()) + '"><td><b>' + esc(f.member_name || '') + '</b></td><td>' + esc(f.category || '') + '</td><td>' + esc(f.title || '') + '</td><td>' + (f.file_url ? '<a href="' + esc(f.file_url) + '" target="_blank" rel="noopener">' + esc(f.file_name || '열기') + '</a>' : '') + '</td><td style="white-space:nowrap">' + esc(ymd(f.doc_date) || ymd(f.created_at)) + '</td><td style="text-align:right"><button class="btn btn-line" data-del="' + esc(f.id) + '" style="padding:3px 9px;font-size:.78rem;color:#c0392b">삭제</button></td></tr>'; }).join('') +
+        '</tbody></table></div></div>';
+      bindHeader();
+      var q2 = panel.querySelector('#ar_q');
+      if (q2) q2.oninput = function () { state.q = this.value; var v = this.value.trim(); Array.prototype.forEach.call(panel.querySelectorAll('tbody tr[data-search]'), function (tr) { tr.style.display = (!v || tr.getAttribute('data-search').indexOf(v) >= 0) ? '' : 'none'; }); };
+      var cf = panel.querySelector('#ar_catf'); if (cf) cf.onchange = function () { state.cat = this.value; drawAll(); };
+      Array.prototype.forEach.call(panel.querySelectorAll('[data-del]'), function (b) { b.onclick = function () { delFile(b.dataset.del); }; });
+    }
+    function draw() { if (state.view === 'detail') return drawDetail(); if (state.view === 'all') return drawAll(); return drawMembers(); }
+    load().then(draw).catch(function (e) {
+      panel.innerHTML = /42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message || '') ? msgCard('자료실 준비 필요', 'Supabase ▸ SQL Editor 에서 supabase/member_files.sql 을 1회 실행해 주세요.') : msgCard('불러오기 실패', (e && e.message) || '자료를 불러오지 못했습니다.');
+    });
   }
 
   function fieldHTML(f, val) {
