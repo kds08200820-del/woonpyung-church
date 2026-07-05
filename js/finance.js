@@ -225,7 +225,7 @@ console.log('[finance.js] v20260701di');
   }
 
   var TABS = [
-    ['home', '🏠 홈'], ['offering', '헌금입력'], ['bulk', '명단일괄'], ['expense', '지출입력'], ['ledger', '거래장부'],
+    ['home', '🏠 홈'], ['offering', '헌금입력'], ['bulk', '엑셀 자동입력'], ['expense', '지출입력'], ['ledger', '거래장부'],
     ['givers', '헌금자통계'], ['gl', '총계정원장'], ['report', '결산보고서'],
     ['finrep', '재정보고서'], ['bulletin', '헌금명단'], ['receipt', '기부금영수증'], ['receiptlog', '영수증 발급대장'],
     ['budget', '예산'], ['settings', '설정']
@@ -709,7 +709,48 @@ console.log('[finance.js] v20260701di');
     };
   }
 
-  /* ── 명단 일괄입력 (헌금자 리스트 붙여넣기 → 교적매칭 → 일괄저장) ── */
+  /* ── 엑셀(.xlsx) → 2차원 배열(행×열, 문자열). JSZip으로 압축 해제 후 XML 파싱 ── */
+  function xlsxColToIdx(ref) { var s = String(ref).replace(/[0-9]+$/, ''); var n = 0; for (var i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64); return n - 1; }
+  function sheetXmlToRows(xml, shared) {
+    var doc = new DOMParser().parseFromString(xml, 'application/xml');
+    var rowEls = doc.getElementsByTagName('row'), rows = [];
+    for (var r = 0; r < rowEls.length; r++) {
+      var cEls = rowEls[r].getElementsByTagName('c'), arr = [];
+      for (var c = 0; c < cEls.length; c++) {
+        var cell = cEls[c], idx = xlsxColToIdx(cell.getAttribute('r') || ''), t = cell.getAttribute('t'), val = '';
+        if (t === 's') { var vEl = cell.getElementsByTagName('v')[0]; if (vEl) val = shared[Number(vEl.textContent)] || ''; }
+        else if (t === 'inlineStr') { var isEls = cell.getElementsByTagName('t'); for (var k = 0; k < isEls.length; k++) val += isEls[k].textContent; }
+        else { var vE = cell.getElementsByTagName('v')[0]; if (vE) val = vE.textContent; }
+        if (idx >= 0) { while (arr.length < idx) arr.push(''); arr[idx] = String(val == null ? '' : val).trim(); }
+      }
+      rows.push(arr);
+    }
+    return rows;
+  }
+  function parseXlsx(arrayBuffer) {
+    if (!window.JSZip) return Promise.reject(new Error('압축 해제 모듈(JSZip)이 로드되지 않았습니다. 새로고침 후 다시 시도해 주세요.'));
+    return window.JSZip.loadAsync(arrayBuffer).then(function (zip) {
+      var ssFile = zip.file('xl/sharedStrings.xml');
+      return (ssFile ? ssFile.async('string') : Promise.resolve('')).then(function (ssXml) {
+        var shared = [];
+        if (ssXml) {
+          var sdoc = new DOMParser().parseFromString(ssXml, 'application/xml'), sis = sdoc.getElementsByTagName('si');
+          for (var i = 0; i < sis.length; i++) { var ts = sis[i].getElementsByTagName('t'), txt = ''; for (var j = 0; j < ts.length; j++) txt += ts[j].textContent; shared.push(txt); }
+        }
+        var sheetNames = Object.keys(zip.files).filter(function (n) { return /^xl\/worksheets\/sheet\d+\.xml$/.test(n); }).sort();
+        if (!sheetNames.length) return [];
+        return Promise.all(sheetNames.map(function (n) { return zip.file(n).async('string'); })).then(function (xmls) {
+          var best = [], bestCount = -1;   // 셀이 가장 많은 시트를 데이터 시트로 채택(빈 'Worksheet' 시트 제외)
+          xmls.forEach(function (xml) { var rows = sheetXmlToRows(xml, shared); var cnt = rows.reduce(function (s, r) { return s + r.filter(function (c) { return c !== ''; }).length; }, 0); if (cnt > bestCount) { bestCount = cnt; best = rows; } });
+          return best;
+        });
+      });
+    });
+  }
+  // 헌금 항목(계정) 후보 — 파일 종류 자동판별·항목 인식에 사용
+  var OFFER_CATS = { '십일조': 1, '감사헌금': 1, '주일헌금': 1, '생일감사': 1, '맥추절': 1, '맥추감사': 1, '추수감사': 1, '건축헌금': 1, '선교헌금': 1, '유년부': 1, '차량헌금': 1, '일천번기도': 1, '절기헌금': 1, '임직헌금': 1, '특별헌금': 1, '주정헌금': 1, '심방헌금': 1, '장학헌금': 1 };
+
+  /* ── 엑셀 자동입력 (헌금자 리스트/재정보고서 드래그&드롭 → 자동분류 → 미리보기 → 저장) ── */
   function renderBulk(panel) {
     function normName(s) { return String(s == null ? '' : s).replace(/\s+/g, ''); }
     function isAmount(s) { return /^[\d,]+$/.test(String(s).trim()) && parseNum(s) > 0; }
@@ -718,6 +759,13 @@ console.log('[finance.js] v20260701di');
         .map(function (a) { return String(a['계정명']); });
     }
     panel.innerHTML =
+      '<div class="fin-card" style="border-color:#cfe0f5;background:#fbfdff">' +
+      '<div id="b_drop" style="border:2px dashed #cdd7e3;border-radius:12px;padding:22px 16px;text-align:center;color:#5a6b82;cursor:pointer;transition:background .15s,border-color .15s">' +
+      '<div style="font-size:1.5rem;margin-bottom:6px">📂 엑셀 파일 자동 입력</div>' +
+      '<div style="font-size:.92rem"><b>헌금자 리스트</b> 또는 <b>재정보고서(지출)</b> 엑셀(.xlsx)을 여기로 <b>끌어다 놓거나</b> 클릭해서 선택하세요.</div>' +
+      '<div style="font-size:.78rem;color:#9aa5b1;margin-top:6px">파일 종류를 자동 판별해 항목별로 분류하고, 헌금은 교적까지 매칭해 미리보기로 보여줍니다. (저장 전 반드시 확인)</div>' +
+      '<input type="file" id="b_file" accept=".xlsx" style="display:none">' +
+      '</div></div>' +
       '<div class="fin-card"><div class="fin-grid" style="align-items:end">' +
       '<div class="form-field"><label>일자(주일)</label><input type="date" id="b_date" value="' + today() + '"></div>' +
       '<div class="form-field"><label>예배</label><select id="b_svc">' + svcOptions() + '</select></div>' +
@@ -736,6 +784,7 @@ console.log('[finance.js] v20260701di');
       '<div id="b_out"></div>';
 
     var parsed = [];
+    var mode = 'offer', parsedExp = [];   // 'offer'(헌금) | 'exp'(지출)
     function parse() {
       var accSet = {}; offeringAccounts().forEach(function (a) { accSet[normName(a)] = a; });
       var lines = (panel.querySelector('#b_text').value || '').split(/\r?\n/);
@@ -765,6 +814,7 @@ console.log('[finance.js] v20260701di');
     }
 
     function preview() {
+      mode = 'offer';
       var items = parse();
       var out = panel.querySelector('#b_out');
       var saveBtn = panel.querySelector('#b_save');
@@ -821,9 +871,92 @@ console.log('[finance.js] v20260701di');
         });
     }
 
+    // ── 지출(재정보고서) 파싱·미리보기·저장 ──
+    var EXP_SKIP = { '지출합계': 1, '차인잔액': 1, '합계': 1, '수입합계': 1, '지출항목': 1, '이월잔액': 1, '전잔액': 1 };
+    function parseExpRows(rows) {
+      var accCol = -1, amtCol = -1, memoCol = -1;
+      for (var r = 0; r < rows.length; r++) { var ai = rows[r].indexOf('지출항목'); if (ai >= 0) { accCol = ai; amtCol = rows[r].indexOf('금액'); memoCol = rows[r].indexOf('적요'); break; } }
+      if (accCol < 0) { accCol = 3; amtCol = 5; memoCol = 4; }   // 헤더 못 찾으면 기본 열 위치
+      if (amtCol < 0) amtCol = accCol + 2;
+      var items = [];
+      rows.forEach(function (row) {
+        var acc = (row[accCol] || '').trim();
+        if (!acc || EXP_SKIP[acc] || EXP_SKIP[acc.replace(/\s+/g, '')]) return;
+        var amt = parseNum(row[amtCol]);
+        if (!amt) return;
+        items.push({ account: acc, amount: amt, memo: (memoCol >= 0 ? (row[memoCol] || '') : '').trim() });
+      });
+      return items;
+    }
+    function previewExp(items) {
+      mode = 'exp'; parsedExp = items;
+      var out = panel.querySelector('#b_out'), saveBtn = panel.querySelector('#b_save');
+      if (!items.length) { out.innerHTML = '<div class="fin-card">인식된 지출 내역이 없습니다. 파일 형식을 확인해 주세요.</div>'; saveBtn.disabled = true; return; }
+      var tot = items.reduce(function (s, i) { return s + i.amount; }, 0);
+      var known = {}; M.accounts.filter(function (a) { return String(a['구분']) === '지출'; }).forEach(function (a) { known[normName(a['계정명'])] = 1; });
+      var unk = items.filter(function (i) { return !known[normName(i.account)]; });
+      out.innerHTML = '<div class="fin-card">' +
+        '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><b>지출 ' + items.length + '건</b><b style="color:#c0392b">' + won(tot) + '원</b><span class="fin-pill out">지출</span></div>' +
+        (unk.length ? '<p class="help" style="color:#c0392b">⚠ 계정과목 마스터에 없는 항목: <b>' + esc(unk.map(function (i) { return i.account; }).join(', ')) + '</b> — 그대로 저장되며 거래장부엔 보이지만, 결산 분류에서 빠질 수 있습니다. 필요하면 설정에서 계정 추가 후 다시 하세요.</p>' : '') +
+        '<div style="overflow:auto;max-height:420px"><table class="fin-table"><thead><tr><th>계정</th><th>적요</th><th class="num">금액</th></tr></thead><tbody>' +
+        items.map(function (i) { return '<tr><td>' + esc(i.account) + '</td><td>' + esc(i.memo || '') + '</td><td class="num">' + won(i.amount) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+      saveBtn.disabled = false;
+    }
+    function saveExp() {
+      var date = panel.querySelector('#b_date').value, method = panel.querySelector('#b_method').value;
+      var msg = panel.querySelector('#b_msg'), saveBtn = panel.querySelector('#b_save');
+      if (!date) { msg.style.color = '#c0392b'; msg.textContent = '일자를 선택하세요.'; return; }
+      if (!parsedExp.length) return;
+      if (!confirm(date + ' 지출 ' + parsedExp.length + '건을 저장할까요?')) return;
+      var vouchers = parsedExp.map(function (i) { return { date: date, type: '지출', account: i.account, payer: '', amount: i.amount, method: method, memo: i.memo || '' }; });
+      saveBtn.disabled = true; msg.style.color = '#7b8794'; msg.textContent = '저장 중… (' + vouchers.length + '건)';
+      WPF.call('addVouchersBulk', { vouchers: vouchers })
+        .then(function (r) { msg.style.color = 'green'; msg.textContent = '✓ 지출 ' + (r.count || vouchers.length) + '건 저장 완료. 거래장부에서 확인하세요.'; M.loaded = false; saveBtn.disabled = false; })
+        .catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; saveBtn.disabled = false; });
+    }
+
+    // ── 드롭된/선택된 엑셀 파일 처리: 종류 자동 판별 → 미리보기 ──
+    function handleFile(file) {
+      var msg = panel.querySelector('#b_msg');
+      if (!file || !/\.xlsx$/i.test(file.name)) { msg.style.color = '#c0392b'; msg.textContent = '엑셀(.xlsx) 파일만 지원합니다. (헌금자 리스트 / 재정보고서)'; return; }
+      msg.style.color = '#7b8794'; msg.textContent = '📄 ' + file.name + ' 읽는 중…';
+      file.arrayBuffer().then(parseXlsx).then(function (rows) {
+        if (!rows || !rows.length) throw new Error('빈 파일이거나 데이터를 찾지 못했습니다.');
+        var flat = rows.map(function (r) { return r.join(' '); }).join('\n');
+        // 기간(예: 2026.06.29 ~ 2026.07.05)에서 종료일=주일을 일자로 자동 세팅
+        var mper = flat.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})\s*[~\-]\s*(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
+        if (mper) { var de = panel.querySelector('#b_date'); if (de) de.value = mper[4] + '-' + ('0' + mper[5]).slice(-2) + '-' + ('0' + mper[6]).slice(-2); }
+        var isExp = /재정\s*보고서/.test(flat) || rows.some(function (r) { return r.indexOf('지출항목') >= 0; });
+        var isOff = /헌금자\s*리스트/.test(flat) || rows.some(function (r) { return r.some(function (c) { return OFFER_CATS[String(c).replace(/\s+/g, '')]; }); });
+        if (isExp && !isOff) {
+          var items = parseExpRows(rows);
+          msg.style.color = '#7b8794'; msg.textContent = '✓ 재정보고서(지출) 인식 — ' + items.length + '건. 아래 미리보기를 확인하고 [일괄 저장]을 누르세요.';
+          previewExp(items);
+        } else if (isOff) {
+          panel.querySelector('#b_text').value = rowsToTsv(rows);
+          msg.style.color = '#7b8794'; msg.textContent = '✓ 헌금자 리스트 인식 — 아래 미리보기·교적매칭 결과를 확인하고 [일괄 저장]을 누르세요.';
+          preview();
+        } else {
+          msg.style.color = '#c0392b'; msg.textContent = '파일 형식을 알 수 없습니다. 헌금자 리스트 또는 재정보고서 엑셀인지 확인해 주세요.';
+        }
+      }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '엑셀을 읽지 못했습니다: ' + (e.message || e); });
+    }
+    // 엑셀 행 → 붙여넣기 파서가 읽는 탭 구분 텍스트(항목/이름·금액 구조 그대로)
+    function rowsToTsv(rows) { return rows.map(function (r) { return r.join('\t').replace(/\t+$/, ''); }).filter(function (l) { return l.replace(/\t/g, '').trim() !== ''; }).join('\n'); }
+
+    // ── 드래그&드롭 + 클릭 선택 ──
+    var drop = panel.querySelector('#b_drop'), fileInp = panel.querySelector('#b_file');
+    if (drop && fileInp) {
+      drop.onclick = function () { fileInp.click(); };
+      fileInp.onchange = function () { if (fileInp.files && fileInp.files[0]) handleFile(fileInp.files[0]); fileInp.value = ''; };
+      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = '#eef5ff'; drop.style.borderColor = '#7fa3d8'; }); });
+      ['dragleave', 'dragend'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = ''; drop.style.borderColor = '#cdd7e3'; }); });
+      drop.addEventListener('drop', function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = ''; drop.style.borderColor = '#cdd7e3'; var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) handleFile(f); });
+    }
+
     panel.querySelector('#b_prev').onclick = preview;
-    panel.querySelector('#b_save').onclick = save;
-    panel.querySelector('#b_text').addEventListener('input', function () { panel.querySelector('#b_save').disabled = true; });
+    panel.querySelector('#b_save').onclick = function () { (mode === 'exp' ? saveExp : save)(); };
+    panel.querySelector('#b_text').addEventListener('input', function () { mode = 'offer'; panel.querySelector('#b_save').disabled = true; });
 
     // 기존 수입(헌금) 전표 전체 삭제 — 이중 확인
     var clearBtn = panel.querySelector('#b_clear');
