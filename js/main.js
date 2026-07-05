@@ -136,6 +136,54 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     </div>`;
 }
 
+// ===== 공용 TTS(글 읽어주기) — 브라우저 내장 Web Speech(무료). 한국어 목소리 자동 선택 =====
+// 긴 글은 문장 단위로 나눠 순차 재생(크롬의 긴 발화 끊김 버그 회피). window.WPCTts.toggle/stop 로 사용.
+var WPCTts = (function () {
+  var synth = window.speechSynthesis || null;
+  var queue = [], idx = 0, active = false, btnEl = null, btnLabel = "🔊 들어주기";
+  function koVoice() {
+    if (!synth) return null;
+    var vs = synth.getVoices() || [];
+    return vs.filter(function (v) { return /^ko/i.test(v.lang || ""); }).sort(function (a, b) {
+      var score = function (v) { return /google|natural|neural|premium|yuna|siwoo|heami/i.test(v.name || "") ? 1 : 0; };
+      return score(b) - score(a);
+    })[0] || null;
+  }
+  function chunk(text) {
+    var s = String(text).replace(/\s+/g, " ").trim();
+    var sents = s.match(/[^.!?。…\n]+[.!?。…]?/g) || [s];
+    var out = [], buf = "";
+    sents.forEach(function (x) { x = x.trim(); if (!x) return; if ((buf + " " + x).length > 180) { if (buf) out.push(buf); buf = x; } else buf = buf ? buf + " " + x : x; });
+    if (buf) out.push(buf);
+    return out.length ? out : [s];
+  }
+  function next() {
+    if (!active) return;
+    if (idx >= queue.length) { stop(); return; }
+    var u = new SpeechSynthesisUtterance(queue[idx]);
+    u.lang = "ko-KR"; var v = koVoice(); if (v) u.voice = v; u.rate = 0.98; u.pitch = 1.0;
+    u.onend = function () { idx++; next(); };
+    u.onerror = function () { idx++; next(); };
+    synth.speak(u);
+  }
+  function start(text, btn, label) {
+    if (!synth) { alert("이 브라우저는 음성 읽어주기를 지원하지 않습니다."); return; }
+    stop();
+    btnEl = btn || null; btnLabel = label || "🔊 들어주기";
+    queue = chunk(text); idx = 0; active = true;
+    if (btnEl) btnEl.textContent = "⏸ 낭독 멈춤";
+    next();
+  }
+  function stop() {
+    active = false; if (synth) { try { synth.cancel(); } catch (e) {} }
+    if (btnEl) btnEl.textContent = btnLabel;
+  }
+  function toggle(text, btn, label) { if (active) stop(); else start(text, btn, label); }
+  window.addEventListener("pagehide", stop);
+  return { toggle: toggle, stop: stop, supported: !!synth };
+})();
+window.WPCTts = WPCTts;
+
 // ===== 1-3. 매일 말씀 묵상(QT) — Supabase qt_published 뷰(오늘 날짜 자동) =====
 (function () {
   const todayBox = document.getElementById("qtToday");
@@ -423,6 +471,7 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
   function showDetail(date) {
     const e = entries.find((x) => x.date === date);
     if (!e) return;
+    if (window.WPCTts) window.WPCTts.stop();   // 날짜 바꾸면 이전 낭독 정지
     const p = parseQt(e.content);
     const secHtml = p.sections.map((s) => `
       <h4 class="qt-d-head">${escQt(s.head)}</h4>
@@ -433,10 +482,23 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
         ${p.title ? `<h3 class="qt-d-title">${escQt(p.title)}</h3>` : ""}
         ${p.ref ? `<p class="qt-d-ref">${escQt(p.ref)}</p>` : ""}
         ${p.ref ? `<a class="qt-d-listen" href="${godpiaUrl(p.ref)}" target="_blank" rel="noopener noreferrer">🎧 이 본문 듣기</a>` : ""}
+        <button type="button" class="qt-d-listen" id="qtTtsBtn" style="border:0;font:inherit;cursor:pointer;margin-left:8px">🔊 들어주기</button>
       </div>
       ${secHtml || `<div class="qt-d-sec"><p>${escQt(e.content)}</p></div>`}
       <div id="qtAmenBox"></div>`;
     loadHomeAmen(date);
+    (function wireTts() {
+      const btn = detailEl.querySelector("#qtTtsBtn");
+      if (!btn) return;
+      if (!(window.WPCTts && window.WPCTts.supported)) { btn.style.display = "none"; return; }
+      const parts = [];
+      if (p.title) parts.push(p.title);
+      if (p.ref) parts.push(p.ref);
+      (p.sections || []).forEach((s) => { const h = String(s.head || "").replace(/[^가-힣A-Za-z0-9\s]/g, " ").trim(); if (h) parts.push(h); if (s.body) parts.push(s.body); });
+      let readText = parts.join(". ");
+      if (!readText.trim()) readText = e.content;
+      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 들어주기");
+    })();
     const items = [...dateListEl.querySelectorAll(".qt-dl-item")];
     items.forEach((b) => b.classList.toggle("active", b.dataset.date === date));
     const act = dateListEl.querySelector(".qt-dl-item.active");
@@ -452,6 +514,7 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
     document.body.style.overflow = "hidden";
   }
   function closeModal() {
+    if (window.WPCTts) window.WPCTts.stop();
     modal.hidden = true;
     document.body.style.overflow = "";
   }
