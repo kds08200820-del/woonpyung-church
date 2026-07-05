@@ -117,6 +117,7 @@ console.log('[dashboard.js] v20260705qtfallback');
       '<div id="myEdu" style="margin-bottom:22px;"></div>' +
       '<h2 style="' + grp + '">💒 나의 교회생활</h2>' +
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">💝 헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
+      '<div id="myDocs" style="margin-bottom:22px;"></div>' +
       '<div id="familyTree" style="margin-bottom:22px;"></div>' +
       '<p style="text-align:center;margin-top:14px;"><a class="btn btn-line" href="index.html#qt">이번 주 말씀·주보는 홈에서 보기 →</a></p>';
     loadWelcomeName(me);
@@ -124,7 +125,32 @@ console.log('[dashboard.js] v20260705qtfallback');
     loadQtProgress(me);
     loadMyEdu(me);
     loadOfferings(me);
+    loadMyDocs(me);
     loadFamily(me);
+  }
+
+  /* ================= 나의 문서 (자료실에서 교회가 보관해 준 본인 자료) ================= */
+  function loadMyDocs(me) {
+    var el = document.getElementById('myDocs'); if (!el) return;
+    var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, tok = (window.WPF && WPF.token && WPF.token());
+    var head = '<div class="form-card" style="padding:16px 18px"><h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257)">📄 나의 문서</h3>' +
+      '<p style="color:var(--ink-soft,#7b8794);font-size:.82rem;margin:0 0 12px">교회에서 보관해 드린 나의 자료입니다. (학습·세례증명서·수료증 등)</p>';
+    if (!url || !ak || !tok) { el.innerHTML = ''; return; }
+    el.innerHTML = head + '<p class="qt-loading">불러오는 중…</p></div>';
+    fetch(url + '/rest/v1/member_files?select=id,category,title,file_url,file_name,doc_date,created_at&order=created_at.desc', { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
+      .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); }); return r.json(); })
+      .then(function (rows) {
+        rows = rows || [];
+        if (!rows.length) { el.innerHTML = head + '<p style="color:#9aa5b1;font-size:.9rem;margin:0">아직 등록된 문서가 없습니다.</p></div>'; return; }
+        var d = function (f) { return (String(f.doc_date || '').slice(0, 10)) || (String(f.created_at || '').slice(0, 10)); };
+        el.innerHTML = head + '<div style="overflow:auto"><table class="fin-table" style="font-size:.88rem"><thead><tr><th>분류</th><th>제목</th><th>파일</th><th>일자</th></tr></thead><tbody>' +
+          rows.map(function (f) { return '<tr><td>' + esc(f.category || '') + '</td><td>' + esc(f.title || '') + '</td><td>' + (f.file_url ? '<a href="' + esc(f.file_url) + '" target="_blank" rel="noopener noreferrer">📎 ' + esc(f.file_name || '열기') + '</a>' : '') + '</td><td style="white-space:nowrap">' + esc(d(f)) + '</td></tr>'; }).join('') +
+          '</tbody></table></div></div>';
+      })
+      .catch(function (e) {
+        var m = (e && e.message) || '';
+        el.innerHTML = head + (/42P01|does not exist|schema cache|Could not find/i.test(m) ? '<p style="color:#9aa5b1;font-size:.88rem;margin:0">문서 보관함이 아직 준비되지 않았습니다.</p>' : '<p style="color:#9aa5b1;font-size:.88rem;margin:0">문서를 불러오지 못했습니다.</p>') + '</div>';
+      });
   }
 
   // 이름 옆에 직책(profiles.role)을 붙여 표시

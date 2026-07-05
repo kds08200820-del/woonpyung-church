@@ -30,3 +30,9 @@ drop policy if exists "admin all member_files" on public.member_files;
 create policy "admin all member_files" on public.member_files for all
   using (exists (select 1 from public.admins a where a.uid = auth.uid()))
   with check (exists (select 1 from public.admins a where a.uid = auth.uid()));
+
+-- 성도 본인 열람: 자신(+배우자)의 자료만 SELECT 허용 (대시보드 '나의 문서')
+-- public.my_member_keys() 는 offerings.sql 에 정의돼 있습니다(헌금조회와 동일).
+drop policy if exists "member_files_select_own" on public.member_files;
+create policy "member_files_select_own" on public.member_files for select
+  using ( member_key in (select public.my_member_keys()) );
