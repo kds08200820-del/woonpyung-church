@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260701da');
+console.log('[dashboard.js] v20260705qtfallback');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -184,17 +184,20 @@ console.log('[dashboard.js] v20260701da');
     var el = document.getElementById('dashQt'); if (!el) return;
     el.innerHTML = '<div class="qt-today"><p class="qt-loading">오늘의 말씀을 불러오는 중입니다…</p></div>';
     var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, t = todayStr();
-    fetch(url + '/rest/v1/qt_published?select=*&sermon_date=eq.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + ak } })
+    // 오늘 QT가 없으면 홈 화면처럼 가장 최근(오늘 이전) QT로 대체
+    fetch(url + '/rest/v1/qt_published?select=*&sermon_date=lte.' + t + '&order=sermon_date.desc&limit=1', { headers: { apikey: ak, Authorization: 'Bearer ' + ak } })
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (rows) {
         var q = rows && rows[0];
-        if (!q) { el.innerHTML = '<div class="qt-today"><p class="qt-loading">오늘 등록된 큐티가 아직 없습니다.</p></div>'; return; }
-        var dotDate = t.replace(/-/g, '.');
+        if (!q) { el.innerHTML = '<div class="qt-today"><p class="qt-loading">아직 등록된 큐티가 없습니다.</p></div>'; return; }
+        var qDate = String(q.sermon_date || t).slice(0, 10);
+        var isToday = (qDate === t);
+        var dotDate = qDate.replace(/-/g, '.');
         var listenHref = (typeof godpiaUrl === 'function') ? godpiaUrl(q.scripture) : 'https://www.godpia.com/read/reading.asp';
         el.innerHTML =
           '<div class="qt-today">' +
           '<button type="button" class="qt-card-today" id="dashQtOpen">' +
-          '<span class="qt-badge">오늘의 QT · ' + esc(dotDate) + '</span>' +
+          '<span class="qt-badge">' + (isToday ? '오늘의 QT · ' : '최근 QT · ') + esc(dotDate) + '</span>' +
           (q.title ? '<h3 class="qt-card-title">' + esc(q.title) + '</h3>' : '') +
           (q.scripture ? '<p class="qt-card-ref">' + esc(q.scripture) + '</p>' : '') +
           '<span class="qt-card-more">묵상 전문 읽기 →</span>' +
@@ -219,7 +222,7 @@ console.log('[dashboard.js] v20260701da');
               (q.prayer ? '<div class="qtc-head">🙏 기도</div><div class="qtc-body">' + toParaHTML(q.prayer) + '</div>' : '') +
               '<div id="dashAmenBox" class="qtc-amen"></div>' +
               '</div>';
-            loadAmenState(me, t);
+            loadAmenState(me, qDate);
           }
         };
       })
