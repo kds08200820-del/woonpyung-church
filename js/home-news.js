@@ -234,12 +234,13 @@
   function cardHtml(p, i) {
     const liked = myLikes.has(String(p.id));
     const me = currentUser();
-    const canDel = (me && me.id === p.user_id) || feedAdmin;
+    const mine = !!(me && p.user_id && me.id === p.user_id);
+    const canDel = mine || feedAdmin;
     return `<article class="ig-card" data-id="${p.id}" data-idx="${i}">
       <header class="ig-head">
         <span class="ig-avatar">${esc(initial(p.author_name))}</span>
         <div class="ig-who"><b>${esc(p.author_name || "성도")}</b><span>${esc(fmtDate(p))} · ${esc(timeAgo(p.created_at))}</span></div>
-        ${canDel ? `<button type="button" class="ig-menu" data-act="delphoto" title="삭제">삭제</button>` : ""}
+        ${(mine || canDel) ? `<span style="margin-left:auto;display:inline-flex;gap:2px">${mine ? `<button type="button" class="ig-menu" data-act="editphoto" title="수정" style="margin-left:0;color:var(--accent,#032257)">수정</button>` : ""}${canDel ? `<button type="button" class="ig-menu" data-act="delphoto" title="삭제" style="margin-left:0">삭제</button>` : ""}</span>` : ""}
       </header>
       <div class="ig-media" data-act="open" data-idx="${i}" role="button" tabindex="0" aria-label="사진 크게 보기">
         <img src="${esc(p.url)}" alt="${esc(titleOf(p))}" loading="lazy" draggable="false" />
@@ -293,6 +294,8 @@
       if (focusBtn) focusBtn.addEventListener("click", () => { const inp = card.querySelector(".ig-addcmt input"); if (inp) inp.focus(); });
       const delPhoto = card.querySelector('[data-act="delphoto"]');
       if (delPhoto) delPhoto.addEventListener("click", () => removePhoto(p));
+      const editPhoto = card.querySelector('[data-act="editphoto"]');
+      if (editPhoto) editPhoto.addEventListener("click", () => openEdit(p));
       const form = card.querySelector('[data-role="addcmt"]');
       if (form) form.addEventListener("submit", async (e) => { e.preventDefault(); const inp = form.querySelector("input"); const v = inp.value; inp.value = ""; if (await addComment(id, v)) refreshComments(id); });
       const cbox = card.querySelector('[data-role="comments"]');
@@ -309,6 +312,73 @@
       await api("DELETE", `album_photos?id=eq.${p.id}`, null, { Prefer: "return=minimal" });
       if (p.key && window.ChurchUpload) window.ChurchUpload.remove(p.key);
     } catch (e) { alert("삭제 오류: " + e.message); return; }
+    await load();
+    if (feedModal && !feedModal.hidden) openFeed();
+  }
+
+  /* ===================== 소식 수정 모달 (본인 글만) ===================== */
+  let editModal = null, editingPhoto = null;
+  function buildEditModal() {
+    editModal = document.createElement("div");
+    editModal.className = "modal"; editModal.hidden = true;
+    editModal.innerHTML = `
+      <div class="modal-backdrop" data-edclose></div>
+      <div class="modal-box modal-box-upload" role="dialog" aria-modal="true" aria-label="소식 수정">
+        <button class="modal-close" data-edclose aria-label="닫기">&times;</button>
+        <h3 class="m-title">소식 수정</h3>
+        <div class="up-fields">
+          <label class="up-f"><span>제목 <em>(선택)</em></span><input type="text" id="edTitle" maxlength="60" placeholder="예: 여름성경학교 첫째 날" /></label>
+          <div class="up-row">
+            <label class="up-f"><span>날짜</span><input type="date" id="edDate" /></label>
+            <label class="up-f"><span>카테고리</span><select id="edCat"></select></label>
+          </div>
+          <label class="up-f"><span>한 줄 소식 <em>(선택)</em></span><textarea id="edCap" rows="2" maxlength="300" placeholder="어떤 순간인가요?"></textarea></label>
+        </div>
+        <button type="button" class="btn btn-solid up-go" id="edGo">저장</button>
+        <div class="up-status" id="edStatus" hidden></div>
+      </div>`;
+    document.body.appendChild(editModal);
+    editModal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-edclose")) closeEdit(); });
+    editModal.querySelector("#edGo").addEventListener("click", saveEdit);
+  }
+  function closeEdit() { if (editModal) editModal.hidden = true; document.body.style.overflow = ""; editingPhoto = null; }
+  function openEdit(p) {
+    const me = currentUser();
+    if (!me || me.id !== p.user_id) { alert("본인이 올린 소식만 수정할 수 있어요."); return; }
+    if (!editModal) buildEditModal();
+    editingPhoto = p;
+    const catSel = editModal.querySelector("#edCat"), list = cats();
+    catSel.innerHTML = list.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
+    if (p.category && list.indexOf(p.category) < 0) catSel.insertAdjacentHTML("afterbegin", `<option value="${esc(p.category)}">${esc(p.category)}</option>`);
+    catSel.value = p.category || list[0] || "";
+    editModal.querySelector("#edTitle").value = p.title || "";
+    editModal.querySelector("#edCap").value = p.caption || "";
+    editModal.querySelector("#edDate").value = String(p.event_date || "").slice(0, 10) || todayISO();
+    const st = editModal.querySelector("#edStatus"); st.hidden = true; st.textContent = "";
+    editModal.querySelector("#edGo").disabled = false;
+    editModal.hidden = false; document.body.style.overflow = "hidden";
+  }
+  async function saveEdit() {
+    if (!editingPhoto) return;
+    const p = editingPhoto;
+    const title = (editModal.querySelector("#edTitle").value || "").trim();
+    const cap = (editModal.querySelector("#edCap").value || "").trim();
+    const cat = editModal.querySelector("#edCat").value;
+    const date = editModal.querySelector("#edDate").value || null;
+    const go = editModal.querySelector("#edGo"), st = editModal.querySelector("#edStatus");
+    go.disabled = true; st.hidden = false; st.textContent = "저장 중…";
+    const patch = (payload) => api("PATCH", `album_photos?id=eq.${p.id}`, payload, { Prefer: "return=representation" });
+    try {
+      let rows;
+      try { rows = await patch({ title: title || null, caption: cap || null, category: cat || null, event_date: date }); }
+      catch (colErr) { if (/column|event_date|title|schema cache/i.test(colErr.message)) rows = await patch({ caption: cap || null, category: cat || null }); else throw colErr; }
+      if (!rows || !rows.length) {
+        st.textContent = ""; go.disabled = false;
+        alert("수정이 저장되지 않았습니다.\n관리자는 Supabase ▸ SQL Editor 에서 supabase/album_edit.sql 을 1회 실행해 '본인 글 수정' 권한을 켜 주세요.");
+        return;
+      }
+    } catch (e) { st.textContent = ""; go.disabled = false; alert("수정 오류: " + e.message); return; }
+    closeEdit();
     await load();
     if (feedModal && !feedModal.hidden) openFeed();
   }
