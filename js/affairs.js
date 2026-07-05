@@ -231,6 +231,7 @@ console.log('[affairs.js] v20260701dj');
     panel.innerHTML = msgCard('자료실', '불러오는 중…');
     var state = { view: 'members', q: '', cat: '', sel: null };
     var FILES = [];
+    function fmtBytes(n) { if (!n && n !== 0) return ''; if (n < 1024) return n + ' B'; if (n < 1048576) return (n / 1024).toFixed(0) + ' KB'; return (n / 1048576).toFixed(1) + ' MB'; }
     function memMid(m) { return m.key || ('name:' + m.name); }
     function fileMid(f) { return f.member_key || ('name:' + (f.member_name || '')); }
     function ensureMembers() {
@@ -297,7 +298,7 @@ console.log('[affairs.js] v20260701dj');
         '<div class="fin-msg" id="ar_msg" style="margin-top:8px"></div></div>' +
         '<div class="fin-card"><b>보관 자료 ' + files.length + '건</b><div style="overflow:auto;margin-top:8px">' +
         (files.length ? '<table class="fin-table"><thead><tr><th>분류</th><th>제목</th><th>파일</th><th>일자</th><th class="num">크기</th><th></th></tr></thead><tbody>' +
-          files.map(function (f) { return '<tr><td>' + esc(f.category || '') + '</td><td>' + esc(f.title || '') + '</td><td>' + (f.file_url ? '<a href="' + esc(f.file_url) + '" target="_blank" rel="noopener">' + esc(f.file_name || '열기') + '</a>' : '') + '</td><td style="white-space:nowrap">' + esc(ymd(f.doc_date) || ymd(f.created_at)) + '</td><td class="num">' + (f.file_size ? fmtSize(f.file_size) : '') + '</td><td style="text-align:right"><button class="btn btn-line" data-del="' + esc(f.id) + '" style="padding:3px 9px;font-size:.78rem;color:#c0392b">삭제</button></td></tr>'; }).join('') +
+          files.map(function (f) { return '<tr><td>' + esc(f.category || '') + '</td><td>' + esc(f.title || '') + '</td><td>' + (f.file_url ? '<a href="' + esc(f.file_url) + '" target="_blank" rel="noopener">' + esc(f.file_name || '열기') + '</a>' : '') + '</td><td style="white-space:nowrap">' + esc(ymd(f.doc_date) || ymd(f.created_at)) + '</td><td class="num">' + (f.file_size ? fmtBytes(f.file_size) : '') + '</td><td style="text-align:right"><button class="btn btn-line" data-del="' + esc(f.id) + '" style="padding:3px 9px;font-size:.78rem;color:#c0392b">삭제</button></td></tr>'; }).join('') +
           '</tbody></table>' : '<p style="color:#9aa5b1;padding:10px 2px">아직 보관된 자료가 없습니다. 위에서 파일을 올려보세요.</p>') + '</div></div>';
       bindHeader();
       panel.querySelector('#ar_back').onclick = function () { state.view = 'members'; state.sel = null; draw(); };
