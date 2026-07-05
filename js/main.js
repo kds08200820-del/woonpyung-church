@@ -364,6 +364,62 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
       .join("");
   }
 
+  // ── 홈 QT 아멘 체크(대시보드와 동일한 qt_checks 사용) — 로그인한 회원만 ──
+  function dotToDash(d) { const m = String(d).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/); return m ? `${m[1]}-${("0" + m[2]).slice(-2)}-${("0" + m[3]).slice(-2)}` : d; }
+  function qtSession() {
+    try {
+      if (!window.SUPABASE_URL) return null;
+      const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
+      const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+      if (!raw) return null;
+      const s0 = JSON.parse(raw);
+      const s = (s0 && s0.currentSession) ? s0.currentSession : s0;
+      const uid = s && s.user && s.user.id, token = s && s.access_token;
+      return (uid && token) ? { uid, token } : null;
+    } catch (e) { return null; }
+  }
+  const AMEN_NOTE = "margin-top:16px;padding:12px 15px;background:#f4f1ea;border-radius:11px;color:#5b6b7d;font-size:.9rem;line-height:1.55;text-align:center";
+  const AMEN_DONE = "margin-top:16px;padding:13px 15px;background:#e7f4ea;border:1px solid #bfe0c8;border-radius:11px;color:#1e7a45;font-weight:700;font-size:.95rem;text-align:center";
+  function amenDoneBox(box, cd, sess, rankMsg) {
+    box.innerHTML = `<div style="${AMEN_DONE}">${escQt(rankMsg || "✓ 오늘의 큐티를 마치고 아멘 하셨습니다 🙌")}</div>`;
+    if (rankMsg) return;
+    fetch(window.SUPABASE_URL + "/rest/v1/rpc/qt_check_rank", { method: "POST", headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + sess.token, "Content-Type": "application/json" }, body: JSON.stringify({ p_date: cd }) })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((rank) => { if (rank) box.innerHTML = `<div style="${AMEN_DONE}">✓ 오늘 ${rank}번째 아멘! 은혜 충만한 하루 되세요 🙌</div>`; })
+      .catch(() => {});
+  }
+  function loadHomeAmen(date) {
+    const box = document.getElementById("qtAmenBox");
+    if (!box) return;
+    const cd = dotToDash(date), SB = window.SUPABASE_URL, AK = window.SUPABASE_ANON_KEY;
+    const sess = qtSession();
+    if (!SB || !AK) { box.innerHTML = ""; return; }
+    if (!sess) { box.innerHTML = `<div style="${AMEN_NOTE}">🙏 <b>로그인</b>하시면 오늘의 큐티에 <b>아멘</b> 체크를 할 수 있어요. <span style="color:#9aa5b1">(화면 오른쪽 위 로그인)</span></div>`; return; }
+    const H = { apikey: AK, Authorization: "Bearer " + sess.token };
+    box.innerHTML = `<div style="${AMEN_NOTE}">확인 중…</div>`;
+    fetch(SB + "/rest/v1/qt_checks?select=id&check_date=eq." + cd, { headers: H })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => {
+        if (rows && rows.length) { amenDoneBox(box, cd, sess); return; }
+        box.innerHTML = `<label style="display:flex;align-items:center;gap:10px;margin-top:16px;padding:14px 16px;background:#eef5ef;border:1px solid #cfe3d4;border-radius:12px;color:#2f5133;font-size:.95rem;cursor:pointer"><input type="checkbox" id="qtAmenInput" style="width:18px;height:18px"> 🙏 기도문까지 읽고, 오늘의 큐티에 <b>아멘</b> 합니다</label>`;
+        const chk = document.getElementById("qtAmenInput");
+        chk.addEventListener("change", () => {
+          if (!chk.checked) return;
+          chk.disabled = true;
+          fetch(SB + "/rest/v1/qt_checks", { method: "POST", headers: { ...H, "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify({ user_id: sess.uid, check_date: cd }) })
+            .then((r) => { if (!r.ok && r.status !== 409) return r.text().then((t) => { throw new Error(t); }); amenDoneBox(box, cd, sess); })
+            .catch((e) => {
+              chk.disabled = false; chk.checked = false;
+              const m = (e && e.message) || "";
+              box.innerHTML = /does not exist|42P01|schema cache|Could not find/i.test(m)
+                ? `<div style="${AMEN_NOTE};color:#c0392b">아멘 저장 테이블이 아직 없습니다 — 관리자는 supabase/qt_checks.sql 을 1회 실행해 주세요.</div>`
+                : `<div style="${AMEN_NOTE};color:#c0392b">저장에 실패했습니다. 다시 시도해 주세요.</div>`;
+            });
+        });
+      })
+      .catch(() => { box.innerHTML = ""; });
+  }
+
   function showDetail(date) {
     const e = entries.find((x) => x.date === date);
     if (!e) return;
@@ -378,7 +434,9 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
         ${p.ref ? `<p class="qt-d-ref">${escQt(p.ref)}</p>` : ""}
         ${p.ref ? `<a class="qt-d-listen" href="${godpiaUrl(p.ref)}" target="_blank" rel="noopener noreferrer">🎧 이 본문 듣기</a>` : ""}
       </div>
-      ${secHtml || `<div class="qt-d-sec"><p>${escQt(e.content)}</p></div>`}`;
+      ${secHtml || `<div class="qt-d-sec"><p>${escQt(e.content)}</p></div>`}
+      <div id="qtAmenBox"></div>`;
+    loadHomeAmen(date);
     const items = [...dateListEl.querySelectorAll(".qt-dl-item")];
     items.forEach((b) => b.classList.toggle("active", b.dataset.date === date));
     const act = dateListEl.querySelector(".qt-dl-item.active");
