@@ -52,6 +52,12 @@ ul { list-style: none; }
   letter-spacing: .28em; color: rgba(255,255,255,.7);
   transition: color .4s ease;
 }
+.logo-dash {
+  font-size: .74rem; font-weight: 600; letter-spacing: .02em; color: var(--gold);
+  margin-top: 1px; cursor: pointer; width: fit-content; transition: color .4s ease;
+}
+.logo-dash:hover { text-decoration: underline; }
+#header.scrolled .logo-dash { color: var(--accent); }
 .nav-menu { display: flex; gap: 22px; flex-wrap: nowrap; }
 .nav-menu a {
   font-size: .92rem; font-weight: 500; color: rgba(255,255,255,.92);

@@ -64,7 +64,10 @@
       <div class="nav-inner">
         <a href="index.html" class="logo">
           <img src="images/icon-192.png?v=20260625e" alt="" class="logo-mark" />
-          <span class="logo-kr">운평장로교회</span>
+          <span class="logo-txt">
+            <span class="logo-kr">운평장로교회</span>
+            <span class="logo-dash" id="hdrDash" role="link" tabindex="0" style="display:none">대시보드</span>
+          </span>
         </a>
         <nav class="nav-menu" id="navMenu">${navLinks}</nav>
         <button class="notify-btn" id="notifyBtn" type="button" title="알림 설정" aria-label="알림 설정">🔔</button>
@@ -73,6 +76,14 @@
       </div>
     </header>`;
   document.body.insertAdjacentHTML("afterbegin", headerHTML);
+  // 헤더 '대시보드' 링크(로고 <a> 안에 있으므로 기본 이동을 막고 대시보드로 보냄)
+  (function () {
+    const hd = document.getElementById("hdrDash");
+    if (!hd) return;
+    const go = (e) => { e.preventDefault(); e.stopPropagation(); location.href = "dashboard.html"; };
+    hd.addEventListener("click", go);
+    hd.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") go(e); });
+  })();
 
   // ===== 푸터 =====
   const footerHTML = `
@@ -330,6 +341,8 @@
         cachedToken = (s && s.access_token) || null;
       }
     } catch (e) {}
+    // 로그인한 사용자에게만 헤더 '대시보드' 링크 노출(대시보드는 정회원 전용)
+    if (cachedUser) { const hd = document.getElementById("hdrDash"); if (hd) hd.style.display = ""; }
 
     // 직분(profiles.role)을 읽어 헤더 이름을 "홍길동 담임목사님" 형태로 보강
     function enhanceHeaderWithRole(uid, baseName) {
