@@ -799,24 +799,60 @@ console.log('[affairs.js] v20260701dj');
     function ttsLogModal(rows) {
       function fmtBytes(n) { n = Number(n) || 0; return n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'; }
       function fmtTime(s) { s = String(s || ''); var m = s.replace('T', ' ').slice(0, 16); return m || '-'; }
+      rows = (rows || []).slice();
       var ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
-      var list = rows.map(function (r) {
-        var when = r.qt_date ? fmtD(r.qt_date) : fmtTime(r.created_at);
-        return '<div style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0">' +
-          '<div style="flex:0 0 84px;font-size:.8rem;color:#9aa5b1">' + esc(when) + '</div>' +
-          '<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--accent,#032257);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.label || '(제목 없음)') + '</div>' +
-          '<div style="font-size:.74rem;color:#9aa5b1">' + esc(r.voice || '-') + ' · ' + fmtBytes(r.bytes) + ' · ' + esc(fmtTime(r.created_at)) + '</div></div>' +
-          (r.url ? '<audio controls preload="none" src="' + esc(r.url) + '" style="flex:0 0 210px;max-width:210px;height:34px"></audio>' : '<span style="flex:0 0 210px;font-size:.78rem;color:#c0392b">URL 없음</span>') +
-          '</div>';
-      }).join('') || '<p style="color:#9aa5b1;font-size:.9rem;padding:8px 0">아직 생성된 AI 음성이 없습니다. QT에서 🔊 오늘의 말씀 듣기를 한 번 누르면 저장됩니다.</p>';
-      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:640px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0;color:var(--accent,#032257)">🔊 AI 음성 생성 기록 <span style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + rows.length + '건</span></h3><button class="btn btn-line" id="tl_close" style="padding:3px 11px">닫기</button></div>' +
-        '<div style="max-height:64vh;overflow:auto">' + list + '</div></div>';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:660px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0;color:var(--accent,#032257)">🔊 AI 음성 생성 기록 <span id="tl_cnt" style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + rows.length + '건</span></h3><button class="btn btn-line" id="tl_close" style="padding:3px 11px">닫기</button></div>' +
+        '<div id="tl_body" style="max-height:64vh;overflow:auto"></div></div>';
       document.body.appendChild(ov);
       var close = pushBackClose(function () { ov.remove(); });
       ov.querySelector('#tl_close').onclick = close;
       ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      var body = ov.querySelector('#tl_body'), cntEl = ov.querySelector('#tl_cnt');
+
+      function storagePathOf(url) { var m = String(url || '').match(/\/tts-cache\/(.+)$/); return m ? m[1] : ''; }
+
+      function paint() {
+        if (!rows.length) { body.innerHTML = '<p style="color:#9aa5b1;font-size:.9rem;padding:8px 0">아직 생성된 AI 음성이 없습니다. QT에서 🔊 오늘의 말씀 듣기를 한 번 누르면 저장됩니다.</p>'; cntEl.textContent = '0건'; return; }
+        cntEl.textContent = rows.length + '건';
+        body.innerHTML = rows.map(function (r, i) {
+          var when = r.qt_date ? fmtD(r.qt_date) : fmtTime(r.created_at);
+          return '<div class="tl-row" data-i="' + i + '" style="display:flex;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0">' +
+            '<div style="flex:0 0 78px;font-size:.8rem;color:#9aa5b1">' + esc(when) + '</div>' +
+            '<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--accent,#032257);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.label || '(제목 없음)') + '</div>' +
+            '<div style="font-size:.74rem;color:#9aa5b1">' + esc(r.voice || '-') + ' · ' + fmtBytes(r.bytes) + ' · ' + esc(fmtTime(r.created_at)) + '</div></div>' +
+            (r.url ? '<audio controls preload="none" src="' + esc(r.url) + '" style="flex:0 0 190px;max-width:190px;height:34px"></audio>' : '<span style="flex:0 0 190px;font-size:.78rem;color:#c0392b">URL 없음</span>') +
+            '<button class="btn btn-line tl-del" data-i="' + i + '" title="삭제" style="flex:0 0 auto;padding:4px 9px;color:#c0392b;border-color:#e6b3b3">🗑</button>' +
+            '</div>';
+        }).join('');
+        Array.prototype.forEach.call(body.querySelectorAll('.tl-del'), function (b) {
+          b.onclick = function () { delRow(Number(b.dataset.i), b); };
+        });
+      }
+
+      function delRow(i, btn) {
+        var r = rows[i]; if (!r) return;
+        if (!confirm('이 AI 음성 기록을 삭제할까요?\n\n' + (r.label || '') + '\n(' + fmtTime(r.created_at) + ')\n\n저장된 음원 파일도 함께 삭제됩니다.')) return;
+        btn.disabled = true; btn.textContent = '…';
+        // 같은 파일(url)을 가리키는 다른 기록이 없을 때만 저장 파일도 삭제
+        var others = rows.filter(function (x, j) { return j !== i && x.url && x.url === r.url; }).length;
+        var path = storagePathOf(r.url);
+        var delFile = (others === 0 && path)
+          ? fetch(SB + '/storage/v1/object/tts-cache/' + path, { method: 'DELETE', headers: { apikey: AK, Authorization: 'Bearer ' + (sess() && sess().token) } }).catch(function () {})
+          : Promise.resolve();
+        delFile.then(function () {
+          return api('DELETE', 'tts_log?created_at=eq.' + encodeURIComponent(r.created_at), null, 'return=minimal');
+        }).then(function () {
+          rows.splice(i, 1); paint();
+          var numEl = panel.querySelector('#ttsLogNum'); if (numEl) numEl.textContent = rows.length + '건';
+        }).catch(function (e) {
+          btn.disabled = false; btn.textContent = '🗑';
+          alert('삭제 실패: ' + ((e && e.message) || '권한 또는 네트워크 오류') + '\n\ntts_log.sql의 삭제 정책이 적용되어 있는지 확인해 주세요.');
+        });
+      }
+
+      paint();
     }
 
     // ── QT 출석부: 오늘 아멘 체크한 인원 수 + 명단 ──
