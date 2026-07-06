@@ -196,24 +196,40 @@ var WPCTts = (function () {
   }
   function stopAudio() { if (audio) { try { audio.pause(); } catch (e) {} audio = null; } }
   function reset() { active = false; if (btnEl) btnEl.textContent = btnLabel; }
-  function start(text, btn, label) {
+  // 여러 URL을 순서대로 시도해 처음 성공한 오디오를 반환(미리 만든 로컬 음성 mp3→wav)
+  function fetchFirst(urls) {
+    var i = 0;
+    function next() {
+      if (i >= urls.length) return Promise.reject(new Error("none"));
+      var u = urls[i++];
+      return fetch(u).then(function (r) { return r.ok ? r.blob() : next(); }, function () { return next(); });
+    }
+    return next();
+  }
+  function start(text, btn, label, opts) {
     stop();
     btnEl = btn || null; btnLabel = label || "🔊 들어주기"; active = true;
     var myGen = ++gen;
     if (btnEl) btnEl.textContent = "⏳ 준비 중…";
-    if (cache[text]) { playBlob(cache[text], myGen); return; }
-    aiFetch(text).then(function (b) {
-      if (!active || myGen !== gen) return;
-      var url = URL.createObjectURL(b); cache[text] = url; playBlob(url, myGen);
-    }).catch(function () {
-      if (!active || myGen !== gen) return;
-      browserStart(text, myGen);   // AI(엣지함수) 미배포·실패 → 기본 음성으로 자동 대체
-    });
+    var pre = (opts && opts.preUrls && opts.preUrls.length) ? opts.preUrls : null;
+    var key = (pre ? pre[0] : "") + "|" + text;
+    if (cache[key]) { playBlob(cache[key], myGen); return; }
+    var chain = pre ? fetchFirst(pre) : Promise.reject(new Error("no-pre"));
+    chain.catch(function () { return aiFetch(text); })   // ① 미리 만든 로컬 음성 → ② 없으면 Gemini 엣지함수
+      .then(function (b) { if (!active || myGen !== gen) return; var url = URL.createObjectURL(b); cache[key] = url; playBlob(url, myGen); })
+      .catch(function () { if (!active || myGen !== gen) return; browserStart(text, myGen); });   // ③ 그것도 없으면 기본 음성
   }
   function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } if (btnEl) btnEl.textContent = btnLabel; }
-  function toggle(text, btn, label) { if (active) stop(); else start(text, btn, label); }
+  function toggle(text, btn, label, opts) { if (active) stop(); else start(text, btn, label, opts); }
+  // 날짜(YYYY-MM-DD)로 미리 만든 로컬 음성 후보 URL(mp3→wav)
+  function preUrlsForDate(dashDate) {
+    var sb = (window.SUPABASE_URL || "").replace(/\/$/, "");
+    if (!sb || !dashDate) return [];
+    var base = sb + "/storage/v1/object/public/tts-cache/qt-" + dashDate;
+    return [base + ".mp3", base + ".wav"];
+  }
   window.addEventListener("pagehide", stop);
-  return { toggle: toggle, stop: stop, supported: true };   // AI 또는 기본 음성 중 하나로 항상 동작
+  return { toggle: toggle, stop: stop, supported: true, preUrlsForDate: preUrlsForDate };   // 로컬음성→AI→기본음성 순으로 항상 동작
 })();
 window.WPCTts = WPCTts;
 
@@ -530,7 +546,7 @@ window.WPCTts = WPCTts;
       (p.sections || []).forEach((s) => { const h = String(s.head || "").replace(/[^가-힣A-Za-z0-9\s]/g, " ").trim(); if (h) parts.push(h); if (s.body) parts.push(s.body); });
       let readText = parts.join(". ");
       if (!readText.trim()) readText = e.content;
-      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 오늘의 말씀 듣기");
+      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 오늘의 말씀 듣기", { preUrls: window.WPCTts.preUrlsForDate(dotToDash(date)) });
     })();
     const items = [...dateListEl.querySelectorAll(".qt-dl-item")];
     items.forEach((b) => b.classList.toggle("active", b.dataset.date === date));
