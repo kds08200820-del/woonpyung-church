@@ -44,6 +44,15 @@
       return data;
     })(), 10000);
   }
+  // 일시적 네트워크/타임아웃 오류로 소식이 안 뜨는 것을 막기 위해 몇 번 재시도한다.
+  async function apiRetry(method, path, tries) {
+    var n = tries || 3, last;
+    for (var i = 0; i < n; i++) {
+      try { return await api(method, path); }
+      catch (e) { last = e; if (i < n - 1) await new Promise((r) => setTimeout(r, 500 * (i + 1))); }
+    }
+    throw last;
+  }
   const uploadReady = () => !!(window.ChurchUpload && window.ChurchUpload.isReady());
   const initial = (name) => (String(name || "성").trim()[0] || "성").toUpperCase();
 
@@ -75,19 +84,22 @@
 
   let photos = [];            // 최신순
   let social = true;
+  let loadError = false;      // true = 불러오기 실패(빈 소식과 구분) → 재시도 안내 표시
+  let _autoReloads = 0;       // 실패 시 자동 재시도 횟수(무한루프 방지)
   const myLikes = new Set();
   const commentCache = {};
   const photoById = (id) => photos.find((p) => String(p.id) === String(id));
 
   async function load() {
     if (window.ChurchCategories) { try { await window.ChurchCategories.load(); } catch (e) {} }
+    loadError = false;
     try {
-      photos = await api("GET", "album_feed?select=*&order=created_at.desc&limit=40") || [];
+      photos = await apiRetry("GET", "album_feed?select=*&order=created_at.desc&limit=40") || [];
       social = true;
     } catch (e) {
       social = false;
-      try { photos = await api("GET", "album_photos?select=*&order=created_at.desc&limit=40") || []; }
-      catch (e2) { photos = []; }
+      try { photos = await apiRetry("GET", "album_photos?select=*&order=created_at.desc&limit=40") || []; }
+      catch (e2) { photos = []; loadError = true; }   // 두 경로 모두 실패 = 진짜 오류(소식 없음과 구분)
       photos = photos.map((p) => ({ ...p, like_count: 0, comment_count: 0 }));
     }
     myLikes.clear();
@@ -98,11 +110,21 @@
     }
     renderCarousel();
     renderActions();
+    // 불러오기 실패 시 잠시 뒤 자동으로 한두 번 더 시도(일시적 오류 자가 복구). 성공하면 카운터 초기화.
+    if (loadError) { if (_autoReloads < 2) { _autoReloads++; setTimeout(load, 2500); } }
+    else { _autoReloads = 0; }
   }
 
   /* ===================== 캐러셀 ===================== */
   let slides = [], curSlide = 0, timer = null;
   function renderCarousel() {
+    if (loadError) {   // 불러오기 실패 → '소식 없음'과 헷갈리지 않게 오류+다시 시도 안내
+      stop();
+      carEl.innerHTML = `<div class="hn-empty"><span>⚠️</span><p>소식을 불러오지 못했어요.<br>잠시 후 다시 시도해 주세요.</p><button type="button" class="hn-retry" style="margin-top:14px;padding:9px 22px;border:0;background:#2f5d3a;color:#fff;border-radius:999px;font-weight:700;cursor:pointer">🔄 다시 불러오기</button></div>`;
+      const rb = carEl.querySelector(".hn-retry");
+      if (rb) rb.addEventListener("click", () => { rb.textContent = "불러오는 중…"; rb.disabled = true; _autoReloads = 0; load(); });
+      return;
+    }
     slides = photos.slice(0, 10);
     if (!slides.length) {
       carEl.innerHTML = `<div class="hn-empty"><span>📷</span><p>아직 올라온 소식이 없어요.${currentUser() ? " 첫 사진을 올려보세요!" : " 로그인 후 올릴 수 있어요."}</p></div>`;
@@ -218,7 +240,12 @@
     const wasOpen = feedModal && !feedModal.hidden;
     if (!feedModal) buildFeedModal();
     feedAdmin = await isAdminUser();
-    if (!photos.length) {
+    if (loadError) {
+      feedList.className = "album-feed empty";
+      feedList.innerHTML = `<p class="placeholder-note">소식을 불러오지 못했어요. <button type="button" class="hn-retry2" style="margin-left:6px;padding:5px 14px;border:0;background:#2f5d3a;color:#fff;border-radius:999px;font-weight:600;cursor:pointer">🔄 다시</button></p>`;
+      const rb = feedList.querySelector(".hn-retry2");
+      if (rb) rb.addEventListener("click", async () => { rb.textContent = "…"; rb.disabled = true; _autoReloads = 0; await load(); openFeed(); });
+    } else if (!photos.length) {
       feedList.className = "album-feed empty";
       feedList.innerHTML = `<p class="placeholder-note">아직 올라온 소식이 없어요.</p>`;
     } else {
