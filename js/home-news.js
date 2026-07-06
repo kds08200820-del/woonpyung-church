@@ -449,9 +449,11 @@
             <span class="up-drop-ic">🖼️</span>
             <p class="up-drop-t">여기로 사진을 끌어다 놓거나</p>
             <button type="button" class="btn btn-solid up-pick" id="upPick">사진 선택</button>
+            <button type="button" class="btn btn-line up-cam" id="upCam" style="margin-top:8px">📷 카메라로 찍기</button>
             <p class="up-drop-s">여러 장을 한 번에 올릴 수 있어요</p>
           </div>
           <input type="file" id="upInput" accept="image/*" multiple hidden />
+          <input type="file" id="upCamera" accept="image/*" capture="environment" hidden />
         </div>
         <div class="up-thumbs" id="upThumbs"></div>
         <div class="up-fields">
@@ -503,6 +505,10 @@
     upModal.querySelector("#upPick").addEventListener("click", () => input.click());
     drop.addEventListener("click", (e) => { if (e.target === drop || e.target.closest(".up-drop-in") && !e.target.closest("button")) input.click(); });
     input.addEventListener("change", () => { addFiles(input.files); input.value = ""; });
+    // 📷 카메라로 바로 찍기 (모바일: capture 속성으로 카메라 실행 → 찍은 사진이 그대로 추가됨)
+    const camInput = upModal.querySelector("#upCamera");
+    upModal.querySelector("#upCam").addEventListener("click", () => camInput.click());
+    camInput.addEventListener("change", () => { addFiles(camInput.files); camInput.value = ""; });
     ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("drag"); }));
     ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); if (ev === "dragleave" && drop.contains(e.relatedTarget)) return; drop.classList.remove("drag"); }));
     drop.addEventListener("drop", (e) => { if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
