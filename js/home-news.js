@@ -190,7 +190,7 @@
   }
 
   /* ===================== 더보기: 인스타 피드 모달 ===================== */
-  const heartSvg = (f) => `<svg viewBox="0 0 24 24" class="ig-ic${f ? " liked" : ""}" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.6 8.7 2 5.5 5 5.5c1.9 0 3.2 1.1 4 2.3.8-1.2 2.1-2.3 4-2.3 3 0 4.4 3.2 3 6.3C19.5 16.4 12 21 12 21z" fill="${f ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+  const heartSvg = (f) => `<svg viewBox="0 0 24 24" class="ig-ic${f ? " liked" : ""}" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="${f ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
   const bubbleSvg = `<svg viewBox="0 0 24 24" class="ig-ic" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
 
   let feedModal = null, feedList = null;
