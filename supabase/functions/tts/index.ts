@@ -13,7 +13,7 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const MODEL = "gemini-2.5-flash-preview-tts";
-const DEFAULT_VOICE = "Autonoe"; // 밝은 톤. 다른 후보: Zephyr(밝음)·Leda(젊음)·Aoede(산뜻)·Kore(차분)·Charon/Puck(남)
+const DEFAULT_VOICE = "Kore"; // 40대 여성 느낌의 차분·또렷한 성인 여성(정상 작동 확인). 후보: Aoede·Leda. ※Autonoe·Gacrux·Sulafat·Vindemiatrix는 빈응답 버그로 금지
 const CACHE_BUCKET = "tts-cache";
 
 const cors = {
@@ -66,6 +66,17 @@ async function cachePut(path: string, wav: Uint8Array): Promise<void> {
     });
   } catch { /* 캐시 저장 실패는 무시(재생은 정상) */ }
 }
+// 생성 기록(관리자 대시보드 열람용). 실패해도 재생엔 영향 없음.
+async function logGen(row: Record<string, unknown>) {
+  if (!SUPABASE_URL || !SERVICE_KEY) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/tts_log`, {
+      method: "POST",
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify(row),
+    });
+  } catch { /* 로그 실패 무시 */ }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -73,14 +84,16 @@ Deno.serve(async (req) => {
     new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
   try {
     if (!GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY 미설정 — Supabase 시크릿에 추가하세요." }, 500);
-    const { text, voice } = await req.json().catch(() => ({} as any));
+    const { text, voice, date } = await req.json().catch(() => ({} as any));
     const clean = String(text ?? "").trim();
     if (!clean) return json({ error: "text 없음" }, 400);
-    const capped = clean.slice(0, 2500); // 비용·지연 상한(길면 생성이 느려져 잘라 읽음)
+    const capped = clean.slice(0, 12000); // 사실상 제한 없음(QT는 최대 ~4천 자). 폭주 방지용 안전 상한만.
     const voiceName = String(voice || DEFAULT_VOICE);
 
-    // 1) 캐시 확인 — 같은 (목소리+글)이면 저장본을 바로 반환(재생성 안 함)
-    const path = (await sha256hex(voiceName + "|" + capped)) + ".wav";
+    // 1) 캐시 확인 — 날짜가 오면 qt-<날짜>.wav(프런트가 이 경로로 스트리밍), 없으면 (목소리+글) 해시
+    const path = (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date))
+      ? `qt-${date}.wav`
+      : (await sha256hex(voiceName + "|" + capped)) + ".wav";
     const cached = await cacheGet(path);
     if (cached) return new Response(cached, { headers: { ...wavHeaders, "X-TTS-Cache": "hit" } });
 
@@ -88,7 +101,11 @@ Deno.serve(async (req) => {
     //    Gemini TTS 미리보기 모델은 가끔 오디오 없이 finishReason:OTHER(빈 응답)를 돌려주는
     //    알려진 버그가 있어(긴 본문일수록 잦음), 오디오가 나올 때까지 최대 5회 재시도한다.
     const prompt =
-      "다음 글을, 한국 교회 성도에게 들려주듯 밝고 따뜻하며 또렷하고 살짝 경쾌하게 낭독해 주세요. 문장 부호에 맞춰 자연스럽게 쉬세요:\n\n" +
+      "다음 글을, 40대 중후반 여성의 따뜻하고 차분한 목소리로 또렷하게 낭독해 주세요.\n" +
+      "낭독 규칙:\n" +
+      "1) 성경 본문에서 각 절 앞의 절 번호(1, 2, 3 같은 숫자)는 소리 내어 읽지 말고, 내용만 매끄럽게 이어서 읽으세요.\n" +
+      "2) '마5:1-11'이나 '시편 110:1-7'처럼 나오는 성경 구절 표기는 책 이름을 풀어서, 콜론(:)은 '장'으로(단, 시편은 '편'으로), 붙임표(-)는 '에서'로 읽으세요. 예: '마5:1-11' → '마태복음 5장 1절에서 11절'.\n" +
+      "3) 문장 부호에 맞춰 자연스럽게 쉬세요.\n\n" +
       capped;
     const body = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -126,6 +143,8 @@ Deno.serve(async (req) => {
 
     // 3) 캐시에 저장(다음부터는 공짜 재생) — 저장 실패해도 이번 재생은 정상
     await cachePut(path, wav);
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/${CACHE_BUCKET}/${path}`;
+    await logGen({ qt_date: (typeof date === "string" && date) ? date : null, label: capped.slice(0, 60), url: publicUrl, bytes: wav.length, voice: voiceName });
     return new Response(wav, { headers: { ...wavHeaders, "X-TTS-Cache": "miss" } });
   } catch (e) {
     return json({ error: "오류", detail: String((e as any)?.message || e) }, 500);

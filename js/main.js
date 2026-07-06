@@ -175,22 +175,22 @@ var WPCTts = (function () {
     browserNext(myGen);
   }
   // ── AI 음성(Gemini TTS via Edge Function) ──
-  function aiFetch(text) {
+  function aiFetch(text, date) {
     var ak = window.SUPABASE_ANON_KEY, sb = (window.SUPABASE_URL || "").replace(/\/$/, "");
     if (!ak || !sb) return Promise.reject(new Error("no-config"));
     var tok = (window.WPF && WPF.token && WPF.token()) || ak;
     return fetch(sb + "/functions/v1/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: ak, Authorization: "Bearer " + tok },
-      body: JSON.stringify({ text: text })
+      body: JSON.stringify(date ? { text: text, date: date } : { text: text })
     }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t || ("HTTP " + r.status)); }); return r.blob(); });
   }
-  function playBlob(url, myGen) {
+  function playAudio(url, myGen) {   // blob URL이든 원격 URL이든 재생(원격이면 스트리밍)
     if (!active || myGen !== gen) return;
     stopAudio();
     audio = new Audio(url);
-    audio.playbackRate = 1.2;                       // 현재보다 1.2배 빠르게
-    try { audio.preservesPitch = true; } catch (e) {}   // 빨라져도 음정 유지(목소리 자연스럽게)
+    audio.playbackRate = 1.08;                          // 현재(1.2)보다 10% 느리게
+    try { audio.preservesPitch = true; } catch (e) {}   // 음정 유지
     audio.onended = function () { if (myGen === gen) reset(); };
     audio.onerror = function () { if (myGen === gen) reset(); };
     if (btnEl) btnEl.textContent = "⏸ 낭독 멈춤";
@@ -198,28 +198,31 @@ var WPCTts = (function () {
   }
   function stopAudio() { if (audio) { try { audio.pause(); } catch (e) {} audio = null; } }
   function reset() { active = false; if (btnEl) btnEl.textContent = btnLabel; }
-  // 여러 URL을 순서대로 시도해 처음 성공한 오디오를 반환(미리 만든 로컬 음성 mp3→wav)
-  function fetchFirst(urls) {
-    var i = 0;
-    function next() {
-      if (i >= urls.length) return Promise.reject(new Error("none"));
-      var u = urls[i++];
-      return fetch(u).then(function (r) { return r.ok ? r.blob() : next(); }, function () { return next(); });
-    }
-    return next();
-  }
+  function headExists(url) { return fetch(url, { method: "HEAD" }).then(function (r) { return r.ok; }, function () { return false; }); }
   function start(text, btn, label, opts) {
     stop();
     btnEl = btn || null; btnLabel = label || "🔊 들어주기"; active = true;
     var myGen = ++gen;
-    if (btnEl) btnEl.textContent = "⏳ 음성 만드는 중… (처음 1~2분)";
-    var pre = (opts && opts.preUrls && opts.preUrls.length) ? opts.preUrls : null;
-    var key = (pre ? pre[0] : "") + "|" + text;
-    if (cache[key]) { playBlob(cache[key], myGen); return; }
-    var chain = pre ? fetchFirst(pre) : Promise.reject(new Error("no-pre"));
-    chain.catch(function () { return aiFetch(text); })   // ① 미리 만든 로컬 음성 → ② 없으면 Gemini 엣지함수
-      .then(function (b) { if (!active || myGen !== gen) return; var url = URL.createObjectURL(b); cache[key] = url; playBlob(url, myGen); })
-      .catch(function () { if (!active || myGen !== gen) return; browserStart(text, myGen); });   // ③ 그것도 없으면 기본 음성
+    if (btnEl) btnEl.textContent = "⏳ 음성 준비 중…";
+    var cands = (opts && opts.preUrls && opts.preUrls.length) ? opts.preUrls.slice() : [];
+    var date = (opts && opts.date) || null;
+    // 저장된 음원이 있으면 그 URL을 바로 스트리밍(다운로드 없이 재생), 없으면 생성
+    (function tryStream(i) {
+      if (!active || myGen !== gen) return;
+      if (i >= cands.length) { doGenerate(); return; }
+      headExists(cands[i]).then(function (ok) {
+        if (!active || myGen !== gen) return;
+        if (ok) playAudio(cands[i], myGen);            // ← 저장본 스트리밍
+        else tryStream(i + 1);
+      });
+    })(0);
+    function doGenerate() {
+      if (!active || myGen !== gen) return;
+      if (btnEl) btnEl.textContent = "⏳ 음성 만드는 중… (처음 1~2분)";
+      aiFetch(text, date)                               // 생성 → 서버가 저장 → 다음부터는 위에서 스트리밍
+        .then(function (b) { if (active && myGen === gen) playAudio(URL.createObjectURL(b), myGen); })
+        .catch(function () { if (active && myGen === gen) browserStart(text, myGen); });   // 실패 시 기본 음성
+    }
   }
   function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } if (btnEl) btnEl.textContent = btnLabel; }
   function toggle(text, btn, label, opts) { if (active) stop(); else start(text, btn, label, opts); }
@@ -548,8 +551,8 @@ window.WPCTts = WPCTts;
       (p.sections || []).forEach((s) => { const h = String(s.head || "").replace(/[^가-힣A-Za-z0-9\s]/g, " ").trim(); if (h) parts.push(h); if (s.body) parts.push(s.body); });
       let readText = parts.join(". ");
       if (!readText.trim()) readText = e.content;
-      if (readText.length > 2200) readText = readText.slice(0, 2200);   // 너무 길면 생성이 느려 잘라 읽음(과거 QT도 빨리 재생)
-      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 오늘의 말씀 듣기", { preUrls: window.WPCTts.preUrlsForDate(dotToDash(date)) });
+      const dd = dotToDash(date);
+      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 오늘의 말씀 듣기", { preUrls: window.WPCTts.preUrlsForDate(dd), date: dd });
     })();
     const items = [...dateListEl.querySelectorAll(".qt-dl-item")];
     items.forEach((b) => b.classList.toggle("active", b.dataset.date === date));

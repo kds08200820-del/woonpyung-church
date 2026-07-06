@@ -745,6 +745,10 @@ console.log('[affairs.js] v20260701dj');
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📋 오늘 QT 출석</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#0d9488;line-height:1.1;margin-top:4px" id="qtAttendNum">–</div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">아멘 한 사람 · 눌러서 명단 보기</div></div>' +
+        '<div class="fin-card" id="ttsLogCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🔊 AI 음성 생성</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#7c3aed;line-height:1.1;margin-top:4px" id="ttsLogNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">QT 낭독 저장본 · 눌러서 열람·재생</div></div>' +
         '</div>' +
         '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
         '<b style="color:var(--accent,#032257)">📖 성경 권별 커버리지</b>' +
@@ -775,6 +779,44 @@ console.log('[affairs.js] v20260701dj');
         el.onclick = function () { svcCalendarModal(el.dataset.svc, rows); };
       });
       loadQtAttendance(panel);
+      loadTtsLog(panel);
+    }
+
+    // ── AI 음성 생성 기록: 저장된 QT 낭독 음원 목록 + 재생 ──
+    function loadTtsLog(panel) {
+      var numEl = panel.querySelector('#ttsLogNum');
+      var card = panel.querySelector('#ttsLogCard');
+      if (!numEl || !card) return;
+      api('GET', 'tts_log?select=qt_date,label,url,bytes,voice,created_at&order=created_at.desc&limit=200')
+        .then(function (rows) {
+          rows = rows || [];
+          numEl.textContent = rows.length + '건';
+          card.onclick = function () { ttsLogModal(rows); };
+        })
+        .catch(function () { numEl.textContent = '–'; numEl.style.color = '#c0392b'; card.style.cursor = 'default'; });
+    }
+
+    function ttsLogModal(rows) {
+      function fmtBytes(n) { n = Number(n) || 0; return n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'; }
+      function fmtTime(s) { s = String(s || ''); var m = s.replace('T', ' ').slice(0, 16); return m || '-'; }
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      var list = rows.map(function (r) {
+        var when = r.qt_date ? fmtD(r.qt_date) : fmtTime(r.created_at);
+        return '<div style="display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0">' +
+          '<div style="flex:0 0 84px;font-size:.8rem;color:#9aa5b1">' + esc(when) + '</div>' +
+          '<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--accent,#032257);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.label || '(제목 없음)') + '</div>' +
+          '<div style="font-size:.74rem;color:#9aa5b1">' + esc(r.voice || '-') + ' · ' + fmtBytes(r.bytes) + ' · ' + esc(fmtTime(r.created_at)) + '</div></div>' +
+          (r.url ? '<audio controls preload="none" src="' + esc(r.url) + '" style="flex:0 0 210px;max-width:210px;height:34px"></audio>' : '<span style="flex:0 0 210px;font-size:.78rem;color:#c0392b">URL 없음</span>') +
+          '</div>';
+      }).join('') || '<p style="color:#9aa5b1;font-size:.9rem;padding:8px 0">아직 생성된 AI 음성이 없습니다. QT에서 🔊 오늘의 말씀 듣기를 한 번 누르면 저장됩니다.</p>';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:640px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0;color:var(--accent,#032257)">🔊 AI 음성 생성 기록 <span style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + rows.length + '건</span></h3><button class="btn btn-line" id="tl_close" style="padding:3px 11px">닫기</button></div>' +
+        '<div style="max-height:64vh;overflow:auto">' + list + '</div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#tl_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     }
 
     // ── QT 출석부: 오늘 아멘 체크한 인원 수 + 명단 ──
