@@ -84,7 +84,9 @@ Deno.serve(async (req) => {
     const cached = await cacheGet(path);
     if (cached) return new Response(cached, { headers: { ...wavHeaders, "X-TTS-Cache": "hit" } });
 
-    // 2) 없으면 Gemini로 생성
+    // 2) 없으면 Gemini로 생성.
+    //    Gemini TTS 미리보기 모델은 가끔 오디오 없이 finishReason:OTHER(빈 응답)를 돌려주는
+    //    알려진 버그가 있어(긴 본문일수록 잦음), 오디오가 나올 때까지 최대 5회 재시도한다.
     const prompt =
       "다음 글을, 한국 교회 성도에게 들려주듯 따뜻하고 차분하며 또렷하게 낭독해 주세요. 문장 부호에 맞춰 자연스럽게 쉬세요:\n\n" +
       capped;
@@ -95,18 +97,29 @@ Deno.serve(async (req) => {
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
       },
     };
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-      { method: "POST", headers: { "x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json" }, body: JSON.stringify(body) },
-    );
-    const j: any = await r.json().catch(() => ({}));
-    if (!r.ok) return json({ error: "TTS 생성 실패", detail: j?.error?.message || ("HTTP " + r.status) }, 502);
-
-    const parts = j?.candidates?.[0]?.content?.parts || [];
-    const part = parts.find((p: any) => p?.inlineData?.data);
-    const data = part?.inlineData?.data;
-    const mime = part?.inlineData?.mimeType || "audio/L16;rate=24000";
-    if (!data) return json({ error: "오디오 응답 없음", detail: JSON.stringify(j).slice(0, 300) }, 502);
+    let data: string | undefined;
+    let mime = "audio/L16;rate=24000";
+    let lastDetail = "";
+    for (let attempt = 0; attempt < 5 && !data; attempt++) {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+        { method: "POST", headers: { "x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json" }, body: JSON.stringify(body) },
+      );
+      const j: any = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        lastDetail = j?.error?.message || ("HTTP " + r.status);
+        if (r.status === 429 || r.status >= 500) continue;   // 일시적 오류만 재시도
+        return json({ error: "TTS 생성 실패", detail: lastDetail }, 502);
+      }
+      const part = (j?.candidates?.[0]?.content?.parts || []).find((p: any) => p?.inlineData?.data);
+      if (part?.inlineData?.data) {
+        data = part.inlineData.data;
+        mime = part.inlineData.mimeType || mime;
+      } else {
+        lastDetail = "빈 응답(finishReason OTHER) — 재시도";   // 알려진 버그: 다시 시도
+      }
+    }
+    if (!data) return json({ error: "오디오 생성 실패(재시도 후에도 빈 응답)", detail: lastDetail }, 502);
 
     const rate = Number((mime.match(/rate=(\d+)/) || [])[1]) || 24000;
     const wav = pcmToWav(b64ToBytes(data), rate);
