@@ -505,10 +505,50 @@
     upModal.querySelector("#upPick").addEventListener("click", () => input.click());
     drop.addEventListener("click", (e) => { if (e.target === drop || e.target.closest(".up-drop-in") && !e.target.closest("button")) input.click(); });
     input.addEventListener("change", () => { addFiles(input.files); input.value = ""; });
-    // 📷 카메라로 바로 찍기 (모바일: capture 속성으로 카메라 실행 → 찍은 사진이 그대로 추가됨)
+    // 📷 카메라로 찍기 — 기기가 capture를 무시하고 갤러리로 새는 문제 대응:
+    // 웹 자체 카메라(getUserMedia)를 팝업으로 띄워 실제 촬영. (미지원 기기는 capture 입력으로 폴백)
     const camInput = upModal.querySelector("#upCamera");
-    upModal.querySelector("#upCam").addEventListener("click", () => camInput.click());
     camInput.addEventListener("change", () => { addFiles(camInput.files); camInput.value = ""; });
+    let camStream = null, camFacing = "environment", camPop = null, camVideo = null;
+    function stopCamStream() { if (camStream) { camStream.getTracks().forEach((t) => t.stop()); camStream = null; } }
+    function closeCamera() { stopCamStream(); if (camPop) camPop.style.display = "none"; }
+    async function startCam() {
+      stopCamStream();
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: camFacing } }, audio: false });
+        camVideo.srcObject = camStream;
+      } catch (e) { closeCamera(); alert("카메라를 열 수 없습니다: " + ((e && e.name) || e) + "\n브라우저에서 카메라 권한을 허용하거나, ‘사진 선택’으로 갤러리에서 올려 주세요."); }
+    }
+    function shootPhoto() {
+      if (!camVideo || !camVideo.videoWidth) return;
+      const c = document.createElement("canvas"); c.width = camVideo.videoWidth; c.height = camVideo.videoHeight;
+      c.getContext("2d").drawImage(camVideo, 0, 0);
+      c.toBlob((blob) => { if (blob) addFiles([new File([blob], "photo-" + Date.now() + ".jpg", { type: "image/jpeg" })]); closeCamera(); }, "image/jpeg", 0.92);
+    }
+    function buildCamPop() {
+      camPop = document.createElement("div");
+      camPop.style.cssText = "position:fixed;inset:0;z-index:12000;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center";
+      camPop.innerHTML =
+        '<video playsinline autoplay muted style="max-width:100%;max-height:100%;object-fit:contain"></video>' +
+        '<button type="button" data-cam="close" aria-label="닫기" style="position:absolute;top:16px;right:16px;width:46px;height:46px;border:0;border-radius:50%;background:rgba(255,255,255,.22);color:#fff;font-size:1.4rem;cursor:pointer">✕</button>' +
+        '<button type="button" data-cam="flip" aria-label="앞뒤 전환" style="position:absolute;top:16px;left:16px;width:46px;height:46px;border:0;border-radius:50%;background:rgba(255,255,255,.22);color:#fff;font-size:1.2rem;cursor:pointer">🔄</button>' +
+        '<button type="button" data-cam="shoot" aria-label="촬영" style="position:absolute;bottom:34px;left:50%;transform:translateX(-50%);width:76px;height:76px;border:5px solid #fff;border-radius:50%;background:rgba(255,255,255,.35);cursor:pointer"></button>';
+      document.body.appendChild(camPop);
+      camVideo = camPop.querySelector("video");
+      camPop.addEventListener("click", (e) => {
+        const act = e.target.getAttribute("data-cam");
+        if (act === "close") closeCamera();
+        else if (act === "flip") { camFacing = camFacing === "environment" ? "user" : "environment"; startCam(); }
+        else if (act === "shoot") shootPhoto();
+      });
+    }
+    function openCamera() {
+      if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { camInput.click(); return; }  // 미지원 → capture 폴백
+      if (!camPop) buildCamPop();
+      camPop.style.display = "flex";
+      startCam();
+    }
+    upModal.querySelector("#upCam").addEventListener("click", openCamera);
     ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("drag"); }));
     ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); if (ev === "dragleave" && drop.contains(e.relatedTarget)) return; drop.classList.remove("drag"); }));
     drop.addEventListener("drop", (e) => { if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
