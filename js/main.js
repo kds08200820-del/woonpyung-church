@@ -212,7 +212,7 @@ var WPCTts = (function () {
     stop();
     btnEl = btn || null; btnLabel = label || "🔊 들어주기"; active = true;
     var myGen = ++gen;
-    if (btnEl) btnEl.textContent = "⏳ 준비 중…";
+    if (btnEl) btnEl.textContent = "⏳ 음성 만드는 중… (처음 1~2분)";
     var pre = (opts && opts.preUrls && opts.preUrls.length) ? opts.preUrls : null;
     var key = (pre ? pre[0] : "") + "|" + text;
     if (cache[key]) { playBlob(cache[key], myGen); return; }
