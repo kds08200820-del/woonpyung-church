@@ -189,6 +189,8 @@ var WPCTts = (function () {
     if (!active || myGen !== gen) return;
     stopAudio();
     audio = new Audio(url);
+    audio.playbackRate = 1.2;                       // 현재보다 1.2배 빠르게
+    try { audio.preservesPitch = true; } catch (e) {}   // 빨라져도 음정 유지(목소리 자연스럽게)
     audio.onended = function () { if (myGen === gen) reset(); };
     audio.onerror = function () { if (myGen === gen) reset(); };
     if (btnEl) btnEl.textContent = "⏸ 낭독 멈춤";
@@ -546,6 +548,7 @@ window.WPCTts = WPCTts;
       (p.sections || []).forEach((s) => { const h = String(s.head || "").replace(/[^가-힣A-Za-z0-9\s]/g, " ").trim(); if (h) parts.push(h); if (s.body) parts.push(s.body); });
       let readText = parts.join(". ");
       if (!readText.trim()) readText = e.content;
+      if (readText.length > 2200) readText = readText.slice(0, 2200);   // 너무 길면 생성이 느려 잘라 읽음(과거 QT도 빨리 재생)
       btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 오늘의 말씀 듣기", { preUrls: window.WPCTts.preUrlsForDate(dotToDash(date)) });
     })();
     const items = [...dateListEl.querySelectorAll(".qt-dl-item")];

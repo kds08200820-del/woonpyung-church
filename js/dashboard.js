@@ -271,6 +271,7 @@ console.log('[dashboard.js] v20260705qtfallback');
           if (q.content) parts.push(plain(q.content));
           if (q.prayer) parts.push(plain(q.prayer));
           var readText = parts.join('. ');
+          if (readText.length > 2200) readText = readText.slice(0, 2200);   // 길면 잘라 읽어 생성 지연 방지
           tb.onclick = function () {
             var starting = tb.textContent.indexOf('멈춤') < 0 && tb.textContent.indexOf('준비') < 0;
             if (starting) { openFull(); try { document.getElementById('dashQtFull').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }

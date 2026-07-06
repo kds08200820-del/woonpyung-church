@@ -13,7 +13,7 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const MODEL = "gemini-2.5-flash-preview-tts";
-const DEFAULT_VOICE = "Kore"; // 차분한 여성 톤. 다른 후보: Charon(남), Puck, Aoede, Leda, Zephyr ...
+const DEFAULT_VOICE = "Autonoe"; // 밝은 톤. 다른 후보: Zephyr(밝음)·Leda(젊음)·Aoede(산뜻)·Kore(차분)·Charon/Puck(남)
 const CACHE_BUCKET = "tts-cache";
 
 const cors = {
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     const { text, voice } = await req.json().catch(() => ({} as any));
     const clean = String(text ?? "").trim();
     if (!clean) return json({ error: "text 없음" }, 400);
-    const capped = clean.slice(0, 4000); // 비용·지연 상한(약 4천 자)
+    const capped = clean.slice(0, 2500); // 비용·지연 상한(길면 생성이 느려져 잘라 읽음)
     const voiceName = String(voice || DEFAULT_VOICE);
 
     // 1) 캐시 확인 — 같은 (목소리+글)이면 저장본을 바로 반환(재생성 안 함)
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     //    Gemini TTS 미리보기 모델은 가끔 오디오 없이 finishReason:OTHER(빈 응답)를 돌려주는
     //    알려진 버그가 있어(긴 본문일수록 잦음), 오디오가 나올 때까지 최대 5회 재시도한다.
     const prompt =
-      "다음 글을, 한국 교회 성도에게 들려주듯 따뜻하고 차분하며 또렷하게 낭독해 주세요. 문장 부호에 맞춰 자연스럽게 쉬세요:\n\n" +
+      "다음 글을, 한국 교회 성도에게 들려주듯 밝고 따뜻하며 또렷하고 살짝 경쾌하게 낭독해 주세요. 문장 부호에 맞춰 자연스럽게 쉬세요:\n\n" +
       capped;
     const body = {
       contents: [{ parts: [{ text: prompt }] }],
