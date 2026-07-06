@@ -3270,7 +3270,8 @@ console.log('[affairs.js] v20260701dj');
         var qtData = {
           sermon_date: mainData.sermon_date, service: '매일 QT',
           title: mainData.title, scripture: mainData.scripture, preacher: mainData.preacher,
-          content: mainData.content, bible_text: mainData.bible_text, qt_bible_text: mainData.qt_bible_text
+          content: mainData.content, bible_text: mainData.bible_text, qt_bible_text: mainData.qt_bible_text,
+          prayer: mainData.prayer   // 기도를 새벽기도·매일 QT 둘 다 함께 저장
         };
         api('GET', 'sermons?select=id&service=eq.' + encodeURIComponent('매일 QT') + '&sermon_date=eq.' + encodeURIComponent(mainData.sermon_date) + '&limit=1')
           .then(function (rows) {
