@@ -196,9 +196,8 @@ var WPCTts = (function () {
     if (btnEl) btnEl.textContent = "⏸ 낭독 멈춤";
     audio.play().catch(function () { });
   }
-  function stopAudio() { if (audio) { try { audio.pause(); } catch (e) {} audio = null; } }
+  function stopAudio() { if (audio) { try { audio.pause(); } catch (e) {} try { audio.onerror = audio.oncanplay = audio.onended = null; } catch (e) {} audio = null; } }
   function reset() { active = false; if (btnEl) btnEl.textContent = btnLabel; }
-  function headExists(url) { return fetch(url, { method: "HEAD" }).then(function (r) { return r.ok; }, function () { return false; }); }
   function start(text, btn, label, opts) {
     stop();
     btnEl = btn || null; btnLabel = label || "🔊 들어주기"; active = true;
@@ -206,22 +205,36 @@ var WPCTts = (function () {
     if (btnEl) btnEl.textContent = "⏳ 음성 준비 중…";
     var cands = (opts && opts.preUrls && opts.preUrls.length) ? opts.preUrls.slice() : [];
     var date = (opts && opts.date) || null;
-    // 저장된 음원이 있으면 그 URL을 바로 스트리밍(다운로드 없이 재생), 없으면 생성
+    // ① 저장된 음원 후보(qt-<날짜>.mp3/.wav)를 실제로 로드 시도 → 존재하면 바로 재생(스트리밍)
+    //    HEAD 확인은 일부 모바일에서 불안정하므로, 오디오 요소 로드 성공(=존재) 여부로 판단한다.
     (function tryStream(i) {
       if (!active || myGen !== gen) return;
-      if (i >= cands.length) { doGenerate(); return; }
-      headExists(cands[i]).then(function (ok) {
-        if (!active || myGen !== gen) return;
-        if (ok) playAudio(cands[i], myGen);            // ← 저장본 스트리밍
-        else tryStream(i + 1);
-      });
+      if (i >= cands.length) { doGenerate(); return; }   // 후보 모두 없음 → 생성
+      var a = new Audio();
+      a.preload = "auto";
+      a.playbackRate = 1.08;                              // 10% 느리게
+      try { a.preservesPitch = true; } catch (e) {}
+      var moved = false;
+      function nextOne() { if (moved) return; moved = true; try { a.pause(); } catch (e) {} tryStream(i + 1); }
+      a.onerror = nextOne;                                // 파일 없음/로드 실패 → 다음 후보
+      a.oncanplay = function () {                         // 로드 성공(=저장본 존재) → 이 음원을 재생
+        if (moved) return; moved = true;
+        if (!active || myGen !== gen) { try { a.pause(); } catch (e) {} return; }
+        audio = a;
+        audio.onended = function () { if (myGen === gen) reset(); };
+        audio.onerror = function () { if (myGen === gen) reset(); };
+        if (btnEl) btnEl.textContent = "⏸ 낭독 멈춤";
+        audio.play().catch(function () { });
+      };
+      a.src = cands[i];
+      try { a.load(); } catch (e) { nextOne(); }
     })(0);
-    function doGenerate() {
+    function doGenerate() {                               // ② 저장본 없음 → Gemini 생성(서버가 저장) → 다음부터 ①에서 재생
       if (!active || myGen !== gen) return;
       if (btnEl) btnEl.textContent = "⏳ 음성 만드는 중… (처음 1~2분)";
-      aiFetch(text, date)                               // 생성 → 서버가 저장 → 다음부터는 위에서 스트리밍
+      aiFetch(text, date)
         .then(function (b) { if (active && myGen === gen) playAudio(URL.createObjectURL(b), myGen); })
-        .catch(function () { if (active && myGen === gen) browserStart(text, myGen); });   // 실패 시 기본 음성
+        .catch(function () { if (active && myGen === gen) browserStart(text, myGen); });   // ③ 실패 시 기본 음성
     }
   }
   function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } if (btnEl) btnEl.textContent = btnLabel; }
