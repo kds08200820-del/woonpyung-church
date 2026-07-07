@@ -286,12 +286,22 @@ console.log('[dashboard.js] v20260705qtfallback');
     // ── 성경 듣기: 브라우저 내장 음성(비용·생성 대기 없음). 절 단위로 끊어 읽어 호흡이 자연스럽고,
     //    읽는 절을 하이라이트+자동 스크롤. 절을 누르면 그 절부터 듣는다. 절 번호는 읽지 않음.
     var tts = { on: false, gen: 0, idx: 0, items: [], btn: null };
+    var TTS_LSK = 'wpBibleTtsPos';   // 멈춘 위치 저장(일차별) → 다음에 이어 듣기
+    function savePos() {
+      try {
+        if (tts.idx > 0 && tts.idx < tts.items.length) localStorage.setItem(TTS_LSK, JSON.stringify({ d: day.d, i: tts.idx }));
+        else { var sv = JSON.parse(localStorage.getItem(TTS_LSK) || 'null'); if (sv && sv.d === day.d) localStorage.removeItem(TTS_LSK); }
+      } catch (e) { }
+    }
+    function ttsBtnLabel() { if (tts.btn) tts.btn.textContent = tts.idx > 0 ? '🔊 이어 듣기' : '🔊 듣기'; }
     function ttsHi(el, on) { if (el) { el.style.background = on ? 'rgba(249,222,116,.5)' : ''; el.style.borderRadius = on ? '6px' : ''; } }
-    function ttsStop() {
+    function ttsStop(finished) {
       tts.gen++; tts.on = false;
       if (tts.items[tts.idx]) ttsHi(tts.items[tts.idx].el, false);
       try { speechSynthesis.cancel(); } catch (e) { }
-      if (tts.btn) tts.btn.textContent = '🔊 듣기';
+      if (finished) tts.idx = 0;   // 끝까지 들었으면 처음으로
+      savePos();
+      ttsBtnLabel();
     }
     function ttsSpeakFrom(i) {
       tts.gen++; var myGen = tts.gen;
@@ -301,14 +311,14 @@ console.log('[dashboard.js] v20260705qtfallback');
       if (tts.btn) tts.btn.textContent = '⏸ 멈춤';
       (function next() {
         if (!tts.on || myGen !== tts.gen) return;
-        if (tts.idx >= tts.items.length) { ttsStop(); return; }
+        if (tts.idx >= tts.items.length) { ttsStop(true); return; }
         var it = tts.items[tts.idx];
         ttsHi(it.el, true);
         try { it.el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { }
         var u = new SpeechSynthesisUtterance(it.text);
         u.lang = 'ko-KR'; var v = brBestVoice(); if (v) u.voice = v;
         u.rate = 0.95; u.pitch = 1.0;                       // 살짝 느리게 — 낭독 톤
-        u.onend = function () { if (myGen !== tts.gen) return; ttsHi(it.el, false); tts.idx++; next(); };
+        u.onend = function () { if (myGen !== tts.gen) return; ttsHi(it.el, false); tts.idx++; savePos(); next(); };
         u.onerror = function () { if (myGen !== tts.gen) return; ttsHi(it.el, false); tts.idx++; next(); };
         try { speechSynthesis.speak(u); } catch (e) { ttsStop(); }
       })();
@@ -345,7 +355,13 @@ console.log('[dashboard.js] v20260705qtfallback');
         text = String(text || '').trim();
         if (text) tts.items.push({ el: el, text: text });
       });
+      // 지난번에 멈춘 절이 있으면 그 자리에서 이어 듣기
+      try {
+        var sv = JSON.parse(localStorage.getItem(TTS_LSK) || 'null');
+        if (sv && sv.d === day.d && sv.i > 0 && sv.i < tts.items.length) tts.idx = sv.i;
+      } catch (e) { }
       tts.btn = ov.querySelector('#brm_tts');
+      ttsBtnLabel();
       if (tts.btn) tts.btn.onclick = function () { if (tts.on) ttsStop(); else ttsSpeakFrom(tts.idx < tts.items.length ? tts.idx : 0); };
       // 절을 누르면 그 절부터 듣기(듣는 중이 아니어도 그 절부터 시작)
       tts.items.forEach(function (it, i) {
@@ -387,15 +403,64 @@ console.log('[dashboard.js] v20260705qtfallback');
     ov.innerHTML = '<div style="background:#f7f9fc;border-radius:14px;max-width:720px;width:100%;padding:20px 18px;box-shadow:0 24px 60px rgba(0,0,0,.32)">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">📖 구속사 성경읽기 365 <span id="brt_cnt" style="font-size:.84rem;color:#9aa5b1;font-weight:600">' + BR.rows.length + '/365</span></h3><button class="btn btn-line" id="brt_close" style="padding:4px 12px">닫기</button></div>' +
       '<p style="margin:0 0 12px;font-size:.76rem;color:#9aa5b1">체크를 눌러 지난 일차를 채우거나 해제할 수 있습니다 · 📖 를 누르면 우리말성경 본문이 열립니다</p>' +
-      '<div style="max-height:64vh;overflow:auto">' + groups + '</div></div>';
+      '<div style="max-height:64vh;overflow:auto"><div id="brt_cov"></div>' + groups + '</div></div>';
     document.body.appendChild(ov); document.body.style.overflow = 'hidden';
     function closeDom() { ov.remove(); document.body.style.overflow = ''; paintBibleCard(cardEl, head); }   // 닫을 때 카드 갱신
     if (window.ModalNav) window.ModalNav.open(closeDom);
     function close() { if (window.ModalNav && window.ModalNav.close()) return; closeDom(); }
     ov.querySelector('#brt_close').onclick = close;
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+
+    // ── 성경 전체 커버리지: 66권 각각 몇 장을 읽었는지 한눈에(권별 읽은 장/전체 장) ──
+    var ORDER_OT = ['창', '출', '레', '민', '신', '수', '삿', '룻', '삼상', '삼하', '왕상', '왕하', '대상', '대하', '스', '느', '에', '욥', '시', '잠', '전', '아', '사', '렘', '애', '겔', '단', '호', '욜', '암', '옵', '욘', '미', '나', '합', '습', '학', '슥', '말'];
+    var ORDER_NT = ['마', '막', '눅', '요', '행', '롬', '고전', '고후', '갈', '엡', '빌', '골', '살전', '살후', '딤전', '딤후', '딛', '몬', '히', '약', '벧전', '벧후', '요일', '요이', '요삼', '유', '계'];
+    function paintCov() {
+      var box = ov.querySelector('#brt_cov'); if (!box) return;
+      var doneNow = {}; BR.rows.forEach(function (r) { doneNow[r.day_no] = 1; });
+      var total = {}, read = {};   // 책별 장 집합 (읽기표가 성경 1189장 전체를 정확히 1회 커버함이 검증돼 있어 total=권별 전체 장수)
+      P.days.forEach(function (d) {
+        var isDone = doneNow[d.d];
+        (d.refs || []).forEach(function (rf) {
+          var ab = rf[0];
+          var t = total[ab] || (total[ab] = {}), rd = read[ab] || (read[ab] = {});
+          for (var c = rf[1]; c <= rf[2]; c++) { t[c] = 1; if (isDone) rd[c] = 1; }
+        });
+      });
+      var totCh = 0, readCh = 0;
+      Object.keys(total).forEach(function (ab) { totCh += Object.keys(total[ab]).length; readCh += Object.keys(read[ab] || {}).length; });
+      function cells(list) {
+        var doneBooks = 0;
+        var html = list.map(function (ab) {
+          var t = Object.keys(total[ab] || {}).length, r = Object.keys(read[ab] || {}).length;
+          if (!t) return '';
+          var full = r >= t; if (full) doneBooks++;
+          var st = full
+            ? 'background:#e7f4ea;border-color:#a9d5b3;color:#1e6b35'
+            : (r > 0 ? 'background:#eaf1fb;border-color:#b9cff0;color:#2c4a7c' : 'background:#f6f8fb;border-color:#e4e9f1;color:#a6afbd');
+          return '<div style="border:1px solid;border-radius:8px;padding:6px 4px;text-align:center;min-height:44px;display:flex;flex-direction:column;justify-content:center;gap:1px;' + st + '">' +
+            '<span style="font-size:.76rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(P.names[ab] || ab) + '</span>' +
+            '<span style="font-size:.68rem;font-weight:600">' + (full ? '✓ ' + t + '장' : (r > 0 ? r + '/' + t + '장' : '·')) + '</span></div>';
+        }).join('');
+        return { html: html, done: doneBooks };
+      }
+      var ot = cells(ORDER_OT), nt = cells(ORDER_NT);
+      var pct = totCh ? Math.round(readCh / totCh * 100) : 0;
+      box.innerHTML = '<div style="border:1px solid #e6ebf2;border-radius:10px;background:#fff;padding:12px;margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:7px">' +
+        '<b style="color:var(--accent,#032257);font-size:.9rem">📖 성경 전체 진도</b>' +
+        '<span style="font-size:.78rem;color:#5b6b7d">' + readCh + ' / ' + totCh + '장 · <b style="color:var(--accent,#032257)">' + pct + '%</b></span></div>' +
+        '<div style="background:#eef2f7;border-radius:6px;height:9px;overflow:hidden;margin-bottom:11px"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#3a6db5,#032257)"></div></div>' +
+        '<div style="font-size:.74rem;color:#7b8794;font-weight:700;margin-bottom:5px">구약 <span style="color:#1f6feb">' + ot.done + '</span>/39권 완독</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:5px;margin-bottom:11px">' + ot.html + '</div>' +
+        '<div style="font-size:.74rem;color:#7b8794;font-weight:700;margin-bottom:5px">신약 <span style="color:#d6455a">' + nt.done + '</span>/27권 완독</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:5px">' + nt.html + '</div>' +
+        '</div>';
+    }
+    paintCov();
+
     function refreshCnt() {
       var c = ov.querySelector('#brt_cnt'); if (c) c.textContent = BR.rows.length + '/365';
+      paintCov();   // 체크가 바뀌면 성경 전체 진도도 함께 갱신
     }
     Array.prototype.forEach.call(ov.querySelectorAll('.br-ck'), function (ck) {
       ck.onchange = function () {
