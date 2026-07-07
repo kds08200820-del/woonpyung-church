@@ -78,6 +78,20 @@ async function logGen(row: Record<string, unknown>) {
   } catch { /* 로그 실패 무시 */ }
 }
 
+// 요청자가 관리자(admins 테이블)인지 확인 — 목록/삭제 같은 관리 액션 전용
+async function isAdminCaller(req: Request): Promise<boolean> {
+  try {
+    const auth = req.headers.get("authorization") || "";
+    if (!auth) return false;
+    const ur = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { Authorization: auth, apikey: SERVICE_KEY } });
+    if (!ur.ok) return false;
+    const uid = (await ur.json())?.id;
+    if (!uid) return false;
+    const ar = await fetch(`${SUPABASE_URL}/rest/v1/admins?uid=eq.${uid}&select=uid&limit=1`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
+    return ar.ok && (((await ar.json()) || []).length > 0);
+  } catch { return false; }
+}
+
 // 낭독 지침(모든 조각에 동일 적용). 지침 줄은 소리 내지 않고 스타일로만 반영됨.
 const RULES =
   "다음 글을, 40대 중후반 여성의 따뜻하고 차분한 목소리로 또렷하게 낭독해 주세요.\n" +
@@ -133,7 +147,41 @@ Deno.serve(async (req) => {
     new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
   try {
     if (!GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY 미설정 — Supabase 시크릿에 추가하세요." }, 500);
-    const { text, voice, date, sig } = await req.json().catch(() => ({} as any));
+    const { text, voice, date, sig, action, path: reqPath } = await req.json().catch(() => ({} as any));
+
+    // ── 관리 액션(관리자 전용): 저장 음원 목록 / 삭제 ──
+    //    브라우저에서 storage를 직접 지우려면 storage.objects RLS 정책이 필요한데, SQL Editor에서
+    //    정책 생성이 막힌 프로젝트가 있어 삭제가 조용히 실패했음 → 서비스 키를 가진 이 함수가 대신 처리한다.
+    if (action === "list" || action === "delete") {
+      if (!(await isAdminCaller(req))) return json({ error: "관리자 전용" }, 403);
+      if (action === "list") {
+        const r = await fetch(`${SUPABASE_URL}/storage/v1/object/list/${CACHE_BUCKET}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ prefix: "", limit: 500, sortBy: { column: "created_at", order: "desc" } }),
+        });
+        const rows: any[] = r.ok ? await r.json() : [];
+        const files = (rows || [])
+          .filter((x) => x?.name && x.name !== ".emptyFolderPlaceholder")
+          .map((x) => ({ name: x.name, size: x?.metadata?.size ?? null, created_at: x.created_at ?? null }));
+        return json({ ok: true, files });
+      }
+      const p = String(reqPath || "");
+      if (!/^[A-Za-z0-9._-]{1,120}\.(wav|mp3)$/.test(p)) return json({ error: "잘못된 경로" }, 400);
+      const dr = await fetch(`${SUPABASE_URL}/storage/v1/object/${CACHE_BUCKET}/${p}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
+      });
+      if (!dr.ok && dr.status !== 404) return json({ error: "파일 삭제 실패", status: dr.status }, 502);
+      // 같은 파일을 가리키는 생성 기록도 함께 정리
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/tts_log?url=like.${encodeURIComponent("*" + p)}`, {
+          method: "DELETE",
+          headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+        });
+      } catch { /* 기록 정리 실패는 무시 */ }
+      return json({ ok: true });
+    }
     const clean = String(text ?? "").trim();
     if (!clean) return json({ error: "text 없음" }, 400);
     const capped = clean.slice(0, 12000); // 사실상 제한 없음(QT는 최대 ~4천 자). 폭주 방지용 안전 상한만.

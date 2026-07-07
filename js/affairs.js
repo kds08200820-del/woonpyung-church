@@ -782,73 +782,92 @@ console.log('[affairs.js] v20260701dj');
       loadTtsLog(panel);
     }
 
-    // ── AI 음성 생성 기록: 저장된 QT 낭독 음원 목록 + 재생 ──
+    // ── AI 음성: 저장소의 '실제 파일'을 열람·재생·삭제 ──
+    //    (예전에는 생성 기록(tts_log)만 보여줘, 파일 삭제가 권한 문제로 조용히 실패해도
+    //     "지워진 것처럼" 보이는 문제가 있었음 → 목록·삭제 모두 tts 함수(서비스 권한)로 처리)
+    function ttsAdminApi(body) {
+      var s = sess();
+      return fetch(SB + '/functions/v1/tts', {
+        method: 'POST',
+        headers: { apikey: AK, Authorization: 'Bearer ' + ((s && s.token) || AK), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) { j._http = r.status; return j; });
+      });
+    }
     function loadTtsLog(panel) {
       var numEl = panel.querySelector('#ttsLogNum');
       var card = panel.querySelector('#ttsLogCard');
       if (!numEl || !card) return;
-      api('GET', 'tts_log?select=qt_date,label,url,bytes,voice,created_at&order=created_at.desc&limit=200')
-        .then(function (rows) {
-          rows = rows || [];
-          numEl.textContent = rows.length + '건';
-          card.onclick = function () { ttsLogModal(rows); };
-        })
-        .catch(function () { numEl.textContent = '–'; numEl.style.color = '#c0392b'; card.style.cursor = 'default'; });
+      Promise.all([
+        ttsAdminApi({ action: 'list' }),
+        api('GET', 'tts_log?select=qt_date,label,url,voice,created_at&order=created_at.desc&limit=300').catch(function () { return []; })
+      ]).then(function (rs) {
+        var files = (rs[0] && rs[0].ok && rs[0].files) || null, logs = rs[1] || [];
+        if (!files) {   // 함수가 아직 구버전(관리 액션 없음) → 기록 개수만 표시 + 안내
+          numEl.textContent = logs.length + '건';
+          card.onclick = function () { alert('저장된 음원 파일을 열람·삭제하려면 Supabase에서 tts 함수를 최신 index.ts로 재배포해 주세요.'); };
+          return;
+        }
+        numEl.textContent = files.length + '개';
+        card.onclick = function () { ttsFilesModal(files.slice(), logs, panel); };
+      }).catch(function () { numEl.textContent = '–'; numEl.style.color = '#c0392b'; card.style.cursor = 'default'; });
     }
 
-    function ttsLogModal(rows) {
-      function fmtBytes(n) { n = Number(n) || 0; return n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'; }
+    function ttsFilesModal(files, logs, panel) {
+      function fmtBytes(n) { n = Number(n) || 0; if (!n) return '-'; return n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'; }
       function fmtTime(s) { s = String(s || ''); var m = s.replace('T', ' ').slice(0, 16); return m || '-'; }
-      rows = (rows || []).slice();
+      function logFor(name) {   // 파일명과 생성 기록을 짝지어 제목·목소리 표시
+        for (var i = 0; i < logs.length; i++) { var u = String(logs[i].url || ''); if (u.slice(-name.length - 1) === '/' + name) return logs[i]; }
+        return null;
+      }
+      function dateOf(name) { var m = String(name).match(/^qt-(\d{4}-\d{2}-\d{2})/); return m ? m[1] : ''; }
       var ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
-      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:660px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0;color:var(--accent,#032257)">🔊 AI 음성 생성 기록 <span id="tl_cnt" style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + rows.length + '건</span></h3><button class="btn btn-line" id="tl_close" style="padding:3px 11px">닫기</button></div>' +
-        '<div id="tl_body" style="max-height:64vh;overflow:auto"></div></div>';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:680px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">🔊 저장된 AI 음성 <span id="tl_cnt" style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + files.length + '개</span></h3><button class="btn btn-line" id="tl_close" style="padding:3px 11px">닫기</button></div>' +
+        '<p style="margin:0 0 10px;font-size:.76rem;color:#9aa5b1">저장소에 실제로 존재하는 파일 목록입니다. 삭제하면 파일이 즉시 지워집니다(오늘·내일 QT는 자동 생성이 다시 만들 수 있음).</p>' +
+        '<div id="tl_body" style="max-height:62vh;overflow:auto"></div></div>';
       document.body.appendChild(ov);
       var close = pushBackClose(function () { ov.remove(); });
       ov.querySelector('#tl_close').onclick = close;
       ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
       var body = ov.querySelector('#tl_body'), cntEl = ov.querySelector('#tl_cnt');
 
-      function storagePathOf(url) { var m = String(url || '').match(/\/tts-cache\/(.+)$/); return m ? m[1] : ''; }
-
       function paint() {
-        if (!rows.length) { body.innerHTML = '<p style="color:#9aa5b1;font-size:.9rem;padding:8px 0">아직 생성된 AI 음성이 없습니다. QT에서 🔊 오늘의 말씀 듣기를 한 번 누르면 저장됩니다.</p>'; cntEl.textContent = '0건'; return; }
-        cntEl.textContent = rows.length + '건';
-        body.innerHTML = rows.map(function (r, i) {
-          var when = r.qt_date ? fmtD(r.qt_date) : fmtTime(r.created_at);
-          return '<div class="tl-row" data-i="' + i + '" style="display:flex;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0">' +
+        if (!files.length) { body.innerHTML = '<p style="color:#9aa5b1;font-size:.9rem;padding:8px 0">저장된 AI 음성이 없습니다. QT에서 🔊 오늘의 말씀 듣기를 한 번 누르면 저장됩니다.</p>'; cntEl.textContent = '0개'; return; }
+        cntEl.textContent = files.length + '개';
+        body.innerHTML = files.map(function (f, i) {
+          var lg = logFor(f.name), d = dateOf(f.name);
+          var when = d ? fmtD(d) : fmtTime(f.created_at);
+          var title = (lg && lg.label) || f.name;
+          var sub = [(lg && lg.voice) || null, fmtBytes(f.size), fmtTime(f.created_at)].filter(Boolean).join(' · ');
+          var url = SB + '/storage/v1/object/public/tts-cache/' + encodeURIComponent(f.name);
+          return '<div style="display:flex;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0">' +
             '<div style="flex:0 0 78px;font-size:.8rem;color:#9aa5b1">' + esc(when) + '</div>' +
-            '<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--accent,#032257);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(r.label || '(제목 없음)') + '</div>' +
-            '<div style="font-size:.74rem;color:#9aa5b1">' + esc(r.voice || '-') + ' · ' + fmtBytes(r.bytes) + ' · ' + esc(fmtTime(r.created_at)) + '</div></div>' +
-            (r.url ? '<audio controls preload="none" src="' + esc(r.url) + '" style="flex:0 0 190px;max-width:190px;height:34px"></audio>' : '<span style="flex:0 0 190px;font-size:.78rem;color:#c0392b">URL 없음</span>') +
-            '<button class="btn btn-line tl-del" data-i="' + i + '" title="삭제" style="flex:0 0 auto;padding:4px 9px;color:#c0392b;border-color:#e6b3b3">🗑</button>' +
+            '<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--accent,#032257);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + esc(f.name) + '">' + esc(title) + '</div>' +
+            '<div style="font-size:.74rem;color:#9aa5b1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(sub) + '</div></div>' +
+            '<audio controls preload="none" src="' + esc(url) + '" style="flex:0 0 190px;max-width:190px;height:34px"></audio>' +
+            '<button class="btn btn-line tl-del" data-i="' + i + '" title="파일 삭제" style="flex:0 0 auto;padding:4px 9px;color:#c0392b;border-color:#e6b3b3">🗑</button>' +
             '</div>';
         }).join('');
         Array.prototype.forEach.call(body.querySelectorAll('.tl-del'), function (b) {
-          b.onclick = function () { delRow(Number(b.dataset.i), b); };
+          b.onclick = function () { delFile(Number(b.dataset.i), b); };
         });
       }
 
-      function delRow(i, btn) {
-        var r = rows[i]; if (!r) return;
-        if (!confirm('이 AI 음성 기록을 삭제할까요?\n\n' + (r.label || '') + '\n(' + fmtTime(r.created_at) + ')\n\n저장된 음원 파일도 함께 삭제됩니다.')) return;
+      function delFile(i, btn) {
+        var f = files[i]; if (!f) return;
+        var lg = logFor(f.name);
+        if (!confirm('이 AI 음성 파일을 삭제할까요?\n\n' + ((lg && lg.label) || f.name) + '\n(' + fmtBytes(f.size) + ')\n\n삭제하면 다음 재생 때 새로 생성됩니다.')) return;
         btn.disabled = true; btn.textContent = '…';
-        // 같은 파일(url)을 가리키는 다른 기록이 없을 때만 저장 파일도 삭제
-        var others = rows.filter(function (x, j) { return j !== i && x.url && x.url === r.url; }).length;
-        var path = storagePathOf(r.url);
-        var delFile = (others === 0 && path)
-          ? fetch(SB + '/storage/v1/object/tts-cache/' + path, { method: 'DELETE', headers: { apikey: AK, Authorization: 'Bearer ' + (sess() && sess().token) } }).catch(function () {})
-          : Promise.resolve();
-        delFile.then(function () {
-          return api('DELETE', 'tts_log?created_at=eq.' + encodeURIComponent(r.created_at), null, 'return=minimal');
-        }).then(function () {
-          rows.splice(i, 1); paint();
-          var numEl = panel.querySelector('#ttsLogNum'); if (numEl) numEl.textContent = rows.length + '건';
+        ttsAdminApi({ action: 'delete', path: f.name }).then(function (j) {
+          if (!j.ok) throw new Error((j && j.error) || ('HTTP ' + j._http));
+          files.splice(i, 1); paint();
+          var numEl = panel && panel.querySelector('#ttsLogNum'); if (numEl) numEl.textContent = files.length + '개';
         }).catch(function (e) {
           btn.disabled = false; btn.textContent = '🗑';
-          alert('삭제 실패: ' + ((e && e.message) || '권한 또는 네트워크 오류') + '\n\ntts_log.sql의 삭제 정책이 적용되어 있는지 확인해 주세요.');
+          alert('삭제 실패: ' + ((e && e.message) || '네트워크 오류'));
         });
       }
 
