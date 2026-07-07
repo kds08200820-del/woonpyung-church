@@ -399,12 +399,13 @@ ul { list-style: none; }
 .qt-dl-item:hover { border-color: var(--accent-soft); }
 .qt-dl-item.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 /* 본문 — 한 면 전체로 넓게, 본문체로 크게 */
-.qt-detail { padding: 32px 40px; overflow-y: auto; }
-.qt-d-top { padding-bottom: 18px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
-/* 낭독 컨트롤(듣기 버튼 + 재생바) — 스크롤해도 상단에 고정 */
+.qt-detail { padding: 0 40px 32px; overflow-y: auto; }
+.qt-d-top { padding: 26px 0 12px; }
+/* 낭독 컨트롤(듣기 버튼 + 재생바) — 스크롤해도 상단에 고정. 좌우·상단을 본문 영역에 꽉 맞춤(풀블리드) */
 .qt-d-controls {
   position: sticky; top: 0; z-index: 6;
-  background: var(--paper); padding: 10px 0 12px; margin-bottom: 10px;
+  background: var(--paper);
+  margin: 0 -40px 12px; padding: 12px 40px;
   border-bottom: 1px solid var(--line);
 }
 .qt-d-date { font-family: "Cormorant Garamond", serif; letter-spacing: .1em; color: var(--gold); font-size: 1.05rem; }
@@ -417,7 +418,9 @@ ul { list-style: none; }
 .qt-d-sec p { font-family: "Noto Sans KR", sans-serif; font-size: 1.06rem; line-height: 2; color: var(--ink); word-break: keep-all; white-space: pre-line; }
 .qt-d-sec p + p { margin-top: 14px; }
 @media (max-width: 680px) {
-  .qt-detail { padding: 24px 20px; }
+  .qt-detail { padding: 0 20px 24px; }
+  .qt-d-top { padding-top: 20px; }
+  .qt-d-controls { margin: 0 -20px 12px; padding: 12px 20px; }
   .qt-datebar { padding: 13px 14px; }
   .qt-yearbar { padding: 11px 14px 2px; }
   .qt-d-title { font-size: 1.4rem; }
