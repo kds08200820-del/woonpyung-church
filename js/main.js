@@ -154,19 +154,27 @@ var WPCTts = (function () {
     el.style.boxShadow = on ? "0 0 0 5px rgba(249,222,116,.5)" : "";
   }
   function clearHi() { if (hiIdx >= 0) setHiStyle(hiEls[hiIdx], false); hiIdx = -1; }
-  // 낭독되는 글자수만 세도록 정규화: 절 번호(줄 앞 숫자)는 음성이 읽지 않으므로 제외
-  function spokenLen(s) { return String(s || "").replace(/^\s*\d+\s+/gm, "").replace(/\s+/g, "").length; }
+  // 낭독 '시간'을 근사하는 가중치: 글자수(절 번호 제외) + 문장끝·줄바꿈마다 쉼 시간 보정.
+  //   성경 본문은 짧은 절이 많아 쉼이 잦으므로, 글자수만 세면 하이라이트가 그만큼 앞서 나간다.
+  var HI_PAUSE_W = 3;      // 쉼 1회(문장끝/줄바꿈) ≈ 가상 글자수
+  var HI_INTRO_BONUS = 24; // 제목·구절 소개(구절을 길게 풀어 읽는 시간) 보정
+  function lineWeight(s) {
+    s = String(s || "");
+    var chars = s.replace(/^\s*\d+\s+/gm, "").replace(/\s+/g, "").length;   // 절 번호(줄 앞 숫자) 제외
+    var pauses = (s.match(/[.!?。…\n]/g) || []).length;                      // 문장끝·줄바꿈 = 쉼
+    return Math.max(1, chars) + pauses * HI_PAUSE_W;
+  }
   function buildHi(trackEl, preText) {
     clearHi(); hiEls = []; hiCum = []; hiStart = 0;
     if (!trackEl) return;
     var els = trackEl.querySelectorAll(".qt-d-head, .qt-d-sec p, .qtc-head, .qtc-verse, .qtc-body p, [data-tts-line]");
     var lens = [], total = 0;
     Array.prototype.forEach.call(els, function (el) {
-      var L = Math.max(1, spokenLen(el.textContent));
+      var L = lineWeight(el.textContent);
       lens.push(L); total += L; hiEls.push(el);
     });
-    // 본문(줄)보다 먼저 음성이 읽는 '제목·성경 구절' 분량 → 그만큼 하이라이트 시작을 늦춘다
-    var preLen = spokenLen(preText);
+    // 본문(줄)보다 먼저 음성이 읽는 '제목·성경 구절' 분량(+길게 풀어 읽는 시간) → 그만큼 시작을 늦춘다
+    var preLen = preText ? (lineWeight(preText) + HI_INTRO_BONUS) : 0;
     total += preLen;
     hiStart = total ? preLen / total : 0;
     var acc = preLen; for (var i = 0; i < lens.length; i++) { acc += lens[i]; hiCum.push(acc / total); }
