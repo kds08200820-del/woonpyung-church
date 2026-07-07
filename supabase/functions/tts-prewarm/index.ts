@@ -93,6 +93,47 @@ function kstDate(offsetDays = 0): string {
   return d.toISOString().slice(0, 10);
 }
 
+// ── 오래된 음원 자동 삭제 ──
+// WAV는 무압축이라 QT 1편 ≈ 17MB → 무료 저장 1GB가 약 2달이면 가득 참.
+// KEEP_DAYS 일이 지난 파일을 지워 상시 사용량을 ~240MB 수준으로 유지한다.
+// (지난 QT를 다시 들으면 그때 새로 생성되므로 기능 손실 없음)
+const KEEP_DAYS = 14;
+async function cleanupOld() {
+  const cutoff = kstDate(-KEEP_DAYS);   // 이 날짜(YYYY-MM-DD) 이전 파일 삭제
+  const out = { cutoff, checked: 0, deleted: 0, names: [] as string[] };
+  try {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/list/tts-cache`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ prefix: "", limit: 1000, sortBy: { column: "created_at", order: "asc" } }),
+    });
+    const rows: any[] = r.ok ? await r.json() : [];
+    for (const x of rows) {
+      const name = String(x?.name || "");
+      if (!name || name === ".emptyFolderPlaceholder") continue;
+      out.checked++;
+      // 파일명의 QT 날짜(qt-YYYY-MM-DD…) 우선, 없으면(해시명 등) 업로드 시각 기준
+      const m = name.match(/^qt-(\d{4}-\d{2}-\d{2})/);
+      const stamp = m ? m[1] : String(x?.created_at || "").slice(0, 10);
+      if (!stamp || stamp >= cutoff) continue;
+      const dr = await fetch(`${SUPABASE_URL}/storage/v1/object/tts-cache/${name}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
+      });
+      if (dr.ok || dr.status === 404) {
+        out.deleted++; if (out.names.length < 30) out.names.push(name);
+        try {   // 같은 파일을 가리키는 생성 기록도 정리
+          await fetch(`${SUPABASE_URL}/rest/v1/tts_log?url=like.${encodeURIComponent("*" + name)}`, {
+            method: "DELETE",
+            headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+          });
+        } catch { /* 무시 */ }
+      }
+    }
+  } catch { /* 청소 실패는 다음 회차에 재시도 */ }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
@@ -127,5 +168,7 @@ Deno.serve(async (req) => {
       results.push({ date, status: "error", detail: String((e as any)?.message || e) });
     }
   }
-  return json({ ok: true, results });
+  // 미리 생성 후, 보관 기간(KEEP_DAYS)이 지난 음원을 자동 삭제
+  const cleanup = await cleanupOld();
+  return json({ ok: true, results, cleanup });
 });

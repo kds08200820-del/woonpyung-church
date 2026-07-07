@@ -826,7 +826,7 @@ console.log('[affairs.js] v20260701dj');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
       ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:680px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">🔊 저장된 AI 음성 <span id="tl_cnt" style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + files.length + '개</span></h3><button class="btn btn-line" id="tl_close" style="padding:3px 11px">닫기</button></div>' +
-        '<p style="margin:0 0 10px;font-size:.76rem;color:#9aa5b1">저장소에 실제로 존재하는 파일 목록입니다. 삭제하면 파일이 즉시 지워집니다(오늘·내일 QT는 자동 생성이 다시 만들 수 있음).</p>' +
+        '<p style="margin:0 0 10px;font-size:.76rem;color:#9aa5b1">저장소에 실제로 존재하는 파일 목록입니다. 삭제하면 즉시 지워지며(오늘·내일 QT는 자동 생성이 다시 만듦), <b>14일이 지난 파일은 자동 삭제</b>되어 저장 공간이 항상 여유 있게 유지됩니다.</p>' +
         '<div id="tl_body" style="max-height:62vh;overflow:auto"></div></div>';
       document.body.appendChild(ov);
       var close = pushBackClose(function () { ov.remove(); });
