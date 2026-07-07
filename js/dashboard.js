@@ -113,6 +113,7 @@ console.log('[dashboard.js] v20260705qtfallback');
       '</div>' +
       '<h2 style="' + grp + 'margin-top:6px;">🕊 나의 신앙생활</h2>' +
       '<div id="dashQt" style="margin-bottom:22px;"></div>' +
+      '<div id="bibleRead" style="margin-bottom:22px;"></div>' +
       '<div id="qtProgress" style="margin-bottom:22px;"></div>' +
       '<div id="myEdu" style="margin-bottom:22px;"></div>' +
       '<h2 style="' + grp + '">💒 나의 교회생활</h2>' +
@@ -122,11 +123,214 @@ console.log('[dashboard.js] v20260705qtfallback');
       '<p style="text-align:center;margin-top:14px;"><a class="btn btn-line" href="index.html#qt">이번 주 말씀·주보는 홈에서 보기 →</a></p>';
     loadWelcomeName(me);
     loadTodayQt(me);
+    loadBibleReading(me);
     loadQtProgress(me);
     loadMyEdu(me);
     loadOfferings(me);
     loadMyDocs(me);
     loadFamily(me);
+  }
+
+  /* ================= 나의 성경읽기 (구속사 365 · 우리말성경) ================= */
+  var BR = { rows: [], readers: null };   // rows: [{day_no, done_at}] (본인 진도)
+  function brFetch(path, opt) {
+    var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, tok = (window.WPF && WPF.token && WPF.token());
+    if (!url || !ak || !tok) return Promise.reject(new Error('no-auth'));
+    var o = opt || {};
+    var h = { apikey: ak, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' };
+    if (o.headers) { for (var k in o.headers) h[k] = o.headers[k]; }
+    o.headers = h;
+    return fetch(url + '/rest/v1/' + path, o).then(function (r) {
+      if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); });
+      return r.text().then(function (t) { return t ? JSON.parse(t) : null; });
+    });
+  }
+  function brP2(n) { return String(n).padStart(2, '0'); }
+  function brDayKey(dt) { return dt.getFullYear() + '-' + brP2(dt.getMonth() + 1) + '-' + brP2(dt.getDate()); }
+  // 연속일: 읽은 '날짜'가 오늘(또는 오늘 아직 안 읽었으면 어제)부터 며칠 이어졌는지
+  function brStreak(rows) {
+    var days = {};
+    rows.forEach(function (r) { var d = new Date(r.done_at); if (!isNaN(d)) days[brDayKey(d)] = 1; });
+    var cur = new Date(), n = 0;
+    if (!days[brDayKey(cur)]) cur.setDate(cur.getDate() - 1);   // 오늘 미체크는 아직 끊긴 게 아님
+    while (days[brDayKey(cur)]) { n++; cur.setDate(cur.getDate() - 1); }
+    return n;
+  }
+  // 완주 예상일: 시작일부터의 평균 속도(일차/일)로 남은 분량을 나눔
+  function brEta(rows) {
+    if (rows.length < 3 || rows.length >= 365) return '';
+    var first = Infinity;
+    rows.forEach(function (r) { var t = new Date(r.done_at).getTime(); if (t && t < first) first = t; });
+    if (!isFinite(first)) return '';
+    var elapsed = Math.max(1, (Date.now() - first) / 86400000);
+    var rate = rows.length / elapsed;
+    if (!(rate > 0)) return '';
+    var eta = new Date(Date.now() + Math.ceil((365 - rows.length) / rate) * 86400000);
+    return eta.getFullYear() + '.' + brP2(eta.getMonth() + 1) + '.' + brP2(eta.getDate());
+  }
+  function loadBibleReading(me) {
+    var el = document.getElementById('bibleRead'); if (!el) return;
+    if (!window.BIBLE_PLAN) { el.innerHTML = ''; return; }
+    var head = '<div class="form-card" style="padding:16px 18px"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257)">📖 나의 성경읽기 <span style="font-weight:400;font-size:.76rem;color:#9aa5b1">구속사 365 · 우리말성경</span></h3>';
+    el.innerHTML = head + '<p class="qt-loading">불러오는 중…</p></div>';
+    Promise.all([
+      brFetch('bible_reading?select=day_no,done_at&order=day_no'),
+      brFetch('rpc/bible_readers_count', { method: 'POST', body: '{}' }).catch(function () { return null; })
+    ]).then(function (rs) {
+      BR.rows = rs[0] || []; BR.readers = rs[1];
+      paintBibleCard(el, head);
+    }).catch(function (e) {
+      var m = (e && e.message) || '';
+      el.innerHTML = head + (/42P01|does not exist|schema cache|Could not find/i.test(m)
+        ? '<p style="color:#9aa5b1;font-size:.88rem;margin:0">성경읽기 표가 아직 준비되지 않았습니다 — 관리자가 supabase/bible_reading.sql 을 실행하면 열립니다.</p>'
+        : '<p style="color:#9aa5b1;font-size:.88rem;margin:0">성경읽기 진도를 불러오지 못했습니다.</p>') + '</div>';
+    });
+  }
+  function paintBibleCard(el, head) {
+    var P = window.BIBLE_PLAN, rows = BR.rows;
+    var done = {}; rows.forEach(function (r) { done[r.day_no] = 1; });
+    var cnt = rows.length, next = 0;
+    for (var i = 1; i <= 365; i++) { if (!done[i]) { next = i; break; } }
+    var pct = Math.round(cnt / 365 * 100);
+    var day = next ? P.days[next - 1] : null;
+    var streak = brStreak(rows), eta = brEta(rows);
+    var meta = [];
+    if (streak > 0) meta.push('🔥 연속 ' + streak + '일');
+    if (eta) meta.push('이 속도면 <b>' + eta + '</b> 완주');
+    if (BR.readers != null && BR.readers > 0) meta.push('🙌 함께 읽는 성도 <b>' + BR.readers + '명</b>');
+    el.innerHTML = head +
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:.84rem;color:#5b6b7d;margin-bottom:6px"><span>' + cnt + ' / 365일</span><b style="color:var(--accent,#032257)">' + pct + '%</b></div>' +
+      '<div style="background:#eef2f7;border-radius:7px;height:10px;overflow:hidden;margin-bottom:12px"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#3a6db5,#032257)"></div></div>' +
+      (day
+        ? '<div style="background:#f6f9f3;border:1px solid #e2e8da;border-radius:11px;padding:12px 14px;margin-bottom:12px">' +
+          '<div style="font-size:.76rem;color:#5b7a52;font-weight:700;margin-bottom:3px">오늘의 읽기 · Day ' + day.d + '</div>' +
+          '<div style="font-size:.8rem;color:#7b8794;margin-bottom:4px">' + esc(P.themes[day.t]) + '</div>' +
+          '<div style="font-size:1.06rem;font-weight:700;color:var(--accent,#032257)">' + esc(day.r) + '</div></div>'
+        : '<div style="background:#f0f7ef;border:1px solid #d8e8d4;border-radius:11px;padding:14px;text-align:center;margin-bottom:12px;font-weight:700;color:#2f5d3a">🎉 365일 완주를 축하합니다!</div>') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:' + (meta.length ? '10px' : '0') + '">' +
+      (day
+        ? '<button type="button" id="brRead" style="padding:9px 18px;border:0;border-radius:9px;background:var(--accent,#032257);color:#fff;font:inherit;font-weight:700;cursor:pointer">📖 본문 읽기</button>' +
+          '<button type="button" class="btn btn-line" id="brDone" style="padding:8px 16px">✓ 읽기 완료</button>'
+        : '') +
+      '<button type="button" class="btn btn-line" id="brTable" style="padding:8px 16px">전체 표</button></div>' +
+      (meta.length ? '<div style="font-size:.8rem;color:#7b8794">' + meta.join(' · ') + '</div>' : '') +
+      '</div>';
+    var rd = el.querySelector('#brRead'), dn = el.querySelector('#brDone'), tb = el.querySelector('#brTable');
+    if (rd) rd.onclick = function () { brReadingModal(day, function () { brCheck(day.d, el, head); }); };
+    if (dn) dn.onclick = function () { brCheck(day.d, el, head); };
+    if (tb) tb.onclick = function () { brTableModal(el, head); };
+  }
+  function brCheck(dayNo, el, head) {
+    if (BR.rows.some(function (r) { return r.day_no === dayNo; })) return;
+    brFetch('bible_reading', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ day_no: dayNo }) })
+      .then(function () { BR.rows.push({ day_no: dayNo, done_at: new Date().toISOString() }); paintBibleCard(el, head); })
+      .catch(function (e) {
+        if (/duplicate|23505/i.test((e && e.message) || '')) { BR.rows.push({ day_no: dayNo, done_at: new Date().toISOString() }); paintBibleCard(el, head); return; }
+        alert('저장 실패: ' + ((e && e.message) || '네트워크 오류'));
+      });
+  }
+  function brUncheck(dayNo) {
+    return brFetch('bible_reading?day_no=eq.' + dayNo, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+      .then(function () { BR.rows = BR.rows.filter(function (r) { return r.day_no !== dayNo; }); });
+  }
+  function brLoadUrm() {
+    if (window.BIBLE_URM) return Promise.resolve(window.BIBLE_URM);
+    return fetch('data/bible-urm.json').then(function (r) { if (!r.ok) throw new Error('성경 본문을 불러오지 못했습니다'); return r.json(); })
+      .then(function (d) { window.BIBLE_URM = d; return d; });
+  }
+  // 본문 읽기(우리말성경) — 하단 [읽기 완료]까지 한 흐름
+  function brReadingModal(day, onDone) {
+    var P = window.BIBLE_PLAN;
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.55);z-index:9600;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto';
+    ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:720px;width:100%;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.32)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div style="min-width:0">' +
+      '<div style="font-size:.76rem;color:#5b7a52;font-weight:700">Day ' + day.d + ' · ' + esc(P.themes[day.t]) + '</div>' +
+      '<h3 style="margin:4px 0 0;color:var(--accent,#032257);font-family:\'Noto Serif KR\',serif">' + esc(day.r) + ' <span style="font-size:.72rem;color:#9aa5b1;font-weight:400">우리말성경</span></h3></div>' +
+      '<button class="btn btn-line" id="brm_close" style="padding:4px 12px;white-space:nowrap">닫기</button></div>' +
+      '<div id="brm_body" style="margin-top:14px;max-height:60vh;overflow:auto;line-height:1.95;font-size:1.02rem;font-family:\'Noto Serif KR\',serif;color:#1f2937"><p class="qt-loading">본문을 불러오는 중…</p></div>' +
+      (onDone ? '<div style="margin-top:14px;text-align:center"><button type="button" id="brm_done" style="padding:10px 28px;border:0;border-radius:10px;background:var(--accent,#032257);color:#fff;font:inherit;font-weight:700;cursor:pointer">✓ 읽기 완료</button></div>' : '') +
+      '</div>';
+    document.body.appendChild(ov); document.body.style.overflow = 'hidden';
+    function closeDom() { ov.remove(); document.body.style.overflow = ''; }
+    if (window.ModalNav) window.ModalNav.open(closeDom);
+    function close() { if (window.ModalNav && window.ModalNav.close()) return; closeDom(); }
+    ov.querySelector('#brm_close').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    var doneBtn = ov.querySelector('#brm_done');
+    if (doneBtn) doneBtn.onclick = function () { close(); if (onDone) onDone(); };
+    brLoadUrm().then(function (B) {
+      var html = '';
+      (day.refs || []).forEach(function (ref) {
+        var ab = ref[0], book = B[ab] || [];
+        for (var c = ref[1]; c <= ref[2]; c++) {
+          var verses = book[c - 1] || [];
+          html += '<h4 style="margin:20px 0 8px;color:var(--accent,#032257);font-size:1.05rem;border-bottom:1px solid #eef1f5;padding-bottom:6px">' + esc((P.names[ab] || ab) + ' ' + c + (ab === '시' ? '편' : '장')) + '</h4>' +
+            verses.map(function (v, i) { return '<p style="margin:0 0 6px"><sup style="color:#9db4d6;font-size:.72rem;margin-right:4px">' + (i + 1) + '</sup>' + esc(v) + '</p>'; }).join('');
+        }
+      });
+      var body = ov.querySelector('#brm_body');
+      if (body) body.innerHTML = html || '<p style="color:#c0392b">본문 데이터를 찾지 못했습니다.</p>';
+    }).catch(function (e) { var body = ov.querySelector('#brm_body'); if (body) body.innerHTML = '<p style="color:#c0392b">' + esc((e && e.message) || '오류') + '</p>'; });
+  }
+  // 전체 표: 38개 구속사 주제별 아코디언 + 일차 체크(해제 가능) + 📖 본문 열기
+  function brTableModal(cardEl, head) {
+    var P = window.BIBLE_PLAN;
+    var done = {}; BR.rows.forEach(function (r) { done[r.day_no] = 1; });
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.55);z-index:9550;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto';
+    var groups = P.themes.map(function (t, ti) {
+      var days = P.days.filter(function (d) { return d.t === ti; });
+      var dn = days.filter(function (d) { return done[d.d]; }).length;
+      var rowsH = days.map(function (d) {
+        return '<div style="display:flex;align-items:center;gap:9px;padding:7px 4px;border-top:1px solid #f2f5f9">' +
+          '<input type="checkbox" class="br-ck" data-d="' + d.d + '"' + (done[d.d] ? ' checked' : '') + ' style="width:17px;height:17px;flex:0 0 auto;cursor:pointer">' +
+          '<span style="flex:0 0 56px;font-size:.78rem;color:#9aa5b1">Day ' + d.d + '</span>' +
+          '<span style="flex:1;font-size:.9rem;color:#1f2937">' + esc(d.r) + '</span>' +
+          '<button type="button" class="br-open" data-d="' + d.d + '" title="본문 읽기" style="border:1px solid #dfe5ee;background:#fff;border-radius:7px;padding:3px 8px;cursor:pointer;font-size:.8rem">📖</button>' +
+          '</div>';
+      }).join('');
+      return '<details' + (days.some(function (d) { return !done[d.d]; }) && dn > 0 ? ' open' : '') + ' style="border:1px solid #e6ebf2;border-radius:10px;margin-bottom:8px;background:#fff">' +
+        '<summary style="cursor:pointer;padding:10px 12px;font-weight:700;color:var(--accent,#032257);font-size:.9rem;list-style-position:inside">' + (ti + 1) + '. ' + esc(t) +
+        ' <span class="br-gcnt" data-ti="' + ti + '" style="font-weight:400;color:' + (dn === days.length ? '#1e874b' : '#9aa5b1') + ';font-size:.78rem">' + (dn === days.length ? '✓ 완료' : dn + '/' + days.length + '일') + '</span></summary>' +
+        '<div style="padding:2px 12px 10px">' + rowsH + '</div></details>';
+    }).join('');
+    ov.innerHTML = '<div style="background:#f7f9fc;border-radius:14px;max-width:720px;width:100%;padding:20px 18px;box-shadow:0 24px 60px rgba(0,0,0,.32)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">📖 구속사 성경읽기 365 <span id="brt_cnt" style="font-size:.84rem;color:#9aa5b1;font-weight:600">' + BR.rows.length + '/365</span></h3><button class="btn btn-line" id="brt_close" style="padding:4px 12px">닫기</button></div>' +
+      '<p style="margin:0 0 12px;font-size:.76rem;color:#9aa5b1">체크를 눌러 지난 일차를 채우거나 해제할 수 있습니다 · 📖 를 누르면 우리말성경 본문이 열립니다</p>' +
+      '<div style="max-height:64vh;overflow:auto">' + groups + '</div></div>';
+    document.body.appendChild(ov); document.body.style.overflow = 'hidden';
+    function closeDom() { ov.remove(); document.body.style.overflow = ''; paintBibleCard(cardEl, head); }   // 닫을 때 카드 갱신
+    if (window.ModalNav) window.ModalNav.open(closeDom);
+    function close() { if (window.ModalNav && window.ModalNav.close()) return; closeDom(); }
+    ov.querySelector('#brt_close').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    function refreshCnt() {
+      var c = ov.querySelector('#brt_cnt'); if (c) c.textContent = BR.rows.length + '/365';
+    }
+    Array.prototype.forEach.call(ov.querySelectorAll('.br-ck'), function (ck) {
+      ck.onchange = function () {
+        var d = Number(ck.dataset.d);
+        ck.disabled = true;
+        var p = ck.checked
+          ? brFetch('bible_reading', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ day_no: d }) })
+              .then(function () { BR.rows.push({ day_no: d, done_at: new Date().toISOString() }); })
+          : brUncheck(d);
+        p.then(function () { ck.disabled = false; refreshCnt(); })
+          .catch(function (e) { ck.disabled = false; ck.checked = !ck.checked; alert('저장 실패: ' + ((e && e.message) || '오류')); });
+      };
+    });
+    Array.prototype.forEach.call(ov.querySelectorAll('.br-open'), function (b) {
+      b.onclick = function () {
+        var d = Number(b.dataset.d), day = P.days[d - 1];
+        var already = BR.rows.some(function (r) { return r.day_no === d; });
+        brReadingModal(day, already ? null : function () {
+          brFetch('bible_reading', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ day_no: d }) })
+            .then(function () { BR.rows.push({ day_no: d, done_at: new Date().toISOString() }); refreshCnt(); var ck = ov.querySelector('.br-ck[data-d="' + d + '"]'); if (ck) ck.checked = true; })
+            .catch(function () { });
+        });
+      };
+    });
   }
 
   /* ================= 나의 문서 (자료실에서 교회가 보관해 준 본인 자료) ================= */

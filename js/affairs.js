@@ -749,6 +749,10 @@ console.log('[affairs.js] v20260701dj');
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🔊 AI 음성 생성</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#7c3aed;line-height:1.1;margin-top:4px" id="ttsLogNum">–</div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">QT 낭독 저장본 · 눌러서 열람·재생</div></div>' +
+        '<div class="fin-card" id="bibleReadCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📖 성경읽기</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#1e874b;line-height:1.1;margin-top:4px" id="bibleReadNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">구속사 365 참여 성도 · 눌러서 현황 보기</div></div>' +
         '</div>' +
         '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
         '<b style="color:var(--accent,#032257)">📖 성경 권별 커버리지</b>' +
@@ -780,6 +784,61 @@ console.log('[affairs.js] v20260701dj');
       });
       loadQtAttendance(panel);
       loadTtsLog(panel);
+      loadBibleStats(panel);
+    }
+
+    // ── 성경읽기 현황(구속사 365): 참여 성도 수 + 개인별 진도 ──
+    function loadBibleStats(panel) {
+      var numEl = panel.querySelector('#bibleReadNum'), card = panel.querySelector('#bibleReadCard');
+      if (!numEl || !card) return;
+      api('GET', 'bible_reading?select=user_id,day_no,done_at')
+        .then(function (rows) {
+          rows = rows || [];
+          var by = {};
+          rows.forEach(function (r) {
+            var u = by[r.user_id] || (by[r.user_id] = { cnt: 0, last: '' });
+            u.cnt++;
+            if (String(r.done_at || '') > u.last) u.last = String(r.done_at || '');
+          });
+          var ids = Object.keys(by);
+          numEl.textContent = ids.length + '명';
+          card.onclick = function () { bibleStatsModal(by, ids); };
+        })
+        .catch(function () { numEl.textContent = '–'; numEl.style.color = '#c0392b'; card.style.cursor = 'default'; });
+    }
+    function bibleStatsModal(by, ids) {
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="margin:0;color:var(--accent,#032257)">📖 성경읽기 현황 <span style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + ids.length + '명</span></h3><button class="btn btn-line" id="bs_close" style="padding:3px 11px">닫기</button></div>' +
+        '<div id="bs_list" style="max-height:62vh;overflow:auto"><p class="qt-loading">명단을 불러오는 중…</p></div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#bs_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      var listEl = ov.querySelector('#bs_list');
+      if (!ids.length) { listEl.innerHTML = '<p style="color:#9aa5b1">아직 성경읽기를 시작한 성도가 없습니다.</p>'; return; }
+      var inlist = ids.map(function (id) { return '"' + id + '"'; }).join(',');
+      api('GET', 'member_links?select=user_id,member_name&user_id=in.(' + inlist + ')')
+        .then(function (rows) {
+          var nameById = {}; (rows || []).forEach(function (r) { nameById[r.user_id] = r.member_name; });
+          var list = ids.map(function (id) {
+            return { name: nameById[id] || '(이름 미확인)', cnt: by[id].cnt, last: by[id].last.replace('T', ' ').slice(0, 10) };
+          }).sort(function (a, b) { return b.cnt - a.cnt || a.name.localeCompare(b.name, 'ko'); });
+          listEl.innerHTML = '<div style="border:1px solid #eef1f5;border-radius:10px;overflow:hidden">' +
+            list.map(function (x, i) {
+              var pct = Math.round(x.cnt / 365 * 100);
+              return '<div style="padding:10px 14px;' + (i ? 'border-top:1px solid #f0f3f7;' : '') + '">' +
+                '<div style="display:flex;align-items:center;gap:10px">' +
+                '<span style="flex:0 0 24px;color:#9aa5b1;font-size:.8rem;text-align:center">' + (i + 1) + '</span>' +
+                '<span style="flex:1;font-weight:600;color:#1f2937">' + esc(x.name) + '</span>' +
+                '<span style="font-size:.82rem;color:var(--accent,#032257);font-weight:700">' + x.cnt + '/365일 (' + pct + '%)</span>' +
+                '<span style="font-size:.75rem;color:#9aa5b1">' + esc(x.last) + '</span></div>' +
+                '<div style="background:#eef2f7;border-radius:5px;height:6px;overflow:hidden;margin:7px 0 0 34px"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#3fa06a,#1e874b)"></div></div>' +
+                '</div>';
+            }).join('') + '</div>';
+        })
+        .catch(function (e) { listEl.innerHTML = '<p style="color:#c0392b">명단 조회 실패: ' + esc((e && e.message) || '') + '</p>'; });
     }
 
     // ── AI 음성: 저장소의 '실제 파일'을 열람·재생·삭제 ──
