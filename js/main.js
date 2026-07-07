@@ -205,6 +205,7 @@ var WPCTts = (function () {
   }
   function browserStart(text, myGen) {
     if (!synth) { reset(); return; }
+    hideBar();                                  // 기본 음성은 탐색 불가 → 재생바 숨김
     queue = chunk(text); idx = 0;
     if (btnEl && myGen === gen) btnEl.textContent = "⏸ 멈춤 (기본 음성)";
     browserNext(myGen);
@@ -220,20 +221,61 @@ var WPCTts = (function () {
       body: JSON.stringify(date ? { text: text, date: date } : { text: text })
     }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t || ("HTTP " + r.status)); }); return r.blob(); });
   }
-  function playAudio(url, myGen) {   // blob URL이든 원격 URL이든 재생(원격이면 스트리밍)
-    if (!active || myGen !== gen) return;
-    stopAudio();
-    audio = new Audio(url);
-    audio.playbackRate = 1.08;                          // 현재(1.2)보다 10% 느리게
+  // ── 재생바(진행 표시 + 탐색) ── AI 음성(오디오)만 해당. 기본 음성은 탐색 불가라 숨김.
+  var barWrap = null, seekEl = null, timeEl = null, userSeeking = false;
+  function fmtT(s) { s = Math.max(0, Math.floor(s || 0)); var m = Math.floor(s / 60), ss = s % 60; return m + ":" + (ss < 10 ? "0" : "") + ss; }
+  function ensureBar() {
+    if (barWrap) return barWrap;
+    barWrap = document.createElement("div");
+    barWrap.style.cssText = "display:flex;align-items:center;gap:9px;margin:10px 0 2px;max-width:520px";
+    seekEl = document.createElement("input");
+    seekEl.type = "range"; seekEl.min = "0"; seekEl.max = "1000"; seekEl.value = "0"; seekEl.step = "1";
+    seekEl.setAttribute("aria-label", "낭독 위치 이동");
+    seekEl.style.cssText = "flex:1;height:6px;cursor:pointer;accent-color:#2f5d3a";
+    timeEl = document.createElement("span");
+    timeEl.style.cssText = "font-size:.8rem;color:#7b8794;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:84px;text-align:right";
+    timeEl.textContent = "0:00 / 0:00";
+    barWrap.appendChild(seekEl); barWrap.appendChild(timeEl);
+    function applySeek() { if (audio && audio.duration) { audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration; updateBar(); } }
+    seekEl.addEventListener("input", function () { userSeeking = true; applySeek(); });
+    seekEl.addEventListener("change", function () { applySeek(); userSeeking = false; });
+    seekEl.addEventListener("pointerup", function () { userSeeking = false; });
+    return barWrap;
+  }
+  function updateBar() {
+    if (!audio || !timeEl) return;
+    var d = audio.duration || 0, c = audio.currentTime || 0;
+    timeEl.textContent = fmtT(c) + " / " + (isFinite(d) && d ? fmtT(d) : "0:00");
+    if (seekEl && !userSeeking && d) seekEl.value = String(Math.round(c / d * 1000));
+  }
+  function showBar() {   // 현재 버튼 바로 아래에 배치
+    ensureBar();
+    if (btnEl && btnEl.parentNode) btnEl.parentNode.insertBefore(barWrap, btnEl.nextSibling);
+    barWrap.style.display = "flex";
+    if (seekEl) seekEl.value = "0";
+    updateBar();
+  }
+  function hideBar() { if (barWrap && barWrap.parentNode) barWrap.parentNode.removeChild(barWrap); userSeeking = false; }
+  // 스트리밍본·생성본 공통 재생: 하이라이트·재생바까지 함께 연결
+  function bindAndPlay(a, myGen) {
+    audio = a;
+    audio.playbackRate = 1.08;                          // 10% 느리게
     try { audio.preservesPitch = true; } catch (e) {}   // 음정 유지
     audio.onended = function () { if (myGen === gen) reset(); };
     audio.onerror = function () { if (myGen === gen) reset(); };
-    audio.ontimeupdate = function () { if (myGen === gen && audio && audio.duration) hiFrac(audio.currentTime / audio.duration); };
+    audio.onloadedmetadata = function () { updateBar(); };
+    audio.ontimeupdate = function () { if (myGen === gen && audio && audio.duration) { hiFrac(audio.currentTime / audio.duration); updateBar(); } };
+    showBar();
     if (btnEl) btnEl.textContent = "⏸ 낭독 멈춤";
     audio.play().catch(function () { });
   }
-  function stopAudio() { if (audio) { try { audio.pause(); } catch (e) {} try { audio.onerror = audio.oncanplay = audio.onended = audio.ontimeupdate = null; } catch (e) {} audio = null; } }
-  function reset() { active = false; clearHi(); if (btnEl) btnEl.textContent = btnLabel; }
+  function playAudio(url, myGen) {   // blob URL 재생(생성본)
+    if (!active || myGen !== gen) return;
+    stopAudio();
+    bindAndPlay(new Audio(url), myGen);
+  }
+  function stopAudio() { if (audio) { try { audio.pause(); } catch (e) {} try { audio.onerror = audio.oncanplay = audio.onended = audio.ontimeupdate = audio.onloadedmetadata = null; } catch (e) {} audio = null; } }
+  function reset() { active = false; clearHi(); hideBar(); if (btnEl) btnEl.textContent = btnLabel; }
   function start(text, btn, label, opts) {
     stop();
     btnEl = btn || null; btnLabel = label || "🔊 들어주기"; active = true;
@@ -257,11 +299,7 @@ var WPCTts = (function () {
       a.oncanplay = function () {                         // 로드 성공(=저장본 존재) → 이 음원을 재생
         if (moved) return; moved = true;
         if (!active || myGen !== gen) { try { a.pause(); } catch (e) {} return; }
-        audio = a;
-        audio.onended = function () { if (myGen === gen) reset(); };
-        audio.onerror = function () { if (myGen === gen) reset(); };
-        if (btnEl) btnEl.textContent = "⏸ 낭독 멈춤";
-        audio.play().catch(function () { });
+        bindAndPlay(a, myGen);                            // 하이라이트·재생바 공통 연결
       };
       a.src = cands[i];
       try { a.load(); } catch (e) { nextOne(); }
@@ -274,7 +312,7 @@ var WPCTts = (function () {
         .catch(function () { if (active && myGen === gen) browserStart(text, myGen); });   // ③ 실패 시 기본 음성
     }
   }
-  function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } clearHi(); if (btnEl) btnEl.textContent = btnLabel; }
+  function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } clearHi(); hideBar(); if (btnEl) btnEl.textContent = btnLabel; }
   function toggle(text, btn, label, opts) { if (active) stop(); else start(text, btn, label, opts); }
   // 날짜(YYYY-MM-DD)로 미리 만든 로컬 음성 후보 URL(mp3→wav)
   function preUrlsForDate(dashDate) {
