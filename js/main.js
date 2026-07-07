@@ -624,6 +624,8 @@ window.WPCTts = WPCTts;
         <span class="qt-d-date">${escQt(p.date || e.date)}</span>
         ${p.title ? `<h3 class="qt-d-title">${escQt(p.title)}</h3>` : ""}
         ${p.ref ? `<p class="qt-d-ref">${escQt(p.ref)}</p>` : ""}
+      </div>
+      <div class="qt-d-controls">
         <button type="button" class="qt-d-listen" id="qtTtsBtn" style="border:0;font:inherit;cursor:pointer">🔊 오늘의 말씀 듣기</button>
       </div>
       ${secHtml || `<div class="qt-d-sec"><p>${escQt(e.content)}</p></div>`}
