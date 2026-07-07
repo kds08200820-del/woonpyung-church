@@ -238,39 +238,111 @@ console.log('[dashboard.js] v20260705qtfallback');
     return fetch('data/bible-urm.json').then(function (r) { if (!r.ok) throw new Error('성경 본문을 불러오지 못했습니다'); return r.json(); })
       .then(function (d) { window.BIBLE_URM = d; return d; });
   }
-  // 본문 읽기(우리말성경) — 하단 [읽기 완료]까지 한 흐름
+  // 브라우저 내장 음성 중 가장 자연스러운 한국어 목소리 선택(AI·비용 없이 즉시 재생)
+  function brBestVoice() {
+    var vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+    var ko = vs.filter(function (v) { return /^ko/i.test(v.lang || ''); });
+    function score(v) {
+      var n = (v.name || '').toLowerCase();
+      if (/google/.test(n)) return 4;                                   // 크롬 '구글 한국어' — 가장 자연스러움
+      if (/natural|neural|premium|enhanced|yuna|sora|heami|siri/.test(n)) return 3;
+      if (!v.localService) return 2;                                    // 온라인 음성이 대체로 더 자연스러움
+      return 1;
+    }
+    ko.sort(function (a, b) { return score(b) - score(a); });
+    return ko[0] || null;
+  }
+  // 본문 읽기(우리말성경) — 🔊 듣기(절 따라 하이라이트) + 하단 [읽기 완료]까지 한 흐름
   function brReadingModal(day, onDone) {
     var P = window.BIBLE_PLAN;
+    var ttsOk = !!window.speechSynthesis;
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.55);z-index:9600;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto';
     ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:720px;width:100%;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.32)">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div style="min-width:0">' +
       '<div style="font-size:.76rem;color:#5b7a52;font-weight:700">Day ' + day.d + ' · ' + esc(P.themes[day.t]) + '</div>' +
       '<h3 style="margin:4px 0 0;color:var(--accent,#032257);font-family:\'Noto Serif KR\',serif">' + esc(day.r) + ' <span style="font-size:.72rem;color:#9aa5b1;font-weight:400">우리말성경</span></h3></div>' +
-      '<button class="btn btn-line" id="brm_close" style="padding:4px 12px;white-space:nowrap">닫기</button></div>' +
+      '<div style="display:flex;gap:6px;flex:0 0 auto">' +
+      (ttsOk ? '<button class="btn btn-line" id="brm_tts" style="padding:4px 12px;white-space:nowrap">🔊 듣기</button>' : '') +
+      '<button class="btn btn-line" id="brm_close" style="padding:4px 12px;white-space:nowrap">닫기</button></div></div>' +
       '<div id="brm_body" style="margin-top:14px;max-height:60vh;overflow:auto;line-height:1.95;font-size:1.02rem;font-family:\'Noto Serif KR\',serif;color:#1f2937"><p class="qt-loading">본문을 불러오는 중…</p></div>' +
       (onDone ? '<div style="margin-top:14px;text-align:center"><button type="button" id="brm_done" style="padding:10px 28px;border:0;border-radius:10px;background:var(--accent,#032257);color:#fff;font:inherit;font-weight:700;cursor:pointer">✓ 읽기 완료</button></div>' : '') +
       '</div>';
     document.body.appendChild(ov); document.body.style.overflow = 'hidden';
-    function closeDom() { ov.remove(); document.body.style.overflow = ''; }
+
+    // ── 성경 듣기: 브라우저 내장 음성(비용·생성 대기 없음). 절 단위로 끊어 읽어 호흡이 자연스럽고,
+    //    읽는 절을 하이라이트+자동 스크롤. 절을 누르면 그 절부터 듣는다. 절 번호는 읽지 않음.
+    var tts = { on: false, gen: 0, idx: 0, items: [], btn: null };
+    function ttsHi(el, on) { if (el) { el.style.background = on ? 'rgba(249,222,116,.5)' : ''; el.style.borderRadius = on ? '6px' : ''; } }
+    function ttsStop() {
+      tts.gen++; tts.on = false;
+      if (tts.items[tts.idx]) ttsHi(tts.items[tts.idx].el, false);
+      try { speechSynthesis.cancel(); } catch (e) { }
+      if (tts.btn) tts.btn.textContent = '🔊 듣기';
+    }
+    function ttsSpeakFrom(i) {
+      tts.gen++; var myGen = tts.gen;
+      try { speechSynthesis.cancel(); } catch (e) { }
+      if (tts.items[tts.idx]) ttsHi(tts.items[tts.idx].el, false);
+      tts.on = true; tts.idx = i;
+      if (tts.btn) tts.btn.textContent = '⏸ 멈춤';
+      (function next() {
+        if (!tts.on || myGen !== tts.gen) return;
+        if (tts.idx >= tts.items.length) { ttsStop(); return; }
+        var it = tts.items[tts.idx];
+        ttsHi(it.el, true);
+        try { it.el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { }
+        var u = new SpeechSynthesisUtterance(it.text);
+        u.lang = 'ko-KR'; var v = brBestVoice(); if (v) u.voice = v;
+        u.rate = 0.95; u.pitch = 1.0;                       // 살짝 느리게 — 낭독 톤
+        u.onend = function () { if (myGen !== tts.gen) return; ttsHi(it.el, false); tts.idx++; next(); };
+        u.onerror = function () { if (myGen !== tts.gen) return; ttsHi(it.el, false); tts.idx++; next(); };
+        try { speechSynthesis.speak(u); } catch (e) { ttsStop(); }
+      })();
+    }
+
+    function closeDom() { ttsStop(); ov.remove(); document.body.style.overflow = ''; }
     if (window.ModalNav) window.ModalNav.open(closeDom);
     function close() { if (window.ModalNav && window.ModalNav.close()) return; closeDom(); }
     ov.querySelector('#brm_close').onclick = close;
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var doneBtn = ov.querySelector('#brm_done');
     if (doneBtn) doneBtn.onclick = function () { close(); if (onDone) onDone(); };
+
     brLoadUrm().then(function (B) {
       var html = '';
       (day.refs || []).forEach(function (ref) {
         var ab = ref[0], book = B[ab] || [];
         for (var c = ref[1]; c <= ref[2]; c++) {
           var verses = book[c - 1] || [];
-          html += '<h4 style="margin:20px 0 8px;color:var(--accent,#032257);font-size:1.05rem;border-bottom:1px solid #eef1f5;padding-bottom:6px">' + esc((P.names[ab] || ab) + ' ' + c + (ab === '시' ? '편' : '장')) + '</h4>' +
-            verses.map(function (v, i) { return '<p style="margin:0 0 6px"><sup style="color:#9db4d6;font-size:.72rem;margin-right:4px">' + (i + 1) + '</sup>' + esc(v) + '</p>'; }).join('');
+          html += '<h4 class="brm-h" style="margin:20px 0 8px;color:var(--accent,#032257);font-size:1.05rem;border-bottom:1px solid #eef1f5;padding-bottom:6px">' + esc((P.names[ab] || ab) + ' ' + c + (ab === '시' ? '편' : '장')) + '</h4>' +
+            verses.map(function (v, i) { return '<p class="brm-v" style="margin:0 0 6px"><sup style="color:#9db4d6;font-size:.72rem;margin-right:4px">' + (i + 1) + '</sup>' + esc(v) + '</p>'; }).join('');
         }
       });
       var body = ov.querySelector('#brm_body');
-      if (body) body.innerHTML = html || '<p style="color:#c0392b">본문 데이터를 찾지 못했습니다.</p>';
+      if (!body) return;
+      body.innerHTML = html || '<p style="color:#c0392b">본문 데이터를 찾지 못했습니다.</p>';
+      if (!ttsOk || !html) return;
+      // 듣기 목록: 장 제목 + 각 절(절 번호 sup 제외한 본문만 읽음)
+      tts.items = [];
+      Array.prototype.forEach.call(body.querySelectorAll('.brm-h, .brm-v'), function (el) {
+        var text = '';
+        if (el.classList.contains('brm-h')) text = el.textContent;
+        else Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeName !== 'SUP') text += n.textContent; });
+        text = String(text || '').trim();
+        if (text) tts.items.push({ el: el, text: text });
+      });
+      tts.btn = ov.querySelector('#brm_tts');
+      if (tts.btn) tts.btn.onclick = function () { if (tts.on) ttsStop(); else ttsSpeakFrom(tts.idx < tts.items.length ? tts.idx : 0); };
+      // 절을 누르면 그 절부터 듣기(듣는 중이 아니어도 그 절부터 시작)
+      tts.items.forEach(function (it, i) {
+        it.el.style.cursor = 'pointer';
+        it.el.addEventListener('click', function () { ttsSpeakFrom(i); });
+      });
+      // 일부 브라우저는 목소리 목록이 늦게 로드됨 — 미리 한 번 불러 캐시
+      if (speechSynthesis.getVoices && !speechSynthesis.getVoices().length && 'onvoiceschanged' in speechSynthesis) {
+        speechSynthesis.onvoiceschanged = function () { speechSynthesis.onvoiceschanged = null; };
+      }
     }).catch(function (e) { var body = ov.querySelector('#brm_body'); if (body) body.innerHTML = '<p style="color:#c0392b">' + esc((e && e.message) || '오류') + '</p>'; });
   }
   // 전체 표: 38개 구속사 주제별 아코디언 + 일차 체크(해제 가능) + 📖 본문 열기
