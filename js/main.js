@@ -145,7 +145,7 @@ var WPCTts = (function () {
   // ── 낭독 따라 읽기: 본문 문단(줄) 하이라이트 ──
   //   AI 음성엔 단어별 타임스탬프가 없어, 오디오 진행도(현재시간/전체길이)를 문단 글자수 비율에
   //   맞춰 '지금 읽는 줄'을 추정해 표시한다. 문단마다 속도가 달라 약간의 오차는 있다.
-  var hiEls = [], hiCum = [], hiIdx = -1;
+  var hiEls = [], hiCum = [], hiIdx = -1, hiStart = 0;
   function setHiStyle(el, on) {
     if (!el) return;
     el.style.transition = "background-color .25s ease, box-shadow .25s ease";
@@ -154,16 +154,22 @@ var WPCTts = (function () {
     el.style.boxShadow = on ? "0 0 0 5px rgba(249,222,116,.5)" : "";
   }
   function clearHi() { if (hiIdx >= 0) setHiStyle(hiEls[hiIdx], false); hiIdx = -1; }
-  function buildHi(trackEl) {
-    clearHi(); hiEls = []; hiCum = [];
+  // 낭독되는 글자수만 세도록 정규화: 절 번호(줄 앞 숫자)는 음성이 읽지 않으므로 제외
+  function spokenLen(s) { return String(s || "").replace(/^\s*\d+\s+/gm, "").replace(/\s+/g, "").length; }
+  function buildHi(trackEl, preText) {
+    clearHi(); hiEls = []; hiCum = []; hiStart = 0;
     if (!trackEl) return;
     var els = trackEl.querySelectorAll(".qt-d-head, .qt-d-sec p, .qtc-head, .qtc-verse, .qtc-body p, [data-tts-line]");
     var lens = [], total = 0;
     Array.prototype.forEach.call(els, function (el) {
-      var L = Math.max(1, (el.textContent || "").replace(/\s+/g, "").length);
+      var L = Math.max(1, spokenLen(el.textContent));
       lens.push(L); total += L; hiEls.push(el);
     });
-    var acc = 0; for (var i = 0; i < lens.length; i++) { acc += lens[i]; hiCum.push(acc / total); }
+    // 본문(줄)보다 먼저 음성이 읽는 '제목·성경 구절' 분량 → 그만큼 하이라이트 시작을 늦춘다
+    var preLen = spokenLen(preText);
+    total += preLen;
+    hiStart = total ? preLen / total : 0;
+    var acc = preLen; for (var i = 0; i < lens.length; i++) { acc += lens[i]; hiCum.push(acc / total); }
   }
   function setHi(i) {
     if (i === hiIdx || i < 0 || i >= hiEls.length) return;
@@ -173,6 +179,7 @@ var WPCTts = (function () {
   }
   function hiFrac(frac) {
     if (!hiEls.length || !isFinite(frac)) return;
+    if (frac < hiStart) { if (hiIdx !== -1) clearHi(); return; }   // 제목·구절 소개 구간엔 아직 표시 안 함
     var i = 0; while (i < hiCum.length - 1 && frac > hiCum[i]) i++;
     setHi(i);
   }
@@ -210,15 +217,20 @@ var WPCTts = (function () {
     if (btnEl && myGen === gen) btnEl.textContent = "⏸ 멈춤 (기본 음성)";
     browserNext(myGen);
   }
+  // 낭독 텍스트의 짧은 지문(내용이 바뀌면 값도 바뀜) — 저장 파일명에 넣어 옛 음성 재사용을 막는다
+  function textSig(s) { var h = 2166136261 >>> 0; s = String(s || ""); for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); }
+  function ttsBase() { var sb = (window.SUPABASE_URL || "").replace(/\/$/, ""); return sb + "/storage/v1/object/public/tts-cache/"; }
   // ── AI 음성(Gemini TTS via Edge Function) ──
-  function aiFetch(text, date) {
+  function aiFetch(text, date, sig) {
     var ak = window.SUPABASE_ANON_KEY, sb = (window.SUPABASE_URL || "").replace(/\/$/, "");
     if (!ak || !sb) return Promise.reject(new Error("no-config"));
     var tok = (window.WPF && WPF.token && WPF.token()) || ak;
+    var payload = { text: text };
+    if (date) { payload.date = date; if (sig) payload.sig = sig; }
     return fetch(sb + "/functions/v1/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: ak, Authorization: "Bearer " + tok },
-      body: JSON.stringify(date ? { text: text, date: date } : { text: text })
+      body: JSON.stringify(payload)
     }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t || ("HTTP " + r.status)); }); return r.blob(); });
   }
   // ── 재생바(진행 표시 + 탐색) ── AI 음성(오디오)만 해당. 기본 음성은 탐색 불가라 숨김.
@@ -281,10 +293,14 @@ var WPCTts = (function () {
     btnEl = btn || null; btnLabel = label || "🔊 들어주기"; active = true;
     var myGen = ++gen;
     if (btnEl) btnEl.textContent = "⏳ 음성 준비 중…";
-    var cands = (opts && opts.preUrls && opts.preUrls.length) ? opts.preUrls.slice() : [];
     var date = (opts && opts.date) || null;
-    buildHi(opts && opts.trackEl);   // 낭독 따라 읽기용 본문 줄 목록 준비
-    // ① 저장된 음원 후보(qt-<날짜>.mp3/.wav)를 실제로 로드 시도 → 존재하면 바로 재생(스트리밍)
+    var sig = date ? textSig(text) : null;   // 내용 지문(내용 바뀌면 파일명도 바뀜 → 옛 음성 안 씀)
+    // ① 저장본 후보: 지문이 있으면 '내용 일치 파일'만(qt-<날짜>-<지문>.wav) — 내용이 바뀌면 새로 생성.
+    //    지문이 없을 때만 미리 만든 로컬 음성(mp3/wav) 후보를 쓴다.
+    var cands = sig ? [ttsBase() + "qt-" + date + "-" + sig + ".wav"]
+                    : ((opts && opts.preUrls && opts.preUrls.length) ? opts.preUrls.slice() : []);
+    buildHi(opts && opts.trackEl, opts && opts.preText);   // 따라 읽기 줄 목록 + 앞부분(제목·구절) 분량
+    // ① 저장된 음원 후보를 실제로 로드 시도 → 존재하면 바로 재생(스트리밍)
     //    HEAD 확인은 일부 모바일에서 불안정하므로, 오디오 요소 로드 성공(=존재) 여부로 판단한다.
     (function tryStream(i) {
       if (!active || myGen !== gen) return;
@@ -307,7 +323,7 @@ var WPCTts = (function () {
     function doGenerate() {                               // ② 저장본 없음 → Gemini 생성(서버가 저장) → 다음부터 ①에서 재생
       if (!active || myGen !== gen) return;
       if (btnEl) btnEl.textContent = "⏳ 음성 만드는 중… (처음 1~2분)";
-      aiFetch(text, date)
+      aiFetch(text, date, sig)
         .then(function (b) { if (active && myGen === gen) playAudio(URL.createObjectURL(b), myGen); })
         .catch(function () { if (active && myGen === gen) browserStart(text, myGen); });   // ③ 실패 시 기본 음성
     }
@@ -642,7 +658,8 @@ window.WPCTts = WPCTts;
       let readText = parts.join(". ");
       if (!readText.trim()) readText = e.content;
       const dd = dotToDash(date);
-      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 오늘의 말씀 듣기", { preUrls: window.WPCTts.preUrlsForDate(dd), date: dd, trackEl: detailEl });
+      const preText = [p.title || "", p.ref || ""].filter(Boolean).join(" ");
+      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 오늘의 말씀 듣기", { date: dd, trackEl: detailEl, preText: preText });
     })();
     const items = [...dateListEl.querySelectorAll(".qt-dl-item")];
     items.forEach((b) => b.classList.toggle("active", b.dataset.date === date));

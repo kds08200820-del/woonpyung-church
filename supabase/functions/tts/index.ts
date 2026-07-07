@@ -84,15 +84,18 @@ Deno.serve(async (req) => {
     new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
   try {
     if (!GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY 미설정 — Supabase 시크릿에 추가하세요." }, 500);
-    const { text, voice, date } = await req.json().catch(() => ({} as any));
+    const { text, voice, date, sig } = await req.json().catch(() => ({} as any));
     const clean = String(text ?? "").trim();
     if (!clean) return json({ error: "text 없음" }, 400);
     const capped = clean.slice(0, 12000); // 사실상 제한 없음(QT는 최대 ~4천 자). 폭주 방지용 안전 상한만.
     const voiceName = String(voice || DEFAULT_VOICE);
 
-    // 1) 캐시 확인 — 날짜가 오면 qt-<날짜>.wav(프런트가 이 경로로 스트리밍), 없으면 (목소리+글) 해시
-    const path = (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date))
-      ? `qt-${date}.wav`
+    // 1) 캐시 확인 — 날짜(+내용지문 sig)가 오면 qt-<날짜>-<sig>.wav(프런트가 이 경로로 스트리밍).
+    //    sig가 내용에 따라 바뀌므로 QT를 수정하면 새 파일이 만들어져 옛 음성을 재사용하지 않는다.
+    const dateOk = typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date);
+    const sigOk = typeof sig === "string" && /^[a-z0-9]{1,12}$/.test(sig);
+    const path = dateOk
+      ? (sigOk ? `qt-${date}-${sig}.wav` : `qt-${date}.wav`)
       : (await sha256hex(voiceName + "|" + capped)) + ".wav";
     const cached = await cacheGet(path);
     if (cached) return new Response(cached, { headers: { ...wavHeaders, "X-TTS-Cache": "hit" } });
