@@ -274,7 +274,7 @@ console.log('[dashboard.js] v20260705qtfallback');
           tb.onclick = function () {
             var starting = tb.textContent.indexOf('멈춤') < 0 && tb.textContent.indexOf('준비') < 0;
             if (starting) { openFull(); try { document.getElementById('dashQtFull').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
-            window.WPCTts.toggle(readText, tb, '🔊 오늘의 말씀 듣기', { preUrls: (window.WPCTts.preUrlsForDate ? window.WPCTts.preUrlsForDate(qDate) : []), date: qDate });
+            window.WPCTts.toggle(readText, tb, '🔊 오늘의 말씀 듣기', { preUrls: (window.WPCTts.preUrlsForDate ? window.WPCTts.preUrlsForDate(qDate) : []), date: qDate, trackEl: document.getElementById('dashQtFull') });
           };
         })();
       })
