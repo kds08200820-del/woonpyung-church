@@ -205,7 +205,11 @@ console.log('[dashboard.js] v20260705qtfallback');
         ? '<div style="background:#f6f9f3;border:1px solid #e2e8da;border-radius:11px;padding:12px 14px;margin-bottom:12px">' +
           '<div style="font-size:.76rem;color:#5b7a52;font-weight:700;margin-bottom:3px">오늘의 읽기 · Day ' + day.d + '</div>' +
           '<div style="font-size:.8rem;color:#7b8794;margin-bottom:4px">' + esc(P.themes[day.t]) + '</div>' +
-          '<div style="font-size:1.06rem;font-weight:700;color:var(--accent,#032257)">' + esc(day.r) + '</div></div>'
+          '<div style="font-size:1.06rem;font-weight:700;color:var(--accent,#032257)">' + esc(day.r) + '</div>' +
+          (window.BIBLE_NOTES && window.BIBLE_NOTES.days[day.d - 1]
+            ? '<div style="margin-top:9px;padding-top:9px;border-top:1px dashed #d9e2d2;font-size:.87rem;line-height:1.75;color:#3f5240">💬 ' + esc(window.BIBLE_NOTES.days[day.d - 1]) + '</div>'
+            : '') +
+          '</div>'
         : '<div style="background:#f0f7ef;border:1px solid #d8e8d4;border-radius:11px;padding:14px;text-align:center;margin-bottom:12px;font-weight:700;color:#2f5d3a">🎉 365일 완주를 축하합니다!</div>') +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:' + (meta.length ? '10px' : '0') + '">' +
       (day
@@ -265,6 +269,15 @@ console.log('[dashboard.js] v20260705qtfallback');
       '<div style="display:flex;gap:6px;flex:0 0 auto">' +
       (ttsOk ? '<button class="btn btn-line" id="brm_tts" style="padding:4px 12px;white-space:nowrap">🔊 듣기</button>' : '') +
       '<button class="btn btn-line" id="brm_close" style="padding:4px 12px;white-space:nowrap">닫기</button></div></div>' +
+      (function () {   // 🧭 구속사 파노라마: 지금 성경 전체 이야기의 어디쯤을 읽고 있는지 + 오늘 본문의 의미
+        var N = window.BIBLE_NOTES; if (!N) return '';
+        var t = N.themes[day.t] || '', dn = N.days[day.d - 1] || '';
+        return '<div style="margin-top:12px;background:#f4f7fb;border:1px solid #dde6f2;border-radius:11px;padding:12px 14px">' +
+          '<div style="font-size:.74rem;font-weight:700;color:#3a5a8c;margin-bottom:5px">🧭 구속사 파노라마 · 주제 ' + (day.t + 1) + '/38</div>' +
+          (t ? '<div style="font-size:.84rem;line-height:1.75;color:#44506a">' + esc(t) + '</div>' : '') +
+          (dn ? '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d3ddeb;font-size:.86rem;line-height:1.75;color:#3f5240">💬 ' + esc(dn) + '</div>' : '') +
+          '</div>';
+      })() +
       '<div id="brm_body" style="margin-top:14px;max-height:60vh;overflow:auto;line-height:1.95;font-size:1.02rem;font-family:\'Noto Serif KR\',serif;color:#1f2937"><p class="qt-loading">본문을 불러오는 중…</p></div>' +
       (onDone ? '<div style="margin-top:14px;text-align:center"><button type="button" id="brm_done" style="padding:10px 28px;border:0;border-radius:10px;background:var(--accent,#032257);color:#fff;font:inherit;font-weight:700;cursor:pointer">✓ 읽기 완료</button></div>' : '') +
       '</div>';
@@ -365,7 +378,11 @@ console.log('[dashboard.js] v20260705qtfallback');
       return '<details' + (days.some(function (d) { return !done[d.d]; }) && dn > 0 ? ' open' : '') + ' style="border:1px solid #e6ebf2;border-radius:10px;margin-bottom:8px;background:#fff">' +
         '<summary style="cursor:pointer;padding:10px 12px;font-weight:700;color:var(--accent,#032257);font-size:.9rem;list-style-position:inside">' + (ti + 1) + '. ' + esc(t) +
         ' <span class="br-gcnt" data-ti="' + ti + '" style="font-weight:400;color:' + (dn === days.length ? '#1e874b' : '#9aa5b1') + ';font-size:.78rem">' + (dn === days.length ? '✓ 완료' : dn + '/' + days.length + '일') + '</span></summary>' +
-        '<div style="padding:2px 12px 10px">' + rowsH + '</div></details>';
+        '<div style="padding:2px 12px 10px">' +
+        (window.BIBLE_NOTES && window.BIBLE_NOTES.themes[ti]
+          ? '<div style="margin:4px 0 8px;padding:9px 11px;background:#f4f7fb;border-radius:8px;font-size:.8rem;line-height:1.7;color:#44506a">🧭 ' + esc(window.BIBLE_NOTES.themes[ti]) + '</div>'
+          : '') +
+        rowsH + '</div></details>';
     }).join('');
     ov.innerHTML = '<div style="background:#f7f9fc;border-radius:14px;max-width:720px;width:100%;padding:20px 18px;box-shadow:0 24px 60px rgba(0,0,0,.32)">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">📖 구속사 성경읽기 365 <span id="brt_cnt" style="font-size:.84rem;color:#9aa5b1;font-weight:600">' + BR.rows.length + '/365</span></h3><button class="btn btn-line" id="brt_close" style="padding:4px 12px">닫기</button></div>' +
