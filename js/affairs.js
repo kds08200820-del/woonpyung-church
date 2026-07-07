@@ -2010,7 +2010,7 @@ console.log('[affairs.js] v20260701dj');
   function renderSermon(panel, opts) {
     var worshipMode = !!(opts && opts.worship);
     var _now = new Date();   // 목록 기본 필터: 오늘 기준 연·월
-    var WTPL = {}, smView = 'list', smRows = [], calYM = null, smTableState = { svc: '전체', ser: '전체', year: String(_now.getFullYear()), month: pad2(_now.getMonth() + 1), sort: 'desc', perPage: 20, page: 1 };
+    var WTPL = {}, smView = 'list', smRows = [], calYM = null, smTableState = { svc: '전체', ser: '전체', year: String(_now.getFullYear()), month: pad2(_now.getMonth() + 1), week: '전체', sort: 'desc', perPage: 20, page: 1 };
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요기도회': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#64748b'; }
     function orderCount(r) { try { var a = JSON.parse(r.worship_order || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
@@ -2162,13 +2162,17 @@ console.log('[affairs.js] v20260701dj');
       // ── 필터·정렬 적용 ──
       var filtSvc = smTableState.svc, filtYear = smTableState.year, filtMonth = smTableState.month, filtSer = smTableState.ser;
       var monthOn = (filtMonth !== '전체');
+      var filtWeek = smTableState.week || '전체';
+      var weekOn = monthOn && filtWeek !== '전체';   // 주차는 특정 월을 골랐을 때만 의미가 있다
+      function weekOfMonth(d) { var day = parseInt(String(d || '').slice(8, 10), 10); return day ? Math.ceil(day / 7) : 0; }   // 1~7일=1주 … 29~31일=5주
       var sortDir = smTableState.sort, perPage = smTableState.perPage, page = smTableState.page;
       var filtered = smRows.filter(function (r) {
         var svcOk = (filtSvc === '전체') || (r.service === filtSvc);
         var serOk = (filtSer === '전체') || (String(r.series || '').split(',').map(function (s) { return s.trim(); }).indexOf(filtSer) >= 0);
         var yearOk = (filtYear === '전체') || ((r.sermon_date || '').slice(0, 4) === filtYear);
         var monthOk = !monthOn || ((r.sermon_date || '').slice(5, 7) === filtMonth);
-        return svcOk && serOk && yearOk && monthOk;
+        var weekOk = !weekOn || (weekOfMonth(r.sermon_date) === Number(filtWeek));
+        return svcOk && serOk && yearOk && monthOk && weekOk;
       }).slice().sort(function (a, b) {
         var da = a.sermon_date || '', db = b.sermon_date || '';
         // 특정 월을 고르면 항상 1일→31일 순서(오름차순)로 표기
@@ -2202,6 +2206,15 @@ console.log('[affairs.js] v20260701dj');
       var sortBtn = monthOn
         ? '<button id="sm_sort_btn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#8a93a0;cursor:default" title="월을 선택하면 1일→31일 순으로 정렬됩니다" disabled>▲ 1일→31일 순</button>'
         : '<button id="sm_sort_btn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem" title="최신순: 오늘·최근 설교를 위로, 게시예정(미래)은 가까운 날부터 아래로">' + (sortDir === 'desc' ? '▼ 최신순(오늘 기준)' : '▲ 오래된순') + '</button>';
+      // 주차 버튼 — 특정 월을 골랐을 때만 표시(1주=1~7일 … 5주=29~31일)
+      var weekBtns = '';
+      if (monthOn) {
+        weekBtns = '<span style="display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center">' +
+          ['전체', '1', '2', '3', '4', '5'].map(function (w) {
+            var on = (String(filtWeek) === w);
+            return '<button class="sm-wk" data-wk="' + w + '" style="padding:5px 11px;border:1px solid ' + (on ? 'var(--accent,#032257)' : '#dfe5ee') + ';border-radius:8px;background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : '#3a4a63') + ';cursor:pointer;font-size:.82rem;font-weight:' + (on ? '700' : '400') + '">' + (w === '전체' ? '전체 주' : w + '주') + '</button>';
+          }).join('') + '</span>';
+      }
       var ppSel = '<select id="sm_per_page" style="padding:5px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;font-size:.84rem;cursor:pointer">' +
         [20, 30, 50].map(function (n) { return '<option value="' + n + '"' + (n === perPage ? ' selected' : '') + '>' + n + '개씩</option>'; }).join('') + '</select>';
       var info = '<span style="font-size:.83rem;color:#9aa5b1">' + total + '편 / ' + pageRows.length + '편 표시</span>';
@@ -2251,7 +2264,7 @@ console.log('[affairs.js] v20260701dj');
       listBox.innerHTML =
         '<div class="fin-card">' +
         '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eef1f5">' +
-        '<b style="font-size:.95rem">설교</b>' + svcSel + serSel + yrSel + moSel + sortBtn + ppSel +
+        '<b style="font-size:.95rem">설교</b>' + svcSel + serSel + yrSel + moSel + weekBtns + sortBtn + ppSel +
         '<span style="margin-left:auto">' + info + '</span></div>' +
         '<div style="overflow:auto;-webkit-overflow-scrolling:touch"><table class="fin-table" style="min-width:660px"><thead><tr>' +
         '<th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>오늘의 말씀(QT)</th><th>관리</th>' +
@@ -2262,7 +2275,10 @@ console.log('[affairs.js] v20260701dj');
       wireRows(listBox);
       listBox.querySelector('#sm_flt_svc').onchange = function () { smTableState.svc = this.value; smTableState.page = 1; renderTable(); };
       listBox.querySelector('#sm_flt_yr').onchange = function () { smTableState.year = this.value; smTableState.page = 1; renderTable(); };
-      listBox.querySelector('#sm_flt_mo').onchange = function () { smTableState.month = this.value; smTableState.page = 1; renderTable(); };
+      listBox.querySelector('#sm_flt_mo').onchange = function () { smTableState.month = this.value; smTableState.week = '전체'; smTableState.page = 1; renderTable(); };
+      Array.prototype.forEach.call(listBox.querySelectorAll('.sm-wk'), function (b) {
+        b.onclick = function () { smTableState.week = b.dataset.wk; smTableState.page = 1; renderTable(); };
+      });
       var serSelEl = listBox.querySelector('#sm_flt_ser');
       if (serSelEl) serSelEl.onchange = function () { smTableState.ser = this.value; smTableState.page = 1; renderTable(); };
       var sortBtnEl = listBox.querySelector('#sm_sort_btn');
