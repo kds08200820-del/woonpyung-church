@@ -101,7 +101,8 @@ const RULES =
   "3) 문장 부호에 맞춰 자연스럽게 쉬세요.\n\n";
 
 // 긴 본문을 문단·문장 경계로 ~max자씩 나눈다(짧은 조각일수록 생성이 빠르고 빈응답 버그도 드묾).
-function chunkText(s: string, max = 800): string[] {
+// ※ 조각이 너무 잘면 이음새(목소리 톤 변화)가 늘어남 → 1600자 정도로 크게 잘라 이음새를 최소화.
+function chunkText(s: string, max = 1600): string[] {
   const paras = String(s).split(/\n{2,}/);
   const chunks: string[] = [];
   let buf = "";
@@ -123,7 +124,9 @@ function chunkText(s: string, max = 800): string[] {
 async function genChunkPcm(chunk: string, voiceName: string): Promise<{ pcm: Uint8Array; rate: number }> {
   const body = {
     contents: [{ parts: [{ text: RULES + chunk }] }],
-    generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } },
+    // temperature 0: 낭독 스타일의 무작위성을 제거 — 조각마다 톤·속도가 달라져
+    // 이어붙였을 때 '다른 목소리'처럼 들리던 문제를 막는다(같은 Kore라도 기본값은 매번 달리 읽음).
+    generationConfig: { temperature: 0, responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } },
   };
   let lastDetail = "";
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -216,10 +219,14 @@ Deno.serve(async (req) => {
       return json({ error: "오디오 생성 실패(재시도 후에도 빈 응답)", detail: failDetail }, 502);
     }
     const rate = results[0]?.rate || 24000;
-    let total = 0; for (const r of results) total += r ? r.pcm.length : 0;
+    // 조각 사이에 0.3초 무음을 넣어 문단 전환이 뚝 끊기지 않고 자연스러운 쉼으로 이어지게 한다
+    const gap = new Uint8Array(Math.floor(rate * 0.3) * 2);   // 16bit 모노 = 샘플당 2바이트(0 = 무음)
+    const parts: Uint8Array[] = [];
+    for (const r of results) { if (r && r.pcm.length) { if (parts.length) parts.push(gap); parts.push(r.pcm); } }
+    let total = 0; for (const p of parts) total += p.length;
     if (!total) return json({ error: "오디오 생성 실패(빈 응답)", detail: "empty" }, 502);
     const pcm = new Uint8Array(total);
-    let off = 0; for (const r of results) { if (r) { pcm.set(r.pcm, off); off += r.pcm.length; } }
+    let off = 0; for (const p of parts) { pcm.set(p, off); off += p.length; }
     const wav = pcmToWav(pcm, rate);
 
     // 3) 캐시에 저장(다음부터는 공짜 재생) — 저장 실패해도 이번 재생은 정상
