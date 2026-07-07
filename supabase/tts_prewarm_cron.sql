@@ -21,7 +21,7 @@ select cron.schedule(
   '*/30 * * * *',
   $$
   select net.http_post(
-    url := 'https://cetacttsdwzxjzkyozgd.supabase.co/functions/v1/tts-prewarm',
+    url := 'https://cetacttsdwzxjzkyozgd.supabase.co/functions/v1/tts-prewarm-',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'apikey', 'sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G',
