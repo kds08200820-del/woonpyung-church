@@ -2821,7 +2821,7 @@ console.log('[affairs.js] v20260701dj');
         '<div class="wd-area" id="wd_area">' +
         '<div class="wd-page" id="wd_page">' +
         '<div class="wd-crop-layer" id="wd_crop_layer"></div>' +
-        '<div class="se-editor" id="se_editor" contenteditable="true" data-ph="설교 원고를 작성하세요. 상단 리본의 도구로 굵게·제목·인용·색·목록·메모·이미지 등 서식을 적용할 수 있습니다."></div>' +
+        '<div class="se-editor" id="se_editor" contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off" data-ph="설교 원고를 작성하세요. 상단 리본의 도구로 굵게·제목·인용·색·목록·메모·이미지 등 서식을 적용할 수 있습니다."></div>' +
         '<div class="wd-pagenum-layer" id="wd_pgnum_layer"></div>' +
         '</div>' +
         '</div>' +
@@ -3413,18 +3413,27 @@ console.log('[affairs.js] v20260701dj');
         else ed.innerHTML = '';
         syncContent();
       })();
-      function syncContent() {
-        hid.value = wdCleanHtml ? wdCleanHtml() : ed.innerHTML;   // 저장·미리보기엔 페이지 나눔 흔적을 뺀 깨끗한 HTML
+      // 저장·미리보기·AI용 깨끗한 HTML — 예전엔 키 입력마다 원고 전체를 복제·정리해 숨은칸(hid)에 넣어
+      // 긴 원고에서 타이핑이 무거웠음 → 필요할 때만 계산하는 함수로 전환(입력 성능).
+      function cleanContent() { return wdCleanHtml ? wdCleanHtml() : ed.innerHTML; }
+      var cntT = null;
+      function updateCounts() {
         var t = (ed.innerText || '').replace(/ /g, ' ').trim();
         var words = t ? t.split(/\s+/).length : 0, chars = t.replace(/\s/g, '').length;
         cntEl.textContent = words + '단어 · ' + chars + '자';
       }
+      function syncContent() { clearTimeout(cntT); cntT = setTimeout(updateCounts, 300); }   // 카운트만 디바운스 갱신
       ed.addEventListener('input', syncContent);
       try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
-      function exec(cmd, val) { ed.focus(); try { document.execCommand(cmd, false, val == null ? null : val); } catch (e) {} syncContent(); }
+      function exec(cmd, val) { pushUndo(); ed.focus(); try { document.execCommand(cmd, false, val == null ? null : val); } catch (e) {} syncContent(); }
       Array.prototype.forEach.call(ov.querySelectorAll('#se_tb [data-cmd]'), function (b) {
         b.onmousedown = function (e) { e.preventDefault(); };   // 선택영역 유지
-        b.onclick = function () { exec(b.dataset.cmd); };
+        b.onclick = function () {
+          var c = b.dataset.cmd;
+          if (c === 'undo') { doUndo(); return; }   // 브라우저 undo는 페이지 나눔 DOM 재구성으로 오염됨 → 자체 스택 사용
+          if (c === 'redo') { doRedo(); return; }
+          exec(c);
+        };
       });
       // 셀렉트·팔레트 클릭 시 선택영역 보존 — 노드 참조가 아니라 '전역 문자 오프셋'으로 저장한다.
       // (페이지 나눔이 조각을 합치거나 다시 쪼개면 노드가 갈아치워져 참조형 Range는 무효가 됨 → 색상이 엉뚱한 곳에 적용되던 오류)
@@ -3433,7 +3442,134 @@ console.log('[affairs.js] v20260701dj');
       function globalToPos(g) { if (g < 0) return null; var w = document.createTreeWalker(ed, NodeFilter.SHOW_TEXT, null), acc = 0, x, last = null; while (x = w.nextNode()) { last = x; if (acc + x.data.length >= g) return { node: x, offset: g - acc }; acc += x.data.length; } return last ? { node: last, offset: last.data.length } : null; }
       function saveSel() { var s = window.getSelection(); if (s && s.rangeCount && ed.contains(s.anchorNode)) { var r = s.getRangeAt(0); savedSel = { s: selToGlobal(r.startContainer, r.startOffset), e: selToGlobal(r.endContainer, r.endOffset) }; } }
       function restoreSel() { if (!savedSel || savedSel.s < 0) return; var a = globalToPos(savedSel.s), b = globalToPos(savedSel.e); if (!a || !b) return; try { var r = document.createRange(); r.setStart(a.node, a.offset); r.setEnd(b.node, b.offset); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (e) { } }
-      ed.addEventListener('keyup', saveSel); ed.addEventListener('mouseup', saveSel); ed.addEventListener('input', saveSel);
+      ed.addEventListener('mouseup', saveSel);
+      ed.addEventListener('keyup', function (e) {   // 키 입력마다 원고 전체를 직렬화하던 부담 제거 — 선택 이동 키에서만 저장
+        var k = e.key || '';
+        if (k.indexOf('Arrow') === 0 || k === 'Home' || k === 'End' || k === 'PageUp' || k === 'PageDown' || e.shiftKey) saveSel();
+      });
+
+      // ── 실행취소/다시실행: 자체 스냅샷 스택 ──────────────────────────────
+      // 페이지 나눔(repaginate)이 execCommand 밖에서 DOM을 재구성(간격 삽입·문단 분할/병합)하기 때문에
+      // 브라우저 기본 undo 스택은 금방 오염되어 Ctrl+Z가 엉뚱하게 동작한다.
+      // → '깨끗한 HTML + 전역 캐럿 오프셋' 스냅샷을 직접 쌓고, Ctrl+Z/Y·툴바 ↶↷를 여기에 연결한다.
+      var undoStack = [], redoStack = [], undoT = null, edComposing = false, UNDO_MAX = 100;
+      function caretSnap() {
+        var s = window.getSelection();
+        if (s && s.rangeCount && ed.contains(s.anchorNode)) { var r = s.getRangeAt(0); return { s: selToGlobal(r.startContainer, r.startOffset), e: selToGlobal(r.endContainer, r.endOffset) }; }
+        return null;
+      }
+      function takeSnap() { return { html: cleanContent(), sel: caretSnap() }; }
+      function pushUndo() {
+        clearTimeout(undoT); undoT = null;
+        var snap = takeSnap();
+        var top = undoStack[undoStack.length - 1];
+        if (top && top.html === snap.html) { if (snap.sel) top.sel = snap.sel; return; }   // 내용 그대로면 스택·redo 유지
+        undoStack.push(snap);
+        if (undoStack.length > UNDO_MAX) undoStack.shift();
+        redoStack.length = 0;
+      }
+      function schedPushUndo() { clearTimeout(undoT); undoT = setTimeout(pushUndo, 600); }
+      function applySnap(snap) {
+        ed.innerHTML = snap.html;
+        if (typeof wdRepaginate === 'function') wdRepaginate();
+        if (snap.sel && snap.sel.s >= 0) {   // 분할/병합은 텍스트 순서를 안 바꾸므로 전역 오프셋으로 정확히 복원됨
+          var a = globalToPos(snap.sel.s), b = globalToPos(snap.sel.e);
+          if (a && b) { try { var r = document.createRange(); r.setStart(a.node, a.offset); r.setEnd(b.node, b.offset); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { } }
+        }
+        ed.focus();
+        savedSel = snap.sel;
+        try { ed.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }   // 카운트·미리보기·자동저장 갱신
+      }
+      function doUndo() { pushUndo(); if (undoStack.length < 2) return; redoStack.push(undoStack.pop()); applySnap(undoStack[undoStack.length - 1]); }
+      function doRedo() { if (!redoStack.length) return; var s = redoStack.pop(); undoStack.push(s); applySnap(s); }
+      ed.addEventListener('compositionstart', function () { edComposing = true; });
+      ed.addEventListener('compositionend', function () { edComposing = false; schedPushUndo(); });
+      ed.addEventListener('input', function () { if (!edComposing) schedPushUndo(); });   // 한글 조합 중엔 스냅샷 보류
+      ed.addEventListener('keydown', function (e) {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        var k = String(e.key).toLowerCase();
+        if (k === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
+        else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); doRedo(); }
+      });
+      undoStack.push(takeSnap());   // 초기 상태(불러온 원고)를 첫 스냅샷으로
+
+      // ── 붙여넣기 클린업 ─────────────────────────────────────────────────
+      // Word·한글·웹에서 복사한 지저분한 서식(클래스·mso 스타일·불필요한 계층)을 걷어내고
+      // 문단·제목·목록·굵기·색 등 핵심 서식만 남긴다(원고 오염·페이지 계산 흔들림 방지).
+      var PASTE_BLOCKMAP = { P: 'p', DIV: 'p', SECTION: 'p', ARTICLE: 'p', PRE: 'p', FIGURE: 'p', H1: 'h1', H2: 'h2', H3: 'h3', H4: 'h3', H5: 'h3', H6: 'h3', BLOCKQUOTE: 'blockquote', UL: 'ul', OL: 'ol', LI: 'li', TABLE: 'table', TR: 'tr', TD: 'td', TH: 'td' };
+      var PASTE_INLINEMAP = { B: 'b', STRONG: 'b', I: 'i', EM: 'i', U: 'u', S: 's', STRIKE: 's', DEL: 's', SUB: 'sub', SUP: 'sup', MARK: 'mark', A: 'a', SPAN: 'span', FONT: 'span', CODE: 'span', LABEL: 'span' };
+      var PASTE_DROP = { SCRIPT: 1, STYLE: 1, META: 1, LINK: 1, TITLE: 1, HEAD: 1, IMG: 1, VIDEO: 1, AUDIO: 1, IFRAME: 1, BUTTON: 1, INPUT: 1, TEXTAREA: 1, SELECT: 1, FORM: 1, OBJECT: 1, EMBED: 1, SVG: 1, CANVAS: 1, NOSCRIPT: 1 };
+      var PASTE_STYLES = ['color', 'background-color', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-decoration-line', 'text-align'];
+      function copyAllowedStyles(src, dst, isBlock) {
+        if (!src.style) return;
+        PASTE_STYLES.forEach(function (pr) {
+          if (isBlock !== (pr === 'text-align')) return;   // 블록엔 정렬만, 인라인엔 글자 서식만
+          var v = src.style.getPropertyValue(pr);
+          if (!v || v === 'normal' || v === 'initial' || v === 'inherit' || v === 'none') return;
+          if (pr === 'font-weight' && !(parseInt(v, 10) >= 600 || v === 'bold' || v === 'bolder')) return;
+          if (pr === 'background-color' && /transparent|rgba\(0,\s*0,\s*0,\s*0\)/.test(v)) return;
+          try { dst.style.setProperty(pr, v); } catch (e) { }
+        });
+      }
+      function sanitizeInto(node, out) {
+        for (var ch = node.firstChild; ch; ch = ch.nextSibling) {
+          if (ch.nodeType === 3) { out.appendChild(document.createTextNode(ch.data)); continue; }
+          if (ch.nodeType !== 1) continue;
+          var tag = ch.tagName;
+          if (PASTE_DROP[tag]) continue;
+          if (tag === 'BR' || tag === 'HR') { out.appendChild(document.createElement(tag.toLowerCase())); continue; }
+          // 블록을 품은 래퍼 div/section 은 벗기고 내용만(중첩 p 방지)
+          if ((tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE') && ch.querySelector('p,div,h1,h2,h3,h4,h5,h6,ul,ol,li,blockquote,table,section,article')) { sanitizeInto(ch, out); continue; }
+          var bt = PASTE_BLOCKMAP[tag];
+          if (bt) {
+            var bel = document.createElement(bt);
+            copyAllowedStyles(ch, bel, true);
+            sanitizeInto(ch, bel);
+            out.appendChild(bel);
+            continue;
+          }
+          var it = PASTE_INLINEMAP[tag];
+          if (it) {
+            var iel = document.createElement(it);
+            if (it === 'a') { var h = ch.getAttribute('href') || ''; if (/^https?:/i.test(h)) iel.setAttribute('href', h); }
+            if (tag === 'FONT') { var fc = ch.getAttribute('color'); var ff = ch.getAttribute('face'); if (fc) iel.style.color = fc; if (ff) iel.style.fontFamily = ff; }
+            copyAllowedStyles(ch, iel, false);
+            sanitizeInto(ch, iel);
+            if (it === 'span' && !iel.getAttribute('style')) { while (iel.firstChild) out.appendChild(iel.firstChild); }   // 서식 없는 span 은 벗김
+            else out.appendChild(iel);
+            continue;
+          }
+          sanitizeInto(ch, out);   // 모르는 태그(tbody 등) → 태그만 벗기고 내용 유지
+        }
+      }
+      function sanitizePastedHtml(html) {
+        var src = document.createElement('div');
+        src.innerHTML = String(html || '').replace(/<!--[\s\S]*?-->/g, '').replace(/<\/?o:p[^>]*>/gi, '');
+        var out = document.createElement('div');
+        sanitizeInto(src, out);
+        Array.prototype.slice.call(out.querySelectorAll('p, h1, h2, h3, li, blockquote')).forEach(function (b) {
+          if (!b.textContent.trim() && !b.querySelector('br')) b.remove();   // Word 가 흘리는 빈 문단 제거
+        });
+        return out.innerHTML;
+      }
+      function plainToParas(text) {
+        var t = String(text || '').replace(/\r\n?/g, '\n');
+        if (!t.trim()) return '';
+        return t.split(/\n{2,}/).map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join('');
+      }
+      ed.addEventListener('paste', function (e) {
+        var cd = e.clipboardData || window.clipboardData;
+        if (!cd) return;   // 아주 옛 브라우저 → 기본 동작
+        var html = '', text = '';
+        try { html = cd.getData('text/html') || ''; } catch (err) { }
+        try { text = cd.getData('text/plain') || ''; } catch (err) { }
+        var ins = html ? sanitizePastedHtml(html) : plainToParas(text);
+        if (!ins) return;
+        e.preventDefault();
+        pushUndo();   // 붙여넣기 전 상태를 undo 한 단계로
+        try { document.execCommand('insertHTML', false, ins); } catch (err) { }
+        syncContent();
+      });
 
       // 툴바의 select(문단·글꼴·크기·줄간격·자간)를 누르면 편집기 포커스를 가져가 선택영역이 사라진다.
       // 열리기 직전(mousedown/focus)에 현재 선택을 저장해 둬야 글꼴·문단 스타일이 실제로 적용된다.
@@ -3449,6 +3585,7 @@ console.log('[affairs.js] v20260701dj');
         ed.focus(); restoreSel();
         var s = window.getSelection();
         if (!s || !s.rangeCount || !ed.contains(s.anchorNode)) return;
+        pushUndo();
         try { document.execCommand('styleWithCSS', false, true); document.execCommand('fontName', false, css); } catch (e) {}
         Array.prototype.forEach.call(ed.querySelectorAll('font[face]'), function (f) {
           var sp = document.createElement('span'); sp.style.fontFamily = f.getAttribute('face'); sp.innerHTML = f.innerHTML;
@@ -3467,6 +3604,7 @@ console.log('[affairs.js] v20260701dj');
       var sizeSel = ov.querySelector('#se_size');
       function applySize(px) {
         ed.focus(); restoreSel();
+        pushUndo();
         try { document.execCommand('fontSize', false, '7'); } catch (e) {}
         Array.prototype.forEach.call(ed.querySelectorAll('font[size="7"]'), function (f) { f.removeAttribute('size'); f.style.fontSize = px + 'px'; });
         syncContent();
@@ -3523,7 +3661,7 @@ console.log('[affairs.js] v20260701dj');
       ov.querySelector('#se_prayer_ai').onclick = function () {
         var s = sess(); var msg = ov.querySelector('#se_msg');
         if (!s || !s.token) { msg.style.color = '#c0392b'; msg.textContent = '로그인이 필요합니다.'; return; }
-        var manuscript = htmlToPlain(hid.value || ed.innerHTML || '').trim();
+        var manuscript = htmlToPlain(cleanContent() || '').trim();
         var title = ov.querySelector('#se_title').value.trim(), scripture = ov.querySelector('#se_scripture').value.trim();
         if (!manuscript && !scripture) { msg.style.color = '#c0392b'; msg.textContent = '설교 원고(또는 본문)를 먼저 입력하면 기도문을 생성합니다.'; return; }
         var content = '설교 제목: ' + (title || '(없음)') + '\n본문: ' + (scripture || '(없음)') + '\n\n[설교 원고]\n' + (manuscript.slice(0, 6000) || '(없음)');
@@ -3559,7 +3697,7 @@ console.log('[affairs.js] v20260701dj');
           var qtToggleS = ov.querySelector('#se_qt_toggle'); if (qtToggleS) { qtToggleS.checked = false; syncQt(); }
           if (sun.scripture) ov.querySelector('#se_scripture').value = sun.scripture;
           if (sun.title) ov.querySelector('#se_title').value = sun.title;
-          if (sun.sermonHtml) { ed.innerHTML = sun.sermonHtml; syncContent(); if (typeof wdRepaginate === 'function') wdRepaginate(); }
+          if (sun.sermonHtml) { pushUndo(); ed.innerHTML = sun.sermonHtml; syncContent(); if (typeof wdRepaginate === 'function') wdRepaginate(); pushUndo(); }
           // 주일설교 본문(예: 시편 107:1-43)에 맞춰 개역개정·우리말 성경을 자동으로 불러옴
           if (sun.scripture && typeof doFetchBible === 'function') doFetchBible();
           result.innerHTML = row('분류', '주일 낮 예배 (주일설교 축출)') + row('날짜', p.date) + row('본문', sun.scripture) + row('제목', sun.title) +
@@ -3574,7 +3712,7 @@ console.log('[affairs.js] v20260701dj');
           if (p.title) ov.querySelector('#se_title').value = p.title;
           if (p.gaeyeok && ov.querySelector('#se_bible')) ov.querySelector('#se_bible').value = p.gaeyeok;
           if (p.woorimal && ov.querySelector('#se_qt_bible')) ov.querySelector('#se_qt_bible').value = p.woorimal;
-          if (p.sermonHtml) { ed.innerHTML = p.sermonHtml; syncContent(); if (typeof wdRepaginate === 'function') wdRepaginate(); }
+          if (p.sermonHtml) { pushUndo(); ed.innerHTML = p.sermonHtml; syncContent(); if (typeof wdRepaginate === 'function') wdRepaginate(); pushUndo(); }
           result.innerHTML = row('날짜', p.date) + row('본문', p.scripture) + row('제목', p.title) +
             row('개역개정', p.gaeyeok ? (p.gaeyeok.split('\n').length + '절') : '') +
             row('우리말', p.woorimal ? (p.woorimal.split('\n').length + '절') : '') +
@@ -4057,6 +4195,7 @@ console.log('[affairs.js] v20260701dj');
           }
           // Ctrl+Enter — 커서 다음의 글 전체가 다음 페이지로 넘어가도록 수동 페이지 나눔 삽입
           function insertManualBreak() {
+            pushUndo();   // 나눔 전 상태를 undo 한 단계로
             document.execCommand('insertParagraph');   // 커서 위치에서 문단을 정확히 둘로 나눔(브라우저 기본 동작 재사용 — 서식 보존)
             var sel = window.getSelection();
             if (sel && sel.rangeCount) {
@@ -4164,7 +4303,7 @@ console.log('[affairs.js] v20260701dj');
           var meta = [fmtDateK(ov.querySelector('#se_date').value), svcV, ov.querySelector('#se_scripture').value.trim(), ov.querySelector('#se_preacher').value.trim()]
             .filter(Boolean).join('   ·   ');
           var bible = (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '').trim();
-          var plain = htmlToPlain(hid.value || '').trim();
+          var plain = htmlToPlain(cleanContent() || '').trim();
           var paras = plain ? plain.split(/\n{2,}/) : ['(설교 원고가 비어 있습니다)'];
           var sLine = seriesLineInfo();
           var html = (sLine ? '<div class="pdf-series">📚 ' + esc(sLine) + '</div>' : '') + '<div class="pdf-t">' + esc(t) + '</div>';
