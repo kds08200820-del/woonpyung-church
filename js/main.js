@@ -322,7 +322,7 @@ var WPCTts = (function () {
     })(0);
     function doGenerate() {                               // ② 저장본 없음 → Gemini 생성(서버가 저장) → 다음부터 ①에서 재생
       if (!active || myGen !== gen) return;
-      if (btnEl) btnEl.textContent = "⏳ 음성 만드는 중… (처음 1~2분)";
+      if (btnEl) btnEl.textContent = "⏳ 만드는 중… 1~2분, 새로고침 말고 기다려 주세요";
       aiFetch(text, date, sig)
         .then(function (b) { if (active && myGen === gen) playAudio(URL.createObjectURL(b), myGen); })
         .catch(function () { if (active && myGen === gen) browserStart(text, myGen); });   // ③ 실패 시 기본 음성

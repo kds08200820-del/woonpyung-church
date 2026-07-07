@@ -78,6 +78,55 @@ async function logGen(row: Record<string, unknown>) {
   } catch { /* 로그 실패 무시 */ }
 }
 
+// 낭독 지침(모든 조각에 동일 적용). 지침 줄은 소리 내지 않고 스타일로만 반영됨.
+const RULES =
+  "다음 글을, 40대 중후반 여성의 따뜻하고 차분한 목소리로 또렷하게 낭독해 주세요.\n" +
+  "낭독 규칙:\n" +
+  "1) 성경 본문에서 각 절 앞의 절 번호(1, 2, 3 같은 숫자)는 소리 내어 읽지 말고, 내용만 매끄럽게 이어서 읽으세요.\n" +
+  "2) '마5:1-11'이나 '시편 110:1-7'처럼 나오는 성경 구절 표기는 책 이름을 풀어서, 콜론(:)은 '장'으로(단, 시편은 '편'으로), 붙임표(-)는 '에서'로 읽으세요. 예: '마5:1-11' → '마태복음 5장 1절에서 11절'.\n" +
+  "3) 문장 부호에 맞춰 자연스럽게 쉬세요.\n\n";
+
+// 긴 본문을 문단·문장 경계로 ~max자씩 나눈다(짧은 조각일수록 생성이 빠르고 빈응답 버그도 드묾).
+function chunkText(s: string, max = 800): string[] {
+  const paras = String(s).split(/\n{2,}/);
+  const chunks: string[] = [];
+  let buf = "";
+  const push = () => { const t = buf.trim(); if (t) chunks.push(t); buf = ""; };
+  for (const para of paras) {
+    if (buf && (buf.length + 2 + para.length) > max) push();
+    if (para.length > max) {
+      const sents = para.match(/[^.!?。…\n]+[.!?。…]?/g) || [para];
+      for (const sent of sents) { if (buf && (buf.length + 1 + sent.length) > max) push(); buf = buf ? buf + " " + sent : sent; }
+    } else {
+      buf = buf ? buf + "\n\n" + para : para;
+    }
+  }
+  push();
+  return chunks.length ? chunks : [String(s)];
+}
+
+// 한 조각을 음성(PCM)으로 생성. 빈응답(finishReason OTHER) 버그는 최대 5회 재시도.
+async function genChunkPcm(chunk: string, voiceName: string): Promise<{ pcm: Uint8Array; rate: number }> {
+  const body = {
+    contents: [{ parts: [{ text: RULES + chunk }] }],
+    generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } },
+  };
+  let lastDetail = "";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+      { method: "POST", headers: { "x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json" }, body: JSON.stringify(body) });
+    const j: any = await r.json().catch(() => ({}));
+    if (!r.ok) { lastDetail = j?.error?.message || ("HTTP " + r.status); if (r.status === 429 || r.status >= 500) continue; throw new Error(lastDetail); }
+    const part = (j?.candidates?.[0]?.content?.parts || []).find((p: any) => p?.inlineData?.data);
+    if (part?.inlineData?.data) {
+      const rate = Number((String(part.inlineData.mimeType || "").match(/rate=(\d+)/) || [])[1]) || 24000;
+      return { pcm: b64ToBytes(part.inlineData.data), rate };
+    }
+    lastDetail = "빈 응답(finishReason OTHER)";
+  }
+  throw new Error(lastDetail || "빈 응답");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (o: unknown, status = 200) =>
@@ -100,49 +149,30 @@ Deno.serve(async (req) => {
     const cached = await cacheGet(path);
     if (cached) return new Response(cached, { headers: { ...wavHeaders, "X-TTS-Cache": "hit" } });
 
-    // 2) 없으면 Gemini로 생성.
-    //    Gemini TTS 미리보기 모델은 가끔 오디오 없이 finishReason:OTHER(빈 응답)를 돌려주는
-    //    알려진 버그가 있어(긴 본문일수록 잦음), 오디오가 나올 때까지 최대 5회 재시도한다.
-    const prompt =
-      "다음 글을, 40대 중후반 여성의 따뜻하고 차분한 목소리로 또렷하게 낭독해 주세요.\n" +
-      "낭독 규칙:\n" +
-      "1) 성경 본문에서 각 절 앞의 절 번호(1, 2, 3 같은 숫자)는 소리 내어 읽지 말고, 내용만 매끄럽게 이어서 읽으세요.\n" +
-      "2) '마5:1-11'이나 '시편 110:1-7'처럼 나오는 성경 구절 표기는 책 이름을 풀어서, 콜론(:)은 '장'으로(단, 시편은 '편'으로), 붙임표(-)는 '에서'로 읽으세요. 예: '마5:1-11' → '마태복음 5장 1절에서 11절'.\n" +
-      "3) 문장 부호에 맞춰 자연스럽게 쉬세요.\n\n" +
-      capped;
-    const body = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseModalities: ["AUDIO"],
-        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
-      },
-    };
-    let data: string | undefined;
-    let mime = "audio/L16;rate=24000";
-    let lastDetail = "";
-    for (let attempt = 0; attempt < 5 && !data; attempt++) {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-        { method: "POST", headers: { "x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json" }, body: JSON.stringify(body) },
-      );
-      const j: any = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        lastDetail = j?.error?.message || ("HTTP " + r.status);
-        if (r.status === 429 || r.status >= 500) continue;   // 일시적 오류만 재시도
-        return json({ error: "TTS 생성 실패", detail: lastDetail }, 502);
-      }
-      const part = (j?.candidates?.[0]?.content?.parts || []).find((p: any) => p?.inlineData?.data);
-      if (part?.inlineData?.data) {
-        data = part.inlineData.data;
-        mime = part.inlineData.mimeType || mime;
-      } else {
-        lastDetail = "빈 응답(finishReason OTHER) — 재시도";   // 알려진 버그: 다시 시도
+    // 2) 없으면 Gemini로 생성 — 긴 본문은 문장 단위로 나눠 '병렬'로 생성(속도·안정성↑) 후 이어붙인다.
+    //    (한 번에 긴 본문을 요청하면 느리고 빈응답 버그가 잦음 → 짧은 조각 여러 개를 동시에 생성)
+    const chunks = chunkText(capped, 800);
+    const results: ({ pcm: Uint8Array; rate: number } | null)[] = new Array(chunks.length).fill(null);
+    const CONC = 4;                    // 동시 생성 개수(과도한 동시요청→429 방지)
+    let next = 0, failDetail = "";
+    async function worker() {
+      while (next < chunks.length) {
+        const my = next++;
+        results[my] = await genChunkPcm(chunks[my], voiceName);
       }
     }
-    if (!data) return json({ error: "오디오 생성 실패(재시도 후에도 빈 응답)", detail: lastDetail }, 502);
-
-    const rate = Number((mime.match(/rate=(\d+)/) || [])[1]) || 24000;
-    const wav = pcmToWav(b64ToBytes(data), rate);
+    try {
+      await Promise.all(Array.from({ length: Math.min(CONC, chunks.length) }, () => worker()));
+    } catch (e) {
+      failDetail = String((e as any)?.message || e);
+      return json({ error: "오디오 생성 실패(재시도 후에도 빈 응답)", detail: failDetail }, 502);
+    }
+    const rate = results[0]?.rate || 24000;
+    let total = 0; for (const r of results) total += r ? r.pcm.length : 0;
+    if (!total) return json({ error: "오디오 생성 실패(빈 응답)", detail: "empty" }, 502);
+    const pcm = new Uint8Array(total);
+    let off = 0; for (const r of results) { if (r) { pcm.set(r.pcm, off); off += r.pcm.length; } }
+    const wav = pcmToWav(pcm, rate);
 
     // 3) 캐시에 저장(다음부터는 공짜 재생) — 저장 실패해도 이번 재생은 정상
     await cachePut(path, wav);
