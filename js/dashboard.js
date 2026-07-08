@@ -239,7 +239,7 @@ console.log('[dashboard.js] v20260705qtfallback');
   }
   function brLoadUrm() {
     if (window.BIBLE_URM) return Promise.resolve(window.BIBLE_URM);
-    return fetch('data/bible-urm.json').then(function (r) { if (!r.ok) throw new Error('성경 본문을 불러오지 못했습니다'); return r.json(); })
+    return fetch('data/bible-urm.json?v=20260729').then(function (r) { if (!r.ok) throw new Error('성경 본문을 불러오지 못했습니다'); return r.json(); })
       .then(function (d) { window.BIBLE_URM = d; return d; });
   }
   // 브라우저 내장 음성 중 가장 자연스러운 한국어 목소리 선택(AI·비용 없이 즉시 재생)

@@ -2151,7 +2151,7 @@ console.log('[affairs.js] v20260701dj');
       }
       if (window.BIBLE_URM) { proceed(window.BIBLE_URM); return; }
       if (btn) { btn.disabled = true; btn.textContent = 'JSON 로드 중…'; }
-      fetch('data/bible-urm.json')
+      fetch('data/bible-urm.json?v=20260729')
         .then(function (r) { return r.json(); })
         .then(function (d) { window.BIBLE_URM = d; proceed(d); })
         .catch(function () { alert('우리말성경 데이터 로드 실패'); if (btn) { btn.disabled = false; btn.textContent = '📥 우리말 일괄입력'; } });
@@ -3208,7 +3208,7 @@ console.log('[affairs.js] v20260701dj');
         function loadBible(trans) {
           var cached = trans === 'gyr' ? window.BIBLE_GYR : window.BIBLE_URM;
           if (cached) return Promise.resolve(cached);
-          return fetch('data/bible-' + trans + '.json')
+          return fetch('data/bible-' + trans + '.json?v=20260729')
             .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
             .then(function (d) { if (trans === 'gyr') window.BIBLE_GYR = d; else window.BIBLE_URM = d; return d; });
         }
@@ -3250,7 +3250,7 @@ console.log('[affairs.js] v20260701dj');
         function mbLoad(trans) {
           var cached = trans === 'gyr' ? window.BIBLE_GYR : window.BIBLE_URM;
           if (cached) return Promise.resolve(cached);
-          return fetch('data/bible-' + trans + '.json').then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+          return fetch('data/bible-' + trans + '.json?v=20260729').then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
             .then(function (d) { if (trans === 'gyr') window.BIBLE_GYR = d; else window.BIBLE_URM = d; return d; });
         }
         function show() {
@@ -5430,7 +5430,7 @@ console.log('[affairs.js] v20260701dj');
       var d = getCached();
       if (d) { showVerses(d); return; }
       textEl.innerHTML = '<p class="bv-hint">성경 데이터 로드 중… (최초 1회, 약 5~10초)</p>';
-      fetch('data/bible-' + bvTrans + '.json')
+      fetch('data/bible-' + bvTrans + '.json?v=20260729')
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (bvTrans === 'gyr') window.BIBLE_GYR = data;
