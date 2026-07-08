@@ -143,6 +143,27 @@ Deno.serve(async (req) => {
   let dates: string[] = [kstDate(0), kstDate(1)];
   try { const b = await req.json(); if (b && typeof b.date === "string") dates = [b.date]; } catch { /* 본문 없음 = 기본 */ }
 
+  // 실패한 생성을 30분마다 재시도하며 Gemini 할당량을 태우는 '폭주'를 막는 쿨다운.
+  //   마커 파일(cool-<날짜>-<sig>.txt)에 '다시 시도 가능 시각(ms)'을 저장 → 그 전까진 생성 건너뜀.
+  const COOLDOWN_MS = 3 * 3600 * 1000;         // 일반 실패: 3시간 쉼
+  const QUOTA_COOLDOWN_MS = 12 * 3600 * 1000;  // 할당량 초과: 12시간 쉼(하루 리셋 대기)
+  async function coolGet(name: string): Promise<number> {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/storage/v1/object/tts-cache/${name}`, { headers: { Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY } });
+      if (!r.ok) return 0;
+      const n = Number((await r.text()).trim()); return isFinite(n) ? n : 0;
+    } catch { return 0; }
+  }
+  async function coolPut(name: string, untilMs: number) {
+    try {
+      await fetch(`${SUPABASE_URL}/storage/v1/object/tts-cache/${name}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY, "Content-Type": "text/plain", "x-upsert": "true" },
+        body: String(untilMs),
+      });
+    } catch { /* 무시 */ }
+  }
+
   const results: any[] = [];
   for (const date of dates) {
     try {
@@ -157,13 +178,21 @@ Deno.serve(async (req) => {
       // 이미 캐시돼 있으면 생성 안 함
       const head = await fetch(`${SUPABASE_URL}/storage/v1/object/public/${"tts-cache"}/${path}`, { method: "GET", headers: { Range: "bytes=0-1" } });
       if (head.ok || head.status === 206) { results.push({ date, sig, status: "cached" }); continue; }
+      // 최근에 실패했으면(쿨다운) 재시도하지 않음 — 할당량 폭주 방지
+      const coolName = `cool-${date}-${sig}.txt`;
+      const until = await coolGet(coolName);
+      if (Date.now() < until) { results.push({ date, sig, status: "cooldown", retryInMin: Math.round((until - Date.now()) / 60000) }); continue; }
       // 없으면 tts 함수로 생성(청크 병렬 생성 → 캐시 저장)
       const gen = await fetch(`${SUPABASE_URL}/functions/v1/tts`, {
         method: "POST",
         headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ text: readText, date, sig }),
       });
-      results.push({ date, sig, status: gen.ok ? "generated" : "gen-failed", http: gen.status });
+      if (gen.ok) { results.push({ date, sig, status: "generated" }); continue; }
+      const errText = await gen.text().catch(() => "");
+      const quota = /quota|rate.?limit|exceeded|429/i.test(errText);
+      await coolPut(coolName, Date.now() + (quota ? QUOTA_COOLDOWN_MS : COOLDOWN_MS));
+      results.push({ date, sig, status: quota ? "quota-cooldown" : "gen-failed", http: gen.status });
     } catch (e) {
       results.push({ date, status: "error", detail: String((e as any)?.message || e) });
     }

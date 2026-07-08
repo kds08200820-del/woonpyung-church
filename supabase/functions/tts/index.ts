@@ -129,11 +129,18 @@ async function genChunkPcm(chunk: string, voiceName: string): Promise<{ pcm: Uin
     generationConfig: { temperature: 0, responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } } },
   };
   let lastDetail = "";
-  for (let attempt = 0; attempt < 5; attempt++) {
+  // 재시도는 3회로 축소(요청 수 절약). 429(일일 할당량 초과)는 몇 초 뒤에도 회복되지 않으므로
+  // 재시도로 요청을 낭비하지 않고 즉시 중단한다 — quota 초과 시 폭주 방지.
+  for (let attempt = 0; attempt < 3; attempt++) {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
       { method: "POST", headers: { "x-goog-api-key": GEMINI_API_KEY, "content-type": "application/json" }, body: JSON.stringify(body) });
     const j: any = await r.json().catch(() => ({}));
-    if (!r.ok) { lastDetail = j?.error?.message || ("HTTP " + r.status); if (r.status === 429 || r.status >= 500) continue; throw new Error(lastDetail); }
+    if (!r.ok) {
+      lastDetail = j?.error?.message || ("HTTP " + r.status);
+      if (r.status === 429) { const e: any = new Error(lastDetail); e.quota = true; throw e; }   // 할당량 초과 → 재시도 안 함
+      if (r.status >= 500) continue;   // 서버 일시 오류만 재시도
+      throw new Error(lastDetail);
+    }
     const part = (j?.candidates?.[0]?.content?.parts || []).find((p: any) => p?.inlineData?.data);
     if (part?.inlineData?.data) {
       const rate = Number((String(part.inlineData.mimeType || "").match(/rate=(\d+)/) || [])[1]) || 24000;
@@ -165,7 +172,7 @@ Deno.serve(async (req) => {
         });
         const rows: any[] = r.ok ? await r.json() : [];
         const files = (rows || [])
-          .filter((x) => x?.name && x.name !== ".emptyFolderPlaceholder")
+          .filter((x) => x?.name && /\.(wav|mp3)$/i.test(x.name))   // 음원만(쿨다운 마커 cool-*.txt 제외)
           .map((x) => ({ name: x.name, size: x?.metadata?.size ?? null, created_at: x.created_at ?? null }));
         return json({ ok: true, files });
       }
