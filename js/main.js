@@ -612,7 +612,8 @@ window.WPCTts = WPCTts;
     if (!sess) { box.innerHTML = `<div style="${AMEN_NOTE}">🙏 <b>로그인</b>하시면 오늘의 큐티에 <b>아멘</b> 체크를 할 수 있어요. <span style="color:#9aa5b1">(화면 오른쪽 위 로그인)</span></div>`; return; }
     const H = { apikey: AK, Authorization: "Bearer " + sess.token };
     box.innerHTML = `<div style="${AMEN_NOTE}">확인 중…</div>`;
-    fetch(SB + "/rest/v1/qt_checks?select=id&check_date=eq." + cd, { headers: H })
+    // 본인(user_id) 것만 조회 — 관리자는 전체 qt_checks를 읽을 수 있어 필터 없으면 남의 아멘이 잡힘
+    fetch(SB + "/rest/v1/qt_checks?select=id&user_id=eq." + sess.uid + "&check_date=eq." + cd, { headers: H })
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => {
         if (rows && rows.length) { amenDoneBox(box, cd, sess); return; }

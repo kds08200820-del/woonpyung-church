@@ -402,7 +402,7 @@ console.log('[dashboard.js] v20260705qtfallback');
     }).join('');
     ov.innerHTML = '<div style="background:#f7f9fc;border-radius:14px;max-width:720px;width:100%;padding:20px 18px;box-shadow:0 24px 60px rgba(0,0,0,.32)">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">📖 구속사 성경읽기 365 <span id="brt_cnt" style="font-size:.84rem;color:#9aa5b1;font-weight:600">' + BR.rows.length + '/365</span></h3><button class="btn btn-line" id="brt_close" style="padding:4px 12px">닫기</button></div>' +
-      '<p style="margin:0 0 12px;font-size:.76rem;color:#9aa5b1">체크를 눌러 지난 일차를 채우거나 해제할 수 있습니다 · 📖 를 누르면 우리말성경 본문이 열립니다</p>' +
+      '<p style="margin:0 0 12px;font-size:.76rem;color:#9aa5b1">✅ 체크하면 <b>바로 저장</b>되고, 체크를 해제하면 <b>삭제</b>됩니다(별도 저장 버튼이 필요 없어요) · 📖 를 누르면 우리말성경 본문이 열립니다</p>' +
       '<div style="max-height:64vh;overflow:auto"><div id="brt_cov"></div>' + groups + '</div></div>';
     document.body.appendChild(ov); document.body.style.overflow = 'hidden';
     function closeDom() { ov.remove(); document.body.style.overflow = ''; paintBibleCard(cardEl, head); }   // 닫을 때 카드 갱신
@@ -659,7 +659,7 @@ console.log('[dashboard.js] v20260705qtfallback');
     '오늘 {n}번째로 큐티를 마치셨네요! 주님과 동행하는 하루 되세요 ✨'
   ];
   function pickAmenMessage(rank) {
-    if (!rank) return '✓ 오늘의 큐티를 마치고 아멘 하셨습니다';
+    if (!rank) return '오늘의 큐티를 마치고 아멘 하셨습니다';   // ✓는 amenDoneHTML에서 붙임(중복 방지)
     var pool = rank === 1 ? AMEN_MSG_FIRST : AMEN_MSG_NEXT;
     var msg = pool[Math.floor(Math.random() * pool.length)];
     return msg.replace('{n}', rank);
@@ -672,7 +672,9 @@ console.log('[dashboard.js] v20260705qtfallback');
     var uid = sbUser() && sbUser().id, tok = WPF.token();
     var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY;
     if (!uid) { box.innerHTML = ''; return; }
-    fetch(url + '/rest/v1/qt_checks?select=id&check_date=eq.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
+    // 반드시 본인(user_id) 것만 조회 — 관리자는 RLS상 전체 qt_checks를 읽을 수 있어, 필터가 없으면
+    // 다른 성도의 아멘이 잡혀 '내가 아멘한 것'처럼 잘못 표시된다.
+    fetch(url + '/rest/v1/qt_checks?select=id&user_id=eq.' + uid + '&check_date=eq.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (rows) {
         if (rows && rows.length) {
