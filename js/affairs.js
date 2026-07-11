@@ -2525,7 +2525,8 @@ console.log('[affairs.js] v20260701dj');
         '.se-pop .se-sw{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.14);cursor:pointer;padding:0;min-width:0;transition:transform .1s}.se-pop .se-sw:hover{transform:scale(1.14)}' +
         '.se-pop .se-sw.se-none{background:repeating-linear-gradient(45deg,#fff,#fff 4px,#f1d0d0 4px,#f1d0d0 6px);position:relative}' +
         '.se-bible-btn{color:#1d4ed8!important;font-weight:700}.se-bible-btn:hover{background:#dbe9ff!important}' +
-        '.se-editor{min-height:56vh;border:1px solid #e3e8f0;border-radius:0 0 11px 11px;padding:26px 30px 34px;font-size:1.06rem;line-height:2;font-family:\'Noto Serif KR\',serif;background:#fff;outline:none;color:#1a1a1a}' +
+        // word-break:keep-all — PDF 미리보기(.rp-paper)·워드와 동일하게 단어(어절) 단위로 줄바꿈(단어 중간에서 안 쪼개짐)
+        '.se-editor{min-height:56vh;border:1px solid #e3e8f0;border-radius:0 0 11px 11px;padding:26px 30px 34px;font-size:1.06rem;line-height:2;font-family:\'Noto Serif KR\',serif;background:#fff;outline:none;color:#1a1a1a;word-break:keep-all;overflow-wrap:break-word}' +
         '.se-editor:focus{border-color:#c4d2e6;box-shadow:inset 0 1px 4px rgba(3,34,87,.04)}' +
         '.se-editor:empty:before{content:attr(data-ph);color:#aab3c0}' +
         '.se-editor h2{font-size:1.42em;font-weight:800;margin:.6em 0 .3em;color:#0a2c5c}' +
@@ -4120,7 +4121,7 @@ console.log('[affairs.js] v20260701dj');
             if (zoomR) zoomR.value = prefs.zoom;
             if (pgnumSel) pgnumSel.value = prefs.pgnum;
             try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { }
-            repaginate();
+            repaginate(true);   // 용지·여백이 바뀌면 모든 경계가 달라지므로 전체 재계산
           }
           // 실제 페이지 나눔: 원고 안의 문단(최상위 블록)을 훑어 한 쪽 분량을 넘기면 그 앞에 '빈 칸(간격)'을 끼워 다음 장으로 밀어냄
           // — 배경의 흰 용지/간격 줄무늬와 정확히 맞물려 진짜 워드처럼 페이지가 눈에 보이게 나뉜다.
@@ -4154,48 +4155,64 @@ console.log('[affairs.js] v20260701dj');
             Array.prototype.slice.call(root.querySelectorAll('[data-splitbase]')).forEach(function (b) { bases[b.getAttribute('data-splitbase')] = b; });
             Array.prototype.slice.call(root.querySelectorAll('.pg-cont')).forEach(function (c) {
               var gid = c.getAttribute('data-splitcont'), base = bases[gid];
-              if (base) { while (c.firstChild) base.appendChild(c.firstChild); }
-              c.remove();
+              if (base) { while (c.firstChild) base.appendChild(c.firstChild); c.remove(); }
+              else { c.classList.remove('pg-cont'); c.removeAttribute('data-splitcont'); }   // 원본 문단이 삭제된 조각 — 내용을 버리지 않고 일반 문단으로 승격
             });
             Array.prototype.slice.call(root.querySelectorAll('[data-splitbase]')).forEach(function (b) { b.removeAttribute('data-splitbase'); b.normalize(); });
           }
           function pageScale() { var t = (wdSheet.style.transform || '').match(/scale\(([\d.]+)\)/); return t ? parseFloat(t[1]) : 1; }
           var GIDC = 0;
+          // Range.getClientRects는 '줄마다 하나'가 아니라 '인라인 조각(굵게·색·형광펜 등)마다 하나'를 준다 —
+          // 세로로 겹치는 조각들을 실제 한 '줄'로 묶는다(안 묶으면 줄 중간에서 쪼개져 "의|미"처럼 단어가 페이지 경계에 걸리고 간격 계산도 틀어짐).
+          function groupLineRects(rectList, pTopLayout, pRectTop, scale) {
+            var lines = [];
+            for (var i = 0; i < rectList.length; i++) {
+              var r = rectList[i];
+              if (r.width <= 0 && r.height <= 0) continue;
+              var top = pTopLayout + (r.top - pRectTop) / scale, bottom = pTopLayout + (r.bottom - pRectTop) / scale;
+              var L = lines.length ? lines[lines.length - 1] : null;
+              if (L && top < L.bottom - 2) {   // 앞 조각과 세로로 겹침 → 같은 줄
+                if (top < L.top) L.top = top;
+                if (bottom > L.bottom) L.bottom = bottom;
+                if (r.left < L.rect.left) L.rect = r;   // 줄의 맨 앞(가장 왼쪽) 조각을 줄 시작점으로
+              } else {
+                lines.push({ top: top, bottom: bottom, rect: r });
+              }
+            }
+            return lines;
+          }
           // 문단 p를, page 기준 y좌표 limitY 를 넘는 줄부터 새 문단(.pg-cont)으로 분리. 연속 조각 반환 / 'ALL'(첫 줄부터 넘침) / null(안 넘침)
           function splitParagraphAt(p, limitY) {
             var scale = pageScale();
             var pRectTop = p.getBoundingClientRect().top, pTopLayout = p.offsetTop;
-            // 실제 줄 상자들(Range.getClientRects = 줄마다 하나) — 줄 '바닥'이 한도를 넘지 않는 줄까지만 이번 페이지에(바닥 기준이라 하단 여백 침범 없음)
+            // 실제 줄 상자들 — 줄 '바닥'이 한도를 넘지 않는 줄까지만 이번 페이지에(바닥 기준이라 하단 여백 침범 없음)
             var lrng = document.createRange(); lrng.selectNodeContents(p); var lr = lrng.getClientRects();
             if (!lr.length) return null;
-            var lines = [];
-            for (var li = 0; li < lr.length; li++) lines.push({ top: pTopLayout + (lr[li].top - pRectTop) / scale, bottom: pTopLayout + (lr[li].bottom - pRectTop) / scale });
+            var lines = groupLineRects(lr, pTopLayout, pRectTop, scale);
+            if (!lines.length) return null;
             var firstBad = -1;
             for (var li2 = 0; li2 < lines.length; li2++) { if (lines[li2].bottom > limitY + 0.5) { firstBad = li2; break; } }
             if (firstBad < 0) return null;           // 모든 줄이 들어감
             if (firstBad === 0) return 'ALL';        // 첫 줄부터 안 들어감 → 통째로 다음 페이지
             var targetTop = lines[firstBad].top;
-            // 넘치는 첫 줄의 시작 위치를 찾는다. 먼저 caretRangeFromPoint로 한 번에(리플로 1회) 시도하고,
-            // 실패하면 문자 오프셋 이분 탐색으로 폴백 — 대량 문서에서 줄마다 getClientRects를 반복하던 지연을 줄인다.
-            var pos = null;
-            var badRect = lr[firstBad];
-            if (document.caretRangeFromPoint) {
-              try {
-                var cr = document.caretRangeFromPoint(badRect.left + 1, (badRect.top + badRect.bottom) / 2);
-                if (cr && p.contains(cr.startContainer) && cr.startContainer.nodeType === 3 && cr.startOffset > 0) pos = { node: cr.startContainer, offset: cr.startOffset };
-              } catch (e) { }
-            }
-            if (!pos) {
-              var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null), nodes = [], total = 0, tn;
-              while (tn = walker.nextNode()) { nodes.push({ node: tn, start: total, len: tn.data.length }); total += tn.data.length; }
-              if (total === 0) return null;
-              var posAt = function (idx) { for (var i = 0; i < nodes.length; i++) { if (idx <= nodes[i].start + nodes[i].len) return { node: nodes[i].node, offset: idx - nodes[i].start }; } var L = nodes[nodes.length - 1]; return { node: L.node, offset: L.len }; };
-              var topAt = function (idx) { var pp = posAt(idx); var r = document.createRange(); r.setStart(pp.node, pp.offset); r.setEnd(pp.node, pp.offset); var rects = r.getClientRects(); var rect = rects.length ? rects[rects.length - 1] : r.getBoundingClientRect(); return pTopLayout + (rect.top - pRectTop) / scale; };
-              var lo = 0, hi = total, splitIdx = total;   // 넘치는 첫 줄의 시작 문자 오프셋(top은 offset에 단조 증가 → 이분 탐색)
-              while (lo < hi) { var midI = (lo + hi) >> 1; if (topAt(midI) >= targetTop - 0.5) { splitIdx = midI; hi = midI; } else lo = midI + 1; }
-              if (splitIdx >= total || splitIdx <= 0) return 'ALL';
-              pos = posAt(splitIdx);
-            }
+            // 넘치는 첫 줄의 시작 '글자'를 이분 탐색으로 찾는다 — 접힌 캐럿 rect는 줄바꿈 경계에서 '이전 줄 끝'으로
+            // 보고되는 모호성이 있어(한 글자 밀림 → 넘친 줄의 첫 글자가 앞 장에 남음), 글자 자체의 rect로 판정한다.
+            var walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT, null), nodes = [], total = 0, tn;
+            while (tn = walker.nextNode()) { nodes.push({ node: tn, start: total, len: tn.data.length }); total += tn.data.length; }
+            if (total === 0) return null;
+            var posAt = function (idx) { for (var i = 0; i < nodes.length; i++) { if (idx <= nodes[i].start + nodes[i].len) return { node: nodes[i].node, offset: idx - nodes[i].start }; } var L = nodes[nodes.length - 1]; return { node: L.node, offset: L.len }; };
+            var charTopAt = function (idx) {   // idx번째 글자의 윗변(레이아웃 좌표)
+              var a = posAt(idx), r = document.createRange();
+              r.setStart(a.node, a.offset);
+              var b = (a.offset < a.node.data.length) ? { node: a.node, offset: a.offset + 1 } : posAt(idx + 1);
+              try { r.setEnd(b.node, b.offset); } catch (e) { try { r.setEnd(a.node, a.node.data.length); } catch (e2) { } }
+              var rect = r.getBoundingClientRect();
+              return pTopLayout + (rect.top - pRectTop) / scale;
+            };
+            var lo = 0, hi = total - 1, splitIdx = total;   // 글자 top은 인덱스에 단조 증가 → 이분 탐색
+            while (lo <= hi) { var midI = (lo + hi) >> 1; if (charTopAt(midI) >= targetTop - 0.5) { splitIdx = midI; hi = midI - 1; } else lo = midI + 1; }
+            if (splitIdx >= total || splitIdx <= 0) return 'ALL';
+            var pos = posAt(splitIdx);
             var range = document.createRange(); range.setStart(pos.node, pos.offset); range.setEndAfter(p.lastChild);
             var frag = range.extractContents();
             var cont = document.createElement('p'); cont.className = 'pg-cont';
@@ -4231,17 +4248,165 @@ console.log('[affairs.js] v20260701dj');
             return c.innerHTML;
           }
           wdCleanHtml = cleanHtml;
-          function repaginate() {
+          // ── 빠른 검증(읽기 전용): 기존 페이지 나눔이 아직 유효한지 훑어 무너진 첫 지점을 찾는다 ──
+          // 유효하면 원고 DOM을 전혀 건드리지 않고(병합·재분할·커서마커 없음), 무너졌으면 그 지점(보통 커서가 있는
+          // 페이지)부터만 다시 계산해 앞의 확정된 페이지들은 그대로 둔다 — 워드처럼 타이핑 중 깜빡임·지연이 없어짐.
+          var dirtySet = new Set();   // 마지막 계산 이후 편집된 최상위 블록들 — 경계에 걸쳐 쪼개진 문단의 줄 흐름 변화 감지용
+          function markDirty() {
+            try {
+              var s = window.getSelection(); if (!s || !s.rangeCount) return;
+              var nd = s.getRangeAt(0).startContainer;
+              while (nd && nd.parentNode !== ed) nd = nd.parentNode;
+              if (nd) dirtySet.add(nd);
+            } catch (e) { }
+          }
+          function firstLineHeightOf(el) {   // 블록 첫 줄의 실제 높이(인라인 조각들을 한 줄로 묶어 계산)
+            try {
+              var scale = pageScale();
+              var r = document.createRange(); r.selectNodeContents(el);
+              var rects = r.getClientRects(), top = null, bottom = null;
+              for (var i = 0; i < rects.length; i++) {
+                var rc = rects[i]; if (rc.width <= 0 && rc.height <= 0) continue;
+                if (top === null) { top = rc.top; bottom = rc.bottom; }
+                else if (rc.top < bottom - 2) { if (rc.top < top) top = rc.top; if (rc.bottom > bottom) bottom = rc.bottom; }
+                else break;
+              }
+              return top === null ? (el.offsetHeight || 18) : (bottom - top) / scale;
+            } catch (e) { return 24; }
+          }
+          // 블록의 '잉크' 기준 하단(레이아웃 좌표) — 줄 단위로 쪼개진 앞조각은 행간의 절반이 offsetHeight에 얹혀 있어
+          // (글자는 여백 안인데 블록 상자만 살짝 넘침) 잉크 기준으로 판정해야 분할 직후 상태가 '유효'로 안정된다.
+          function inkBottomOf(el) {
+            try {
+              var scale = pageScale();
+              var r = document.createRange(); r.selectNodeContents(el);
+              var rects = r.getClientRects(), max = null;
+              for (var i = 0; i < rects.length; i++) { var rc = rects[i]; if (rc.width <= 0 && rc.height <= 0) continue; if (max === null || rc.bottom > max) max = rc.bottom; }
+              if (max === null) return el.offsetTop + el.offsetHeight;
+              return el.offsetTop + (max - el.getBoundingClientRect().top) / scale;
+            } catch (e) { return el.offsetTop + el.offsetHeight; }
+          }
+          function validateScan(ph, mg, pageInnerH) {
+            var pageEndY = mg + pageInnerH, totalPages = 1;
+            var node = ed.firstChild, lastBlock = null, lastBottom = 0, manualNode = null;
+            while (node) {
+              if (node.nodeType !== 1) {
+                if (node.nodeType === 3 && node.textContent.trim()) return { node: node, pageEndY: pageEndY, totalPages: totalPages };   // 떠 있는 텍스트 → 문단으로 감싸 재계산 필요
+                node = node.nextSibling; continue;
+              }
+              var cl = node.classList;
+              if (cl.contains('pg-manual-break')) { manualNode = node; node = node.nextSibling; continue; }
+              if (cl.contains('pg-break-spacer')) {
+                var nb = node.nextSibling;
+                while (nb && nb.nodeType !== 1) {
+                  if (nb.nodeType === 3 && nb.textContent.trim()) return { node: lastBlock || node, pageEndY: pageEndY, totalPages: totalPages };
+                  nb = nb.nextSibling;
+                }
+                if (!nb || nb.classList.contains('pg-break-spacer') || nb.classList.contains('pg-manual-break'))
+                  return { node: lastBlock || node, pageEndY: pageEndY, totalPages: totalPages };   // 문서 끝/중복 스페이서 — 정리 필요
+                if (Math.abs(nb.offsetTop - (pageEndY + 2 * mg + GAP)) > 1.5)
+                  return { node: lastBlock || node, pageEndY: pageEndY, totalPages: totalPages };   // 다음 장 첫 블록이 위 여백선에 안 붙음
+                if (!manualNode && lastBlock) {
+                  // 페이지 하단이 한 줄(상자) 이상 비면(삭제 등) 다음 장 첫 줄을 이 페이지로 끌어올려야 함
+                  var isFront = nb.classList.contains('pg-cont') && (lastBlock.getAttribute('data-splitbase') || lastBlock.getAttribute('data-splitcont')) === nb.getAttribute('data-splitcont');
+                  var lb = isFront ? inkBottomOf(lastBlock) : lastBottom;   // 쪼개진 앞조각은 잉크 기준
+                  var csNb = getComputedStyle(nb);
+                  var lineBoxPx = parseFloat(csNb.lineHeight); if (!isFinite(lineBoxPx)) lineBoxPx = (parseFloat(csNb.fontSize) * 1.5) || 24;
+                  var unit = nb.tagName === 'P' ? Math.max(firstLineHeightOf(nb), lineBoxPx) : (nb.offsetHeight || 12);
+                  var collapse = isFront ? 0 : Math.max(parseFloat(csNb.marginTop) || 0, parseFloat(getComputedStyle(lastBlock).marginBottom) || 0);
+                  if (pageEndY - lb >= unit + collapse + 2) return { node: lastBlock, pageEndY: pageEndY, totalPages: totalPages };
+                  // 경계에 걸쳐 쪼개진 문단의 앞조각이 방금 편집됐다면, 높이가 그대로여도 어절 배치가 바뀌었을 수 있음
+                  if (isFront && dirtySet.has(lastBlock)) return { node: lastBlock, pageEndY: pageEndY, totalPages: totalPages };
+                }
+                pageEndY += ph + GAP; totalPages++; manualNode = null;
+                node = node.nextSibling; continue;
+              }
+              if (manualNode) return { node: manualNode, pageEndY: pageEndY, totalPages: totalPages };   // 수동 나눔 뒤에 스페이서가 없음
+              var vb = node.offsetTop + node.offsetHeight;
+              if (vb > pageEndY + 2) {
+                // 쪼개진 앞조각(뒤에 스페이서+같은 gid 조각)은 행간 절반이 상자에 얹혀 있음 → 잉크 기준으로 재판정
+                var over = true;
+                var nx = node.nextSibling; while (nx && nx.nodeType !== 1) nx = nx.nextSibling;
+                if (nx && nx.classList.contains('pg-break-spacer')) {
+                  var nn = nx.nextSibling; while (nn && nn.nodeType !== 1) nn = nn.nextSibling;
+                  var gidN = node.getAttribute('data-splitbase') || node.getAttribute('data-splitcont');
+                  if (nn && nn.classList.contains('pg-cont') && gidN && nn.getAttribute('data-splitcont') === gidN && inkBottomOf(node) <= pageEndY + 2) over = false;
+                }
+                if (over) return { node: node, pageEndY: pageEndY, totalPages: totalPages };   // 이번 장을 진짜 넘침
+              }
+              lastBlock = node; lastBottom = vb;
+              node = node.nextSibling;
+            }
+            return { ok: true, totalPages: totalPages };
+          }
+          // startNode부터 문서 끝까지만 스페이서 제거 + 조각 되돌리기 — 그 앞의 확정된 페이지는 건드리지 않는다
+          function mergeSplitsFrom(startNode) {
+            var targets = {};   // gid → 이 영역 안의 병합 기준 조각
+            if (startNode.nodeType === 1) {
+              var g0 = startNode.getAttribute('data-splitbase') || (startNode.classList.contains('pg-cont') ? startNode.getAttribute('data-splitcont') : null);
+              if (g0) targets[g0] = startNode;
+            }
+            var n = startNode.nextSibling;
+            while (n) {
+              var next = n.nextSibling;
+              if (n.nodeType === 1) {
+                if (n.classList.contains('pg-break-spacer')) n.remove();
+                else if (n.classList.contains('pg-cont')) {
+                  var gid = n.getAttribute('data-splitcont'), t = targets[gid];
+                  if (t) { while (n.firstChild) t.appendChild(n.firstChild); n.remove(); }
+                  else targets[gid] = n;   // 원본이 영역 앞(확정 페이지)에 있음 — 이 조각을 그 페이지 첫 블록으로 유지
+                } else {
+                  var g = n.getAttribute('data-splitbase');
+                  if (g) targets[g] = n;
+                }
+              }
+              n = next;
+            }
+            Object.keys(targets).forEach(function (gid) {
+              var t = targets[gid];
+              if (t.getAttribute('data-splitbase') && !ed.querySelector('.pg-cont[data-splitcont="' + gid + '"]')) t.removeAttribute('data-splitbase');
+              if (t.normalize) t.normalize();
+            });
+          }
+          function repaginate(force) {
             var m = metrics(), ph = m.ph, mg = m.mg;
             var pageInnerH = ph - 2 * mg;
+            var startNode = null, pageEndY = mg + pageInnerH, totalPages = 1, partial = false;
+            if (!force) {
+              var scan = validateScan(ph, mg, pageInnerH);
+              if (scan.ok) {   // 나눔이 그대로 유효 — 페이지 수 표시만 갱신, 원고 DOM 무접촉(깜빡임 없음)
+                wdPage.style.minHeight = (scan.totalPages * ph + (scan.totalPages - 1) * GAP) + 'px';
+                renderCropMarks(scan.totalPages, ph, mg);
+                renderPageNums(scan.totalPages, ph);
+                dirtySet.clear();
+                return false;
+              }
+              partial = true; startNode = scan.node; pageEndY = scan.pageEndY; totalPages = scan.totalPages;
+              // 시작점이 스페이서면(문서 끝 잉여 스페이서 등) 지우고 다음 노드부터
+              while (startNode && startNode.nodeType === 1 && startNode.classList && startNode.classList.contains('pg-break-spacer')) { var sn = startNode.nextSibling; startNode.remove(); startNode = sn; }
+            }
             var hadFocus = (document.activeElement === ed);
             var caretMk = hadFocus ? insertCaretMarker() : null;   // 병합·분할 전에 커서 자리에 마커를 심고, 끝나면 그 자리로 정확히 복원
-            Array.prototype.slice.call(ed.querySelectorAll('.pg-break-spacer')).forEach(function (n) { n.remove(); });
-            mergeSplitsIn(ed);      // 이전 페이지 나눔 조각을 원래 문단으로 되돌린 뒤 처음부터 다시 계산
+            if (partial) {
+              if (startNode) mergeSplitsFrom(startNode);   // startNode가 없으면(끝의 잉여 스페이서만 정리) 재계산할 내용 없음
+            } else {
+              Array.prototype.slice.call(ed.querySelectorAll('.pg-break-spacer')).forEach(function (n) { n.remove(); });
+              mergeSplitsIn(ed);      // 이전 페이지 나눔 조각을 원래 문단으로 되돌린 뒤 처음부터 다시 계산
+            }
             normalizeTopLevel();
-            var pageEndY = mg + pageInnerH;   // 현재 페이지의 본문 하단 경계(wd-page 기준 y좌표)
-            var totalPages = 1, forceBreakAfter = false;
-            var kids = Array.prototype.slice.call(ed.children), i = 0, guard = 0;
+            while (startNode && startNode.parentNode && startNode.parentNode !== ed) startNode = startNode.parentNode;   // normalize가 <p>로 감쌌으면 그 문단부터
+            var kids = Array.prototype.slice.call(ed.children), i = 0, guard = 0, forceBreakAfter = false;
+            if (partial) {
+              if (!startNode) i = kids.length;
+              else {
+                i = kids.indexOf(startNode);
+                if (i < 0) {   // 안전망: 시작점을 잃으면 전체 재계산
+                  Array.prototype.slice.call(ed.querySelectorAll('.pg-break-spacer')).forEach(function (n) { n.remove(); });
+                  mergeSplitsIn(ed);
+                  kids = Array.prototype.slice.call(ed.children); i = 0; pageEndY = mg + pageInnerH; totalPages = 1;
+                }
+              }
+            }
             while (i < kids.length && guard++ < 4000) {
               var k = kids[i];
               if (k.classList && k.classList.contains('pg-manual-break')) { forceBreakAfter = true; i++; continue; }
@@ -4254,10 +4419,14 @@ console.log('[affairs.js] v20260701dj');
                   var res = splitParagraphAt(k, pageEndY);
                   if (res && res !== 'ALL') breakBefore = res;   // 넘치는 뒷부분(.pg-cont) 앞에서 나눔
                 }
+                var wantTop = pageEndY + 2 * mg + GAP;   // 다음 장 첫 블록이 와야 할 y(위 여백선 바로 아래)
                 var sp = document.createElement('div');
                 sp.className = 'pg-break-spacer'; sp.contentEditable = 'false';
-                sp.style.height = Math.max(0, Math.round(pageEndY - breakBefore.offsetTop) + 2 * mg + GAP) + 'px';
+                sp.style.height = Math.max(0, Math.round(wantTop - breakBefore.offsetTop)) + 'px';
                 ed.insertBefore(sp, breakBefore);
+                // 스페이서 삽입으로 문단 사이 여백 겹침이 풀리는 등의 오차를 실측해 보정 — 다음 장 첫 줄이 여백선에 정확히 붙음
+                var drift = Math.round(breakBefore.offsetTop - wantTop);
+                if (drift) sp.style.height = Math.max(0, (parseFloat(sp.style.height) || 0) - drift) + 'px';
                 pageEndY += ph + GAP; totalPages++; forceBreakAfter = false;
                 kids = Array.prototype.slice.call(ed.children);
                 i = kids.indexOf(breakBefore);   // 새 페이지 첫 조각부터 다시(그 조각도 또 넘칠 수 있음)
@@ -4270,6 +4439,8 @@ console.log('[affairs.js] v20260701dj');
             renderCropMarks(totalPages, ph, mg);
             renderPageNums(totalPages, ph);
             if (hadFocus) restoreCaretMarker(caretMk);
+            dirtySet.clear();
+            return true;
           }
           // Ctrl+Enter — 커서 다음의 글 전체가 다음 페이지로 넘어가도록 수동 페이지 나눔 삽입
           function insertManualBreak() {
@@ -4286,7 +4457,7 @@ console.log('[affairs.js] v20260701dj');
               }
             }
             syncContent();
-            repaginate();
+            repaginate(true);
           }
           ed.addEventListener('keydown', function (e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); insertManualBreak(); }
@@ -4307,10 +4478,10 @@ console.log('[affairs.js] v20260701dj');
           if (marginSel) marginSel.onchange = function () { prefs.margin = Number(this.value) || 20; applyPage(); };
           if (zoomR) zoomR.oninput = function () { prefs.zoom = Number(this.value) || 100; applyPage(); };
           if (pgnumSel) pgnumSel.onchange = function () { prefs.pgnum = this.value; try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { } repaginate(); };
-          wdRepaginate = repaginate;   // 생명의삶 자동분류 등 코드로 ed.innerHTML을 바꿔치기하는 곳에서 재호출할 수 있게 바깥에 노출
+          wdRepaginate = function () { return repaginate(true); };   // 외부(자동분류·undo·서식 등)에서 원고를 통째로 바꾼 뒤엔 전체 재계산
           applyPage();
           // 웹폰트(본명조 등)가 늦게 로드되면 줄 높이가 바뀌므로, 로드 완료 후 페이지 나눔을 한 번 더 정확히 다시 계산
-          try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { repaginate(); }); } catch (e) { }
+          try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { repaginate(true); }); } catch (e) { }
           // 원고를 입력할 때마다(디바운스) 페이지 나눔·페이지 번호를 다시 계산
           var rpgT = null;
           // 페이지 나눔이 방금 커서 위치 바로 앞에 '간격(spacer)'을 끼워 넣으면, 화면은 그대로인데 실제 내용은 그 아래로 밀려나
@@ -4328,13 +4499,13 @@ console.log('[affairs.js] v20260701dj');
           var composing = false;
           function runRepaginate() {
             if (composing) { clearTimeout(rpgT); rpgT = setTimeout(runRepaginate, 200); return; }   // 조합 끝날 때까지 대기
-            repaginate(); keepCaretVisible();
+            if (repaginate()) keepCaretVisible();   // 실제로 재구성했을 때만 커서 위치 보정
           }
-          // 입력이 멈춘 뒤 다음 유휴/프레임에 페이지 나눔 — 타이핑 프레임을 막지 않아 체감 지연을 줄인다
-          function schedRepaginate() { clearTimeout(rpgT); rpgT = setTimeout(function () { (window.requestAnimationFrame || window.setTimeout)(runRepaginate); }, 450); }
+          // 입력이 멈춘 뒤 다음 프레임에 페이지 나눔 — 유효하면 읽기만 하고 끝나므로 짧게 기다려도 부담 없음(워드처럼 즉각 반영)
+          function schedRepaginate() { clearTimeout(rpgT); rpgT = setTimeout(function () { (window.requestAnimationFrame || window.setTimeout)(runRepaginate); }, 160); }
           ed.addEventListener('compositionstart', function () { composing = true; });
           ed.addEventListener('compositionend', function () { composing = false; schedRepaginate(); });
-          ed.addEventListener('input', schedRepaginate);
+          ed.addEventListener('input', function () { markDirty(); schedRepaginate(); });
         })();
 
         // ── 발표자 모드: 저장 없이 현재 화면 그대로 아이패드 발표 보기 ──
