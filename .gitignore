@@ -9,3 +9,7 @@ offerings_full_*.sql
 
 # 개인 실험본(배포 제외)
 *-동석이네집.html
+
+# Python 컴파일 캐시
+__pycache__/
+*.pyc
