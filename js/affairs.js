@@ -4332,6 +4332,10 @@ console.log('[affairs.js] v20260701dj');
                 node = node.nextSibling; continue;
               }
               if (manualNode) return { node: manualNode, pageEndY: pageEndY, totalPages: totalPages };   // 수동 나눔 뒤에 스페이서가 없음
+              // 자식 없는 빈 문단(오염 — 과거 커서 마커 잔재/붙여넣기 부산물)은 그 자리에서 공간을 차지해 뒷 문단을
+              // 다음 장으로 잘못 밀어냄. 발견 즉시 재계산을 유도해 normalizeTopLevel이 청소하도록 한다(정체 상태 자가치유).
+              if ((node.tagName === 'P' || node.tagName === 'DIV') && !node.firstChild)
+                return { node: lastBlock || node, pageEndY: pageEndY, totalPages: totalPages };
               var vb = node.offsetTop + node.offsetHeight;
               if (vb > pageEndY + 2) {
                 // 쪼개진 앞조각(뒤에 스페이서+같은 gid 조각)은 행간 절반이 상자에 얹혀 있음 → 잉크 기준으로 재판정
@@ -4488,102 +4492,79 @@ console.log('[affairs.js] v20260701dj');
             return true;
           }
           function isBreakEl(el) { return el && el.nodeType === 1 && el.classList && (el.classList.contains('pg-break-spacer') || el.classList.contains('pg-manual-break')); }
-          function placeCaretAtTextEnd(el) {   // 커서를 블록의 글 끝으로(앞 장 끝으로 점프)
-            try {
-              var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), t, last = null;
-              while (t = w.nextNode()) { if (t.data.length) last = t; }
-              var r = document.createRange();
-              if (last) { r.setStart(last, last.data.length); r.collapse(true); }
-              else { r.selectNodeContents(el); r.collapse(false); }
-              var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
-            } catch (e) { }
-          }
-          function placeCaretAtTextStart(el) {   // 커서를 블록의 글 처음으로(다음 장 처음으로 점프)
-            try {
-              var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), t, first = null;
-              while (t = w.nextNode()) { if (t.data.length) { first = t; break; } }
-              var r = document.createRange();
-              if (first) { r.setStart(first, 0); r.collapse(true); }
-              else { r.selectNodeContents(el); r.collapse(true); }
-              var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
-            } catch (e) { }
-          }
           function safeRepaginate(force) {   // 예기치 못한 원고 상태에서도 편집기가 멈추지 않게 — 실패 시 전체 재계산으로 복구
             try { return repaginate(force); }
             catch (err) { try { return repaginate(true); } catch (e2) { return false; } }
           }
-          function afterBoundaryEdit() { safeRepaginate(); keepCaretVisible(); try { ed.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { } }
-          function backspaceAtPageTop(block) {
-            // 캐럿 블록 앞의 나눔 요소들(스페이서·수동 나눔)을 훑어 앞 페이지 마지막 블록을 찾는다
-            var q = block.previousElementSibling, manual = null, spacers = [];
-            while (isBreakEl(q)) { if (q.classList.contains('pg-manual-break')) manual = q; else spacers.push(q); q = q.previousElementSibling; }
-            var prevBlock = q;
-            if (manual) {   // 수동 페이지 나눔 삭제 → 내용이 앞 장으로 올라감(워드와 동일)
-              pushUndo();
-              manual.remove(); spacers.forEach(function (x) { x.remove(); });
-              afterBoundaryEdit(); return true;
-            }
-            if (!prevBlock) return false;   // 문서 처음
-            var gid = block.classList.contains('pg-cont') ? block.getAttribute('data-splitcont') : null;
-            if (gid && (prevBlock.getAttribute('data-splitbase') || prevBlock.getAttribute('data-splitcont')) === gid) {
-              // 같은 문단의 이어지는 조각 — 커서를 앞 장 글 끝으로 점프(내용은 그대로).
-              // 이후 백스페이스는 그 자리에서 브라우저 기본 동작으로 자연스럽게 지워지고, 지워진 만큼 글이 앞 장으로 흘러 올라간다.
-              placeCaretAtTextEnd(prevBlock);
-              keepCaretVisible();
-              return true;
-            }
-            // 별개 문단 — 앞 문단과 병합
-            pushUndo();
-            spacers.forEach(function (x) { x.remove(); });
-            var lb = prevBlock.lastChild; if (lb && lb.nodeType === 1 && lb.tagName === 'BR') lb.remove();   // 꼬리 <br> 뒤에 붙으면 줄이 밀림
-            var mkr = document.createElement('span'); mkr.setAttribute('data-caretmk', '1');
-            block.insertBefore(mkr, block.firstChild);
-            while (block.firstChild) prevBlock.appendChild(block.firstChild);
-            block.remove();
-            restoreCaretMarker(mkr);   // 캐럿을 병합 지점에
-            dirtySet.add(prevBlock);
-            afterBoundaryEdit(); return true;
+          // ── 구조 편집(Enter · 경계 Backspace/Delete)은 '깨끗한 논리 문서'에서 처리 ──
+          // 먼저 간격(spacer)·쪼갠 조각(.pg-cont)을 모두 원상복구해 평범한 문서로 되돌린 뒤(cleanForEdit), 그 위에서
+          // 브라우저 기본 편집 명령을 실행하고, 곧바로 페이지 나눔을 다시 계산한다. 페이지 뷰가 아니라 논리 문서에서
+          // 편집하므로 경계마다 나던 특수 버그(커서 안 내려감·글자만 지워짐·문단이 안 올라옴)가 근본적으로 사라진다.
+          function cleanForEdit() {
+            var hadFocus = (document.activeElement === ed);
+            var mk = hadFocus ? insertCaretMarker() : null;   // 커서 자리를 마커로 잡아 두고
+            Array.prototype.slice.call(ed.querySelectorAll('.pg-break-spacer')).forEach(function (n) { n.remove(); });
+            mergeSplitsIn(ed);        // 쪼갠 조각을 원래 문단으로 되돌림(커서 마커도 함께 이동)
+            normalizeTopLevel();      // 떠 있는 텍스트 감싸기 + 빈 문단 청소
+            if (mk) restoreCaretMarker(mk);   // 커서를 원래 논리 위치로 복원
           }
-          function deleteAtPageEnd(block) {
-            var q = block.nextElementSibling, manual = null, spacers = [];
-            while (isBreakEl(q)) { if (q.classList.contains('pg-manual-break')) manual = q; else spacers.push(q); q = q.nextElementSibling; }
-            var nextBlock = q;
-            if (manual) {
-              pushUndo();
-              manual.remove(); spacers.forEach(function (x) { x.remove(); });
-              afterBoundaryEdit(); return true;
-            }
-            if (!nextBlock) return false;   // 문서 끝
-            var gid2 = block.getAttribute('data-splitbase') || block.getAttribute('data-splitcont');
-            if (gid2 && nextBlock.classList.contains('pg-cont') && nextBlock.getAttribute('data-splitcont') === gid2) {
-              // 같은 문단의 이어지는 조각 — 커서를 다음 장 글 처음으로 점프(내용은 그대로)
-              placeCaretAtTextStart(nextBlock);
-              keepCaretVisible();
-              return true;
-            }
+          // 경계에 수동 페이지 나눔(Ctrl+Enter)이 있으면 그것만 제거 — 워드처럼 '페이지 나눔 해제'(문단 병합은 안 함)
+          function removeBreakBoundary(block, dir) {
+            var sib = dir < 0 ? 'previousElementSibling' : 'nextElementSibling';
+            var q = block[sib], manual = null;
+            while (isBreakEl(q)) { if (q.classList.contains('pg-manual-break')) manual = q; q = q[sib]; }
+            if (!manual) return false;
             pushUndo();
-            spacers.forEach(function (x) { x.remove(); });
-            var lb2 = block.lastChild; if (lb2 && lb2.nodeType === 1 && lb2.tagName === 'BR') lb2.remove();
-            while (nextBlock.firstChild) block.appendChild(nextBlock.firstChild);
-            nextBlock.remove();
-            dirtySet.add(block);
-            afterBoundaryEdit(); return true;
+            manual.remove();
+            syncContent();
+            safeRepaginate(true);
+            keepCaretVisible();
+            try { ed.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
+            return true;
+          }
+          function structuralEdit(kind) {   // kind: 'enter' | 'backspace' | 'forward'
+            pushUndo();               // 편집 전(깨끗한) 상태를 undo 한 단계로
+            cleanForEdit();
+            try {
+              if (kind === 'enter') document.execCommand('insertParagraph');
+              else if (kind === 'backspace') document.execCommand('delete');        // Backspace = 앞 글자/문단 병합
+              else document.execCommand('forwardDelete');                            // Delete = 뒷 글자/문단 병합
+            } catch (e) { }
+            syncContent();
+            safeRepaginate(true);     // 논리 편집 결과를 다시 페이지로 나눔(동기 — 깜빡임·경쟁 없음)
+            keepCaretVisible();
+            try { ed.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }   // 미리보기·자동저장 갱신
           }
           ed.addEventListener('keydown', function (e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); insertManualBreak(); return; }
-            if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing) {
+            if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 중엔 관여하지 않음(조합 깨짐 방지)
+            // ── Enter: 경계·조각 근처에서만 '깨끗한 문서' 방식으로 확정 처리(그 외 문단 중간은 기본 동작 + 빠른 재계산) ──
+            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
               var s = window.getSelection();
-              if (!s || !s.rangeCount || !s.isCollapsed) return;
-              var r = s.getRangeAt(0);
+              if (!s || !s.rangeCount) return;
+              var eb = topBlockOf(s.getRangeAt(0).startContainer);
+              if (!eb || eb.nodeType !== 1 || isBreakEl(eb)) return;
+              var nearBoundary = isBreakEl(eb.previousElementSibling) || isBreakEl(eb.nextElementSibling)
+                || eb.classList.contains('pg-cont') || eb.getAttribute('data-splitbase');
+              if (nearBoundary) { e.preventDefault(); structuralEdit('enter'); }
+              return;   // 경계 아니면 기본 Enter — input 이벤트의 빠른 재계산이 처리
+            }
+            // ── 경계 Backspace/Delete: 간격을 사이에 두고 앞/뒤와 한 번에 병합(워드와 동일) ──
+            if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+              var s2 = window.getSelection();
+              if (!s2 || !s2.rangeCount || !s2.isCollapsed) return;   // 선택영역 삭제는 기본 동작에 맡김
+              var r = s2.getRangeAt(0);
               var block = topBlockOf(r.startContainer);
               if (!block || block.nodeType !== 1 || isBreakEl(block)) return;
-              try {   // 예기치 못한 원고 구조면 브라우저 기본 동작으로 폴백(편집기가 죽지 않게)
+              try {   // 예기치 못한 원고 구조면 기본 동작으로 폴백(편집기가 죽지 않게)
                 if (e.key === 'Backspace') {
-                  if (!isBreakEl(block.previousElementSibling) || !caretAtStartOf(block, r)) return;
-                  if (backspaceAtPageTop(block)) e.preventDefault();
+                  if (!isBreakEl(block.previousElementSibling) || !caretAtStartOf(block, r)) return;   // 경계 아님 → 기본 동작 + 빠른 재계산
+                  e.preventDefault();
+                  if (!removeBreakBoundary(block, -1)) structuralEdit('backspace');   // 수동 나눔이면 나눔만 해제, 아니면 앞 문단과 병합
                 } else {
                   if (!isBreakEl(block.nextElementSibling) || !caretAtEndOf(block, r)) return;
-                  if (deleteAtPageEnd(block)) e.preventDefault();
+                  e.preventDefault();
+                  if (!removeBreakBoundary(block, 1)) structuralEdit('forward');
                 }
               } catch (err) { }
             }
