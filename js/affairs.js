@@ -4459,8 +4459,110 @@ console.log('[affairs.js] v20260701dj');
             syncContent();
             repaginate(true);
           }
+          // ── 페이지 경계에서의 Backspace/Delete: 워드처럼 자연스럽게 ──
+          // 간격(.pg-break-spacer)은 편집 불가·선택 불가 요소라 브라우저 기본 백스페이스가 그 앞에서 막혀
+          // '페이지 첫 줄에서 문단을 위로 못 올리는' 현상이 생김 → 경계를 건너뛰어 직접 처리한다.
+          function topBlockOf(node) { while (node && node.parentNode !== ed) node = node.parentNode; return node; }
+          function caretAtStartOf(block, r) {   // 캐럿 앞에 글자·이미지가 하나도 없으면 '블록 맨 앞'
+            var t = document.createRange(); t.selectNodeContents(block);
+            try { t.setEnd(r.startContainer, r.startOffset); } catch (e) { return false; }
+            if (t.toString().length) return false;
+            try { if (t.cloneContents().querySelector('img,video,iframe')) return false; } catch (e2) { }
+            return true;
+          }
+          function caretAtEndOf(block, r) {   // 캐럿 뒤에 글자·이미지가 없으면 '블록 맨 끝'(꼬리 <br>은 무시)
+            var t = document.createRange(); t.selectNodeContents(block);
+            try { t.setStart(r.startContainer, r.startOffset); } catch (e) { return false; }
+            if (t.toString().length) return false;
+            try { if (t.cloneContents().querySelector('img,video,iframe')) return false; } catch (e2) { }
+            return true;
+          }
+          function deleteLastChar(el) {   // 서로게이트 쌍(이모지) 안전
+            var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), t, last = null;
+            while (t = w.nextNode()) { if (t.data.length) last = t; }
+            if (!last) return;
+            var d = last.data, n = (d.length >= 2 && d.charCodeAt(d.length - 1) >= 0xDC00 && d.charCodeAt(d.length - 1) <= 0xDFFF) ? 2 : 1;
+            last.data = d.slice(0, d.length - n);
+          }
+          function deleteFirstChar(el) {
+            var w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), t, first = null;
+            while (t = w.nextNode()) { if (t.data.length) { first = t; break; } }
+            if (!first) return;
+            var d = first.data, n = (d.length >= 2 && d.charCodeAt(0) >= 0xD800 && d.charCodeAt(0) <= 0xDBFF) ? 2 : 1;
+            first.data = d.slice(n);
+          }
+          function isBreakEl(el) { return el && el.nodeType === 1 && el.classList && (el.classList.contains('pg-break-spacer') || el.classList.contains('pg-manual-break')); }
+          function afterBoundaryEdit() { repaginate(); keepCaretVisible(); try { ed.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { } }
+          function backspaceAtPageTop(block) {
+            // 캐럿 블록 앞의 나눔 요소들(스페이서·수동 나눔)을 훑어 앞 페이지 마지막 블록을 찾는다
+            var q = block.previousElementSibling, manual = null, spacers = [];
+            while (isBreakEl(q)) { if (q.classList.contains('pg-manual-break')) manual = q; else spacers.push(q); q = q.previousElementSibling; }
+            var prevBlock = q;
+            if (manual) {   // 수동 페이지 나눔 삭제 → 내용이 앞 장으로 올라감(워드와 동일)
+              pushUndo();
+              manual.remove(); spacers.forEach(function (x) { x.remove(); });
+              afterBoundaryEdit(); return true;
+            }
+            if (!prevBlock) return false;   // 문서 처음
+            var gid = block.classList.contains('pg-cont') ? block.getAttribute('data-splitcont') : null;
+            if (gid && (prevBlock.getAttribute('data-splitbase') || prevBlock.getAttribute('data-splitcont')) === gid) {
+              // 같은 문단의 이어지는 조각 — 논리적으로는 '앞 글자 삭제'
+              pushUndo();
+              deleteLastChar(prevBlock); dirtySet.add(prevBlock);
+              afterBoundaryEdit(); return true;
+            }
+            // 별개 문단 — 앞 문단과 병합
+            pushUndo();
+            spacers.forEach(function (x) { x.remove(); });
+            var lb = prevBlock.lastChild; if (lb && lb.nodeType === 1 && lb.tagName === 'BR') lb.remove();   // 꼬리 <br> 뒤에 붙으면 줄이 밀림
+            var mkr = document.createElement('span'); mkr.setAttribute('data-caretmk', '1');
+            block.insertBefore(mkr, block.firstChild);
+            while (block.firstChild) prevBlock.appendChild(block.firstChild);
+            block.remove();
+            restoreCaretMarker(mkr);   // 캐럿을 병합 지점에
+            dirtySet.add(prevBlock);
+            afterBoundaryEdit(); return true;
+          }
+          function deleteAtPageEnd(block) {
+            var q = block.nextElementSibling, manual = null, spacers = [];
+            while (isBreakEl(q)) { if (q.classList.contains('pg-manual-break')) manual = q; else spacers.push(q); q = q.nextElementSibling; }
+            var nextBlock = q;
+            if (manual) {
+              pushUndo();
+              manual.remove(); spacers.forEach(function (x) { x.remove(); });
+              afterBoundaryEdit(); return true;
+            }
+            if (!nextBlock) return false;   // 문서 끝
+            var gid2 = block.getAttribute('data-splitbase') || block.getAttribute('data-splitcont');
+            if (gid2 && nextBlock.classList.contains('pg-cont') && nextBlock.getAttribute('data-splitcont') === gid2) {
+              pushUndo();
+              deleteFirstChar(nextBlock); dirtySet.add(block);
+              afterBoundaryEdit(); return true;
+            }
+            pushUndo();
+            spacers.forEach(function (x) { x.remove(); });
+            var lb2 = block.lastChild; if (lb2 && lb2.nodeType === 1 && lb2.tagName === 'BR') lb2.remove();
+            while (nextBlock.firstChild) block.appendChild(nextBlock.firstChild);
+            nextBlock.remove();
+            dirtySet.add(block);
+            afterBoundaryEdit(); return true;
+          }
           ed.addEventListener('keydown', function (e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); insertManualBreak(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); insertManualBreak(); return; }
+            if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing) {
+              var s = window.getSelection();
+              if (!s || !s.rangeCount || !s.isCollapsed) return;
+              var r = s.getRangeAt(0);
+              var block = topBlockOf(r.startContainer);
+              if (!block || block.nodeType !== 1 || isBreakEl(block)) return;
+              if (e.key === 'Backspace') {
+                if (!isBreakEl(block.previousElementSibling) || !caretAtStartOf(block, r)) return;
+                if (backspaceAtPageTop(block)) e.preventDefault();
+              } else {
+                if (!isBreakEl(block.nextElementSibling) || !caretAtEndOf(block, r)) return;
+                if (deleteAtPageEnd(block)) e.preventDefault();
+              }
+            }
           });
           function renderPageNums(totalPages, ph) {
             if (!pgnumLayer) return;
