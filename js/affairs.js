@@ -2,7 +2,7 @@
  * 데이터는 Supabase(visitations/counsels/memos 등, 관리자 RLS)에 저장.
  * 콘솔: [affairs.js] v20260712memo
  */
-console.log('[affairs.js] v20260712memo');
+console.log('[affairs.js] v20260712memo2');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -165,7 +165,7 @@ console.log('[affairs.js] v20260712memo');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '자료실'], ['memo', '📝 메모장'], ['library', '나의 도서관'], ['bible', '📖 성경 보기'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '자료실'], ['library', '나의 도서관'], ['bible', '📖 성경 보기'], ['settings', '설정']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -222,7 +222,6 @@ console.log('[affairs.js] v20260712memo');
     else if (tab === 'settings') renderSettings(p);
     else if (tab === 'edu') renderEdu(p);
     else if (tab === 'doc') renderArchive(p);
-    else if (tab === 'memo') renderMemos(p);
     else renderManager(p, TYPES[tab]);
   }
 
@@ -715,14 +714,6 @@ console.log('[affairs.js] v20260712memo');
         }).join('');
       }
 
-      var recent = rows.slice(0, 6).map(function (r, i) {
-        return '<div style="display:flex;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid #f0f0f0">' +
-          '<div style="flex:0 0 84px;font-size:.8rem;color:#9aa5b1">' + esc(fmtD(r.sermon_date)) + '</div>' +
-          '<div style="flex:0 0 76px"><span class="fin-pill">' + esc(r.service || '-') + '</span></div>' +
-          '<div style="flex:1;min-width:0"><div class="rc-title" data-idx="' + i + '" title="클릭해서 내용 보기" style="font-weight:700;color:var(--accent,#032257);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목 없음)') + '</div>' +
-          (r.scripture ? '<div style="font-size:.78rem;color:#7b8794">' + esc(r.scripture) + '</div>' : '') + '</div></div>';
-      }).join('') || '<p style="color:#9aa5b1;font-size:.86rem">아직 설교 기록이 없습니다.</p>';
-
       panel.innerHTML =
         '<style>' +
         '.cov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:7px}' +
@@ -767,25 +758,23 @@ console.log('[affairs.js] v20260712memo');
         '</div></div>' +
         '<div class="fin-grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:start">' +
         '<div class="fin-card"><b style="color:var(--accent,#032257)">🗂 예배별 분포</b><div style="margin-top:10px">' + svcHTML + '</div></div>' +
-        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center"><b style="color:var(--accent,#032257)">🕘 최근 설교</b><button class="btn btn-line" id="sd_goList" style="padding:4px 11px;font-size:.8rem">설교관리 →</button></div><div style="margin-top:8px">' + recent + '</div></div>' +
+        '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><b style="color:var(--accent,#032257)">📝 메모</b><button class="btn btn-line" id="sd_memoList" style="padding:4px 11px;font-size:.8rem">메모 목록 보기</button></div><div id="sd_memoBody"><p class="qt-loading" style="margin:10px 0 0">불러오는 중…</p></div></div>' +
         '</div>';
 
       var cov = panel.querySelector('#sd_cov');
       panel.querySelector('#sd_only').onclick = function () { cov.classList.add('only'); };
       panel.querySelector('#sd_all').onclick = function () { cov.classList.remove('only'); };
-      var go = panel.querySelector('#sd_goList'); if (go) go.onclick = function () { tab = 'sermon'; render(); };
       // 책 클릭 → 그 책의 설교 목록 팝업
       Array.prototype.forEach.call(panel.querySelectorAll('.cov-cell.on[data-book]'), function (el) {
         el.onclick = function () { bookSermonsModal(el.dataset.book, coverList[el.dataset.book] || []); };
       });
-      // 최근 설교 제목 클릭 → 내용 보기
-      Array.prototype.forEach.call(panel.querySelectorAll('.rc-title'), function (t) { t.onclick = function () { sermonContentModal(rows[Number(t.dataset.idx)]); }; });
       Array.prototype.forEach.call(panel.querySelectorAll('.svc-label[data-svc]'), function (el) {
         el.onclick = function () { svcCalendarModal(el.dataset.svc, rows); };
       });
       loadQtAttendance(panel);
       loadTtsLog(panel);
       loadBibleStats(panel);
+      loadDashMemo(panel);
     }
 
     // ── 성경읽기 현황(구속사 365): 참여 성도 수 + 개인별 진도 ──
@@ -6161,10 +6150,12 @@ console.log('[affairs.js] v20260712memo');
   var MEMO_CATS = ['일반', '할 일', '아이디어', '행사 준비', '전달사항', '기도제목', '기타'];
   var MEMO_COLORS = [['#fffbe6', '노랑'], ['#e8f1fd', '파랑'], ['#e9f7ef', '초록'], ['#fdeef2', '분홍'], ['#f4eefb', '보라'], ['#ffffff', '흰색']];
   var MEMO_BTN = 'border:1px solid rgba(3,34,87,.14);background:rgba(255,255,255,.72);border-radius:7px;padding:3px 9px;font-size:.76rem;cursor:pointer;font-family:inherit;color:#33415c';
-  function renderMemos(panel) {
+  function renderMemos(panel, opts) {
+    opts = opts || {};
     var state = { q: '', cat: '', hideDone: false };
     var NOTES = [];
     var newColor = MEMO_COLORS[0][0];
+    var dashSel = null;
 
     function swatches(cur) { return MEMO_COLORS.map(function (c) { return '<button type="button" class="mm-sw" data-c="' + c[0] + '" title="' + c[1] + '" style="width:24px;height:24px;border-radius:50%;cursor:pointer;background:' + c[0] + ';border:' + (cur === c[0] ? '2px solid var(--accent,#032257)' : '1px solid #cdd7e3') + '"></button>'; }).join(''); }
     function bindSwatches(box, onPick) {
@@ -6221,13 +6212,15 @@ console.log('[affairs.js] v20260712memo');
         (r.content ? '<div style="font-size:.9rem;color:#3d4a5c;line-height:1.55;max-height:190px;overflow:auto;word-break:break-word;' + strike + '">' + nl2br(r.content) + '</div>' : '') +
         '<div style="display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:4px">' +
         '<span style="font-size:.74rem;color:#8b97a8;white-space:nowrap">' + esc(dt + edited) + '</span>' +
-        '<span style="margin-left:auto;display:inline-flex;gap:5px">' +
+        '<span style="margin-left:auto;display:inline-flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">' +
+        (opts.dashPick ? '<button class="mm-dash" data-id="' + esc(r.id) + '" title="' + (dashSel === r.id ? '대시보드 표시 해제 (자동으로 맨 위 메모가 표시됩니다)' : '대시보드 포스트잇으로 표시') + '" style="' + MEMO_BTN + (dashSel === r.id ? ';background:var(--accent,#032257);color:#fff;border-color:var(--accent,#032257)' : '') + '">📍' + (dashSel === r.id ? ' 표시 중' : '') + '</button>' : '') +
         '<button class="mm-done" data-id="' + esc(r.id) + '" style="' + MEMO_BTN + '">' + (r.done ? '↩ 복원' : '✓ 완료') + '</button>' +
         '<button class="mm-del" data-id="' + esc(r.id) + '" title="삭제" style="' + MEMO_BTN + ';color:#c0392b">🗑</button>' +
         '</span></div></div>';
     }
 
     function draw() {
+      try { dashSel = localStorage.getItem('wpc_dash_memo'); } catch (e) { dashSel = null; }
       var q = state.q.trim().toLowerCase();
       var rows = NOTES.filter(function (r) {
         if (state.cat && (r.category || '') !== state.cat) return false;
@@ -6249,6 +6242,13 @@ console.log('[affairs.js] v20260712memo');
       });
       Array.prototype.forEach.call(grid.querySelectorAll('.mm-del'), function (b) {
         b.onclick = function (e) { e.stopPropagation(); if (!confirm('이 메모를 삭제할까요?')) return; api('DELETE', 'memos?id=eq.' + b.dataset.id, null, 'return=minimal').then(load).catch(function (er) { alert('삭제 실패: ' + er.message); }); };
+      });
+      Array.prototype.forEach.call(grid.querySelectorAll('.mm-dash'), function (b) {
+        b.onclick = function (e) {
+          e.stopPropagation();
+          try { if (dashSel === b.dataset.id) localStorage.removeItem('wpc_dash_memo'); else localStorage.setItem('wpc_dash_memo', b.dataset.id); } catch (er) {}
+          draw();
+        };
       });
     }
 
@@ -6310,6 +6310,52 @@ console.log('[affairs.js] v20260712memo');
     }
 
     load();
+  }
+
+  // 메모장 전체(추가·수정·검색·대시보드 표시 선택)를 모달로 연다 — 대시보드 「메모 목록 보기」에서 사용
+  function memoBoardModal(onClose) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9500;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+    ov.innerHTML = '<div style="background:#f4f6fa;border-radius:14px;max-width:1080px;width:100%;padding:18px 20px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap"><h3 style="margin:0;color:var(--accent,#032257)">📝 메모장</h3><span style="color:#9aa5b1;font-size:.8rem;margin-right:auto">메모의 📍 버튼을 누르면 그 메모가 대시보드 포스트잇에 표시됩니다</span><button class="btn btn-line" id="mb_close" style="padding:3px 11px">닫기</button></div>' +
+      '<div id="mb_body"></div></div>';
+    document.body.appendChild(ov);
+    var close = pushBackClose(function () { ov.remove(); if (onClose) onClose(); });
+    ov.querySelector('#mb_close').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    renderMemos(ov.querySelector('#mb_body'), { dashPick: true });
+  }
+
+  // 대시보드 포스트잇: 📍 선택한 메모(없으면 맨 위 메모) 한 장만 표시
+  function loadDashMemo(panel) {
+    var body = panel.querySelector('#sd_memoBody');
+    if (!body) return;
+    function openBoard() { memoBoardModal(function () { loadDashMemo(panel); }); }
+    var btn = panel.querySelector('#sd_memoList');
+    if (btn) btn.onclick = openBoard;
+    api('GET', 'memos?select=*&order=pinned.desc,updated_at.desc,created_at.desc').then(function (rows) {
+      rows = rows || [];
+      var selId = null; try { selId = localStorage.getItem('wpc_dash_memo'); } catch (e) {}
+      var r = null;
+      if (selId) for (var i = 0; i < rows.length; i++) if (rows[i].id === selId) { r = rows[i]; break; }
+      if (!r) r = rows[0] || null;
+      if (!r) { body.innerHTML = '<p style="color:#9aa5b1;font-size:.86rem;margin:10px 0 0">아직 메모가 없습니다. 「메모 목록 보기」에서 첫 메모를 남겨보세요 ✍</p>'; return; }
+      var col = r.color || MEMO_COLORS[0][0];
+      var strike = r.done ? 'text-decoration:line-through;' : '';
+      body.innerHTML = '<div id="sd_memoNote" title="눌러서 메모장 열기" style="background:' + esc(col) + ';border:1px solid rgba(15,30,60,.12);border-radius:4px 14px 14px 14px;padding:16px 16px 14px;box-shadow:2px 4px 10px rgba(15,30,60,.13);cursor:pointer;transform:rotate(-.6deg);margin-top:12px' + (r.done ? ';opacity:.65' : '') + '">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px">' +
+        (r.pinned ? '<span>📌</span>' : '') +
+        (r.category ? '<span class="fin-pill" style="background:rgba(255,255,255,.75);color:#3a4a63">' + esc(r.category) + '</span>' : '') +
+        (r.done ? '<span class="fin-pill" style="background:#e8f6ee;color:#1e874b">✓ 완료</span>' : '') +
+        '<span style="margin-left:auto;font-size:.74rem;color:#8b97a8">' + esc(fmtD(r.updated_at || r.created_at)) + '</span></div>' +
+        (r.title ? '<b style="color:#1f2f49;display:block;margin-bottom:4px;' + strike + '">' + esc(r.title) + '</b>' : '') +
+        (r.content ? '<div style="font-size:.9rem;color:#3d4a5c;line-height:1.6;max-height:170px;overflow:hidden;word-break:break-word;' + strike + '">' + nl2br(r.content) + '</div>' : '') +
+        '</div>';
+      body.querySelector('#sd_memoNote').onclick = openBoard;
+    }).catch(function (e) {
+      if (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(e.message)) body.innerHTML = '<p style="color:#c0392b;font-size:.84rem;margin:10px 0 0">테이블 준비 필요 — Supabase → SQL Editor 에서 supabase/memos.sql 을 1회 실행해 주세요.</p>';
+      else body.innerHTML = '<p style="color:#c0392b;font-size:.84rem;margin:10px 0 0">메모 조회 실패: ' + esc(e.message) + '</p>';
+    });
   }
 
   function renderSettings(panel) {
