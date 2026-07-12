@@ -165,7 +165,7 @@ console.log('[affairs.js] v20260712memo2');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '자료실'], ['library', '나의 도서관'], ['bible', '📖 성경 보기'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '설교 대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['song', '🎵 찬양관리'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '자료실'], ['library', '나의 도서관'], ['bible', '📖 성경 보기'], ['settings', '설정']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -216,6 +216,7 @@ console.log('[affairs.js] v20260712memo2');
     else if (tab === 'illus') renderIllustrations(p);
     else if (tab === 'sermon') renderSermon(p);
     else if (tab === 'worship') renderSermon(p, { worship: true });
+    else if (tab === 'song') renderWorshipSongs(p);
     else if (tab === 'bulletin') renderBulletinAdmin(p);
     else if (tab === 'library') renderLibrary(p);
     else if (tab === 'bible') renderBibleViewer(p);
@@ -6370,6 +6371,219 @@ console.log('[affairs.js] v20260712memo2');
       if (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(e.message)) body.innerHTML = '<p style="color:#c0392b;font-size:.84rem;margin:10px 0 0">테이블 준비 필요 — Supabase → SQL Editor 에서 supabase/memos.sql 을 1회 실행해 주세요.</p>';
       else body.innerHTML = '<p style="color:#c0392b;font-size:.84rem;margin:10px 0 0">메모 조회 실패: ' + esc(e.message) + '</p>';
     });
+  }
+
+  // ═══════════════ 🎵 찬양곡 라이브러리 — 예배 찬양 관리(관리자 전용) ═══════════════
+  // 노션 「찬양곡 라이브러리」를 옮긴 것. 곡을 모아 두고 검색·필터·태그로 관리 → 이후 설교와 연동해 예배 찬양을 배정.
+  var SONG_TYPES = ['CCM', '찬송가', '성가대곡', '복음성가'];
+  var SONG_THEMES = ['은혜', '감사', '회개', '치유', '부활', '성탄', '찬양', '기도', '성령', '십자가', '소망', '평안', '믿음', '인도'];
+  var SONG_USES = ['예배전찬양', '성가대특송', '응답찬양', '새벽기도', '수요예배'];
+  var SONG_DIFF = ['쉬움', '보통', '어려움'];
+  var SONG_FAMIL = ['매우 익숙', '보통', '새로운 곡'];
+  var SONG_TYPE_BG = { 'CCM': '#e8f1fd', '찬송가': '#e9f7ef', '성가대곡': '#f4eefb', '복음성가': '#fdeef2' };
+  var SONG_FAMIL_BG = { '매우 익숙': '#e8f6ee', '보통': '#fff6e0', '새로운 곡': '#fdecec' };
+
+  function songPill(txt, bg) { return '<span class="fin-pill" style="background:' + (bg || '#eef2f7') + ';color:#3a4a63;margin:1px 3px 1px 0;white-space:nowrap">' + esc(txt) + '</span>'; }
+  function songChips(all, selMap, name) {
+    return all.map(function (t) {
+      var on = !!selMap[t];
+      return '<button type="button" class="song-chip" data-name="' + name + '" data-v="' + esc(t) + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#d7dee9') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : '#4a5a6e') + ';border-radius:999px;padding:4px 11px;font-size:.8rem;cursor:pointer;font-family:inherit">' + esc(t) + '</button>';
+    }).join('');
+  }
+  function bindSongChips(box, selMap) {
+    Array.prototype.forEach.call(box.querySelectorAll('.song-chip'), function (b) {
+      b.onclick = function () {
+        var v = b.dataset.v; if (selMap[v]) delete selMap[v]; else selMap[v] = true;
+        var on = !!selMap[v];
+        b.style.background = on ? 'var(--accent,#032257)' : '#fff';
+        b.style.color = on ? '#fff' : '#4a5a6e';
+        b.style.borderColor = on ? 'var(--accent,#032257)' : '#d7dee9';
+      };
+    });
+  }
+  function songSelArr(selMap) { return Object.keys(selMap).filter(function (k) { return selMap[k]; }); }
+  function safeUrl(u) { u = String(u || '').trim(); return /^https?:\/\//i.test(u) ? u : ''; }
+  // 곡 입력 필드(추가폼·수정모달 공용) — pfx로 id 접두사 구분
+  function songFieldsHTML(pfx, r) {
+    r = r || {};
+    var opt = function (arr, cur) { return '<option value="">—</option>' + arr.map(function (x) { return '<option' + (x === cur ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); };
+    var inp = 'padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;min-width:0;box-sizing:border-box';
+    return '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px">' +
+        '<input id="' + pfx + 'title" value="' + esc(r.title || '') + '" placeholder="곡명 *" style="' + inp + ';font-weight:600">' +
+        '<select id="' + pfx + 'type" style="' + inp + '">' + opt(SONG_TYPES, r.type) + '</select>' +
+        '<input id="' + pfx + 'hymn" type="number" min="1" value="' + (r.hymn_no != null ? esc(r.hymn_no) : '') + '" placeholder="찬양 번호" style="' + inp + '"></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px">' +
+        '<select id="' + pfx + 'diff" style="' + inp + '"><option value="">난이도</option>' + SONG_DIFF.map(function (x) { return '<option' + (x === r.difficulty ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' +
+        '<select id="' + pfx + 'famil" style="' + inp + '"><option value="">회중숙지도</option>' + SONG_FAMIL.map(function (x) { return '<option' + (x === r.familiarity ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' +
+        '<input id="' + pfx + 'transpose" value="' + esc(r.transpose || '') + '" placeholder="조옮김(예: G→A)" style="' + inp + '"></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">' +
+        '<input id="' + pfx + 'yt" value="' + esc(r.youtube_url || '') + '" placeholder="▶ 유튜브 링크" style="' + inp + '">' +
+        '<input id="' + pfx + 'lyrics" value="' + esc(r.lyrics_url || '') + '" placeholder="📄 가사 링크" style="' + inp + '"></div>' +
+      '<div style="margin-top:12px"><div style="font-size:.82rem;color:#7b8794;margin-bottom:6px">주제 태그</div><div id="' + pfx + 'themebox" style="display:flex;flex-wrap:wrap;gap:6px">' + songChips(SONG_THEMES, {}, 'theme') + '</div></div>' +
+      '<div style="margin-top:12px"><div style="font-size:.82rem;color:#7b8794;margin-bottom:6px">추천 용도</div><div id="' + pfx + 'usebox" style="display:flex;flex-wrap:wrap;gap:6px">' + songChips(SONG_USES, {}, 'use') + '</div></div>' +
+      '<input id="' + pfx + 'note" value="' + esc(r.note || '') + '" placeholder="비고(선택)" style="' + inp + ';width:100%;margin-top:12px">';
+  }
+  function gatherSong(scope, pfx, themeSel, useSel) {
+    var g = function (id) { var e = scope.querySelector('#' + pfx + id); return e ? String(e.value).trim() : ''; };
+    var hymn = g('hymn');
+    return {
+      title: g('title'),
+      type: g('type') || null,
+      theme_tags: songSelArr(themeSel),
+      use_tags: songSelArr(useSel),
+      difficulty: g('diff') || null,
+      familiarity: g('famil') || null,
+      hymn_no: hymn ? (parseInt(hymn, 10) || null) : null,
+      transpose: g('transpose') || null,
+      youtube_url: g('yt') || null,
+      lyrics_url: g('lyrics') || null,
+      note: g('note') || null
+    };
+  }
+
+  function renderWorshipSongs(panel) {
+    var state = { q: '', type: '', theme: '', sort: 'title' };
+    var SONGS = [];
+    var addTheme = {}, addUse = {};
+
+    panel.innerHTML =
+      '<div class="fin-card">' +
+      '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h3 style="margin:0 0 10px;color:var(--accent,#032257)">🎵 찬양곡 추가</h3><span style="color:#9aa5b1;font-size:.82rem">예배 찬양을 모아 두고 검색·태그로 관리하세요 · 이후 설교와 연동해 예배 찬양을 배정합니다</span></div>' +
+      songFieldsHTML('ws_') +
+      '<div style="display:flex;align-items:center;gap:12px;margin-top:12px"><button class="btn btn-solid" id="ws_add" style="padding:8px 20px">＋ 곡 추가</button><span class="fin-msg" id="ws_msg"></span></div>' +
+      '</div>' +
+      '<div class="fin-card">' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<input id="ws_q" placeholder="🔍 곡명·태그·비고 검색" style="flex:1;min-width:160px;padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
+      '<select id="ws_ftype" style="padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="">전체 유형</option>' + SONG_TYPES.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select>' +
+      '<select id="ws_ftheme" style="padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="">전체 주제</option>' + SONG_THEMES.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select>' +
+      '<select id="ws_sort" style="padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="title">곡명순</option><option value="recent">최근 추가순</option><option value="hymn">번호순</option></select>' +
+      '<span id="ws_count" style="color:#7b8794;font-size:.84rem;margin-left:auto"></span></div>' +
+      '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;font-size:.88rem;min-width:760px">' +
+      '<thead><tr style="text-align:left;color:#7b8794;font-size:.8rem;border-bottom:2px solid #eef2f7">' +
+      '<th style="padding:8px 8px">곡명</th><th style="padding:8px 8px">유형</th><th style="padding:8px 8px">주제</th><th style="padding:8px 8px">용도</th><th style="padding:8px 8px">난이도</th><th style="padding:8px 8px">숙지도</th><th style="padding:8px 8px">링크</th></tr></thead>' +
+      '<tbody id="ws_tbody"><tr><td colspan="7" class="qt-loading" style="padding:16px">불러오는 중…</td></tr></tbody></table></div></div>';
+
+    var msgEl = panel.querySelector('#ws_msg');
+    function msg(t, c) { msgEl.style.color = c || '#7b8794'; msgEl.textContent = t; if (t) setTimeout(function () { if (msgEl.textContent === t) msgEl.textContent = ''; }, 3000); }
+    bindSongChips(panel.querySelector('#ws_themebox'), addTheme);
+    bindSongChips(panel.querySelector('#ws_usebox'), addUse);
+
+    var tbody = panel.querySelector('#ws_tbody');
+    function load() {
+      api('GET', 'worship_songs?select=*&order=title.asc')
+        .then(function (rows) { SONGS = rows || []; draw(); })
+        .catch(function (e) {
+          if (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(e.message)) tbody.innerHTML = '<tr><td colspan="7">' + msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/worship_songs.sql 을 1회 실행해 주세요.') + '</td></tr>';
+          else tbody.innerHTML = '<tr><td colspan="7">' + msgCard('조회 실패', e.message) + '</td></tr>';
+        });
+    }
+    function filterSort() {
+      var q = state.q.trim().toLowerCase();
+      var rows = SONGS.filter(function (r) {
+        if (state.type && (r.type || '') !== state.type) return false;
+        if (state.theme && (r.theme_tags || []).indexOf(state.theme) < 0) return false;
+        if (q) {
+          var hay = ((r.title || '') + ' ' + (r.note || '') + ' ' + (r.transpose || '') + ' ' + (r.theme_tags || []).join(' ') + ' ' + (r.use_tags || []).join(' ') + ' ' + (r.hymn_no || '')).toLowerCase();
+          if (hay.indexOf(q) < 0) return false;
+        }
+        return true;
+      });
+      rows.sort(function (a, b) {
+        if (state.sort === 'recent') return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+        if (state.sort === 'hymn') { var x = a.hymn_no == null ? Infinity : a.hymn_no, y = b.hymn_no == null ? Infinity : b.hymn_no; return x - y || String(a.title || '').localeCompare(String(b.title || ''), 'ko'); }
+        return String(a.title || '').localeCompare(String(b.title || ''), 'ko');
+      });
+      return rows;
+    }
+    function rowHTML(r) {
+      var titleSub = [];
+      if (r.hymn_no != null) titleSub.push('찬양 ' + esc(r.hymn_no) + '장');
+      if (r.transpose) titleSub.push(esc(r.transpose));
+      var links = '';
+      var yt = safeUrl(r.youtube_url), ly = safeUrl(r.lyrics_url);
+      if (yt) links += '<a href="' + esc(yt) + '" target="_blank" rel="noopener" class="ws-link" title="유튜브" style="text-decoration:none;margin-right:8px">▶</a>';
+      if (ly) links += '<a href="' + esc(ly) + '" target="_blank" rel="noopener" class="ws-link" title="가사" style="text-decoration:none">📄</a>';
+      return '<tr data-id="' + esc(r.id) + '" class="ws-row" title="눌러서 수정" style="border-bottom:1px solid #f0f3f7;cursor:pointer">' +
+        '<td style="padding:9px 8px"><b style="color:#1f2f49">' + esc(r.title || '(제목없음)') + '</b>' + (titleSub.length ? '<div style="font-size:.76rem;color:#9aa5b1;margin-top:2px">' + titleSub.join(' · ') + '</div>' : '') + '</td>' +
+        '<td style="padding:9px 8px">' + (r.type ? songPill(r.type, SONG_TYPE_BG[r.type]) : '') + '</td>' +
+        '<td style="padding:9px 8px;max-width:180px">' + (r.theme_tags || []).map(function (t) { return songPill(t); }).join('') + '</td>' +
+        '<td style="padding:9px 8px;max-width:150px">' + (r.use_tags || []).map(function (t) { return songPill(t, '#eaf0f8'); }).join('') + '</td>' +
+        '<td style="padding:9px 8px;color:#5b6b7d">' + esc(r.difficulty || '') + '</td>' +
+        '<td style="padding:9px 8px">' + (r.familiarity ? songPill(r.familiarity, SONG_FAMIL_BG[r.familiarity]) : '') + '</td>' +
+        '<td style="padding:9px 8px;font-size:1.05rem;white-space:nowrap">' + (links || '<span style="color:#c3ccd8">—</span>') + '</td></tr>';
+    }
+    function draw() {
+      var rows = filterSort();
+      panel.querySelector('#ws_count').textContent = '전체 ' + SONGS.length + '곡' + (rows.length !== SONGS.length ? ' · 표시 ' + rows.length : '');
+      tbody.innerHTML = rows.length ? rows.map(rowHTML).join('') : '<tr><td colspan="7" style="padding:16px;color:#9aa5b1">' + (SONGS.length ? '조건에 맞는 곡이 없습니다.' : '아직 등록된 찬양곡이 없습니다. 위에서 첫 곡을 추가해 보세요 🎵') + '</td></tr>';
+      var byId = {}; SONGS.forEach(function (r) { byId[r.id] = r; });
+      Array.prototype.forEach.call(tbody.querySelectorAll('.ws-link'), function (a) { a.onclick = function (e) { e.stopPropagation(); }; });
+      Array.prototype.forEach.call(tbody.querySelectorAll('.ws-row'), function (tr) { tr.onclick = function () { var r = byId[tr.dataset.id]; if (r) editSong(r); }; });
+    }
+
+    var addBtn = panel.querySelector('#ws_add');
+    addBtn.onclick = function () {
+      var data = gatherSong(panel, 'ws_', addTheme, addUse);
+      if (!data.title) { msg('곡명을 입력해 주세요.', '#c0392b'); panel.querySelector('#ws_title').focus(); return; }
+      addBtn.disabled = true; msg('저장 중…');
+      api('POST', 'worship_songs', data, 'return=minimal')
+        .then(function () {
+          addBtn.disabled = false; msg('✓ 곡이 추가되었습니다', 'green');
+          panel.querySelector('#ws_title').value = ''; panel.querySelector('#ws_hymn').value = ''; panel.querySelector('#ws_transpose').value = ''; panel.querySelector('#ws_yt').value = ''; panel.querySelector('#ws_lyrics').value = ''; panel.querySelector('#ws_note').value = '';
+          addTheme = {}; addUse = {};
+          panel.querySelector('#ws_themebox').innerHTML = songChips(SONG_THEMES, {}, 'theme'); bindSongChips(panel.querySelector('#ws_themebox'), addTheme);
+          panel.querySelector('#ws_usebox').innerHTML = songChips(SONG_USES, {}, 'use'); bindSongChips(panel.querySelector('#ws_usebox'), addUse);
+          load();
+        })
+        .catch(function (e) {
+          addBtn.disabled = false;
+          if (/42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message)) msg('테이블 준비 필요 — supabase/worship_songs.sql 을 실행해 주세요', '#c0392b');
+          else msg('저장 실패: ' + e.message, '#c0392b');
+        });
+    };
+    panel.querySelector('#ws_q').oninput = function () { state.q = this.value; draw(); };
+    panel.querySelector('#ws_ftype').onchange = function () { state.type = this.value; draw(); };
+    panel.querySelector('#ws_ftheme').onchange = function () { state.theme = this.value; draw(); };
+    panel.querySelector('#ws_sort').onchange = function () { state.sort = this.value; draw(); };
+
+    function editSong(r) {
+      var eTheme = {}, eUse = {};
+      (r.theme_tags || []).forEach(function (t) { eTheme[t] = true; });
+      (r.use_tags || []).forEach(function (t) { eUse[t] = true; });
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9500;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div class="fin-card" style="max-width:640px;width:100%;background:#fff;margin-bottom:0">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0;color:var(--accent,#032257)">🎵 찬양곡 수정</h3><button class="btn btn-line" id="we_close" style="padding:3px 11px">닫기</button></div>' +
+        songFieldsHTML('we_', r) +
+        '<div style="display:flex;gap:8px;align-items:center;margin-top:14px">' +
+        '<button class="btn btn-solid" id="we_save" style="padding:8px 18px">💾 저장</button>' +
+        '<button class="btn btn-line" id="we_del" style="padding:8px 14px;color:#c0392b">🗑 삭제</button>' +
+        '<span class="fin-msg" id="we_msg"></span></div></div>';
+      document.body.appendChild(ov);
+      // 태그 선택 상태 반영(수정 대상 곡의 태그를 켜 둔 상태로 다시 그림)
+      ov.querySelector('#we_themebox').innerHTML = songChips(SONG_THEMES, eTheme, 'theme');
+      ov.querySelector('#we_usebox').innerHTML = songChips(SONG_USES, eUse, 'use');
+      bindSongChips(ov.querySelector('#we_themebox'), eTheme);
+      bindSongChips(ov.querySelector('#we_usebox'), eUse);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#we_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      function emsg(t, c) { var e = ov.querySelector('#we_msg'); e.style.color = c || '#7b8794'; e.textContent = t; }
+      ov.querySelector('#we_save').onclick = function () {
+        var data = gatherSong(ov, 'we_', eTheme, eUse);
+        if (!data.title) { emsg('곡명을 입력해 주세요.', '#c0392b'); return; }
+        data.updated_at = new Date().toISOString();
+        emsg('저장 중…');
+        api('PATCH', 'worship_songs?id=eq.' + r.id, data, 'return=minimal').then(function () { close(); load(); }).catch(function (er) { emsg('저장 실패: ' + er.message, '#c0392b'); });
+      };
+      ov.querySelector('#we_del').onclick = function () {
+        if (!confirm('이 찬양곡을 삭제할까요?')) return;
+        api('DELETE', 'worship_songs?id=eq.' + r.id, null, 'return=minimal').then(function () { close(); load(); }).catch(function (er) { emsg('삭제 실패: ' + er.message, '#c0392b'); });
+      };
+    }
+
+    load();
   }
 
   function renderSettings(panel) {
