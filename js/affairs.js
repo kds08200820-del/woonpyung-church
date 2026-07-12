@@ -6333,25 +6333,39 @@ console.log('[affairs.js] v20260712memo2');
     function openBoard() { memoBoardModal(function () { loadDashMemo(panel); }); }
     var btn = panel.querySelector('#sd_memoList');
     if (btn) btn.onclick = openBoard;
-    api('GET', 'memos?select=*&order=pinned.desc,updated_at.desc,created_at.desc').then(function (rows) {
-      rows = rows || [];
-      var selId = null; try { selId = localStorage.getItem('wpc_dash_memo'); } catch (e) {}
-      var r = null;
-      if (selId) for (var i = 0; i < rows.length; i++) if (rows[i].id === selId) { r = rows[i]; break; }
-      if (!r) r = rows[0] || null;
-      if (!r) { body.innerHTML = '<p style="color:#9aa5b1;font-size:.86rem;margin:10px 0 0">아직 메모가 없습니다. 「메모 목록 보기」에서 첫 메모를 남겨보세요 ✍</p>'; return; }
+    // 포스트잇 한 장 HTML — featured(고정, 크게) / compact(스크롤 목록, 작게)
+    function memoCard(r, compact) {
       var col = r.color || MEMO_COLORS[0][0];
       var strike = r.done ? 'text-decoration:line-through;' : '';
-      body.innerHTML = '<div id="sd_memoNote" title="눌러서 메모장 열기" style="background:' + esc(col) + ';border:1px solid rgba(15,30,60,.12);border-radius:4px 14px 14px 14px;padding:16px 16px 14px;box-shadow:2px 4px 10px rgba(15,30,60,.13);cursor:pointer;transform:rotate(-.6deg);margin-top:12px' + (r.done ? ';opacity:.65' : '') + '">' +
-        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px">' +
-        (r.pinned ? '<span>📌</span>' : '') +
+      var pad = compact ? '11px 13px 10px' : '16px 16px 14px';
+      var rot = compact ? 'rotate(-.3deg)' : 'rotate(-.6deg)';
+      var maxc = compact ? 78 : 170;
+      return '<div class="sd-memo-card" data-id="' + esc(r.id) + '" title="눌러서 메모장 열기" style="background:' + esc(col) + ';border:1px solid rgba(15,30,60,.12);border-radius:4px 14px 14px 14px;padding:' + pad + ';box-shadow:2px 4px 10px rgba(15,30,60,.13);cursor:pointer;transform:' + rot + (r.done ? ';opacity:.65' : '') + '">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:' + (compact ? '5px' : '7px') + '">' +
+        (r.pinned ? '<span title="상단 고정">📌</span>' : '') +
         (r.category ? '<span class="fin-pill" style="background:rgba(255,255,255,.75);color:#3a4a63">' + esc(r.category) + '</span>' : '') +
         (r.done ? '<span class="fin-pill" style="background:#e8f6ee;color:#1e874b">✓ 완료</span>' : '') +
         '<span style="margin-left:auto;font-size:.74rem;color:#8b97a8">' + esc(fmtD(r.updated_at || r.created_at)) + '</span></div>' +
         (r.title ? '<b style="color:#1f2f49;display:block;margin-bottom:4px;' + strike + '">' + esc(r.title) + '</b>' : '') +
-        (r.content ? '<div style="font-size:.9rem;color:#3d4a5c;line-height:1.6;max-height:170px;overflow:hidden;word-break:break-word;' + strike + '">' + nl2br(r.content) + '</div>' : '') +
+        (r.content ? '<div style="font-size:' + (compact ? '.85rem' : '.9rem') + ';color:#3d4a5c;line-height:1.55;max-height:' + maxc + 'px;overflow:hidden;word-break:break-word;' + strike + '">' + nl2br(r.content) + '</div>' : '') +
         '</div>';
-      body.querySelector('#sd_memoNote').onclick = openBoard;
+    }
+    api('GET', 'memos?select=*&order=pinned.desc,updated_at.desc,created_at.desc').then(function (rows) {
+      rows = rows || [];
+      var selId = null; try { selId = localStorage.getItem('wpc_dash_memo'); } catch (e) {}
+      var featIdx = -1;
+      if (selId) for (var i = 0; i < rows.length; i++) if (rows[i].id === selId) { featIdx = i; break; }
+      if (featIdx < 0 && rows.length) featIdx = 0;   // 📍 선택이 없으면 맨 위(고정 우선) 메모를 고정 자리에
+      if (featIdx < 0) { body.innerHTML = '<p style="color:#9aa5b1;font-size:.86rem;margin:10px 0 0">아직 메모가 없습니다. 「메모 목록 보기」에서 첫 메모를 남겨보세요 ✍</p>'; return; }
+      var feat = rows[featIdx];
+      var others = rows.filter(function (_, i) { return i !== featIdx; });
+      // 고정 메모는 상단에 그대로, 나머지 메모는 아래 스크롤 영역에서 훑어볼 수 있게
+      var listHTML = others.length
+        ? '<div style="display:flex;align-items:center;gap:8px;margin:15px 2px 9px;color:#8b97a8;font-size:.78rem"><span style="flex:1;height:1px;background:#e3e8f0"></span>다른 메모 ' + others.length + '개<span style="flex:1;height:1px;background:#e3e8f0"></span></div>' +
+          '<div id="sd_memoScroll" style="max-height:330px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:3px 6px 3px 3px;scrollbar-width:thin;scrollbar-color:#c3ccd8 transparent">' + others.map(function (r) { return memoCard(r, true); }).join('') + '</div>'
+        : '';
+      body.innerHTML = '<div style="margin-top:12px">' + memoCard(feat, false) + '</div>' + listHTML;
+      Array.prototype.forEach.call(body.querySelectorAll('.sd-memo-card'), function (c) { c.onclick = openBoard; });
     }).catch(function (e) {
       if (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(e.message)) body.innerHTML = '<p style="color:#c0392b;font-size:.84rem;margin:10px 0 0">테이블 준비 필요 — Supabase → SQL Editor 에서 supabase/memos.sql 을 1회 실행해 주세요.</p>';
       else body.innerHTML = '<p style="color:#c0392b;font-size:.84rem;margin:10px 0 0">메모 조회 실패: ' + esc(e.message) + '</p>';
