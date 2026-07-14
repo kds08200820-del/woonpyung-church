@@ -229,17 +229,25 @@ var WPCTts = (function () {
   function textSig(s) { var h = 2166136261 >>> 0; s = String(s || ""); for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); }
   function ttsBase() { var sb = (window.SUPABASE_URL || "").replace(/\/$/, ""); return sb + "/storage/v1/object/public/tts-cache/"; }
   // ── AI 음성(Gemini TTS via Edge Function) ──
+  // 서버 생성이 멈추거나 응답이 없어도 화면이 '만드는 중…'에 영원히 갇히지 않도록 시간 제한을 둔다(초과 시 기본 음성으로 전환).
+  var TTS_GEN_TIMEOUT_MS = 150000;   // 최대 2분 30초 대기(정상 생성은 1~2분) — 넘으면 중단
   function aiFetch(text, date, sig) {
     var ak = window.SUPABASE_ANON_KEY, sb = (window.SUPABASE_URL || "").replace(/\/$/, "");
     if (!ak || !sb) return Promise.reject(new Error("no-config"));
     var tok = (window.WPF && WPF.token && WPF.token()) || ak;
     var payload = { text: text };
     if (date) { payload.date = date; if (sig) payload.sig = sig; }
-    return fetch(sb + "/functions/v1/tts", {
+    var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, TTS_GEN_TIMEOUT_MS) : null;
+    var opt = {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: ak, Authorization: "Bearer " + tok },
       body: JSON.stringify(payload)
-    }).then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t || ("HTTP " + r.status)); }); return r.blob(); });
+    };
+    if (ctrl) opt.signal = ctrl.signal;
+    return fetch(sb + "/functions/v1/tts", opt)
+      .then(function (r) { if (timer) { clearTimeout(timer); timer = null; } if (!r.ok) return r.text().then(function (t) { throw new Error(t || ("HTTP " + r.status)); }); return r.blob(); })
+      .catch(function (e) { if (timer) { clearTimeout(timer); timer = null; } if (e && (e.name === "AbortError" || /aborted/i.test(e.message || ""))) throw new Error("시간 초과"); throw e; });
   }
   // ── 재생바(진행 표시 + 탐색) ── AI 음성(오디오)만 해당. 기본 음성은 탐색 불가라 숨김.
   var barWrap = null, seekEl = null, timeEl = null, userSeeking = false;
@@ -330,10 +338,18 @@ var WPCTts = (function () {
     })(0);
     function doGenerate() {                               // ② 저장본 없음 → Gemini 생성(서버가 저장) → 다음부터 ①에서 재생
       if (!active || myGen !== gen) return;
-      if (btnEl) btnEl.textContent = "⏳ 만드는 중… 1~2분, 새로고침 말고 기다려 주세요";
+      if (btnEl) btnEl.textContent = "⏳ 만드는 중… 최대 2분, 잠시만 기다려 주세요";
       aiFetch(text, date, sig)
         .then(function (b) { if (active && myGen === gen) playAudio(URL.createObjectURL(b), myGen); })
-        .catch(function () { if (active && myGen === gen) browserStart(text, myGen); });   // ③ 실패 시 기본 음성
+        .catch(function (e) {                            // ③ 실패·지연 시 원인 잠깐 표시 후 기본 음성으로 전환(무한 대기 방지)
+          if (!active || myGen !== gen) return;
+          var m = String((e && e.message) || "");
+          if (btnEl) btnEl.textContent =
+            /quota|429|사용량|RESOURCE_EXHAUSTED|exhausted/i.test(m) ? "⚠ AI 음성 사용량 초과 — 기본 음성으로 읽어드려요"
+              : /시간 초과|timeout|abort/i.test(m) ? "⚠ AI 음성 생성이 지연되어 기본 음성으로 읽어드려요"
+                : "⚠ AI 음성을 못 만들어 기본 음성으로 읽어드려요";
+          browserStart(text, myGen);                     // 곧 재생이 시작되면 버튼 문구는 '멈춤'으로 바뀜
+        });
     }
   }
   function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } clearHi(); hideBar(); if (btnEl) btnEl.textContent = btnLabel; }

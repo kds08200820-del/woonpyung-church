@@ -6399,6 +6399,39 @@ console.log('[affairs.js] v20260712memo2');
         return m;
       }).catch(function () { return {}; });
   }
+  // 설교 본문·제목에서 찬양 주제를 뽑아내기 위한 키워드(각 주제태그별 트리거어) — 넓게 걸려 오탐되지 않게 변별력 있는 말만
+  var THEME_KEYWORDS = {
+    '은혜': ['은혜', '은총', '긍휼', '값없이'],
+    '감사': ['감사', '추수'],
+    '회개': ['회개', '죄악', '돌이키', '뉘우', '통회', '자복'],
+    '치유': ['치유', '고치', '고침', '낫게', '병든', '회복', '싸매'],
+    '부활': ['부활', '살아나', '빈 무덤', '다시 사', '생명의 주'],
+    '성탄': ['성탄', '성육신', '베들레헴', '탄생', '임마누엘', '아기 예수', '크리스마스'],
+    '찬양': ['찬양', '찬송', '경배', '할렐루야', '영광 돌'],
+    '기도': ['기도', '간구', '부르짖', '중보', '응답하'],
+    '성령': ['성령', '보혜사', '오순절', '방언', '은사', '기름 부'],
+    '십자가': ['십자가', '고난', '대속', '보혈', '골고다', '희생', '피 흘'],
+    '소망': ['소망', '천국', '재림', '영생', '기다림', '약속의'],
+    '평안': ['평안', '평화', '안식', '위로', '근심'],
+    '믿음': ['믿음', '신앙', '확신'],
+    '인도': ['인도', '목자', '동행', '이끄', '앞서 가', '발걸음']
+  };
+  // 성경 책 → 주제 힌트(강한 것만)
+  var BOOK_THEME = { '시편': ['찬양', '기도'], '요한계시록': ['소망'], '예레미야애가': ['회개'] };
+  // 슬롯 → 어울리는 추천용도(있으면 추천 점수 가산)
+  var SLOT_USE = { pre: '예배전찬양', resp: '응답찬양', choir: '성가대특송' };
+  // 설교 한 편에서 어울리는 주제태그 목록을 추출(제목·본문·키워드·요약·시리즈 + 성경 책 힌트)
+  function detectThemes(sm) {
+    if (!sm) return [];
+    var hay = [sm.title, sm.scripture, sm.keywords, sm.summary, sm.series].filter(Boolean).join('  ');
+    var found = {};
+    SONG_THEMES.forEach(function (t) {
+      var kws = THEME_KEYWORDS[t] || [t];
+      for (var i = 0; i < kws.length; i++) { if (hay.indexOf(kws[i]) >= 0) { found[t] = true; break; } }
+    });
+    try { var bk = bookOf(sm.scripture); if (bk && BOOK_THEME[bk]) BOOK_THEME[bk].forEach(function (t) { found[t] = true; }); } catch (e) { }
+    return Object.keys(found);
+  }
   // 3주 순환 상태 — 최근 사용일 기준. 2주 이내 사용=쉬는 중(🔴), 3주 이상=순환 가능(🟢), 미사용(🆕)
   function songRot(last) {
     if (!last) return { code: 'new', txt: '🆕 미사용', bg: '#eef2f7', weeks: null };
@@ -6633,7 +6666,7 @@ console.log('[affairs.js] v20260712memo2');
 
   // ── 📅 예배 찬양 배정: 설교(예배)를 골라 슬롯별로 찬양 지정 + 3주 순환 힌트 ──
   function renderSongAssign(panel) {
-    var SERMONS = [], SONGS = [], USAGE = {}, COUNTS = {}, sel = null, slotMap = {}, q = '';
+    var SERMONS = [], SONGS = [], USAGE = {}, COUNTS = {}, sel = null, slotMap = {}, q = '', recThemes = {};
     panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:30px"><p class="qt-loading">불러오는 중…</p></div>';
 
     function isMissing(e) { return /relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test((e && e.message) || ''); }
@@ -6684,7 +6717,9 @@ console.log('[affairs.js] v20260712memo2');
     }
 
     function selectSermon(r) {
-      sel = r; slotMap = {}; drawList();
+      sel = r; slotMap = {};
+      recThemes = {}; detectThemes(r).forEach(function (t) { recThemes[t] = true; });   // 설교 본문·제목에서 주제 자동 추출
+      drawList();
       var right = panel.querySelector('#as_right');
       right.innerHTML = '<p class="qt-loading">배정 불러오는 중…</p>';
       api('GET', 'sermon_songs?select=*&sermon_id=eq.' + r.id).then(function (rows) {
@@ -6732,9 +6767,59 @@ console.log('[affairs.js] v20260712memo2');
       }).join('');
       right.innerHTML = head + slots +
         '<div style="margin-top:10px;font-size:.8rem;color:#9aa5b1">🟢 순환가능 · 🔴 최근 사용(3주 순환상 쉬는 중) · 🆕 미사용 — 목록은 순환 가능한 곡이 위로 정렬됩니다.</div>' +
-        '<div class="fin-msg" id="as_msg" style="margin-top:8px"></div>';
+        '<div class="fin-msg" id="as_msg" style="margin-top:8px"></div>' +
+        '<div style="margin-top:16px;padding:14px;background:#fbfdff;border:1px solid #eef2f7;border-radius:12px">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px"><b style="color:var(--accent,#032257)">💡 주제 기반 추천</b><span style="font-size:.77rem;color:#9aa5b1">설교 제목·본문에서 뽑은 주제(누르면 켜고 끄기) + 순환을 고려해 어울리는 곡을 제안합니다</span></div>' +
+        '<div id="as_recthemes" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>' +
+        '<div id="as_rec"></div></div>';
       Array.prototype.forEach.call(right.querySelectorAll('.as-slot'), function (selEl) {
         selEl.onchange = function () { assignSlot(selEl.dataset.slot, selEl.value); };
+      });
+      renderRec();
+    }
+
+    function renderRec() {
+      var thBox = panel.querySelector('#as_recthemes'), recBox = panel.querySelector('#as_rec');
+      if (!thBox || !recBox) return;
+      // 주제 칩(자동 감지 + 수동 토글로 보정)
+      thBox.innerHTML = SONG_THEMES.map(function (t) {
+        var on = !!recThemes[t];
+        return '<button type="button" class="rec-th" data-v="' + esc(t) + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#d7dee9') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : '#8894a6') + ';border-radius:999px;padding:3px 10px;font-size:.78rem;cursor:pointer;font-family:inherit">' + esc(t) + '</button>';
+      }).join('');
+      Array.prototype.forEach.call(thBox.querySelectorAll('.rec-th'), function (b) {
+        b.onclick = function () { var v = b.dataset.v; if (recThemes[v]) delete recThemes[v]; else recThemes[v] = true; renderRec(); };
+      });
+      var themeKeys = Object.keys(recThemes).filter(function (k) { return recThemes[k]; });
+      var assigned = {}; Object.keys(slotMap).forEach(function (s) { if (slotMap[s] && slotMap[s].song_id) assigned[slotMap[s].song_id] = true; });
+      var scored = SONGS.map(function (s) {
+        var tags = s.theme_tags || [], match = 0, matched = [];
+        tags.forEach(function (t) { if (recThemes[t]) { match++; matched.push(t); } });
+        var rot = songRot((USAGE[s.id] || {}).last);
+        var rotB = rot.code === 'ok' ? 3 : (rot.code === 'new' ? 1 : -6);
+        return { s: s, match: match, matched: matched, rot: rot, score: match * 10 + rotB };
+      });
+      var picks;
+      if (themeKeys.length) {
+        picks = scored.filter(function (x) { return x.match > 0; }).sort(function (a, b) { return b.score - a.score || String(a.s.title || '').localeCompare(String(b.s.title || ''), 'ko'); }).slice(0, 8);
+      } else {
+        var rank = { ok: 0, 'new': 1, recent: 2 };
+        picks = scored.sort(function (a, b) { return (rank[a.rot.code] - rank[b.rot.code]) || String(a.s.title || '').localeCompare(String(b.s.title || ''), 'ko'); }).slice(0, 8);
+      }
+      if (!SONGS.length) { recBox.innerHTML = '<p style="color:#9aa5b1;font-size:.85rem;margin:2px">라이브러리에 곡이 없습니다. 먼저 「찬양곡 라이브러리」에서 곡을 추가하세요.</p>'; return; }
+      if (!picks.length) { recBox.innerHTML = '<p style="color:#9aa5b1;font-size:.85rem;margin:2px">' + (themeKeys.length ? '선택한 주제에 맞는 곡이 없습니다. 주제를 바꾸거나 라이브러리에서 곡에 주제태그를 달아 주세요.' : '주제를 하나 이상 선택하면 어울리는 곡을 추천합니다.') + '</p>'; return; }
+      var slotOpts = SONG_SLOTS.map(function (s) { return '<option value="' + s[0] + '">' + esc(s[1]) + '</option>'; }).join('');
+      recBox.innerHTML = picks.map(function (x) {
+        var s = x.s, alreadyIn = assigned[s.id];
+        return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid #f2f5f9">' +
+          '<b style="color:#26364e">' + esc(s.title || '') + '</b>' +
+          (s.type ? '<span class="fin-pill" style="background:' + (SONG_TYPE_BG[s.type] || '#eef2f7') + ';color:#3a4a63">' + esc(s.type) + '</span>' : '') +
+          (x.matched.length ? '<span style="font-size:.76rem;color:#5b6b7d">' + x.matched.map(function (t) { return '#' + esc(t); }).join(' ') + '</span>' : '') +
+          songPill(x.rot.txt, x.rot.bg) +
+          (alreadyIn ? '<span style="font-size:.74rem;color:#2f5d3a">✓ 이미 배정됨</span>' : '') +
+          '<select class="rec-assign" data-song="' + esc(s.id) + '" style="margin-left:auto;padding:5px 8px;border:1px solid #dfe5ee;border-radius:7px;font:inherit;font-size:.82rem"><option value="">＋ 배정할 슬롯…</option>' + slotOpts + '</select></div>';
+      }).join('');
+      Array.prototype.forEach.call(recBox.querySelectorAll('.rec-assign'), function (selEl) {
+        selEl.onchange = function () { var slot = selEl.value; if (!slot) return; assignSlot(slot, selEl.dataset.song); };
       });
     }
 
