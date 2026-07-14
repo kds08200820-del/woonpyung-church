@@ -6666,7 +6666,7 @@ console.log('[affairs.js] v20260712memo2');
 
   // ── 📅 예배 찬양 배정: 설교(예배)를 골라 슬롯별로 찬양 지정 + 3주 순환 힌트 ──
   function renderSongAssign(panel) {
-    var SERMONS = [], SONGS = [], USAGE = {}, COUNTS = {}, sel = null, slotMap = {}, q = '', recThemes = {};
+    var SERMONS = [], SONGS = [], USAGE = {}, COUNTS = {}, sel = null, slotMap = {}, q = '', dateFilter = '', recThemes = {};
     panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:30px"><p class="qt-loading">불러오는 중…</p></div>';
 
     function isMissing(e) { return /relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test((e && e.message) || ''); }
@@ -6690,10 +6690,21 @@ console.log('[affairs.js] v20260712memo2');
         '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">' +
         '<div class="fin-card" style="flex:1 1 300px;max-width:380px;min-width:250px;margin-bottom:0">' +
         '<h3 style="margin:0 0 10px;color:var(--accent,#032257);font-size:1.02rem">📅 예배 선택</h3>' +
-        '<input id="as_q" placeholder="🔍 날짜·예배·제목 검색" style="width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:10px">' +
-        '<div id="as_list" style="max-height:520px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#c3ccd8 transparent"></div></div>' +
+        '<div style="display:flex;gap:7px;align-items:center;margin-bottom:8px">' +
+        '<span style="font-size:.9rem">📅</span>' +
+        '<input type="date" id="as_date" style="flex:1;min-width:0;box-sizing:border-box;padding:7px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit" title="날짜로 예배 찾기">' +
+        '<button type="button" id="as_dateclear" class="btn btn-line" style="padding:6px 10px;font-size:.8rem">전체</button></div>' +
+        '<input id="as_q" placeholder="🔍 예배·제목 검색" style="width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:10px">' +
+        '<div id="as_list" style="max-height:480px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#c3ccd8 transparent"></div></div>' +
         '<div class="fin-card" style="flex:2 1 400px;min-width:280px;margin-bottom:0" id="as_right"></div></div>';
       panel.querySelector('#as_q').oninput = function () { q = this.value.trim().toLowerCase(); drawList(); };
+      var dEl = panel.querySelector('#as_date');
+      dEl.onchange = function () {
+        dateFilter = this.value || '';
+        drawList();
+        if (dateFilter) { var m = SERMONS.filter(function (r) { return String(r.sermon_date || '').slice(0, 10) === dateFilter; }); if (m.length) selectSermon(m[0]); }   // 그 날짜의 첫 예배 자동 선택
+      };
+      panel.querySelector('#as_dateclear').onclick = function () { dateFilter = ''; if (dEl) dEl.value = ''; drawList(); };
       drawList();
       renderRight();
     }
@@ -6701,6 +6712,7 @@ console.log('[affairs.js] v20260712memo2');
     function drawList() {
       var box = panel.querySelector('#as_list'); if (!box) return;
       var rows = SERMONS.filter(function (r) {
+        if (dateFilter && String(r.sermon_date || '').slice(0, 10) !== dateFilter) return false;
         if (!q) return true;
         return ((fmtD(r.sermon_date) || '') + ' ' + (r.sermon_date || '') + ' ' + (r.service || '') + ' ' + (r.title || '')).toLowerCase().indexOf(q) >= 0;
       });
