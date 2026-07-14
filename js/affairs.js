@@ -6382,6 +6382,32 @@ console.log('[affairs.js] v20260712memo2');
   var SONG_FAMIL = ['매우 익숙', '보통', '새로운 곡'];
   var SONG_TYPE_BG = { 'CCM': '#e8f1fd', '찬송가': '#e9f7ef', '성가대곡': '#f4eefb', '복음성가': '#fdeef2' };
   var SONG_FAMIL_BG = { '매우 익숙': '#e8f6ee', '보통': '#fff6e0', '새로운 곡': '#fdecec' };
+  // 예배 찬양 슬롯(노션 설교계획의 찬양1·2·3·예배전·응답·성가대곡)
+  var SONG_SLOTS = [['pre', '예배전 찬양'], ['s1', '찬양 1'], ['s2', '찬양 2'], ['s3', '찬양 3'], ['resp', '응답 찬양'], ['choir', '성가대곡']];
+  var SONG_SLOT_LABEL = {}; SONG_SLOTS.forEach(function (s) { SONG_SLOT_LABEL[s[0]] = s[1]; });
+  var songSubView = 'library';   // 찬양관리 탭 안의 하위 화면: library | assign
+  // 배정 기록(sermon_songs)에서 곡별 사용횟수·최근 사용일 집계 — 테이블이 없으면 조용히 빈 집계(라이브러리는 그대로 동작)
+  function loadSongUsage() {
+    return api('GET', 'sermon_songs?select=song_id,sermon:sermons(sermon_date)')
+      .then(function (rows) {
+        var m = {};
+        (rows || []).forEach(function (r) {
+          var d = r.sermon && r.sermon.sermon_date ? String(r.sermon.sermon_date).slice(0, 10) : null;
+          var e = m[r.song_id] || (m[r.song_id] = { count: 0, last: null });
+          e.count++; if (d && (!e.last || d > e.last)) e.last = d;
+        });
+        return m;
+      }).catch(function () { return {}; });
+  }
+  // 3주 순환 상태 — 최근 사용일 기준. 2주 이내 사용=쉬는 중(🔴), 3주 이상=순환 가능(🟢), 미사용(🆕)
+  function songRot(last) {
+    if (!last) return { code: 'new', txt: '🆕 미사용', bg: '#eef2f7', weeks: null };
+    var days = Math.floor((Date.parse(today() + 'T00:00:00') - Date.parse(String(last).slice(0, 10) + 'T00:00:00')) / 86400000);
+    var wk = Math.max(0, Math.floor(days / 7));
+    var when = wk === 0 ? '이번 주' : wk + '주 전';
+    if (days <= 14) return { code: 'recent', txt: '🔴 ' + when, bg: '#fdecec', weeks: wk };
+    return { code: 'ok', txt: '🟢 ' + when, bg: '#e8f6ee', weeks: wk };
+  }
 
   function songPill(txt, bg) { return '<span class="fin-pill" style="background:' + (bg || '#eef2f7') + ';color:#3a4a63;margin:1px 3px 1px 0;white-space:nowrap">' + esc(txt) + '</span>'; }
   function songChips(all, selMap, name) {
@@ -6441,9 +6467,22 @@ console.log('[affairs.js] v20260712memo2');
     };
   }
 
+  // 찬양관리 탭: 하위 화면(라이브러리 / 예배 배정) 전환
   function renderWorshipSongs(panel) {
+    panel.innerHTML = '<div class="fin-tabs" style="margin-bottom:14px">' +
+      '<button data-sv="library"' + (songSubView === 'library' ? ' class="active"' : '') + '>🎵 찬양곡 라이브러리</button>' +
+      '<button data-sv="assign"' + (songSubView === 'assign' ? ' class="active"' : '') + '>📅 예배 찬양 배정</button>' +
+      '</div><div id="song_sub"></div>';
+    Array.prototype.forEach.call(panel.querySelectorAll('[data-sv]'), function (b) {
+      b.onclick = function () { if (b.dataset.sv === songSubView) return; songSubView = b.dataset.sv; renderWorshipSongs(panel); };
+    });
+    var sp = panel.querySelector('#song_sub');
+    if (songSubView === 'assign') renderSongAssign(sp); else renderSongLibrary(sp);
+  }
+
+  function renderSongLibrary(panel) {
     var state = { q: '', type: '', theme: '', sort: 'title' };
-    var SONGS = [];
+    var SONGS = [], USAGE = {};
     var addTheme = {}, addUse = {};
 
     panel.innerHTML =
@@ -6457,12 +6496,12 @@ console.log('[affairs.js] v20260712memo2');
       '<input id="ws_q" placeholder="🔍 곡명·태그·비고 검색" style="flex:1;min-width:160px;padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
       '<select id="ws_ftype" style="padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="">전체 유형</option>' + SONG_TYPES.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select>' +
       '<select id="ws_ftheme" style="padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="">전체 주제</option>' + SONG_THEMES.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '</select>' +
-      '<select id="ws_sort" style="padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="title">곡명순</option><option value="recent">최근 추가순</option><option value="hymn">번호순</option></select>' +
+      '<select id="ws_sort" style="padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="title">곡명순</option><option value="rotation">순환 우선(오래 안 쓴 순)</option><option value="used">많이 쓴 순</option><option value="recent">최근 추가순</option><option value="hymn">번호순</option></select>' +
       '<span id="ws_count" style="color:#7b8794;font-size:.84rem;margin-left:auto"></span></div>' +
-      '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;font-size:.88rem;min-width:760px">' +
+      '<div style="overflow-x:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;font-size:.88rem;min-width:860px">' +
       '<thead><tr style="text-align:left;color:#7b8794;font-size:.8rem;border-bottom:2px solid #eef2f7">' +
-      '<th style="padding:8px 8px">곡명</th><th style="padding:8px 8px">유형</th><th style="padding:8px 8px">주제</th><th style="padding:8px 8px">용도</th><th style="padding:8px 8px">난이도</th><th style="padding:8px 8px">숙지도</th><th style="padding:8px 8px">링크</th></tr></thead>' +
-      '<tbody id="ws_tbody"><tr><td colspan="7" class="qt-loading" style="padding:16px">불러오는 중…</td></tr></tbody></table></div></div>';
+      '<th style="padding:8px 8px">곡명</th><th style="padding:8px 8px">유형</th><th style="padding:8px 8px">주제</th><th style="padding:8px 8px">용도</th><th style="padding:8px 8px">난이도</th><th style="padding:8px 8px">숙지도</th><th style="padding:8px 8px">사용</th><th style="padding:8px 8px">순환</th><th style="padding:8px 8px">링크</th></tr></thead>' +
+      '<tbody id="ws_tbody"><tr><td colspan="9" class="qt-loading" style="padding:16px">불러오는 중…</td></tr></tbody></table></div></div>';
 
     var msgEl = panel.querySelector('#ws_msg');
     function msg(t, c) { msgEl.style.color = c || '#7b8794'; msgEl.textContent = t; if (t) setTimeout(function () { if (msgEl.textContent === t) msgEl.textContent = ''; }, 3000); }
@@ -6471,11 +6510,11 @@ console.log('[affairs.js] v20260712memo2');
 
     var tbody = panel.querySelector('#ws_tbody');
     function load() {
-      api('GET', 'worship_songs?select=*&order=title.asc')
-        .then(function (rows) { SONGS = rows || []; draw(); })
+      Promise.all([api('GET', 'worship_songs?select=*&order=title.asc'), loadSongUsage()])
+        .then(function (res) { SONGS = res[0] || []; USAGE = res[1] || {}; draw(); })
         .catch(function (e) {
-          if (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(e.message)) tbody.innerHTML = '<tr><td colspan="7">' + msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/worship_songs.sql 을 1회 실행해 주세요.') + '</td></tr>';
-          else tbody.innerHTML = '<tr><td colspan="7">' + msgCard('조회 실패', e.message) + '</td></tr>';
+          if (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(e.message)) tbody.innerHTML = '<tr><td colspan="9">' + msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/worship_songs.sql 을 1회 실행해 주세요.') + '</td></tr>';
+          else tbody.innerHTML = '<tr><td colspan="9">' + msgCard('조회 실패', e.message) + '</td></tr>';
         });
     }
     function filterSort() {
@@ -6492,6 +6531,8 @@ console.log('[affairs.js] v20260712memo2');
       rows.sort(function (a, b) {
         if (state.sort === 'recent') return String(b.created_at || '').localeCompare(String(a.created_at || ''));
         if (state.sort === 'hymn') { var x = a.hymn_no == null ? Infinity : a.hymn_no, y = b.hymn_no == null ? Infinity : b.hymn_no; return x - y || String(a.title || '').localeCompare(String(b.title || ''), 'ko'); }
+        if (state.sort === 'used') { var ca = (USAGE[a.id] || {}).count || 0, cb = (USAGE[b.id] || {}).count || 0; return cb - ca || String(a.title || '').localeCompare(String(b.title || ''), 'ko'); }
+        if (state.sort === 'rotation') { var la = (USAGE[a.id] || {}).last || '', lb = (USAGE[b.id] || {}).last || ''; return String(la).localeCompare(String(lb)) || String(a.title || '').localeCompare(String(b.title || ''), 'ko'); }   // 오래 안 쓴 순(미사용 먼저)
         return String(a.title || '').localeCompare(String(b.title || ''), 'ko');
       });
       return rows;
@@ -6504,6 +6545,8 @@ console.log('[affairs.js] v20260712memo2');
       var yt = safeUrl(r.youtube_url), ly = safeUrl(r.lyrics_url);
       if (yt) links += '<a href="' + esc(yt) + '" target="_blank" rel="noopener" class="ws-link" title="유튜브" style="text-decoration:none;margin-right:8px">▶</a>';
       if (ly) links += '<a href="' + esc(ly) + '" target="_blank" rel="noopener" class="ws-link" title="가사" style="text-decoration:none">📄</a>';
+      var u = USAGE[r.id] || { count: 0, last: null };
+      var rot = songRot(u.last);
       return '<tr data-id="' + esc(r.id) + '" class="ws-row" title="눌러서 수정" style="border-bottom:1px solid #f0f3f7;cursor:pointer">' +
         '<td style="padding:9px 8px"><b style="color:#1f2f49">' + esc(r.title || '(제목없음)') + '</b>' + (titleSub.length ? '<div style="font-size:.76rem;color:#9aa5b1;margin-top:2px">' + titleSub.join(' · ') + '</div>' : '') + '</td>' +
         '<td style="padding:9px 8px">' + (r.type ? songPill(r.type, SONG_TYPE_BG[r.type]) : '') + '</td>' +
@@ -6511,12 +6554,14 @@ console.log('[affairs.js] v20260712memo2');
         '<td style="padding:9px 8px;max-width:150px">' + (r.use_tags || []).map(function (t) { return songPill(t, '#eaf0f8'); }).join('') + '</td>' +
         '<td style="padding:9px 8px;color:#5b6b7d">' + esc(r.difficulty || '') + '</td>' +
         '<td style="padding:9px 8px">' + (r.familiarity ? songPill(r.familiarity, SONG_FAMIL_BG[r.familiarity]) : '') + '</td>' +
+        '<td style="padding:9px 8px;color:#5b6b7d;white-space:nowrap">' + (u.count ? u.count + '회' : '<span style="color:#c3ccd8">0</span>') + '</td>' +
+        '<td style="padding:9px 8px;white-space:nowrap"' + (u.last ? ' title="최근 사용: ' + esc(fmtD(u.last)) + '"' : '') + '>' + songPill(rot.txt, rot.bg) + '</td>' +
         '<td style="padding:9px 8px;font-size:1.05rem;white-space:nowrap">' + (links || '<span style="color:#c3ccd8">—</span>') + '</td></tr>';
     }
     function draw() {
       var rows = filterSort();
       panel.querySelector('#ws_count').textContent = '전체 ' + SONGS.length + '곡' + (rows.length !== SONGS.length ? ' · 표시 ' + rows.length : '');
-      tbody.innerHTML = rows.length ? rows.map(rowHTML).join('') : '<tr><td colspan="7" style="padding:16px;color:#9aa5b1">' + (SONGS.length ? '조건에 맞는 곡이 없습니다.' : '아직 등록된 찬양곡이 없습니다. 위에서 첫 곡을 추가해 보세요 🎵') + '</td></tr>';
+      tbody.innerHTML = rows.length ? rows.map(rowHTML).join('') : '<tr><td colspan="9" style="padding:16px;color:#9aa5b1">' + (SONGS.length ? '조건에 맞는 곡이 없습니다.' : '아직 등록된 찬양곡이 없습니다. 위에서 첫 곡을 추가해 보세요 🎵') + '</td></tr>';
       var byId = {}; SONGS.forEach(function (r) { byId[r.id] = r; });
       Array.prototype.forEach.call(tbody.querySelectorAll('.ws-link'), function (a) { a.onclick = function (e) { e.stopPropagation(); }; });
       Array.prototype.forEach.call(tbody.querySelectorAll('.ws-row'), function (tr) { tr.onclick = function () { var r = byId[tr.dataset.id]; if (r) editSong(r); }; });
@@ -6584,6 +6629,131 @@ console.log('[affairs.js] v20260712memo2');
     }
 
     load();
+  }
+
+  // ── 📅 예배 찬양 배정: 설교(예배)를 골라 슬롯별로 찬양 지정 + 3주 순환 힌트 ──
+  function renderSongAssign(panel) {
+    var SERMONS = [], SONGS = [], USAGE = {}, COUNTS = {}, sel = null, slotMap = {}, q = '';
+    panel.innerHTML = '<div class="fin-card" style="text-align:center;padding:30px"><p class="qt-loading">불러오는 중…</p></div>';
+
+    function isMissing(e) { return /relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test((e && e.message) || ''); }
+    function loadCounts() { return api('GET', 'sermon_songs?select=sermon_id').then(function (rows) { var m = {}; (rows || []).forEach(function (r) { m[r.sermon_id] = (m[r.sermon_id] || 0) + 1; }); return m; }).catch(function () { return {}; }); }
+
+    Promise.all([
+      api('GET', 'sermons?select=id,sermon_date,service,title&order=sermon_date.desc&limit=300'),
+      api('GET', 'worship_songs?select=*&order=title.asc'),
+      loadSongUsage(), loadCounts()
+    ]).then(function (res) {
+      SERMONS = res[0] || []; SONGS = res[1] || []; USAGE = res[2] || {}; COUNTS = res[3] || {};
+      build();
+    }).catch(function (e) {
+      panel.innerHTML = isMissing(e)
+        ? msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/worship_songs.sql 과 supabase/sermon_songs.sql 을 1회씩 실행해 주세요.')
+        : msgCard('불러오기 실패', (e && e.message) || '데이터를 불러오지 못했습니다.');
+    });
+
+    function build() {
+      panel.innerHTML =
+        '<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">' +
+        '<div class="fin-card" style="flex:1 1 300px;max-width:380px;min-width:250px;margin-bottom:0">' +
+        '<h3 style="margin:0 0 10px;color:var(--accent,#032257);font-size:1.02rem">📅 예배 선택</h3>' +
+        '<input id="as_q" placeholder="🔍 날짜·예배·제목 검색" style="width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:10px">' +
+        '<div id="as_list" style="max-height:520px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#c3ccd8 transparent"></div></div>' +
+        '<div class="fin-card" style="flex:2 1 400px;min-width:280px;margin-bottom:0" id="as_right"></div></div>';
+      panel.querySelector('#as_q').oninput = function () { q = this.value.trim().toLowerCase(); drawList(); };
+      drawList();
+      renderRight();
+    }
+
+    function drawList() {
+      var box = panel.querySelector('#as_list'); if (!box) return;
+      var rows = SERMONS.filter(function (r) {
+        if (!q) return true;
+        return ((fmtD(r.sermon_date) || '') + ' ' + (r.sermon_date || '') + ' ' + (r.service || '') + ' ' + (r.title || '')).toLowerCase().indexOf(q) >= 0;
+      });
+      if (!rows.length) { box.innerHTML = '<p style="color:#9aa5b1;font-size:.86rem;margin:6px 2px">' + (SERMONS.length ? '조건에 맞는 예배가 없습니다.' : '등록된 설교가 없습니다. 먼저 설교관리에서 설교를 추가하세요.') + '</p>'; return; }
+      box.innerHTML = rows.map(function (r) {
+        var on = sel && sel.id === r.id, n = COUNTS[r.id] || 0;
+        return '<div class="as-sm" data-id="' + esc(r.id) + '" style="padding:9px 11px;border-radius:9px;cursor:pointer;border:1px solid ' + (on ? 'var(--accent,#032257)' : '#eef2f7') + ';background:' + (on ? '#eef4ff' : '#fff') + ';margin-bottom:6px">' +
+          '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:.78rem;color:#8b97a8">' + esc(fmtD(r.sermon_date) || '') + '</span>' + (r.service ? '<span class="fin-pill" style="background:#eef2f7;color:#3a4a63">' + esc(r.service) + '</span>' : '') + '<span style="margin-left:auto;font-size:.76rem;color:' + (n ? '#2f5d3a' : '#c3ccd8') + '">🎵 ' + n + '</span></div>' +
+          '<div style="font-weight:600;color:#26364e;margin-top:3px">' + esc(r.title || '(제목없음)') + '</div></div>';
+      }).join('');
+      Array.prototype.forEach.call(box.querySelectorAll('.as-sm'), function (el) {
+        el.onclick = function () { var r = SERMONS.filter(function (s) { return s.id === el.dataset.id; })[0]; if (r) selectSermon(r); };
+      });
+    }
+
+    function selectSermon(r) {
+      sel = r; slotMap = {}; drawList();
+      var right = panel.querySelector('#as_right');
+      right.innerHTML = '<p class="qt-loading">배정 불러오는 중…</p>';
+      api('GET', 'sermon_songs?select=*&sermon_id=eq.' + r.id).then(function (rows) {
+        (rows || []).forEach(function (a) { slotMap[a.slot] = { id: a.id, song_id: a.song_id }; });
+        renderRight();
+      }).catch(function (e) {
+        right.innerHTML = isMissing(e) ? msgCard('테이블 준비 필요', 'supabase/sermon_songs.sql 을 실행해 주세요.') : msgCard('불러오기 실패', (e && e.message) || '배정을 불러오지 못했습니다.');
+      });
+    }
+
+    function songById(id) { for (var i = 0; i < SONGS.length; i++) if (SONGS[i].id === id) return SONGS[i]; return null; }
+    function pickerOptions(cur) {
+      var sorted = SONGS.slice().sort(function (a, b) {
+        var ra = songRot((USAGE[a.id] || {}).last).code === 'recent' ? 1 : 0;
+        var rb = songRot((USAGE[b.id] || {}).last).code === 'recent' ? 1 : 0;
+        return (ra - rb) || String(a.title || '').localeCompare(String(b.title || ''), 'ko');   // 최근 사용 곡은 아래로, 순환 가능 곡을 위로
+      });
+      return '<option value="">— 없음 —</option>' + sorted.map(function (s) {
+        var rot = songRot((USAGE[s.id] || {}).last);
+        return '<option value="' + esc(s.id) + '"' + (cur === s.id ? ' selected' : '') + '>' + esc((s.title || '') + (s.type ? ' (' + s.type + ')' : '') + ' · ' + rot.txt) + '</option>';
+      }).join('');
+    }
+    function slotBadge(slot) {
+      var a = slotMap[slot]; if (!a || !a.song_id) return '';
+      var s = songById(a.song_id); if (!s) return '<span style="color:#c3ccd8;font-size:.8rem">(삭제된 곡)</span>';
+      var rot = songRot((USAGE[s.id] || {}).last);
+      var links = '';
+      var yt = safeUrl(s.youtube_url), ly = safeUrl(s.lyrics_url);
+      if (yt) links += ' <a href="' + esc(yt) + '" target="_blank" rel="noopener" style="text-decoration:none">▶</a>';
+      if (ly) links += ' <a href="' + esc(ly) + '" target="_blank" rel="noopener" style="text-decoration:none">📄</a>';
+      return songPill(rot.txt, rot.bg) + '<span style="font-size:1rem">' + links + '</span>';
+    }
+
+    function renderRight() {
+      var right = panel.querySelector('#as_right'); if (!right) return;
+      if (!sel) { right.innerHTML = '<div style="text-align:center;color:#9aa5b1;padding:40px 12px">← 왼쪽에서 찬양을 배정할 예배(설교)를 선택하세요.</div>'; return; }
+      var head = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span style="font-size:.82rem;color:#8b97a8">' + esc(fmtD(sel.sermon_date) || '') + '</span>' + (sel.service ? '<span class="fin-pill" style="background:#eef2f7;color:#3a4a63">' + esc(sel.service) + '</span>' : '') + '</div>' +
+        '<h3 style="margin:0 0 14px;color:var(--accent,#032257)">' + esc(sel.title || '(제목없음)') + '</h3>';
+      var slots = SONG_SLOTS.map(function (s) {
+        var cur = (slotMap[s[0]] || {}).song_id || '';
+        return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px">' +
+          '<div style="flex:0 0 82px;font-weight:600;color:#3a4a63;font-size:.9rem">' + esc(s[1]) + '</div>' +
+          '<select class="as-slot" data-slot="' + s[0] + '" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' + pickerOptions(cur) + '</select>' +
+          '<span class="as-badge" data-slot="' + s[0] + '" style="display:inline-flex;align-items:center;gap:4px">' + slotBadge(s[0]) + '</span></div>';
+      }).join('');
+      right.innerHTML = head + slots +
+        '<div style="margin-top:10px;font-size:.8rem;color:#9aa5b1">🟢 순환가능 · 🔴 최근 사용(3주 순환상 쉬는 중) · 🆕 미사용 — 목록은 순환 가능한 곡이 위로 정렬됩니다.</div>' +
+        '<div class="fin-msg" id="as_msg" style="margin-top:8px"></div>';
+      Array.prototype.forEach.call(right.querySelectorAll('.as-slot'), function (selEl) {
+        selEl.onchange = function () { assignSlot(selEl.dataset.slot, selEl.value); };
+      });
+    }
+
+    function amsg(t, c) { var e = panel.querySelector('#as_msg'); if (e) { e.style.color = c || '#7b8794'; e.textContent = t; if (t) setTimeout(function () { if (e.textContent === t) e.textContent = ''; }, 2500); } }
+    function assignSlot(slot, songId) {
+      if (!sel) return;
+      amsg('저장 중…');
+      // 슬롯당 한 곡: 기존 배정 제거 후(있으면) 새로 삽입
+      api('DELETE', 'sermon_songs?sermon_id=eq.' + sel.id + '&slot=eq.' + encodeURIComponent(slot), null, 'return=minimal')
+        .then(function () { return songId ? api('POST', 'sermon_songs', { sermon_id: sel.id, song_id: songId, slot: slot }, 'return=minimal') : null; })
+        .then(function () {
+          // 로컬 갱신 + 사용집계 재로딩(순환 배지·정렬 최신화)
+          if (songId) slotMap[slot] = { song_id: songId }; else delete slotMap[slot];
+          COUNTS[sel.id] = Object.keys(slotMap).length;
+          return loadSongUsage();
+        })
+        .then(function (m) { USAGE = m || USAGE; renderRight(); drawList(); amsg('✓ 저장됨', 'green'); })
+        .catch(function (e) { amsg(isMissing(e) ? '테이블 준비 필요 — sermon_songs.sql 실행' : ('저장 실패: ' + e.message), '#c0392b'); });
+    }
   }
 
   function renderSettings(panel) {
