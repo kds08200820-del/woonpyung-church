@@ -308,6 +308,9 @@ var WPCTts = (function () {
     stop();
     btnEl = btn || null; btnLabel = label || "🔊 들어주기"; active = true;
     var myGen = ++gen;
+    // 이 클릭(사용자 제스처) 시점에 브라우저 음성을 한 번 '깨워' 둔다 — 나중에 AI 실패로 비동기 전환될 때
+    // 기본 음성 speak()가 제스처 소실로 차단되는 것을 방지(무음 짧은 발화 1회, 세션당 한 번).
+    try { if (synth) { synth.resume(); if (!window.__ttsPrimed) { var _w = new SpeechSynthesisUtterance(" "); _w.volume = 0; synth.speak(_w); window.__ttsPrimed = true; } } } catch (e) {}
     if (btnEl) btnEl.textContent = "⏳ 음성 준비 중…";
     var date = (opts && opts.date) || null;
     var sig = date ? textSig(text) : null;   // 내용 지문(내용 바뀌면 파일명도 바뀜 → 옛 음성 안 씀)
@@ -325,14 +328,15 @@ var WPCTts = (function () {
       a.preload = "auto";
       a.playbackRate = 1.08;                              // 10% 느리게
       try { a.preservesPitch = true; } catch (e) {}
-      var moved = false;
-      function nextOne() { if (moved) return; moved = true; try { a.pause(); } catch (e) {} tryStream(i + 1); }
+      var moved = false, to = null;
+      function nextOne() { if (moved) return; moved = true; if (to) { clearTimeout(to); to = null; } try { a.pause(); } catch (e) {} tryStream(i + 1); }
       a.onerror = nextOne;                                // 파일 없음/로드 실패 → 다음 후보
       a.oncanplay = function () {                         // 로드 성공(=저장본 존재) → 이 음원을 재생
-        if (moved) return; moved = true;
+        if (moved) return; moved = true; if (to) { clearTimeout(to); to = null; }
         if (!active || myGen !== gen) { try { a.pause(); } catch (e) {} return; }
         bindAndPlay(a, myGen);                            // 하이라이트·재생바 공통 연결
       };
+      to = setTimeout(nextOne, 7000);                     // 저장본 로드가 응답 없이 멈추면(오류·CORS 등) 7초 후 다음 후보/생성으로 — '준비 중' 무한 멈춤 방지
       a.src = cands[i];
       try { a.load(); } catch (e) { nextOne(); }
     })(0);
