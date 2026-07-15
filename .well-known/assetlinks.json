@@ -2,7 +2,9 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "com.k_logos.twa",
-    "sha256_cert_fingerprints": ["A8:89:C2:DB:78:D4:4D:61:2E:DC:17:DC:AA:12:85:89:AA:8C:DB:EA:80:10:9B:27:63:01:4B:02:83:BE:A0:15"]
+    "package_name": "woonpyung_church.myapp",
+    "sha256_cert_fingerprints": [
+      "7C:8A:C6:A3:8D:27:76:E1:5B:4A:F5:79:D0:82:7E:83:35:28:A3:46:9E:FB:CC:43:51:F9:87:69:82:77:A4:B7"
+    ]
   }
 }]
