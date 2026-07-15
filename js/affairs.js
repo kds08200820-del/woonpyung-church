@@ -581,7 +581,7 @@ console.log('[affairs.js] v20260712memo2');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9500;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
     ov.innerHTML = '<div class="fin-card" style="max-width:560px;width:100%;background:#fff">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:var(--accent,#032257)">🎵 찬송가 선택 (복수 선택)</h3><button class="btn btn-line" id="hp_close" style="padding:3px 11px">닫기</button></div>' +
-      '<input type="text" id="hp_q" placeholder="🔍 번호 또는 제목 검색 (숫자만 입력해도 바로 검색)" style="width:100%;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:8px">' +
+      '<input type="text" id="hp_q" placeholder="🔍 번호·제목·주제 검색 (예: 384, 갈 길, 감사 — 숫자만 입력해도 바로 검색)" style="width:100%;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:8px">' +
       '<div id="hp_sel" style="margin-bottom:8px;min-height:26px"></div>' +
       '<div id="hp_list" style="max-height:340px;overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
       '<div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:flex-end"><button class="btn btn-solid" id="hp_done" style="padding:8px 18px">선택 완료</button></div></div>';
@@ -598,8 +598,9 @@ console.log('[affairs.js] v20260712memo2');
     }
     function drawList(q) {
       q = (q || '').trim().toLowerCase();
-      var rows = HY.filter(function (h) { return !q || String(h.no).indexOf(q) >= 0 || (h.title || '').toLowerCase().indexOf(q) >= 0; });   // 645장 전곡 표시(예전 400곡 잘림 버그 수정)
-      listEl.innerHTML = rows.length ? rows.map(function (h) { return '<div class="hp-item" data-n="' + h.no + '" style="padding:8px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;gap:8px;background:' + (sel[h.no] ? '#eef4ff' : '#fff') + '"><span style="flex:0 0 48px;font-weight:700;color:' + (sel[h.no] ? '#1f3a5f' : '#7b8794') + '">' + h.no + '장</span><span>' + esc(h.title || '') + '</span>' + (sel[h.no] ? '<span style="margin-left:auto;color:#1e874b">✓</span>' : '') + '</div>'; }).join('') : '<p style="padding:10px;color:#9aa5b1">결과 없음</p>';
+      // 번호·제목에 더해 주제(구간 매핑+제목 키워드)로도 검색 — 예: '감사' → 감사 주제 찬송 전부
+      var rows = HY.filter(function (h) { return !q || String(h.no).indexOf(q) >= 0 || (h.title || '').toLowerCase().indexOf(q) >= 0 || hymnThemes(h.no, h.title).some(function (t) { return t.indexOf(q) >= 0; }); });   // 645장 전곡 표시
+      listEl.innerHTML = rows.length ? rows.map(function (h) { var th = hymnThemes(h.no, h.title); return '<div class="hp-item" data-n="' + h.no + '" style="padding:8px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;gap:8px;background:' + (sel[h.no] ? '#eef4ff' : '#fff') + '"><span style="flex:0 0 48px;font-weight:700;color:' + (sel[h.no] ? '#1f3a5f' : '#7b8794') + '">' + h.no + '장</span><span style="flex:1;min-width:0">' + esc(h.title || '') + '</span><span style="flex:none;font-size:.7rem;color:#a9b3c2;white-space:nowrap">' + esc(th.slice(0, 2).join('·')) + '</span>' + (sel[h.no] ? '<span style="flex:none;color:#1e874b">✓</span>' : '') + '</div>'; }).join('') : '<p style="padding:10px;color:#9aa5b1">결과 없음</p>';
       Array.prototype.forEach.call(listEl.querySelectorAll('.hp-item'), function (d) { d.onclick = function () { var n = Number(d.dataset.n); if (sel[n]) delete sel[n]; else sel[n] = 1; drawSel(); drawList(qEl.value); }; });
     }
     qEl.oninput = function () { drawList(this.value); };
@@ -615,6 +616,39 @@ console.log('[affairs.js] v20260712memo2');
     if (HYMN_META_SERVICES.indexOf(String(service || '')) < 0) return '';
     var a = String(hymnsStr || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
     return a.length ? '찬송가 ' + a.map(function (n) { return n + '장'; }).join(' · ') : '';
+  }
+  // 새찬송가(645장) 목차 구간 → 앱 주제태그 매핑 — 라이브러리에 등록 안 된 곡도 주제로 검색·추천되게
+  // (구간: 예배/송영 1-62 · 성부 63-79 · 성자 80-105 · 성탄 106-129 · 생애 130-142 · 고난 143-158 ·
+  //  부활 159-173 · 재림 174-181 · 성령 182-197 · 성경 198-206 · 교회 207-223 · 성례 224-233 · 천국 234-249 ·
+  //  구속 250-268 · 회개 269-282 · 구원 283-310 · 헌신 311-360 · 기도 361-369 · 인도·평안 370-419 ·
+  //  성결 420-426 · 동행 427-445 · 제자 446-469 · 치유 470-474 · 창조 475-478 · 소망 479-493 ·
+  //  전도 494-518 · 부르심 519-540 · 확신 541-549 · 절기·가정 550-594 · 예식 595-612 · 경배와찬양 613-645)
+  var HYMN_THEME_RANGES = [
+    [1, 62, ['찬양']], [63, 79, ['찬양', '평안']], [80, 98, ['찬양', '은혜']], [99, 105, ['성탄', '소망']],
+    [106, 129, ['성탄']], [130, 142, ['찬양']], [143, 158, ['십자가']], [159, 173, ['부활']],
+    [174, 181, ['소망']], [182, 197, ['성령']], [198, 206, ['믿음']], [207, 223, ['믿음']],
+    [224, 233, ['은혜']], [234, 249, ['소망']], [250, 268, ['십자가', '은혜']], [269, 282, ['회개']],
+    [283, 299, ['은혜']], [300, 310, ['은혜', '감사']], [311, 335, ['믿음']], [336, 360, ['믿음']],
+    [361, 369, ['기도']], [370, 419, ['평안', '인도']], [420, 426, ['회개', '믿음']], [427, 445, ['인도', '은혜']],
+    [446, 469, ['믿음', '십자가']], [470, 474, ['치유']], [475, 478, ['찬양', '감사']], [479, 493, ['소망']],
+    [494, 518, ['믿음']], [519, 540, ['회개', '인도']], [541, 549, ['믿음']], [550, 554, ['소망', '감사']],
+    [555, 559, ['평안']], [560, 570, ['인도', '평안']], [571, 579, ['감사']], [580, 586, ['믿음', '평안']],
+    [587, 594, ['감사']], [595, 605, ['믿음']], [606, 612, ['소망']], [613, 645, ['찬양']]
+  ];
+  function hymnThemes(no, title) {
+    no = Number(no); var out = [];
+    for (var i = 0; i < HYMN_THEME_RANGES.length; i++) {
+      var r = HYMN_THEME_RANGES[i];
+      if (no >= r[0] && no <= r[1]) { out = r[2].slice(); break; }
+    }
+    // 제목 키워드로 보강(예: '다 감사드리세' → 감사, '의원되신 예수님' → 치유)
+    var t = String(title || '');
+    Object.keys(THEME_KEYWORDS).forEach(function (th) {
+      if (out.indexOf(th) >= 0) return;
+      var kws = THEME_KEYWORDS[th];
+      for (var k = 0; k < kws.length; k++) { if (t.indexOf(kws[k]) >= 0) { out.push(th); break; } }
+    });
+    return out;
   }
   // 교독문 본문을 인도자/회중/다같이 역할로 렌더
   function gyodokBodyHTML(body) {
@@ -3185,16 +3219,23 @@ console.log('[affairs.js] v20260712memo2');
         if (recoEl.style.display !== 'none') { recoEl.style.display = 'none'; return; }   // 다시 누르면 접기
         recoEl.style.display = '';
         recoEl.innerHTML = '<div style="font-size:.76rem;color:#9aa5b1">찬양 라이브러리에서 불러오는 중…</div>';
+        // 추천 대상 = 새찬송가 645곡 전체(구간 매핑+제목 키워드로 주제 부여).
+        // 라이브러리(worship_songs)에 같은 장 번호의 찬송가가 있으면 그 주제태그·용도·숙지도·3주 순환을 병합해 가산.
         var load = hymnRecoLib ? Promise.resolve(hymnRecoLib)
           : Promise.all([
-              api('GET', 'worship_songs?select=id,title,hymn_no,theme_tags,use_tags,familiarity&type=eq.' + encodeURIComponent('찬송가') + '&order=hymn_no.asc'),
+              api('GET', 'worship_songs?select=id,title,hymn_no,theme_tags,use_tags,familiarity&type=eq.' + encodeURIComponent('찬송가')).catch(function () { return []; }),
               loadSongUsage()
             ]).then(function (res) {
-              hymnRecoLib = { songs: (res[0] || []).filter(function (s) { return s.hymn_no; }), usage: res[1] || {} };
+              var byNo = {};
+              (res[0] || []).forEach(function (s) {
+                // 장 번호가 비어 있으면 곡명 앞 'N장'에서 유추(예: '384장 나의 갈 길 다가로독')
+                var no = s.hymn_no || (function () { var m = /^(\d{1,3})\s*장/.exec(String(s.title || '').trim()); return m ? parseInt(m[1], 10) : null; })();
+                if (no) byNo[no] = { id: s.id, theme_tags: s.theme_tags || [], use_tags: s.use_tags || [], familiarity: s.familiarity };
+              });
+              hymnRecoLib = { byNo: byNo, usage: res[1] || {} };
               return hymnRecoLib;
             });
         load.then(function (lib) {
-          if (!lib.songs.length) { recoEl.innerHTML = '<div style="font-size:.76rem;color:#9aa5b1">라이브러리에 장 번호가 입력된 찬송가가 없습니다. 찬양관리에서 찬송가에 번호를 채우거나, 🔍 번호·제목 검색을 이용하세요.</div>'; return; }
           // 설교 제목·본문·키워드·요약·시리즈에서 주제를 자동 감지해 시작점으로
           var detected = detectThemes({
             title: ov.querySelector('#se_title').value, scripture: ov.querySelector('#se_scripture').value,
@@ -3207,26 +3248,29 @@ console.log('[affairs.js] v20260712memo2');
             var svc = ov.querySelector('#se_service').value;
             var useTag = (svc === '수요기도회') ? '수요예배' : '새벽기도';
             var picked = songSelArr(selTheme);
-            var rows = lib.songs.map(function (s) {
+            var rows = (window.HYMNS || []).map(function (h) {
+              var L = lib.byNo[h.no] || null;
+              var themes = hymnThemes(h.no, h.title);
+              if (L) L.theme_tags.forEach(function (t) { if (themes.indexOf(t) < 0) themes.push(t); });   // 찬양관리에서 단 태그 병합
               var sc = 0;
-              (s.theme_tags || []).forEach(function (t) { if (selTheme[t]) sc += 2; });
-              if ((s.use_tags || []).indexOf(useTag) >= 0) sc += 1.5;
-              var u = lib.usage[s.id] || {}, rot = songRot(u.last || null);
-              if (rot.code === 'ok') sc += 1; else if (rot.code === 'new') sc += 0.5; else sc -= 2;   // 3주 순환: 최근 쓴 곡은 뒤로
-              if (s.familiarity === '매우 익숙') sc += 0.5;
-              return { s: s, sc: sc, rot: rot };
+              themes.forEach(function (t) { if (selTheme[t]) sc += 2; });
+              if (L && L.use_tags.indexOf(useTag) >= 0) sc += 1.5;
+              var rot = songRot(L && lib.usage[L.id] ? lib.usage[L.id].last : null);
+              if (rot.code === 'ok') sc += 1; else if (rot.code === 'new') sc += 0.3; else sc -= 2;   // 3주 순환: 최근 쓴 곡은 뒤로
+              if (L && L.familiarity === '매우 익숙') sc += 0.5;
+              return { no: h.no, title: h.title, themes: themes, sc: sc, rot: rot, inLib: !!L };
             });
-            if (picked.length) rows = rows.filter(function (r) { return (r.s.theme_tags || []).some(function (t) { return selTheme[t]; }); });
-            rows.sort(function (a, b) { return b.sc - a.sc || a.s.hymn_no - b.s.hymn_no; });
-            rows = rows.slice(0, 10);
+            if (picked.length) rows = rows.filter(function (r) { return r.themes.some(function (t) { return selTheme[t]; }); });
+            rows.sort(function (a, b) { return b.sc - a.sc || a.no - b.no; });
+            rows = rows.slice(0, 12);
             recoEl.innerHTML =
               '<div style="font-size:.72rem;color:#8a93a0;margin-bottom:5px">주제를 눌러 걸러보세요' + (detected.length ? ' · 설교에서 감지된 주제: <b>' + esc(detected.join(', ')) + '</b>' : '') + '</div>' +
               '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">' + songChips(SONG_THEMES, selTheme, 'hymntheme') + '</div>' +
               (rows.length
                 ? rows.map(function (r) {
-                    return '<div class="se-hymnitem"><span class="hy-no">' + r.s.hymn_no + '장</span><span class="hy-t" title="' + esc(r.s.title) + '">' + esc(r.s.title) + '</span><span class="hy-rot">' + esc(r.rot.txt) + '</span><button type="button" class="btn btn-line se-hymn-add" data-n="' + r.s.hymn_no + '" style="flex:none;padding:2px 9px;font-size:.78rem" title="찬송가로 추가">＋</button></div>';
+                    return '<div class="se-hymnitem"><span class="hy-no">' + r.no + '장</span><span class="hy-t" title="' + esc(r.title) + ' · ' + esc(r.themes.join('·')) + '">' + esc(r.title) + ' <span style="font-size:.68rem;color:#a9b3c2">' + esc(r.themes.slice(0, 2).join('·')) + '</span></span><span class="hy-rot">' + (r.inLib ? esc(r.rot.txt) : '') + '</span><button type="button" class="btn btn-line se-hymn-add" data-n="' + r.no + '" style="flex:none;padding:2px 9px;font-size:.78rem" title="찬송가로 추가">＋</button></div>';
                   }).join('')
-                : '<div style="font-size:.76rem;color:#9aa5b1">선택한 주제에 맞는 찬송가가 라이브러리에 없습니다.</div>');
+                : '<div style="font-size:.76rem;color:#9aa5b1">선택한 주제에 맞는 찬송가가 없습니다.</div>');
             Array.prototype.forEach.call(recoEl.querySelectorAll('.song-chip'), function (b) {
               b.onclick = function () { var v = b.dataset.v; if (selTheme[v]) delete selTheme[v]; else selTheme[v] = true; drawReco(); };
             });
@@ -3240,11 +3284,7 @@ console.log('[affairs.js] v20260712memo2');
           }
           drawReco();
         }).catch(function (e) {
-          var m = (e && e.message) || '';
-          recoEl.innerHTML = '<div style="font-size:.76rem;color:#c0392b">' +
-            (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(m)
-              ? '찬양 라이브러리 테이블이 없습니다 — Supabase에서 supabase/worship_songs.sql 을 1회 실행해 주세요.'
-              : '불러오기 실패: ' + esc(m)) + '</div>';
+          recoEl.innerHTML = '<div style="font-size:.76rem;color:#c0392b">추천을 불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>';
         });
       };
       ov.querySelector('#se_service').addEventListener('change', hymnFieldSync);
@@ -3256,10 +3296,13 @@ console.log('[affairs.js] v20260712memo2');
         var ns = hymnFieldNums().map(function (x) { return parseInt(x, 10); }).filter(Boolean);
         api('DELETE', 'sermon_songs?sermon_id=eq.' + sermonId + '&slot=eq.hymn', null, 'return=minimal').then(function () {
           if (!ns.length) return null;
-          return api('GET', 'worship_songs?select=id,hymn_no&type=eq.' + encodeURIComponent('찬송가') + '&hymn_no=in.(' + ns.join(',') + ')').then(function (rows) {
-            var seen = {};
-            var payload = (rows || []).filter(function (r) { if (seen[r.hymn_no]) return false; seen[r.hymn_no] = 1; return true; })
-              .map(function (r, i) { return { sermon_id: sermonId, song_id: r.id, slot: 'hymn', position: i }; });
+          // 라이브러리의 찬송가와 장 번호로 대조(hymn_no가 비면 곡명 앞 'N장'에서 유추)
+          return api('GET', 'worship_songs?select=id,hymn_no,title&type=eq.' + encodeURIComponent('찬송가')).then(function (rows) {
+            var seen = {}, payload = [];
+            (rows || []).forEach(function (r) {
+              var no = r.hymn_no || (function () { var m = /^(\d{1,3})\s*장/.exec(String(r.title || '').trim()); return m ? parseInt(m[1], 10) : null; })();
+              if (no && ns.indexOf(no) >= 0 && !seen[no]) { seen[no] = 1; payload.push({ sermon_id: sermonId, song_id: r.id, slot: 'hymn', position: payload.length }); }
+            });
             return payload.length ? api('POST', 'sermon_songs', payload, 'return=minimal') : null;
           });
         }).catch(function () { });
