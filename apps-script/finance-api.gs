@@ -564,8 +564,31 @@ function buildSermonDocRich_(req, date, title) {
     try { par.asParagraph().clear(); par.asParagraph().appendPageBreak(); }
     catch (e) { r.getElement().asText().setText(''); }
   }
+  // Google Docs HTML 변환이 <style>의 글꼴을 무시하고 기본 산세리프로 넣어버려서 글자가 투박하게 나온다.
+  // → 편집기와 같은 세리프(Noto Serif KR 등)로 문서 전체 글꼴을 다시 지정(굵게·색·크기는 그대로 유지됨).
+  var baseFont = String((req.docStyle && req.docStyle.fontFamily) || 'Noto Serif KR').replace(/["']/g, '').split(',')[0].trim() || 'Noto Serif KR';
+  setBodyFontFamily_(b, baseFont);
   doc.saveAndClose();
   return id;
+}
+
+// 컨테이너(본문·표 셀) 안의 모든 문단 글꼴을 지정 글꼴로 통일 — 굵게/색/크기 등 다른 서식은 건드리지 않음
+function setBodyFontFamily_(container, font) {
+  var n = container.getNumChildren();
+  for (var i = 0; i < n; i++) {
+    var el = container.getChild(i), t = el.getType();
+    try {
+      if (t === DocumentApp.ElementType.PARAGRAPH || t === DocumentApp.ElementType.LIST_ITEM) {
+        if (el.editAsText().getText().length) el.editAsText().setFontFamily(font);
+      } else if (t === DocumentApp.ElementType.TABLE) {
+        var tbl = el.asTable();
+        for (var rr = 0; rr < tbl.getNumRows(); rr++) {
+          var row = tbl.getRow(rr);
+          for (var c = 0; c < row.getNumCells(); c++) setBodyFontFamily_(row.getCell(c), font);
+        }
+      }
+    } catch (e) {}
+  }
 }
 
 // 평문 대체 경로(예전 방식): HTML 변환이 실패해도 내보내기는 되게 한다
