@@ -462,6 +462,9 @@ function actionDeleteVoucher_(req) {
 }
 
 // 설교문을 PDF로 만들어 구글드라이브 "설교 ▸ YYYY년 M월" 폴더에 저장(관리자 전용)
+// 편집기에서 작업한 서식(굵게·글자 크기·색·정렬·인용·줄간격 등)을 그대로 살리기 위해
+// 원고 HTML을 Google Docs로 변환(Drive API import)한 뒤 PDF로 뽑는다.
+// 변환이 실패하면 예전 평문 방식으로 대체해 내보내기 자체는 항상 성공하게 한다.
 function actionExportSermonPdf_(req) {
   var user = verifyUser_(req.token);
   requireAdmin_(user.id);
@@ -469,10 +472,6 @@ function actionExportSermonPdf_(req) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('일자 형식이 올바르지 않습니다(YYYY-MM-DD).');
   var title = String(req.title || '(제목없음)');
   var service = String(req.service || '');
-  var preacher = String(req.preacher || '');
-  var scripture = String(req.scripture || '');
-  var bibleText = String(req.bibleText || '');
-  var contentHtml = String(req.contentHtml || '');
 
   var y = date.slice(0, 4);
   // 폴더 구조: '{연도}설교 / {예배명} / {일자 제목}.pdf'  (예: 2026설교/새벽기도/2026-07-02 폭풍 속의 주.pdf)
@@ -481,15 +480,111 @@ function actionExportSermonPdf_(req) {
   var rootFolder = getOrCreateFolder_(DriveApp.getRootFolder(), rootName);
   var targetFolder = getOrCreateFolder_(rootFolder, svcName);
 
+  var docId = null;
+  try { docId = buildSermonDocRich_(req, date, title); } catch (e) { docId = null; }
+  if (!docId) docId = buildSermonDocPlain_(req, date, title);
+
+  var docFile = DriveApp.getFileById(docId);
+  var pdfBlob = docFile.getAs('application/pdf');
+  var fileName = date + ' ' + title + '.pdf';
+  pdfBlob.setName(fileName);
+  var pdfFile = targetFolder.createFile(pdfBlob);
+  docFile.setTrashed(true); // 중간 생성된 구글 문서는 정리
+
+  return { ok: true, url: pdfFile.getUrl(), fileName: fileName, folder: rootName + '/' + svcName };
+}
+
+// 용지·여백: 클라이언트가 보낸 mm 값(편집기 용지 설정) → pt. 없으면 예전 아이패드(576×768pt) 기본값.
+function sermonPageSetup_(req) {
+  var MMPT = 72 / 25.4;
+  var p = req.paper || {};
+  var w = Number(p.w) || 0, h = Number(p.h) || 0, m = Number(p.margin) || 0;
+  if (w > 0 && h > 0) return { w: w * MMPT, h: h * MMPT, mt: (m || 20) * MMPT, mb: (m || 20) * MMPT, ml: (m || 20) * MMPT, mr: (m || 20) * MMPT };
+  return { w: 576, h: 768, mt: 44, mb: 44, ml: 48, mr: 48 };
+}
+
+// 서식 보존 경로: 머리글(시리즈·제목·메타·성경 본문) + 원고 HTML 원본을 통째로 Google Docs로 변환
+function buildSermonDocRich_(req, date, title) {
+  var service = String(req.service || '');
+  var preacher = String(req.preacher || '');
+  var scripture = String(req.scripture || '');
+  var bibleText = String(req.bibleText || '');
+  var contentHtml = String(req.contentHtml || '');
+  var seriesLine = String(req.seriesLine || '');
+  var NAVY = '#1f3a63', SUB = '#8a8f99', BIBLE = '#33445c';
+
+  // 편집기 문서 전체 설정(글꼴·기본 크기·줄간격·자간) — 없으면 편집기 기본값
+  var ds = req.docStyle || {};
+  var basePx = Number(ds.fontSize) || 17;                       // 편집기 화면 px
+  var basePt = Math.round(basePx * 0.75 * 10) / 10;             // Docs는 px×0.75=pt로 들여옴 — 화면 비율 그대로
+  var lh = String(ds.lineHeight || '2');
+  var fam = String(ds.fontFamily || "'Noto Serif KR', serif").replace(/"/g, "'");
+
+  // 원고 전처리: 수동 페이지 나눔(Ctrl+Enter) → 마커(변환 뒤 실제 페이지 나눔으로 치환), 영상 iframe → 링크
+  var PBM = '@@WP_PAGE_BREAK@@';
+  var body = contentHtml
+    .replace(/<div[^>]*class="[^"]*pg-manual-break[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '<p>' + PBM + '</p>')
+    .replace(/<iframe[^>]*src="([^"]*)"[^>]*>[\s\S]*?<\/iframe>/gi, '<p><a href="$1">▶ 영상: $1</a></p>')
+    .replace(/<iframe[^>]*src="([^"]*)"[^>]*\/?>/gi, '<p><a href="$1">▶ 영상: $1</a></p>');
+  if (!htmlToPlainText_(body).replace(/\s/g, '')) body = '<p>(설교 원고가 비어 있습니다)</p>';
+
+  var meta = [fmtDateK_(date), service, scripture, preacher].filter(function (s) { return s; }).join('   ·   ');
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
+    'body{font-family:' + fam + ';color:#1a1a1a}' +
+    'blockquote{border-left:4px solid #cdd7e3;margin:8px 0;padding:2px 0 2px 14px;color:#475569}' +
+    'h1{color:#08213f}h2{color:#0a2c5c}h3{color:#13314e}' +
+    '</style></head><body>' +
+    (seriesLine ? '<p style="font-size:10pt;font-weight:bold;color:' + NAVY + '">📚 ' + escHtml_(seriesLine) + '</p>' : '') +
+    '<p style="font-size:26pt;font-weight:bold;text-align:center">' + escHtml_(title) + '</p>' +
+    (meta ? '<p style="font-size:11pt;color:' + SUB + ';text-align:center">' + escHtml_(meta) + '</p>' : '') +
+    '<hr>';
+  if (bibleText.replace(/\s/g, '')) {
+    html += '<p style="font-size:12pt;font-weight:bold;color:' + NAVY + '">성경 본문  ·  개역개정</p>';
+    bibleText.split(/\n+/).forEach(function (line) {
+      line = line.trim();
+      if (line) html += '<p style="font-size:14pt;color:' + BIBLE + ';line-height:1.55;margin:2pt 0 2pt 8pt">' + escHtml_(line) + '</p>';
+    });
+    html += '<hr>';
+  }
+  html += '<p style="font-size:12pt;font-weight:bold;color:' + NAVY + '">설교 원고</p>' +
+    '<div style="font-size:' + basePt + 'pt;line-height:' + lh + '">' + body + '</div>' +
+    '</body></html>';
+
+  var id = driveConvertHtmlToDoc_(date + ' ' + title, html);
+
+  // 변환된 문서에 페이지 크기·여백 적용 + 수동 페이지 나눔 마커를 실제 페이지 나눔으로 치환
+  var pg = sermonPageSetup_(req);
+  var doc = DocumentApp.openById(id);
+  var b = doc.getBody();
+  b.setPageWidth(pg.w).setPageHeight(pg.h);
+  b.setMarginTop(pg.mt).setMarginBottom(pg.mb).setMarginLeft(pg.ml).setMarginRight(pg.mr);
+  var guard = 0, r;
+  while ((r = b.findText(PBM)) && guard++ < 200) {
+    var par = r.getElement().getParent();
+    try { par.asParagraph().clear(); par.asParagraph().appendPageBreak(); }
+    catch (e) { r.getElement().asText().setText(''); }
+  }
+  doc.saveAndClose();
+  return id;
+}
+
+// 평문 대체 경로(예전 방식): HTML 변환이 실패해도 내보내기는 되게 한다
+function buildSermonDocPlain_(req, date, title) {
+  var service = String(req.service || '');
+  var preacher = String(req.preacher || '');
+  var scripture = String(req.scripture || '');
+  var bibleText = String(req.bibleText || '');
+  var contentHtml = String(req.contentHtml || '');
+
   var SERIF = 'Noto Serif KR';
   var NAVY = '#1f3a63', INK = '#1a1a1a', SUB = '#8a8f99', BIBLE = '#33445c';
 
   var doc = DocumentApp.create(date + ' ' + title);
   var body = doc.getBody();
   body.clear();
-  // 아이패드(4:3 화면) 보기에 맞춘 페이지: 576×768pt(3:4 비율) · 여백 상하 44 / 좌우 48pt
-  body.setPageWidth(576).setPageHeight(768);
-  body.setMarginTop(44).setMarginBottom(44).setMarginLeft(48).setMarginRight(48);
+  var pg = sermonPageSetup_(req);
+  body.setPageWidth(pg.w).setPageHeight(pg.h);
+  body.setMarginTop(pg.mt).setMarginBottom(pg.mb).setMarginLeft(pg.ml).setMarginRight(pg.mr);
 
   // 시리즈 · 몇 번째 설교 (제목 왼쪽 위, 작게)
   var seriesLine = String(req.seriesLine || '');
@@ -526,15 +621,34 @@ function actionExportSermonPdf_(req) {
   });
 
   doc.saveAndClose();
+  return doc.getId();
+}
 
-  var docFile = DriveApp.getFileById(doc.getId());
-  var pdfBlob = docFile.getAs('application/pdf');
-  var fileName = date + ' ' + title + '.pdf';
-  pdfBlob.setName(fileName);
-  var pdfFile = targetFolder.createFile(pdfBlob);
-  docFile.setTrashed(true); // 중간 생성된 구글 문서는 정리
+// HTML → Google Docs 변환(Drive API v3 multipart import) — 서식(굵게·크기·색·정렬·인용 등)이 보존된다
+function driveConvertHtmlToDoc_(name, html) {
+  var boundary = 'wpBoundary' + new Date().getTime();
+  var payload = '--' + boundary + '\r\n' +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    JSON.stringify({ name: name, mimeType: 'application/vnd.google-apps.document' }) + '\r\n' +
+    '--' + boundary + '\r\n' +
+    'Content-Type: text/html; charset=UTF-8\r\n\r\n' +
+    html + '\r\n' +
+    '--' + boundary + '--';
+  var res = UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'post',
+    contentType: 'multipart/related; boundary=' + boundary,
+    payload: Utilities.newBlob(payload, 'text/plain').getBytes(),   // 한글이 깨지지 않게 UTF-8 바이트로 전송
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true
+  });
+  if (res.getResponseCode() >= 300) throw new Error('HTML→문서 변환 실패: ' + res.getContentText().slice(0, 300));
+  var id = JSON.parse(res.getContentText()).id;
+  if (!id) throw new Error('HTML→문서 변환 실패: 문서 id 없음');
+  return id;
+}
 
-  return { ok: true, url: pdfFile.getUrl(), fileName: fileName, folder: rootName + '/' + svcName };
+function escHtml_(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // 문단 스타일 적용 헬퍼 (Google Docs)

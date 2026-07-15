@@ -2574,6 +2574,20 @@ console.log('[affairs.js] v20260712memo2');
         '.rp-paper .pdf-h{font-size:10.8px;font-weight:700;color:#1f3a63;margin:13px 0 7px}' +
         '.rp-paper .pdf-bible{font-size:12.6px;color:#33445c;line-height:1.55;margin:0 0 3px;padding-left:5px}' +
         '.rp-paper .pdf-p{font-size:14.4px;color:#1a1a1a;line-height:1.7;margin:0 0 10px}' +
+        // 서식 보존 미리보기 — 편집기(.se-editor)와 같은 규칙으로 원고 HTML을 그대로 렌더
+        '.rp-paper .pdf-rich{color:#1a1a1a;word-break:keep-all;overflow-wrap:break-word}' +
+        '.rp-paper .pdf-rich p{margin:.45em 0}' +
+        '.rp-paper .pdf-rich h1{font-size:1.62em;font-weight:800;margin:.6em 0 .3em;color:#08213f}' +
+        '.rp-paper .pdf-rich h2{font-size:1.42em;font-weight:800;margin:.6em 0 .3em;color:#0a2c5c}' +
+        '.rp-paper .pdf-rich h3{font-size:1.18em;font-weight:700;margin:.5em 0 .25em;color:#13314e}' +
+        '.rp-paper .pdf-rich blockquote{border-left:4px solid #cdd7e3;margin:.5em 0;padding:.15em 0 .15em 14px;color:#475569}' +
+        '.rp-paper .pdf-rich ul,.rp-paper .pdf-rich ol{margin:.45em 0;padding-left:1.5em}' +
+        '.rp-paper .pdf-rich mark{padding:0 1px}' +
+        '.rp-paper .pdf-rich img{max-width:100%;border-radius:4px}' +
+        // 수동 페이지 나눔(Ctrl+Enter) → 미리보기에선 다음 단(페이지)으로 넘김
+        '.rp-paper .pdf-rich .pg-manual-break{border:none;margin:0;height:0;break-after:column}' +
+        '.rp-paper .pdf-rich .pg-manual-break::after{content:none}' +
+        '.rp-paper .pdf-rich .se-note{background:#fef3c7;border-bottom:2px dotted #d4a53f}' +
         '.rp-nav{display:flex;align-items:center;justify-content:center;gap:12px;padding:9px 0 0}' +
         '.rp-nav button{font:inherit;font-size:.82rem;padding:4px 14px;border:1px solid #dde3ec;background:#fff;border-radius:8px;cursor:pointer;color:#33415c}' +
         '.rp-nav button:disabled{opacity:.35;cursor:default}' +
@@ -3449,6 +3463,11 @@ console.log('[affairs.js] v20260712memo2');
         var old = pdfBtn.textContent; pdfBtn.disabled = true; pdfBtn.textContent = '저장 중…';
         save(function (saved) {
           pdfBtn.textContent = 'PDF 생성 중…';
+          // 편집기 화면과 같은 결과가 나오게: 용지·여백(리본 설정) + 문서 전체 글꼴·크기·줄간격·자간을 함께 보낸다
+          var PAPmm = { A4: [210, 297], iPad: [180, 240], Letter: [216, 279], B5: [176, 250] };
+          var pSel = ov.querySelector('#wd_paper'), mSel = ov.querySelector('#wd_margin');
+          var pk = (pSel && PAPmm[pSel.value]) ? pSel.value : 'A4';
+          var csEd = window.getComputedStyle(ed);
           WPF.call('exportSermonPdf', {
             date: saved.sermon_date,
             title: saved.title || '',
@@ -3457,7 +3476,14 @@ console.log('[affairs.js] v20260712memo2');
             scripture: saved.scripture || '',
             bibleText: saved.bible_text || '',
             contentHtml: saved.content || '',
-            seriesLine: seriesLineInfo()   // 시리즈 · N번째 설교 (제목 왼쪽 위 출력)
+            seriesLine: seriesLineInfo(),   // 시리즈 · N번째 설교 (제목 왼쪽 위 출력)
+            paper: { w: PAPmm[pk][0], h: PAPmm[pk][1], margin: Number(mSel && mSel.value) || 20 },
+            docStyle: {
+              fontFamily: csEd.fontFamily || "'Noto Serif KR', serif",
+              fontSize: parseFloat(csEd.fontSize) || 17,          // 편집기 화면 px 그대로 (서버에서 pt로 환산)
+              lineHeight: ed.style.lineHeight || '2',             // 리본 '줄간격' — 문서 전체 값이라 HTML엔 안 담겨 별도 전달
+              letterSpacing: parseFloat(ed.style.letterSpacing) || 0
+            }
           }).then(function (r) {
             pdfBtn.disabled = false; pdfBtn.textContent = old;
             msg.style.color = 'green';
@@ -4614,7 +4640,8 @@ console.log('[affairs.js] v20260712memo2');
         var rpPaper = ov.querySelector('#rp_paper'), rpWrap = ov.querySelector('#rp_paperwrap'), rpInfo = ov.querySelector('#rp_pageinfo');
         var rpFlow = ov.querySelector('#rp_flow'), pgEl = ov.querySelector('#rp_pg'), pgPrev = ov.querySelector('#rp_pg_prev'), pgNext = ov.querySelector('#rp_pg_next');
         var sbCount = ov.querySelector('#sb_count'), zoomIn = ov.querySelector('#sb_zoom'), zoomV = ov.querySelector('#sb_zoom_v');
-        var PG_INW = 434, PG_GAP = 86, PG_STRIDE = PG_INW + PG_GAP;   // 한 페이지 본문 폭 + 여백×2 = 페이지 넘김 간격
+        // 한 페이지 본문 폭 + 여백×2 = 페이지 넘김 간격 — 용지·여백 설정에 따라 renderPreview에서 갱신됨
+        var PG_INW = 434, PG_GAP = 86, PG_STRIDE = PG_INW + PG_GAP;
         var pgIdx = 0, pgTotal = 1;
         function updatePg() {
           if (!rpFlow) return;
@@ -4642,16 +4669,32 @@ console.log('[affairs.js] v20260712memo2');
           return d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + W[d.getDay()] + ')';
         }
         // PDF 내보내기(Apps Script exportSermonPdf)와 동일한 최종 결과물을 그대로 재현
+        // — 원고는 평문이 아니라 편집기 서식(굵게·크기·색·인용·정렬) 그대로 보여준다
+        var PV_PAPmm = { A4: [210, 297], iPad: [180, 240], Letter: [216, 279], B5: [176, 250] };
+        function pvPaperInfo() {
+          var pSel = ov.querySelector('#wd_paper'), mSel = ov.querySelector('#wd_margin');
+          var pk = (pSel && PV_PAPmm[pSel.value]) ? pSel.value : 'A4';
+          return { key: pk, w: PV_PAPmm[pk][0], h: PV_PAPmm[pk][1], m: Number(mSel && mSel.value) || 20 };
+        }
         function renderPreview() {
           if (!rpPaper) return;
+          // 미리보기 종이를 실제 용지 비율·여백에 맞춤 (폭 520px 고정, 높이·패딩은 비율 환산)
+          var pp = pvPaperInfo(), PXMM = 96 / 25.4;
+          var factor = 520 / (pp.w * PXMM);                    // 편집기 화면 px → 미리보기 px 축척
+          var padPx = pp.m * PXMM * factor;
+          var pageH = Math.round(520 * pp.h / pp.w);
+          rpPaper.style.height = pageH + 'px';
+          rpPaper.style.padding = padPx.toFixed(1) + 'px';
+          PG_INW = 520 - 2 * padPx; PG_GAP = 2 * padPx; PG_STRIDE = PG_INW + PG_GAP;
+          rpFlow.style.height = (pageH - 2 * padPx).toFixed(1) + 'px';
+          rpFlow.style.columnWidth = PG_INW.toFixed(1) + 'px';
+          rpFlow.style.columnGap = PG_GAP.toFixed(1) + 'px';
           var t = ov.querySelector('#se_title').value.trim() || '(제목없음)';
           var svcV = ov.querySelector('#se_service').value, cu = ov.querySelector('#se_svc_custom');
           if (svcV === '기타' && cu && cu.value.trim()) svcV = cu.value.trim();
           var meta = [fmtDateK(ov.querySelector('#se_date').value), svcV, ov.querySelector('#se_scripture').value.trim(), ov.querySelector('#se_preacher').value.trim()]
             .filter(Boolean).join('   ·   ');
           var bible = (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '').trim();
-          var plain = htmlToPlain(cleanContent() || '').trim();
-          var paras = plain ? plain.split(/\n{2,}/) : ['(설교 원고가 비어 있습니다)'];
           var sLine = seriesLineInfo();
           var html = (sLine ? '<div class="pdf-series">📚 ' + esc(sLine) + '</div>' : '') + '<div class="pdf-t">' + esc(t) + '</div>';
           if (meta) html += '<div class="pdf-meta">' + esc(meta) + '</div>';
@@ -4662,10 +4705,20 @@ console.log('[affairs.js] v20260712memo2');
             html += '<hr class="pdf-hr">';
           }
           html += '<div class="pdf-h">설교 원고</div>';
-          paras.forEach(function (p) { var x = p.replace(/\n/g, ' ').trim(); if (x) html += '<p class="pdf-p">' + esc(x) + '</p>'; });
+          var rich = cleanContent() || '';
+          if (!htmlToPlain(rich).replace(/\s/g, '')) {
+            html += '<p class="pdf-p">(설교 원고가 비어 있습니다)</p>';
+          } else {
+            // zoom으로 편집기 px 크기를 종이 축척에 맞춰 통째로 줄임 — 인라인 서식(px)도 함께 비례
+            var st = 'zoom:' + factor.toFixed(4) +
+              ';font-size:' + (parseFloat(window.getComputedStyle(ed).fontSize) || 17) + 'px' +
+              ';line-height:' + (ed.style.lineHeight || '2') +
+              (ed.style.letterSpacing ? ';letter-spacing:' + ed.style.letterSpacing : '');
+            html += '<div class="pdf-rich" style="' + st + '">' + rich + '</div>';
+          }
           if (rpFlow) rpFlow.innerHTML = html;
           updatePg();
-          if (rpInfo) rpInfo.textContent = '아이패드 크기(3:4) · 실제 PDF 내보내기와 동일한 양식';
+          if (rpInfo) rpInfo.textContent = pp.key + ' (' + pp.w + '×' + pp.h + '㎜) · 실제 PDF 내보내기와 동일한 양식';
           var txt = (ed.innerText || '').trim();
           var words = txt ? txt.split(/\s+/).length : 0, chars = txt.replace(/\s/g, '').length;
           if (sbCount) sbCount.textContent = pgTotal + ' 페이지 · ' + words + ' 단어 · ' + chars + ' 글자';
@@ -4678,6 +4731,8 @@ console.log('[affairs.js] v20260712memo2');
         ['#se_title', '#se_scripture', '#se_preacher', '#se_bible', '#se_svc_custom'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('input', schedPreview); });
         ov.querySelector('#se_service').addEventListener('change', schedPreview);
         ov.querySelector('#se_date').addEventListener('change', schedPreview);
+        // 용지·여백·줄간격·자간이 바뀌면 미리보기 종이·서식도 다시 계산
+        ['#wd_paper', '#wd_margin', '#se_lh', '#se_ls'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('change', schedPreview); });
         ov.querySelector('#qtc_run').addEventListener('click', function () { setTimeout(renderPreview, 350); });   // 자동분류 후 미리보기 갱신
         renderPreview();
 
