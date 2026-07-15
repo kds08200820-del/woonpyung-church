@@ -598,7 +598,7 @@ console.log('[affairs.js] v20260712memo2');
     }
     function drawList(q) {
       q = (q || '').trim().toLowerCase();
-      var rows = HY.filter(function (h) { return !q || String(h.no).indexOf(q) >= 0 || (h.title || '').toLowerCase().indexOf(q) >= 0; }).slice(0, 400);
+      var rows = HY.filter(function (h) { return !q || String(h.no).indexOf(q) >= 0 || (h.title || '').toLowerCase().indexOf(q) >= 0; });   // 645장 전곡 표시(예전 400곡 잘림 버그 수정)
       listEl.innerHTML = rows.length ? rows.map(function (h) { return '<div class="hp-item" data-n="' + h.no + '" style="padding:8px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;gap:8px;background:' + (sel[h.no] ? '#eef4ff' : '#fff') + '"><span style="flex:0 0 48px;font-weight:700;color:' + (sel[h.no] ? '#1f3a5f' : '#7b8794') + '">' + h.no + '장</span><span>' + esc(h.title || '') + '</span>' + (sel[h.no] ? '<span style="margin-left:auto;color:#1e874b">✓</span>' : '') + '</div>'; }).join('') : '<p style="padding:10px;color:#9aa5b1">결과 없음</p>';
       Array.prototype.forEach.call(listEl.querySelectorAll('.hp-item'), function (d) { d.onclick = function () { var n = Number(d.dataset.n); if (sel[n]) delete sel[n]; else sel[n] = 1; drawSel(); drawList(qEl.value); }; });
     }
