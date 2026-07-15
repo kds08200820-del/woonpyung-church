@@ -1,7 +1,7 @@
-/* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단
- * 콘솔: [gyojeok.js] v20260701di
+/* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단 + 교적추가
+ * 콘솔: [gyojeok.js] v20260731lib15
  */
-console.log('[gyojeok.js] v20260701di');
+console.log('[gyojeok.js] v20260731lib15');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -123,7 +123,7 @@ console.log('[gyojeok.js] v20260701di');
       ms.sort(function (a, b) { var ha = a['세대주'] || a['이름'], hb = b['세대주'] || b['이름']; if (ha !== hb) return ha.localeCompare(hb, 'ko'); return (a['이름'] === ha ? -1 : 1) - (b['이름'] === hb ? -1 : 1); });
       ALL = ms;
       var couples = ms.filter(function (m) { return m['배우자']; }).length / 2;
-      panel.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap"><b>교적 명단 (' + ms.length + '명)</b><input type="text" id="gj_search" placeholder="🔍 이름 검색" style="padding:7px 11px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;flex:1;min-width:140px;max-width:260px"><span style="color:var(--ink-soft);font-size:.85rem">부부 ' + Math.round(couples) + '쌍</span></div><p style="color:var(--ink-soft);font-size:.83rem;margin-bottom:8px">이름을 클릭하면 개인 신상을 볼 수 있습니다.</p><div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th>세대주</th><th>관계</th><th>배우자</th><th>그룹</th><th>직책</th><th>휴대폰</th></tr></thead><tbody id="gj_tbody"></tbody></table></div></div>';
+      panel.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap"><b>교적 명단 (' + ms.length + '명)</b><input type="text" id="gj_search" placeholder="🔍 이름 검색" style="padding:7px 11px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;flex:1;min-width:140px;max-width:260px"><span style="display:flex;gap:10px;align-items:center"><span style="color:var(--ink-soft);font-size:.85rem">부부 ' + Math.round(couples) + '쌍</span><button class="btn btn-solid" id="gj_add" style="padding:7px 14px;white-space:nowrap">＋ 교적 추가</button></span></div><p style="color:var(--ink-soft);font-size:.83rem;margin-bottom:8px">이름을 클릭하면 개인 신상을 볼 수 있습니다.</p><div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th>세대주</th><th>관계</th><th>배우자</th><th>그룹</th><th>직책</th><th>휴대폰</th></tr></thead><tbody id="gj_tbody"></tbody></table></div></div>';
       var tbody = panel.querySelector('#gj_tbody');
       function draw(q) {
         q = (q || '').trim();
@@ -133,9 +133,86 @@ console.log('[gyojeok.js] v20260701di');
       }
       draw('');
       panel.querySelector('#gj_search').addEventListener('input', function () { draw(this.value); });
+      panel.querySelector('#gj_add').onclick = function () { showAddMember(panel); };
     }).catch(function (e) {
       panel.innerHTML = msgCard('조회 실패', e.message);
     });
+  }
+
+  /* ── 교적 추가(신규 등록 모달) ── */
+  var ADD_FIELDS = [
+    ['이름 *', '이름', 'text'], ['생년월일', '생년월일', 'birth'], ['성별', '성별', 'sex'],
+    ['휴대폰', '휴대폰', 'tel'], ['신급', '신급', 'grade'], ['직책', '직책', 'role'],
+    ['세례일', '세례일', 'date'], ['임직일', '임직일', 'date'],
+    ['구역/부서', '그룹', 'text'], ['회원상태', '회원상태', 'status'], ['주소', '주소', 'text']
+  ];
+  function showAddMember(panel) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:24px 16px;overflow:auto';
+    ov.innerHTML = '<div class="fin-card" id="ga_box" style="max-width:580px;width:100%;background:#fff;margin:auto"></div>';
+    document.body.appendChild(ov);
+    var box = ov.querySelector('#ga_box');
+    function close() { ov.remove(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    function inp(label, col, type) {
+      var ctrl;
+      if (type === 'sex') ctrl = '<select data-col="' + col + '"><option value=""></option><option>남</option><option>여</option></select>';
+      else if (type === 'grade') ctrl = '<select data-col="' + col + '">' + selOpts(GRADE_OPTS, '') + '</select>';
+      else if (type === 'role') ctrl = '<select data-col="' + col + '">' + selOpts(ROLE_OPTS, '성도') + '</select>';
+      else if (type === 'status') ctrl = '<select data-col="' + col + '">' + selOpts(STATUS_OPTS, '정회원후보') + '</select>';
+      else ctrl = '<input type="text" data-col="' + col + '"' + (type === 'tel' ? ' inputmode="numeric" placeholder="010-0000-0000"' : '') + (type === 'birth' ? ' placeholder="예: 1981-08-19"' : '') + (type === 'date' ? ' placeholder="예: 2010-03-21"' : '') + '>';
+      return '<div class="af-field"><label>' + esc(label) + '</label>' + ctrl + '</div>';
+    }
+    box.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="margin:0;color:var(--accent,#032257)">＋ 교적 추가</h3><button class="btn btn-line" id="ga_cancel" style="padding:4px 12px">취소</button></div>' +
+      '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px">' +
+      ADD_FIELDS.map(function (f) { return inp(f[0], f[1], f[2]); }).join('') +
+      '</div>' +
+      '<div style="margin-bottom:12px;border-top:1px solid #eef1f5;padding-top:12px;display:flex;gap:18px;flex-wrap:wrap;align-items:center">' +
+      '<label class="sw"><input type="checkbox" id="ga_ishead" checked> ⌂ 세대주(본인이 세대주)</label>' +
+      '<div class="af-field" id="ga_head_wrap" style="flex:1;min-width:150px;margin:0;display:none"><label>세대주 이름</label><input type="text" id="ga_head" placeholder="예: 김충현"></div>' +
+      '<div class="af-field" id="ga_rel_wrap" style="flex:1;min-width:110px;margin:0;display:none"><label>세대주와 관계</label><input type="text" id="ga_rel" placeholder="예: 자녀"></div>' +
+      '</div>' +
+      '<div style="margin-bottom:12px;border-top:1px solid #eef1f5;padding-top:12px"><label style="display:block;font-size:.8rem;color:#7b8794;margin-bottom:7px">소속 그룹 (여러 개 선택 가능)</label><div style="display:flex;flex-wrap:wrap;gap:8px 16px">' +
+      GROUP_PRESET.map(function (g) { return '<label class="sw"><input type="checkbox" class="ga-grp" value="' + esc(g) + '"> ' + esc(g) + '</label>'; }).join('') +
+      '</div><input type="text" id="ga_grp_extra" placeholder="기타 그룹 추가 (쉼표로 구분)" style="margin-top:9px;width:100%;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"></div>' +
+      '<div style="display:flex;gap:10px;align-items:center;margin-top:6px"><button class="btn btn-solid" id="ga_save">등록</button><span class="fin-msg" id="ga_msg"></span></div>' +
+      '<p class="help" style="margin-top:8px">※ 사진은 등록 후 명단에서 이름을 클릭해 <b>수정</b>에서 올릴 수 있습니다.</p>';
+    box.querySelector('#ga_cancel').onclick = close;
+    var ishead = box.querySelector('#ga_ishead'), headWrap = box.querySelector('#ga_head_wrap'), relWrap = box.querySelector('#ga_rel_wrap');
+    ishead.onchange = function () { var d = ishead.checked ? 'none' : ''; headWrap.style.display = d; relWrap.style.display = d; };
+    var msg = box.querySelector('#ga_msg');
+    function fail(t) { msg.style.color = '#c0392b'; msg.textContent = t; }
+    box.querySelector('#ga_save').onclick = function () {
+      var vals = {};
+      Array.prototype.forEach.call(box.querySelectorAll('[data-col]'), function (el) { vals[el.dataset.col] = el.value.trim(); });
+      var nm = vals['이름'];
+      var bd = String(vals['생년월일'] || '').replace(/[^0-9]/g, '');
+      if (!nm) { fail('이름은 필수입니다.'); return; }
+      if (bd && bd.length !== 8) { fail('생년월일은 8자리(예: 1981-08-19)이거나 비워 두세요.'); return; }
+      var key = nm + '|' + bd;
+      if (ALL.some(function (m) { return String(m['매칭키']) === key; })) { fail('이미 같은 이름·생년월일의 교적이 있습니다.'); return; }
+      var sameName = ALL.filter(function (m) { return m['이름'] === nm; });
+      if (sameName.length && !confirm('「' + nm + '」 이름의 교적이 이미 ' + sameName.length + '건 있습니다. 동명이인으로 새로 등록할까요?')) return;
+      var fields = {};
+      Object.keys(vals).forEach(function (k) { if (k !== '이름' && k !== '생년월일' && vals[k]) fields[k] = vals[k]; });
+      if (fields['휴대폰']) fields['휴대폰'] = fields['휴대폰'].replace(/[^0-9]/g, '');
+      if (ishead.checked) { fields['세대주'] = nm; fields['관계'] = '세대주'; }
+      else {
+        var hd = box.querySelector('#ga_head').value.trim(), rl = box.querySelector('#ga_rel').value.trim();
+        if (hd) { fields['세대주'] = hd; if (rl) fields['관계'] = rl; }
+      }
+      var gset = [];
+      Array.prototype.forEach.call(box.querySelectorAll('.ga-grp:checked'), function (c) { if (gset.indexOf(c.value) < 0) gset.push(c.value); });
+      (box.querySelector('#ga_grp_extra').value || '').split(/[,·]/).forEach(function (s) { s = s.trim(); if (s && gset.indexOf(s) < 0) gset.push(s); });
+      if (gset.length) fields['소속그룹'] = gset.join(', ');
+      msg.style.color = '#7b8794'; msg.textContent = '등록 중…';
+      WPF.call('addGyojeok', { name: nm, birth: bd, fields: fields }).then(function () {
+        msg.style.color = 'green'; msg.textContent = '✓ ' + nm + ' 님이 등록되었습니다';
+        setTimeout(function () { close(); renderMembers(panel); }, 600);
+      }).catch(function (e) { fail('등록 실패: ' + e.message); });
+    };
+    setTimeout(function () { var f = box.querySelector('[data-col="이름"]'); if (f) f.focus(); }, 50);
   }
 
   /* ── 개인 신상 상세(클릭 시 모달, 보기/수정/사진) ── */

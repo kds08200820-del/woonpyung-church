@@ -3,7 +3,7 @@
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
  * 콘솔: [finance-api.js] v20260701di (Supabase)
  */
-console.log('[finance-api.js] v20260701lib14 (Supabase + exportSermonPdf→AppsScript)');
+console.log('[finance-api.js] v20260731lib15 (Supabase + exportSermonPdf→AppsScript)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -149,7 +149,19 @@ window.WPF = (function () {
         var bd = String(params.birth || '').replace(/[^0-9]/g, '');
         var ins = { name: nm, member_key: nm + '|' + bd, status: '정회원후보' };
         if (bd.length === 8) ins.birth = bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8);
-        return rest('POST', 'gyojeok', ins, 'return=minimal').then(function () { return { ok: true, key: nm + '|' + bd, name: nm }; });
+        // 교적 추가 폼의 부가 필드(성별·휴대폰·직책 등)를 GJ_MAP 으로 매핑해 함께 저장
+        var xf = params.fields || {};
+        Object.keys(xf).forEach(function (k) {
+          var col = GJ_MAP[k];
+          if (!col || col === 'name' || col === 'birth' || col === 'member_key') return;
+          var val = xf[k];
+          if (val === '' || val == null) return;
+          ins[col] = val;
+        });
+        return rest('POST', 'gyojeok', ins, 'return=representation').then(function (rows) {
+          var row = (rows && rows[0]) || {};
+          return { ok: true, key: nm + '|' + bd, name: nm, id: row.id };
+        });
       }
       case 'updateGyojeok': {
         var f = params.fields || {}, patch = {};
