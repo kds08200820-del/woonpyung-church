@@ -3480,8 +3480,7 @@ console.log('[affairs.js] v20260712memo2');
             paper: { w: PAPmm[pk][0], h: PAPmm[pk][1], margin: Number(mSel && mSel.value) || 20 },
             docStyle: {
               fontFamily: csEd.fontFamily || "'Noto Serif KR', serif",
-              fontSize: parseFloat(csEd.fontSize) || 17,          // 편집기 화면 px 그대로 (서버에서 pt로 환산)
-              lineHeight: ed.style.lineHeight || '2',             // 리본 '줄간격' — 문서 전체 값이라 HTML엔 안 담겨 별도 전달
+              lineHeight: ed.style.lineHeight || '',              // 리본 '줄간격'을 직접 바꾼 경우만 전달 — 비면 성경 본문과 같은 1.55
               letterSpacing: parseFloat(ed.style.letterSpacing) || 0
             }
           }).then(function (r) {
@@ -4711,8 +4710,8 @@ console.log('[affairs.js] v20260712memo2');
           } else {
             // zoom으로 편집기 px 크기를 종이 축척에 맞춰 통째로 줄임 — 인라인 서식(px)도 함께 비례
             var st = 'zoom:' + factor.toFixed(4) +
-              ';font-size:' + (parseFloat(window.getComputedStyle(ed).fontSize) || 17) + 'px' +
-              ';line-height:' + (ed.style.lineHeight || '2') +
+              ';font-size:18.7px' +                              // 14pt(÷0.75) — 성경 본문과 같은 크기
+              ';line-height:' + (ed.style.lineHeight || '1.55') + // 성경 본문과 같은 줄간격(리본에서 바꾸면 그 값)
               (ed.style.letterSpacing ? ';letter-spacing:' + ed.style.letterSpacing : '');
             html += '<div class="pdf-rich" style="' + st + '">' + rich + '</div>';
           }

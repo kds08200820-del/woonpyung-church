@@ -513,11 +513,11 @@ function buildSermonDocRich_(req, date, title) {
   var seriesLine = String(req.seriesLine || '');
   var NAVY = '#1f3a63', SUB = '#8a8f99', BIBLE = '#33445c';
 
-  // 편집기 문서 전체 설정(글꼴·기본 크기·줄간격·자간) — 없으면 편집기 기본값
+  // 편집기 문서 전체 설정(글꼴·줄간격) — 원고 본문 기본 크기·줄간격은 성경 본문과 동일(14pt·1.55).
+  // 리본 '줄간격'을 직접 바꾼 경우에만 그 값을 사용(빈 값이면 1.55).
   var ds = req.docStyle || {};
-  var basePx = Number(ds.fontSize) || 17;                       // 편집기 화면 px
-  var basePt = Math.round(basePx * 0.75 * 10) / 10;             // Docs는 px×0.75=pt로 들여옴 — 화면 비율 그대로
-  var lh = String(ds.lineHeight || '2');
+  var basePt = 14;
+  var lh = String(ds.lineHeight || '1.55');
   var fam = String(ds.fontFamily || "'Noto Serif KR', serif").replace(/"/g, "'");
 
   // 원고 전처리: 수동 페이지 나눔(Ctrl+Enter) → 마커(변환 뒤 실제 페이지 나눔으로 치환), 영상 iframe → 링크
