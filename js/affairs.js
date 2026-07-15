@@ -609,6 +609,13 @@ console.log('[affairs.js] v20260712memo2');
     setTimeout(function () { qEl.focus(); }, 40);
   }
   function hymnsLabel(s) { var a = String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); return a.map(function (n) { var t = hymnTitle(n); return n + '장' + (t ? ' ' + t : ''); }).join(' · '); }
+  // 새벽·수요·금요 기도회의 제목 아래 머리글용 '찬송가 N장' 표기 (그 외 예배는 예배 순서에 찬송이 따로 있어 표기 안 함)
+  var HYMN_META_SERVICES = ['새벽기도', '수요기도회', '금요기도회'];
+  function hymnMetaLabel(hymnsStr, service) {
+    if (HYMN_META_SERVICES.indexOf(String(service || '')) < 0) return '';
+    var a = String(hymnsStr || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    return a.length ? '찬송가 ' + a.map(function (n) { return n + '장'; }).join(' · ') : '';
+  }
   // 교독문 본문을 인도자/회중/다같이 역할로 렌더
   function gyodokBodyHTML(body) {
     var lead = true;
@@ -2646,6 +2653,16 @@ console.log('[affairs.js] v20260712memo2');
         '.bd-serwrap{position:relative}' +
         '.bd-serlist{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:32;max-height:190px;overflow:auto;border:1px solid #e3e8f0;border-radius:9px;padding:4px;background:#fff;box-shadow:0 12px 30px rgba(0,0,0,.22)}' +
         '.bd-serlist.open{display:block}' +
+        // ── 🎵 찬송가 필드(새벽·수요·금요 기도회) — 선택 칩 + 라이브러리 주제 추천 목록 ──
+        '.se-hymnchip{display:inline-flex;align-items:center;gap:5px;background:#e7f0ff;color:#1f3a5f;border-radius:999px;padding:3px 10px;margin:0 4px 4px 0;font-size:.8rem;font-weight:700}' +
+        '.sed-dark .se-hymnchip{background:#243450;color:#cfe0f5}' +
+        '.se-hymnchip b{cursor:pointer;color:#c0392b}' +
+        '.se-hymnitem{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid #dfe5ee;border-radius:8px;margin-bottom:4px;background:#fff;font-size:.82rem;color:#33415c}' +
+        '.sed-dark .se-hymnitem{background:#161d29;border-color:#2a3547;color:#c3cede}' +
+        '.se-hymnitem .hy-no{flex:none;font-weight:700;color:#1f3a5f;min-width:42px}' +
+        '.sed-dark .se-hymnitem .hy-no{color:#9fc0ea}' +
+        '.se-hymnitem .hy-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+        '.se-hymnitem .hy-rot{flex:none;font-size:.68rem;white-space:nowrap}' +
         '.bd-seritem{display:block;width:100%;text-align:left;border:0;background:none;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:.8rem;color:#3a4a63}' +
         '.bd-seritem span{color:#9aa5b1;font-size:.7rem}' +
         '.bd-seritem:hover{background:#f2f6fc}' +
@@ -2888,6 +2905,11 @@ console.log('[affairs.js] v20260712memo2');
         '<div id="se_series_docs" class="bd-serdocs"></div>' +
         '</div>' +
         '<div class="af-field"><label>설교자</label><input type="text" id="se_preacher" value="' + esc(rec.preacher || '김동석 목사') + '"></div>' +
+        // 🎵 찬송가(새벽·수요·금요 기도회 전용) — 선택하면 PDF 제목 아래 '찬송가 N장'으로 표기
+        '<div class="af-field se-hide-worship" id="se_hymn_field" style="display:none"><label>🎵 찬송가 <span style="font-weight:400">(PDF 제목 아래 표기)</span></label>' +
+        '<div id="se_hymn_chips" style="min-height:20px;margin-bottom:6px"></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button type="button" class="btn btn-line" id="se_hymn_pick2" style="padding:7px 4px;font-size:.78rem">🔍 번호·제목 검색</button><button type="button" class="btn btn-line" id="se_hymn_reco_btn" style="padding:7px 4px;font-size:.78rem">✨ 주제 추천</button></div>' +
+        '<div id="se_hymn_reco" style="display:none;margin-top:8px"></div></div>' +
         '<div class="af-field se-hide-worship"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e;margin:0;flex:none">함께 만들기</label></div>' +
         '<div class="af-field se-hide-worship"><label>🏷 키워드 <span style="font-weight:400">(최대 3개)</span></label><input type="text" id="se_keywords" value="' + esc(rec.keywords || '') + '" placeholder="쉼표로 구분"></div>' +
         '<div class="af-field se-hide-worship"><label>📝 미리보기 요약</label><textarea id="se_summary" maxlength="500" placeholder="목록·카드 하단에 노출 (최대 500자, 2줄까지 표시)" style="min-height:74px">' + esc(rec.summary || '') + '</textarea></div>' +
@@ -3131,6 +3153,117 @@ console.log('[affairs.js] v20260712memo2');
         order.push({ label: 'CCM', detail: (v || '').trim(), url: '' });
         renderOrder();
       };
+      // ── 🎵 찬송가 필드(정보 패널) — 새벽기도·수요기도회·금요기도회에서만 표시 ──
+      // 찬양곡 라이브러리(worship_songs)의 찬송가 항목을 주제로 추천받거나, 번호·제목으로 검색해 넣는다.
+      // 선택 결과는 sermons.hymns(쉼표 구분 장 번호)에 저장되고 PDF 제목 아래 '찬송가 N장'으로 표기된다.
+      var hymnRecoLib = null;   // 라이브러리 찬송가 캐시(한 편집 세션 1회 로드)
+      function hymnFieldSync() {
+        var f = ov.querySelector('#se_hymn_field'); if (!f) return;
+        f.style.display = HYMN_META_SERVICES.indexOf(ov.querySelector('#se_service').value) >= 0 ? '' : 'none';
+      }
+      function hymnFieldNums() { return ov.querySelector('#se_hymns_v').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
+      function hymnFieldSet(ns) {
+        ov.querySelector('#se_hymns_v').value = ns.join(',');
+        hymnFieldChips();
+        try { ov.dispatchEvent(new CustomEvent('wp:hymns')); } catch (e) { }   // 미리보기 머리글 갱신
+      }
+      function hymnFieldChips() {
+        var box = ov.querySelector('#se_hymn_chips'); if (!box) return;
+        var ns = hymnFieldNums();
+        box.innerHTML = ns.length
+          ? ns.map(function (n) { var t = hymnTitle(n); return '<span class="se-hymnchip" data-n="' + esc(n) + '">' + esc(n) + '장' + (t ? ' <span style="font-weight:400">' + esc(t) + '</span>' : '') + ' <b title="빼기">✕</b></span>'; }).join('')
+          : '<span style="font-size:.76rem;color:#9aa5b1">아직 선택한 찬송가가 없습니다.</span>';
+        Array.prototype.forEach.call(box.querySelectorAll('.se-hymnchip b'), function (x) {
+          x.onclick = function () { var n = x.parentNode.dataset.n; hymnFieldSet(hymnFieldNums().filter(function (v) { return v !== n; })); };
+        });
+      }
+      var hymnPick2 = ov.querySelector('#se_hymn_pick2');
+      if (hymnPick2) hymnPick2.onclick = function () { hymnPicker(hymnFieldNums(), function (ns) { hymnFieldSet(ns.map(String)); }); };
+      var hymnRecoBtn = ov.querySelector('#se_hymn_reco_btn');
+      if (hymnRecoBtn) hymnRecoBtn.onclick = function () {
+        var recoEl = ov.querySelector('#se_hymn_reco');
+        if (recoEl.style.display !== 'none') { recoEl.style.display = 'none'; return; }   // 다시 누르면 접기
+        recoEl.style.display = '';
+        recoEl.innerHTML = '<div style="font-size:.76rem;color:#9aa5b1">찬양 라이브러리에서 불러오는 중…</div>';
+        var load = hymnRecoLib ? Promise.resolve(hymnRecoLib)
+          : Promise.all([
+              api('GET', 'worship_songs?select=id,title,hymn_no,theme_tags,use_tags,familiarity&type=eq.' + encodeURIComponent('찬송가') + '&order=hymn_no.asc'),
+              loadSongUsage()
+            ]).then(function (res) {
+              hymnRecoLib = { songs: (res[0] || []).filter(function (s) { return s.hymn_no; }), usage: res[1] || {} };
+              return hymnRecoLib;
+            });
+        load.then(function (lib) {
+          if (!lib.songs.length) { recoEl.innerHTML = '<div style="font-size:.76rem;color:#9aa5b1">라이브러리에 장 번호가 입력된 찬송가가 없습니다. 찬양관리에서 찬송가에 번호를 채우거나, 🔍 번호·제목 검색을 이용하세요.</div>'; return; }
+          // 설교 제목·본문·키워드·요약·시리즈에서 주제를 자동 감지해 시작점으로
+          var detected = detectThemes({
+            title: ov.querySelector('#se_title').value, scripture: ov.querySelector('#se_scripture').value,
+            keywords: (ov.querySelector('#se_keywords') ? ov.querySelector('#se_keywords').value : ''),
+            summary: (ov.querySelector('#se_summary') ? ov.querySelector('#se_summary').value : ''),
+            series: seriesArr.join(', ')
+          });
+          var selTheme = {}; detected.forEach(function (t) { selTheme[t] = true; });
+          function drawReco() {
+            var svc = ov.querySelector('#se_service').value;
+            var useTag = (svc === '수요기도회') ? '수요예배' : '새벽기도';
+            var picked = songSelArr(selTheme);
+            var rows = lib.songs.map(function (s) {
+              var sc = 0;
+              (s.theme_tags || []).forEach(function (t) { if (selTheme[t]) sc += 2; });
+              if ((s.use_tags || []).indexOf(useTag) >= 0) sc += 1.5;
+              var u = lib.usage[s.id] || {}, rot = songRot(u.last || null);
+              if (rot.code === 'ok') sc += 1; else if (rot.code === 'new') sc += 0.5; else sc -= 2;   // 3주 순환: 최근 쓴 곡은 뒤로
+              if (s.familiarity === '매우 익숙') sc += 0.5;
+              return { s: s, sc: sc, rot: rot };
+            });
+            if (picked.length) rows = rows.filter(function (r) { return (r.s.theme_tags || []).some(function (t) { return selTheme[t]; }); });
+            rows.sort(function (a, b) { return b.sc - a.sc || a.s.hymn_no - b.s.hymn_no; });
+            rows = rows.slice(0, 10);
+            recoEl.innerHTML =
+              '<div style="font-size:.72rem;color:#8a93a0;margin-bottom:5px">주제를 눌러 걸러보세요' + (detected.length ? ' · 설교에서 감지된 주제: <b>' + esc(detected.join(', ')) + '</b>' : '') + '</div>' +
+              '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">' + songChips(SONG_THEMES, selTheme, 'hymntheme') + '</div>' +
+              (rows.length
+                ? rows.map(function (r) {
+                    return '<div class="se-hymnitem"><span class="hy-no">' + r.s.hymn_no + '장</span><span class="hy-t" title="' + esc(r.s.title) + '">' + esc(r.s.title) + '</span><span class="hy-rot">' + esc(r.rot.txt) + '</span><button type="button" class="btn btn-line se-hymn-add" data-n="' + r.s.hymn_no + '" style="flex:none;padding:2px 9px;font-size:.78rem" title="찬송가로 추가">＋</button></div>';
+                  }).join('')
+                : '<div style="font-size:.76rem;color:#9aa5b1">선택한 주제에 맞는 찬송가가 라이브러리에 없습니다.</div>');
+            Array.prototype.forEach.call(recoEl.querySelectorAll('.song-chip'), function (b) {
+              b.onclick = function () { var v = b.dataset.v; if (selTheme[v]) delete selTheme[v]; else selTheme[v] = true; drawReco(); };
+            });
+            Array.prototype.forEach.call(recoEl.querySelectorAll('.se-hymn-add'), function (b) {
+              b.onclick = function () {
+                var n = String(b.dataset.n), ns = hymnFieldNums();
+                if (ns.indexOf(n) < 0) { ns.push(n); hymnFieldSet(ns); }
+                b.textContent = '✓'; setTimeout(function () { b.textContent = '＋'; }, 900);
+              };
+            });
+          }
+          drawReco();
+        }).catch(function (e) {
+          var m = (e && e.message) || '';
+          recoEl.innerHTML = '<div style="font-size:.76rem;color:#c0392b">' +
+            (/relation .* does not exist|42P01|PGRST205|schema cache|Could not find the table/i.test(m)
+              ? '찬양 라이브러리 테이블이 없습니다 — Supabase에서 supabase/worship_songs.sql 을 1회 실행해 주세요.'
+              : '불러오기 실패: ' + esc(m)) + '</div>';
+        });
+      };
+      ov.querySelector('#se_service').addEventListener('change', hymnFieldSync);
+      hymnFieldSync(); hymnFieldChips();
+      // 저장 시 선택한 찬송가를 배정 기록(sermon_songs·slot=hymn)에도 남겨 라이브러리 사용횟수·3주 순환에 반영
+      // (라이브러리에 같은 장 번호의 찬송가가 등록돼 있을 때만 — 테이블 미설치 등 실패는 조용히 무시)
+      function syncHymnUsage(sermonId) {
+        if (!sermonId) return;
+        var ns = hymnFieldNums().map(function (x) { return parseInt(x, 10); }).filter(Boolean);
+        api('DELETE', 'sermon_songs?sermon_id=eq.' + sermonId + '&slot=eq.hymn', null, 'return=minimal').then(function () {
+          if (!ns.length) return null;
+          return api('GET', 'worship_songs?select=id,hymn_no&type=eq.' + encodeURIComponent('찬송가') + '&hymn_no=in.(' + ns.join(',') + ')').then(function (rows) {
+            var seen = {};
+            var payload = (rows || []).filter(function (r) { if (seen[r.hymn_no]) return false; seen[r.hymn_no] = 1; return true; })
+              .map(function (r, i) { return { sermon_id: sermonId, song_id: r.id, slot: 'hymn', position: i }; });
+            return payload.length ? api('POST', 'sermon_songs', payload, 'return=minimal') : null;
+          });
+        }).catch(function () { });
+      }
       // QT 내보내기 체크박스: 켜면 우리말성경 본문칸·카카오톡 버튼 표시
       var qtToggle = ov.querySelector('#se_qt_toggle');
       var qtWrap = ov.querySelector('#se_qt_bible_wrap');
@@ -3391,6 +3524,7 @@ console.log('[affairs.js] v20260712memo2');
         p.then(function (rows) {
           var saved = (rows && rows[0]) || data; if (rows && rows[0]) rec.id = rows[0].id;
           markSaved();
+          syncHymnUsage(rec.id);   // 찬송가 선택 → 라이브러리 사용횟수·순환 집계에 반영(실패 무시)
           if (shouldPairQt()) {
             msg.style.color = '#7b8794'; msg.textContent = '새벽기도 저장됨 · QT 함께 저장 중…';
             pairQt(data, function (ok) {
@@ -3477,6 +3611,7 @@ console.log('[affairs.js] v20260712memo2');
             bibleText: saved.bible_text || '',
             contentHtml: saved.content || '',
             seriesLine: seriesLineInfo(),   // 시리즈 · N번째 설교 (제목 왼쪽 위 출력)
+            hymnLine: hymnMetaLabel(saved.hymns, saved.service),   // 새벽·수요·금요 기도회: 제목 아래 '찬송가 N장'
             paper: { w: PAPmm[pk][0], h: PAPmm[pk][1], margin: Number(mSel && mSel.value) || 20 },
             docStyle: {
               fontFamily: csEd.fontFamily || "'Noto Serif KR', serif",
@@ -4691,7 +4826,7 @@ console.log('[affairs.js] v20260712memo2');
           var t = ov.querySelector('#se_title').value.trim() || '(제목없음)';
           var svcV = ov.querySelector('#se_service').value, cu = ov.querySelector('#se_svc_custom');
           if (svcV === '기타' && cu && cu.value.trim()) svcV = cu.value.trim();
-          var meta = [fmtDateK(ov.querySelector('#se_date').value), svcV, ov.querySelector('#se_scripture').value.trim(), ov.querySelector('#se_preacher').value.trim()]
+          var meta = [fmtDateK(ov.querySelector('#se_date').value), svcV, hymnMetaLabel(ov.querySelector('#se_hymns_v').value, svcV), ov.querySelector('#se_scripture').value.trim(), ov.querySelector('#se_preacher').value.trim()]
             .filter(Boolean).join('   ·   ');
           var bible = (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '').trim();
           var sLine = seriesLineInfo();
@@ -4732,6 +4867,7 @@ console.log('[affairs.js] v20260712memo2');
         ov.querySelector('#se_date').addEventListener('change', schedPreview);
         // 용지·여백·줄간격·자간이 바뀌면 미리보기 종이·서식도 다시 계산
         ['#wd_paper', '#wd_margin', '#se_lh', '#se_ls'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('change', schedPreview); });
+        ov.addEventListener('wp:hymns', schedPreview);   // 찬송가 선택이 바뀌면 머리글의 '찬송가 N장' 갱신
         ov.querySelector('#qtc_run').addEventListener('click', function () { setTimeout(renderPreview, 350); });   // 자동분류 후 미리보기 갱신
         renderPreview();
 
@@ -6439,6 +6575,7 @@ console.log('[affairs.js] v20260712memo2');
   // 예배 찬양 슬롯(노션 설교계획의 찬양1·2·3·예배전·응답·성가대곡)
   var SONG_SLOTS = [['pre', '예배전 찬양'], ['s1', '찬양 1'], ['s2', '찬양 2'], ['s3', '찬양 3'], ['resp', '응답 찬양'], ['choir', '성가대곡']];
   var SONG_SLOT_LABEL = {}; SONG_SLOTS.forEach(function (s) { SONG_SLOT_LABEL[s[0]] = s[1]; });
+  SONG_SLOT_LABEL.hymn = '찬송가(새벽·수요)';   // 설교 편집기 찬송가 필드에서 자동 기록되는 슬롯
   var songSubView = 'library';   // 찬양관리 탭 안의 하위 화면: library | assign
   // 배정 기록(sermon_songs)에서 곡별 사용횟수·최근 사용일 집계 — 테이블이 없으면 조용히 빈 집계(라이브러리는 그대로 동작)
   function loadSongUsage() {

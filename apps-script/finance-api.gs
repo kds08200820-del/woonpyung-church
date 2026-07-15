@@ -528,7 +528,8 @@ function buildSermonDocRich_(req, date, title) {
     .replace(/<iframe[^>]*src="([^"]*)"[^>]*\/?>/gi, '<p><a href="$1">▶ 영상: $1</a></p>');
   if (!htmlToPlainText_(body).replace(/\s/g, '')) body = '<p>(설교 원고가 비어 있습니다)</p>';
 
-  var meta = [fmtDateK_(date), service, scripture, preacher].filter(function (s) { return s; }).join('   ·   ');
+  // 메타 줄: 날짜 · 예배 · 찬송가 N장(새벽·수요 등 기도회) · 본문 · 설교자
+  var meta = [fmtDateK_(date), service, String(req.hymnLine || ''), scripture, preacher].filter(function (s) { return s; }).join('   ·   ');
   var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
     'body{font-family:' + fam + ';color:#1a1a1a}' +
     'blockquote{border-left:4px solid #cdd7e3;margin:8px 0;padding:2px 0 2px 14px;color:#475569}' +
@@ -616,8 +617,8 @@ function buildSermonDocPlain_(req, date, title) {
   // 제목 (가운데, 크게)
   setP_(body.appendParagraph(title), { size: 26, bold: true, font: SERIF, color: INK, align: 'center', after: 6 });
 
-  // 메타 (일자 · 예배 · 본문 · 설교자)
-  var meta = [fmtDateK_(date), service, scripture, preacher].filter(function (s) { return s; }).join('   ·   ');
+  // 메타 (일자 · 예배 · 찬송가 · 본문 · 설교자)
+  var meta = [fmtDateK_(date), service, String(req.hymnLine || ''), scripture, preacher].filter(function (s) { return s; }).join('   ·   ');
   if (meta) setP_(body.appendParagraph(meta), { size: 11, font: SERIF, color: SUB, align: 'center', after: 16 });
 
   body.appendHorizontalRule();
