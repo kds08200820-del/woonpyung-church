@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>마하나임 찬양단 | 운평장로교회</title>
+  <meta name="description" content="운평장로교회 마하나임 찬양단 자료실 — 예배 콘티(세트리스트)·악보·음원(MR)·연습 영상 공유, 메트로놈·튜너 연습 도구. 로그인한 교인 전용." />
+
+  <!-- Open Graph (카카오톡·SNS 미리보기) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="운평장로교회" />
+  <meta property="og:title" content="마하나임 찬양단 | 운평장로교회" />
+  <meta property="og:description" content="예배 콘티·악보·음원을 한곳에서 나누고, 메트로놈·튜너로 연습하는 마하나임 찬양단 자료실." />
+  <meta property="og:image" content="https://k-logos.com/images/icon-512.png" />
+  <meta property="og:url" content="https://k-logos.com/mahanaim.html" />
+  <meta name="twitter:card" content="summary" />
+
+  <link rel="manifest" href="manifest.json?v=20260730lib13" />
+  <meta name="theme-color" content="#032257" />
+  <link rel="icon" href="images/favicon-32.png?v=20260730lib13" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260730lib13" />
+  <meta name="apple-mobile-web-app-title" content="운평장로교회" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260730dash2" />
+  <style>
+    .mh-wrap{max-width:1100px}
+    .mh-tabs{display:flex;gap:6px;border-bottom:2px solid var(--line,#e3e7ee);margin:8px 0 22px;flex-wrap:wrap;position:sticky;top:56px;background:var(--paper,#fff);z-index:40}
+    .mh-tabs button{position:relative;background:none;border:none;padding:11px 18px;font-weight:700;color:var(--ink-soft,#7b8794);cursor:pointer;font-family:inherit;font-size:1rem;transition:color .2s ease}
+    .mh-tabs button::after{content:"";position:absolute;left:16px;right:16px;bottom:-2px;height:3px;border-radius:3px;background:var(--accent,#032257);transform:scaleX(0);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+    .mh-tabs button:hover{color:var(--accent,#032257)}
+    .mh-tabs button.active{color:var(--accent,#032257)}
+    .mh-tabs button.active::after{transform:scaleX(1)}
+    .mh-panel{display:none}
+    .mh-panel.active{display:block;animation:mhFade .25s ease}
+    @keyframes mhFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+    .fin-card{background:#fff;border:1px solid var(--line,#e3e7ee);border-radius:12px;padding:18px;margin-bottom:16px}
+    .btn-solid{background:var(--accent,#032257);color:#fff;border:1px solid var(--accent,#032257)}
+    .btn-line{background:#fff;color:var(--accent,#032257);border:1px solid #cdd7e3}
+
+    /* ── 콘티(세트리스트) 카드 ── */
+    .conti{border:1px solid var(--line,#e3e7ee);border-radius:14px;margin-bottom:14px;overflow:hidden;background:#fff}
+    .conti-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;background:linear-gradient(180deg,#fbfcfe,#f4f7fb)}
+    .conti-date{flex:0 0 auto;text-align:center;background:var(--accent,#032257);color:#fff;border-radius:10px;padding:7px 11px;min-width:56px;line-height:1.15}
+    .conti-date .cd-md{font-size:1.15rem;font-weight:800}
+    .conti-date .cd-y{font-size:.66rem;opacity:.85}
+    .conti-titlewrap{flex:1;min-width:0}
+    .conti-title{font-weight:800;color:var(--accent,#032257);font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .conti-meta{color:var(--ink-soft,#7b8794);font-size:.82rem;margin-top:3px}
+    .conti-count{flex:0 0 auto;background:#eef2f7;color:#3a4a63;border-radius:999px;padding:3px 11px;font-size:.78rem;font-weight:700}
+    .conti-chev{flex:0 0 auto;color:#9aa5b1;transition:transform .2s}
+    .conti.open .conti-chev{transform:rotate(180deg)}
+    .conti-body{display:none;padding:6px 16px 16px}
+    .conti.open .conti-body{display:block}
+    .song{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f0f3f7}
+    .song:last-child{border-bottom:none}
+    .song-no{flex:0 0 26px;height:26px;border-radius:50%;background:#eef2f7;color:#3a4a63;font-weight:700;font-size:.82rem;display:flex;align-items:center;justify-content:center;margin-top:1px}
+    .song-main{flex:1;min-width:0}
+    .song-title{font-weight:700;font-size:.98rem}
+    .song-tags{margin-top:3px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .song-key{background:#e8f0fb;color:#2b5797;border-radius:6px;padding:1px 8px;font-size:.75rem;font-weight:700}
+    .song-bpm{background:#f0faf3;color:#1e874b;border-radius:6px;padding:1px 8px;font-size:.75rem;font-weight:700}
+    .song-memo{color:var(--ink-soft,#7b8794);font-size:.82rem;margin-top:3px}
+    .song-yt{flex:0 0 auto}
+    .song-yt a{display:inline-flex;align-items:center;gap:4px;background:#fff0f0;color:#c0392b;border:1px solid #f5c6c6;border-radius:8px;padding:4px 10px;font-size:.8rem;font-weight:700;text-decoration:none}
+    .yt-embed{margin:8px 0 2px;border-radius:10px;overflow:hidden;aspect-ratio:16/9;background:#000;display:none}
+    .yt-embed.show{display:block}
+    .yt-embed iframe{width:100%;height:100%;border:0;display:block}
+    .conti-notememo{margin-top:10px;background:#fffdf4;border:1px solid #f0e6c8;border-radius:9px;padding:9px 12px;font-size:.86rem;color:#6b5d2e;white-space:pre-wrap}
+    .conti-actions{margin-top:12px;display:flex;gap:8px}
+
+    /* ── 콘티 입력 모달 ── */
+    .mh-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:24px 14px;overflow:auto}
+    .mh-modal{background:#fff;border-radius:14px;max-width:640px;width:100%;margin:auto;padding:20px}
+    .af-field{margin-bottom:10px}
+    .af-field label{display:block;font-size:.8rem;color:var(--ink-soft,#7b8794);margin-bottom:4px}
+    .af-field input,.af-field select,.af-field textarea{width:100%;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit}
+    .af-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+    .song-edit{border:1px solid #e6ebf2;border-radius:10px;padding:10px;margin-bottom:10px;background:#fafcff}
+    .song-edit .se-top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .song-edit .se-num{font-weight:800;color:var(--accent,#032257)}
+    .se-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+    .se-del{margin-left:auto;background:#fff;border:1px solid #f0c9c9;color:#c0392b;border-radius:7px;padding:3px 9px;cursor:pointer;font:inherit;font-size:.8rem}
+    .mh-msg{font-size:.86rem}
+
+    /* ── 연습 도구 ── */
+    .tool-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+    .metro-bpm{font-size:3rem;font-weight:800;color:var(--accent,#032257);text-align:center;font-variant-numeric:tabular-nums;line-height:1}
+    .metro-bpm small{font-size:1rem;color:var(--ink-soft,#7b8794);font-weight:600}
+    .beat-dots{display:flex;gap:8px;justify-content:center;margin:14px 0}
+    .beat-dot{width:16px;height:16px;border-radius:50%;background:#dde4ee;transition:transform .06s,background .06s}
+    .beat-dot.on{background:var(--accent,#032257);transform:scale(1.35)}
+    .beat-dot.accent.on{background:#c0392b}
+    .metro-row{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:10px}
+    .metro-row input[type=range]{flex:1;min-width:140px}
+    .stepbtn{width:40px;height:40px;border-radius:10px;border:1px solid #cdd7e3;background:#fff;font-size:1.3rem;cursor:pointer;color:var(--accent,#032257)}
+    .tuner-note{font-size:3.4rem;font-weight:800;text-align:center;color:var(--accent,#032257);line-height:1}
+    .tuner-note small{font-size:1.3rem;vertical-align:super}
+    .tuner-cents{text-align:center;color:var(--ink-soft,#7b8794);font-size:.9rem;margin-top:2px}
+    .tuner-gauge{height:14px;border-radius:8px;background:linear-gradient(90deg,#f2c4c4,#e8f6ee 45% 55%,#f2c4c4);position:relative;margin:14px 0 6px}
+    .tuner-needle{position:absolute;top:-5px;bottom:-5px;width:3px;background:var(--accent,#032257);left:50%;transform:translateX(-50%);transition:left .08s ease}
+    .tuner-mid{position:absolute;top:-8px;bottom:-8px;width:2px;background:#1e874b;left:50%;transform:translateX(-1px)}
+    .flat-note{color:#c0392b}.sharp-note{color:#c0392b}.in-tune{color:#1e874b}
+  </style>
+</head>
+<body>
+
+  <section class="page-hero">
+    <p class="ph-eyebrow">MAHANAIM PRAISE</p>
+    <h1>마하나임 찬양단</h1>
+    <p>예배 콘티·악보·음원을 함께 나누고, 메트로놈·튜너로 준비하는 찬양단 자료실입니다. (로그인한 교인 전용)</p>
+  </section>
+
+  <section class="block">
+    <div class="container mh-wrap">
+      <div class="mh-tabs" id="mhTabs">
+        <button data-p="conti" class="active">🎼 예배 콘티</button>
+        <button data-p="files">📁 악보 · 음원</button>
+        <button data-p="tools">🎯 연습 도구</button>
+      </div>
+
+      <!-- 예배 콘티(세트리스트) -->
+      <div class="mh-panel active" id="panel-conti">
+        <div id="continoteHead" class="fin-card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <b style="color:var(--accent,#032257)">예배 콘티(세트리스트)</b>
+            <p style="color:var(--ink-soft,#7b8794);font-size:.85rem;margin:4px 0 0">예배별 찬양 순서와 키(Key)·연습 영상을 한눈에. 이름을 눌러 펼쳐 보세요.</p>
+          </div>
+          <button class="btn btn-solid" id="contiAdd" style="display:none;padding:9px 16px;white-space:nowrap">＋ 새 콘티</button>
+        </div>
+        <div id="contiList"><p class="qt-loading">불러오는 중…</p></div>
+      </div>
+
+      <!-- 악보 · 음원 (resources.js 재사용) -->
+      <div class="mh-panel" id="panel-files">
+        <div class="block-head" style="margin-bottom:14px">
+          <span class="eyebrow2">LIBRARY</span>
+          <h2 style="margin:.2em 0">악보 · 음원 · 연습 영상</h2>
+          <p style="color:var(--ink-soft,#7b8794)">찬양 악보(PDF·이미지), MR·반주 음원, 연습 영상 파일을 카테고리별로 올리고 내려받습니다. (관리자 업로드 · 교인 다운로드)</p>
+        </div>
+        <div id="resourceAreaPraise"><p class="qt-loading">불러오는 중…</p></div>
+      </div>
+
+      <!-- 연습 도구 -->
+      <div class="mh-panel" id="panel-tools">
+        <div class="tool-grid">
+          <div class="fin-card">
+            <b style="color:var(--accent,#032257)">🥁 메트로놈</b>
+            <div class="metro-bpm" style="margin-top:14px"><span id="mBpm">90</span><small> BPM</small></div>
+            <div class="beat-dots" id="mDots"></div>
+            <div class="metro-row">
+              <button class="stepbtn" id="mMinus">−</button>
+              <input type="range" id="mRange" min="40" max="240" value="90" />
+              <button class="stepbtn" id="mPlus">＋</button>
+            </div>
+            <div class="metro-row">
+              <label class="af-field" style="margin:0;min-width:110px"><span style="font-size:.78rem;color:var(--ink-soft,#7b8794)">박자</span>
+                <select id="mBeats"><option value="2">2/4</option><option value="3">3/4</option><option value="4" selected>4/4</option><option value="6">6/8</option></select>
+              </label>
+              <button class="btn btn-line" id="mTap" style="padding:9px 14px">탭 템포</button>
+            </div>
+            <div class="metro-row" style="margin-top:14px">
+              <button class="btn btn-solid" id="mToggle" style="padding:11px 30px;font-size:1.05rem">▶ 시작</button>
+            </div>
+          </div>
+
+          <div class="fin-card">
+            <b style="color:var(--accent,#032257)">🎸 튜너</b>
+            <p style="color:var(--ink-soft,#7b8794);font-size:.82rem;margin:6px 0 12px">마이크로 소리를 들려주면 가장 가까운 음과 오차를 표시합니다.</p>
+            <div class="tuner-note" id="tNote">—</div>
+            <div class="tuner-cents" id="tCents">시작을 눌러 주세요</div>
+            <div class="tuner-gauge"><div class="tuner-mid"></div><div class="tuner-needle" id="tNeedle"></div></div>
+            <div class="metro-row" style="margin-top:12px">
+              <button class="btn btn-solid" id="tToggle" style="padding:10px 24px">🎤 튜너 시작</button>
+            </div>
+            <p class="tuner-cents" id="tHint" style="margin-top:8px"></p>
+          </div>
+        </div>
+        <p class="help" style="margin-top:12px;color:var(--ink-soft,#7b8794);font-size:.82rem">※ 튜너는 마이크 접근 허용이 필요하며, 크롬·사파리 최신 브라우저에서 가장 잘 동작합니다.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <script src="js/config.js?v=20260730lib13"></script>
+  <script src="js/bulletins.js?v=20260712sum"></script>
+  <script src="js/layout.js?v=20260716mah"></script>
+  <script src="js/main.js?v=20260714tts2"></script>
+  <script src="js/upload.js?v=20260730lib13"></script>
+  <script src="js/resources.js?v=20260716mah"></script>
+  <script src="js/mahanaim.js?v=20260716mah"></script>
+</body>
+</html>

@@ -29,6 +29,16 @@
         { id: "choir", label: "성가대 자료" },
       ],
     },
+    {
+      // 마하나임 찬양단(mahanaim.html) 전용 파일 자료 — 해당 컨테이너가 있을 때만 렌더
+      el: document.getElementById("resourceAreaPraise"),
+      cats: [
+        { id: "mh-score", label: "악보 (PDF·이미지)" },
+        { id: "mh-audio", label: "음원 · MR · 반주" },
+        { id: "mh-video", label: "연습 영상 파일" },
+        { id: "mh-etc", label: "기타 자료" },
+      ],
+    },
   ].filter((g) => g.el);
   if (!GROUPS.length) return;
 

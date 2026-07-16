@@ -37,6 +37,7 @@
     { href: "library.html", label: "자료실", sub: [
       { href: "library.html#edu", label: "교육 자료실" },
       { href: "library.html#worship", label: "예배 자료실" },
+      { href: "mahanaim.html", label: "마하나임 찬양단" },
     ] },
     { href: "finance.html", label: "교회행정", adminOnly: true, sub: [
       { href: "finance.html", label: "재정관리" },
