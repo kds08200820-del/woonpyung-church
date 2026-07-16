@@ -140,7 +140,7 @@ if (committeeBox && typeof COMMITTEES !== "undefined" && COMMITTEES.length) {
 // 긴 글은 문장 단위로 나눠 순차 재생(크롬의 긴 발화 끊김 버그 회피). window.WPCTts.toggle/stop 로 사용.
 var WPCTts = (function () {
   var synth = window.speechSynthesis || null;
-  var btnEl = null, btnLabel = "🔊 들어주기", active = false, gen = 0;
+  var btnEl = null, btnLabel = "들어주기", active = false, gen = 0;
   var audio = null, queue = [], idx = 0, cache = {};
   // ── 낭독 따라 읽기: 본문 문단(줄) 하이라이트 ──
   //   AI 음성엔 단어별 타임스탬프가 없어, 오디오 진행도(현재시간/전체길이)를 문단 글자수 비율에
@@ -222,7 +222,7 @@ var WPCTts = (function () {
     if (!synth) { reset(); return; }
     hideBar();                                  // 기본 음성은 탐색 불가 → 재생바 숨김
     queue = chunk(text); idx = 0;
-    if (btnEl && myGen === gen) btnEl.textContent = "⏸ 멈춤 (기본 음성)";
+    if (btnEl && myGen === gen) btnEl.textContent = "멈춤 (기본 음성)";
     browserNext(myGen);
   }
   // 낭독 텍스트의 짧은 지문(내용이 바뀌면 값도 바뀜) — 저장 파일명에 넣어 옛 음성 재사용을 막는다
@@ -294,7 +294,7 @@ var WPCTts = (function () {
     audio.onloadedmetadata = function () { updateBar(); };
     audio.ontimeupdate = function () { if (myGen === gen && audio && audio.duration) { hiFrac(audio.currentTime / audio.duration); updateBar(); } };
     showBar();
-    if (btnEl) btnEl.textContent = "⏸ 낭독 멈춤";
+    if (btnEl) btnEl.textContent = "낭독 멈춤";
     audio.play().catch(function () { });
   }
   function playAudio(url, myGen) {   // blob URL 재생(생성본)
@@ -306,7 +306,7 @@ var WPCTts = (function () {
   function reset() { active = false; clearHi(); hideBar(); if (btnEl) btnEl.textContent = btnLabel; }
   function start(text, btn, label, opts) {
     stop();
-    btnEl = btn || null; btnLabel = label || "🔊 들어주기"; active = true;
+    btnEl = btn || null; btnLabel = label || "들어주기"; active = true;
     var myGen = ++gen;
     // 이 클릭(사용자 제스처) 시점에 브라우저 음성을 한 번 '깨워' 둔다 — 나중에 AI 실패로 비동기 전환될 때
     // 기본 음성 speak()가 제스처 소실로 차단되는 것을 방지(무음 짧은 발화 1회, 세션당 한 번).
@@ -349,9 +349,9 @@ var WPCTts = (function () {
           if (!active || myGen !== gen) return;
           var m = String((e && e.message) || "");
           if (btnEl) btnEl.textContent =
-            /quota|429|사용량|RESOURCE_EXHAUSTED|exhausted/i.test(m) ? "⚠ AI 음성 사용량 초과 — 기본 음성으로 읽어드려요"
-              : /시간 초과|timeout|abort/i.test(m) ? "⚠ AI 음성 생성이 지연되어 기본 음성으로 읽어드려요"
-                : "⚠ AI 음성을 못 만들어 기본 음성으로 읽어드려요";
+            /quota|429|사용량|RESOURCE_EXHAUSTED|exhausted/i.test(m) ? "AI 음성 사용량 초과 — 기본 음성으로 읽어드려요"
+              : /시간 초과|timeout|abort/i.test(m) ? "AI 음성 생성이 지연되어 기본 음성으로 읽어드려요"
+                : "AI 음성을 못 만들어 기본 음성으로 읽어드려요";
           browserStart(text, myGen);                     // 곧 재생이 시작되면 버튼 문구는 '멈춤'으로 바뀜
         });
     }
@@ -616,11 +616,11 @@ window.WPCTts = WPCTts;
   const AMEN_NOTE = "margin-top:16px;padding:12px 15px;background:#f4f1ea;border-radius:11px;color:#5b6b7d;font-size:.9rem;line-height:1.55;text-align:center";
   const AMEN_DONE = "margin-top:16px;padding:13px 15px;background:#e7f4ea;border:1px solid #bfe0c8;border-radius:11px;color:#1e7a45;font-weight:700;font-size:.95rem;text-align:center";
   function amenDoneBox(box, cd, sess, rankMsg) {
-    box.innerHTML = `<div style="${AMEN_DONE}">${escQt(rankMsg || "✓ 오늘의 큐티를 마치고 아멘 하셨습니다 🙌")}</div>`;
+    box.innerHTML = `<div style="${AMEN_DONE}">${escQt(rankMsg || "✓ 오늘의 큐티를 마치고 아멘 하셨습니다")}</div>`;
     if (rankMsg) return;
     fetch(window.SUPABASE_URL + "/rest/v1/rpc/qt_check_rank", { method: "POST", headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + sess.token, "Content-Type": "application/json" }, body: JSON.stringify({ p_date: cd }) })
       .then((r) => (r.ok ? r.json() : null))
-      .then((rank) => { if (rank) box.innerHTML = `<div style="${AMEN_DONE}">✓ 오늘 ${rank}번째 아멘! 은혜 충만한 하루 되세요 🙌</div>`; })
+      .then((rank) => { if (rank) box.innerHTML = `<div style="${AMEN_DONE}">✓ 오늘 ${rank}번째 아멘! 은혜 충만한 하루 되세요</div>`; })
       .catch(() => {});
   }
   function loadHomeAmen(date) {
@@ -629,7 +629,7 @@ window.WPCTts = WPCTts;
     const cd = dotToDash(date), SB = window.SUPABASE_URL, AK = window.SUPABASE_ANON_KEY;
     const sess = qtSession();
     if (!SB || !AK) { box.innerHTML = ""; return; }
-    if (!sess) { box.innerHTML = `<div style="${AMEN_NOTE}">🙏 <b>로그인</b>하시면 오늘의 큐티에 <b>아멘</b> 체크를 할 수 있어요. <span style="color:#9aa5b1">(화면 오른쪽 위 로그인)</span></div>`; return; }
+    if (!sess) { box.innerHTML = `<div style="${AMEN_NOTE}"><b>로그인</b>하시면 오늘의 큐티에 <b>아멘</b> 체크를 할 수 있어요. <span style="color:#9aa5b1">(화면 오른쪽 위 로그인)</span></div>`; return; }
     const H = { apikey: AK, Authorization: "Bearer " + sess.token };
     box.innerHTML = `<div style="${AMEN_NOTE}">확인 중…</div>`;
     // 본인(user_id) 것만 조회 — 관리자는 전체 qt_checks를 읽을 수 있어 필터 없으면 남의 아멘이 잡힘
@@ -637,7 +637,7 @@ window.WPCTts = WPCTts;
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => {
         if (rows && rows.length) { amenDoneBox(box, cd, sess); return; }
-        box.innerHTML = `<label style="display:flex;align-items:center;gap:10px;margin-top:16px;padding:14px 16px;background:#eef5ef;border:1px solid #cfe3d4;border-radius:12px;color:#2f5133;font-size:.95rem;cursor:pointer"><input type="checkbox" id="qtAmenInput" style="width:18px;height:18px"> 🙏 기도문까지 읽고, 오늘의 큐티에 <b>아멘</b> 합니다</label>`;
+        box.innerHTML = `<label style="display:flex;align-items:center;gap:10px;margin-top:16px;padding:14px 16px;background:#eef5ef;border:1px solid #cfe3d4;border-radius:12px;color:#2f5133;font-size:.95rem;cursor:pointer"><input type="checkbox" id="qtAmenInput" style="width:18px;height:18px"> 기도문까지 읽고, 오늘의 큐티에 <b>아멘</b> 합니다</label>`;
         const chk = document.getElementById("qtAmenInput");
         chk.addEventListener("change", () => {
           if (!chk.checked) return;
@@ -671,7 +671,7 @@ window.WPCTts = WPCTts;
         ${p.ref ? `<p class="qt-d-ref">${escQt(p.ref)}</p>` : ""}
       </div>
       <div class="qt-d-controls">
-        <button type="button" class="qt-d-listen" id="qtTtsBtn" style="border:0;font:inherit;cursor:pointer">🔊 오늘의 말씀 듣기</button>
+        <button type="button" class="qt-d-listen" id="qtTtsBtn" style="border:0;font:inherit;cursor:pointer">오늘의 말씀 듣기</button>
       </div>
       ${secHtml || `<div class="qt-d-sec"><p>${escQt(e.content)}</p></div>`}
       <div id="qtAmenBox"></div>`;
@@ -688,7 +688,7 @@ window.WPCTts = WPCTts;
       if (!readText.trim()) readText = e.content;
       const dd = dotToDash(date);
       const preText = [p.title || "", p.ref || ""].filter(Boolean).join(" ");
-      btn.onclick = () => window.WPCTts.toggle(readText, btn, "🔊 오늘의 말씀 듣기", { date: dd, trackEl: detailEl, preText: preText });
+      btn.onclick = () => window.WPCTts.toggle(readText, btn, "오늘의 말씀 듣기", { date: dd, trackEl: detailEl, preText: preText });
     })();
     const items = [...dateListEl.querySelectorAll(".qt-dl-item")];
     items.forEach((b) => b.classList.toggle("active", b.dataset.date === date));
@@ -884,7 +884,7 @@ function openSermonSummary(idx) {
     </div>
 
     <div class="sm-apply">
-      <span class="sm-apply-tag">🌱 적용 및 결단</span>
+      <span class="sm-apply-tag">적용 및 결단</span>
       <p>${s.apply}</p>
       ${s.applyRef ? `<span class="sm-apply-ref">${s.applyRef}</span>` : ""}
     </div>`;
@@ -1094,7 +1094,7 @@ if (newcomerForm) {
       });
       const j = await res.json().catch(() => ({}));
       if (j && (j.success === "true" || j.success === true)) {
-        newcomerForm.innerHTML = '<div style="text-align:center;padding:24px 0;"><p style="font-size:1.1rem;font-weight:600;color:var(--accent);">등록 신청이 접수되었습니다 🙏</p><p style="color:var(--ink-soft);margin-top:8px;">새가족 담당자가 따뜻하게 연락드리겠습니다.</p></div>';
+        newcomerForm.innerHTML = '<div style="text-align:center;padding:24px 0;"><p style="font-size:1.1rem;font-weight:600;color:var(--accent);">등록 신청이 접수되었습니다.</p><p style="color:var(--ink-soft);margin-top:8px;">새가족 담당자가 따뜻하게 연락드리겠습니다.</p></div>';
       } else {
         throw new Error((j && j.message) || "전송에 실패했습니다");
       }

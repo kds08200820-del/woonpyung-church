@@ -85,8 +85,8 @@
         </div>
         <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="bylaws.html">정관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
         <div class="footer-actions">
-          <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">💬 카카오톡 채널 추가</a>
-          <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">💝 온라인헌금</a>
+          <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">카카오톡 채널 추가</a>
+          <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">온라인헌금</a>
         </div>
         <div class="footer-meta">
           <p>담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</p>
@@ -115,7 +115,7 @@
           <h3 id="authTitle">로그인</h3>
           <p id="authSubtitle">운평장로교회 나눔터에 오신 것을 환영합니다.</p>
         </div>
-        <button class="kakao-btn" id="kakaoLogin"><span>💬</span> 카카오로 시작하기</button>
+        <button class="kakao-btn" id="kakaoLogin">카카오로 시작하기</button>
         <div class="auth-divider"><span>또는 이메일로</span></div>
         <form id="authForm" class="auth-form">
           <div class="form-field" id="nameField" hidden><label>이름</label><input type="text" name="name" placeholder="홍길동" /></div>
@@ -135,7 +135,6 @@
       <div class="modal-box modal-box-give" role="dialog" aria-modal="true" aria-label="온라인 헌금">
         <button class="modal-close" data-give-close aria-label="닫기">&times;</button>
         <div class="give-head">
-          <span class="give-emoji">💝</span>
           <h3>온라인 헌금</h3>
           <p>아래 계좌로 헌금하실 수 있습니다. 정성을 다해 드리는 헌금에 감사드립니다.</p>
         </div>
@@ -145,8 +144,8 @@
           <span class="give-holder">예금주 · 운평장로교회</span>
         </div>
         <div class="give-actions">
-          <a class="give-toss" id="giveTossBtn" href="supertoss://send?bank=농협&accountNo=3511344798723">📲 토스로 송금하기</a>
-          <button type="button" class="give-copy" id="giveCopyBtn">📋 계좌번호 복사</button>
+          <a class="give-toss" id="giveTossBtn" href="supertoss://send?bank=농협&accountNo=3511344798723">토스로 송금하기</a>
+          <button type="button" class="give-copy" id="giveCopyBtn">계좌번호 복사</button>
         </div>
         <p class="give-note">‘토스로 송금하기’는 토스 앱이 설치된 휴대폰에서 송금 화면으로 연결됩니다. 그 외에는 계좌번호를 복사해 이용해 주세요.</p>
       </div>
@@ -250,7 +249,7 @@
     notifyBtn.addEventListener("click", function () {
       if (!window.ONESIGNAL_APP_ID) { alert("알림 기능이 아직 준비 중입니다."); return; }
       if (!("Notification" in window)) { alert("이 브라우저는 알림을 지원하지 않습니다."); return; }
-      if (Notification.permission === "granted") { alert("이미 알림을 받고 있습니다 🔔"); return; }
+      if (Notification.permission === "granted") { alert("이미 알림을 받고 있습니다."); return; }
       if (Notification.permission === "denied") {
         alert("브라우저에서 알림이 차단되어 있습니다.\n주소창 왼쪽 자물쇠(🔒) → 사이트 설정 → 알림을 '허용'으로 바꿔 주세요.");
         return;
@@ -298,8 +297,8 @@
               "tip.state.subscribed": "QT 알림을 받고 있습니다",
               "tip.state.blocked": "알림이 차단되어 있습니다",
               "message.prenotify": "클릭하여 매일 아침 QT 알림을 받으세요",
-              "message.action.subscribed": "이제 매일 아침 QT를 받습니다 🙏",
-              "message.action.resubscribed": "QT 알림을 다시 받습니다 🙏",
+              "message.action.subscribed": "이제 매일 아침 QT를 받습니다.",
+              "message.action.resubscribed": "QT 알림을 다시 받습니다.",
               "message.action.unsubscribed": "QT 알림을 끕니다",
               "dialog.main.title": "운평장로교회 QT 알림",
               "dialog.main.button.subscribe": "알림 받기",
@@ -362,7 +361,7 @@
                 a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:#032257;color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:background .18s";
                 a.onmouseenter = function () { this.style.background = "#1a4080"; };
                 a.onmouseleave = function () { this.style.background = "#032257"; };
-                a.innerHTML = "<span>⚙</span><span>목회행정</span>";
+                a.textContent = "목회행정";
                 card.appendChild(a);
               }
             }
@@ -384,7 +383,7 @@
                 a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:#032257;color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:background .18s";
                 a.onmouseenter = function () { this.style.background = "#1a4080"; };
                 a.onmouseleave = function () { this.style.background = "#032257"; };
-                a.innerHTML = "<span>🏠</span><span>대시보드</span>";
+                a.textContent = "대시보드";
                 card.appendChild(a);
               }
             }

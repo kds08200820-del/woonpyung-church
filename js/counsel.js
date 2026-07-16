@@ -168,7 +168,7 @@
     const token = await getToken();
     if (!token) {
       typing.remove();
-      addMsg("ai", "이 기능은 로그인한 교인만 이용할 수 있어요. 우측 상단에서 로그인하신 뒤 다시 물어봐 주세요. 🙏");
+      addMsg("ai", "이 기능은 로그인한 교인만 이용할 수 있어요. 우측 상단에서 로그인하신 뒤 다시 물어봐 주세요.");
       try { document.getElementById("loginBtnInit")?.click(); } catch (e) {}
       busy = false; sendBtn.disabled = false; return;
     }
@@ -191,7 +191,7 @@
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         typing.remove();
-        addMsg("ai", (data.error || "잠시 후 다시 시도해 주세요.") + (data.detail ? "\n\n🔧 " + data.detail : ""));
+        addMsg("ai", (data.error || "잠시 후 다시 시도해 주세요.") + (data.detail ? "\n\n" + data.detail : ""));
       } else if (res.body && ct.includes("text/plain")) {
         // 스트리밍: 한 글자씩 실시간 표시
         typing.remove();
@@ -220,7 +220,7 @@
     } catch (err) {
       typing.remove();
       addMsg("ai", err && err.name === "AbortError"
-        ? "응답이 평소보다 오래 걸리고 있어요. 잠시 후 다시 한 번 물어봐 주세요. 🙏"
+        ? "응답이 평소보다 오래 걸리고 있어요. 잠시 후 다시 한 번 물어봐 주세요."
         : "연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       clearTimeout(timer);

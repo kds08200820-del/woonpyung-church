@@ -98,7 +98,7 @@ window.ChurchNotices = (function () {
   }
 
   function noticeHtml(n, compact, admin) {
-    const pin = n.pinned ? `<span class="nt-pin">📌 고정</span>` : "";
+    const pin = n.pinned ? `<span class="nt-pin">고정</span>` : "";
     const del = admin ? `<button type="button" class="nt-del" data-id="${n.id}" aria-label="삭제">삭제</button>` : "";
     const edit = admin ? `<button type="button" class="nt-edit" data-id="${n.id}" aria-label="수정">수정</button>` : "";
     const hasBody = n.body && n.body.trim();

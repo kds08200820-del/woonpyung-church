@@ -119,7 +119,7 @@ console.log('[mahanaim.js] v20260716mah');
       '<span class="conti-count">' + songs.length + '곡</span><span class="conti-chev">▾</span></div>' +
       '<div class="conti-body">' +
       (songs.length ? songs.map(songHTML).join('') : '<p class="placeholder-note" style="margin:6px 0">등록된 찬양이 없습니다.</p>') +
-      (row.memo ? '<div class="conti-notememo">📝 ' + esc(row.memo) + '</div>' : '') +
+      (row.memo ? '<div class="conti-notememo">' + esc(row.memo) + '</div>' : '') +
       (admin ? '<div class="conti-actions"><button class="btn btn-line conti-edit" style="padding:5px 14px;font-size:.85rem">수정</button>' +
                '<button class="btn conti-del" style="padding:5px 14px;font-size:.85rem;background:#c0392b;color:#fff;border:0">삭제</button></div>' : '') +
       '</div></div>';
@@ -462,7 +462,7 @@ console.log('[mahanaim.js] v20260716mah');
       if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
       if (ctx) { try { ctx.close(); } catch (e) {} ctx = null; }
       noteEl.textContent = '—'; noteEl.className = 'tuner-note'; centsEl.textContent = '시작을 눌러 주세요'; needle.style.left = '50%';
-      toggle.textContent = '🎤 튜너 시작'; toggle.classList.add('btn-solid'); toggle.classList.remove('btn-line');
+      toggle.textContent = '튜너 시작'; toggle.classList.add('btn-solid'); toggle.classList.remove('btn-line');
     }
     toggle.onclick = function () { running ? stop() : start(); };
     return { stop: stop };

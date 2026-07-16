@@ -31,14 +31,14 @@
       '.hd .ch{font-family:"Noto Serif KR",serif;font-weight:700;font-size:25pt;letter-spacing:.26em;color:#0a2c5c;margin:2.5mm 0 1.5mm}',
       '.hd .sub{font-family:"Noto Sans KR",sans-serif;font-size:8.5pt;color:#777}',
       // 표지 말씀 헤드라인 배너
-      '.hl{text-align:center;font-family:"Noto Serif KR",serif;font-size:1.12em;line-height:1.65;color:#0a2c5c;background:linear-gradient(#f8f5ee,#f1ece0);border:1px solid #e3d9bd;border-radius:8px;padding:14px 18px;margin:0 0 16px}',
+      '.hl{text-align:center;font-family:"Noto Serif KR",serif;font-size:1.12em;line-height:1.65;color:#0a2c5c;background:#f5f1e6;border:1px solid #e3d9bd;border-radius:8px;padding:14px 18px;margin:0 0 16px}',
       'body.l3 .hl{font-size:9.5pt;line-height:1.5;padding:4mm 5mm;margin-bottom:4mm}',
       // 섹션
       'section{margin-bottom:6mm;page-break-inside:avoid}',
       'h2{font-family:"Noto Sans KR",sans-serif;font-size:10.5pt;font-weight:700;color:#0a2c5c;margin:0 0 3mm;padding-bottom:1.4mm;border-bottom:1pt solid #d9cfb3;display:flex;align-items:baseline;gap:7px}',
       'h2 .en{font-size:7.5pt;font-weight:400;color:#b6a273;letter-spacing:.04em}',
       // 설교 강조
-      '.serm{text-align:center;background:linear-gradient(#fbf8f0,#f5efe1);border:1pt solid #e3d9bd;border-radius:3mm;padding:6mm 4mm;margin-bottom:6mm}',
+      '.serm{text-align:center;background:#f8f4ea;border:1pt solid #e3d9bd;border-radius:3mm;padding:6mm 4mm;margin-bottom:6mm}',
       '.serm .lab{font-family:"Noto Sans KR",sans-serif;font-size:8pt;letter-spacing:.26em;color:#a8895a}',
       '.serm .t{font-family:"Noto Serif KR",serif;font-size:17pt;font-weight:700;color:#1a1a1a;margin:2.4mm 0;line-height:1.32}',
       '.serm .m{font-family:"Noto Sans KR",sans-serif;font-size:9pt;color:#5a5346}',
@@ -84,7 +84,7 @@
       'body.l3 .col{font-size:7.5pt;line-height:1.6}body.l3 .col .ct{font-size:8pt}',
       'body.l3 .news li{font-size:7.5pt;padding-left:6mm;line-height:1.45}body.l3 .news li::before{font-size:6.5pt}',
       'body.l3 .cover{-webkit-column-break-inside:avoid;break-inside:avoid;-webkit-column-break-before:always;break-before:column;text-align:center;padding-top:8mm;border-top:1.5pt solid #0a2c5c}',
-      'body.l3 .cover .hl{font-size:9pt;line-height:1.55;margin:0 0 6mm;background:linear-gradient(#f8f5ee,#f1ece0)}',
+      'body.l3 .cover .hl{font-size:9pt;line-height:1.55;margin:0 0 6mm;background:#f5f1e6}',
       'body.l3 .cover .since{font-family:"Noto Sans KR",sans-serif;font-size:6.5pt;color:#a8915c;letter-spacing:.1em}',
       'body.l3 .cover .big{font-family:"Noto Serif KR",serif;font-weight:700;font-size:15pt;letter-spacing:.12em;color:#0a2c5c;margin:2mm 0}',
       'body.l3 .cover .ld{font-family:"Noto Sans KR",sans-serif;font-size:7pt;color:#555;line-height:1.7}',
@@ -157,13 +157,13 @@
   function fullHTML(rec, opts) {
     rec = rec || {}; opts = opts || {};
     var p3 = opts.layout === 'print3';
-    var infoTxt = p3 ? '🖨 인쇄용 3단 · 가로 380×211mm (인쇄 설정: 가로/Landscape · 배율 100% · 여백 없음)' + (opts.amounts ? ' · 금액 포함' : '') : (opts.amounts ? '🔒 인쇄용 · 금액 포함' : '홈페이지용');
+    var infoTxt = p3 ? '인쇄용 3단 · 가로 380×211mm (인쇄 설정: 가로/Landscape · 배율 100% · 여백 없음)' + (opts.amounts ? ' · 금액 포함' : '') : (opts.amounts ? '인쇄용 · 금액 포함' : '홈페이지용');
     return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
       '<title>' + esc(opts.fileName || ('주보 ' + ymd(rec.bdate))) + '</title>' +
       '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
       '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
       '<style>' + css(opts.layout) + '</style></head><body' + (p3 ? ' class="l3"' : '') + '>' +
-      '<div class="bar"><span class="info">' + infoTxt + '</span><button onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>' +
+      '<div class="bar"><span class="info">' + infoTxt + '</span><button onclick="window.print()">인쇄 / PDF 저장</button></div>' +
       bodyHTML(rec, opts) +
       '</body></html>';
   }

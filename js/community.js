@@ -110,7 +110,7 @@
     if (!imgPreview) return;
     const files = imgInput && imgInput.files ? Array.from(imgInput.files) : [];
     imgPreview.innerHTML = files.map((f) =>
-      `<span class="bip-item">📷 ${esc(f.name)} <em>(${Math.round(f.size / 1024)}KB)</em></span>`
+      `<span class="bip-item">${esc(f.name)} <em>(${Math.round(f.size / 1024)}KB)</em></span>`
     ).join("");
   }
 

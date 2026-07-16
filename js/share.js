@@ -150,7 +150,7 @@
     await idbClear();
     box.innerHTML = `
       <div class="share-card">
-        <h3>올렸습니다 🎉</h3>
+        <h3>올렸습니다</h3>
         <p class="share-note">‘${esc(cat)}’ 앨범에 사진 ${files.length}장을 올렸어요.</p>
         ${goHome}
       </div>`;

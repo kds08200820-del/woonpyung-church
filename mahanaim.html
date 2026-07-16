@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260730dash2" />
+  <link rel="stylesheet" href="css/style.css?v=20260716clean" />
   <style>
     .mh-wrap{max-width:1100px}
     .mh-tabs{display:flex;gap:6px;border-bottom:2px solid var(--line,#e3e7ee);margin:8px 0 22px;flex-wrap:wrap;position:sticky;top:56px;background:var(--paper,#fff);z-index:40}
@@ -41,7 +41,7 @@
 
     /* ── 콘티(세트리스트) 카드 ── */
     .conti{border:1px solid var(--line,#e3e7ee);border-radius:14px;margin-bottom:14px;overflow:hidden;background:#fff}
-    .conti-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;background:linear-gradient(180deg,#fbfcfe,#f4f7fb)}
+    .conti-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;background:#f7f9fb}
     .conti-date{flex:0 0 auto;text-align:center;background:var(--accent,#032257);color:#fff;border-radius:10px;padding:7px 11px;min-width:56px;line-height:1.15}
     .conti-date .cd-md{font-size:1.15rem;font-weight:800}
     .conti-date .cd-y{font-size:.66rem;opacity:.85}
@@ -98,7 +98,7 @@
     .tuner-note{font-size:3.4rem;font-weight:800;text-align:center;color:var(--accent,#032257);line-height:1}
     .tuner-note small{font-size:1.3rem;vertical-align:super}
     .tuner-cents{text-align:center;color:var(--ink-soft,#7b8794);font-size:.9rem;margin-top:2px}
-    .tuner-gauge{height:14px;border-radius:8px;background:linear-gradient(90deg,#f2c4c4,#e8f6ee 45% 55%,#f2c4c4);position:relative;margin:14px 0 6px}
+    .tuner-gauge{height:14px;border-radius:8px;background:#eef1f5;border:1px solid #e0e5ec;position:relative;margin:14px 0 6px}
     .tuner-needle{position:absolute;top:-5px;bottom:-5px;width:3px;background:var(--accent,#032257);left:50%;transform:translateX(-50%);transition:left .08s ease}
     .tuner-mid{position:absolute;top:-8px;bottom:-8px;width:2px;background:#1e874b;left:50%;transform:translateX(-1px)}
     .flat-note{color:#c0392b}.sharp-note{color:#c0392b}.in-tune{color:#1e874b}
@@ -116,9 +116,9 @@
     <div class="container mh-wrap">
       <div id="mhLock" style="display:none"></div>
       <div class="mh-tabs" id="mhTabs">
-        <button data-p="conti" class="active">🎼 예배 콘티</button>
-        <button data-p="files">📁 악보 · 음원</button>
-        <button data-p="tools">🎯 연습 도구</button>
+        <button data-p="conti" class="active">예배 콘티</button>
+        <button data-p="files">악보 · 음원</button>
+        <button data-p="tools">연습 도구</button>
       </div>
 
       <!-- 예배 콘티(세트리스트) -->
@@ -147,7 +147,7 @@
       <div class="mh-panel" id="panel-tools">
         <div class="tool-grid">
           <div class="fin-card">
-            <b style="color:var(--accent,#032257)">🥁 메트로놈</b>
+            <b style="color:var(--accent,#032257)">메트로놈</b>
             <div class="metro-bpm" style="margin-top:14px"><span id="mBpm">90</span><small> BPM</small></div>
             <div class="beat-dots" id="mDots"></div>
             <div class="metro-row">
@@ -167,13 +167,13 @@
           </div>
 
           <div class="fin-card">
-            <b style="color:var(--accent,#032257)">🎸 튜너</b>
+            <b style="color:var(--accent,#032257)">튜너</b>
             <p style="color:var(--ink-soft,#7b8794);font-size:.82rem;margin:6px 0 12px">마이크로 소리를 들려주면 가장 가까운 음과 오차를 표시합니다.</p>
             <div class="tuner-note" id="tNote">—</div>
             <div class="tuner-cents" id="tCents">시작을 눌러 주세요</div>
             <div class="tuner-gauge"><div class="tuner-mid"></div><div class="tuner-needle" id="tNeedle"></div></div>
             <div class="metro-row" style="margin-top:12px">
-              <button class="btn btn-solid" id="tToggle" style="padding:10px 24px">🎤 튜너 시작</button>
+              <button class="btn btn-solid" id="tToggle" style="padding:10px 24px">튜너 시작</button>
             </div>
             <p class="tuner-cents" id="tHint" style="margin-top:8px"></p>
           </div>
@@ -186,10 +186,10 @@
 
   <script src="js/config.js?v=20260730lib13"></script>
   <script src="js/bulletins.js?v=20260712sum"></script>
-  <script src="js/layout.js?v=20260716mah"></script>
-  <script src="js/main.js?v=20260714tts2"></script>
+  <script src="js/layout.js?v=20260716clean"></script>
+  <script src="js/main.js?v=20260716clean"></script>
   <script src="js/upload.js?v=20260730lib13"></script>
-  <script src="js/resources.js?v=20260716mah"></script>
-  <script src="js/mahanaim.js?v=20260716mah2"></script>
+  <script src="js/resources.js?v=20260716clean"></script>
+  <script src="js/mahanaim.js?v=20260716clean"></script>
 </body>
 </html>
