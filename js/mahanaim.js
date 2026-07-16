@@ -266,7 +266,48 @@ console.log('[mahanaim.js] v20260716mah');
   }
 
   if (addBtn) addBtn.onclick = function () { openEditor(null); };
-  if (listEl) load();
+
+  /* ── 정회원 전용 접근 게이트 (대시보드와 동일: member_links.member_status) ── */
+  var lockEl = document.getElementById('mhLock'), tabsEl = document.getElementById('mhTabs');
+  function setContentVisible(show) {
+    if (tabsEl) tabsEl.style.display = show ? '' : 'none';
+    document.querySelectorAll('.mh-panel').forEach(function (p) { p.style.display = show ? '' : 'none'; });
+  }
+  function showLock(title, msg, mode) {
+    setContentVisible(false);
+    if (!lockEl) return;
+    lockEl.style.display = '';
+    lockEl.innerHTML = '<div class="member-lock"><div class="lock-icon">🔒</div><h3>' + esc(title) + '</h3><p>' + esc(msg) + '</p></div>';
+    var box = lockEl.querySelector('.member-lock');
+    if (mode === 'login') {
+      var b = document.createElement('button'); b.className = 'btn btn-line'; b.style.marginTop = '12px'; b.textContent = '로그인';
+      b.onclick = function () { var m = document.getElementById('authModal'); if (m) { m.hidden = false; document.body.style.overflow = 'hidden'; } };
+      box.appendChild(b);
+    } else if (mode === 'profile') {
+      var b2 = document.createElement('button'); b2.className = 'btn btn-line'; b2.style.marginTop = '12px'; b2.textContent = '내 정보로 이동 →';
+      b2.onclick = function () { location.href = 'admin.html'; };
+      box.appendChild(b2);
+    }
+  }
+  function memberStatus(uid) {
+    return jsonFetch(SB() + '/rest/v1/member_links?user_id=eq.' + uid + '&select=member_status', { headers: authHeaders() })
+      .then(function (rows) { var r = rows && rows[0]; return r ? r.member_status : ''; }).catch(function () { return ''; });
+  }
+  function initGate() {
+    var me = currentUser();
+    if (!me || !me.id) { showLock('로그인이 필요합니다', '마하나임 찬양단은 정회원 로그인 후 이용할 수 있습니다.', 'login'); return; }
+    showLock('확인 중', '접근 권한을 확인하고 있습니다…');
+    memberStatus(me.id).then(function (st) {
+      if (st === '정회원') {
+        if (lockEl) lockEl.style.display = 'none';
+        setContentVisible(true);
+        load();
+      } else {
+        showLock('정회원 전용입니다', '마하나임 찬양단 자료는 교적 인증을 마친 정회원만 이용할 수 있습니다. (준회원은 교적 연결 후 이용 가능)', 'profile');
+      }
+    });
+  }
+  if (listEl) initGate();
 
   /* ============================================================
      3) 연습 도구 — 메트로놈
