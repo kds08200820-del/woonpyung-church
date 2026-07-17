@@ -87,7 +87,11 @@
       if (!id) { const m = url.pathname.match(/\/(shorts|embed|live)\/([A-Za-z0-9_-]{6,})/); if (m) id = m[2]; }
       return id ? { type: "youtube", id, link: url.href } : null;
     }
-    if (host === "instagram.com" || host.endsWith(".instagram.com")) return { type: "instagram", link: url.href };
+    if (host === "instagram.com" || host.endsWith(".instagram.com")) {
+      // 게시물 주소(/p/, /reel/, /tv/)면 공식 임베드용 코드도 추출
+      const m = url.pathname.match(/\/(p|reel|reels|tv)\/([A-Za-z0-9_-]+)/);
+      return { type: "instagram", code: m ? m[2] : null, link: url.href };
+    }
     return null;
   }
   const linkOf = (p) => (p && p.link_url ? parseLink(p.link_url) : null);
@@ -282,6 +286,19 @@
     if (!wasOpen && window.ModalNav) window.ModalNav.open(closeFeedDom);
   }
 
+  // 카드 본문 미디어: 유튜브·인스타 링크는 공식 임베드(iframe)로 실제 내용 표시, 일반 사진은 이미지
+  function mediaHtml(p, i) {
+    const lk = linkOf(p);
+    if (lk && lk.type === "youtube")
+      return `<div class="ig-media ig-embed"><iframe loading="lazy" src="https://www.youtube.com/embed/${encodeURIComponent(lk.id)}?rel=0&playsinline=1" title="YouTube 영상" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
+    if (lk && lk.type === "instagram" && lk.code)
+      return `<div class="ig-media ig-embed ig-embed-insta"><iframe loading="lazy" src="https://www.instagram.com/p/${encodeURIComponent(lk.code)}/embed/captioned/" title="Instagram 게시물" scrolling="no" allowtransparency="true"></iframe></div>`;
+    return `<div class="ig-media" data-act="open" data-idx="${i}" role="button" tabindex="0" aria-label="크게 보기">
+        <img src="${esc(p.url)}" alt="${esc(titleOf(p))}" loading="lazy" draggable="false" />
+        ${linkBadge(lk)}
+      </div>`;
+  }
+
   function cardHtml(p, i) {
     const liked = myLikes.has(String(p.id));
     const me = currentUser();
@@ -293,10 +310,7 @@
         <div class="ig-who"><b>${esc(p.author_name || "성도")}</b><span>${esc(fmtDate(p))} · ${esc(timeAgo(p.created_at))}</span></div>
         ${(mine || canDel) ? `<span style="margin-left:auto;display:inline-flex;gap:2px">${mine ? `<button type="button" class="ig-menu" data-act="editphoto" title="수정" style="margin-left:0;color:var(--accent,#032257)">수정</button>` : ""}${canDel ? `<button type="button" class="ig-menu" data-act="delphoto" title="삭제" style="margin-left:0">삭제</button>` : ""}</span>` : ""}
       </header>
-      <div class="ig-media" data-act="open" data-idx="${i}" role="button" tabindex="0" aria-label="크게 보기">
-        <img src="${esc(p.url)}" alt="${esc(titleOf(p))}" loading="lazy" draggable="false" />
-        ${linkBadge(linkOf(p))}
-      </div>
+      ${mediaHtml(p, i)}
       <div class="ig-actions">
         <button type="button" class="ig-btn ig-like${liked ? " on" : ""}" data-act="like" aria-pressed="${liked}" aria-label="좋아요">${heartSvg(liked)}</button>
         <button type="button" class="ig-btn" data-act="focuscmt" aria-label="댓글">${bubbleSvg}</button>
@@ -459,6 +473,8 @@
     const lk = linkOf(p);
     if (lk && lk.type === "youtube") {
       vStage.innerHTML = `<div class="igv-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(lk.id)}?playsinline=1&rel=0" title="YouTube 영상" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
+    } else if (lk && lk.type === "instagram" && lk.code) {
+      vStage.innerHTML = `<div class="igv-embed igv-embed-insta"><iframe src="https://www.instagram.com/p/${encodeURIComponent(lk.code)}/embed/captioned/" title="Instagram 게시물" scrolling="no" allowtransparency="true"></iframe></div><a class="igv-linkgo" href="${esc(lk.link)}" target="_blank" rel="noopener">Instagram에서 열기 ↗</a>`;
     } else if (lk) {
       vStage.innerHTML = `<img src="${esc(p.url)}" alt="${esc(titleOf(p))}" draggable="false" /><a class="igv-linkgo" href="${esc(lk.link)}" target="_blank" rel="noopener">Instagram에서 열기 ↗</a>`;
     } else {

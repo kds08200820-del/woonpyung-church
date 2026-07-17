@@ -1048,8 +1048,14 @@ ul { list-style: none; }
 .hn-linkbadge.yt { background: #e62117; }
 .hn-linkbadge.ig { background: linear-gradient(45deg, #f9ce34, #ee2a7b, #6228d7); }
 .ig-media .hn-linkbadge { top: 10px; left: 10px; }
+.ig-embed { cursor: default; background: #000; }
+.ig-embed iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; }
+.ig-embed-insta { background: #fff; }
+.ig-embed-insta iframe { aspect-ratio: auto; height: 620px; }
+@media (max-width: 680px) { .ig-embed-insta iframe { height: 540px; } }
 .igv-embed { width: min(92vw, 900px); aspect-ratio: 16 / 9; max-height: 82vh; }
 .igv-embed iframe { width: 100%; height: 100%; border: 0; display: block; background: #000; }
+.igv-embed-insta { width: min(92vw, 420px); aspect-ratio: auto; height: min(76vh, 660px); background: #fff; border-radius: 8px; overflow: hidden; }
 .igv-linkgo { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); padding: 11px 22px; border-radius: 999px; background: rgba(255,255,255,.95); color: #111; font-weight: 700; font-size: .9rem; text-decoration: none; box-shadow: 0 4px 14px rgba(0,0,0,.35); white-space: nowrap; }
 .igv-linkgo:hover { background: #fff; }
 .igv-linkout { color: #9ecbff; font-size: .84rem; text-decoration: none; }
