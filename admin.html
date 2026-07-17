@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260717link2" />
+  <link rel="stylesheet" href="css/style.css?v=20260717auth1" />
 </head>
 <body>
 
@@ -68,6 +68,12 @@
         </div>
       </form>
 
+      <!-- 계정 관리: 이메일·비밀번호 변경 (이메일 가입자, 로그인 시에만 표시) -->
+      <div class="form-card" id="accountBox" hidden style="max-width:640px;margin-bottom:28px;">
+        <h3 class="sub-title" style="text-align:left;margin-bottom:6px;">계정 관리</h3>
+        <div id="accountBody"></div>
+      </div>
+
       <!-- 교적 인증 · 진행중인 교육 (로그인 시에만 표시) -->
       <div class="form-card" id="offeringBox" hidden style="max-width:640px;margin-bottom:34px;">
         <h3 class="sub-title" style="text-align:left;margin-bottom:6px;">교적 인증</h3>
@@ -112,10 +118,11 @@
 
   <script src="js/config.js?v=20260730lib13"></script>
   <script src="js/bulletins.js?v=20260712sum"></script>
-  <script src="js/layout.js?v=20260716clean"></script>
+  <script src="js/layout.js?v=20260717auth1"></script>
   <script src="js/counsel.js?v=20260716clean"></script>
   <script src="js/main.js?v=20260716clean"></script>
   <script src="js/admin.js?v=20260730lib13"></script>
+  <script src="js/account.js?v=20260717auth1"></script>
   <script src="js/finance-api.js?v=20260731lib15"></script>
   <script src="js/finance-member.js?v=20260730lib15"></script>
 </body>

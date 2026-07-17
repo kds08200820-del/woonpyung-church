@@ -1174,6 +1174,14 @@ ul { list-style: none; }
 .auth-msg.ok { color: var(--accent); }
 .auth-switch { margin-top: 18px; font-size: .88rem; color: var(--ink-soft); }
 .auth-switch button { background: none; border: 0; color: var(--accent); font-weight: 700; cursor: pointer; font-family: inherit; }
+.auth-forgot { margin-top: 12px; font-size: .84rem; }
+.auth-forgot button { background: none; border: 0; color: var(--ink-soft); text-decoration: underline; cursor: pointer; font-family: inherit; font-size: inherit; }
+.auth-forgot[hidden] { display: none; }
+.auth-kakao-note { margin: 8px 0 0; font-size: .78rem; color: var(--muted); line-height: 1.5; }
+.auth-kakao-note a { color: var(--accent); text-decoration: underline; }
+.auth-kakao-note[hidden] { display: none; }
+.auth-check a { color: var(--accent); text-decoration: underline; }
+.auth-check[hidden] { display: none; }
 
 .board-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .board-list { display: flex; flex-direction: column; gap: 12px; }
