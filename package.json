@@ -1,0 +1,13 @@
+{
+  "name": "woonpyung-church",
+  "private": true,
+  "description": "운평장로교회 홈페이지 — DB 백업/복구 스크립트",
+  "scripts": {
+    "db:backup": "node scripts/db-backup.js",
+    "db:local:reset": "supabase db reset --local",
+    "db:diff": "supabase db diff --linked"
+  },
+  "devDependencies": {
+    "supabase": "^2.0.0"
+  }
+}
