@@ -49,9 +49,10 @@
   }
 
   // Supabase 오류를 성도님들이 이해할 수 있는 말로 바꿔 보여준다
+  // (탈퇴 계정은 이메일이 익명화되어 '없는 계정'이 되므로, banned 오류 = 정지된 계정)
   function friendlyError(err) {
     const m = (err && err.message) || "";
-    if (/banned/i.test(m)) return "탈퇴했거나 이용이 제한된 계정입니다.";
+    if (/banned/i.test(m)) return "이용약관 위반으로 계정이 정지되었습니다. 문의는 교회로 부탁드립니다 (010-4032-2903).";
     if (/invalid login credentials/i.test(m)) return "이메일 또는 비밀번호가 올바르지 않습니다.";
     if (/email not confirmed/i.test(m)) return "이메일 인증이 완료되지 않았습니다. 가입 확인 메일을 확인해 주세요.";
     if (/already registered/i.test(m)) return "이미 가입된 이메일입니다. 로그인해 주세요.";
@@ -178,6 +179,24 @@
       }
     });
   }
+
+  // 카카오 로그인이 정지 계정으로 거부되면 주소 해시에 오류가 담겨 돌아온다 → 안내 표시
+  (function checkOAuthBanned() {
+    try {
+      const h = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+      const desc = (h.get("error_description") || "") + " " + (h.get("error_code") || "");
+      if (h.get("error") && /banned/i.test(desc)) {
+        history.replaceState(null, "", location.pathname + location.search);
+        if (modal) {
+          setMode("login");
+          openModal();
+          showMsg("이용약관 위반으로 계정이 정지되었습니다. 문의는 교회로 부탁드립니다 (010-4032-2903).", false);
+        } else {
+          alert("이용약관 위반으로 계정이 정지되었습니다. 문의는 교회로 부탁드립니다 (010-4032-2903).");
+        }
+      }
+    } catch (e) {}
+  })();
 
   sb.auth.onAuthStateChange(() => renderAuth());
   renderAuth();
