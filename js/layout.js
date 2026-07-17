@@ -83,7 +83,7 @@
           <span class="logo-kr">운평장로교회</span>
           <span class="logo-en">UNPYEONG PRESBYTERIAN CHURCH · SINCE 1964</span>
         </div>
-        <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="bylaws.html">정관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
+        <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="bylaws.html">정관</a><a href="terms.html">이용약관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
         <div class="footer-actions">
           <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">카카오톡 채널 추가</a>
           <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">온라인헌금</a>
@@ -116,15 +116,18 @@
           <p id="authSubtitle">운평장로교회 나눔터에 오신 것을 환영합니다.</p>
         </div>
         <button class="kakao-btn" id="kakaoLogin">카카오로 시작하기</button>
+        <p class="auth-kakao-note" id="kakaoNote" hidden>카카오로 가입하면 <a href="terms.html" target="_blank" rel="noopener">이용약관</a>과 <a href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에 동의한 것으로 봅니다.</p>
         <div class="auth-divider"><span>또는 이메일로</span></div>
         <form id="authForm" class="auth-form">
           <div class="form-field" id="nameField" hidden><label>이름</label><input type="text" name="name" placeholder="홍길동" /></div>
           <div class="form-field"><label>이메일</label><input type="email" name="email" required placeholder="name@example.com" /></div>
-          <div class="form-field"><label>비밀번호</label><input type="password" name="password" required minlength="6" placeholder="6자 이상" /></div>
+          <div class="form-field"><label>비밀번호</label><input type="password" name="password" id="authPassword" required minlength="6" placeholder="비밀번호" /></div>
+          <label class="auth-check" id="termsField" hidden><input type="checkbox" name="terms" id="termsConsent" /> <span><a href="terms.html" target="_blank" rel="noopener">이용약관</a>과 <a href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에 동의합니다 <em style="font-style:normal;color:#c0392b">(필수)</em></span></label>
           <label class="auth-check" id="channelField" hidden><input type="checkbox" name="channel" id="channelConsent" checked /> <span>카카오톡 채널 추가에 동의합니다 (소식·QT 알림 받기)</span></label>
           <p class="auth-msg" id="authMsg" hidden></p>
           <button type="submit" class="btn btn-solid auth-submit" id="authSubmit">로그인</button>
         </form>
+        <p class="auth-forgot" id="authForgotWrap"><button type="button" id="authForgot">비밀번호를 잊으셨나요?</button></p>
         <p class="auth-switch">처음이신가요? <button type="button" id="authToggle">회원가입</button></p>
       </div>
     </div>
@@ -471,7 +474,7 @@
     sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
     sdk.onload = function () {
       const auth = document.createElement("script");
-      auth.src = "js/auth.js?v=20260701di";
+      auth.src = "js/auth.js?v=20260717auth1";
       document.body.appendChild(auth);
     };
     // SDK 로드 실패 시에도 버튼은 유지(클릭 시 모달은 위 핸들러가 처리)

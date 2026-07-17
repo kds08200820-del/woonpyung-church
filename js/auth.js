@@ -33,10 +33,31 @@
     submitBtn.textContent = m === "login" ? "로그인" : "회원가입";
     nameField.hidden = m === "login";
     if (channelField) channelField.hidden = m === "login";
+    // 회원가입 전용: 약관 동의(필수), 비밀번호 8자 이상 / 로그인: 기존 회원 배려(6자 허용)
+    const termsField = document.getElementById("termsField");
+    if (termsField) termsField.hidden = m === "login";
+    const kakaoNote = document.getElementById("kakaoNote");
+    if (kakaoNote) kakaoNote.hidden = m === "login";
+    const pw = document.getElementById("authPassword");
+    if (pw) { pw.minLength = m === "login" ? 6 : 8; pw.placeholder = m === "login" ? "비밀번호" : "8자 이상"; }
+    const forgot = document.getElementById("authForgotWrap");
+    if (forgot) forgot.hidden = m !== "login";
     toggleBtn.textContent = m === "login" ? "회원가입" : "로그인하기";
     document.querySelector(".auth-switch").firstChild.textContent =
       m === "login" ? "처음이신가요? " : "이미 회원이신가요? ";
     msg.hidden = true;
+  }
+
+  // Supabase 오류를 성도님들이 이해할 수 있는 말로 바꿔 보여준다
+  function friendlyError(err) {
+    const m = (err && err.message) || "";
+    if (/banned/i.test(m)) return "탈퇴했거나 이용이 제한된 계정입니다.";
+    if (/invalid login credentials/i.test(m)) return "이메일 또는 비밀번호가 올바르지 않습니다.";
+    if (/email not confirmed/i.test(m)) return "이메일 인증이 완료되지 않았습니다. 가입 확인 메일을 확인해 주세요.";
+    if (/already registered/i.test(m)) return "이미 가입된 이메일입니다. 로그인해 주세요.";
+    if (/password should be at least/i.test(m)) return "비밀번호는 8자 이상이어야 합니다.";
+    if (/rate limit|too many/i.test(m)) return "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.";
+    return m || "다시 시도해 주세요.";
   }
 
   function showMsg(text, ok) {
@@ -114,9 +135,11 @@
       submitBtn.disabled = true;
       try {
         if (mode === "signup") {
+          if (String(password || "").length < 8) throw new Error("비밀번호는 8자 이상이어야 합니다.");
+          if (!fd.get("terms")) throw new Error("이용약관과 개인정보처리방침에 동의해 주세요.");
           const wantChannel = !!fd.get("channel");
           const { error } = await sb.auth.signUp({
-            email, password, options: { data: { name: name || email.split("@")[0] } },
+            email, password, options: { data: { name: name || email.split("@")[0], terms_agreed_at: new Date().toISOString() } },
           });
           if (error) throw error;
           // 채널 추가 동의 시 카카오톡 채널 추가 페이지 열기
@@ -131,9 +154,27 @@
           location.reload();
         }
       } catch (err) {
-        showMsg("오류: " + (err.message || "다시 시도해 주세요."), false);
+        showMsg("오류: " + friendlyError(err), false);
       } finally {
         submitBtn.disabled = false;
+      }
+    });
+
+    // 비밀번호 재설정 메일 보내기 (링크는 reset.html로 연결, 1회용)
+    const forgotBtn = document.getElementById("authForgot");
+    if (forgotBtn) forgotBtn.addEventListener("click", async () => {
+      const emailInput = form.querySelector('input[name="email"]');
+      const email = (emailInput.value || "").trim();
+      if (!email) { showMsg("가입하신 이메일을 위 이메일 칸에 먼저 입력해 주세요.", false); emailInput.focus(); return; }
+      forgotBtn.disabled = true;
+      try {
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/reset.html" });
+        if (error) throw error;
+        showMsg("비밀번호 재설정 메일을 보냈습니다. 메일의 링크는 30분 동안 1회만 사용할 수 있습니다.", true);
+      } catch (err) {
+        showMsg("오류: " + friendlyError(err), false);
+      } finally {
+        forgotBtn.disabled = false;
       }
     });
   }
