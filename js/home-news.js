@@ -72,6 +72,29 @@
   }
   const titleOf = (p) => (p.title && p.title.trim()) || (p.caption && p.caption.trim()) || p.category || "우리들 소식";
 
+  /* ── 인스타그램·유튜브 링크 게시 ──
+     link_url 컬럼(supabase/album_link.sql)에 원본 주소를 저장하고,
+     url 컬럼에는 목록용 이미지(유튜브 썸네일 / 인스타 자리표시 이미지)를 넣는다. */
+  function parseLink(raw) {
+    let u = String(raw || "").trim();
+    if (!u) return null;
+    if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+    let url; try { url = new URL(u); } catch (e) { return null; }
+    const host = url.hostname.replace(/^(www|m)\./, "").toLowerCase();
+    if (host === "youtu.be") { const id = url.pathname.slice(1).split("/")[0]; return id ? { type: "youtube", id, link: url.href } : null; }
+    if (host === "youtube.com" || host.endsWith(".youtube.com")) {
+      let id = url.searchParams.get("v");
+      if (!id) { const m = url.pathname.match(/\/(shorts|embed|live)\/([A-Za-z0-9_-]{6,})/); if (m) id = m[2]; }
+      return id ? { type: "youtube", id, link: url.href } : null;
+    }
+    if (host === "instagram.com" || host.endsWith(".instagram.com")) return { type: "instagram", link: url.href };
+    return null;
+  }
+  const linkOf = (p) => (p && p.link_url ? parseLink(p.link_url) : null);
+  const IG_THUMB = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f9ce34"/><stop offset=".5" stop-color="#ee2a7b"/><stop offset="1" stop-color="#6228d7"/></linearGradient></defs><rect width="600" height="600" fill="url(#g)"/><rect x="210" y="210" width="180" height="180" rx="48" fill="none" stroke="#fff" stroke-width="16"/><circle cx="300" cy="300" r="52" fill="none" stroke="#fff" stroke-width="16"/><circle cx="352" cy="248" r="13" fill="#fff"/></svg>');
+  const linkThumb = (lk) => (lk.type === "youtube" ? "https://i.ytimg.com/vi/" + lk.id + "/hqdefault.jpg" : IG_THUMB);
+  const linkBadge = (lk) => (lk ? `<span class="hn-linkbadge ${lk.type === "youtube" ? "yt" : "ig"}">${lk.type === "youtube" ? "▶ YouTube" : "Instagram"}</span>` : "");
+
   let _isAdmin = null;
   async function isAdminUser() {
     if (_isAdmin !== null) return _isAdmin;
@@ -134,6 +157,7 @@
       <div class="hn-track">${slides.map((p, i) => `
         <figure class="hn-slide${i === 0 ? " on" : ""}" data-idx="${i}">
           <img src="${esc(p.url)}" alt="${esc(titleOf(p))}" loading="${i === 0 ? "eager" : "lazy"}" draggable="false" />
+          ${linkBadge(linkOf(p))}
           <figcaption class="hn-cap">
             <b>${esc(titleOf(p))}</b>
             <span>${esc(fmtDate(p))}${p.category && titleOf(p) !== p.category ? " · " + esc(p.category) : ""}</span>
@@ -269,8 +293,9 @@
         <div class="ig-who"><b>${esc(p.author_name || "성도")}</b><span>${esc(fmtDate(p))} · ${esc(timeAgo(p.created_at))}</span></div>
         ${(mine || canDel) ? `<span style="margin-left:auto;display:inline-flex;gap:2px">${mine ? `<button type="button" class="ig-menu" data-act="editphoto" title="수정" style="margin-left:0;color:var(--accent,#032257)">수정</button>` : ""}${canDel ? `<button type="button" class="ig-menu" data-act="delphoto" title="삭제" style="margin-left:0">삭제</button>` : ""}</span>` : ""}
       </header>
-      <div class="ig-media" data-act="open" data-idx="${i}" role="button" tabindex="0" aria-label="사진 크게 보기">
+      <div class="ig-media" data-act="open" data-idx="${i}" role="button" tabindex="0" aria-label="크게 보기">
         <img src="${esc(p.url)}" alt="${esc(titleOf(p))}" loading="lazy" draggable="false" />
+        ${linkBadge(linkOf(p))}
       </div>
       <div class="ig-actions">
         <button type="button" class="ig-btn ig-like${liked ? " on" : ""}" data-act="like" aria-pressed="${liked}" aria-label="좋아요">${heartSvg(liked)}</button>
@@ -431,11 +456,19 @@
   function closeViewer() { if (window.ModalNav && window.ModalNav.close()) return; closeViewerDom(); }
   function renderViewer() {
     const p = vList[vIdx]; if (!p) return;
-    vStage.innerHTML = `<img src="${esc(p.url)}" alt="${esc(titleOf(p))}" draggable="false" /><span class="igv-heartburst" aria-hidden="true">${heartSvg(true)}</span>`;
+    const lk = linkOf(p);
+    if (lk && lk.type === "youtube") {
+      vStage.innerHTML = `<div class="igv-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(lk.id)}?playsinline=1&rel=0" title="YouTube 영상" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
+    } else if (lk) {
+      vStage.innerHTML = `<img src="${esc(p.url)}" alt="${esc(titleOf(p))}" draggable="false" /><a class="igv-linkgo" href="${esc(lk.link)}" target="_blank" rel="noopener">Instagram에서 열기 ↗</a>`;
+    } else {
+      vStage.innerHTML = `<img src="${esc(p.url)}" alt="${esc(titleOf(p))}" draggable="false" /><span class="igv-heartburst" aria-hidden="true">${heartSvg(true)}</span>`;
+    }
     const liked = myLikes.has(String(p.id));
     const lb = viewer.querySelector('[data-act="like"]'); lb.innerHTML = heartSvg(liked); lb.classList.toggle("on", liked);
     viewer.querySelector('[data-role="vlike"]').textContent = (p.like_count || 0) > 0 ? `좋아요 ${p.like_count}개` : "";
-    viewer.querySelector('[data-role="vcap"]').innerHTML = `<b>${esc(titleOf(p))}</b> <span class="igv-date">${esc(fmtDate(p))}</span>` + (p.caption && p.caption.trim() ? `<br>${esc(p.caption)}` : "");
+    viewer.querySelector('[data-role="vcap"]').innerHTML = `<b>${esc(titleOf(p))}</b> <span class="igv-date">${esc(fmtDate(p))}</span>` + (p.caption && p.caption.trim() ? `<br>${esc(p.caption)}` : "")
+      + (lk && lk.type === "youtube" ? `<br><a class="igv-linkout" href="${esc(lk.link)}" target="_blank" rel="noopener">YouTube에서 보기 ↗</a>` : "");
     viewer.querySelector('[data-role="dots"]').innerHTML = vList.length > 1 ? vList.map((_, i) => `<span class="igv-dot${i === vIdx ? " on" : ""}"></span>`).join("") : "";
     viewer.querySelector(".igv-prev").style.visibility = vIdx > 0 ? "visible" : "hidden";
     viewer.querySelector(".igv-next").style.visibility = vIdx < vList.length - 1 ? "visible" : "hidden";
@@ -483,6 +516,11 @@
           <input type="file" id="upCamera" accept="image/*" capture="environment" hidden />
         </div>
         <div class="up-thumbs" id="upThumbs"></div>
+        <div class="up-or"><span>또는</span></div>
+        <label class="up-f"><span>인스타그램·유튜브 링크로 올리기 <em>(선택)</em></span>
+          <input type="url" id="upLink" inputmode="url" autocomplete="off" placeholder="https://www.instagram.com/… 또는 https://youtu.be/…" />
+        </label>
+        <p class="up-link-hint" id="upLinkHint" hidden></p>
         <div class="up-fields">
           <label class="up-f"><span>제목 <em>(선택)</em></span><input type="text" id="upTitle" maxlength="60" placeholder="예: 여름성경학교 첫째 날" /></label>
           <div class="up-row">
@@ -515,19 +553,33 @@
     const input = upModal.querySelector("#upInput");
     const thumbs = upModal.querySelector("#upThumbs");
     const goBtn = upModal.querySelector("#upGo");
+    const linkInput = upModal.querySelector("#upLink");
+    const linkHint = upModal.querySelector("#upLinkHint");
     let picked = [];
+    let pickedLink = null;   // parseLink() 결과(유효한 인스타/유튜브 링크)
+
+    function refreshGo() { goBtn.disabled = picked.length === 0 && !pickedLink; }
+    function onLinkInput() {
+      const v = linkInput.value.trim();
+      pickedLink = v ? parseLink(v) : null;
+      if (!v) linkHint.hidden = true;
+      else if (pickedLink) { linkHint.hidden = false; linkHint.className = "up-link-hint ok"; linkHint.textContent = pickedLink.type === "youtube" ? "✓ 유튜브 영상으로 올릴게요" : "✓ 인스타그램 게시물로 올릴게요"; }
+      else { linkHint.hidden = false; linkHint.className = "up-link-hint bad"; linkHint.textContent = "인스타그램 또는 유튜브 주소만 올릴 수 있어요"; }
+      refreshGo();
+    }
+    linkInput.addEventListener("input", onLinkInput);
 
     function refreshThumbs() {
       thumbs.innerHTML = picked.map((f, i) => `<div class="up-th"><img src="${URL.createObjectURL(f)}" alt="" /><button type="button" class="up-th-x" data-i="${i}" aria-label="제거">×</button></div>`).join("");
       thumbs.querySelectorAll(".up-th-x").forEach((b) => b.addEventListener("click", () => { picked.splice(Number(b.dataset.i), 1); refreshThumbs(); }));
-      goBtn.disabled = picked.length === 0;
+      refreshGo();
     }
     function addFiles(fl) {
       const imgs = Array.from(fl || []).filter((f) => /^image\//.test(f.type));
       if (!imgs.length) { if (fl && fl.length) alert("이미지 파일만 올릴 수 있습니다."); return; }
       picked = picked.concat(imgs); refreshThumbs();
     }
-    upModal._reset = function () { picked = []; thumbs.innerHTML = ""; goBtn.disabled = true; upModal.querySelector("#upTitle").value = ""; upModal.querySelector("#upCap").value = ""; upModal.querySelector("#upDate").value = todayISO(); upModal.querySelector("#upStatus").hidden = true; upModal.querySelector("#upStatus").textContent = ""; goBtn.disabled = true; };
+    upModal._reset = function () { picked = []; pickedLink = null; thumbs.innerHTML = ""; linkInput.value = ""; linkHint.hidden = true; goBtn.disabled = true; upModal.querySelector("#upTitle").value = ""; upModal.querySelector("#upCap").value = ""; upModal.querySelector("#upDate").value = todayISO(); upModal.querySelector("#upStatus").hidden = true; upModal.querySelector("#upStatus").textContent = ""; };
 
     upModal.querySelector("#upPick").addEventListener("click", () => input.click());
     drop.addEventListener("click", (e) => { if (e.target === drop || e.target.closest(".up-drop-in") && !e.target.closest("button")) input.click(); });
@@ -583,8 +635,8 @@
     goBtn.addEventListener("click", async () => {
       const me = currentUser();
       if (!me) { alert("사진을 올리려면 로그인해 주세요."); openLogin(); return; }
-      if (!uploadReady()) { alert("업로드 서버가 아직 설정되지 않았습니다."); return; }
-      if (!picked.length) return;
+      if (picked.length && !uploadReady()) { alert("업로드 서버가 아직 설정되지 않았습니다."); return; }
+      if (!picked.length && !pickedLink) return;
       const title = (upModal.querySelector("#upTitle").value || "").trim();
       const cap = (upModal.querySelector("#upCap").value || "").trim();
       const cat = upModal.querySelector("#upCat").value;
@@ -600,6 +652,20 @@
             await api("POST", "album_photos", Object.assign({ title: title || null, event_date: date }, base), { Prefer: "return=minimal" });
           } catch (colErr) {
             // title/event_date 컬럼 미생성(album-social.sql 미실행) 시 제목·날짜 없이 업로드
+            if (/column|event_date|title|schema cache/i.test(colErr.message)) await api("POST", "album_photos", base, { Prefer: "return=minimal" });
+            else throw colErr;
+          }
+        } catch (e) { status.textContent = ""; goBtn.disabled = false; alert("업로드 오류: " + e.message); return; }
+      }
+      if (pickedLink) {
+        status.textContent = "링크 올리는 중…";
+        const base = { category: cat, url: linkThumb(pickedLink), key: null, caption: cap || null, user_id: me.id, author_name: displayName(me), link_url: pickedLink.link };
+        try {
+          try {
+            await api("POST", "album_photos", Object.assign({ title: title || null, event_date: date }, base), { Prefer: "return=minimal" });
+          } catch (colErr) {
+            // link_url 컬럼이 없으면(album_link.sql 미실행) 링크가 사라지므로 폴백하지 않고 안내
+            if (/link_url/i.test(colErr.message)) throw new Error("링크 올리기 준비가 아직 안 되었습니다.\n관리자가 Supabase ▸ SQL Editor 에서 supabase/album_link.sql 을 1회 실행해 주세요.");
             if (/column|event_date|title|schema cache/i.test(colErr.message)) await api("POST", "album_photos", base, { Prefer: "return=minimal" });
             else throw colErr;
           }
