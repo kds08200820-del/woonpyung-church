@@ -7278,7 +7278,7 @@ console.log('[affairs.js] v20260712memo2');
   // ════════════════════════════════════════════════════════════
   (function () {
     var ACTIVE = ['pending', 'processing', 'review', 'regen', 'approved', 'revise'];
-    var DEF = { orientation: 'portrait', scene_count: 6, voice: 'female', style: 'storybook', narrative: 'grandma', subtitle: { style: 'box', size: 'medium', position: 'bottom' }, instagram: true };
+    var DEF = { orientation: 'portrait', scene_count: 6, voice: 'female', style: 'storybook', narrative: 'grandma', approvals: 'all', subtitle: { style: 'box', size: 'medium', position: 'bottom' }, instagram: true };
     var jobs = {};          // date → 최신 작업
     var prevStatus = {};    // job.id → 직전 상태 (알림 감지)
     var vsTimer = null, vsLastStatus = null, notifAsked = false;
@@ -7288,7 +7288,10 @@ console.log('[affairs.js] v20260712memo2');
       var m = (j.progress || '').match(/^(\d{1,3})%/);
       var pct = m ? m[1] + '%' : '';
       if (j.status === 'done' && j.video_url) return '<div class="vs-chip" data-date="' + esc(j.sermon_date) + '" data-act="play" data-url="' + esc(j.video_url) + '" style="margin-top:3px;cursor:pointer"><span class="fin-pill" style="background:#e8f0ff;color:#2c4a86">▶ 영상 재생</span></div>';
-      if (j.status === 'review') return '<div class="vs-chip" data-date="' + esc(j.sermon_date) + '" data-act="open" style="margin-top:3px;cursor:pointer"><span class="fin-pill" style="background:#fff1cc;color:#a8742a;font-weight:700">🖼 이미지 검토 대기!</span></div>';
+      if (j.status === 'review') {
+        var rl = /스토리 검토/.test(j.progress || '') ? '📝 스토리 검토 대기!' : (/영상 검토/.test(j.progress || '') ? '🎞 영상 검토 대기!' : '🖼 이미지 검토 대기!');
+        return '<div class="vs-chip" data-date="' + esc(j.sermon_date) + '" data-act="open" style="margin-top:3px;cursor:pointer"><span class="fin-pill" style="background:#fff1cc;color:#a8742a;font-weight:700">' + rl + '</span></div>';
+      }
       if (j.status === 'error') return '<div class="vs-chip" data-date="' + esc(j.sermon_date) + '" data-act="open" style="margin-top:3px;cursor:pointer"><span class="fin-pill" style="background:#fdeaea;color:#c0392b">⚠ 제작 실패</span></div>';
       if (ACTIVE.indexOf(j.status) >= 0) return '<div class="vs-chip" data-date="' + esc(j.sermon_date) + '" data-act="open" style="margin-top:3px;cursor:pointer"><span class="fin-pill" style="background:#eef;color:#5a5ad0">🎬 제작중 ' + pct + '</span></div>';
       return '';
@@ -7335,7 +7338,11 @@ console.log('[affairs.js] v20260712memo2');
         (rows || []).forEach(function (j) {
           var prev = prevStatus[j.id];
           if (prev && prev !== j.status) {
-            if (j.status === 'review') { toast('🖼 <b>' + esc(j.sermon_date) + '</b> 이미지가 준비되었습니다 — 검토해 주세요', j.sermon_date); browserNotify(j.sermon_date + ' 이미지 검토 준비 — 확인해 주세요', j.sermon_date); }
+            if (j.status === 'review') {
+              var wl = /스토리 검토/.test(j.progress || '') ? '📝 스토리(내레이션)가 준비되었습니다' : (/영상 검토/.test(j.progress || '') ? '🎞 영상이 준비되었습니다' : '🖼 이미지가 준비되었습니다');
+              toast(wl.replace('준비되었습니다', '') + ' <b>' + esc(j.sermon_date) + '</b> — 검토·승인해 주세요', j.sermon_date);
+              browserNotify(j.sermon_date + ' ' + wl + ' — 검토·승인해 주세요', j.sermon_date);
+            }
             if (j.status === 'done') { toast('🎉 <b>' + esc(j.sermon_date) + '</b> 영상이 완성되었습니다', j.sermon_date); browserNotify(j.sermon_date + ' 영상 완성', j.sermon_date); }
             if (j.status === 'error') { toast('⚠ <b>' + esc(j.sermon_date) + '</b> 영상 제작 실패', j.sermon_date); }
           }
@@ -7394,6 +7401,7 @@ console.log('[affairs.js] v20260712memo2');
         fld('화면', '<select id="vs_ori"><option value="portrait">세로 9:16 (쇼츠·릴스)</option><option value="landscape">가로 16:9 (유튜브)</option></select>') +
         fld('그림 화풍', '<select id="vs_style"><option value="storybook">동화책 (수채화·색연필)</option><option value="cinematic">실사 시네마틱</option></select>') +
         fld('이야기 형식', '<select id="vs_narr"><option value="grandma">할머니가 아이에게 들려주기</option><option value="plain">일반 내레이션</option></select>') +
+        fld('승인 단계', '<select id="vs_appr"><option value="all">모든 단계 (스토리·이미지·영상)</option><option value="images">이미지만</option><option value="none">승인 없이 전자동</option></select>') +
         fld('장면 수', '<select id="vs_n"><option>4</option><option>5</option><option selected>6</option><option>8</option></select>') +
         fld('목소리', '<select id="vs_voice"><option value="female">여성 (선히)</option><option value="male">남성 (인준)</option></select>') +
         fld('자막 스타일', '<select id="vs_substyle"><option value="box">박스형 (세련)</option><option value="outline">테두리형 (기본)</option><option value="none">자막 없음</option></select>') +
@@ -7411,6 +7419,7 @@ console.log('[affairs.js] v20260712memo2');
           orientation: b.querySelector('#vs_ori').value,
           style: b.querySelector('#vs_style').value,
           narrative: b.querySelector('#vs_narr').value,
+          approvals: b.querySelector('#vs_appr').value,
           scene_count: Number(b.querySelector('#vs_n').value),
           voice: b.querySelector('#vs_voice').value,
           subtitle: { style: b.querySelector('#vs_substyle').value, size: b.querySelector('#vs_subsize').value, position: b.querySelector('#vs_subpos').value },
@@ -7422,6 +7431,7 @@ console.log('[affairs.js] v20260712memo2');
           b.querySelector('#vs_ori').value = s2.orientation || 'portrait';
           b.querySelector('#vs_style').value = s2.style || 'storybook';
           b.querySelector('#vs_narr').value = s2.narrative || 'grandma';
+          b.querySelector('#vs_appr').value = s2.approvals || 'all';
           b.querySelector('#vs_n').value = String(s2.scene_count || 6);
           b.querySelector('#vs_voice').value = s2.voice || 'female';
           var sub = s2.subtitle || {};
@@ -7488,8 +7498,14 @@ console.log('[affairs.js] v20260712memo2');
     function renderState(date, j) {
       var b = document.getElementById('vs_body'); if (!b) { if (vsTimer) { clearInterval(vsTimer); vsTimer = null; } return; }
       if (j.status === 'review') {
-        if (vsLastStatus !== 'review') renderReview(date, j);
-        vsLastStatus = 'review'; return;
+        var stage = (j.review && j.review.stage) || 'images';
+        var key = 'review:' + stage;
+        if (vsLastStatus !== key) {
+          if (stage === 'story') renderStory(date, j);
+          else if (stage === 'video') renderVideoReview(date, j);
+          else renderReview(date, j);
+        }
+        vsLastStatus = key; return;
       }
       vsLastStatus = j.status;
       if (j.status === 'done') {
@@ -7587,6 +7603,110 @@ console.log('[affairs.js] v20260712memo2');
       };
       b.querySelector('#vs_cancel').onclick = function () {
         if (!confirm('이 영상 제작을 취소할까요?')) return;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'canceled' }, 'return=minimal')
+          .then(function () { closeStudio(); setTimeout(watch, 1000); })
+          .catch(function (e) { alert('취소 실패: ' + e.message); });
+      };
+    }
+
+    // ── 📝 스토리 검토: 이미지 생성 전에 내레이션·자막·장면 구성을 승인 ──
+    function renderStory(date, j) {
+      var b = document.getElementById('vs_body'); if (!b) return;
+      var scenes = (j.review && j.review.scenes) || [];
+      var cards = scenes.map(function (sc, i) {
+        return '<div class="vs-card" data-i="' + (i + 1) + '" style="border:1px solid #e2e8f2;border-radius:12px;background:#fafbfd;padding:10px 12px">' +
+          '<b style="font-size:.8rem;color:#3a4a5e">장면 ' + (i + 1) + '</b>' +
+          '<div style="font-size:.72rem;color:#9aa5b1;margin:3px 0 4px">내레이션 (할머니 목소리로 낭독됩니다)</div>' +
+          '<textarea class="vs-narr" rows="3" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.84rem;resize:vertical">' + esc2(sc.narration) + '</textarea>' +
+          '<div style="font-size:.72rem;color:#9aa5b1;margin:5px 0 3px">자막</div>' +
+          '<input class="vs-sub" value="' + esc2(sc.subtitle) + '" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.8rem">' +
+          '<details style="margin-top:5px"><summary style="font-size:.72rem;color:#9aa5b1;cursor:pointer">그림·모션 프롬프트</summary>' +
+          '<textarea class="vs-iprompt" rows="2" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.74rem;resize:vertical;margin-top:3px">' + esc2(sc.image_prompt) + '</textarea>' +
+          '<textarea class="vs-mprompt" rows="1" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.74rem;resize:vertical;margin-top:3px">' + esc2(sc.motion_prompt || '') + '</textarea></details>' +
+          '<label style="display:none"><input type="checkbox" class="vs-regen"></label>' +
+          '</div>';
+      }).join('');
+      b.innerHTML =
+        '<div style="background:#eef7ff;border:1px solid #bcd6f5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;color:#2c4a86"><b>📝 스토리 검토</b> — 이미지를 만들기 전에 내레이션과 장면 구성을 확인하세요. 자유롭게 고친 뒤 승인하면 이 내용대로 이미지를 생성합니다.</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">' + cards + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:8px">' +
+        '<button class="btn btn-line" id="vs_cancel" style="padding:8px 16px;color:#c0392b;border-color:#e5b5b0">작업 취소</button>' +
+        '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-line" id="vs_story_regen" style="padding:8px 16px">🔄 스토리 전체 다시 구성</button>' +
+        '<button class="btn btn-solid" id="vs_approve" style="padding:8px 22px;font-weight:700">✔ 승인 — 이미지 생성 시작</button></div></div>' +
+        '<div id="vs_revmsg" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right;margin-top:4px"></div>';
+      b.querySelector('#vs_approve').onclick = function () {
+        var c = collectCards(b, j.review); delete c.out.regen;
+        this.disabled = true;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'approved', review: c.out }, 'return=minimal')
+          .then(function () { vsLastStatus = 'approved'; b.querySelector('#vs_revmsg').textContent = '✓ 승인됨 — 이미지 생성을 시작합니다'; })
+          .catch(function (e) { alert('승인 실패: ' + e.message); });
+      };
+      b.querySelector('#vs_story_regen').onclick = function () {
+        if (!confirm('스토리 전체를 처음부터 다시 구성할까요? (지금 수정한 내용은 사라집니다)')) return;
+        var c = collectCards(b, j.review);
+        c.out.regen = [1];
+        this.disabled = true;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'regen', review: c.out }, 'return=minimal')
+          .then(function () { vsLastStatus = 'regen'; b.querySelector('#vs_revmsg').textContent = '🔄 스토리를 다시 구성합니다'; })
+          .catch(function (e) { alert('요청 실패: ' + e.message); });
+      };
+      b.querySelector('#vs_cancel').onclick = function () {
+        if (!confirm('이 영상 제작을 취소할까요?')) return;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'canceled' }, 'return=minimal')
+          .then(function () { closeStudio(); setTimeout(watch, 1000); })
+          .catch(function (e) { alert('취소 실패: ' + e.message); });
+      };
+    }
+
+    // ── 🎞 영상 검토: 배포(인스타) 전에 완성 영상을 확인·승인 ──
+    function renderVideoReview(date, j) {
+      var b = document.getElementById('vs_body'); if (!b) return;
+      var scenes = (j.review && j.review.scenes) || [];
+      var cards = scenes.map(function (sc, i) {
+        var isWan = !!sc.clip_url;
+        return '<div class="vs-card" data-i="' + (i + 1) + '" style="border:1px solid #e2e8f2;border-radius:12px;overflow:hidden;background:#fafbfd">' +
+          (isWan ? '<video controls preload="metadata" src="' + esc2(sc.clip_url) + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:#000"></video>'
+            : '<img src="' + esc2(sc.image_url) + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block">') +
+          '<div style="padding:8px 10px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><b style="font-size:.78rem;color:#3a4a5e">장면 ' + (i + 1) + (isWan ? ' · AI 모션' : ' · 줌인') + '</b>' +
+          '<label style="font-size:.73rem;color:' + (isWan ? '#c0392b' : '#b9c2cd') + ';display:flex;gap:4px;align-items:center"><input type="checkbox" class="vs-regen"' + (isWan ? '' : ' disabled') + '> 다시 생성</label></div>' +
+          '<input class="vs-sub" value="' + esc2(sc.subtitle) + '" style="width:100%;padding:5px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.78rem;margin-bottom:4px">' +
+          '<textarea class="vs-narr" rows="2" style="width:100%;padding:5px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.78rem;resize:vertical">' + esc2(sc.narration) + '</textarea>' +
+          '<details><summary style="font-size:.7rem;color:#9aa5b1;cursor:pointer">프롬프트</summary>' +
+          '<textarea class="vs-iprompt" rows="2" style="width:100%;padding:5px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.72rem">' + esc2(sc.image_prompt) + '</textarea>' +
+          '<textarea class="vs-mprompt" rows="1" style="width:100%;padding:5px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.72rem;margin-top:3px">' + esc2(sc.motion_prompt || '') + '</textarea></details>' +
+          '</div></div>';
+      }).join('');
+      b.innerHTML =
+        '<div style="background:#f3eeff;border:1px solid #d3c4f5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;color:#5b3aa8"><b>🎞 영상 검토</b> — 완성된 영상을 확인하세요. <b>승인해야 배포(인스타그램 게시)됩니다.</b> 자막·내레이션을 고치거나 AI 모션 장면을 다시 만들려면 "수정 반영 — 재조립"을 누르세요.</div>' +
+        (j.video_url ? '<video controls src="' + esc2(j.video_url) + '" style="width:100%;max-width:360px;display:block;margin:0 auto 14px;border-radius:12px;background:#000"></video>' : '') +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">' + cards + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:8px">' +
+        '<button class="btn btn-line" id="vs_cancel" style="padding:8px 16px;color:#c0392b;border-color:#e5b5b0">작업 취소</button>' +
+        '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-line" id="vs_video_regen" style="padding:8px 16px">🔧 수정 반영 — 재조립</button>' +
+        '<button class="btn btn-solid" id="vs_approve" style="padding:8px 22px;font-weight:700">✔ 승인 — 배포</button></div></div>' +
+        '<div id="vs_revmsg" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right;margin-top:4px"></div>';
+      b.querySelector('#vs_approve').onclick = function () {
+        var c = collectCards(b, j.review); delete c.out.regen;
+        this.disabled = true;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'approved', review: c.out }, 'return=minimal')
+          .then(function () { vsLastStatus = 'approved'; b.querySelector('#vs_revmsg').textContent = '✓ 승인됨 — 배포를 진행합니다'; })
+          .catch(function (e) { alert('승인 실패: ' + e.message); });
+      };
+      b.querySelector('#vs_video_regen').onclick = function () {
+        var c = collectCards(b, j.review);
+        c.out.regen = c.checked;
+        var note = c.checked.length ? 'AI 모션 ' + c.checked.length + '개 장면을 다시 만들고 재조립합니다.' : '자막·내레이션 수정만 반영해 재조립합니다.';
+        if (!confirm(note + '\n진행할까요?')) return;
+        this.disabled = true;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'regen', review: c.out }, 'return=minimal')
+          .then(function () { vsLastStatus = 'regen'; b.querySelector('#vs_revmsg').textContent = '🔧 재조립을 시작합니다'; })
+          .catch(function (e) { alert('요청 실패: ' + e.message); });
+      };
+      b.querySelector('#vs_cancel').onclick = function () {
+        if (!confirm('이 영상 제작을 취소할까요? (배포되지 않습니다)')) return;
         api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'canceled' }, 'return=minimal')
           .then(function () { closeStudio(); setTimeout(watch, 1000); })
           .catch(function (e) { alert('취소 실패: ' + e.message); });
