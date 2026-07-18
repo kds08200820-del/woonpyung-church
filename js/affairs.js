@@ -2812,6 +2812,7 @@ console.log('[affairs.js] v20260712memo2');
         '<button class="btn btn-line" id="se_preview" style="padding:8px 13px;border-radius:9px">👁 미리보기</button>' +
         (worshipMode ? '' : '<button class="btn btn-line" id="se_present" style="padding:8px 13px;border-radius:9px">🖥 발표자 모드</button>') +
         (worshipMode ? '' : '<button class="btn btn-line" id="se_pdf" style="padding:8px 13px;border-radius:9px">📄 내보내기</button>') +
+        (worshipMode ? '' : '<button class="btn btn-line" id="se_video" title="이 날짜의 QT로 이미지·영상을 자동 생성합니다 (집/교회 PC 워커가 처리)" style="padding:8px 13px;border-radius:9px">🎬 영상 제작</button>') +
         (worshipMode ? '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 저장 후 내보내기</button>' : '') +
         '</div>' +
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
@@ -3602,6 +3603,56 @@ console.log('[affairs.js] v20260712memo2');
           });
       }
       ov.querySelector('#se_save').onclick = function () { save(null); };
+      // ── 🎬 영상 제작: video_jobs 큐에 등록 → 집/교회 PC 워커(qt_worker.py)가 자동 렌더링 ──
+      (function () {
+        var vbtn = ov.querySelector('#se_video'); if (!vbtn) return;
+        var vTimer = null;
+        function vmsg(color, text) { var m = ov.querySelector('#se_msg'); m.style.color = color; m.textContent = text; }
+        function statusLabel(j) {
+          if (j.status === 'pending') return '⏳ 영상 제작 대기 중 — PC 워커가 곧 가져갑니다 (워커 PC·ComfyUI가 켜져 있어야 합니다)';
+          if (j.status === 'processing') return '🎬 영상 생성 중 (' + (j.claimed_by || '워커') + ') — ' + (j.progress || '진행 중');
+          if (j.status === 'error') return '영상 제작 실패: ' + (j.error || '오류') + ' — 버튼을 다시 눌러 재시도할 수 있습니다';
+          return '';
+        }
+        function poll(date) {
+          api('GET', 'video_jobs?select=*&sermon_date=eq.' + encodeURIComponent(date) + '&order=created_at.desc&limit=1').then(function (rows) {
+            var j = rows && rows[0]; if (!j) return;
+            if (j.status === 'done') {
+              if (vTimer) { clearInterval(vTimer); vTimer = null; }
+              vmsg('green', '✓ 영상이 완성되었습니다');
+              vbtn.disabled = false; vbtn.textContent = '▶ 영상 보기';
+              vbtn.onclick = function () { if (j.video_url) window.open(j.video_url, '_blank'); };
+              return;
+            }
+            if (j.status === 'error') { if (vTimer) { clearInterval(vTimer); vTimer = null; } vbtn.disabled = false; vmsg('#c0392b', statusLabel(j)); return; }
+            vmsg('#7b8794', statusLabel(j));
+          }).catch(function () { /* 일시 오류는 다음 폴링에서 회복 */ });
+        }
+        vbtn.onclick = function () {
+          var date = ov.querySelector('#se_date').value;
+          if (!date) { vmsg('#c0392b', '영상 제작에는 일자가 필요합니다.'); return; }
+          if (!confirm('이 날짜(' + date + ')의 QT로 영상을 자동 제작할까요?\n(집/교회 PC 워커가 처리하며 20~40분쯤 걸립니다)')) return;
+          vbtn.disabled = true;
+          save(function () {
+            api('GET', 'video_jobs?select=id,status&sermon_date=eq.' + encodeURIComponent(date) + '&status=in.(pending,processing)&limit=1').then(function (rows) {
+              if (rows && rows[0]) {
+                vmsg('#7b8794', '이미 진행 중인 작업이 있어 상태를 표시합니다.');
+                if (!vTimer) vTimer = setInterval(function () { poll(date); }, 15000);
+                poll(date); return;
+              }
+              return api('POST', 'video_jobs', { sermon_date: date }, 'return=minimal').then(function () {
+                vmsg('#7b8794', '⏳ 영상 제작을 요청했습니다 — PC 워커가 곧 시작합니다.');
+                if (!vTimer) vTimer = setInterval(function () { poll(date); }, 15000);
+                poll(date);
+              });
+            }).catch(function (e) {
+              vbtn.disabled = false;
+              var hint = /video_jobs|relation|PGRST2|schema cache|Could not find/i.test(e.message || '') ? ' — Supabase에서 supabase/video_jobs.sql 을 1회 실행해 주세요.' : '';
+              vmsg('#c0392b', '영상 제작 요청 실패: ' + (e.message || e) + hint);
+            });
+          }, function () { vbtn.disabled = false; });
+        };
+      })();
       // 👁 미리보기 — 저장 없이 현재 화면 그대로 아이패드 보기로 미리 확인(설교 본문 포함)
       ov.querySelector('#se_preview').onclick = function () {
         var msg = ov.querySelector('#se_msg');
