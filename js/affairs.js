@@ -2364,7 +2364,7 @@ console.log('[affairs.js] v20260712memo2');
           '<td style="min-width:11em;word-break:keep-all"><b class="sm-title" data-id="' + esc(r.id) + '"' + (r.summary ? ' title="' + esc(String(r.summary).slice(0, 200)) + '"' : '') + ' style="cursor:pointer;color:var(--accent,#032257);text-decoration:underline;text-decoration-color:#cdd7e3;text-underline-offset:3px">' + esc(r.title || '(제목없음)') + '</b>' +
           (r.series ? '<div style="margin-top:2px">' + String(r.series).split(',').map(function (s) { s = s.trim(); return s ? '<span style="display:inline-block;font-size:.66rem;background:#eef3fa;color:#3a5a8c;border:1px solid #d9e4f2;border-radius:999px;padding:1px 7px;margin:1px 3px 0 0">📚 ' + esc(s) + '</span>' : ''; }).join('') + '</div>' : '') + '</td>' +
           '<td style="white-space:nowrap">' + esc(r.scripture || '') + '</td>' +
-          '<td style="white-space:nowrap">' + qtCell + '</td>' +
+          '<td style="white-space:nowrap">' + qtCell + (isQt && window.VideoStudio ? window.VideoStudio.chipHtml(ds) : '') + '</td>' +
           '<td style="white-space:nowrap">' +
           (isQt ? '<button class="btn btn-line sm-qt" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem;background:#fff8e6;border-color:#e6c97a">📲 QT</button> <button class="btn btn-line sm-kakao" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem;background:#fff8c4;border-color:#f4d641">💬 톡 복사</button>' : '') +
           ' <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button>' +
@@ -2383,6 +2383,7 @@ console.log('[affairs.js] v20260712memo2');
         '</div>';
 
       wireRows(listBox);
+      if (window.VideoStudio) window.VideoStudio.wireChips(listBox);
       listBox.querySelector('#sm_flt_svc').onchange = function () { smTableState.svc = this.value; smTableState.page = 1; renderTable(); };
       listBox.querySelector('#sm_flt_yr').onchange = function () { smTableState.year = this.value; smTableState.page = 1; renderTable(); };
       listBox.querySelector('#sm_flt_mo').onchange = function () { smTableState.month = this.value; smTableState.week = '전체'; smTableState.page = 1; renderTable(); };
@@ -3603,232 +3604,13 @@ console.log('[affairs.js] v20260712memo2');
           });
       }
       ov.querySelector('#se_save').onclick = function () { save(null); };
-      // ── 🎬 영상 제작 스튜디오: 팝업에서 설정 → 이미지 검토·승인 → 영상 완성 ──
+      // ── 🎬 영상 제작 스튜디오 (전역 모듈 window.VideoStudio — 파일 하단 정의) ──
       (function () {
         var vbtn = ov.querySelector('#se_video'); if (!vbtn) return;
-        var DEF = { orientation: 'portrait', scene_count: 6, voice: 'male', subtitle: { style: 'box', size: 'medium', position: 'bottom' }, instagram: true };
-        var vsTimer = null, vsLastStatus = null, vsJob = null;
-
-        function esc2(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
-        function closeStudio() { if (vsTimer) { clearInterval(vsTimer); vsTimer = null; } var m = document.getElementById('vs_ov'); if (m) m.remove(); vsLastStatus = null; vsJob = null; }
-
-        function openStudio(date) {
-          closeStudio();
-          var m = document.createElement('div');
-          m.id = 'vs_ov';
-          m.style.cssText = 'position:fixed;inset:0;background:rgba(8,12,20,.72);z-index:99990;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 14px';
-          m.innerHTML =
-            '<div style="background:#fff;border-radius:16px;max-width:860px;width:100%;padding:22px 24px;box-shadow:0 30px 80px rgba(0,0,0,.5)">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
-            '<h3 style="margin:0;color:var(--accent,#032257)">🎬 영상 제작 스튜디오 <span style="font-size:.85rem;color:#9aa5b1;font-weight:600">' + esc2(date) + ' QT</span></h3>' +
-            '<button class="btn btn-line" id="vs_close" style="padding:4px 12px">닫기</button></div>' +
-            '<p style="margin:0 0 12px;font-size:.78rem;color:#9aa5b1">설정 → 이미지 생성 → <b>검토·승인</b> → 영상 변환 → 완성(인스타 자동 게시). 팝업을 닫아도 제작은 계속되고, 버튼을 다시 누르면 이어서 볼 수 있습니다.</p>' +
-            '<div id="vs_body"></div></div>';
-          document.body.appendChild(m);
-          m.querySelector('#vs_close').onclick = closeStudio;
-          m.addEventListener('click', function (e) { if (e.target === m) closeStudio(); });
-          api('GET', 'video_jobs?select=*&sermon_date=eq.' + encodeURIComponent(date) + '&order=created_at.desc&limit=1').then(function (rows) {
-            var j = rows && rows[0];
-            if (j && ['pending', 'processing', 'review', 'regen', 'approved'].indexOf(j.status) >= 0) { startPolling(date); }
-            else renderSettings(date, j);
-          }).catch(function (e) {
-            var hint = /video_jobs|relation|PGRST2|schema cache|Could not find/i.test(e.message || '') ? ' — Supabase에서 supabase/video_jobs.sql·video_studio.sql 을 실행해 주세요.' : '';
-            document.getElementById('vs_body').innerHTML = '<p style="color:#c0392b">조회 실패: ' + esc2(e.message) + hint + '</p>';
-          });
-        }
-
-        // ── 설정 화면 (+ 프리셋 = 제작 프레임) ──
-        function renderSettings(date, lastJob) {
-          var s = DEF;
-          var b = document.getElementById('vs_body'); if (!b) return;
-          b.innerHTML =
-            (lastJob && lastJob.status === 'done' && lastJob.video_url ? '<p style="font-size:.85rem;margin:0 0 10px">지난 영상: <a href="' + esc2(lastJob.video_url) + '" target="_blank">▶ 보기</a> — 새로 제작하면 최신본이 표시됩니다.</p>' : '') +
-            (lastJob && lastJob.status === 'error' ? '<p style="font-size:.82rem;color:#c0392b;margin:0 0 10px">지난 작업 실패: ' + esc2(lastJob.error || '') + '</p>' : '') +
-            '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">' +
-            '<b style="font-size:.85rem;color:#3a4a5e">📁 제작 프레임</b>' +
-            '<select id="vs_preset" style="padding:6px 10px;border:1px solid #dde3ec;border-radius:8px;min-width:170px"><option value="">— 저장된 프레임 —</option></select>' +
-            '<button class="btn btn-line" id="vs_preset_load" style="padding:5px 12px">불러오기</button>' +
-            '<button class="btn btn-line" id="vs_preset_save" style="padding:5px 12px">현재 설정 저장</button></div>' +
-            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">' +
-            fld('화면', '<select id="vs_ori"><option value="portrait">세로 9:16 (쇼츠·릴스)</option><option value="landscape">가로 16:9 (유튜브)</option></select>') +
-            fld('장면 수', '<select id="vs_n"><option>4</option><option>5</option><option selected>6</option><option>8</option></select>') +
-            fld('목소리', '<select id="vs_voice"><option value="male">남성 (인준)</option><option value="female">여성 (선히)</option></select>') +
-            fld('자막 스타일', '<select id="vs_substyle"><option value="box">박스형 (세련)</option><option value="outline">테두리형 (기본)</option><option value="none">자막 없음</option></select>') +
-            fld('자막 크기', '<select id="vs_subsize"><option value="small">작게</option><option value="medium" selected>보통</option><option value="large">크게</option></select>') +
-            fld('자막 위치', '<select id="vs_subpos"><option value="bottom">하단</option><option value="center">중앙</option></select>') +
-            fld('인스타그램', '<label style="display:flex;align-items:center;gap:6px;font-size:.85rem"><input type="checkbox" id="vs_ig" checked> 완성 시 자동 게시</label>') +
-            '</div>' +
-            '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">' +
-            '<button class="btn btn-solid" id="vs_start" style="padding:9px 22px;font-weight:700">🎬 제작 시작</button></div>' +
-            '<div id="vs_setmsg" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right"></div>';
-          function fld(label, inner) { return '<label style="display:block;font-size:.78rem;color:#7b8794"><span style="display:block;margin-bottom:4px;font-weight:700;color:#3a4a5e">' + label + '</span>' + inner.replace('<select', '<select style="width:100%;padding:7px 10px;border:1px solid #dde3ec;border-radius:8px"') + '</label>'; }
-          loadPresets();
-          function gatherSettings() {
-            return {
-              orientation: b.querySelector('#vs_ori').value,
-              scene_count: Number(b.querySelector('#vs_n').value),
-              voice: b.querySelector('#vs_voice').value,
-              subtitle: { style: b.querySelector('#vs_substyle').value, size: b.querySelector('#vs_subsize').value, position: b.querySelector('#vs_subpos').value },
-              instagram: b.querySelector('#vs_ig').checked
-            };
-          }
-          function applySettings(s2) {
-            try {
-              b.querySelector('#vs_ori').value = s2.orientation || 'portrait';
-              b.querySelector('#vs_n').value = String(s2.scene_count || 6);
-              b.querySelector('#vs_voice').value = s2.voice || 'male';
-              var sub = s2.subtitle || {};
-              b.querySelector('#vs_substyle').value = sub.style || 'box';
-              b.querySelector('#vs_subsize').value = sub.size || 'medium';
-              b.querySelector('#vs_subpos').value = sub.position || 'bottom';
-              b.querySelector('#vs_ig').checked = s2.instagram !== false;
-            } catch (e) { }
-          }
-          function loadPresets() {
-            api('GET', 'video_presets?select=id,name,settings&order=name.asc').then(function (rows) {
-              var sel = b.querySelector('#vs_preset'); if (!sel) return;
-              sel.innerHTML = '<option value="">— 저장된 프레임 —</option>' + (rows || []).map(function (p) { return '<option value="' + p.id + '">' + esc2(p.name) + '</option>'; }).join('');
-              sel._rows = rows || [];
-            }).catch(function () { });
-          }
-          b.querySelector('#vs_preset_load').onclick = function () {
-            var sel = b.querySelector('#vs_preset');
-            var row = (sel._rows || []).filter(function (p) { return String(p.id) === sel.value; })[0];
-            if (!row) { alert('불러올 프레임을 선택하세요.'); return; }
-            applySettings(row.settings || {});
-            b.querySelector('#vs_setmsg').textContent = '✓ 프레임 "' + row.name + '" 을 불러왔습니다';
-          };
-          b.querySelector('#vs_preset_save').onclick = function () {
-            var name = prompt('이 설정을 저장할 프레임 이름:', '기본 QT 쇼츠');
-            if (!name) return;
-            api('POST', 'video_presets?on_conflict=name', { name: name.trim(), settings: gatherSettings() }, 'resolution=merge-duplicates,return=minimal')
-              .then(function () { b.querySelector('#vs_setmsg').textContent = '✓ 프레임 저장됨'; loadPresets(); })
-              .catch(function (e) { alert('프레임 저장 실패: ' + e.message + '\n(video_studio.sql 실행이 필요할 수 있습니다)'); });
-          };
-          b.querySelector('#vs_start').onclick = function () {
-            var btn = this; btn.disabled = true;
-            save(function () {
-              api('POST', 'video_jobs', { sermon_date: date, settings: gatherSettings() }, 'return=minimal')
-                .then(function () { startPolling(date); })
-                .catch(function (e) { btn.disabled = false; alert('제작 요청 실패: ' + e.message); });
-            }, function () { btn.disabled = false; });
-          };
-        }
-
-        // ── 진행/검토/완료 화면 ──
-        function startPolling(date) {
-          if (vsTimer) clearInterval(vsTimer);
-          var tick = function () {
-            api('GET', 'video_jobs?select=*&sermon_date=eq.' + encodeURIComponent(date) + '&order=created_at.desc&limit=1').then(function (rows) {
-              var j = rows && rows[0]; if (!j) return;
-              vsJob = j;
-              renderState(date, j);
-            }).catch(function () { });
-          };
-          vsTimer = setInterval(tick, 8000);
-          tick();
-        }
-
-        function renderState(date, j) {
-          var b = document.getElementById('vs_body'); if (!b) { if (vsTimer) { clearInterval(vsTimer); vsTimer = null; } return; }
-          if (j.status === 'review') {
-            if (vsLastStatus !== 'review') renderReview(date, j);
-            vsLastStatus = 'review'; return;
-          }
-          vsLastStatus = j.status;
-          if (j.status === 'done') {
-            if (vsTimer) { clearInterval(vsTimer); vsTimer = null; }
-            var ig = /인스타그램 게시 완료/.test(j.progress || '') ? '<p style="font-size:.85rem;color:#1d7a45;margin:6px 0 0">📸 인스타그램에도 자동 게시되었습니다.</p>'
-              : (/인스타 실패/.test(j.progress || '') ? '<p style="font-size:.82rem;color:#a8742a;margin:6px 0 0">영상은 완성됐지만 인스타 게시는 실패했습니다: ' + esc2((j.progress || '').split('인스타 실패:')[1] || '') + '</p>' : '');
-            b.innerHTML = '<div style="text-align:center;padding:26px 10px">' +
-              '<div style="font-size:2rem">🎉</div><h4 style="margin:8px 0;color:var(--accent,#032257)">영상이 완성되었습니다</h4>' +
-              '<a class="btn btn-solid" href="' + esc2(j.video_url || '#') + '" target="_blank" style="padding:10px 26px;font-weight:700;display:inline-block;margin-top:6px">▶ 영상 보기</a>' + ig +
-              '<div style="margin-top:14px"><button class="btn btn-line" id="vs_again" style="padding:6px 16px">새로 제작</button></div></div>';
-            b.querySelector('#vs_again').onclick = function () { renderSettings(date, j); };
-            vbtn.textContent = '▶ 영상 보기';
-            return;
-          }
-          if (j.status === 'error') {
-            if (vsTimer) { clearInterval(vsTimer); vsTimer = null; }
-            b.innerHTML = '<p style="color:#c0392b;font-size:.9rem">제작 실패: ' + esc2(j.error || '오류') + '</p>' +
-              '<button class="btn btn-solid" id="vs_retry" style="padding:8px 18px">다시 설정하고 제작</button>';
-            b.querySelector('#vs_retry').onclick = function () { renderSettings(date, j); };
-            return;
-          }
-          // pending / processing / regen / approved → 진행 화면
-          var p = j.progress || '';
-          var mm = p.match(/^(\d{1,3})%\s*·\s*(.*)$/);
-          var pct = j.status === 'pending' ? 2 : (mm ? Number(mm[1]) : 5);
-          var msg = j.status === 'pending' ? '워커 대기 중 — PC 워커가 곧 가져갑니다' : (mm ? mm[2] : (p || '진행 중'));
-          b.innerHTML = '<div style="padding:14px 4px">' +
-            '<div style="display:flex;justify-content:space-between;font-size:.85rem;color:#3a4a5e;margin-bottom:6px"><span>🎬 ' + esc2(msg) + (j.claimed_by ? ' <span style="color:#9aa5b1">(' + esc2(j.claimed_by) + ')</span>' : '') + '</span><b>' + pct + '%</b></div>' +
-            '<div style="height:10px;background:#e8edf5;border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:' + Math.max(2, Math.min(100, pct)) + '%;background:linear-gradient(90deg,#4f8cff,#8a6cff);border-radius:6px;transition:width .9s ease"></i></div>' +
-            '<p style="font-size:.76rem;color:#9aa5b1;margin-top:10px">이미지가 준비되면 이 화면이 자동으로 <b>검토 화면</b>으로 바뀝니다. 팝업을 닫아도 제작은 계속됩니다.</p></div>';
-        }
-
-        function renderReview(date, j) {
-          var b = document.getElementById('vs_body'); if (!b) return;
-          var scenes = (j.review && j.review.scenes) || [];
-          var cards = scenes.map(function (sc, i) {
-            return '<div class="vs-card" data-i="' + (i + 1) + '" style="border:1px solid #e2e8f2;border-radius:12px;overflow:hidden;background:#fafbfd">' +
-              '<a href="' + esc2(sc.image_url) + '" target="_blank" title="원본 크게 보기"><img src="' + esc2(sc.image_url) + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block"></a>' +
-              '<div style="padding:9px 10px">' +
-              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:.8rem;color:#3a4a5e">장면 ' + (i + 1) + '</b>' +
-              '<label style="font-size:.75rem;color:#c0392b;display:flex;gap:4px;align-items:center"><input type="checkbox" class="vs-regen"> 다시 생성</label></div>' +
-              '<input class="vs-sub" value="' + esc2(sc.subtitle) + '" placeholder="자막" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.8rem;margin-bottom:5px">' +
-              '<textarea class="vs-narr" rows="2" placeholder="내레이션" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.8rem;resize:vertical">' + esc2(sc.narration) + '</textarea>' +
-              '<details style="margin-top:4px"><summary style="font-size:.72rem;color:#9aa5b1;cursor:pointer">이미지 프롬프트 (다시 생성 시 반영)</summary>' +
-              '<textarea class="vs-iprompt" rows="3" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.74rem;resize:vertical">' + esc2(sc.image_prompt) + '</textarea></details>' +
-              '</div></div>';
-          }).join('');
-          b.innerHTML =
-            '<div style="background:#fff7e0;border:1px solid #f0dfa8;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;color:#7a5d1e"><b>🖼 이미지 검토</b> — 각 장면을 확인하세요. 자막·내레이션은 바로 수정할 수 있고, 마음에 안 드는 장면은 "다시 생성"에 체크 후 재생성하세요. 승인해야 영상 변환이 시작됩니다.</div>' +
-            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px">' + cards + '</div>' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:8px">' +
-            '<button class="btn btn-line" id="vs_cancel" style="padding:8px 16px;color:#c0392b;border-color:#e5b5b0">작업 취소</button>' +
-            '<div style="display:flex;gap:8px">' +
-            '<button class="btn btn-line" id="vs_do_regen" style="padding:8px 16px">🔄 선택 장면 다시 생성</button>' +
-            '<button class="btn btn-solid" id="vs_approve" style="padding:8px 22px;font-weight:700">✔ 승인 — 영상 제작 계속</button></div></div>' +
-            '<div id="vs_revmsg" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right;margin-top:4px"></div>';
-          function collect() {
-            var out = JSON.parse(JSON.stringify(j.review));
-            var regen = [];
-            Array.prototype.forEach.call(b.querySelectorAll('.vs-card'), function (card, i) {
-              out.scenes[i].subtitle = card.querySelector('.vs-sub').value;
-              out.scenes[i].narration = card.querySelector('.vs-narr').value;
-              out.scenes[i].image_prompt = card.querySelector('.vs-iprompt').value;
-              if (card.querySelector('.vs-regen').checked) regen.push(i + 1);
-            });
-            out.regen = regen;
-            return out;
-          }
-          b.querySelector('#vs_approve').onclick = function () {
-            var out = collect(); delete out.regen;
-            this.disabled = true;
-            api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'approved', review: out }, 'return=minimal')
-              .then(function () { vsLastStatus = 'approved'; b.querySelector('#vs_revmsg').textContent = '✓ 승인됨 — 영상 변환을 시작합니다'; })
-              .catch(function (e) { alert('승인 실패: ' + e.message); });
-          };
-          b.querySelector('#vs_do_regen').onclick = function () {
-            var out = collect();
-            if (!out.regen.length) { alert('다시 생성할 장면을 체크하세요.'); return; }
-            this.disabled = true;
-            api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'regen', review: out }, 'return=minimal')
-              .then(function () { vsLastStatus = 'regen'; b.querySelector('#vs_revmsg').textContent = '🔄 재생성 요청됨 (' + out.regen.join(', ') + '번)'; })
-              .catch(function (e) { alert('요청 실패: ' + e.message); });
-          };
-          b.querySelector('#vs_cancel').onclick = function () {
-            if (!confirm('이 영상 제작을 취소할까요?')) return;
-            api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'canceled' }, 'return=minimal')
-              .then(function () { closeStudio(); })
-              .catch(function (e) { alert('취소 실패: ' + e.message); });
-          };
-        }
-
         vbtn.onclick = function () {
           var date = ov.querySelector('#se_date').value;
           if (!date) { var m2 = ov.querySelector('#se_msg'); m2.style.color = '#c0392b'; m2.textContent = '영상 제작에는 일자가 필요합니다.'; return; }
-          openStudio(date);
+          if (window.VideoStudio) window.VideoStudio.open(date, save);
         };
       })();
       // 👁 미리보기 — 저장 없이 현재 화면 그대로 아이패드 보기로 미리 확인(설교 본문 포함)
@@ -7466,6 +7248,356 @@ console.log('[affairs.js] v20260712memo2');
       qtImportModal(txt);
     } catch (e) { /* noop */ }
   }
+
+  // ════════════════════════════════════════════════════════════
+  // 🎬 VideoStudio — 영상 제작 스튜디오 전역 모듈
+  //  · 어디서나 열기(편집기 버튼·게시판 칩), 진행 감시·알림, 완성 후 수정
+  // ════════════════════════════════════════════════════════════
+  (function () {
+    var ACTIVE = ['pending', 'processing', 'review', 'regen', 'approved', 'revise'];
+    var DEF = { orientation: 'portrait', scene_count: 6, voice: 'male', subtitle: { style: 'box', size: 'medium', position: 'bottom' }, instagram: true };
+    var jobs = {};          // date → 최신 작업
+    var prevStatus = {};    // job.id → 직전 상태 (알림 감지)
+    var vsTimer = null, vsLastStatus = null, notifAsked = false;
+
+    function statusChip(j) {
+      if (!j) return '';
+      var m = (j.progress || '').match(/^(\d{1,3})%/);
+      var pct = m ? m[1] + '%' : '';
+      if (j.status === 'done' && j.video_url) return '<div class="vs-chip" data-date="' + esc(j.sermon_date) + '" data-act="play" data-url="' + esc(j.video_url) + '" style="margin-top:3px;cursor:pointer"><span class="fin-pill" style="background:#e8f0ff;color:#2c4a86">▶ 영상 재생</span></div>';
+      if (j.status === 'review') return '<div class="vs-chip" data-date="' + esc(j.sermon_date) + '" data-act="open" style="margin-top:3px;cursor:pointer"><span class="fin-pill" style="background:#fff1cc;color:#a8742a;font-weight:700">🖼 이미지 검토 대기!</span></div>';
+      if (j.status === 'error') return '<div class="vs-chip" data-date="' + esc(j.sermon_date) + '" data-act="open" style="margin-top:3px;cursor:pointer"><span class="fin-pill" style="background:#fdeaea;color:#c0392b">⚠ 제작 실패</span></div>';
+      if (ACTIVE.indexOf(j.status) >= 0) return '<div class="vs-chip" data-date="' + esc(j.sermon_date) + '" data-act="open" style="margin-top:3px;cursor:pointer"><span class="fin-pill" style="background:#eef;color:#5a5ad0">🎬 제작중 ' + pct + '</span></div>';
+      return '';
+    }
+    function chipHtml(date) { return statusChip(jobs[date]); }
+    function refreshChips() {
+      Array.prototype.forEach.call(document.querySelectorAll('.vs-chip'), function (el) {
+        var d = el.getAttribute('data-date');
+        var html = chipHtml(d);
+        if (html) { var tmp = document.createElement('div'); tmp.innerHTML = html; el.replaceWith(tmp.firstChild); }
+      });
+    }
+    function wireChips(box) {
+      if (box._vsWired) return; box._vsWired = true;
+      box.addEventListener('click', function (e) {
+        var chip = e.target.closest ? e.target.closest('.vs-chip') : null;
+        if (!chip) return;
+        if (chip.getAttribute('data-act') === 'play') window.open(chip.getAttribute('data-url'), '_blank');
+        else openStudio(chip.getAttribute('data-date'), null);
+      });
+    }
+
+    // ── 전역 감시: 25초마다 작업 상태 확인 → 칩 갱신 + 검토/완성 알림 ──
+    function toast(text, date) {
+      var t = document.createElement('div');
+      t.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99999;background:#1c2836;color:#fff;padding:13px 18px;border-radius:12px;box-shadow:0 10px 34px rgba(0,0,0,.4);font-size:.88rem;cursor:pointer;max-width:320px';
+      t.innerHTML = text + (date ? ' <b style="color:#8ab4ff">열기 ›</b>' : '');
+      t.onclick = function () { t.remove(); if (date) openStudio(date, null); };
+      document.body.appendChild(t);
+      setTimeout(function () { t.remove(); }, 15000);
+    }
+    function browserNotify(text, date) {
+      try {
+        if (window.Notification && Notification.permission === 'granted') {
+          var n = new Notification('운평 영상 제작', { body: text });
+          n.onclick = function () { window.focus(); if (date) openStudio(date, null); n.close(); };
+        }
+      } catch (e) { }
+    }
+    function watch() {
+      api('GET', 'video_jobs?select=id,sermon_date,status,progress,video_url,claimed_by,error&order=created_at.desc&limit=40').then(function (rows) {
+        var next = {};
+        (rows || []).forEach(function (j) { if (!next[j.sermon_date]) next[j.sermon_date] = j; });
+        (rows || []).forEach(function (j) {
+          var prev = prevStatus[j.id];
+          if (prev && prev !== j.status) {
+            if (j.status === 'review') { toast('🖼 <b>' + esc(j.sermon_date) + '</b> 이미지가 준비되었습니다 — 검토해 주세요', j.sermon_date); browserNotify(j.sermon_date + ' 이미지 검토 준비 — 확인해 주세요', j.sermon_date); }
+            if (j.status === 'done') { toast('🎉 <b>' + esc(j.sermon_date) + '</b> 영상이 완성되었습니다', j.sermon_date); browserNotify(j.sermon_date + ' 영상 완성', j.sermon_date); }
+            if (j.status === 'error') { toast('⚠ <b>' + esc(j.sermon_date) + '</b> 영상 제작 실패', j.sermon_date); }
+          }
+          prevStatus[j.id] = j.status;
+        });
+        jobs = next;
+        refreshChips();
+      }).catch(function () { });
+    }
+    setInterval(watch, 25000);
+    setTimeout(watch, 2500);
+
+    // ── 스튜디오 팝업 ──
+    function esc2(s) { return esc(s); }
+    function closeStudio() { if (vsTimer) { clearInterval(vsTimer); vsTimer = null; } var m = document.getElementById('vs_ov'); if (m) m.remove(); vsLastStatus = null; }
+
+    function openStudio(date, saveFn) {
+      closeStudio();
+      if (!notifAsked && window.Notification && Notification.permission === 'default') { notifAsked = true; try { Notification.requestPermission(); } catch (e) { } }
+      var m = document.createElement('div');
+      m.id = 'vs_ov';
+      m.style.cssText = 'position:fixed;inset:0;background:rgba(8,12,20,.72);z-index:99990;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 14px';
+      m.innerHTML =
+        '<div style="background:#fff;border-radius:16px;max-width:880px;width:100%;padding:22px 24px;box-shadow:0 30px 80px rgba(0,0,0,.5)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+        '<h3 style="margin:0;color:var(--accent,#032257)">🎬 영상 제작 스튜디오 <span style="font-size:.85rem;color:#9aa5b1;font-weight:600">' + esc2(date) + ' QT</span></h3>' +
+        '<button class="btn btn-line" id="vs_close" style="padding:4px 12px">닫기</button></div>' +
+        '<p style="margin:0 0 12px;font-size:.78rem;color:#9aa5b1">설정 → 이미지 생성 → <b>검토·승인</b> → 영상 변환 → 완성. 팝업을 닫아도 제작은 계속되며, 게시판의 <b>🎬 제작중</b> 칩이나 알림으로 다시 열 수 있습니다.</p>' +
+        '<div id="vs_body"></div></div>';
+      document.body.appendChild(m);
+      m.querySelector('#vs_close').onclick = closeStudio;
+      m.addEventListener('click', function (e) { if (e.target === m) closeStudio(); });
+      api('GET', 'video_jobs?select=*&sermon_date=eq.' + encodeURIComponent(date) + '&order=created_at.desc&limit=1').then(function (rows) {
+        var j = rows && rows[0];
+        if (j && ACTIVE.indexOf(j.status) >= 0) startPolling(date);
+        else renderSettings(date, j, saveFn);
+      }).catch(function (e) {
+        var hint = /video_jobs|relation|PGRST2|schema cache|Could not find/i.test(e.message || '') ? ' — Supabase에서 supabase/video_jobs.sql·video_studio.sql·video_revise.sql 을 실행해 주세요.' : '';
+        var b = document.getElementById('vs_body'); if (b) b.innerHTML = '<p style="color:#c0392b">조회 실패: ' + esc2(e.message) + hint + '</p>';
+      });
+    }
+
+    function fld(label, inner) { return '<label style="display:block;font-size:.78rem;color:#7b8794"><span style="display:block;margin-bottom:4px;font-weight:700;color:#3a4a5e">' + label + '</span>' + inner.replace('<select', '<select style="width:100%;padding:7px 10px;border:1px solid #dde3ec;border-radius:8px"') + '</label>'; }
+
+    function renderSettings(date, lastJob, saveFn) {
+      var b = document.getElementById('vs_body'); if (!b) return;
+      b.innerHTML =
+        (lastJob && lastJob.status === 'done' && lastJob.video_url ? '<p style="font-size:.85rem;margin:0 0 10px">완성된 영상: <a href="' + esc2(lastJob.video_url) + '" target="_blank">▶ 보기</a>' + (lastJob.review && lastJob.review.scenes ? ' · <a href="#" id="vs_gorevise">🔧 영상 수정</a>' : '') + ' — 새로 제작하면 최신본으로 바뀝니다.</p>' : '') +
+        (lastJob && lastJob.status === 'error' ? '<p style="font-size:.82rem;color:#c0392b;margin:0 0 10px">지난 작업 실패: ' + esc2(lastJob.error || '') + '</p>' : '') +
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">' +
+        '<b style="font-size:.85rem;color:#3a4a5e">📁 제작 프레임</b>' +
+        '<select id="vs_preset" style="padding:6px 10px;border:1px solid #dde3ec;border-radius:8px;min-width:170px"><option value="">— 저장된 프레임 —</option></select>' +
+        '<button class="btn btn-line" id="vs_preset_load" style="padding:5px 12px">불러오기</button>' +
+        '<button class="btn btn-line" id="vs_preset_save" style="padding:5px 12px">현재 설정 저장</button></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">' +
+        fld('화면', '<select id="vs_ori"><option value="portrait">세로 9:16 (쇼츠·릴스)</option><option value="landscape">가로 16:9 (유튜브)</option></select>') +
+        fld('장면 수', '<select id="vs_n"><option>4</option><option>5</option><option selected>6</option><option>8</option></select>') +
+        fld('목소리', '<select id="vs_voice"><option value="male">남성 (인준)</option><option value="female">여성 (선히)</option></select>') +
+        fld('자막 스타일', '<select id="vs_substyle"><option value="box">박스형 (세련)</option><option value="outline">테두리형 (기본)</option><option value="none">자막 없음</option></select>') +
+        fld('자막 크기', '<select id="vs_subsize"><option value="small">작게</option><option value="medium" selected>보통</option><option value="large">크게</option></select>') +
+        fld('자막 위치', '<select id="vs_subpos"><option value="bottom">하단</option><option value="center">중앙</option></select>') +
+        fld('인스타그램', '<label style="display:flex;align-items:center;gap:6px;font-size:.85rem"><input type="checkbox" id="vs_ig" checked> 완성 시 자동 게시</label>') +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">' +
+        '<button class="btn btn-solid" id="vs_start" style="padding:9px 22px;font-weight:700">🎬 제작 시작</button></div>' +
+        '<div id="vs_setmsg" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right"></div>';
+      var gorev = b.querySelector('#vs_gorevise');
+      if (gorev) gorev.onclick = function (e) { e.preventDefault(); renderRevise(date, lastJob); };
+      function gatherSettings() {
+        return {
+          orientation: b.querySelector('#vs_ori').value,
+          scene_count: Number(b.querySelector('#vs_n').value),
+          voice: b.querySelector('#vs_voice').value,
+          subtitle: { style: b.querySelector('#vs_substyle').value, size: b.querySelector('#vs_subsize').value, position: b.querySelector('#vs_subpos').value },
+          instagram: b.querySelector('#vs_ig').checked
+        };
+      }
+      function applySettings(s2) {
+        try {
+          b.querySelector('#vs_ori').value = s2.orientation || 'portrait';
+          b.querySelector('#vs_n').value = String(s2.scene_count || 6);
+          b.querySelector('#vs_voice').value = s2.voice || 'male';
+          var sub = s2.subtitle || {};
+          b.querySelector('#vs_substyle').value = sub.style || 'box';
+          b.querySelector('#vs_subsize').value = sub.size || 'medium';
+          b.querySelector('#vs_subpos').value = sub.position || 'bottom';
+          b.querySelector('#vs_ig').checked = s2.instagram !== false;
+        } catch (e) { }
+      }
+      function loadPresets() {
+        api('GET', 'video_presets?select=id,name,settings&order=name.asc').then(function (rows) {
+          var sel = b.querySelector('#vs_preset'); if (!sel) return;
+          sel.innerHTML = '<option value="">— 저장된 프레임 —</option>' + (rows || []).map(function (p) { return '<option value="' + p.id + '">' + esc2(p.name) + '</option>'; }).join('');
+          sel._rows = rows || [];
+        }).catch(function () { });
+      }
+      loadPresets();
+      b.querySelector('#vs_preset_load').onclick = function () {
+        var sel = b.querySelector('#vs_preset');
+        var row = (sel._rows || []).filter(function (p) { return String(p.id) === sel.value; })[0];
+        if (!row) { alert('불러올 프레임을 선택하세요.'); return; }
+        applySettings(row.settings || {});
+        b.querySelector('#vs_setmsg').textContent = '✓ 프레임 "' + row.name + '" 을 불러왔습니다';
+      };
+      b.querySelector('#vs_preset_save').onclick = function () {
+        var name = prompt('이 설정을 저장할 프레임 이름:', '기본 QT 쇼츠');
+        if (!name) return;
+        api('POST', 'video_presets?on_conflict=name', { name: name.trim(), settings: gatherSettings() }, 'resolution=merge-duplicates,return=minimal')
+          .then(function () { b.querySelector('#vs_setmsg').textContent = '✓ 프레임 저장됨'; loadPresets(); })
+          .catch(function (e) { alert('프레임 저장 실패: ' + e.message + '\n(video_studio.sql 실행이 필요할 수 있습니다)'); });
+      };
+      b.querySelector('#vs_start').onclick = function () {
+        var btn = this; btn.disabled = true;
+        // 중복 방지: 진행 중 작업(모든 날짜) 확인
+        api('GET', 'video_jobs?select=id,sermon_date,status&status=in.(' + ACTIVE.join(',') + ')&order=created_at.asc').then(function (act) {
+          act = act || [];
+          var same = act.filter(function (a) { return a.sermon_date === date; })[0];
+          if (same) { startPolling(date); return; }
+          var others = act.filter(function (a) { return a.sermon_date !== date; });
+          if (others.length && !confirm('현재 다른 날짜(' + others.map(function (a) { return a.sermon_date; }).join(', ') + ') 작업이 진행 중입니다.\n지금 시작하면 대기열에 추가되어 순서대로 처리됩니다. 계속할까요?')) { btn.disabled = false; return; }
+          var doPost = function () {
+            api('POST', 'video_jobs', { sermon_date: date, settings: gatherSettings() }, 'return=minimal')
+              .then(function () { startPolling(date); setTimeout(watch, 1500); })
+              .catch(function (e) { btn.disabled = false; alert('제작 요청 실패: ' + e.message); });
+          };
+          if (saveFn) saveFn(function () { doPost(); }, function () { btn.disabled = false; });
+          else doPost();
+        }).catch(function (e) { btn.disabled = false; alert('확인 실패: ' + e.message); });
+      };
+    }
+
+    function startPolling(date) {
+      if (vsTimer) clearInterval(vsTimer);
+      var tick = function () {
+        api('GET', 'video_jobs?select=*&sermon_date=eq.' + encodeURIComponent(date) + '&order=created_at.desc&limit=1').then(function (rows) {
+          var j = rows && rows[0]; if (!j) return;
+          renderState(date, j);
+        }).catch(function () { });
+      };
+      vsTimer = setInterval(tick, 8000);
+      tick();
+    }
+
+    function renderState(date, j) {
+      var b = document.getElementById('vs_body'); if (!b) { if (vsTimer) { clearInterval(vsTimer); vsTimer = null; } return; }
+      if (j.status === 'review') {
+        if (vsLastStatus !== 'review') renderReview(date, j);
+        vsLastStatus = 'review'; return;
+      }
+      vsLastStatus = j.status;
+      if (j.status === 'done') {
+        if (vsTimer) { clearInterval(vsTimer); vsTimer = null; }
+        var ig = /인스타그램 게시 완료/.test(j.progress || '') ? '<p style="font-size:.85rem;color:#1d7a45;margin:6px 0 0">📸 인스타그램에도 자동 게시되었습니다.</p>'
+          : (/인스타 실패/.test(j.progress || '') ? '<p style="font-size:.82rem;color:#a8742a;margin:6px 0 0">영상은 완성됐지만 인스타 게시는 실패했습니다: ' + esc2((j.progress || '').split('인스타 실패:')[1] || '') + '</p>'
+            : (/수정본/.test(j.progress || '') ? '<p style="font-size:.82rem;color:#7b8794;margin:6px 0 0">수정본입니다 — 인스타 재게시가 필요하면 파일을 받아 수동으로 올려주세요.</p>' : ''));
+        b.innerHTML = '<div style="text-align:center;padding:26px 10px">' +
+          '<div style="font-size:2rem">🎉</div><h4 style="margin:8px 0;color:var(--accent,#032257)">영상이 완성되었습니다</h4>' +
+          '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px">' +
+          '<a class="btn btn-solid" href="' + esc2(j.video_url || '#') + '" target="_blank" style="padding:10px 26px;font-weight:700">▶ 영상 보기</a>' +
+          (j.review && j.review.scenes ? '<button class="btn btn-line" id="vs_revise" style="padding:10px 20px">🔧 영상 수정</button>' : '') +
+          '<button class="btn btn-line" id="vs_again" style="padding:10px 16px">새로 제작</button></div>' + ig + '</div>';
+        var rv = b.querySelector('#vs_revise');
+        if (rv) rv.onclick = function () { renderRevise(date, j); };
+        b.querySelector('#vs_again').onclick = function () { renderSettings(date, j, null); };
+        setTimeout(watch, 1000);
+        return;
+      }
+      if (j.status === 'error') {
+        if (vsTimer) { clearInterval(vsTimer); vsTimer = null; }
+        b.innerHTML = '<p style="color:#c0392b;font-size:.9rem">제작 실패: ' + esc2(j.error || '오류') + '</p>' +
+          '<button class="btn btn-solid" id="vs_retry" style="padding:8px 18px">다시 설정하고 제작</button>';
+        b.querySelector('#vs_retry').onclick = function () { renderSettings(date, j, null); };
+        return;
+      }
+      var p = j.progress || '';
+      var mm = p.match(/^(\d{1,3})%\s*·\s*(.*)$/);
+      var pct = (j.status === 'pending' || j.status === 'revise') ? 2 : (mm ? Number(mm[1]) : 5);
+      var msg = j.status === 'pending' ? '워커 대기 중 — PC 워커가 곧 가져갑니다'
+        : (j.status === 'revise' ? '수정 대기 중 — 워커가 곧 가져갑니다' : (mm ? mm[2] : (p || '진행 중')));
+      b.innerHTML = '<div style="padding:14px 4px">' +
+        '<div style="display:flex;justify-content:space-between;font-size:.85rem;color:#3a4a5e;margin-bottom:6px"><span>🎬 ' + esc2(msg) + (j.claimed_by ? ' <span style="color:#9aa5b1">(' + esc2(j.claimed_by) + ')</span>' : '') + '</span><b>' + pct + '%</b></div>' +
+        '<div style="height:10px;background:#e8edf5;border-radius:6px;overflow:hidden"><i style="display:block;height:100%;width:' + Math.max(2, Math.min(100, pct)) + '%;background:linear-gradient(90deg,#4f8cff,#8a6cff);border-radius:6px;transition:width .9s ease"></i></div>' +
+        '<p style="font-size:.76rem;color:#9aa5b1;margin-top:10px">이미지가 준비되면 <b>알림</b>과 함께 이 화면이 검토 화면으로 바뀝니다. 팝업을 닫아도 제작은 계속되고, 게시판 칩으로 다시 열 수 있습니다.</p></div>';
+    }
+
+    function sceneCards(scenes, mediaFn, extraLabel) {
+      return scenes.map(function (sc, i) {
+        return '<div class="vs-card" data-i="' + (i + 1) + '" style="border:1px solid #e2e8f2;border-radius:12px;overflow:hidden;background:#fafbfd">' +
+          mediaFn(sc) +
+          '<div style="padding:9px 10px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:.8rem;color:#3a4a5e">장면 ' + (i + 1) + '</b>' +
+          '<label style="font-size:.75rem;color:#c0392b;display:flex;gap:4px;align-items:center"><input type="checkbox" class="vs-regen"> ' + extraLabel + '</label></div>' +
+          '<input class="vs-sub" value="' + esc2(sc.subtitle) + '" placeholder="자막" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.8rem;margin-bottom:5px">' +
+          '<textarea class="vs-narr" rows="2" placeholder="내레이션" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.8rem;resize:vertical">' + esc2(sc.narration) + '</textarea>' +
+          '<details style="margin-top:4px"><summary style="font-size:.72rem;color:#9aa5b1;cursor:pointer">프롬프트 (재생성 시 반영)</summary>' +
+          '<textarea class="vs-iprompt" rows="2" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.74rem;resize:vertical">' + esc2(sc.image_prompt) + '</textarea>' +
+          '<textarea class="vs-mprompt" rows="2" placeholder="모션 프롬프트" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.74rem;resize:vertical;margin-top:3px">' + esc2(sc.motion_prompt || '') + '</textarea></details>' +
+          '</div></div>';
+      }).join('');
+    }
+    function collectCards(b, review) {
+      var out = JSON.parse(JSON.stringify(review));
+      var checked = [];
+      Array.prototype.forEach.call(b.querySelectorAll('.vs-card'), function (card, i) {
+        out.scenes[i].subtitle = card.querySelector('.vs-sub').value;
+        out.scenes[i].narration = card.querySelector('.vs-narr').value;
+        out.scenes[i].image_prompt = card.querySelector('.vs-iprompt').value;
+        var mp = card.querySelector('.vs-mprompt'); if (mp) out.scenes[i].motion_prompt = mp.value;
+        if (card.querySelector('.vs-regen').checked) checked.push(i + 1);
+      });
+      return { out: out, checked: checked };
+    }
+
+    function renderReview(date, j) {
+      var b = document.getElementById('vs_body'); if (!b) return;
+      var scenes = (j.review && j.review.scenes) || [];
+      b.innerHTML =
+        '<div style="background:#fff7e0;border:1px solid #f0dfa8;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;color:#7a5d1e"><b>🖼 이미지 검토</b> — 각 장면을 확인하세요. 자막·내레이션은 바로 수정, 마음에 안 드는 장면은 "다시 생성" 체크 후 재생성. <b>승인해야 영상 변환이 시작됩니다.</b></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px">' +
+        sceneCards(scenes, function (sc) { return '<a href="' + esc2(sc.image_url) + '" target="_blank" title="크게 보기"><img src="' + esc2(sc.image_url) + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block"></a>'; }, '다시 생성') +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:8px">' +
+        '<button class="btn btn-line" id="vs_cancel" style="padding:8px 16px;color:#c0392b;border-color:#e5b5b0">작업 취소</button>' +
+        '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-line" id="vs_do_regen" style="padding:8px 16px">🔄 선택 장면 다시 생성</button>' +
+        '<button class="btn btn-solid" id="vs_approve" style="padding:8px 22px;font-weight:700">✔ 승인 — 영상 제작 계속</button></div></div>' +
+        '<div id="vs_revmsg" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right;margin-top:4px"></div>';
+      b.querySelector('#vs_approve').onclick = function () {
+        var c = collectCards(b, j.review); delete c.out.regen;
+        this.disabled = true;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'approved', review: c.out }, 'return=minimal')
+          .then(function () { vsLastStatus = 'approved'; b.querySelector('#vs_revmsg').textContent = '✓ 승인됨 — 영상 변환을 시작합니다'; })
+          .catch(function (e) { alert('승인 실패: ' + e.message); });
+      };
+      b.querySelector('#vs_do_regen').onclick = function () {
+        var c = collectCards(b, j.review);
+        if (!c.checked.length) { alert('다시 생성할 장면을 체크하세요.'); return; }
+        c.out.regen = c.checked;
+        this.disabled = true;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'regen', review: c.out }, 'return=minimal')
+          .then(function () { vsLastStatus = 'regen'; b.querySelector('#vs_revmsg').textContent = '🔄 재생성 요청됨 (' + c.checked.join(', ') + '번)'; })
+          .catch(function (e) { alert('요청 실패: ' + e.message); });
+      };
+      b.querySelector('#vs_cancel').onclick = function () {
+        if (!confirm('이 영상 제작을 취소할까요?')) return;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'canceled' }, 'return=minimal')
+          .then(function () { closeStudio(); setTimeout(watch, 1000); })
+          .catch(function (e) { alert('취소 실패: ' + e.message); });
+      };
+    }
+
+    // ── 완성 후 수정: 장면별 클립 재생성/자막·내레이션 수정 → 재조립 ──
+    function renderRevise(date, j) {
+      var b = document.getElementById('vs_body'); if (!b) return;
+      var scenes = (j.review && j.review.scenes) || [];
+      var hasClips = scenes.some(function (sc) { return sc.clip_url; });
+      b.innerHTML =
+        '<div style="background:#e8f2ff;border:1px solid #bcd6f5;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;color:#2c4a86"><b>🔧 영상 수정</b> — 장면별 클립을 재생해 보고, 다시 만들 장면만 체크하세요. 체크 없이도 자막·내레이션 수정만 반영해 재조립할 수 있습니다.' + (hasClips ? '' : '<br><span style="color:#a8742a">※ 이 영상은 장면 클립이 보관되지 않은 이전 버전이라, 체크한 장면은 이미지 기준으로 새로 만들어집니다.</span>') + '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px">' +
+        sceneCards(scenes, function (sc) {
+          return sc.clip_url
+            ? '<video controls preload="metadata" src="' + esc2(sc.clip_url) + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:#000"></video>'
+            : '<img src="' + esc2(sc.image_url) + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block">';
+        }, '클립 다시 생성') +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:8px">' +
+        '<button class="btn btn-line" id="vs_back" style="padding:8px 16px">‹ 뒤로</button>' +
+        '<button class="btn btn-solid" id="vs_do_revise" style="padding:8px 22px;font-weight:700">🔧 수정 반영 — 재제작</button></div>' +
+        '<div id="vs_revmsg" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right;margin-top:4px"></div>';
+      b.querySelector('#vs_back').onclick = function () { vsLastStatus = null; renderState(date, j); };
+      b.querySelector('#vs_do_revise').onclick = function () {
+        var c = collectCards(b, j.review);
+        var note = c.checked.length ? '체크한 ' + c.checked.length + '개 장면 클립을 새로 만들고 재조립합니다.' : '클립은 그대로 두고 자막·내레이션 수정만 반영해 재조립합니다.';
+        if (!confirm(note + '\n진행할까요?')) return;
+        c.out.revideo = c.checked;
+        c.out.revise_requested = true;
+        this.disabled = true;
+        api('PATCH', 'video_jobs?id=eq.' + j.id, { status: 'revise', review: c.out }, 'return=minimal')
+          .then(function () { vsLastStatus = null; startPolling(date); setTimeout(watch, 1500); })
+          .catch(function (e) { alert('수정 요청 실패: ' + e.message); });
+      };
+    }
+
+    window.VideoStudio = { open: openStudio, chipHtml: chipHtml, wireChips: wireChips };
+  })();
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
