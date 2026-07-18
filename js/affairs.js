@@ -7400,7 +7400,7 @@ console.log('[affairs.js] v20260712memo2');
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">' +
         fld('화면', '<select id="vs_ori"><option value="portrait">세로 9:16 (쇼츠·릴스)</option><option value="landscape">가로 16:9 (유튜브)</option></select>') +
         fld('그림 화풍', '<select id="vs_style"><option value="storybook">동화책 (수채화·색연필)</option><option value="cinematic">실사 시네마틱</option></select>') +
-        fld('이야기 형식', '<select id="vs_narr"><option value="grandma">할머니가 아이에게 들려주기</option><option value="plain">일반 내레이션</option></select>') +
+        fld('이야기 형식', '<select id="vs_narr"><option value="grandma">엄마가 아이에게 들려주기</option><option value="plain">일반 내레이션</option></select>') +
         fld('승인 단계', '<select id="vs_appr"><option value="all">모든 단계 (스토리·이미지·영상)</option><option value="images">이미지만</option><option value="none">승인 없이 전자동</option></select>') +
         fld('장면 수', '<select id="vs_n"><option>4</option><option>5</option><option selected>6</option><option>8</option></select>') +
         fld('목소리', '<select id="vs_voice"><option value="female">여성 (선히)</option><option value="male">남성 (인준)</option></select>') +
@@ -7616,7 +7616,7 @@ console.log('[affairs.js] v20260712memo2');
       var cards = scenes.map(function (sc, i) {
         return '<div class="vs-card" data-i="' + (i + 1) + '" style="border:1px solid #e2e8f2;border-radius:12px;background:#fafbfd;padding:10px 12px">' +
           '<b style="font-size:.8rem;color:#3a4a5e">장면 ' + (i + 1) + '</b>' +
-          '<div style="font-size:.72rem;color:#9aa5b1;margin:3px 0 4px">내레이션 (할머니 목소리로 낭독됩니다)</div>' +
+          '<div style="font-size:.72rem;color:#9aa5b1;margin:3px 0 4px">내레이션 (엄마 목소리로 낭독됩니다)</div>' +
           '<textarea class="vs-narr" rows="3" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.84rem;resize:vertical">' + esc2(sc.narration) + '</textarea>' +
           '<div style="font-size:.72rem;color:#9aa5b1;margin:5px 0 3px">자막</div>' +
           '<input class="vs-sub" value="' + esc2(sc.subtitle) + '" style="width:100%;padding:6px 8px;border:1px solid #dde3ec;border-radius:7px;font-size:.8rem">' +
