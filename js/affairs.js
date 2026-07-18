@@ -3608,6 +3608,34 @@ console.log('[affairs.js] v20260712memo2');
         var vbtn = ov.querySelector('#se_video'); if (!vbtn) return;
         var vTimer = null;
         function vmsg(color, text) { var m = ov.querySelector('#se_msg'); m.style.color = color; m.textContent = text; }
+        // 진행률 막대: se_msg 바로 아래 슬림 바 (필요할 때 생성)
+        function vbar(pct) {
+          var msg = ov.querySelector('#se_msg');
+          var bar = ov.querySelector('#se_vprog');
+          if (pct == null) { if (bar) bar.style.display = 'none'; return; }
+          if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'se_vprog';
+            bar.style.cssText = 'flex-basis:100%;height:6px;background:rgba(120,140,170,.25);border-radius:4px;overflow:hidden;margin-top:4px';
+            bar.innerHTML = '<i id="se_vprog_fill" style="display:block;height:100%;width:0%;background:linear-gradient(90deg,#4f8cff,#8a6cff);border-radius:4px;transition:width .9s ease"></i>';
+            msg.parentNode.insertBefore(bar, msg.nextSibling);
+          }
+          bar.style.display = '';
+          bar.querySelector('#se_vprog_fill').style.width = Math.max(2, Math.min(100, pct)) + '%';
+        }
+        // 진행률 추정: 워커가 "35% · ..." 형식으로 주면 그 값, 아니면 "장면 i/n" 패턴으로 계산
+        function progressPct(j) {
+          if (j.status === 'pending') return 2;
+          if (j.status === 'done') return 100;
+          var p = j.progress || '';
+          var m = p.match(/^(\d{1,3})%/);
+          if (m) return Number(m[1]);
+          m = p.match(/장면\s*(\d+)\/(\d+)/);
+          if (m) { var i = Number(m[1]), n = Number(m[2]) || 1; return 5 + Math.round(((i - 1) + (/영상/.test(p) ? 0.5 : 0.1)) / n * 85); }
+          if (/조립/.test(p)) return 92;
+          if (/업로드/.test(p)) return 96;
+          return 4;
+        }
         function statusLabel(j) {
           if (j.status === 'pending') return '⏳ 영상 제작 대기 중 — PC 워커가 곧 가져갑니다 (워커 PC·ComfyUI가 켜져 있어야 합니다)';
           if (j.status === 'processing') return '🎬 영상 생성 중 (' + (j.claimed_by || '워커') + ') — ' + (j.progress || '진행 중');
@@ -3620,12 +3648,14 @@ console.log('[affairs.js] v20260712memo2');
             if (j.status === 'done') {
               if (vTimer) { clearInterval(vTimer); vTimer = null; }
               vmsg('green', '✓ 영상이 완성되었습니다');
+              vbar(100); setTimeout(function () { vbar(null); }, 4000);
               vbtn.disabled = false; vbtn.textContent = '▶ 영상 보기';
               vbtn.onclick = function () { if (j.video_url) window.open(j.video_url, '_blank'); };
               return;
             }
-            if (j.status === 'error') { if (vTimer) { clearInterval(vTimer); vTimer = null; } vbtn.disabled = false; vmsg('#c0392b', statusLabel(j)); return; }
+            if (j.status === 'error') { if (vTimer) { clearInterval(vTimer); vTimer = null; } vbar(null); vbtn.disabled = false; vmsg('#c0392b', statusLabel(j)); return; }
             vmsg('#7b8794', statusLabel(j));
+            vbar(progressPct(j));
           }).catch(function () { /* 일시 오류는 다음 폴링에서 회복 */ });
         }
         vbtn.onclick = function () {
