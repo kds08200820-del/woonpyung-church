@@ -1057,11 +1057,9 @@ if (homeBulletin && typeof BULLETINS !== "undefined" && BULLETINS.length) {
         </div>
       </div>
       <div class="hb-ft">
-        <button class="btn btn-line" id="homeBulletinBtn">주보 전체 보기 →</button>
+        <a class="btn btn-line" href="word.html#archive">주보 전체 보기 →</a>
       </div>
     </div>`;
-  const hbBtn = document.getElementById("homeBulletinBtn");
-  if (hbBtn) hbBtn.onclick = () => openBulletin(0);
 }
 
 // ===== 5. 새가족 등록 폼 (welcome) =====
