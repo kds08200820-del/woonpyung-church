@@ -787,6 +787,10 @@ console.log('[affairs.js] v20260712memo2');
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📖 성경읽기</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#1e874b;line-height:1.1;margin-top:4px" id="bibleReadNum">–</div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">구속사 365 참여 성도 · 눌러서 현황 보기</div></div>' +
+        '<div class="fin-card" id="videoMgrCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🎬 QT 영상 관리</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#7c3aed;line-height:1.1;margin-top:4px" id="videoMgrNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="videoMgrSub">제작·검토·수정 · 눌러서 관리</div></div>' +
         '</div>' +
         '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
         '<b style="color:var(--accent,#032257)">📖 성경 권별 커버리지</b>' +
@@ -817,6 +821,25 @@ console.log('[affairs.js] v20260712memo2');
       loadTtsLog(panel);
       loadBibleStats(panel);
       loadDashMemo(panel);
+      loadVideoMgr(panel);
+    }
+
+    // ── QT 영상 관리 카드: 상태 요약 + 클릭 시 전체 관리 모달 ──
+    function loadVideoMgr(panel) {
+      var numEl = panel.querySelector('#videoMgrNum'), subEl = panel.querySelector('#videoMgrSub'), card = panel.querySelector('#videoMgrCard');
+      if (!card) return;
+      card.onclick = function () { if (window.VideoStudio) window.VideoStudio.openManager(); };
+      api('GET', 'video_jobs?select=status&limit=500').then(function (rows) {
+        rows = rows || [];
+        var done = 0, active = 0, review = 0;
+        rows.forEach(function (r) {
+          if (r.status === 'done') done++;
+          else if (r.status === 'review') review++;
+          else if (['pending', 'processing', 'regen', 'approved', 'revise'].indexOf(r.status) >= 0) active++;
+        });
+        if (numEl) numEl.textContent = done + '편';
+        if (subEl) subEl.innerHTML = (review ? '<span style="color:#a8742a;font-weight:700">🖼 검토 대기 ' + review + '</span> · ' : '') + (active ? '<span style="color:#5a5ad0;font-weight:700">🎬 제작중 ' + active + '</span> · ' : '') + '눌러서 관리';
+      }).catch(function () { if (subEl) subEl.textContent = '영상 관리 (video_jobs.sql 실행 필요)'; });
     }
 
     // ── 성경읽기 현황(구속사 365): 참여 성도 수 + 개인별 진도 ──
@@ -7255,7 +7278,7 @@ console.log('[affairs.js] v20260712memo2');
   // ════════════════════════════════════════════════════════════
   (function () {
     var ACTIVE = ['pending', 'processing', 'review', 'regen', 'approved', 'revise'];
-    var DEF = { orientation: 'portrait', scene_count: 6, voice: 'male', subtitle: { style: 'box', size: 'medium', position: 'bottom' }, instagram: true };
+    var DEF = { orientation: 'portrait', scene_count: 6, voice: 'female', style: 'storybook', subtitle: { style: 'box', size: 'medium', position: 'bottom' }, instagram: true };
     var jobs = {};          // date → 최신 작업
     var prevStatus = {};    // job.id → 직전 상태 (알림 감지)
     var vsTimer = null, vsLastStatus = null, notifAsked = false;
@@ -7369,8 +7392,9 @@ console.log('[affairs.js] v20260712memo2');
         '<button class="btn btn-line" id="vs_preset_save" style="padding:5px 12px">현재 설정 저장</button></div>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">' +
         fld('화면', '<select id="vs_ori"><option value="portrait">세로 9:16 (쇼츠·릴스)</option><option value="landscape">가로 16:9 (유튜브)</option></select>') +
+        fld('그림 화풍', '<select id="vs_style"><option value="storybook">동화책 (수채화·색연필)</option><option value="cinematic">실사 시네마틱</option></select>') +
         fld('장면 수', '<select id="vs_n"><option>4</option><option>5</option><option selected>6</option><option>8</option></select>') +
-        fld('목소리', '<select id="vs_voice"><option value="male">남성 (인준)</option><option value="female">여성 (선히)</option></select>') +
+        fld('목소리', '<select id="vs_voice"><option value="female">여성 (선히)</option><option value="male">남성 (인준)</option></select>') +
         fld('자막 스타일', '<select id="vs_substyle"><option value="box">박스형 (세련)</option><option value="outline">테두리형 (기본)</option><option value="none">자막 없음</option></select>') +
         fld('자막 크기', '<select id="vs_subsize"><option value="small">작게</option><option value="medium" selected>보통</option><option value="large">크게</option></select>') +
         fld('자막 위치', '<select id="vs_subpos"><option value="bottom">하단</option><option value="center">중앙</option></select>') +
@@ -7384,6 +7408,7 @@ console.log('[affairs.js] v20260712memo2');
       function gatherSettings() {
         return {
           orientation: b.querySelector('#vs_ori').value,
+          style: b.querySelector('#vs_style').value,
           scene_count: Number(b.querySelector('#vs_n').value),
           voice: b.querySelector('#vs_voice').value,
           subtitle: { style: b.querySelector('#vs_substyle').value, size: b.querySelector('#vs_subsize').value, position: b.querySelector('#vs_subpos').value },
@@ -7393,8 +7418,9 @@ console.log('[affairs.js] v20260712memo2');
       function applySettings(s2) {
         try {
           b.querySelector('#vs_ori').value = s2.orientation || 'portrait';
+          b.querySelector('#vs_style').value = s2.style || 'storybook';
           b.querySelector('#vs_n').value = String(s2.scene_count || 6);
-          b.querySelector('#vs_voice').value = s2.voice || 'male';
+          b.querySelector('#vs_voice').value = s2.voice || 'female';
           var sub = s2.subtitle || {};
           b.querySelector('#vs_substyle').value = sub.style || 'box';
           b.querySelector('#vs_subsize').value = sub.size || 'medium';
@@ -7596,7 +7622,81 @@ console.log('[affairs.js] v20260712memo2');
       };
     }
 
-    window.VideoStudio = { open: openStudio, chipHtml: chipHtml, wireChips: wireChips };
+    // ── 영상 관리 센터: 전체 작업 목록 + 상태별 조치 ──
+    function statusBadge(j) {
+      var m = (j.progress || '').match(/^(\d{1,3})%/);
+      var pct = m ? ' ' + m[1] + '%' : '';
+      var map = {
+        done: ['#e8f0ff', '#2c4a86', '✓ 완성'],
+        review: ['#fff1cc', '#a8742a', '🖼 검토 대기'],
+        pending: ['#eef', '#5a5ad0', '⏳ 대기'],
+        processing: ['#eef', '#5a5ad0', '🎬 제작중' + pct],
+        regen: ['#eef', '#5a5ad0', '🔄 재생성중' + pct],
+        approved: ['#eef', '#5a5ad0', '🎬 변환중' + pct],
+        revise: ['#eef', '#5a5ad0', '🔧 수정중' + pct],
+        error: ['#fdeaea', '#c0392b', '⚠ 실패'],
+        canceled: ['#eee', '#7b8794', '취소됨']
+      };
+      var s = map[j.status] || ['#eee', '#7b8794', j.status];
+      return '<span class="fin-pill" style="background:' + s[0] + ';color:' + s[1] + '">' + s[2] + '</span>';
+    }
+    function openManager() {
+      var m = document.createElement('div');
+      m.id = 'vm_ov';
+      m.style.cssText = 'position:fixed;inset:0;background:rgba(8,12,20,.72);z-index:99988;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 14px';
+      m.innerHTML =
+        '<div style="background:#fff;border-radius:16px;max-width:820px;width:100%;padding:22px 24px;box-shadow:0 30px 80px rgba(0,0,0,.5)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+        '<h3 style="margin:0;color:var(--accent,#032257)">🎬 QT 영상 관리</h3>' +
+        '<button class="btn btn-line" id="vm_close" style="padding:4px 12px">닫기</button></div>' +
+        '<div id="vm_body"><p class="qt-loading">불러오는 중…</p></div></div>';
+      document.body.appendChild(m);
+      m.querySelector('#vm_close').onclick = function () { m.remove(); };
+      m.addEventListener('click', function (e) { if (e.target === m) m.remove(); });
+      function reload() {
+        api('GET', 'video_jobs?select=id,sermon_date,status,progress,video_url,claimed_by,error,created_at&order=created_at.desc&limit=60').then(function (rows) {
+          rows = rows || [];
+          var body = m.querySelector('#vm_body'); if (!body) return;
+          if (!rows.length) { body.innerHTML = '<p style="color:#9aa5b1;font-size:.9rem;padding:10px 0">아직 제작한 영상이 없습니다. 설교관리에서 매일 QT를 열고 🎬 영상 제작을 눌러보세요.</p>'; return; }
+          var rowsHtml = rows.map(function (j) {
+            var canRevise = j.status === 'done';
+            var canRetry = j.status === 'error' || j.status === 'canceled';
+            var canReview = j.status === 'review';
+            var canDelete = ['done', 'error', 'canceled'].indexOf(j.status) >= 0;
+            return '<tr data-id="' + j.id + '" data-date="' + esc(j.sermon_date) + '">' +
+              '<td style="white-space:nowrap;font-weight:600">' + esc(j.sermon_date) + '</td>' +
+              '<td>' + statusBadge(j) + (j.claimed_by ? '<div style="font-size:.68rem;color:#9aa5b1;margin-top:2px">' + esc(j.claimed_by) + '</div>' : '') + (j.status === 'error' && j.error ? '<div style="font-size:.68rem;color:#c0392b;margin-top:2px;max-width:200px;white-space:normal">' + esc(String(j.error).slice(0, 120)) + '</div>' : '') + '</td>' +
+              '<td style="text-align:right;white-space:nowrap">' +
+              (j.video_url ? '<button class="btn btn-line vm-play" style="padding:3px 9px;font-size:.76rem">▶ 재생</button> ' : '') +
+              (canReview ? '<button class="btn btn-solid vm-open" style="padding:3px 9px;font-size:.76rem;background:#a8742a;border-color:#a8742a">🖼 검토</button> ' : '') +
+              (canRevise ? '<button class="btn btn-line vm-revise" style="padding:3px 9px;font-size:.76rem">🔧 수정</button> ' : '') +
+              (canRetry ? '<button class="btn btn-line vm-open" style="padding:3px 9px;font-size:.76rem">↻ 다시</button> ' : '') +
+              (!canReview && !canRevise && !canRetry && !j.video_url ? '<button class="btn btn-line vm-open" style="padding:3px 9px;font-size:.76rem">열기</button> ' : '') +
+              (canDelete ? '<button class="btn btn-line vm-del" style="padding:3px 9px;font-size:.76rem;color:#c0392b">삭제</button>' : '') +
+              '</td></tr>';
+          }).join('');
+          body.innerHTML =
+            '<div style="overflow:auto"><table class="fin-table" style="min-width:520px;width:100%"><thead><tr>' +
+            '<th>일자</th><th>상태</th><th style="text-align:right">관리</th></tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+            '<p style="font-size:.74rem;color:#9aa5b1;margin-top:10px">최근 60건. 상태는 자동으로 갱신됩니다. 검토·수정·재생은 각 행의 버튼을 누르세요.</p>';
+          function idOf(el) { var tr = el.closest('tr'); return { id: tr.getAttribute('data-id'), date: tr.getAttribute('data-date') }; }
+          Array.prototype.forEach.call(body.querySelectorAll('.vm-play'), function (b) { b.onclick = function () { var j = rows.filter(function (r) { return String(r.id) === idOf(b).id; })[0]; if (j && j.video_url) window.open(j.video_url, '_blank'); }; });
+          Array.prototype.forEach.call(body.querySelectorAll('.vm-open'), function (b) { b.onclick = function () { m.remove(); openStudio(idOf(b).date, null); }; });
+          Array.prototype.forEach.call(body.querySelectorAll('.vm-revise'), function (b) { b.onclick = function () { m.remove(); openStudio(idOf(b).date, null); }; });
+          Array.prototype.forEach.call(body.querySelectorAll('.vm-del'), function (b) {
+            b.onclick = function () {
+              if (!confirm('이 영상 작업 기록을 삭제할까요?\n(이미 게시된 영상 파일은 지워지지 않습니다)')) return;
+              api('DELETE', 'video_jobs?id=eq.' + idOf(b).id, null, 'return=minimal').then(reload).catch(function (e) { alert('삭제 실패: ' + e.message); });
+            };
+          });
+        }).catch(function (e) {
+          var body = m.querySelector('#vm_body'); if (body) body.innerHTML = '<p style="color:#c0392b">불러오기 실패: ' + esc(e.message) + '</p>';
+        });
+      }
+      reload();
+    }
+
+    window.VideoStudio = { open: openStudio, chipHtml: chipHtml, wireChips: wireChips, openManager: openManager };
   })();
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
