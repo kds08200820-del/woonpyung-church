@@ -7278,7 +7278,7 @@ console.log('[affairs.js] v20260712memo2');
   // ════════════════════════════════════════════════════════════
   (function () {
     var ACTIVE = ['pending', 'processing', 'review', 'regen', 'approved', 'revise'];
-    var DEF = { orientation: 'portrait', scene_count: 6, voice: 'female', style: 'storybook', subtitle: { style: 'box', size: 'medium', position: 'bottom' }, instagram: true };
+    var DEF = { orientation: 'portrait', scene_count: 6, voice: 'female', style: 'storybook', narrative: 'grandma', subtitle: { style: 'box', size: 'medium', position: 'bottom' }, instagram: true };
     var jobs = {};          // date → 최신 작업
     var prevStatus = {};    // job.id → 직전 상태 (알림 감지)
     var vsTimer = null, vsLastStatus = null, notifAsked = false;
@@ -7393,6 +7393,7 @@ console.log('[affairs.js] v20260712memo2');
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px">' +
         fld('화면', '<select id="vs_ori"><option value="portrait">세로 9:16 (쇼츠·릴스)</option><option value="landscape">가로 16:9 (유튜브)</option></select>') +
         fld('그림 화풍', '<select id="vs_style"><option value="storybook">동화책 (수채화·색연필)</option><option value="cinematic">실사 시네마틱</option></select>') +
+        fld('이야기 형식', '<select id="vs_narr"><option value="grandma">할머니가 아이에게 들려주기</option><option value="plain">일반 내레이션</option></select>') +
         fld('장면 수', '<select id="vs_n"><option>4</option><option>5</option><option selected>6</option><option>8</option></select>') +
         fld('목소리', '<select id="vs_voice"><option value="female">여성 (선히)</option><option value="male">남성 (인준)</option></select>') +
         fld('자막 스타일', '<select id="vs_substyle"><option value="box">박스형 (세련)</option><option value="outline">테두리형 (기본)</option><option value="none">자막 없음</option></select>') +
@@ -7409,6 +7410,7 @@ console.log('[affairs.js] v20260712memo2');
         return {
           orientation: b.querySelector('#vs_ori').value,
           style: b.querySelector('#vs_style').value,
+          narrative: b.querySelector('#vs_narr').value,
           scene_count: Number(b.querySelector('#vs_n').value),
           voice: b.querySelector('#vs_voice').value,
           subtitle: { style: b.querySelector('#vs_substyle').value, size: b.querySelector('#vs_subsize').value, position: b.querySelector('#vs_subpos').value },
@@ -7419,6 +7421,7 @@ console.log('[affairs.js] v20260712memo2');
         try {
           b.querySelector('#vs_ori').value = s2.orientation || 'portrait';
           b.querySelector('#vs_style').value = s2.style || 'storybook';
+          b.querySelector('#vs_narr').value = s2.narrative || 'grandma';
           b.querySelector('#vs_n').value = String(s2.scene_count || 6);
           b.querySelector('#vs_voice').value = s2.voice || 'female';
           var sub = s2.subtitle || {};
