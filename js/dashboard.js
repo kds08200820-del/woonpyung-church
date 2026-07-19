@@ -262,24 +262,26 @@ console.log('[dashboard.js] v20260705qtfallback');
     var ttsOk = !!window.speechSynthesis;
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.55);z-index:9600;display:flex;align-items:flex-start;justify-content:center;padding:20px 12px;overflow:auto';
-    ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:720px;width:100%;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.32)">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div style="min-width:0">' +
+    ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:720px;width:100%;padding:16px 18px;box-shadow:0 24px 60px rgba(0,0,0,.32);display:flex;flex-direction:column;max-height:calc(100vh - 28px);max-height:calc(100dvh - 28px)">' +
+      '<div style="flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div style="min-width:0">' +
       '<div style="font-size:.76rem;color:#5b7a52;font-weight:700">Day ' + day.d + ' · ' + esc(P.themes[day.t]) + '</div>' +
       '<h3 style="margin:4px 0 0;color:var(--accent,#032257);font-family:\'Noto Serif KR\',serif">' + esc(day.r) + ' <span style="font-size:.72rem;color:#9aa5b1;font-weight:400">우리말성경</span></h3></div>' +
       '<div style="display:flex;gap:6px;flex:0 0 auto">' +
       '<button class="btn btn-line" id="brm_ai" style="padding:4px 12px;white-space:nowrap">🔊 음성듣기</button>' +
       '<button class="btn btn-line" id="brm_close" style="padding:4px 12px;white-space:nowrap">닫기</button></div></div>' +
+      '<div id="brm_scroll" style="flex:1 1 auto;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;margin-top:6px">' +
       (function () {   // 🧭 구속사 파노라마: 지금 성경 전체 이야기의 어디쯤을 읽고 있는지 + 오늘 본문의 의미
         var N = window.BIBLE_NOTES; if (!N) return '';
         var t = N.themes[day.t] || '', dn = N.days[day.d - 1] || '';
-        return '<div style="margin-top:12px;background:#f4f7fb;border:1px solid #dde6f2;border-radius:11px;padding:12px 14px">' +
+        return '<div style="background:#f4f7fb;border:1px solid #dde6f2;border-radius:11px;padding:12px 14px">' +
           '<div style="font-size:.74rem;font-weight:700;color:#3a5a8c;margin-bottom:5px">🧭 구속사 파노라마 · 주제 ' + (day.t + 1) + '/38</div>' +
           (t ? '<div style="font-size:.84rem;line-height:1.75;color:#44506a">' + esc(t) + '</div>' : '') +
           (dn ? '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #d3ddeb;font-size:.86rem;line-height:1.75;color:#3f5240">💬 ' + esc(dn) + '</div>' : '') +
           '</div>';
       })() +
-      '<div id="brm_body" style="margin-top:14px;max-height:60vh;overflow:auto;line-height:1.95;font-size:1.02rem;font-family:\'Noto Serif KR\',serif;color:#1f2937"><p class="qt-loading">본문을 불러오는 중…</p></div>' +
-      (onDone ? '<div style="margin-top:14px;text-align:center"><button type="button" id="brm_done" style="padding:10px 28px;border:0;border-radius:10px;background:var(--accent,#032257);color:#fff;font:inherit;font-weight:700;cursor:pointer">✓ 읽기 완료</button></div>' : '') +
+      '<div id="brm_body" style="margin-top:14px;line-height:1.95;font-size:1.02rem;font-family:\'Noto Serif KR\',serif;color:#1f2937"><p class="qt-loading">본문을 불러오는 중…</p></div>' +
+      '</div>' +
+      (onDone ? '<div style="flex:0 0 auto;margin-top:12px;text-align:center"><button type="button" id="brm_done" style="padding:10px 28px;border:0;border-radius:10px;background:var(--accent,#032257);color:#fff;font:inherit;font-weight:700;cursor:pointer">✓ 읽기 완료</button></div>' : '') +
       '</div>';
     document.body.appendChild(ov); document.body.style.overflow = 'hidden';
 
@@ -335,14 +337,14 @@ console.log('[dashboard.js] v20260705qtfallback');
     var aiBtn = ov.querySelector('#brm_ai'), aiActive = false, aiIdx = 0;
     // 플레이어 바(진행 슬라이더 + 장 이동) — 헤더 아래, 본문 위에 삽입
     var pl = document.createElement('div');
-    pl.style.cssText = 'display:none;margin-top:12px;background:#eef4ee;border:1px solid #cfe0cf;border-radius:12px;padding:10px 12px';
+    pl.style.cssText = 'flex:0 0 auto;display:none;margin-top:8px;background:#eef4ee;border:1px solid #cfe0cf;border-radius:12px;padding:9px 12px';
     pl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">' +
       '<button type="button" class="btn btn-line" id="brm_prev" style="padding:2px 10px">⏮</button>' +
       '<div id="brm_plabel" style="flex:1;text-align:center;font-weight:700;color:#2f5133;font-size:.92rem">–</div>' +
       '<button type="button" class="btn btn-line" id="brm_next" style="padding:2px 10px">⏭</button></div>' +
       '<audio id="brm_audio" controls preload="metadata" style="width:100%;height:38px"></audio>';
-    var bodyRef = ov.querySelector('#brm_body');
-    if (bodyRef && bodyRef.parentNode) bodyRef.parentNode.insertBefore(pl, bodyRef);
+    var scrollRef = ov.querySelector('#brm_scroll');   // 재생바는 스크롤 영역 밖(헤더 아래 고정) — 본문만 스크롤
+    if (scrollRef && scrollRef.parentNode) scrollRef.parentNode.insertBefore(pl, scrollRef);
     var audioEl = pl.querySelector('#brm_audio'), plabel = pl.querySelector('#brm_plabel');
     function aiStop() { aiActive = false; try { audioEl.pause(); } catch (e) { } pl.style.display = 'none'; if (aiBtn) aiBtn.textContent = '🔊 음성듣기'; }
     function playChap(i) {
