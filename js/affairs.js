@@ -850,58 +850,85 @@ console.log('[affairs.js] v20260712memo2');
     }
     function bibleAudioModal(files, panel) {
       var R2 = (window.R2_UPLOAD_URL || 'https://church-files.kds08200820.workers.dev').replace(/\/$/, '');
-      var BABBR = (window.BIBLE_PLAN && window.BIBLE_PLAN.names) ? Object.keys(window.BIBLE_PLAN.names) : [];
-      function bookName(bid) { var ab = BABBR[bid - 1]; return (window.BIBLE_PLAN && ab && window.BIBLE_PLAN.names[ab]) || ('책' + bid); }
+      var BIBLE_BOOKS = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기', '마태복음', '마가복음', '누가복음', '요한복음', '사도행전', '로마서', '고린도전서', '고린도후서', '갈라디아서', '에베소서', '빌립보서', '골로새서', '데살로니가전서', '데살로니가후서', '디모데전서', '디모데후서', '디도서', '빌레몬서', '히브리서', '야고보서', '베드로전서', '베드로후서', '요한일서', '요한이서', '요한삼서', '유다서', '요한계시록'];
+      function bookName(bid) { return BIBLE_BOOKS[bid - 1] || ('책' + bid); }
       function parse(n) { var m = String(n).match(/^bible-(\d+)-(\d+)\.mp3$/); return m ? { bid: +m[1], ch: +m[2] } : null; }
       function fmtBytes(x) { x = Number(x) || 0; return x >= 1048576 ? (x / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(x / 1024)) + 'KB'; }
-      // 책별 그룹
-      function groups() {
-        var by = {};
-        files.forEach(function (f) { var p = parse(f.name); if (!p) return; (by[p.bid] = by[p.bid] || []).push({ f: f, ch: p.ch }); });
-        return Object.keys(by).map(Number).sort(function (a, b) { return a - b; }).map(function (bid) {
-          return { bid: bid, name: bookName(bid), rows: by[bid].sort(function (a, b) { return a.ch - b.ch; }) };
-        });
-      }
+      function byBook() { var by = {}; files.forEach(function (f) { var p = parse(f.name); if (!p) return; (by[p.bid] = by[p.bid] || []).push({ f: f, ch: p.ch }); }); return by; }
       var ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
-      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:640px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:720px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">🎧 나의 성경읽기 음원 <span id="ba_cnt" style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + files.length + '장</span></h3><button class="btn btn-line" id="ba_close" style="padding:3px 11px">닫기</button></div>' +
-        '<p style="margin:0 0 12px;font-size:.76rem;color:#9aa5b1">교회 서버가 만든 성경 낭독(장별)입니다. 나의 성경읽기 "본문 읽기"에서 이 음성으로 재생됩니다. 삭제하면 즉시 지워집니다.</p>' +
-        '<div id="ba_body" style="max-height:64vh;overflow:auto"></div></div>';
+        '<p style="margin:0 0 12px;font-size:.76rem;color:#9aa5b1">음원이 있는 책을 누르면 장별 목록이 열립니다. 나의 성경읽기 "본문 읽기"에서 이 음성으로 재생됩니다.</p>' +
+        '<div id="ba_grid" style="max-height:66vh;overflow:auto"></div></div>';
       document.body.appendChild(ov);
       var close = pushBackClose(function () { ov.remove(); });
       ov.querySelector('#ba_close').onclick = close;
       ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
-      var body = ov.querySelector('#ba_body'), cntEl = ov.querySelector('#ba_cnt');
-      function paint() {
+      var grid = ov.querySelector('#ba_grid'), cntEl = ov.querySelector('#ba_cnt');
+
+      function cell(bid, by) {
+        var rows = by[bid], n = rows ? rows.length : 0, has = n > 0;
+        return '<button type="button" class="ba-cell" data-bid="' + bid + '"' + (has ? '' : ' disabled') +
+          ' style="text-align:center;border-radius:9px;padding:8px 4px;border:1px solid ' + (has ? '#cfe0cf' : '#eef1f5') + ';background:' + (has ? '#eef6ee' : '#fafbfc') + ';cursor:' + (has ? 'pointer' : 'default') + '">' +
+          '<div style="font-size:.8rem;font-weight:700;color:' + (has ? '#2f5133' : '#c3cad3') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(bookName(bid)) + '</div>' +
+          '<div style="font-size:.82rem;font-weight:800;color:' + (has ? '#2f6d8f' : '#d3d9e0') + '">' + (has ? n : '·') + '</div></button>';
+      }
+      function section(title, from, to, by) {
+        var cells = ''; for (var bid = from; bid <= to; bid++) cells += cell(bid, by);
+        return '<div style="font-size:.82rem;color:#7b8794;font-weight:700;margin:2px 0 7px">' + title + '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:7px;margin-bottom:14px">' + cells + '</div>';
+      }
+      function renderGrid() {
         cntEl.textContent = files.length + '장';
-        if (!files.length) { body.innerHTML = '<p style="color:#9aa5b1;font-size:.9rem;padding:8px 0">아직 생성된 성경 음원이 없습니다.</p>'; return; }
-        body.innerHTML = groups().map(function (g) {
-          return '<div style="margin-bottom:14px"><div style="font-weight:700;color:var(--accent,#032257);margin-bottom:6px">' + esc(g.name) + ' <span style="font-size:.78rem;color:#9aa5b1;font-weight:600">' + g.rows.length + '장</span></div>' +
-            g.rows.map(function (r) {
-              var url = R2 + '/f/bible/' + encodeURIComponent(r.f.name);
-              return '<div style="display:flex;gap:9px;align-items:center;padding:6px 0;border-bottom:1px solid #f3f3f3">' +
-                '<div style="flex:0 0 54px;font-size:.85rem;color:#4a5568">' + r.ch + '장</div>' +
-                '<audio controls preload="none" src="' + esc(url) + '" style="flex:1;height:32px;max-width:230px"></audio>' +
-                '<div style="flex:0 0 auto;font-size:.72rem;color:#9aa5b1">' + fmtBytes(r.f.size) + '</div>' +
-                '<button class="btn btn-line ba-del" data-name="' + esc(r.f.name) + '" title="삭제" style="flex:0 0 auto;padding:3px 8px;color:#c0392b;border-color:#e6b3b3">🗑</button>' +
-                '</div>';
-            }).join('') + '</div>';
-        }).join('');
-        Array.prototype.forEach.call(body.querySelectorAll('.ba-del'), function (b) {
-          b.onclick = function () {
-            var name = b.dataset.name;
-            if (!confirm(name + ' 을(를) 삭제할까요?\n삭제 후 다시 생성할 수 있습니다.')) return;
-            b.disabled = true; b.textContent = '…';
-            bibleAdminApi({ action: 'delete', name: name }).then(function (j) {
-              if (!j.ok) throw new Error((j && j.error) || ('HTTP ' + j._http));
-              files = files.filter(function (x) { return x.name !== name; }); paint();
-              var numEl = panel && panel.querySelector('#bibleAudioNum'); if (numEl) numEl.textContent = files.length + '장';
-            }).catch(function (e) { b.disabled = false; b.textContent = '🗑'; alert('삭제 실패: ' + ((e && e.message) || '오류')); });
-          };
+        var by = byBook();
+        grid.innerHTML = section('구약 39권', 1, 39, by) + section('신약 27권', 40, 66, by);
+        Array.prototype.forEach.call(grid.querySelectorAll('.ba-cell:not([disabled])'), function (b) {
+          b.onclick = function () { bookChaptersModal(Number(b.dataset.bid)); };
         });
       }
-      paint();
+
+      function bookChaptersModal(bid) {
+        var ov2 = document.createElement('div');
+        ov2.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9720;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+        ov2.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:560px;width:100%;padding:18px 20px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="margin:0;color:var(--accent,#032257)">' + esc(bookName(bid)) + ' <span id="bc_cnt" style="font-size:.84rem;color:#9aa5b1;font-weight:600"></span></h3><button class="btn btn-line" id="bc_close" style="padding:3px 11px">닫기</button></div>' +
+          '<div id="bc_body" style="max-height:64vh;overflow:auto"></div></div>';
+        document.body.appendChild(ov2);
+        var close2 = pushBackClose(function () { ov2.remove(); });
+        ov2.querySelector('#bc_close').onclick = close2;
+        ov2.addEventListener('click', function (e) { if (e.target === ov2) close2(); });
+        var bcBody = ov2.querySelector('#bc_body'), bcCnt = ov2.querySelector('#bc_cnt');
+        function paintChapters() {
+          var rows = (byBook()[bid] || []).sort(function (a, b) { return a.ch - b.ch; });
+          bcCnt.textContent = rows.length + '장';
+          if (!rows.length) { bcBody.innerHTML = '<p style="color:#9aa5b1;padding:8px 0">이 책의 음원이 없습니다.</p>'; return; }
+          bcBody.innerHTML = rows.map(function (r) {
+            var url = R2 + '/f/bible/' + encodeURIComponent(r.f.name);
+            return '<div style="display:flex;gap:9px;align-items:center;padding:6px 0;border-bottom:1px solid #f3f3f3">' +
+              '<div style="flex:0 0 48px;font-size:.85rem;color:#4a5568">' + r.ch + '장</div>' +
+              '<audio controls preload="none" src="' + esc(url) + '" style="flex:1;height:32px;max-width:230px"></audio>' +
+              '<div style="flex:0 0 auto;font-size:.72rem;color:#9aa5b1">' + fmtBytes(r.f.size) + '</div>' +
+              '<button class="btn btn-line bc-del" data-name="' + esc(r.f.name) + '" title="삭제" style="flex:0 0 auto;padding:3px 8px;color:#c0392b;border-color:#e6b3b3">🗑</button></div>';
+          }).join('');
+          Array.prototype.forEach.call(bcBody.querySelectorAll('.bc-del'), function (b) {
+            b.onclick = function () {
+              var name = b.dataset.name;
+              if (!confirm(name + ' 을(를) 삭제할까요?\n삭제 후 다시 생성할 수 있습니다.')) return;
+              b.disabled = true; b.textContent = '…';
+              bibleAdminApi({ action: 'delete', name: name }).then(function (j) {
+                if (!j.ok) throw new Error((j && j.error) || ('HTTP ' + j._http));
+                files = files.filter(function (x) { return x.name !== name; });
+                paintChapters(); renderGrid();
+                var numEl = panel && panel.querySelector('#bibleAudioNum'); if (numEl) numEl.textContent = files.length + '장';
+              }).catch(function (e) { b.disabled = false; b.textContent = '🗑'; alert('삭제 실패: ' + ((e && e.message) || '오류')); });
+            };
+          });
+        }
+        paintChapters();
+      }
+
+      renderGrid();
     }
 
     // ── QT 영상 관리 카드: 상태 요약 + 클릭 시 전체 관리 모달 ──
