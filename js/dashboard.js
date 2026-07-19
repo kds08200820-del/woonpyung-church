@@ -267,8 +267,7 @@ console.log('[dashboard.js] v20260705qtfallback');
       '<div style="font-size:.76rem;color:#5b7a52;font-weight:700">Day ' + day.d + ' · ' + esc(P.themes[day.t]) + '</div>' +
       '<h3 style="margin:4px 0 0;color:var(--accent,#032257);font-family:\'Noto Serif KR\',serif">' + esc(day.r) + ' <span style="font-size:.72rem;color:#9aa5b1;font-weight:400">우리말성경</span></h3></div>' +
       '<div style="display:flex;gap:6px;flex:0 0 auto">' +
-      '<button class="btn btn-line" id="brm_ai" style="padding:4px 12px;white-space:nowrap">🎙 AI 음성</button>' +
-      (ttsOk ? '<button class="btn btn-line" id="brm_tts" style="padding:4px 12px;white-space:nowrap">🔊 듣기</button>' : '') +
+      '<button class="btn btn-line" id="brm_ai" style="padding:4px 12px;white-space:nowrap">🔊 음성듣기</button>' +
       '<button class="btn btn-line" id="brm_close" style="padding:4px 12px;white-space:nowrap">닫기</button></div></div>' +
       (function () {   // 🧭 구속사 파노라마: 지금 성경 전체 이야기의 어디쯤을 읽고 있는지 + 오늘 본문의 의미
         var N = window.BIBLE_NOTES; if (!N) return '';
@@ -334,7 +333,7 @@ console.log('[dashboard.js] v20260705qtfallback');
       for (var c = rf[1]; c <= rf[2]; c++) aiChaps.push({ name: P.names[rf[0]] || rf[0], ch: c, url: R2B + 'bible-' + bid + '-' + c + '.mp3' });
     });
     var aiAudio = null, aiOn = false, aiBtn = ov.querySelector('#brm_ai');
-    function aiStop() { aiOn = false; if (aiAudio) { try { aiAudio.pause(); } catch (e) { } aiAudio = null; } if (aiBtn) aiBtn.textContent = '🎙 AI 음성'; }
+    function aiStop() { aiOn = false; if (aiAudio) { try { aiAudio.pause(); } catch (e) { } aiAudio = null; } if (aiBtn) aiBtn.textContent = '🔊 음성듣기'; }
     function aiPlayFrom(i) {
       if (i >= aiChaps.length) { aiStop(); return; }
       aiOn = true; var c = aiChaps[i];
@@ -351,9 +350,9 @@ console.log('[dashboard.js] v20260705qtfallback');
       if (!aiChaps.length) { alert('본문 정보를 찾을 수 없습니다.'); return; }
       aiBtn.textContent = '⏳ 확인 중…';
       fetch(aiChaps[0].url, { method: 'GET' }).then(function (r) {
-        if (r.status !== 200) { aiBtn.textContent = '🎙 AI 음성'; alert('이 본문의 AI 음성이 아직 준비되지 않았습니다.'); return; }
+        if (r.status !== 200) { aiBtn.textContent = '🔊 음성듣기'; alert('이 본문의 AI 음성이 아직 준비되지 않았습니다.'); return; }
         aiPlayFrom(0);
-      }).catch(function () { aiBtn.textContent = '🎙 AI 음성'; alert('AI 음성을 불러오지 못했습니다.'); });
+      }).catch(function () { aiBtn.textContent = '🔊 음성듣기'; alert('AI 음성을 불러오지 못했습니다.'); });
     };
 
     function closeDom() { ttsStop(); aiStop(); ov.remove(); document.body.style.overflow = ''; }
