@@ -227,7 +227,7 @@ var WPCTts = (function () {
   }
   // 낭독 텍스트의 짧은 지문(내용이 바뀌면 값도 바뀜) — 저장 파일명에 넣어 옛 음성 재사용을 막는다
   function textSig(s) { var h = 2166136261 >>> 0; s = String(s || ""); for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); }
-  function ttsBase() { var sb = (window.SUPABASE_URL || "").replace(/\/$/, ""); return sb + "/storage/v1/object/public/tts-cache/"; }
+  function ttsBase() { return "https://church-files.kds08200820.workers.dev/f/tts/"; }   // QT 음성은 Cloudflare R2에 저장(Supabase 용량 문제로 이전)
   // ── AI 음성(Gemini TTS via Edge Function) ──
   // 서버 생성이 멈추거나 응답이 없어도 화면이 '만드는 중…'에 영원히 갇히지 않도록 시간 제한을 둔다(초과 시 기본 음성으로 전환).
   var TTS_GEN_TIMEOUT_MS = 150000;   // 최대 2분 30초 대기(정상 생성은 1~2분) — 넘으면 중단
@@ -360,9 +360,8 @@ var WPCTts = (function () {
   function toggle(text, btn, label, opts) { if (active) stop(); else start(text, btn, label, opts); }
   // 날짜(YYYY-MM-DD)로 미리 만든 로컬 음성 후보 URL(mp3→wav)
   function preUrlsForDate(dashDate) {
-    var sb = (window.SUPABASE_URL || "").replace(/\/$/, "");
-    if (!sb || !dashDate) return [];
-    var base = sb + "/storage/v1/object/public/tts-cache/qt-" + dashDate;
+    if (!dashDate) return [];
+    var base = "https://church-files.kds08200820.workers.dev/f/tts/qt-" + dashDate;
     return [base + ".mp3", base + ".wav"];
   }
   window.addEventListener("pagehide", stop);
