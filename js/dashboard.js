@@ -334,7 +334,7 @@ console.log('[dashboard.js] v20260705qtfallback');
       var bid = Object.keys(P.names).indexOf(rf[0]) + 1;
       for (var c = rf[1]; c <= rf[2]; c++) aiChaps.push({ name: P.names[rf[0]] || rf[0], ch: c, url: R2B + 'bible-' + bid + '-' + c + '.mp3' });
     });
-    var aiBtn = ov.querySelector('#brm_ai'), aiActive = false, aiIdx = 0;
+    var aiBtn = ov.querySelector('#brm_ai'), aiStarted = false, aiIdx = 0;
     // 플레이어 바(진행 슬라이더 + 장 이동) — 헤더 아래, 본문 위에 삽입
     var pl = document.createElement('div');
     pl.style.cssText = 'flex:0 0 auto;display:none;margin-top:8px;background:#eef4ee;border:1px solid #cfe0cf;border-radius:12px;padding:9px 12px';
@@ -346,29 +346,36 @@ console.log('[dashboard.js] v20260705qtfallback');
     var scrollRef = ov.querySelector('#brm_scroll');   // 재생바는 스크롤 영역 밖(헤더 아래 고정) — 본문만 스크롤
     if (scrollRef && scrollRef.parentNode) scrollRef.parentNode.insertBefore(pl, scrollRef);
     var audioEl = pl.querySelector('#brm_audio'), plabel = pl.querySelector('#brm_plabel');
-    function aiStop() { aiActive = false; try { audioEl.pause(); } catch (e) { } pl.style.display = 'none'; if (aiBtn) aiBtn.textContent = '🔊 음성듣기'; }
+    function setBtn(t) { if (aiBtn) aiBtn.textContent = t; }
+    function aiStop() { aiStarted = false; try { audioEl.pause(); } catch (e) { } pl.style.display = 'none'; setBtn('🔊 음성듣기'); }   // 모달 닫을 때만 완전 정지
     function playChap(i) {
       if (i < 0) i = 0;
-      if (i >= aiChaps.length) { try { audioEl.pause(); } catch (e) { } return; }   // 마지막 장 끝 → 정지(플레이어 유지)
+      if (i >= aiChaps.length) { try { audioEl.pause(); } catch (e) { } setBtn('🔊 다시 듣기'); return; }   // 전체 끝
       aiIdx = i; var c = aiChaps[i];
       plabel.textContent = c.name + ' ' + c.ch + '장  (' + (i + 1) + '/' + aiChaps.length + ')';
       audioEl.src = c.url;
       audioEl.play().catch(function () { });
     }
-    audioEl.addEventListener('ended', function () { if (aiActive && aiIdx < aiChaps.length - 1) playChap(aiIdx + 1); });
-    audioEl.addEventListener('error', function () { if (aiActive && aiIdx < aiChaps.length - 1) playChap(aiIdx + 1); });   // 없는 장 자동 건너뜀
-    pl.querySelector('#brm_prev').onclick = function () { playChap(aiIdx - 1); };
-    pl.querySelector('#brm_next').onclick = function () { playChap(aiIdx + 1); };
+    // 한 장이 끝나면 다음 장 자동 재생(위치 이어감). 마지막 장이면 '다시 듣기'로.
+    audioEl.addEventListener('ended', function () { if (aiIdx < aiChaps.length - 1) playChap(aiIdx + 1); else setBtn('🔊 다시 듣기'); });
+    audioEl.addEventListener('error', function () { if (aiStarted && aiIdx < aiChaps.length - 1) playChap(aiIdx + 1); });   // 없는 장 자동 건너뜀
+    audioEl.addEventListener('play', function () { setBtn('⏸ 멈춤'); });     // 네이티브 컨트롤과 헤더 버튼 라벨 동기화
+    audioEl.addEventListener('pause', function () { if (aiStarted && !audioEl.ended) setBtn('▶ 이어듣기'); });
+    pl.querySelector('#brm_prev').onclick = function () { if (aiStarted) playChap(aiIdx - 1); };
+    pl.querySelector('#brm_next').onclick = function () { if (aiStarted) playChap(aiIdx + 1); };
     if (aiBtn) aiBtn.onclick = function () {
-      if (aiActive) { aiStop(); return; }
-      if (!aiChaps.length) { alert('본문 정보를 찾을 수 없습니다.'); return; }
-      aiBtn.textContent = '⏳ 확인 중…';
-      fetch(aiChaps[0].url, { method: 'GET' }).then(function (r) {
-        aiBtn.textContent = '🔊 음성듣기';
-        if (r.status !== 200) { alert('이 본문의 AI 음성이 아직 준비되지 않았습니다.'); return; }
-        aiActive = true; pl.style.display = 'block'; aiBtn.textContent = '🔊 음성 닫기';
-        playChap(0);
-      }).catch(function () { aiBtn.textContent = '🔊 음성듣기'; alert('AI 음성을 불러오지 못했습니다.'); });
+      if (!aiStarted) {   // 최초 시작
+        if (!aiChaps.length) { alert('본문 정보를 찾을 수 없습니다.'); return; }
+        setBtn('⏳ 확인 중…');
+        fetch(aiChaps[0].url, { method: 'GET', headers: { Range: 'bytes=0-1' } }).then(function (r) {
+          if (r.status !== 200 && r.status !== 206) { setBtn('🔊 음성듣기'); alert('이 본문의 AI 음성이 아직 준비되지 않았습니다.'); return; }
+          aiStarted = true; pl.style.display = 'block'; playChap(0);
+        }).catch(function () { setBtn('🔊 음성듣기'); alert('AI 음성을 불러오지 못했습니다.'); });
+        return;
+      }
+      // 이미 재생 세션 중: 재생/일시정지 토글(위치 유지). 다 들었으면 처음부터.
+      if (audioEl.ended) { playChap(0); return; }
+      if (audioEl.paused) audioEl.play().catch(function () { }); else audioEl.pause();
     };
 
     function closeDom() { ttsStop(); aiStop(); ov.remove(); document.body.style.overflow = ''; }
