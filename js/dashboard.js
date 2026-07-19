@@ -332,26 +332,40 @@ console.log('[dashboard.js] v20260705qtfallback');
       var bid = Object.keys(P.names).indexOf(rf[0]) + 1;
       for (var c = rf[1]; c <= rf[2]; c++) aiChaps.push({ name: P.names[rf[0]] || rf[0], ch: c, url: R2B + 'bible-' + bid + '-' + c + '.mp3' });
     });
-    var aiAudio = null, aiOn = false, aiBtn = ov.querySelector('#brm_ai');
-    function aiStop() { aiOn = false; if (aiAudio) { try { aiAudio.pause(); } catch (e) { } aiAudio = null; } if (aiBtn) aiBtn.textContent = '🔊 음성듣기'; }
-    function aiPlayFrom(i) {
-      if (i >= aiChaps.length) { aiStop(); return; }
-      aiOn = true; var c = aiChaps[i];
-      if (aiBtn) aiBtn.textContent = '⏸ ' + c.name + ' ' + c.ch + '장';
-      var a = new Audio(); aiAudio = a; a.playbackRate = 1; a.src = c.url;
-      a.onended = function () { if (aiOn && aiAudio === a) aiPlayFrom(i + 1); };
-      a.onerror = function () { if (aiOn && aiAudio === a) aiPlayFrom(i + 1); };   // 그 장 음원이 없으면 다음 장으로
-      a.play().catch(function () { if (aiOn && aiAudio === a) aiPlayFrom(i + 1); });
+    var aiBtn = ov.querySelector('#brm_ai'), aiActive = false, aiIdx = 0;
+    // 플레이어 바(진행 슬라이더 + 장 이동) — 헤더 아래, 본문 위에 삽입
+    var pl = document.createElement('div');
+    pl.style.cssText = 'display:none;margin-top:12px;background:#eef4ee;border:1px solid #cfe0cf;border-radius:12px;padding:10px 12px';
+    pl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">' +
+      '<button type="button" class="btn btn-line" id="brm_prev" style="padding:2px 10px">⏮</button>' +
+      '<div id="brm_plabel" style="flex:1;text-align:center;font-weight:700;color:#2f5133;font-size:.92rem">–</div>' +
+      '<button type="button" class="btn btn-line" id="brm_next" style="padding:2px 10px">⏭</button></div>' +
+      '<audio id="brm_audio" controls preload="metadata" style="width:100%;height:38px"></audio>';
+    var bodyRef = ov.querySelector('#brm_body');
+    if (bodyRef && bodyRef.parentNode) bodyRef.parentNode.insertBefore(pl, bodyRef);
+    var audioEl = pl.querySelector('#brm_audio'), plabel = pl.querySelector('#brm_plabel');
+    function aiStop() { aiActive = false; try { audioEl.pause(); } catch (e) { } pl.style.display = 'none'; if (aiBtn) aiBtn.textContent = '🔊 음성듣기'; }
+    function playChap(i) {
+      if (i < 0) i = 0;
+      if (i >= aiChaps.length) { try { audioEl.pause(); } catch (e) { } return; }   // 마지막 장 끝 → 정지(플레이어 유지)
+      aiIdx = i; var c = aiChaps[i];
+      plabel.textContent = c.name + ' ' + c.ch + '장  (' + (i + 1) + '/' + aiChaps.length + ')';
+      audioEl.src = c.url;
+      audioEl.play().catch(function () { });
     }
+    audioEl.addEventListener('ended', function () { if (aiActive && aiIdx < aiChaps.length - 1) playChap(aiIdx + 1); });
+    audioEl.addEventListener('error', function () { if (aiActive && aiIdx < aiChaps.length - 1) playChap(aiIdx + 1); });   // 없는 장 자동 건너뜀
+    pl.querySelector('#brm_prev').onclick = function () { playChap(aiIdx - 1); };
+    pl.querySelector('#brm_next').onclick = function () { playChap(aiIdx + 1); };
     if (aiBtn) aiBtn.onclick = function () {
-      if (aiOn) { aiStop(); return; }
-      try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { }   // 브라우저 듣기와 겹치지 않게
-      if (typeof ttsStop === 'function') { try { ttsStop(); } catch (e) { } }
+      if (aiActive) { aiStop(); return; }
       if (!aiChaps.length) { alert('본문 정보를 찾을 수 없습니다.'); return; }
       aiBtn.textContent = '⏳ 확인 중…';
       fetch(aiChaps[0].url, { method: 'GET' }).then(function (r) {
-        if (r.status !== 200) { aiBtn.textContent = '🔊 음성듣기'; alert('이 본문의 AI 음성이 아직 준비되지 않았습니다.'); return; }
-        aiPlayFrom(0);
+        aiBtn.textContent = '🔊 음성듣기';
+        if (r.status !== 200) { alert('이 본문의 AI 음성이 아직 준비되지 않았습니다.'); return; }
+        aiActive = true; pl.style.display = 'block'; aiBtn.textContent = '🔊 음성 닫기';
+        playChap(0);
       }).catch(function () { aiBtn.textContent = '🔊 음성듣기'; alert('AI 음성을 불러오지 못했습니다.'); });
     };
 
@@ -394,11 +408,7 @@ console.log('[dashboard.js] v20260705qtfallback');
       tts.btn = ov.querySelector('#brm_tts');
       ttsBtnLabel();
       if (tts.btn) tts.btn.onclick = function () { if (tts.on) ttsStop(); else ttsSpeakFrom(tts.idx < tts.items.length ? tts.idx : 0); };
-      // 절을 누르면 그 절부터 듣기(듣는 중이 아니어도 그 절부터 시작)
-      tts.items.forEach(function (it, i) {
-        it.el.style.cursor = 'pointer';
-        it.el.addEventListener('click', function () { ttsSpeakFrom(i); });
-      });
+      // (절-탭 브라우저 음성은 제거됨 — 낭독은 상단 '음성듣기'(AI)로 통일)
       // 일부 브라우저는 목소리 목록이 늦게 로드됨 — 미리 한 번 불러 캐시
       if (speechSynthesis.getVoices && !speechSynthesis.getVoices().length && 'onvoiceschanged' in speechSynthesis) {
         speechSynthesis.onvoiceschanged = function () { speechSynthesis.onvoiceschanged = null; };
