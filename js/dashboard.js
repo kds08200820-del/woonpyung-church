@@ -267,6 +267,7 @@ console.log('[dashboard.js] v20260705qtfallback');
       '<div style="font-size:.76rem;color:#5b7a52;font-weight:700">Day ' + day.d + ' · ' + esc(P.themes[day.t]) + '</div>' +
       '<h3 style="margin:4px 0 0;color:var(--accent,#032257);font-family:\'Noto Serif KR\',serif">' + esc(day.r) + ' <span style="font-size:.72rem;color:#9aa5b1;font-weight:400">우리말성경</span></h3></div>' +
       '<div style="display:flex;gap:6px;flex:0 0 auto">' +
+      '<button class="btn btn-line" id="brm_ai" style="padding:4px 12px;white-space:nowrap">🎙 AI 음성</button>' +
       (ttsOk ? '<button class="btn btn-line" id="brm_tts" style="padding:4px 12px;white-space:nowrap">🔊 듣기</button>' : '') +
       '<button class="btn btn-line" id="brm_close" style="padding:4px 12px;white-space:nowrap">닫기</button></div></div>' +
       (function () {   // 🧭 구속사 파노라마: 지금 성경 전체 이야기의 어디쯤을 읽고 있는지 + 오늘 본문의 의미
@@ -304,6 +305,7 @@ console.log('[dashboard.js] v20260705qtfallback');
       ttsBtnLabel();
     }
     function ttsSpeakFrom(i) {
+      if (typeof aiStop === 'function') { try { aiStop(); } catch (e) { } }   // 브라우저 듣기 시작 시 AI 재생 정지
       tts.gen++; var myGen = tts.gen;
       try { speechSynthesis.cancel(); } catch (e) { }
       if (tts.items[tts.idx]) ttsHi(tts.items[tts.idx].el, false);
@@ -324,7 +326,37 @@ console.log('[dashboard.js] v20260705qtfallback');
       })();
     }
 
-    function closeDom() { ttsStop(); ov.remove(); document.body.style.overflow = ''; }
+    // ── AI 음성(교회 서버 낭독): 장별 MP3(bible-<책번호>-<장>.mp3)를 순서대로 재생 ──
+    var R2B = (window.R2_UPLOAD_URL || 'https://church-files.kds08200820.workers.dev').replace(/\/$/, '') + '/f/bible/';
+    var aiChaps = [];
+    (day.refs || []).forEach(function (rf) {
+      var bid = Object.keys(P.names).indexOf(rf[0]) + 1;
+      for (var c = rf[1]; c <= rf[2]; c++) aiChaps.push({ name: P.names[rf[0]] || rf[0], ch: c, url: R2B + 'bible-' + bid + '-' + c + '.mp3' });
+    });
+    var aiAudio = null, aiOn = false, aiBtn = ov.querySelector('#brm_ai');
+    function aiStop() { aiOn = false; if (aiAudio) { try { aiAudio.pause(); } catch (e) { } aiAudio = null; } if (aiBtn) aiBtn.textContent = '🎙 AI 음성'; }
+    function aiPlayFrom(i) {
+      if (i >= aiChaps.length) { aiStop(); return; }
+      aiOn = true; var c = aiChaps[i];
+      if (aiBtn) aiBtn.textContent = '⏸ ' + c.name + ' ' + c.ch + '장';
+      var a = new Audio(); aiAudio = a; a.playbackRate = 1; a.src = c.url;
+      a.onended = function () { if (aiOn && aiAudio === a) aiPlayFrom(i + 1); };
+      a.onerror = function () { if (aiOn && aiAudio === a) aiPlayFrom(i + 1); };   // 그 장 음원이 없으면 다음 장으로
+      a.play().catch(function () { if (aiOn && aiAudio === a) aiPlayFrom(i + 1); });
+    }
+    if (aiBtn) aiBtn.onclick = function () {
+      if (aiOn) { aiStop(); return; }
+      try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { }   // 브라우저 듣기와 겹치지 않게
+      if (typeof ttsStop === 'function') { try { ttsStop(); } catch (e) { } }
+      if (!aiChaps.length) { alert('본문 정보를 찾을 수 없습니다.'); return; }
+      aiBtn.textContent = '⏳ 확인 중…';
+      fetch(aiChaps[0].url, { method: 'GET' }).then(function (r) {
+        if (r.status !== 200) { aiBtn.textContent = '🎙 AI 음성'; alert('이 본문의 AI 음성이 아직 준비되지 않았습니다.'); return; }
+        aiPlayFrom(0);
+      }).catch(function () { aiBtn.textContent = '🎙 AI 음성'; alert('AI 음성을 불러오지 못했습니다.'); });
+    };
+
+    function closeDom() { ttsStop(); aiStop(); ov.remove(); document.body.style.overflow = ''; }
     if (window.ModalNav) window.ModalNav.open(closeDom);
     function close() { if (window.ModalNav && window.ModalNav.close()) return; closeDom(); }
     ov.querySelector('#brm_close').onclick = close;
