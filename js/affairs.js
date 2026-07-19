@@ -899,13 +899,15 @@ console.log('[affairs.js] v20260712memo2');
     // ── AI 음성: 저장소의 '실제 파일'을 열람·재생·삭제 ──
     //    (예전에는 생성 기록(tts_log)만 보여줘, 파일 삭제가 권한 문제로 조용히 실패해도
     //     "지워진 것처럼" 보이는 문제가 있었음 → 목록·삭제 모두 tts 함수(서비스 권한)로 처리)
+    // QT 음성은 Cloudflare R2에 저장됨(Supabase 용량 문제로 이전). 목록·삭제를 R2 워커로 처리(관리자 전용).
     function ttsAdminApi(body) {
       var s = sess();
-      return fetch(SB + '/functions/v1/tts', {
-        method: 'POST',
-        headers: { apikey: AK, Authorization: 'Bearer ' + ((s && s.token) || AK), 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      }).then(function (r) {
+      var R2 = (window.R2_UPLOAD_URL || 'https://church-files.kds08200820.workers.dev').replace(/\/$/, '');
+      var tok = (s && s.token) || AK;
+      var opt = { method: 'POST', headers: { Authorization: 'Bearer ' + tok } }, ep;
+      if (body.action === 'delete') { ep = '/qt-audio-delete'; opt.headers['x-qt-name'] = body.path; }
+      else { ep = '/qt-audio-list'; }
+      return fetch(R2 + ep, opt).then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (j) { j._http = r.status; return j; });
       });
     }
@@ -940,7 +942,7 @@ console.log('[affairs.js] v20260712memo2');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
       ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:680px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">🔊 저장된 AI 음성 <span id="tl_cnt" style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + files.length + '개</span></h3><button class="btn btn-line" id="tl_close" style="padding:3px 11px">닫기</button></div>' +
-        '<p style="margin:0 0 10px;font-size:.76rem;color:#9aa5b1">저장소에 실제로 존재하는 파일 목록입니다. 삭제하면 즉시 지워지며(오늘·내일 QT는 자동 생성이 다시 만듦), <b>14일이 지난 파일은 자동 삭제</b>되어 저장 공간이 항상 여유 있게 유지됩니다.</p>' +
+        '<p style="margin:0 0 10px;font-size:.76rem;color:#9aa5b1">저장소에 실제로 존재하는 파일 목록입니다. 삭제하면 즉시 지워지며(오늘·내일 QT는 자동 생성이 다시 만듦), <b>30일이 지난 파일은 자동 삭제</b>되어 저장 공간이 항상 여유 있게 유지됩니다.</p>' +
         '<div id="tl_body" style="max-height:62vh;overflow:auto"></div></div>';
       document.body.appendChild(ov);
       var close = pushBackClose(function () { ov.remove(); });
@@ -956,7 +958,7 @@ console.log('[affairs.js] v20260712memo2');
           var when = d ? fmtD(d) : fmtTime(f.created_at);
           var title = (lg && lg.label) || f.name;
           var sub = [(lg && lg.voice) || null, fmtBytes(f.size), fmtTime(f.created_at)].filter(Boolean).join(' · ');
-          var url = SB + '/storage/v1/object/public/tts-cache/' + encodeURIComponent(f.name);
+          var url = (window.R2_UPLOAD_URL || 'https://church-files.kds08200820.workers.dev').replace(/\/$/, '') + '/f/tts/' + encodeURIComponent(f.name);
           return '<div style="display:flex;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0">' +
             '<div style="flex:0 0 78px;font-size:.8rem;color:#9aa5b1">' + esc(when) + '</div>' +
             '<div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--accent,#032257);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + esc(f.name) + '">' + esc(title) + '</div>' +
