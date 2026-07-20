@@ -1673,6 +1673,28 @@ console.log('[affairs.js] v20260712memo2');
     for (var i = 0; i < LIB_SERIES_TAG.length; i++) if (LIB_SERIES_TAG[i][1].test(t)) return LIB_SERIES_TAG[i][0];
     return '';
   }
+  // ── 성경·주석 하위 '성경별' 필터: 제목에서 다루는 성경 책 1권 감지 ──
+  var BIBLE_ALL = BIBLE_OT.concat(BIBLE_NT);                       // 성경 순서(창세기→요한계시록)
+  var BIBLE_BY_LEN = BIBLE_ALL.slice().sort(function (a, b) { return b.length - a.length; }); // 긴 이름 우선(예: 예레미야애가⊃예레미야)
+  var LIB_BIBLE_EN2KR = { Genesis: '창세기', Exodus: '출애굽기', Leviticus: '레위기', Numbers: '민수기', Deuteronomy: '신명기', Joshua: '여호수아', Judges: '사사기', Ruth: '룻기', Samuel: '사무엘상', Kings: '열왕기상', Chronicles: '역대상', Ezra: '에스라', Nehemiah: '느헤미야', Esther: '에스더', Job: '욥기', Psalm: '시편', Psalms: '시편', Proverbs: '잠언', Ecclesiastes: '전도서', Isaiah: '이사야', Jeremiah: '예레미야', Lamentations: '예레미야애가', Ezekiel: '에스겔', Daniel: '다니엘', Hosea: '호세아', Joel: '요엘', Amos: '아모스', Obadiah: '오바댜', Jonah: '요나', Micah: '미가', Nahum: '나훔', Habakkuk: '하박국', Zephaniah: '스바냐', Haggai: '학개', Zechariah: '스가랴', Malachi: '말라기', Matthew: '마태복음', Mark: '마가복음', Luke: '누가복음', John: '요한복음', Acts: '사도행전', Romans: '로마서', Corinthians: '고린도전서', Galatians: '갈라디아서', Ephesians: '에베소서', Philippians: '빌립보서', Colossians: '골로새서', Thessalonians: '데살로니가전서', Timothy: '디모데전서', Titus: '디도서', Philemon: '빌레몬서', Hebrews: '히브리서', James: '야고보서', Peter: '베드로전서', Jude: '유다서', Revelation: '요한계시록' };
+  var HANGUL_RE = /[가-힣]/;
+  function libBible(t) {
+    if (!t) return '';
+    var i, nm, idx, before, after;
+    for (i = 0; i < BIBLE_BY_LEN.length; i++) {
+      nm = BIBLE_BY_LEN[i]; idx = t.indexOf(nm);
+      while (idx >= 0) {
+        before = idx > 0 ? t.charAt(idx - 1) : '';
+        after = t.charAt(idx + nm.length) || '';
+        // 앞 글자가 한글이면 다른 단어의 일부일 확률↑ (예: 신'학개'론) → 스킵. '아가페' 예외 처리.
+        if (!HANGUL_RE.test(before) && !(nm === '아가' && after === '페')) return nm;
+        idx = t.indexOf(nm, idx + 1);
+      }
+    }
+    var m = t.match(LIB_BIBLE_EN);
+    if (m && m[1]) { var w = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase(); if (LIB_BIBLE_EN2KR[w]) return LIB_BIBLE_EN2KR[w]; }
+    return '';
+  }
   // 정기간행물·잡지 종류 태그(하위 필터용). 이름 우선, 날짜만 있으면 월간 묵상·QT.
   var LIB_MAG_TAG = [
     ['월간목회', /월간목회/], ['목회와신학', /목회와신학/], ['생명의삶', /생명의\s*삶/], ['디사이플', /디사이플/],
@@ -1685,7 +1707,7 @@ console.log('[affairs.js] v20260712memo2');
     return '';
   }
   // 도서관 목록 로컬 캐시(즉시 표시용). 분류 규칙 바뀌면 LIB_CACHE_VER +1 → 옛 캐시 무효화.
-  var LIB_LS_KEY = 'wpc_lib_cache', LIB_CACHE_VER = 10;
+  var LIB_LS_KEY = 'wpc_lib_cache', LIB_CACHE_VER = 11;
   function libLoadLS() {
     try { var o = JSON.parse(localStorage.getItem(LIB_LS_KEY) || 'null'); return (o && o.v === LIB_CACHE_VER && o.books && o.books.length) ? o.books : null; } catch (e) { return null; }
   }
@@ -1719,6 +1741,7 @@ console.log('[affairs.js] v20260712memo2');
     b.cat = (ov && ov.cat) || libClassify(b.title);
     b.series = libSeries(b.title);
     b.pub = libMag(b.title);
+    b.bible = (b.cat === '성경·주석') ? libBible(b.title) : '';
     if (ov && ov.sub) {
       if (b.cat === '성경·주석') b.series = ov.sub;
       else if (b.cat === '정기간행물·잡지') b.pub = ov.sub;
@@ -1845,6 +1868,9 @@ console.log('[affairs.js] v20260712memo2');
       '.lib-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px;align-items:center}.lib-chips .lbl{font-size:.78rem;color:#7b8794;font-weight:800;margin-right:2px}' +
       '.lib-schip{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:5px 13px;font-size:.8rem;cursor:pointer;font-family:inherit;color:#475569;font-weight:600;transition:all .15s}.lib-schip:hover{border-color:#0e7c5a;color:#0c5a42}' +
       '.lib-schip.on{background:linear-gradient(135deg,#11785a,#0c4030);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(12,64,48,.26)}' +
+      '.lib-bchip{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:5px 13px;font-size:.8rem;cursor:pointer;font-family:inherit;color:#475569;font-weight:600;transition:all .15s}.lib-bchip:hover{border-color:#0a4a6e;color:#0a3a58}' +
+      '.lib-bchip.on{background:linear-gradient(135deg,#0a4a6e,#08324c);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(8,50,76,.26)}' +
+      '.lib-biblechips{margin-top:-6px}' +
       '.lib-more{border:1px solid #e2e8f0;background:#fff;color:#33415c;font-weight:700;border-radius:999px;padding:10px 26px;cursor:pointer;font-family:inherit;transition:all .15s}.lib-more:hover{border-color:#0e7c5a;color:#0c5a42}' +
       '.lib-cnt{font-size:.8rem;color:#9aa5b1;margin-top:9px}' +
       '.lib-reroll{border:1px solid #e2e8f0;background:#fff;color:#475569;font-weight:700;border-radius:999px;padding:5px 14px;font-size:.8rem;cursor:pointer;font-family:inherit}.lib-reroll:hover{border-color:#0e7c5a;color:#0c5a42}' +
@@ -1930,19 +1956,27 @@ console.log('[affairs.js] v20260712memo2');
       listView(books, cat, q, close);
     }
     function listView(books, cat, q, close) {
-      var curCat = cat, curSub = '', PAGE = 60, shown = PAGE;
+      var curCat = cat, curSub = '', curBible = '', PAGE = 60, shown = PAGE;
       var isTrash = (cat === LIB_TRASH);
       // 분류 안 하위 필터: 성경·주석=시리즈, 정기간행물·잡지=종류
       var subField = (cat === '성경·주석') ? 'series' : (cat === '정기간행물·잡지') ? 'pub' : '';
       var subOrder = (subField === 'series') ? LIB_SERIES_TAG : (subField === 'pub') ? LIB_MAG_TAG : [];
       var subLabel = (subField === 'pub') ? '종류' : '시리즈';
-      function build(qq) { return books.filter(function (b) { return (!curCat || b.cat === curCat) && (!curSub || b[subField] === curSub) && (!qq || b.key.indexOf(qq) >= 0); }); }
+      var hasBibleFilter = (cat === '성경·주석');   // 성경·주석은 시리즈 + 성경별(권) 필터 동시 지원
+      function build(qq) { return books.filter(function (b) { return (!curCat || b.cat === curCat) && (!curSub || b[subField] === curSub) && (!curBible || b.bible === curBible) && (!qq || b.key.indexOf(qq) >= 0); }); }
       function curQ() { var el = panel.querySelector('#lib_q2'); return el ? el.value.trim().toLowerCase() : ''; }
       var subBar = '';
       if (subField) {
         var sc = {}; books.forEach(function (b) { if (b.cat === curCat && b[subField]) sc[b[subField]] = (sc[b[subField]] || 0) + 1; });
         var arr = subOrder.map(function (s) { return s[0]; }).filter(function (s) { return sc[s]; }).map(function (s) { return [s, sc[s]]; });
         if (arr.length) subBar = '<div class="lib-chips"><span class="lbl">' + subLabel + '</span><button class="lib-schip on" data-s="">전체</button>' + arr.map(function (x) { return '<button class="lib-schip" data-s="' + esc(x[0]) + '">' + esc(x[0]) + ' ' + x[1] + '</button>'; }).join('') + '</div>';
+      }
+      // 성경별(권) 필터 바 — 성경·주석 분류에서만, 성경 순서대로. 감지된 책만 노출.
+      var bibleBar = '';
+      if (hasBibleFilter) {
+        var bcnt = {}; books.forEach(function (b) { if (b.cat === curCat && b.bible) bcnt[b.bible] = (bcnt[b.bible] || 0) + 1; });
+        var barr = BIBLE_ALL.filter(function (s) { return bcnt[s]; });
+        if (barr.length) bibleBar = '<div class="lib-chips lib-biblechips"><span class="lbl">성경별</span><button class="lib-bchip on" data-b="">전체</button>' + barr.map(function (s) { return '<button class="lib-bchip" data-b="' + esc(s) + '">' + esc(s) + ' ' + bcnt[s] + '</button>'; }).join('') + '</div>';
       }
       var trashBar = isTrash ? '<div class="lib-trashbar"><span>🗑 삭제할 책을 모아둔 곳입니다. 다른 분류 칸으로 끌어다 놓으면 <b>복원</b>됩니다.</span><button class="lib-empty" id="lib_empty">휴지통 비우기 (영구 삭제)</button></div>' : '';
       var curList = build(q);
@@ -1951,7 +1985,7 @@ console.log('[affairs.js] v20260712memo2');
         '<span class="lib-ltitle">' + (isTrash ? '🗑 휴지통' : (cat ? esc(cat) : '검색: ' + esc(q))) + '</span></div>' +
         '<input type="text" id="lib_q2" placeholder="🔍 이 안에서 검색" value="' + esc(q) + '" style="padding:9px 14px;border:1px solid #e2e8f0;border-radius:999px;font:inherit;min-width:200px;outline:none"></div>' +
         '<div class="lib-catbar"><div class="lib-catbar-hint">🗂 분류 · 책을 칸으로 끌어다 놓으면 이동 · 휴지통에 넣으면 삭제 대기</div>' + libCatBarHtml(books, curCat) + '</div>' +
-        trashBar + subBar +
+        trashBar + subBar + bibleBar +
         '<div class="lib-grid" id="lib_grid"></div>' +
         '<div style="text-align:center;margin:22px 0"><button class="lib-more" id="lib_more">더 보기</button><div class="lib-cnt" id="lib_cnt"></div></div></div>';
       var grid = panel.querySelector('#lib_grid'), moreBtn = panel.querySelector('#lib_more'), cntEl = panel.querySelector('#lib_cnt');
@@ -2010,6 +2044,13 @@ console.log('[affairs.js] v20260712memo2');
         b.onclick = function () {
           curSub = b.dataset.s; shown = PAGE;
           Array.prototype.forEach.call(panel.querySelectorAll('.lib-schip'), function (x) { x.className = (x === b) ? 'lib-schip on' : 'lib-schip'; });
+          curList = build(curQ()); render();
+        };
+      });
+      Array.prototype.forEach.call(panel.querySelectorAll('.lib-bchip'), function (b) {
+        b.onclick = function () {
+          curBible = b.dataset.b; shown = PAGE;
+          Array.prototype.forEach.call(panel.querySelectorAll('.lib-bchip'), function (x) { x.className = (x === b) ? 'lib-bchip on' : 'lib-bchip'; });
           curList = build(curQ()); render();
         };
       });
