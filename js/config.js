@@ -6,13 +6,40 @@
    OneSignal App ID. 비어 있으면 푸시 기능 꺼짐(사이트는 정상). */
 window.ONESIGNAL_APP_ID = "a22a1ff9-5a05-4915-b70f-b0c6df6ccd71";
 
-/* --- 회원/로그인/게시판(Supabase) ---
-   Supabase 프로젝트의 Project URL 과 anon(public) key 를 붙여넣으세요.
-   (Supabase ▸ Project Settings ▸ API 에서 확인)
-   이 두 값은 공개되어도 안전한 공개키입니다. 보안은 DB의 RLS 정책으로 지킵니다.
-   비어 있으면 로그인·게시판 기능은 "준비 중"으로 표시되고 사이트는 정상 동작합니다. */
-window.SUPABASE_URL = "https://cetacttsdwzxjzkyozgd.supabase.co";
-window.SUPABASE_ANON_KEY = "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G";
+/* --- 회원/로그인/게시판(Supabase) — 로컬/프로덕션 자동 분리 ---
+   두 값 모두 공개돼도 안전한 공개키입니다. 실제 보안은 DB의 RLS 정책으로 지킵니다.
+
+   환경 판별: 브라우저에는 NODE_ENV가 없으므로 접속 호스트로 판별합니다.
+     · localhost / 127.0.0.1 → development (로컬 Supabase)
+     · 그 외 도메인          → production (원격 Supabase)
+   window.APP_ENV = "development" | "production" 을 이 스크립트보다 먼저 지정하면 강제 전환됩니다.
+
+   안전장치: 개발(development) 환경인데 URL이 원격(*.supabase.co)이면 즉시 에러로 중단합니다.
+   (실수로 로컬 개발 중 프로덕션 DB에 연결하는 것을 차단) */
+(function () {
+  var host = (location.hostname || "").toLowerCase();
+  var isLocal = host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host === "::1" || host === "[::1]";
+  var env = window.APP_ENV || (isLocal ? "development" : "production");
+  window.APP_ENV = env;
+
+  // 로컬: supabase start 기본 데모 키(로컬에서만 동작). 프로덕션: 공개 publishable 키.
+  var LOCAL = {
+    url: "http://127.0.0.1:54321",
+    anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE"
+  };
+  var PROD = {
+    url: "https://cetacttsdwzxjzkyozgd.supabase.co",
+    anon: "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G"
+  };
+  var cfg = env === "development" ? LOCAL : PROD;
+  window.SUPABASE_URL = cfg.url;
+  window.SUPABASE_ANON_KEY = cfg.anon;
+
+  // 안전장치: 개발 환경에서 원격 Supabase 연결 시도 시 중단
+  if (env === "development" && /\.supabase\.co/i.test(window.SUPABASE_URL)) {
+    throw new Error("[config] 개발 환경(development)에서 원격 Supabase(" + window.SUPABASE_URL + ")로 연결하려 합니다. 로컬(supabase start · http://127.0.0.1:54321)만 사용하세요.");
+  }
+})();
 
 /* --- 파일 업로드(Cloudflare R2 Worker) ---
    Cloudflare에서 Worker를 배포한 뒤 받은 주소를 넣으세요.

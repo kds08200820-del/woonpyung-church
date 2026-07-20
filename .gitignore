@@ -1,5 +1,11 @@
 .claude/
 
+# 환경변수(비밀값 포함) — 절대 커밋 금지. (.env.example 은 값이 비어 있어 커밋됨)
+.env
+.env.local
+.env.production
+.env*.local
+
 # 민감 데이터(개인정보·헌금) — 공개 배포 저장소이므로 절대 커밋 금지
 재정데이터/
 교적데이터/
