@@ -340,20 +340,42 @@ var WPCTts = (function () {
       a.src = cands[i];
       try { a.load(); } catch (e) { nextOne(); }
     })(0);
-    function doGenerate() {                               // ② 저장본 없음 → Gemini 생성(서버가 저장) → 다음부터 ①에서 재생
+    function doGenerate() {                               // ② 저장본 없음 → 교회 서버(GPT-SoVITS)에 생성 요청 → 완성되면 자동 재생
       if (!active || myGen !== gen) return;
-      if (btnEl) btnEl.textContent = "⏳ 만드는 중… 최대 2분, 잠시만 기다려 주세요";
-      aiFetch(text, date, sig)
-        .then(function (b) { if (active && myGen === gen) playAudio(URL.createObjectURL(b), myGen); })
-        .catch(function (e) {                            // ③ 실패·지연 시 원인 잠깐 표시 후 기본 음성으로 전환(무한 대기 방지)
-          if (!active || myGen !== gen) return;
-          var m = String((e && e.message) || "");
-          if (btnEl) btnEl.textContent =
-            /quota|429|사용량|RESOURCE_EXHAUSTED|exhausted/i.test(m) ? "AI 음성 사용량 초과 — 기본 음성으로 읽어드려요"
-              : /시간 초과|timeout|abort/i.test(m) ? "AI 음성 생성이 지연되어 기본 음성으로 읽어드려요"
-                : "AI 음성을 못 만들어 기본 음성으로 읽어드려요";
-          browserStart(text, myGen);                     // 곧 재생이 시작되면 버튼 문구는 '멈춤'으로 바뀜
-        });
+      if (!date || !sig) { browserStart(text, myGen); return; }
+      var sb = (window.SUPABASE_URL || "").replace(/\/$/, ""), ak = window.SUPABASE_ANON_KEY;
+      // 생성 요청 등록(이미 요청돼 있으면 무시됨) — 교회 PC 워커가 20초 내 집어 생성 시작
+      try {
+        fetch(sb + "/rest/v1/tts_requests", {
+          method: "POST",
+          headers: { apikey: ak, Authorization: "Bearer " + ak, "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
+          body: JSON.stringify({ qt_date: date, sig: sig }),
+        }).catch(function () {});
+      } catch (e) {}
+      // R2에 파일이 나타날 때까지 15초 간격 폴링(최대 12분) → 완성 즉시 재생
+      var deadline = Date.now() + 12 * 60 * 1000, tries = 0;
+      (function poll() {
+        if (!active || myGen !== gen) return;
+        var remain = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+        if (btnEl) btnEl.textContent = "⏳ 교회 서버가 음성을 만드는 중… " + Math.floor(remain / 60) + "분 " + ("0" + (remain % 60)).slice(-2) + "초";
+        var a = new Audio();
+        a.preload = "auto";
+        a.playbackRate = 1.08;
+        try { a.preservesPitch = true; } catch (e) {}
+        var moved = false;
+        a.onerror = function () {                        // 아직 없음 → 계속 대기 or 시간 초과 시 기본 음성
+          if (moved || !active || myGen !== gen) return; moved = true;
+          if (Date.now() > deadline) { if (btnEl) btnEl.textContent = "생성이 지연되어 기본 음성으로 읽어드려요"; browserStart(text, myGen); }
+          else setTimeout(poll, 15000);
+        };
+        a.oncanplay = function () {                      // 완성! → 재생
+          if (moved || !active || myGen !== gen) return; moved = true;
+          bindAndPlay(a, myGen);
+        };
+        a.src = ttsBase() + "qt-" + date + "-" + sig + ".wav" + (tries ? "?r=" + tries : "");
+        tries++;
+        try { a.load(); } catch (e) { setTimeout(poll, 15000); }
+      })();
     }
   }
   function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } clearHi(); hideBar(); if (btnEl) btnEl.textContent = btnLabel; }
