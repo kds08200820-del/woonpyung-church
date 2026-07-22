@@ -7731,7 +7731,7 @@ console.log('[affairs.js] v20260712memo2');
       b.innerHTML =
         '<div style="background:#fff7e0;border:1px solid #f0dfa8;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.84rem;color:#7a5d1e"><b>🖼 이미지 검토</b> — 각 장면을 확인하세요. 자막·내레이션은 바로 수정, 마음에 안 드는 장면은 "다시 생성" 체크 후 재생성. <b>승인해야 영상 변환이 시작됩니다.</b></div>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px">' +
-        sceneCards(scenes, function (sc) { return '<a href="' + esc2(sc.image_url) + '" target="_blank" title="크게 보기"><img src="' + esc2(sc.image_url) + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;display:block"></a>'; }, '다시 생성') +
+        sceneCards(scenes, function (sc) { return '<a href="' + esc2(sc.image_url) + '" target="_blank" title="크게 보기"><img src="' + esc2(sc.image_url) + '" style="width:100%;aspect-ratio:9/16;object-fit:contain;background:#eef1f6;display:block"></a>'; }, '다시 생성') +
         '</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap;gap:8px">' +
         '<button class="btn btn-line" id="vs_cancel" style="padding:8px 16px;color:#c0392b;border-color:#e5b5b0">작업 취소</button>' +
