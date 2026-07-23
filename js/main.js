@@ -391,21 +391,11 @@ var WPCTts = (function () {
 })();
 window.WPCTts = WPCTts;
 
-// ===== 1-3. 매일 말씀 묵상(QT) — Supabase qt_published 뷰(오늘 날짜 자동) =====
-(function () {
-  const todayBox = document.getElementById("qtToday");
-  const modal = document.getElementById("qtModal");
-  if (!todayBox || !modal) return;
-  const dateListEl = document.getElementById("qtDateList");
-  const detailEl = document.getElementById("qtDetail");
-  const yearBarEl = document.getElementById("qtYearBar");
-  const yearLabelEl = document.getElementById("qtYearLabel");
-  const yearNewerBtn = document.getElementById("qtYearNewer"); // ‹ 최근 연도
-  const yearOlderBtn = document.getElementById("qtYearOlder"); // › 지난 연도
-
-  let entries = []; // [{date, content, title, ref}] (최신 → 과거)
-
-  // Supabase 'qt_published' 뷰에서 매일 QT 가져오기 → 카카오톡 발송 양식과 동일한 텍스트로 합성
+// ===== 1-2b. QT 낭독 텍스트 공용 조립(WPCQtText) =====
+// 홈(QT 모달)·교인 대시보드·교회PC 워커(qt_tts_daily.mjs)가 '완전히 같은 텍스트'로
+// 지문(sig)을 계산해야 저장된 음성 파일명(qt-<날짜>-<sig>.wav)이 일치해 재생된다.
+// ⚠ 여기를 바꾸면 교회PC의 qt_tts_daily.mjs 복제본도 반드시 같이 바꿔야 한다.
+window.WPCQtText = (function () {
   function fmtKakaoDateFromIso(iso) {
     if (!iso) return "";
     const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return iso;
@@ -442,6 +432,64 @@ window.WPCTts = WPCTts;
     if (prayer) { out.push(""); out.push("🙏 기도"); out.push(""); out.push(prayer); }
     return out.join("\n");
   }
+  // QT 본문(시트 텍스트)을 제목·본문·섹션으로 구조화
+  function parseQt(raw) {
+    const lines = (raw || "").split("\n").map((s) => s.replace(/\s+$/g, ""));
+    let date = "", title = "", ref = "";
+    const sections = []; let cur = null;
+    for (const ln of lines) {
+      const t = ln.trim();
+      if (!t) { if (cur) cur.body.push(""); continue; }
+      if (/^📖/.test(t) && /(샬롬|오늘의\s*QT)/.test(t)) continue;           // 인사말 제거
+      const dm = t.match(/^📅\s*날짜\s*[:：]?\s*(.+)$/);
+      if (dm) { date = dm[1].trim(); continue; }                             // 날짜(한 번만)
+      const hm = t.match(/^(?:📖|📝|🙏|💡|✏️|🕊️|✨|🌱|📌|✝️?)\s*(.+)$/);  // 섹션 헤더
+      if (hm) { cur = { head: hm[1].trim(), body: [] }; sections.push(cur); continue; }
+      if (!cur) {
+        if (!title) { title = t; continue; }
+        if (!ref && /\d/.test(t) && /[:：~∼\-장절,\s]/.test(t) && t.length <= 32) { ref = t; continue; }
+        title += " " + t; continue;
+      }
+      cur.body.push(t);
+    }
+    return { date, title, ref, sections };
+  }
+  // parseQt 결과 → 낭독 텍스트(sig 계산용). 홈 모달·대시보드·워커 공용.
+  function readTextFromParsed(p, fallback) {
+    const parts = [];
+    if (p.title) parts.push(p.title);
+    if (p.ref) parts.push(p.ref);
+    (p.sections || []).forEach((s) => { const h = String(s.head || "").replace(/[^가-힣A-Za-z0-9\s]/g, " ").trim(); if (h) parts.push(h); if (s.body) parts.push(s.body); });
+    let readText = parts.join(". ");
+    if (!readText.trim()) readText = fallback || "";
+    return readText;
+  }
+  // qt_published 행 → 낭독 텍스트 한 번에 (대시보드 등에서 사용)
+  function readTextFromRow(r) {
+    const content = rowToQtContent(r);
+    return readTextFromParsed(parseQt(content), content);
+  }
+  return { fmtKakaoDateFromIso: fmtKakaoDateFromIso, qtHtmlToText: qtHtmlToText, rowToQtContent: rowToQtContent, parseQt: parseQt, readTextFromParsed: readTextFromParsed, readTextFromRow: readTextFromRow };
+})();
+
+// ===== 1-3. 매일 말씀 묵상(QT) — Supabase qt_published 뷰(오늘 날짜 자동) =====
+(function () {
+  const todayBox = document.getElementById("qtToday");
+  const modal = document.getElementById("qtModal");
+  if (!todayBox || !modal) return;
+  const dateListEl = document.getElementById("qtDateList");
+  const detailEl = document.getElementById("qtDetail");
+  const yearBarEl = document.getElementById("qtYearBar");
+  const yearLabelEl = document.getElementById("qtYearLabel");
+  const yearNewerBtn = document.getElementById("qtYearNewer"); // ‹ 최근 연도
+  const yearOlderBtn = document.getElementById("qtYearOlder"); // › 지난 연도
+
+  let entries = []; // [{date, content, title, ref}] (최신 → 과거)
+
+  // Supabase 'qt_published' 뷰에서 매일 QT 가져오기 → 카카오톡 발송 양식과 동일한 텍스트로 합성
+  // (텍스트 조립은 WPCQtText 공용 모듈 사용 — 낭독 sig 일치를 위해 단일화)
+  const rowToQtContent = window.WPCQtText.rowToQtContent;
+  const parseQt = window.WPCQtText.parseQt;
   function loadQtFromSupabase() {
     if (!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve(null);
     const u = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/qt_published?select=sermon_date,title,scripture,qt_bible_text,content,prayer&order=sermon_date.desc&limit=180";
@@ -549,29 +597,6 @@ window.WPCTts = WPCTts;
   }
 
   const escQt = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-  // QT 본문(시트 텍스트)을 제목·본문·섹션으로 구조화
-  function parseQt(raw) {
-    const lines = (raw || "").split("\n").map((s) => s.replace(/\s+$/g, ""));
-    let date = "", title = "", ref = "";
-    const sections = []; let cur = null;
-    for (const ln of lines) {
-      const t = ln.trim();
-      if (!t) { if (cur) cur.body.push(""); continue; }
-      if (/^📖/.test(t) && /(샬롬|오늘의\s*QT)/.test(t)) continue;           // 인사말 제거
-      const dm = t.match(/^📅\s*날짜\s*[:：]?\s*(.+)$/);
-      if (dm) { date = dm[1].trim(); continue; }                             // 날짜(한 번만)
-      const hm = t.match(/^(?:📖|📝|🙏|💡|✏️|🕊️|✨|🌱|📌|✝️?)\s*(.+)$/);  // 섹션 헤더
-      if (hm) { cur = { head: hm[1].trim(), body: [] }; sections.push(cur); continue; }
-      if (!cur) {
-        if (!title) { title = t; continue; }
-        if (!ref && /\d/.test(t) && /[:：~∼\-장절,\s]/.test(t) && t.length <= 32) { ref = t; continue; }
-        title += " " + t; continue;
-      }
-      cur.body.push(t);
-    }
-    return { date, title, ref, sections };
-  }
 
   function qtParas(lines) {
     const out = []; let buf = [];
@@ -701,12 +726,7 @@ window.WPCTts = WPCTts;
       const btn = detailEl.querySelector("#qtTtsBtn");
       if (!btn) return;
       if (!(window.WPCTts && window.WPCTts.supported)) { btn.style.display = "none"; return; }
-      const parts = [];
-      if (p.title) parts.push(p.title);
-      if (p.ref) parts.push(p.ref);
-      (p.sections || []).forEach((s) => { const h = String(s.head || "").replace(/[^가-힣A-Za-z0-9\s]/g, " ").trim(); if (h) parts.push(h); if (s.body) parts.push(s.body); });
-      let readText = parts.join(". ");
-      if (!readText.trim()) readText = e.content;
+      const readText = window.WPCQtText.readTextFromParsed(p, e.content);   // 워커와 동일 조립(sig 일치)
       const dd = dotToDash(date);
       const preText = [p.title || "", p.ref || ""].filter(Boolean).join(" ");
       btn.onclick = () => window.WPCTts.toggle(readText, btn, "오늘의 말씀 듣기", { date: dd, trackEl: detailEl, preText: preText });

@@ -671,14 +671,10 @@ console.log('[dashboard.js] v20260705qtfallback');
         (function () {
           var tb = document.getElementById('dashTtsBtn'); if (!tb) return;
           if (!(window.WPCTts && window.WPCTts.supported)) { tb.style.display = 'none'; return; }
-          function plain(s) { if (!s) return ''; var d = document.createElement('div'); d.innerHTML = String(s); return (d.textContent || '').replace(/\s+/g, ' ').trim(); }
-          var parts = [];
-          if (q.title) parts.push(q.title);
-          if (q.scripture) parts.push(q.scripture);
-          if (q.qt_bible_text) parts.push(plain(q.qt_bible_text));
-          if (q.content) parts.push(plain(q.content));
-          if (q.prayer) parts.push(plain(q.prayer));
-          var readText = parts.join('. ');
+          // 낭독 텍스트는 반드시 WPCQtText(main.js 공용 조립)로 만든다.
+          // 조립이 다르면 지문(sig)이 어긋나 교회 서버가 만든 음성 파일(qt-<날짜>-<sig>.wav)을
+          // 영영 못 찾고 "만드는 중…" 12분 대기 후 기본 음성으로 빠진다.
+          var readText = window.WPCQtText.readTextFromRow(q);
           var preText = [q.title || '', q.scripture || ''].filter(Boolean).join(' ');
           tb.onclick = function () {
             var starting = tb.textContent.indexOf('멈춤') < 0 && tb.textContent.indexOf('준비') < 0;
