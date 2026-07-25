@@ -815,6 +815,10 @@ function bulletinCardHTML(b, idx) {
 // Supabase에 게시된 주보(bulletins_public) — 헌금 금액은 뷰에서 이미 제외됨
 let SB_BULLETINS = [];
 function escB(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function hasSBSummary(b) {
+  const s = b && b.data && b.data.summary;
+  return !!(s && ((s.points && s.points.length) || s.apply));
+}
 function sbBulletinCardHTML(b, i) {
   const d = b.data || {};
   const dl = String(b.bdate || "").slice(0, 10).replace(/-/g, ". ");
@@ -825,6 +829,7 @@ function sbBulletinCardHTML(b, i) {
       <h4>${escB(b.title || "(제목 없음)")}</h4>
       <p class="b-ref">${escB(b.scripture || "")}</p>
       <span class="b-more">주보 보기 →</span>
+      ${hasSBSummary(b) ? `<span class="b-sum" data-sum="${i}">📖 설교 요약</span>` : ""}
     </button>`;
 }
 
@@ -938,6 +943,31 @@ function closeModal() {
   document.body.style.overflow = "";
 }
 
+// Supabase 게시 주보의 설교 요약 — 정적 주보와 같은 모달로 표시
+function openSBSummary(b) {
+  const s = b && b.data && b.data.summary;
+  if (!s || !modal || !modalBody) return;
+  const dl = String(b.bdate || "").slice(0, 10).replace(/-/g, ". ");
+  modalBody.innerHTML = `
+    <span class="m-eyebrow">${escB(dl)} · 주일 낮 예배 · 설교 요약</span>
+    <h3 id="modalTitle" class="m-title">${escB(s.heading || b.title || "")}</h3>
+    <p class="m-sub">${escB([b.scripture, b.preacher].filter(Boolean).join(" · "))}</p>
+
+    ${s.sectionTitle ? `<h4 class="m-head">${escB(s.sectionTitle)}</h4>` : ""}
+    <div class="sm-points">
+      ${(s.points || []).map((p) => `<div class="sm-point">${p.lead ? `<strong>${escB(p.lead)}</strong>` : ""}<p>${escB(p.text || "")}</p></div>`).join("")}
+    </div>
+
+    ${s.apply ? `
+    <div class="sm-apply">
+      <span class="sm-apply-tag">적용 및 결단</span>
+      <p>${escB(s.apply)}</p>
+      ${s.applyRef ? `<span class="sm-apply-ref">${escB(s.applyRef)}</span>` : ""}
+    </div>` : ""}`;
+  modal.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
 // Supabase 게시 주보 — 공용 렌더러(js/bulletin-render.js)로 새 탭 보기(헌금 금액 없음)
 function openPublicBulletinView(b) {
   if (!b) return;
@@ -947,6 +977,8 @@ function openPublicBulletinView(b) {
 
 if (modal) {
   bulletinList.addEventListener("click", (e) => {
+    const sum = e.target.closest("[data-sum]");
+    if (sum) { openSBSummary(SB_BULLETINS[Number(sum.dataset.sum)]); return; }
     const card = e.target.closest(".bulletin-card");
     if (!card) return;
     if (card.dataset.sb != null) { openPublicBulletinView(SB_BULLETINS[Number(card.dataset.sb)]); return; }

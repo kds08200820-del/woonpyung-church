@@ -460,6 +460,12 @@ ul { list-style: none; }
 .bulletin-card h4 { font-family: "Noto Serif KR", serif; font-size: 1.3rem; margin: 6px 0 8px; line-height: 1.4; }
 .bulletin-card .b-ref { color: var(--ink-soft); font-size: .92rem; font-weight: 300; }
 .bulletin-card .b-more { margin-top: 18px; font-size: .85rem; font-weight: 500; color: var(--accent); }
+/* 게시 주보에 설교 요약이 있을 때만 표시되는 칩 */
+.bulletin-card .b-sum {
+  align-self: flex-start; margin-top: 10px; font-size: .8rem; font-weight: 600; color: var(--accent);
+  background: #f2f6fd; border: 1px solid #dbe6f7; padding: 4px 12px; border-radius: 20px; transition: background .2s ease;
+}
+.bulletin-card .b-sum:hover { background: #e4edfb; }
 .bulletin-empty { text-align: center; color: var(--muted); margin-top: 30px; }
 
 /* ===== Modal ===== */
