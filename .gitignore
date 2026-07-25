@@ -16,6 +16,9 @@ offerings_full_*.sql
 # 개인 실험본(배포 제외)
 *-동석이네집.html
 
+# 교회PC 운영 파일(계정·PC 이름 등 운영 정보 — 공개 저장소에 올리지 않음)
+_church-pc-update/
+
 # Python 컴파일 캐시
 __pycache__/
 *.pyc
