@@ -3817,7 +3817,7 @@ console.log('[affairs.js] v20260712memo2');
                 wmsg('📦 대기 중 — 집/교회 PC 워커가 켜져 있어야 시작됩니다');
                 poller = setTimeout(function () { poll(date); }, 5000);
               } else if (j.status === 'processing') {
-                wmsg('📦 생성 중 — ' + (j.progress || '진행 중') + ' <span style="opacity:.65">(5~15분 소요)</span>');
+                wmsg('📦 생성 중 — ' + (j.progress || '진행 중') + ' <span style="opacity:.65">(30~50분 소요 — 창을 닫아도 계속 진행됩니다)</span>');
                 poller = setTimeout(function () { poll(date); }, 5000);
               } else if (j.status === 'done') {
                 var items = (j.result && j.result.items) || [];
@@ -3840,7 +3840,9 @@ console.log('[affairs.js] v20260712memo2');
           if (!date) { wmsg('일괄 생성에는 일자가 필요합니다.', '#c0392b'); return; }
           if (!confirm(date + ' 설교로 주일 자료를 일괄 생성합니다.\n\n' +
             '· 방송실 PPT · 큐시트\n· 중등부 교재 · 교사용\n· 주보(예배순서·기도문·찬송)\n· 설교 요약\n\n' +
-            '먼저 현재 원고를 저장한 뒤 작업을 요청합니다.\n집/교회 PC 워커가 켜져 있어야 처리됩니다. 계속할까요?')) return;
+            '먼저 현재 원고를 저장한 뒤 작업을 요청합니다.\n' +
+            '생성에 30~50분 걸리며, 집/교회 PC 워커가 켜져 있어야 처리됩니다.\n' +
+            '이 창을 닫아도 생성은 계속됩니다. 계속할까요?')) return;
 
           wbtn.disabled = true; wbtn.textContent = '저장 중…';
           // 워커가 원고(content)를 읽으므로 반드시 저장이 끝난 뒤에 작업을 넣는다.

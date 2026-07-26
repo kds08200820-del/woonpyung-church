@@ -54,7 +54,9 @@ REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_SRC = os.path.join(REPO_DIR, ".claude", "skills")
 
 POLL_SEC = 20
-CLAUDE_TIMEOUT = 45 * 60          # 산출물 6종 생성 — 넉넉히 45분
+# 산출물 6종 생성 실측: 룻기 4장 설교(짧은 원고) 기준 32분.
+# 원고가 길면 더 걸리므로 여유를 두어 75분.
+CLAUDE_TIMEOUT = 75 * 60
 
 # 산출물 정의: (키, 사람이 읽는 이름, 자료실 분류, 기대 확장자)
 OUTPUT_SPEC = {
