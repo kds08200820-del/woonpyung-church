@@ -2991,6 +2991,7 @@ console.log('[affairs.js] v20260712memo2');
         (worshipMode ? '' : '<button class="btn btn-line" id="se_present" style="padding:8px 13px;border-radius:9px">🖥 발표자 모드</button>') +
         (worshipMode ? '' : '<button class="btn btn-line" id="se_pdf" style="padding:8px 13px;border-radius:9px">📄 내보내기</button>') +
         (worshipMode ? '' : '<button class="btn btn-line" id="se_video" title="이 날짜의 QT로 이미지·영상을 자동 생성합니다 (집/교회 PC 워커가 처리)" style="padding:8px 13px;border-radius:9px">🎬 영상 제작</button>') +
+        (worshipMode ? '' : '<button class="btn btn-line" id="se_worship" title="이 설교로 방송 PPT·큐시트·중등부 교재·교사용·주보·설교요약을 한 번에 만듭니다 (집/교회 PC 워커가 Claude Code로 처리)" style="padding:8px 13px;border-radius:9px">📦 주일 자료 일괄 생성</button>') +
         (worshipMode ? '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 저장 후 내보내기</button>' : '') +
         '</div>' +
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
@@ -3788,6 +3789,77 @@ console.log('[affairs.js] v20260712memo2');
           var date = ov.querySelector('#se_date').value;
           if (!date) { var m2 = ov.querySelector('#se_msg'); m2.style.color = '#c0392b'; m2.textContent = '영상 제작에는 일자가 필요합니다.'; return; }
           if (window.VideoStudio) window.VideoStudio.open(date, save);
+        };
+      })();
+      // ── 📦 주일 자료 일괄 생성 ──────────────────────────────────
+      //  worship_jobs 에 작업을 넣으면 집/교회 PC 워커(tools/worship_worker.py)가
+      //  Claude Code CLI 로 자료를 만들어 자료실·주보·설교요약에 올린다.
+      //  영상 제작과 같은 큐 방식이며, 진행 상황은 progress 칼럼을 폴링해 보여준다.
+      (function () {
+        var wbtn = ov.querySelector('#se_worship'); if (!wbtn) return;
+        var poller = null;
+        var OUTPUTS = ['ppt', 'cuesheet', 'youth', 'teacher', 'bulletin', 'summary'];
+
+        function wmsg(html, color) {
+          var m = ov.querySelector('#se_msg'); if (!m) return;
+          m.style.color = color || '#7b8794'; m.innerHTML = html;
+        }
+        function done(label) { wbtn.disabled = false; wbtn.textContent = label || '📦 주일 자료 일괄 생성'; }
+
+        // 작업 상태를 5초 간격으로 확인 — 편집창을 닫으면 자동으로 멈춘다.
+        function poll(date) {
+          clearTimeout(poller);
+          if (!document.body.contains(ov)) return;
+          api('GET', 'worship_jobs?select=status,progress,error,result&sermon_date=eq.' + date + '&order=created_at.desc&limit=1')
+            .then(function (rows) {
+              var j = rows && rows[0]; if (!j) { done(); return; }
+              if (j.status === 'pending') {
+                wmsg('📦 대기 중 — 집/교회 PC 워커가 켜져 있어야 시작됩니다');
+                poller = setTimeout(function () { poll(date); }, 5000);
+              } else if (j.status === 'processing') {
+                wmsg('📦 생성 중 — ' + (j.progress || '진행 중') + ' <span style="opacity:.65">(5~15분 소요)</span>');
+                poller = setTimeout(function () { poll(date); }, 5000);
+              } else if (j.status === 'done') {
+                var items = (j.result && j.result.items) || [];
+                var names = items.map(function (i) { return (i.title || i.kind); });
+                wmsg('✓ 완료 — ' + items.length + '건 생성' +
+                  (j.result && j.result.minutes ? ' (' + j.result.minutes + '분)' : '') +
+                  '<br><span style="opacity:.75;font-size:.92em">' + names.join(' · ') +
+                  '<br>자료실에서 확인하세요. 주보는 <b>게시 전 상태</b>로 저장됩니다.</span>', 'green');
+                done();
+              } else if (j.status === 'error') {
+                wmsg('❌ 생성 실패 — ' + (j.error || '알 수 없는 오류'), '#c0392b');
+                done();
+              }
+            })
+            .catch(function () { poller = setTimeout(function () { poll(date); }, 8000); });
+        }
+
+        wbtn.onclick = function () {
+          var date = ov.querySelector('#se_date').value;
+          if (!date) { wmsg('일괄 생성에는 일자가 필요합니다.', '#c0392b'); return; }
+          if (!confirm(date + ' 설교로 주일 자료를 일괄 생성합니다.\n\n' +
+            '· 방송실 PPT · 큐시트\n· 중등부 교재 · 교사용\n· 주보(예배순서·기도문·찬송)\n· 설교 요약\n\n' +
+            '먼저 현재 원고를 저장한 뒤 작업을 요청합니다.\n집/교회 PC 워커가 켜져 있어야 처리됩니다. 계속할까요?')) return;
+
+          wbtn.disabled = true; wbtn.textContent = '저장 중…';
+          // 워커가 원고(content)를 읽으므로 반드시 저장이 끝난 뒤에 작업을 넣는다.
+          save(function () {
+            wbtn.textContent = '요청 중…';
+            api('POST', 'worship_jobs', { sermon_date: date, job_type: 'weekly', outputs: OUTPUTS }, 'return=representation')
+              .then(function () { wmsg('📦 작업을 요청했습니다 — 대기 중'); poll(date); })
+              .catch(function (e) {
+                var t = e.message || '';
+                if (/42P01|PGRST205|does not exist|schema cache/i.test(t)) {
+                  wmsg('worship_jobs 테이블이 없습니다 — supabase/worship_jobs.sql 을 먼저 실행하세요.', '#c0392b');
+                } else if (/duplicate key|worship_jobs_active_uniq|23505/i.test(t)) {
+                  wmsg('이미 이 주일의 생성 작업이 진행 중입니다.', '#c0392b'); poll(date);
+                } else {
+                  wmsg('요청 실패: ' + t, '#c0392b');
+                }
+                done();
+              });
+          }, function () { done(); });
         };
       })();
       // 👁 미리보기 — 저장 없이 현재 화면 그대로 아이패드 보기로 미리 확인(설교 본문 포함)
