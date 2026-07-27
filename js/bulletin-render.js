@@ -55,6 +55,7 @@
       '.ord .bno{width:8mm;text-align:center;color:#b6a273;font-family:"Noto Sans KR",sans-serif;font-size:8pt}',
       '.ord .bn{width:30mm;font-weight:600;font-family:"Noto Sans KR",sans-serif;color:#34415c}',
       '.ord .bd{color:#3a3a3a}',
+      '.ord-spacer td{border-bottom:none;padding:2mm 0;height:4mm}',
       // 2단
       '.two{display:grid;grid-template-columns:1fr 1fr;gap:1.2mm 8mm}',
       '.ofg{font-size:9pt;padding:1.3mm 0;border-bottom:.5pt dotted #e7e1d1;line-height:1.5}',
@@ -74,6 +75,8 @@
       '.news{margin:0;padding:0;list-style:none;counter-reset:n}',
       '.news li{position:relative;padding:1.5mm 0 1.5mm 9mm;font-size:9.5pt;line-height:1.6;border-bottom:.5pt dotted #eee;counter-increment:n}',
       '.news li::before{content:counter(n,decimal-leading-zero);position:absolute;left:0;top:1.7mm;font-family:"Noto Sans KR",sans-serif;font-size:8pt;font-weight:700;color:#b6a273}',
+      '.news li.sp{counter-increment:none;border-bottom:none;padding:1.5mm 0;height:2mm}',
+      '.news li.sp::before{content:none}',
       // 꼬리
       '.foot{margin-top:7mm;padding-top:3.5mm;border-top:1pt solid #ddd;text-align:center;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;color:#9a9a9a;line-height:1.7}',
       '.note{font-size:7.5pt;color:#aaa;text-align:center;margin-top:3mm}',
@@ -183,7 +186,13 @@
 
   function bodyHTML(rec, opts) {
     rec = rec || {}; opts = opts || {}; var d = rec.data || {};
-    var orderHtml = (d.order || []).map(function (o, i) { return '<tr><td class="bno">' + (i + 1) + '</td><td class="bn">' + esc(o.name || '') + '</td><td class="bd">' + esc(o.detail || '') + '</td></tr>'; }).join('');
+    // 예배 순서에 사람이 직접 끼워 넣은 "빈 줄"(o.spacer) — 번호를 매기지 않고 빈 줄만 인쇄한다.
+    var ordNum = 0;
+    var orderHtml = (d.order || []).map(function (o) {
+      if (o.spacer) return '<tr class="ord-spacer"><td class="bno"></td><td class="bn"></td><td class="bd"></td></tr>';
+      ordNum++;
+      return '<tr><td class="bno">' + ordNum + '</td><td class="bn">' + esc(o.name || '') + '</td><td class="bd">' + esc(o.detail || '') + '</td></tr>';
+    }).join('');
     // 명단·금액은 저장된 항목(동적) 전체를 순서대로 출력 — 특별헌금 등 포함
     var offObj = d.offering || {};
     var offHtml = Object.keys(offObj).map(function (k) { return offObj[k] ? '<div class="ofg"><b>' + esc(k) + '</b> ' + esc(offObj[k]) + '</div>' : ''; }).join('');
@@ -196,7 +205,11 @@
       if (rows) amtHtml = '<table class="amt"><tbody>' + rows + '</tbody></table>';
     }
     var comHtml = COMMITTEE_KEYS.map(function (k) { return (d.committee && d.committee[k]) ? '<div class="ofg"><b>' + esc(k) + '</b> ' + esc(d.committee[k]) + '</div>' : ''; }).join('');
-    var notices = (d.notices || '').split('\n').filter(function (l) { return l.trim(); }).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('');
+    // 줄과 줄 사이에 일부러 넣은 빈 줄은 여백으로 살려 인쇄한다 — 맨 앞·맨 뒤의 군더더기 빈 줄만 정리.
+    var noticeLines = (d.notices || '').replace(/\r/g, '').split('\n');
+    while (noticeLines.length && !noticeLines[0].trim()) noticeLines.shift();
+    while (noticeLines.length && !noticeLines[noticeLines.length - 1].trim()) noticeLines.pop();
+    var notices = noticeLines.map(function (l) { return l.trim() ? '<li>' + esc(l) + '</li>' : '<li class="sp"></li>'; }).join('');
     var sub = 'WOONPYEONG PRESBYTERIAN CHURCH · ' + esc(dotDate(rec.bdate)) + (d.no ? ' · No. ' + esc(d.no) : '') + (d.week ? ' · ' + esc(d.week) : '');
 
     // 표지 말씀 헤드라인 — 생성된 말씀 카드 이미지가 있으면 그것을, 없으면(예전 주보) 텍스트 배너로.

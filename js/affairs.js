@@ -5906,8 +5906,15 @@ console.log('[affairs.js] v20260712memo2');
       '.ed{width:auto;display:inline}',
       '.ed-b{display:block;width:100%;overflow:hidden}',
       '.ed-a{display:block;width:100%;overflow:hidden}',
+      // 빈 칸에 뜨는 안내글(placeholder)은 실제 인쇄되는 내용이 아니다 — 진한 본문 글씨와
+      // 뚜렷이 구분되는 옅은 회색·기울임으로, "이건 예시일 뿐 아직 안 채워졌다"를 분명히 한다.
+      '.ed::placeholder,.ed-b::placeholder,.ed-a::placeholder{color:#b7c0cc;opacity:1;font-style:italic}',
       '.ed-row{position:relative}',
       '.ed-row:hover{background:rgba(58,109,181,.04)}',
+      // 값이 없어 인쇄에서 통째로 빠지는 행(향기로운 예물·봉사위원의 빈 칸)은 옅게 표시해
+      // "이 줄은 지금 인쇄되지 않는다"를 화면에서부터 알 수 있게 한다.
+      '.ed-row.ed-empty{opacity:.4}',
+      '.ed-row.ed-empty:hover{opacity:1}',
       '.ed-del{position:absolute;left:100%;top:50%;transform:translateY(-50%);margin-left:4px;border:0;background:#fff;color:#c0392b;font-size:9pt;line-height:1;cursor:pointer;padding:2px 4px;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.15);opacity:0;pointer-events:none}',
       '.ed-row:hover .ed-del{opacity:1;pointer-events:auto}',
       '.ed-add{display:inline-block;margin-top:4mm;border:1px dashed #9cc0f0;background:#eef4ff;color:#3a6db5;font-family:"Noto Sans KR",sans-serif;font-size:8.5pt;font-weight:700;padding:3px 10px;border-radius:99px;cursor:pointer}',
@@ -5945,7 +5952,7 @@ console.log('[affairs.js] v20260712memo2');
       '<div class="t">' + edI('bt_title', rec.title, '설교 제목', 20) + '</div>' +
       '<div class="m">본문 ● ' + edI('bt_scripture', rec.scripture, '예: 나훔 2:8-13', 16) + ' ● ' + edI('bt_preacher', rec.preacher || '김동석 목사', '설교자', 10) + '</div></div>' +
       '<table class="ord"><tbody id="bt_order"></tbody></table>' +
-      '<div style="text-align:center"><button type="button" class="ed-add" id="bo_add">＋ 순서 추가</button></div></section>';
+      '<div style="text-align:center"><button type="button" class="ed-add" id="bo_add">＋ 순서 추가</button> <button type="button" class="ed-add" id="bo_spacer_add">＋ 빈 줄(여백)</button></div></section>';
     var midSec = '<section>' + BR.h2Html('02', '주중 · 새벽 · QT', 'PRAYER MEETINGS') + '<div class="wk">' +
       '<div><span class="lbl">수요기도회</span>' + edI('bt_wed_series', d.wed_series, '강해 시리즈', 12) + ' — ' + edI('bt_wed_title', d.wed_title, '제목', 16) +
       '<br><span class="lbl"></span>' + edI('bt_wed_line', d.wed_dateline, '날짜 · 본문 · 설교자', 34) + '</div>' +
@@ -5958,7 +5965,7 @@ console.log('[affairs.js] v20260712memo2');
       '<div class="two" id="bt_offer"></div>' +
       '<p style="font-size:7.5pt;color:#b6a273;margin:2mm 0 0">🔒 금액은 인쇄(PDF)에만 표시되고 홈페이지에는 공개되지 않습니다.</p></section>';
     var comSec = '<section>' + BR.h2Html('', '봉사위원 · 다음 주 기도', 'SERVANTS') +
-      '<div class="two">' + COMMITTEE_KEYS.map(function (k, i) { return '<div class="ofg ed-row"><b>' + esc(k) + '</b>' + edI('bt_com_' + i, com[k], '', 12) + '</div>'; }).join('') + '</div></section>';
+      '<div class="two">' + COMMITTEE_KEYS.map(function (k, i) { return '<div class="ofg ed-row' + (com[k] ? '' : ' ed-empty') + '"><b>' + esc(k) + '</b>' + edI('bt_com_' + i, com[k], '', 12) + '</div>'; }).join('') + '</div></section>';
     var front = '<div class="page front">' + sermSec + midSec + svcSec + offerSec + comSec + '</div>';
 
     // ── page back: 07 신앙과책 · 08 한주의소식 · 09 섬기는사람들 · 10 후원선교지 · 표지 ──
@@ -6030,6 +6037,11 @@ console.log('[affairs.js] v20260712memo2');
     function applyZoom() { var v = Number(zoomEl.value); sheetEl.style.transform = 'scale(' + (v / 100) + ')'; zoomVEl.textContent = v + '%'; }
     zoomEl.addEventListener('input', applyZoom);
     applyZoom();
+    // 봉사위원 4칸 — 비어 있으면(=인쇄에서 빠지면) 옅게 표시, 입력하면 즉시 진하게
+    COMMITTEE_KEYS.forEach(function (k, i) {
+      var el = ov.querySelector('#bt_com_' + i); if (!el) return;
+      el.addEventListener('input', function () { el.closest('.ed-row').classList.toggle('ed-empty', !el.value.trim()); });
+    });
     // 표지 상단(발행일 · No · 날짜배지) 새로고침 — 날짜/호수가 바뀌면 즉시 반영
     var cvTopEl = ov.querySelector('#bt_cv_top');
     function renderCoverTop() {
@@ -6073,13 +6085,17 @@ console.log('[affairs.js] v20260712memo2');
       if (bd && !(d && d.no)) { ov.querySelector('#bt_no').value = bulletinNo(bd); renderCoverTop(); }
     });
 
-    // 예배 순서 편집 — 실제 인쇄 표(.ord) 그대로, hover 시에만 ✕ 버튼 노출
+    // 예배 순서 편집 — 실제 인쇄 표(.ord) 그대로, hover 시에만 ✕ 버튼 노출.
+    // "빈 줄"(스페이서)은 번호를 매기지 않고 인쇄에도 그대로 빈 줄로 나간다(order.spacer, bulletin-render.js 참고).
     var oBox = ov.querySelector('#bt_order');
     function renderBOrder() {
+      var num = 0;
       oBox.innerHTML = order.map(function (it, i) {
-        return '<tr class="ed-row"><td class="bno">' + (i + 1) + '</td>' +
+        if (it.spacer) return '<tr class="ed-row ord-spacer"><td class="bno"></td><td class="bn" colspan="2" style="color:#b7c0cc;font-size:8pt">— 빈 줄 —<button type="button" class="ed-del bo-del" data-i="' + i + '">✕</button></td></tr>';
+        num++;
+        return '<tr class="ed-row"><td class="bno">' + num + '</td>' +
           '<td class="bn">' + edCB('bo-name', it.name, '순서명', i) + '</td>' +
-          '<td class="bd">' + edCB('bo-detail', it.detail, '내용/담당 (예: 79장, 김애자 권사)', i) + '<button type="button" class="ed-del bo-del" data-i="' + i + '">✕</button></td></tr>';
+          '<td class="bd">' + edCB('bo-detail', it.detail, '내용/담당', i) + '<button type="button" class="ed-del bo-del" data-i="' + i + '">✕</button></td></tr>';
       }).join('');
       Array.prototype.forEach.call(oBox.querySelectorAll('.bo-name'), function (inp) { inp.oninput = function () { order[Number(inp.dataset.i)].name = inp.value; }; });
       Array.prototype.forEach.call(oBox.querySelectorAll('.bo-detail'), function (inp) { inp.oninput = function () { order[Number(inp.dataset.i)].detail = inp.value; }; });
@@ -6087,6 +6103,7 @@ console.log('[affairs.js] v20260712memo2');
     }
     renderBOrder();
     ov.querySelector('#bo_add').onclick = function () { order.push({ name: '', detail: '' }); renderBOrder(); };
+    ov.querySelector('#bo_spacer_add').onclick = function () { order.push({ spacer: true }); renderBOrder(); };
 
     // ── 헌금(향기로운 예물 명단 + 금액) 동적 표 — 특별헌금 등 자유 추가 ──
     var OFFER_BASE = ['십일조', '감사헌금', '주일헌금', '생일감사', '건축헌금', '선교헌금', '유년부', '차량헌금', '일천번기도'];
@@ -6104,9 +6121,11 @@ console.log('[affairs.js] v20260712memo2');
     function renderOffer() {
       var total = coffer.reduce(function (s, r) { return s + numAmt(r.amount); }, 0);
       ofBox.innerHTML = coffer.map(function (r, i) {
-        return '<div class="ofg ed-row"><b>' + edC('of-name', r.name, '항목', 6, i) + '</b>' +
-          edC('of-givers', r.givers, '헌금자 명단', 15, i) +
+        var empty = !r.givers && !r.amount;
+        return '<div class="ofg ed-row' + (empty ? ' ed-empty' : '') + '"><b>' + edC('of-name', r.name, '항목', 6, i) + '</b>' +
+          edC('of-givers', r.givers, '명단', 15, i) +
           ' <span style="color:#b6a273;font-size:7.5pt">🔒</span>' + edC('of-amount', r.amount, '금액', 7, i) +
+          (empty ? '<span style="color:#c0392b;font-size:7pt;margin-left:4px">(미입력·인쇄 제외)</span>' : '') +
           '<button type="button" class="ed-del of-del" data-i="' + i + '">✕</button></div>';
       }).join('') +
         '<div class="ofg" style="font-weight:700;color:#8a6d1f">합계 🔒 ' + (total ? total.toLocaleString('en-US') + ' 원' : '') + '</div>' +
@@ -6350,7 +6369,7 @@ console.log('[affairs.js] v20260712memo2');
     function gather() {
       var data = {
         no: ov.querySelector('#bt_no').value.trim(), week: ov.querySelector('#bt_week').value.trim(),
-        order: order.filter(function (o) { return o.name || o.detail; }),
+        order: order.filter(function (o) { return o.spacer || o.name || o.detail; }),
         wed_series: ov.querySelector('#bt_wed_series').value.trim(), wed_title: ov.querySelector('#bt_wed_title').value.trim(), wed_dateline: ov.querySelector('#bt_wed_line').value.trim(),
         dawn: ov.querySelector('#bt_dawn').value.trim(), qt: ov.querySelector('#bt_qt').value.trim(),
         offering: {}, offering_amounts: {}, committee: {},
