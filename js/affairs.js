@@ -5831,6 +5831,16 @@ console.log('[affairs.js] v20260712memo2');
     // 이 창을 연 시점의 갱신 시각을 기억해 둔다 — 창을 오래 열어 둔 사이
     // 워커(주일 자료 일괄 생성)가 새로 만든 내용을 저장 시 되엎지 않기 위해서다.
     var openedAt = rec.updated_at || null;
+    // 05·09·10·헤드라인 이미지처럼 이 편집기에 입력칸이 없는 값들.
+    // 서버에 이미 있던 값으로 시작해 두면(비어 있으면 그대로 비움), 저장할 때
+    // gather()가 이 값을 그대로 실어 보내 사라지지 않는다. .hwpx 를 불러오면
+    // applyHwpx() 가 이 값을 새로 채운다.
+    var hwpxExtra = {
+      service_schedule: d.service_schedule || null,
+      servants: d.servants || null,
+      missions: d.missions || null,
+      headline_image_url: d.headline_image_url || null
+    };
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto';
     var bd0 = fmtD(rec.bdate) || nextSunday();
@@ -6104,6 +6114,11 @@ console.log('[affairs.js] v20260712memo2');
       if (wedN) done.push('수요기도회');
       if (setv('#bt_dawn', P.dawn)) done.push('새벽기도회');
       if (setv('#bt_qt', P.qt)) done.push('매일 QT');
+      // 05·09·10 — 이 편집기에 입력칸이 없는 값들. hwpxExtra 에 담아 두면
+      // gather() 가 저장할 때 그대로 실어 보낸다(직접 만든 입력칸이 아니라 보이지 않음).
+      if (P.service_schedule) { hwpxExtra.service_schedule = P.service_schedule; done.push('예배 및 교육 안내'); }
+      if (P.servants) { hwpxExtra.servants = P.servants; done.push('섬기는 사람들'); }
+      if (P.missions) { hwpxExtra.missions = P.missions; done.push('후원 선교지 ' + P.missions.list.length + '곳'); }
       // 예물 명단 · 헌금 금액 → 동적 헌금 표
       function offRow(name) {
         var k = bxOfferKey(name);
@@ -6161,6 +6176,11 @@ console.log('[affairs.js] v20260712memo2');
         headline: ov.querySelector('#bt_headline').value.trim(),
         founded: FOUNDED_DATE
       };
+      // 05·09·10·헤드라인 이미지 — 입력칸이 없어 hwpxExtra 에 보관해 둔 값을 그대로 싣는다.
+      if (hwpxExtra.service_schedule) data.service_schedule = hwpxExtra.service_schedule;
+      if (hwpxExtra.servants) data.servants = hwpxExtra.servants;
+      if (hwpxExtra.missions) data.missions = hwpxExtra.missions;
+      if (hwpxExtra.headline_image_url) data.headline_image_url = hwpxExtra.headline_image_url;
       var tot = 0;
       coffer.forEach(function (r) {
         var nm = (r.name || '').trim(); if (!nm) return;
@@ -6606,6 +6626,61 @@ console.log('[affairs.js] v20260712memo2');
       if (dawn.length) out.dawn = dawn.join(' ');
       var qt = block(/Daily Quiet Time/i, /Worship\s*&\s*Education|예배 및 교육 안내/i, /^매일 말씀 묵상$/);
       if (qt.length) out.qt = qt.join(' ');
+
+      // ── 05 예배 및 교육 안내: 같은 표 안, "예배 및 교육 안내" 아래쪽 ──
+      // Ⅰ/Ⅱ/중등부 같은 로마자·명찰 셀 다음에 시간·장소, 그 다음에 영문 라벨이 온다.
+      var svcAnchor = bxCellAt(t1, /Worship\s*&\s*Education|예배 및 교육 안내/i);
+      if (svcAnchor) {
+        var rows1 = bxRows(t1);
+        var sunAnchor = bxCellAt(t1, /LORD'S DAY|주일예배/i);
+        var schAnchor = bxCellAt(t1, /SUNDAY SCHOOL|주일학교/i);
+        var weekAnchor = bxCellAt(t1, /THIS WEEK|이\s*번\s*주/i);
+        var svcRows = function (fromR, toR) {
+          var out2 = [];
+          bxRowNos(t1).forEach(function (r) {
+            if (r <= fromR || r >= toR) return;
+            var cs = rows1[r].filter(function (o) { return o.txt; });
+            if (!cs.length) return;
+            var label = bxNorm(cs[0].txt);           // Ⅰ / Ⅱ / 중등부
+            var rest = cs.slice(1).map(function (o) { return o.lines.join(' '); });
+            var eng = rest.length > 1 ? rest.pop() : '';   // 마지막 칸이 보통 영문 라벨
+            out2.push({ label: label, detail: bxNorm(rest.join(' ')), eng: bxNorm(eng) });
+          });
+          return out2;
+        };
+        if (sunAnchor && schAnchor) {
+          out.sunday_worship = svcRows(sunAnchor.r, schAnchor.r).map(function (it) {
+            return { session: (it.label === 'Ⅰ' ? '1부' : it.label === 'Ⅱ' ? '2부' : it.label), time: it.detail, label: it.eng };
+          });
+        }
+        if (schAnchor) {
+          var schEnd = weekAnchor ? weekAnchor.r : t1.maxr + 1;
+          out.sunday_school = svcRows(schAnchor.r, schEnd).map(function (it) {
+            var parts = it.detail.split(/·/).map(bxNorm);
+            return { group: /^[Ⅰ|Ⅱ]$/.test(it.label) ? '주일학교' : it.label, time: parts[0] || '', place: parts[1] || '', label: it.eng };
+          });
+        }
+        // 이 번 주 — 요일 라벨 행의 열(c) 범위를 기준으로 그 아래 여러 행의 일정을 묶는다.
+        if (weekAnchor) {
+          var dayHeaderRow = null;
+          bxRowNos(t1).forEach(function (r) { if (r > weekAnchor.r && dayHeaderRow == null) { var cs = rows1[r].filter(function (o) { return o.txt; }); if (cs.some(function (o) { return /^(주일|월|화|수|목|금|토)$/.test(o.txt); })) dayHeaderRow = r; } });
+          if (dayHeaderRow != null) {
+            var dayCells = rows1[dayHeaderRow].filter(function (o) { return /^(주일|월|화|수|목|금|토)$/.test(o.txt); }).sort(function (a, b) { return a.c - b.c; });
+            var week_default = {}, week_days = [];
+            dayCells.forEach(function (dc, i) {
+              var cLo = dc.c, cHi = (i + 1 < dayCells.length) ? dayCells[i + 1].c : 999;
+              var items = [];
+              t1.cells.forEach(function (o) { if (o.r > dayHeaderRow && o.c >= cLo && o.c < cHi && o.txt) items.push(o.txt); });
+              week_days.push(dc.txt);
+              week_default[dc.txt] = items;
+            });
+            out.service_schedule = { sunday_worship: out.sunday_worship, sunday_school: out.sunday_school, week_days: week_days, week_default: week_default };
+          }
+        }
+        if (!out.service_schedule && (out.sunday_worship || out.sunday_school)) {
+          out.service_schedule = { sunday_worship: out.sunday_worship, sunday_school: out.sunday_school };
+        }
+      }
     }
 
     // ── ③ 향기로운 예물 · 지난 주 헌금 · 봉사위원 ──
@@ -6660,6 +6735,63 @@ console.log('[affairs.js] v20260712memo2');
         cs.forEach(function (o) { if (/^\d{1,2}$/.test(o.txt)) { hasNo = true; return; } if (!body || o.txt.length > body.length) body = o.txt; });
         if (hasNo && body) out.notices.push(body);
       });
+
+      // ── 09 섬기는 사람들 ──
+      // "원로목사 김충현 담임목사 김동석 협동목사 안창선"처럼 role·name 이 한 셀에
+      // 번갈아 나오는 행(목사·장로)이 있어, 향기로운 예물과 같은 토큰 방식으로 자른다.
+      var SV_PASTOR = /^(원로목사|담임목사|협동목사)$/, SV_ELDER = /^(원로장로|시무장로)$/;
+      var t5 = t4;
+      var a5 = bxCellAt(t5, /^Servants$/i), a5b = bxCellAt(t5, /섬기는\s*사람들/);
+      var svStart = a5b || a5;
+      var a6 = bxCellAt(t5, /^Missions$/i);
+      if (svStart) {
+        var lim5 = a6 ? a6.r : t5.maxr + 1;
+        var rows5 = bxRows(t5);
+        var sv = { pastors: [], elders: [], deacons: {}, deaconesses: {}, committees: {} };
+        bxRowNos(t5).forEach(function (r) {
+          if (r <= svStart.r || r >= lim5) return;
+          var cs = rows5[r].filter(function (o) { return o.txt; });
+          if (cs.length < 2) return;
+          var role = bxNorm(cs[0].txt), val = bxNorm(cs[1].lines.join(' '));
+          if (!role || !val) return;
+          if (SV_PASTOR.test(role) || /목사/.test(val)) {
+            var toks = val.split(' '); var cur = null;
+            toks.forEach(function (tk) {
+              if (SV_PASTOR.test(tk)) { cur = tk; return; }
+              if (cur) { sv.pastors.push({ role: cur, name: tk }); cur = null; }
+            });
+          } else if (SV_ELDER.test(role) || (/장로/.test(val) && !/^(구제선교위원장|남전도회장)/.test(role))) {
+            var toks2 = val.split(' '); var cur2 = null;
+            toks2.forEach(function (tk) {
+              if (SV_ELDER.test(tk)) { cur2 = tk; return; }
+              if (cur2) { sv.elders.push({ role: cur2, name: tk }); cur2 = null; }
+            });
+          } else if (/^안수집사$/.test(role)) sv.deacons[role] = val;
+          else if (/권사$/.test(role)) sv.deaconesses[role] = val;
+          else sv.committees[role] = val;
+        });
+        if (sv.pastors.length || sv.elders.length || Object.keys(sv.deacons).length || Object.keys(sv.deaconesses).length || Object.keys(sv.committees).length) out.servants = sv;
+      }
+
+      // ── 10 후원 선교지 ──
+      if (a6) {
+        var lim6 = t5.maxr + 1;
+        var rows6 = bxRows(t5);
+        var missions = [];
+        bxRowNos(t5).forEach(function (r) {
+          if (r <= a6.r || r >= lim6) return;
+          var cs = rows6[r].filter(function (o) { return o.txt; });
+          if (cs.length < 2) return;
+          var preacher = bxNorm(cs[0].txt);
+          if (!/목사$/.test(preacher)) return;
+          // "삽시벧엘교회 · 충청도 섬마을 작은 교회"처럼 줄바꿈이 아니라
+          // 가운뎃점으로 교회명/지역이 같은 줄에 이어져 있을 수 있어 함께 처리한다.
+          var parts = cs[1].lines.join(' ').split('·').map(bxNorm).filter(Boolean);
+          if (!parts.length) return;
+          missions.push({ preacher: preacher, church: parts[0] || '', region: parts.slice(1).join(' ') });
+        });
+        if (missions.length) out.missions = { list: missions };
+      }
     }
     return out;
   }
