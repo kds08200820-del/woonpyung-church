@@ -40,6 +40,7 @@ import shutil
 import argparse
 import subprocess
 import tempfile
+import threading
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -199,14 +200,68 @@ def claim_job():
     return rows[0] if rows else None
 
 
-def set_progress(job_id, text):
+def set_progress(job_id, text, steps=None):
     print(f"   · {text}", flush=True)
     if not job_id:          # --date 단독 시험은 큐를 거치지 않는다
         return
+    body = {"progress": text}
+    if steps is not None:
+        body["steps"] = steps
     try:
-        rest("PATCH", f"worship_jobs?id=eq.{job_id}", {"progress": text})
+        rest("PATCH", f"worship_jobs?id=eq.{job_id}", body)
     except Exception as e:
         print(f"     (진행상황 갱신 실패: {e})", file=sys.stderr)
+
+
+def set_steps(job_id, steps):
+    """항목별 상태만 갱신 — 화면의 체크 표시에 쓰인다."""
+    if not job_id:
+        return
+    try:
+        rest("PATCH", f"worship_jobs?id=eq.{job_id}", {"steps": steps})
+    except Exception:
+        pass            # 진행 표시가 실패해도 작업 자체는 계속되어야 한다
+
+
+class OutputWatcher(threading.Thread):
+    """생성 중에 outputs/ 폴더를 지켜보며 완성된 산출물을 표시한다.
+
+    Claude 는 6가지를 한 번에 만드는 게 아니라 하나씩 써 나간다.
+    파일이 나타나는 순서를 그대로 읽으면 목사님 화면에 체크가 하나씩 켜진다.
+    """
+
+    def __init__(self, job_id, outdir, wanted, interval=15):
+        super().__init__(daemon=True)
+        self.job_id, self.outdir, self.wanted = job_id, outdir, wanted
+        self.interval = interval
+        self._stop = threading.Event()
+        self.steps = {k: "wait" for k in wanted}
+
+    def snapshot(self):
+        s = {}
+        for k in self.wanted:
+            fname = FILE_MAP.get(k) or EXTRA_FILE.get(k)
+            done = bool(fname) and os.path.exists(os.path.join(self.outdir, fname))
+            s[k] = "done" if done else "wait"
+        # 아직 안 끝난 것 중 첫 번째를 '만드는 중'으로 보여 준다.
+        for k in self.wanted:
+            if s[k] == "wait":
+                s[k] = "working"
+                break
+        return s
+
+    def run(self):
+        while not self._stop.wait(self.interval):
+            try:
+                s = self.snapshot()
+                if s != self.steps:
+                    self.steps = s
+                    set_steps(self.job_id, s)
+            except Exception:
+                pass
+
+    def stop(self):
+        self._stop.set()
 
 
 def finish_job(job_id, status, result=None, error=None):
@@ -382,13 +437,20 @@ FILE_MAP = {
     "teacher":  "중등부_교사용.docx",
 }
 
+# 자료실에 올리지 않고 주보·설교 요약으로 들어가는 것들.
+# 진행 상황 표시에는 이것도 함께 세어야 6가지가 다 보인다.
+EXTRA_FILE = {
+    "bulletin": "주보.json",
+    "summary":  "설교요약.txt",
+}
+
 CONTENT_TYPE = {
     ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
 
 
-def upload_outputs(job, sermon, outdir, wanted):
+def upload_outputs(job, sermon, outdir, wanted, on_done=None):
     made = []
     for key in wanted:
         if key not in FILE_MAP:
@@ -414,6 +476,11 @@ def upload_outputs(job, sermon, outdir, wanted):
                      "size": len(data),
                      "resource_id": (row[0]["id"] if row else None)})
         print(f"     · 올림 [OK] {label} ({len(data)//1024} KB)")
+        if on_done:
+            try:
+                on_done(key)
+            except Exception:
+                pass        # 화면 표시 실패가 업로드를 막아서는 안 된다
     return made
 
 
@@ -468,11 +535,22 @@ def process(job, dry_run=False):
     workdir = prepare_workdir(sermon)
     outdir = os.path.join(workdir, "outputs")
 
-    set_progress(jid, "예배 자료 생성 중 (수 분 소요)")
+    set_progress(jid, "예배 자료 생성 중 (수 분 소요)",
+                 steps={k: "wait" for k in wanted})
     started = time.time()
-    report = run_claude(build_prompt(sermon, wanted), workdir)
+    # 생성이 오래 걸리므로 그동안 완성된 산출물을 화면에 하나씩 알려 준다.
+    watcher = OutputWatcher(jid, outdir, wanted)
+    watcher.start()
+    try:
+        report = run_claude(build_prompt(sermon, wanted), workdir)
+    finally:
+        watcher.stop()
     mins = (time.time() - started) / 60
     print(f"   생성 완료 ({mins:.1f}분)")
+    steps = {k: ("done" if os.path.exists(os.path.join(
+        outdir, FILE_MAP.get(k) or EXTRA_FILE.get(k) or "")) else "fail")
+        for k in wanted}
+    set_steps(jid, steps)
 
     if dry_run:
         print(f"   [모의실행] 업로드 생략. 결과 폴더: {outdir}")
@@ -481,19 +559,24 @@ def process(job, dry_run=False):
         return {"dry_run": True, "outdir": outdir, "report": report[:1000]}
 
     set_progress(jid, "자료실 업로드 중")
-    made = upload_outputs(job, sermon, outdir, wanted)
+    made = upload_outputs(job, sermon, outdir, wanted, on_done=lambda k: (
+        steps.update({k: "up"}), set_steps(jid, steps)))
 
     if "bulletin" in wanted:
         set_progress(jid, "주보 저장 중")
         r = save_bulletin(sermon, outdir)
         if r:
             made.append(r)
+        steps["bulletin"] = "up" if r else "fail"
+        set_steps(jid, steps)
 
     if "summary" in wanted:
         set_progress(jid, "설교 요약 저장 중")
         r = save_summary(sermon, outdir)
         if r:
             made.append(r)
+        steps["summary"] = "up" if r else "fail"
+        set_steps(jid, steps)
 
     shutil.rmtree(workdir, ignore_errors=True)
     return {"items": made, "minutes": round(mins, 1),

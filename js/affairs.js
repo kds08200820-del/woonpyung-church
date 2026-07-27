@@ -2778,6 +2778,20 @@ console.log('[affairs.js] v20260712memo2');
         '.bd-doc b{display:block;font-size:.82rem;color:#22314a}' +
         '.bd-doc span{font-size:.7rem;color:#9aa5b1}' +
         '.bd-doc.cur{border-color:#7fa3d8;box-shadow:0 0 0 2px rgba(90,140,220,.18)}' +
+        // 주일 자료 생성 진행 표시
+        '.wp-state{font-size:.8rem;color:#5b6b7d;margin:2px 0 9px;line-height:1.5}' +
+        '.wp-row{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.82rem;color:#3a4a63}' +
+        '.wp-box{flex:0 0 17px;height:17px;border:1.5px solid #cfd8e3;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.72rem;color:#fff;background:#fff}' +
+        '.wp-row.on .wp-box{background:#2e9e5b;border-color:#2e9e5b}' +
+        '.wp-row.on{color:#1f2d3d;font-weight:600}' +
+        '.wp-row.doing .wp-box{border-color:#2c4a86;border-style:dashed}' +
+        '.wp-row.doing{color:#2c4a86}' +
+        '.wp-row.bad .wp-box{background:#c0392b;border-color:#c0392b}' +
+        '.wp-row.bad{color:#c0392b}' +
+        '.wp-note{font-size:.75rem;color:#8b97a6;margin-top:9px;line-height:1.55}' +
+        '.sed-dark .wp-state,.sed-dark .wp-row{color:#8394ab}' +
+        '.sed-dark .wp-box{background:#161d29;border-color:#2a3547}' +
+        '.sed-dark .wp-row.on{color:#d7e2f0}' +
         '.rp-tabs{display:flex;gap:4px;margin-bottom:10px}' +
         '.rp-tabs button{flex:1;font:inherit;font-size:.8rem;font-weight:700;padding:8px 3px;border:1px solid #dde3ec;background:#fff;color:#5b6b7d;border-radius:9px;cursor:pointer}' +
         '.rp-tabs button.on{background:var(--accent,#032257);color:#fff;border-color:var(--accent,#032257)}' +
@@ -3158,6 +3172,13 @@ console.log('[affairs.js] v20260712memo2');
         '<div id="qtc_result"></div>' +
         '<div style="border-top:1px solid #eef1f5;margin:13px 0 0;padding-top:11px"><button type="button" class="btn btn-line" id="qtc_illus" style="width:100%;padding:9px">🔍 예화 검색·삽입</button></div>' +
         '</div></div>' +
+        // 주일 자료 일괄 생성 진행 상황 — 작업이 있을 때만 나타난다
+        '<div class="qtc-card wp-card" id="wp_panel" style="display:none;margin-top:10px">' +
+        '<div class="qtc-h">📦 주일 자료 생성</div>' +
+        '<div class="wp-state" id="wp_state">대기 중</div>' +
+        '<div id="wp_list"></div>' +
+        '<div class="wp-note" id="wp_note"></div>' +
+        '</div>' +
         '</aside>' +
         '</div>' +
         // ── 하단 상태바: 페이지·단어·글자 · 저장 시각 · 맞춤(줌) ──
@@ -3793,6 +3814,11 @@ console.log('[affairs.js] v20260712memo2');
         var wbtn = ov.querySelector('#se_worship'); if (!wbtn) return;
         var poller = null;
         var OUTPUTS = ['ppt', 'cuesheet', 'youth', 'teacher', 'bulletin', 'summary'];
+        var LABEL = {
+          ppt: '방송실용 PPT', cuesheet: '방송 큐시트',
+          youth: '중등부 교재', teacher: '중등부 교사용',
+          bulletin: '주보 (예배순서·기도문)', summary: '설교 요약'
+        };
 
         function wmsg(html, color) {
           var m = ov.querySelector('#se_msg'); if (!m) return;
@@ -3800,18 +3826,42 @@ console.log('[affairs.js] v20260712memo2');
         }
         function done(label) { wbtn.disabled = false; wbtn.textContent = label || '📦 주일 자료 일괄 생성'; }
 
+        // 오른쪽 패널(자동분류 아래)에 항목별 진행 상황을 그린다.
+        //   wait 아직 · working 만드는 중 · done 파일 완성 · up 올림 완료 · fail 실패
+        function paint(state, steps, note) {
+          var panel = ov.querySelector('#wp_panel'); if (!panel) return;
+          panel.style.display = '';
+          var st = ov.querySelector('#wp_state'); if (st) st.innerHTML = state || '';
+          var nt = ov.querySelector('#wp_note'); if (nt) nt.innerHTML = note || '';
+          var box = ov.querySelector('#wp_list'); if (!box) return;
+          steps = steps || {};
+          box.innerHTML = OUTPUTS.map(function (k) {
+            var v = steps[k] || 'wait';
+            var cls = (v === 'done' || v === 'up') ? ' on' : (v === 'working' ? ' doing' : (v === 'fail' ? ' bad' : ''));
+            var mark = (v === 'done' || v === 'up') ? '✓' : (v === 'fail' ? '!' : '');
+            var tail = v === 'up' ? ' <span style="opacity:.6;font-weight:400">· 올림 완료</span>'
+              : (v === 'working' ? ' <span style="opacity:.7;font-weight:400">· 만드는 중…</span>' : '');
+            return '<div class="wp-row' + cls + '"><span class="wp-box">' + mark + '</span>' +
+              '<span>' + LABEL[k] + tail + '</span></div>';
+          }).join('');
+        }
+
         // 작업 상태를 5초 간격으로 확인 — 편집창을 닫으면 자동으로 멈춘다.
         function poll(date) {
           clearTimeout(poller);
           if (!document.body.contains(ov)) return;
-          api('GET', 'worship_jobs?select=status,progress,error,result&sermon_date=eq.' + date + '&order=created_at.desc&limit=1')
+          api('GET', 'worship_jobs?select=status,progress,error,result,steps,claimed_by&sermon_date=eq.' + date + '&order=created_at.desc&limit=1')
             .then(function (rows) {
               var j = rows && rows[0]; if (!j) { done(); return; }
               if (j.status === 'pending') {
                 wmsg('📦 대기 중 — 집/교회 PC 워커가 켜져 있어야 시작됩니다');
+                paint('대기 중입니다. 워커가 켜져 있어야 시작됩니다.', j.steps,
+                  '작업은 큐에 남아 있으므로 나중에 워커를 켜도 처리됩니다.');
                 poller = setTimeout(function () { poll(date); }, 5000);
               } else if (j.status === 'processing') {
-                wmsg('📦 생성 중 — ' + (j.progress || '진행 중') + ' <span style="opacity:.65">(30~50분 소요 — 창을 닫아도 계속 진행됩니다)</span>');
+                wmsg('📦 생성 중 — ' + (j.progress || '진행 중') + ' <span style="opacity:.65">(창을 닫아도 계속 진행됩니다)</span>');
+                paint((j.progress || '진행 중') + (j.claimed_by ? ' <span style="opacity:.6">· ' + j.claimed_by + '</span>' : ''),
+                  j.steps, '이 창을 닫아도 생성은 계속됩니다.');
                 poller = setTimeout(function () { poll(date); }, 5000);
               } else if (j.status === 'done') {
                 var items = (j.result && j.result.items) || [];
@@ -3820,9 +3870,12 @@ console.log('[affairs.js] v20260712memo2');
                   (j.result && j.result.minutes ? ' (' + j.result.minutes + '분)' : '') +
                   '<br><span style="opacity:.75;font-size:.92em">' + names.join(' · ') +
                   '<br>자료실에서 확인하세요. 주보는 <b>게시 전 상태</b>로 저장됩니다.</span>', 'green');
+                paint('✓ 완료' + (j.result && j.result.minutes ? ' — ' + j.result.minutes + '분' : ''),
+                  j.steps, '자료실에서 확인하세요.<br>주보는 <b>게시 전 상태</b>로 저장됩니다.');
                 done();
               } else if (j.status === 'error') {
                 wmsg('❌ 생성 실패 — ' + (j.error || '알 수 없는 오류'), '#c0392b');
+                paint('❌ 실패', j.steps, (j.error || '알 수 없는 오류'));
                 done();
               }
             })
@@ -3839,6 +3892,7 @@ console.log('[affairs.js] v20260712memo2');
             '이 창을 닫아도 생성은 계속됩니다. 계속할까요?')) return;
 
           wbtn.disabled = true; wbtn.textContent = '저장 중…';
+          paint('원고를 저장하고 작업을 요청합니다…', {});
           // 워커가 원고(content)를 읽으므로 반드시 저장이 끝난 뒤에 작업을 넣는다.
           save(function () {
             wbtn.textContent = '요청 중…';
@@ -3857,6 +3911,15 @@ console.log('[affairs.js] v20260712memo2');
               });
           }, function () { done(); });
         };
+
+        // 편집창을 열 때 이 주일에 이미 걸린 작업이 있으면 이어서 보여 준다.
+        // (버튼을 누르고 창을 닫았다 다시 열어도 진행 상황이 보인다)
+        var d0 = ov.querySelector('#se_date').value;
+        if (d0) {
+          api('GET', 'worship_jobs?select=status&sermon_date=eq.' + d0 + '&order=created_at.desc&limit=1')
+            .then(function (rows) { if (rows && rows[0]) poll(d0); })
+            .catch(function () { });   // 테이블이 없거나 권한이 없으면 조용히 넘어간다
+        }
       })();
       // 👁 미리보기 — 저장 없이 현재 화면 그대로 아이패드 보기로 미리 확인(설교 본문 포함)
       ov.querySelector('#se_preview').onclick = function () {
