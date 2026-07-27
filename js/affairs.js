@@ -1027,9 +1027,9 @@ console.log('[affairs.js] v20260712memo2');
         api('GET', 'tts_log?select=qt_date,label,url,voice,created_at&order=created_at.desc&limit=300').catch(function () { return []; })
       ]).then(function (rs) {
         var files = (rs[0] && rs[0].ok && rs[0].files) || null, logs = rs[1] || [];
-        if (!files) {   // 함수가 아직 구버전(관리 액션 없음) → 기록 개수만 표시 + 안내
+        if (!files) {   // R2 워커에 음원 관리 기능이 아직 없음 → 기록 개수만 표시 + 안내
           numEl.textContent = logs.length + '건';
-          card.onclick = function () { alert('저장된 음원 파일을 열람·삭제하려면 Supabase에서 tts 함수를 최신 index.ts로 재배포해 주세요.'); };
+          card.onclick = function () { alert('음원 목록을 불러오지 못했습니다.\n\ncloudflare/worker.js 를 최신 코드로 재배포했는지,\n관리자 계정으로 로그인했는지 확인해 주세요.'); };
           return;
         }
         numEl.textContent = files.length + '개';

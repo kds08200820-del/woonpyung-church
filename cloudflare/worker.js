@@ -5,6 +5,13 @@
  *  - GET    /f/<key>       저장된 파일 보기/다운로드 (공개, 1년 캐시)
  *  - DELETE /f/<key>       본인이 올린 파일 삭제
  *
+ *  - POST   /qt-audio-list       QT 낭독 음원 목록      (관리자)
+ *  - POST   /qt-audio-delete     QT 낭독 음원 삭제      (관리자, x-qt-name)
+ *  - POST   /bible-audio-list    성경읽기 음원 목록      (관리자)
+ *  - POST   /bible-audio-delete  성경읽기 음원 삭제      (관리자, x-bible-name)
+ *    목회행정 대시보드의 "AI 음성 생성"·"성경 음원 관리" 카드가 쓴다.
+ *    성경은 1189장이라 R2 목록 한도(1회 1000개)를 넘으므로 이어받아 모두 가져온다.
+ *
  *  ▼ 대시보드 설정(코드에 비밀키 안 넣음)
  *    1) R2 버킷 생성 (예: church-uploads)
  *    2) 이 Worker 생성 후 이 코드 붙여넣기
@@ -43,7 +50,7 @@ function corsHeaders(req) {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
     // x-worker-key 는 일부러 뺀다 — 브라우저에서 쓰라고 만든 키가 아니다.
-    "Access-Control-Allow-Headers": "authorization, content-type, x-filename, x-folder",
+    "Access-Control-Allow-Headers": "authorization, content-type, x-filename, x-folder, x-qt-name, x-bible-name",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
@@ -82,6 +89,49 @@ function isWorkerKey(req, env) {
   return diff === 0;
 }
 
+// 관리자인지 확인 — admins 테이블에 자기 행이 보이는지로 판단한다.
+// (admins_select_self 정책 덕분에 본인 행은 본인 토큰으로 읽을 수 있다)
+async function isAdmin(user, token, env) {
+  try {
+    const r = await fetch(
+      env.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/admins?select=uid&uid=eq." + user.id,
+      { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token } }
+    );
+    if (!r.ok) return false;
+    const rows = await r.json();
+    return Array.isArray(rows) && rows.length > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 음원 관리 대상. 대시보드의 두 카드가 이 경로들을 부른다.
+const AUDIO_ROUTES = {
+  "/qt-audio-list": { prefix: "tts/", del: false },
+  "/qt-audio-delete": { prefix: "tts/", del: true, nameHeader: "x-qt-name" },
+  "/bible-audio-list": { prefix: "bible/", del: false },
+  "/bible-audio-delete": { prefix: "bible/", del: true, nameHeader: "x-bible-name" },
+};
+
+// R2 목록은 한 번에 1000개까지만 온다. 성경은 1189장이라 반드시 이어받아야 한다.
+async function listAll(bucket, prefix) {
+  const out = [];
+  let cursor;
+  for (let guard = 0; guard < 20; guard++) {
+    const page = await bucket.list({ prefix, limit: 1000, cursor });
+    for (const o of page.objects) {
+      out.push({
+        name: o.key.slice(prefix.length),
+        size: o.size,
+        created_at: o.uploaded ? new Date(o.uploaded).toISOString() : null,
+      });
+    }
+    if (!page.truncated) break;
+    cursor = page.cursor;
+  }
+  return out;
+}
+
 function rand() {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -116,6 +166,26 @@ export default {
     const user = await verifyUser(token, env);
     const isWorker = !user && isWorkerKey(req, env);
     if (!user && !isWorker) return json({ error: "로그인이 필요합니다. 다시 로그인 후 시도해 주세요." }, 401, req);
+
+    // ----- 음원 목록·삭제 (관리자 전용) -----
+    const audio = AUDIO_ROUTES[url.pathname];
+    if (req.method === "POST" && audio) {
+      if (!user || !(await isAdmin(user, token, env))) {
+        return json({ error: "관리자만 사용할 수 있습니다." }, 403, req);
+      }
+      if (!audio.del) {
+        const files = await listAll(env.BUCKET, audio.prefix);
+        return json({ ok: true, files }, 200, req);
+      }
+      let name = req.headers.get(audio.nameHeader) || "";
+      try { name = decodeURIComponent(name); } catch (e) {}
+      // 파일 이름만 받는다 — 경로를 섞어 다른 폴더를 건드리지 못하게 한다.
+      if (!name || name.includes("/") || name.includes("..")) {
+        return json({ error: "파일 이름이 올바르지 않습니다." }, 400, req);
+      }
+      await env.BUCKET.delete(audio.prefix + name);
+      return json({ ok: true, deleted: name }, 200, req);
+    }
 
     // ----- 업로드 -----
     if (req.method === "POST" && url.pathname === "/upload") {
