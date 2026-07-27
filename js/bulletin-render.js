@@ -275,5 +275,11 @@
     w.document.close(); w.focus();
   }
 
-  window.BulletinRender = { open: open, html: fullHTML };
+  // css/h2Html/svcScheduleHTML 등은 편집기(주보제작, affairs.js)가 그대로 재사용한다 —
+  // 인쇄 결과와 편집 화면이 100% 같은 모양이어야 하므로, 스타일을 따로 베끼지 않는다.
+  window.BulletinRender = {
+    open: open, html: fullHTML, css: css,
+    DEFAULT_LOGO: DEFAULT_LOGO, WEEKDAY_EN: WEEKDAY_EN,
+    esc: esc, h2Html: h2Html, ymd: ymd, dotDate: dotDate
+  };
 })();
