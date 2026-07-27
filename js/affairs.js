@@ -795,6 +795,10 @@ console.log('[affairs.js] v20260712memo2');
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🎧 성경 음원 관리</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#2f6d8f;line-height:1.1;margin-top:4px" id="bibleAudioNum">–</div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">나의 성경읽기 낭독 · 눌러서 관리</div></div>' +
+        '<div class="fin-card" id="wpJobsCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📦 주일 자료 생성</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#b8860b;line-height:1.1;margin-top:4px" id="wpJobsNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="wpJobsSub">눌러서 생성 내역 보기</div></div>' +
         '</div>' +
         '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
         '<b style="color:var(--accent,#032257)">📖 성경 권별 커버리지</b>' +
@@ -827,6 +831,96 @@ console.log('[affairs.js] v20260712memo2');
       loadDashMemo(panel);
       loadVideoMgr(panel);
       loadBibleAudio(panel);
+      loadWorshipJobs(panel);
+    }
+
+    // ── 📦 주일 자료 일괄 생성 내역 — 카드 + 누르면 목록 ──
+    var WP_LABEL = {
+      ppt: '방송실용 PPT', cuesheet: '방송 큐시트',
+      youth: '중등부 교재', teacher: '중등부 교사용',
+      bulletin: '주보', summary: '설교 요약'
+    };
+    var WP_STATE = {
+      pending: ['대기 중', '#7b8794'], processing: ['생성 중', '#2c4a86'],
+      done: ['완료', '#1e874b'], error: ['실패', '#c0392b']
+    };
+    function loadWorshipJobs(panel) {
+      var numEl = panel.querySelector('#wpJobsNum'), subEl = panel.querySelector('#wpJobsSub');
+      var card = panel.querySelector('#wpJobsCard');
+      if (!numEl || !card) return;
+      api('GET', 'worship_jobs?select=id,sermon_date,status,progress,error,result,steps,claimed_by,created_at&order=created_at.desc&limit=50')
+        .then(function (rows) {
+          rows = rows || [];
+          numEl.textContent = rows.length + '건';
+          var active = rows.filter(function (r) { return r.status === 'pending' || r.status === 'processing'; }).length;
+          subEl.textContent = active ? active + '건 진행 중 · 눌러서 보기' : '눌러서 생성 내역 보기';
+          card.onclick = function () { worshipJobsModal(rows.slice(), panel); };
+        })
+        .catch(function (e) {
+          numEl.textContent = '–';
+          var t = (e && e.message) || '';
+          card.onclick = function () {
+            alert(/42P01|PGRST205|does not exist|schema cache/i.test(t)
+              ? 'worship_jobs 테이블이 없습니다.\nsupabase/worship_jobs.sql 을 먼저 실행해 주세요.'
+              : '생성 내역을 불러오지 못했습니다: ' + t);
+          };
+        });
+    }
+    function worshipJobsModal(rows, panel) {
+      function fmtTime(s) { s = String(s || ''); return s.replace('T', ' ').slice(0, 16) || '-'; }
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:720px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+        '<h3 style="margin:0;color:var(--accent,#032257)">📦 주일 자료 생성 내역 <span style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + rows.length + '건</span></h3>' +
+        '<button class="btn btn-line" id="wj_close" style="padding:3px 11px">닫기</button></div>' +
+        '<p style="margin:0 0 10px;font-size:.76rem;color:#9aa5b1">설교 매니저의 「📦 주일 자료 일괄 생성」 버튼으로 만든 작업입니다. 날짜를 누르면 그 주일 설교로 이동합니다.</p>' +
+        '<div id="wj_body" style="max-height:66vh;overflow:auto"></div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#wj_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      var body = ov.querySelector('#wj_body');
+
+      if (!rows.length) {
+        body.innerHTML = '<p style="color:#9aa5b1;font-size:.9rem;padding:8px 0">아직 생성한 자료가 없습니다. 설교 매니저에서 「📦 주일 자료 일괄 생성」을 눌러 시작하세요.</p>';
+        return;
+      }
+      body.innerHTML = rows.map(function (r) {
+        var st = WP_STATE[r.status] || [r.status, '#7b8794'];
+        var items = (r.result && r.result.items) || [];
+        var missing = (r.result && r.result.missing) || [];
+        var steps = r.steps || {};
+        var chips = Object.keys(WP_LABEL).map(function (k) {
+          var v = steps[k];
+          var on = v === 'done' || v === 'up';
+          var bad = missing.indexOf(k) >= 0 && r.status === 'done';
+          var color = bad ? '#c0392b' : (on ? '#1e874b' : '#c3cad3');
+          var bg = bad ? '#fbeaea' : (on ? '#eaf6ee' : '#f6f7f9');
+          return '<span style="display:inline-block;padding:2px 8px;margin:2px 4px 2px 0;border-radius:99px;font-size:.72rem;font-weight:700;color:' + color + ';background:' + bg + '">' +
+            (on ? '✓ ' : (bad ? '✕ ' : '')) + WP_LABEL[k] + '</span>';
+        }).join('');
+        return '<div style="padding:11px 0;border-bottom:1px solid #f0f0f0">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<b class="wj-date" data-date="' + esc(r.sermon_date) + '" style="color:var(--accent,#032257);cursor:pointer">' + esc(r.sermon_date) + '</b>' +
+          '<span style="font-size:.78rem;font-weight:700;color:' + st[1] + '">' + st[0] +
+          (r.status === 'processing' && r.progress ? ' · ' + esc(r.progress) : '') +
+          (r.claimed_by ? ' <span style="opacity:.6;font-weight:400">· ' + esc(r.claimed_by) + '</span>' : '') + '</span></div>' +
+          '<div style="margin-top:6px">' + chips + '</div>' +
+          (r.status === 'error' && r.error ? '<div style="font-size:.76rem;color:#c0392b;margin-top:5px">' + esc(r.error) + '</div>' : '') +
+          '<div style="font-size:.72rem;color:#9aa5b1;margin-top:5px">' + fmtTime(r.created_at) +
+          (items.length ? ' · ' + items.length + '건 생성' : '') +
+          (r.result && r.result.minutes ? ' · ' + r.result.minutes + '분' : '') + '</div>' +
+          '</div>';
+      }).join('');
+      Array.prototype.forEach.call(body.querySelectorAll('.wj-date'), function (el) {
+        el.onclick = function () {
+          var ds = el.dataset.date;
+          api('GET', 'sermons?select=*&sermon_date=eq.' + ds + '&order=service.asc&limit=1')
+            .then(function (rows) { close(); sermonEditor((rows && rows[0]) || { sermon_date: ds }); })
+            .catch(function () { close(); sermonEditor({ sermon_date: ds }); });
+        };
+      });
     }
 
     // ── 성경 음원(나의 성경읽기 낭독) 관리: R2 bible/ 목록·재생·삭제 ──
