@@ -3147,15 +3147,9 @@ console.log('[affairs.js] v20260712memo2');
         '</div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
         '</div></main>' +
-        // ── 우측 패널: 원고지 미리보기 / 생명의삶 자동분류 ──
+        // ── 우측 패널: 생명의삶 자동분류 ──
         '<aside class="sed-aside-r">' +
-        '<div class="rp-tabs"><button type="button" class="rp-tab on" data-p="prev">📄 PDF 미리보기</button><button type="button" class="rp-tab" data-p="qtc">📥 자동분류</button></div>' +
-        '<div class="rp-pane" id="rp_prev">' +
-        '<div class="rp-paperwrap" id="rp_paperwrap"><div class="rp-paper" id="rp_paper"><div class="rp-flow" id="rp_flow"></div></div></div>' +
-        '<div class="rp-nav"><button type="button" id="rp_pg_prev" title="이전 페이지">◀</button><b id="rp_pg">1 / 1</b><button type="button" id="rp_pg_next" title="다음 페이지">▶</button></div>' +
-        '<div class="rp-pageinfo" id="rp_pageinfo">아이패드 크기(3:4) · 실제 PDF 내보내기와 동일한 양식</div>' +
-        '</div>' +
-        '<div class="rp-pane" id="rp_qtc" style="display:none"><div class="qtc-card">' +
+        '<div class="rp-pane" id="rp_qtc"><div class="qtc-card">' +
         '<div class="qtc-h">📥 생명의삶 자동분류</div>' +
         '<div class="qtc-sub">생명의삶(목회자판) 자료 전체를 붙여넣고 <b>분류</b>를 누르면 — 매일 QT로 설정되고 <b>날짜·본문·개역개정·우리말성경·제목·설교 원고·예화 클립</b>이 자동 입력됩니다.</div>' +
         '<textarea id="qtc_paste" class="qtc-paste" placeholder="여기에 생명의삶 자료 전체를 붙여넣으세요"></textarea>' +

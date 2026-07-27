@@ -44,8 +44,36 @@ import urllib.request
 import urllib.error
 from datetime import datetime, date
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://cetacttsdwzxjzkyozgd.supabase.co").rstrip("/")
-SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+# 윈도우 콘솔 기본 인코딩(cp949)은 ✓ 같은 기호를 못 써서 print 에서 죽는다.
+# 화면 출력 때문에 작업이 실패하는 일이 없도록, 못 쓰는 문자는 대체하고 넘어간다.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(errors="replace")
+    except Exception:
+        pass
+
+
+def _env(name, default=""):
+    """환경변수를 읽되, 없으면 윈도우 사용자 환경변수(레지스트리)까지 확인한다.
+
+    setx 로 키를 넣어도 그 전에 열려 있던 창·프로그램에는 반영되지 않아
+    "환경변수를 설정하세요"가 뜨는 일이 잦다. 이 우회로 그 혼선을 없앤다.
+    """
+    v = os.environ.get(name)
+    if v:
+        return v
+    if sys.platform == "win32":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
+                return winreg.QueryValueEx(k, name)[0] or default
+        except Exception:
+            pass
+    return default
+
+
+SUPABASE_URL = _env("SUPABASE_URL", "https://cetacttsdwzxjzkyozgd.supabase.co").rstrip("/")
+SERVICE_KEY = _env("SUPABASE_SERVICE_ROLE_KEY")
 WORKER = os.environ.get("WORSHIP_WORKER_NAME", "home-pc")
 MODEL = os.environ.get("WORSHIP_MODEL", "sonnet")
 BUCKET = "resources"
