@@ -4130,13 +4130,21 @@ console.log('[affairs.js] v20260712memo2');
       if (fontSel) fontSel.onchange = function () { var v = this.value; if (!v) return; applyFontFamily(v); this.selectedIndex = 0; };
 
       // 글자 크기(px) — execCommand fontSize(7) 후 실제 px로 치환
+      // styleWithCSS 를 반드시 false 로 되돌린다. 글꼴 적용(applyFontFamily)이 이를 true 로
+      // 켜 두기 때문에, 그대로 두면 fontSize 가 <font size="7"> 대신
+      // <span style="font-size:xxx-large"> 를 만든다. 그러면 아래 치환이 대상을 못 찾아
+      // 글씨가 xxx-large(약 48px)로 남고, 누를수록 커지기만 한다.
       var sizeSel = ov.querySelector('#se_size');
       function applySize(px) {
         ed.focus(); restoreSel();
+        var s = window.getSelection();
+        if (!s || !s.rangeCount || !ed.contains(s.anchorNode)) return;
         pushUndo();
-        try { document.execCommand('fontSize', false, '7'); } catch (e) {}
+        try { document.execCommand('styleWithCSS', false, false); document.execCommand('fontSize', false, '7'); } catch (e) {}
         Array.prototype.forEach.call(ed.querySelectorAll('font[size="7"]'), function (f) { f.removeAttribute('size'); f.style.fontSize = px + 'px'; });
-        syncContent();
+        // 위 문제로 이미 커져 버린 부분이 원고에 남아 있으면 이번 크기로 함께 바로잡는다.
+        Array.prototype.forEach.call(ed.querySelectorAll('[style*="xxx-large"]'), function (el) { el.style.fontSize = px + 'px'; });
+        saveSel(); syncContent();
       }
       if (sizeSel) sizeSel.onchange = function () { applySize(Number(this.value)); };
       var sizeDn = ov.querySelector('#se_size_dn'), sizeUp = ov.querySelector('#se_size_up');
