@@ -8,7 +8,14 @@
   var OFFER_KEYS = ['십일조', '감사헌금', '주일헌금', '건축헌금', '선교헌금', '유년부', '차량헌금', '일천번기도'];
   var AMOUNT_KEYS = ['십일조', '감사헌금', '주일헌금', '생일감사', '건축헌금', '선교헌금', '차량헌금', '일천번제', '합계'];
   var COMMITTEE_KEYS = ['헌금위원', '안내위원', '주차·사찰', '이주의 기도'];
+  // 표지 로고 — 재정(영수증) 설정의 로고(d.church_logo_url)가 있으면 그것을,
+  // 없으면 홈페이지 PWA 아이콘(같은 도안, 항상 존재)을 기본값으로 쓴다.
+  var DEFAULT_LOGO = 'https://k-logos.com/images/icon-512.png';
+  var WEEKDAY_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  // 실제 인쇄 주보는 각 항목 앞에 01~10 큰 번호가 붙는다 — 그 자체가
+  // 이 주보의 시각적 정체성이라 홈페이지 출력에도 그대로 붙인다.
+  function h2Html(num, kr, en) { return '<h2>' + (num ? '<b class="secno">' + num + '</b>' : '') + esc(kr) + ' <span class="en">' + esc(en) + '</span></h2>'; }
   function ymd(v) { return String(v == null ? '' : v).slice(0, 10); }
   function dotDate(v) { return ymd(v).replace(/-/g, '. '); }
 
@@ -73,24 +80,43 @@
       // ── 인쇄용 3단 양면 레이아웃(실제 주보 211×380mm · 신문식 3단) ──
       // 여백은 실제 인쇄 주보를 실측해 맞췄다(위 6.5mm·좌우 8mm 안팎).
       // 단을 나누던 점선(column-rule)은 뺐다 — 그만큼 단 사이 간격을 넓혀 공백만으로 구분한다.
-      'body.l3 .page{width:380mm;min-height:211mm;column-count:3;column-gap:11mm;padding:7mm 8mm 8mm;font-size:8pt}',
-      'body.l3 section{-webkit-column-break-inside:avoid;break-inside:avoid;margin-bottom:4mm}',
-      'body.l3 .hd{-webkit-column-break-inside:avoid;break-inside:avoid;padding-bottom:3.5mm;margin-bottom:4mm}',
-      'body.l3 .hd .ch{font-size:15pt;letter-spacing:.18em;margin:1.5mm 0 1mm}.body.l3 .hd .eng{font-size:6.5pt}body.l3 .hd .sub{font-size:6.5pt}',
-      'body.l3 h2{font-size:8.5pt;margin-bottom:2mm;padding-bottom:1mm;gap:4px}body.l3 h2 .en{font-size:6pt}',
-      'body.l3 .serm{padding:3.5mm 2.5mm;margin-bottom:3.5mm}body.l3 .serm .lab{font-size:6pt;letter-spacing:.18em}body.l3 .serm .t{font-size:11.5pt;margin:1.5mm 0}body.l3 .serm .m{font-size:7pt}',
-      'body.l3 .ord td{font-size:7.6pt;padding:.8mm 1mm}body.l3 .ord .bno{width:5mm;font-size:6.5pt}body.l3 .ord .bn{width:16mm;font-size:7pt}',
-      'body.l3 .two{grid-template-columns:1fr;gap:.4mm}body.l3 .ofg{font-size:7.2pt;padding:.7mm 0}body.l3 .ofg b{font-size:7pt}',
-      'body.l3 .amt td{font-size:7.2pt;padding:.9mm 2mm}',
-      'body.l3 .wk{font-size:7.6pt;line-height:1.7}body.l3 .lbl{min-width:16mm;font-size:7.4pt}',
-      'body.l3 .col{font-size:7.5pt;line-height:1.6}body.l3 .col .ct{font-size:8pt}',
-      'body.l3 .news li{font-size:7.5pt;padding-left:6mm;line-height:1.45}body.l3 .news li::before{font-size:6.5pt}',
-      'body.l3 .cover{-webkit-column-break-inside:avoid;break-inside:avoid;-webkit-column-break-before:always;break-before:column;text-align:center;padding-top:8mm;border-top:1.5pt solid #0a2c5c}',
-      'body.l3 .cover .hl{font-size:9pt;line-height:1.55;margin:0 0 6mm;background:#f5f1e6}',
-      'body.l3 .cover .since{font-family:"Noto Sans KR",sans-serif;font-size:6.5pt;color:#a8915c;letter-spacing:.1em}',
-      'body.l3 .cover .big{font-family:"Noto Serif KR",serif;font-weight:700;font-size:15pt;letter-spacing:.12em;color:#0a2c5c;margin:2mm 0}',
-      'body.l3 .cover .ld{font-family:"Noto Sans KR",sans-serif;font-size:7pt;color:#555;line-height:1.7}',
-      'body.l3 .cover .ad{font-family:"Noto Sans KR",sans-serif;font-size:6.5pt;color:#888;margin-top:2mm;line-height:1.6}',
+      // 기본 글자 크기는 10pt — 어르신들도 읽으실 수 있게. 8pt 초안은 너무 작았다.
+      'body.l3 .page{width:380mm;min-height:211mm;column-count:3;column-gap:11mm;padding:7mm 8mm 8mm;font-size:10pt;line-height:1.5}',
+      'body.l3 section{-webkit-column-break-inside:avoid;break-inside:avoid;margin-bottom:5mm}',
+      'body.l3 .hd{-webkit-column-break-inside:avoid;break-inside:avoid;padding-bottom:4mm;margin-bottom:5mm}',
+      'body.l3 .hd .ch{font-size:18pt;letter-spacing:.18em;margin:2mm 0 1.2mm}.body.l3 .hd .eng{font-size:8pt}body.l3 .hd .sub{font-size:8pt}',
+      'body.l3 h2{font-size:10.5pt;margin-bottom:2.4mm;padding-bottom:1.2mm;gap:5px}body.l3 h2 .en{font-size:7.5pt}',
+      // 섹션 앞의 큰 번호(01~10) — 원본 실측 20pt를 3단 인쇄 축소 비율에 맞췄다.
+      'h2 .secno{font-family:"Noto Serif KR",serif;font-weight:400;color:#0a2c5c;margin-right:2px}',
+      'body.l3 h2 .secno{font-size:15pt;margin-right:1px}',
+      'body.l3 .serm{padding:4mm 3mm;margin-bottom:4mm}body.l3 .serm .lab{font-size:7.5pt;letter-spacing:.18em}body.l3 .serm .t{font-size:14pt;margin:1.8mm 0}body.l3 .serm .m{font-size:9pt}',
+      'body.l3 .ord td{font-size:9.5pt;padding:1.1mm 1.2mm}body.l3 .ord .bno{width:6mm;font-size:8pt}body.l3 .ord .bn{width:19mm;font-size:8.5pt}',
+      'body.l3 .two{grid-template-columns:1fr;gap:.5mm}body.l3 .ofg{font-size:9pt;padding:.9mm 0}body.l3 .ofg b{font-size:8.5pt}',
+      'body.l3 .amt td{font-size:9pt;padding:1.1mm 2.2mm}',
+      'body.l3 .wk{font-size:9.5pt;line-height:1.75}body.l3 .lbl{min-width:19mm;font-size:9pt}',
+      'body.l3 .col{font-size:9.5pt;line-height:1.65}body.l3 .col .ct{font-size:10pt}',
+      'body.l3 .news li{font-size:9.5pt;padding-left:7mm;line-height:1.55}body.l3 .news li::before{font-size:8pt}',
+      // 표지 — 실제 인쇄 주보와 같은 배치: 상단 발행 정보, 헤드라인 카드,
+      // 큰 여백으로 아래로 밀어낸 로고·교회명·목사님 명단·연락처(하단 고정).
+      // min-height 로 이 컬럼의 실제 인쇄 가용 높이(211mm - 상하 패딩)를 주고
+      // flex 로 하단 정렬한다 — 신문식 컬럼 안에서도 이 블록만은 독립적으로 흐른다.
+      // min-height 를 페이지 높이에 맞춰 강제하면 컬럼 균형 계산이 틀어져
+      // 빈 페이지가 하나 더 생긴다(실측으로 확인). 대신 spacer 에 고정 여백을
+      // 줘서 "아래쪽에 붙어 보이는" 정도로만 밀어낸다 — 안전한 절충.
+      'body.l3 .cover{-webkit-column-break-inside:avoid;break-inside:avoid;-webkit-column-break-before:always;break-before:column;text-align:center}',
+      'body.l3 .cv-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4mm}',
+      'body.l3 .cv-since{font-family:"Noto Sans KR",sans-serif;font-size:8pt;font-weight:700;color:#c0392b;text-align:left;line-height:1.6}',
+      'body.l3 .cv-date{text-align:right;line-height:1}',
+      'body.l3 .cv-date .day{font-family:"Noto Serif KR",serif;font-size:26pt;font-weight:600;color:#3a4a63}',
+      'body.l3 .cv-date .my{display:block;margin-top:.6mm}',
+      'body.l3 .cv-date .mo,body.l3 .cv-date .wd{display:block;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;font-weight:700;color:#c0392b}',
+      'body.l3 .cv-spacer{height:30mm}',
+      'body.l3 .cv-brand{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:3mm}',
+      'body.l3 .cv-logo{height:15mm;width:auto}',
+      'body.l3 .cover .big{font-family:"Noto Serif KR",serif;font-weight:700;font-size:18pt;letter-spacing:.12em;color:#0a2c5c;margin:0}',
+      'body.l3 .cover .ld{font-family:"Noto Sans KR",sans-serif;font-size:9pt;color:#333;line-height:1.75}',
+      'body.l3 .cv-foot-line{border-top:1pt solid #0a2c5c;margin:4mm 0 3mm}',
+      'body.l3 .cover .ad{font-family:"Noto Sans KR",sans-serif;font-size:8pt;color:#888;line-height:1.65}',
       'body.l3 .foot{display:none}',
       // 양면: 앞면(front) 다음에 새 페이지
       'body.l3 .front{page-break-after:always;break-after:page}',
@@ -107,8 +133,10 @@
       '.misRow{font-size:9pt;padding:1.6mm 0;border-bottom:.5pt dotted #e7e1d1;line-height:1.55}',
       '.misRow b{font-family:"Noto Serif KR",serif;color:#0a2c5c;font-weight:700;display:block;font-size:9.5pt}',
       '.misRow span{color:#8a8578;font-size:8.5pt}',
-      'body.l3 .svcRow,body.l3 .staffRow,body.l3 .misRow{font-size:7.4pt;padding:.7mm 0}',
-      'body.l3 .wkgrid .wd{font-size:6.8pt;padding:1mm .5mm}body.l3 .wkgrid .wd b{font-size:7pt}',
+      // 05 시간표·09 섬기는사람들·10 선교지는 원본 실측도 8pt다(명단류는
+      // 작게 써서 정보를 압축한다). 본문(10pt)과 똑같이 키우면 2쪽에 안 들어간다.
+      'body.l3 .svcRow,body.l3 .staffRow,body.l3 .misRow{font-size:8pt;padding:.9mm 0}',
+      'body.l3 .wkgrid .wd{font-size:7pt;padding:1.3mm .6mm}body.l3 .wkgrid .wd b{font-size:7.5pt}',
       '@media print{html,body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;width:auto;min-height:auto}body.l3 .page{width:auto}}'
     ].join('');
   }
@@ -127,7 +155,7 @@
       var items = sched[dName] || [];
       return '<div class="wd"><b>' + esc(dName) + '</b>' + (items.length ? items.map(esc).join('<br>') : '·') + '</div>';
     }).join('');
-    return '<section><h2>예배 및 교육 안내 <span class="en">WORSHIP &amp; EDUCATION</span></h2>' +
+    return '<section>' + h2Html('05', '예배 및 교육 안내', 'WORSHIP & EDUCATION') +
       rows + '<div class="wkgrid">' + grid + '</div></section>';
   }
   // 09 섬기는 사람들 — 목회자·장로·집사·권사·부서장 (church_settings.servants 스냅샷)
@@ -141,7 +169,7 @@
     Object.keys(sv.committees || {}).forEach(function (k) { lines.push([k, sv.committees[k]]); });
     if (!lines.length) return '';
     var html = lines.map(function (l) { return '<div class="staffRow"><b>' + esc(l[0]) + '</b>' + esc(l[1]) + '</div>'; }).join('');
-    return '<section><h2>섬기는 사람들 <span class="en">SERVANTS</span></h2><div class="two">' + html + '</div></section>';
+    return '<section>' + h2Html('09', '섬기는 사람들', 'SERVANTS') + '<div class="two">' + html + '</div></section>';
   }
   // 10 후원 선교지 (church_settings.missions 스냅샷)
   function missionsHTML(mi) {
@@ -150,7 +178,7 @@
     var html = list.map(function (m) {
       return '<div class="misRow"><b>' + esc(m.preacher || '') + ' · ' + esc(m.church || '') + '</b><span>' + esc(m.region || '') + '</span></div>';
     }).join('');
-    return '<section><h2>후원 선교지 <span class="en">MISSIONS</span></h2>' + html + '</section>';
+    return '<section>' + h2Html('10', '후원 선교지', 'MISSIONS') + html + '</section>';
   }
 
   function bodyHTML(rec, opts) {
@@ -181,29 +209,39 @@
     }
     // ── 섹션 조각 ──
     var hdBanner = '<div class="hd"><div class="eng">SUNDAY WORSHIP</div><div class="ch">운 평 장 로 교 회</div><div class="sub">' + sub + '</div></div>';
-    var sermSec = '<section><h2>주일 낮 예배 <span class="en">ORDER OF WORSHIP</span></h2>' +
+    var sermSec = '<section>' + h2Html('01', '주일 낮 예배', 'ORDER OF WORSHIP') +
       '<div class="serm"><div class="lab">오 늘 의 설 교 · SERMON</div><div class="t">' + esc(rec.title || '') + '</div><div class="m">본문 ● ' + esc(rec.scripture || '') + ' ● ' + esc(rec.preacher || '') + '</div></div>' +
       '<table class="ord"><tbody>' + orderHtml + '</tbody></table></section>';
     var midSec = (d.wed_title || d.wed_series || d.dawn || d.qt)
-      ? ('<section><h2>주중 · 새벽 · QT <span class="en">PRAYER MEETINGS</span></h2><div class="wk">' +
+      ? ('<section>' + h2Html('02', '주중 · 새벽 · QT', 'PRAYER MEETINGS') + '<div class="wk">' +
         ((d.wed_series || d.wed_title) ? '<div><span class="lbl">수요기도회</span>' + esc([d.wed_series, d.wed_title].filter(Boolean).join(' — ')) + (d.wed_dateline ? '<br><span class="lbl"></span><span style="color:#6a6a6a;font-size:8.5pt">' + esc(d.wed_dateline) + '</span>' : '') + '</div>' : '') +
         (d.dawn ? '<div><span class="lbl">새벽기도회</span>' + esc(d.dawn) + '</div>' : '') +
         (d.qt ? '<div><span class="lbl">매일 QT</span>' + esc(d.qt) + '</div>' : '') + '</div></section>') : '';
     var svcSec = svcScheduleHTML(d.service_schedule);
-    var offerSec = (offHtml || amtHtml) ? ('<section><h2>향기로운 예물 <span class="en">FRAGRANT OFFERING</span></h2>' + (offHtml ? '<div class="two">' + offHtml + '</div>' : '') + amtHtml + '</section>') : '';
-    var comSec = comHtml ? ('<section><h2>봉사위원 · 다음 주 기도 <span class="en">SERVANTS</span></h2><div class="two">' + comHtml + '</div></section>') : '';
-    var colSec = (d.column_title || d.column_body) ? ('<section><h2>신앙과 책 <span class="en">FAITH &amp; BOOKS</span></h2><div class="col"><div class="ct">' + esc(d.column_title || '') + '</div>' + esc(d.column_body || '') + '</div></section>') : '';
-    var newsSec = notices ? ('<section><h2>한 주의 소식 <span class="en">THIS WEEK</span></h2><ul class="news">' + notices + '</ul></section>') : '';
+    var offerSec = (offHtml || amtHtml) ? ('<section>' + h2Html('06', '향기로운 예물', 'FRAGRANT OFFERING') + (offHtml ? '<div class="two">' + offHtml + '</div>' : '') + amtHtml + '</section>') : '';
+    var comSec = comHtml ? ('<section>' + h2Html('', '봉사위원 · 다음 주 기도', 'SERVANTS') + '<div class="two">' + comHtml + '</div></section>') : '';
+    var colSec = (d.column_title || d.column_body) ? ('<section>' + h2Html('07', '신앙과 책', 'FAITH & BOOKS') + '<div class="col"><div class="ct">' + esc(d.column_title || '') + '</div>' + esc(d.column_body || '') + '</div></section>') : '';
+    var newsSec = notices ? ('<section>' + h2Html('08', '한 주의 소식', 'THIS WEEK') + '<ul class="news">' + notices + '</ul></section>') : '';
     var staffSec = servantsHTML(d.servants);
     var missionsSec = missionsHTML(d.missions);
     var noteHtml = !opts.amounts ? '<p class="note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>' : '';
     var fm = String(d.founded || '1964-03-01').match(/(\d{4})-(\d{2})-(\d{2})/);
-    var sinceTxt = fm ? ('SINCE ' + fm[1] + '. ' + Number(fm[2]) + '. ' + Number(fm[3])) : 'SINCE 1964. 3. 1';
-    var coverBlock = '<div class="cover">' + (headlineHtml || '') +
-      '<div class="since">' + sinceTxt + (d.no ? ' · No. ' + esc(d.no) : '') + '</div>' +
-      '<div class="big">운 평 장 로 교 회</div>' +
-      '<div class="ld">담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</div>' +
-      '<div class="ad">화성특례시 우정읍 운평길 47 · T. 010-4032-2903<br>' + esc(dotDate(rec.bdate)) + (d.week ? ' · ' + esc(d.week) : '') + ' · www.k-logos.com</div></div>';
+    var sinceTxt = fm ? ('Since. ' + fm[1] + '.' + Number(fm[2]) + '.' + Number(fm[3])) : 'Since. 1964.3.1';
+    // 표지 상단 우측의 날짜 배지(일자를 크게, 월·요일을 그 옆에) — 실제 인쇄 주보와 동일한 자리.
+    var bd = rec.bdate ? new Date(ymd(rec.bdate) + 'T00:00:00') : null;
+    var dateBadge = bd ? (
+      '<div class="cv-date"><div class="day">' + bd.getDate() + '</div>' +
+      '<div class="my"><span class="mo">' + (bd.getMonth() + 1) + '월</span><span class="wd">' + WEEKDAY_EN[bd.getDay()] + '</span></div></div>'
+    ) : '';
+    var logoUrl = d.church_logo_url || DEFAULT_LOGO;
+    var coverBlock = '<div class="cover">' +
+      '<div class="cv-top"><div class="cv-since">' + esc(sinceTxt) + '<br>No. ' + esc(d.no || '') + '. ' + esc(String(rec.bdate || '').slice(0, 4)) + '</div>' + dateBadge + '</div>' +
+      (headlineHtml || '') +
+      '<div class="cv-spacer"></div>' +
+      '<div class="cv-brand"><img class="cv-logo" src="' + esc(logoUrl) + '" alt="운평장로교회"><div class="big">운 평 장 로 교 회</div></div>' +
+      '<div class="ld">담임목사 김 동 석 · 원로목사 김 충 현 · 협동목사 안 창 선</div>' +
+      '<div class="cv-foot-line"></div>' +
+      '<div class="ad">화성특례시 우정읍 운평길 47   T.010-4032-2903<br>홈페이지 www.k-logos.com</div></div>';
 
     if (opts.layout === 'print3') {
       // 가로 3단 양면 — 앞면: 설교/예배순서·주중·안내·헌금/봉사위원 / 뒷면: 칼럼·광고·섬기는사람들·선교지·표지

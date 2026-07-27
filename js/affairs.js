@@ -5828,6 +5828,9 @@ console.log('[affairs.js] v20260712memo2');
 
   function bulletinEditor(rec) {
     rec = rec || {}; var d = rec.data || {};
+    // 이 창을 연 시점의 갱신 시각을 기억해 둔다 — 창을 오래 열어 둔 사이
+    // 워커(주일 자료 일괄 생성)가 새로 만든 내용을 저장 시 되엎지 않기 위해서다.
+    var openedAt = rec.updated_at || null;
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto';
     var bd0 = fmtD(rec.bdate) || nextSunday();
@@ -6184,15 +6187,46 @@ console.log('[affairs.js] v20260712memo2');
         data: data
       };
     }
+    // 이 편집기가 다루지 않는(=UI 입력칸이 없는) 자동 생성 전용 필드.
+    // 「주일 자료 일괄 생성」워커가 채운다. gather()가 이 키들을 모르기 때문에
+    // 그냥 저장하면 서버의 값이 통째로 사라진다 — 반드시 최신 값을 다시 채워 넣는다.
+    var AUTO_ONLY_KEYS = ['servants', 'missions', 'service_schedule', 'headline_image_url'];
     function save(then, extra) {
       var payload = gather();
       if (extra) for (var k in extra) payload[k] = extra[k];
       if (!payload.bdate) { bmsg('주일 날짜는 필수입니다.', '#c0392b'); return; }
-      payload.updated_at = new Date().toISOString();
       bmsg('저장 중…');
-      var p = rec.id ? api('PATCH', 'bulletins?id=eq.' + rec.id, payload, 'return=representation') : api('POST', 'bulletins?on_conflict=bdate', payload, 'resolution=merge-duplicates,return=representation');
-      p.then(function (rows) { var saved = (rows && rows[0]) || payload; if (rows && rows[0]) { rec.id = rows[0].id; rec.published = rows[0].published; } bmsg('✓ 저장되었습니다', 'green'); if (then) then(saved); })
-        .catch(function (e) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e.message)) bmsg('bulletins.sql 실행 필요', '#c0392b'); else bmsg('저장 실패: ' + e.message, '#c0392b'); });
+      // 저장 직전에 서버 최신 상태를 한 번 더 확인한다 — 이 창을 연 뒤로
+      // 워커가 새로 자료를 만들었다면(=updated_at 이 갱신됐다면), 그 자동
+      // 필드를 지키고 필요하면 사람에게 되묻는다.
+      api('GET', 'bulletins?select=data,updated_at&bdate=eq.' + payload.bdate).then(function (rows) {
+        var latest = rows && rows[0];
+        if (latest) {
+          AUTO_ONLY_KEYS.forEach(function (k) {
+            if (latest.data && latest.data[k] !== undefined && payload.data[k] === undefined) {
+              payload.data[k] = latest.data[k];
+            }
+          });
+          if (openedAt && latest.updated_at && latest.updated_at > openedAt) {
+            var goOn = confirm(
+              '이 창을 여신 뒤에 「주일 자료 일괄 생성」이 이 주보를 새로 만들었습니다.\n' +
+              '지금 저장하면 화면에 없는 예배 순서·본문 등 방금 만든 값이 지금 입력하신 값으로 바뀝니다.\n\n' +
+              '이대로 저장하시겠습니까? (취소하면 저장하지 않고, 새로고침 후 다시 열어보시길 권합니다)'
+            );
+            if (!goOn) { bmsg('저장을 취소했습니다 — 창을 닫고 새로고침 후 다시 열어 주세요.', '#c0392b'); return; }
+          }
+        }
+        payload.updated_at = new Date().toISOString();
+        var p = rec.id ? api('PATCH', 'bulletins?id=eq.' + rec.id, payload, 'return=representation') : api('POST', 'bulletins?on_conflict=bdate', payload, 'resolution=merge-duplicates,return=representation');
+        p.then(function (rows2) { var saved = (rows2 && rows2[0]) || payload; if (rows2 && rows2[0]) { rec.id = rows2[0].id; rec.published = rows2[0].published; } openedAt = payload.updated_at; bmsg('✓ 저장되었습니다', 'green'); if (then) then(saved); })
+          .catch(function (e) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e.message)) bmsg('bulletins.sql 실행 필요', '#c0392b'); else bmsg('저장 실패: ' + e.message, '#c0392b'); });
+      }).catch(function (e) {
+        // 확인 자체가 실패해도 저장은 막지 않는다 — 다만 자동 필드 보존은 못 한다.
+        payload.updated_at = new Date().toISOString();
+        var p = rec.id ? api('PATCH', 'bulletins?id=eq.' + rec.id, payload, 'return=representation') : api('POST', 'bulletins?on_conflict=bdate', payload, 'resolution=merge-duplicates,return=representation');
+        p.then(function (rows2) { var saved = (rows2 && rows2[0]) || payload; if (rows2 && rows2[0]) { rec.id = rows2[0].id; rec.published = rows2[0].published; } openedAt = payload.updated_at; bmsg('✓ 저장되었습니다', 'green'); if (then) then(saved); })
+          .catch(function (e2) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e2.message)) bmsg('bulletins.sql 실행 필요', '#c0392b'); else bmsg('저장 실패: ' + e2.message, '#c0392b'); });
+      });
     }
     ov.querySelector('#bt_save').onclick = function () { save(null); };
     ov.querySelector('#bt_printbtn').onclick = function () {
