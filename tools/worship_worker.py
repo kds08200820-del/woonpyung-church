@@ -122,7 +122,11 @@ def find_claude():
 # ── Supabase REST ────────────────────────────────────────────
 
 def _req(method, url, data=None, headers=None, timeout=60):
-    req = urllib.request.Request(url, data=data, method=method, headers=headers or {})
+    h = dict(headers or {})
+    # urllib 기본 신원(Python-urllib/…)은 Cloudflare 봇 검사에 걸려 403(오류 1010)이 난다.
+    # 우리 Worker 에 우리가 접속하는 것이므로 평범한 신원을 붙여 보낸다.
+    h.setdefault("User-Agent", "WoonpyungWorshipWorker/1.0 (+https://k-logos.com)")
+    req = urllib.request.Request(url, data=data, method=method, headers=h)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.status, resp.read()
