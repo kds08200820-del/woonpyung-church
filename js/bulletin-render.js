@@ -92,8 +92,63 @@
       'body.l3 .foot{display:none}',
       // 양면: 앞면(front) 다음에 새 페이지
       'body.l3 .front{page-break-after:always;break-after:page}',
+      // 05 예배및교육안내 · 09 섬기는사람들 · 10 후원선교지 · 헤드라인 이미지
+      '.hl-img{display:block;width:100%;height:auto;border-radius:6px;margin:0 0 16px}',
+      'body.l3 .hl-img{margin-bottom:4mm}',
+      '.svcRow{font-size:9.5pt;padding:1mm 0;line-height:1.6}',
+      '.svcRow b{font-family:"Noto Sans KR",sans-serif;color:#34415c;font-weight:600;margin-right:6px}',
+      '.wkgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:1.2mm;margin-top:3mm}',
+      '.wkgrid .wd{text-align:center;font-size:8pt;line-height:1.5;border:.5pt solid #e7e1d1;border-radius:2mm;padding:2mm 1mm;font-family:"Noto Sans KR",sans-serif;color:#5a5346}',
+      '.wkgrid .wd b{display:block;color:#7a5d27;font-size:8.5pt;margin-bottom:1mm}',
+      '.staffRow{font-size:9pt;padding:1.2mm 0;line-height:1.55}',
+      '.staffRow b{font-family:"Noto Sans KR",sans-serif;color:#7a5d27;font-weight:600;margin-right:5px;font-size:8.5pt}',
+      '.misRow{font-size:9pt;padding:1.6mm 0;border-bottom:.5pt dotted #e7e1d1;line-height:1.55}',
+      '.misRow b{font-family:"Noto Serif KR",serif;color:#0a2c5c;font-weight:700;display:block;font-size:9.5pt}',
+      '.misRow span{color:#8a8578;font-size:8.5pt}',
+      'body.l3 .svcRow,body.l3 .staffRow,body.l3 .misRow{font-size:7.4pt;padding:.7mm 0}',
+      'body.l3 .wkgrid .wd{font-size:6.8pt;padding:1mm .5mm}body.l3 .wkgrid .wd b{font-size:7pt}',
       '@media print{html,body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;width:auto;min-height:auto}body.l3 .page{width:auto}}'
     ].join('');
+  }
+
+  // 05 예배 및 교육 안내 — 주일예배·주일학교 시간표 + 이번 주(주일~토) 일정
+  function svcScheduleHTML(s) {
+    if (!s) return '';
+    var rows = [].concat(s.sunday_worship || [], s.sunday_school || []).map(function (r) {
+      var label = r.session || r.group || '';
+      var detail = [r.time, r.place].filter(Boolean).join(' · ') + (r.label ? ' · ' + r.label : '');
+      return '<div class="svcRow"><b>' + esc(label) + '</b>' + esc(detail) + '</div>';
+    }).join('');
+    var days = s.week_days || ['주일', '화', '수', '목', '금', '토'];
+    var sched = (s.week_this || s.week_default || {});
+    var grid = days.map(function (dName) {
+      var items = sched[dName] || [];
+      return '<div class="wd"><b>' + esc(dName) + '</b>' + esc(items.join(' ') || '·') + '</div>';
+    }).join('');
+    return '<section><h2>예배 및 교육 안내 <span class="en">WORSHIP &amp; EDUCATION</span></h2>' +
+      rows + '<div class="wkgrid">' + grid + '</div></section>';
+  }
+  // 09 섬기는 사람들 — 목회자·장로·집사·권사·부서장 (church_settings.servants 스냅샷)
+  function servantsHTML(sv) {
+    if (!sv) return '';
+    var lines = [];
+    (sv.pastors || []).forEach(function (p) { lines.push([p.role, p.name]); });
+    (sv.elders || []).forEach(function (p) { lines.push([p.role, p.name]); });
+    Object.keys(sv.deacons || {}).forEach(function (k) { lines.push([k, sv.deacons[k]]); });
+    Object.keys(sv.deaconesses || {}).forEach(function (k) { lines.push([k, sv.deaconesses[k]]); });
+    Object.keys(sv.committees || {}).forEach(function (k) { lines.push([k, sv.committees[k]]); });
+    if (!lines.length) return '';
+    var html = lines.map(function (l) { return '<div class="staffRow"><b>' + esc(l[0]) + '</b>' + esc(l[1]) + '</div>'; }).join('');
+    return '<section><h2>섬기는 사람들 <span class="en">SERVANTS</span></h2><div class="two">' + html + '</div></section>';
+  }
+  // 10 후원 선교지 (church_settings.missions 스냅샷)
+  function missionsHTML(mi) {
+    var list = (mi && mi.list) || [];
+    if (!list.length) return '';
+    var html = list.map(function (m) {
+      return '<div class="misRow"><b>' + esc(m.preacher || '') + ' · ' + esc(m.church || '') + '</b><span>' + esc(m.region || '') + '</span></div>';
+    }).join('');
+    return '<section><h2>후원 선교지 <span class="en">MISSIONS</span></h2>' + html + '</section>';
   }
 
   function bodyHTML(rec, opts) {
@@ -114,9 +169,11 @@
     var notices = (d.notices || '').split('\n').filter(function (l) { return l.trim(); }).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('');
     var sub = 'WOONPYEONG PRESBYTERIAN CHURCH · ' + esc(dotDate(rec.bdate)) + (d.no ? ' · No. ' + esc(d.no) : '') + (d.week ? ' · ' + esc(d.week) : '');
 
-    // 표지 말씀 헤드라인(있으면 머리글 아래 배너로)
+    // 표지 말씀 헤드라인 — 생성된 말씀 카드 이미지가 있으면 그것을, 없으면(예전 주보) 텍스트 배너로.
     var headlineHtml = '';
-    if (d.headline) {
+    if (d.headline_image_url) {
+      headlineHtml = '<img class="hl-img" src="' + esc(d.headline_image_url) + '" alt="' + esc(d.headline || '이번 주 말씀') + '">';
+    } else if (d.headline) {
       var hl = String(d.headline).replace(/^말씀:\s*/m, '').replace(/^헤드라인:\s*/m, '— ');
       headlineHtml = '<div class="hl">' + esc(hl).replace(/\n/g, '<br>') + '</div>';
     }
@@ -130,10 +187,13 @@
         ((d.wed_series || d.wed_title) ? '<div><span class="lbl">수요기도회</span>' + esc([d.wed_series, d.wed_title].filter(Boolean).join(' — ')) + (d.wed_dateline ? '<br><span class="lbl"></span><span style="color:#6a6a6a;font-size:8.5pt">' + esc(d.wed_dateline) + '</span>' : '') + '</div>' : '') +
         (d.dawn ? '<div><span class="lbl">새벽기도회</span>' + esc(d.dawn) + '</div>' : '') +
         (d.qt ? '<div><span class="lbl">매일 QT</span>' + esc(d.qt) + '</div>' : '') + '</div></section>') : '';
+    var svcSec = svcScheduleHTML(d.service_schedule);
     var offerSec = (offHtml || amtHtml) ? ('<section><h2>향기로운 예물 <span class="en">FRAGRANT OFFERING</span></h2>' + (offHtml ? '<div class="two">' + offHtml + '</div>' : '') + amtHtml + '</section>') : '';
     var comSec = comHtml ? ('<section><h2>봉사위원 · 다음 주 기도 <span class="en">SERVANTS</span></h2><div class="two">' + comHtml + '</div></section>') : '';
     var colSec = (d.column_title || d.column_body) ? ('<section><h2>신앙과 책 <span class="en">FAITH &amp; BOOKS</span></h2><div class="col"><div class="ct">' + esc(d.column_title || '') + '</div>' + esc(d.column_body || '') + '</div></section>') : '';
     var newsSec = notices ? ('<section><h2>한 주의 소식 <span class="en">THIS WEEK</span></h2><ul class="news">' + notices + '</ul></section>') : '';
+    var staffSec = servantsHTML(d.servants);
+    var missionsSec = missionsHTML(d.missions);
     var noteHtml = !opts.amounts ? '<p class="note">* 감사한 마음으로 드린 예물의 명단만 안내하며, 헌금 금액 내역은 게시하지 않습니다.</p>' : '';
     var fm = String(d.founded || '1964-03-01').match(/(\d{4})-(\d{2})-(\d{2})/);
     var sinceTxt = fm ? ('SINCE ' + fm[1] + '. ' + Number(fm[2]) + '. ' + Number(fm[3])) : 'SINCE 1964. 3. 1';
@@ -144,13 +204,13 @@
       '<div class="ad">화성특례시 우정읍 운평길 47 · T. 010-4032-2903<br>' + esc(dotDate(rec.bdate)) + (d.week ? ' · ' + esc(d.week) : '') + ' · www.k-logos.com</div></div>';
 
     if (opts.layout === 'print3') {
-      // 가로 3단 양면 — 앞면: 설교/예배순서·주중·헌금/봉사위원 / 뒷면: 칼럼·광고·표지
-      var front = '<div class="page front">' + sermSec + midSec + offerSec + comSec + noteHtml + '</div>';
-      var back = '<div class="page back">' + colSec + newsSec + coverBlock + '</div>';
+      // 가로 3단 양면 — 앞면: 설교/예배순서·주중·안내·헌금/봉사위원 / 뒷면: 칼럼·광고·섬기는사람들·선교지·표지
+      var front = '<div class="page front">' + sermSec + midSec + svcSec + offerSec + comSec + noteHtml + '</div>';
+      var back = '<div class="page back">' + colSec + newsSec + staffSec + missionsSec + coverBlock + '</div>';
       return front + back;
     }
     // 홈페이지 읽기(세로 1단)
-    return '<div class="page">' + hdBanner + (headlineHtml || '') + sermSec + midSec + offerSec + comSec + colSec + newsSec + noteHtml +
+    return '<div class="page">' + hdBanner + (headlineHtml || '') + sermSec + midSec + svcSec + offerSec + comSec + colSec + newsSec + staffSec + missionsSec + noteHtml +
       '<div class="foot">운평장로교회 · 담임목사 김동석 · 화성특례시 우정읍 운평길 47 · www.k-logos.com</div></div>';
   }
 

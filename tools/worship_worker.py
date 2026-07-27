@@ -33,6 +33,7 @@ Claude Code 는 저장소가 아니라 **임시 작업 폴더**에서 실행됩�
 """
 import os
 import sys
+import io
 import re
 import json
 import time
@@ -44,7 +45,10 @@ import threading
 import urllib.request
 import urllib.error
 import urllib.parse
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import verse_card  # noqa: E402  (같은 tools/ 폴더의 말씀 카드 생성기)
 
 # 윈도우 콘솔 기본 인코딩(cp949)은 ✓ 같은 기호를 못 써서 print 에서 죽는다.
 # 화면 출력 때문에 작업이 실패하는 일이 없도록, 못 쓰는 문자는 대체하고 넘어간다.
@@ -298,6 +302,89 @@ def fetch_sermon(sermon_date):
     return rows[0]
 
 
+# ── 주보 — 사실 데이터는 Claude에게 지어내게 하지 않고 DB에서 직접 가져온다 ──
+# (헌금·명단·일정처럼 틀리면 안 되는 정보는 여기서 결정적으로 채운다.
+#  Claude 는 판단이 필요한 것 — 예배 순서 문구·구절 선택 — 만 맡는다)
+
+def _addd(d, n):
+    return (date.fromisoformat(d) + timedelta(days=n)).isoformat()
+
+
+def fetch_wed_sermon(sunday):
+    """그 주 수요일(주일+3) 설교 — 있으면 02 수요기도회 항목을 그대로 채운다."""
+    wed = _addd(sunday, 3)
+    cols = "title,scripture,preacher,series"
+    rows = rest("GET", f"sermons?select={cols}&sermon_date=eq.{wed}&order=created_at.asc")
+    for r in rows:
+        if r.get("service") and "수요" in r["service"]:
+            return r
+    return rows[0] if rows else None
+
+
+def wed_dateline(sunday, wed_sermon):
+    """관리자 화면과 같은 형식으로 만든다: "2026. 07. 29 · 본문 · 설교자" """
+    wed = date.fromisoformat(_addd(sunday, 3))
+    dt = f"{wed.year}. {wed.month:02d}. {wed.day:02d}"
+    parts = [dt]
+    if wed_sermon:
+        if wed_sermon.get("scripture"):
+            parts.append(wed_sermon["scripture"])
+        if wed_sermon.get("preacher"):
+            parts.append(wed_sermon["preacher"])
+    return " · ".join(parts)
+
+
+def fetch_week_qt(sunday):
+    """다음 한 주(월~토)의 QT 본문 목록 — 04 매일 말씀 묵상에 쓴다."""
+    start, end = _addd(sunday, 1), _addd(sunday, 6)
+    rows = rest("GET", f"qt_imports?select=ref_date,scripture&ref_date=gte.{start}&ref_date=lte.{end}&order=ref_date.asc")
+    return [r for r in rows if r.get("scripture")]
+
+
+BOOK_RE = re.compile(r"^([가-힣]+)")
+
+
+def fetch_matching_illustration(scripture):
+    """07 신앙과 책 — 그 주 설교 본문과 같은 성경책의 예화를 고른다.
+
+    같은 책이 없으면 가장 최근 것으로. 사람이 미리 모아 둔 실제 예화만 쓰므로
+    Claude 가 내용을 지어낼 필요가 없다 — 검색·선택만 코드가 결정적으로 한다.
+    """
+    book = BOOK_RE.match(scripture or "").group(1) if scripture else None
+    cols = "title,source,content"
+    if book:
+        rows = rest("GET", f"sermon_illustrations?select={cols}&scripture=ilike.*{urllib.parse.quote(book)}*&order=created_at.desc&limit=1")
+        if rows:
+            return rows[0]
+    rows = rest("GET", f"sermon_illustrations?select={cols}&order=created_at.desc&limit=1")
+    return rows[0] if rows else None
+
+
+def fetch_setting(key, default=None):
+    rows = rest("GET", f"church_settings?key=eq.{key}&select=data")
+    return (rows[0]["data"] if rows else None) or default
+
+
+# 호수·주차 표기 — 관리자 편집기(js/affairs.js)의 bulletinNo/bulletinWeekLabel과
+# 정확히 같은 규칙으로 계산해야 한다(다르면 사람이 열었을 때 값이 바뀌어 보인다).
+def week_no_of_year(bd):
+    d = date.fromisoformat(bd)
+    jan1 = date(d.year, 1, 1)
+    first_sun = jan1 + timedelta(days=(7 - jan1.weekday() - 1) % 7)  # 그 해 첫 일요일
+    return (d - first_sun).days // 7 + 1
+
+
+def bulletin_no(bd, founded_year):
+    return f"{date.fromisoformat(bd).year - founded_year}-{week_no_of_year(bd)}"
+
+
+def bulletin_week_label(bd):
+    d = date.fromisoformat(bd)
+    nth = (d.day - 1) // 7 + 1
+    ord_word = ["첫째", "둘째", "셋째", "넷째", "다섯째", "여섯째"][min(nth, 6) - 1]
+    return f"{d.month}월 {ord_word} 주"
+
+
 # ── Claude Code 호출 ─────────────────────────────────────────
 
 def prepare_workdir(sermon):
@@ -337,13 +424,56 @@ def prepare_workdir(sermon):
     return d
 
 
-def build_prompt(sermon, outputs):
+def build_prompt(sermon, outputs, bulletin_ctx=None):
     want = [OUTPUT_SPEC[k][0] for k in outputs if k in OUTPUT_SPEC]
     extra = []
     if "bulletin" in outputs:
-        extra.append("- 예배 순서와 주보 초안 (기도문·찬송 선곡 포함)")
+        extra.append("- 예배 순서·기도문·찬송 선곡과 표지 말씀 카드 재료 (주보.json)")
     if "summary" in outputs:
         extra.append("- 설교 요약 (주보·홈페이지 게시용, 공백 포함 400자 내외)")
+
+    bulletin_block = ""
+    if "bulletin" in outputs and bulletin_ctx:
+        qt_lines = "\n".join(f"  - {q['ref_date']}: {q['scripture']}" for q in bulletin_ctx.get("week_qt") or [])
+        bulletin_block = f"""
+
+## 주보(`주보.json`) 작성 지침
+
+주보의 나머지 항목(헌금·명단·일정 등)은 이미 실제 데이터로 채워지므로,
+아래 항목만 정확히 작성하면 된다. **재정·명단·일정은 여기서 다루지 않는다.**
+
+`outputs/주보.json` 형식:
+```json
+{{
+  "order": [{{"name": "경배와찬양", "detail": "내가 주인 삼은 모든 것"}}, ...],
+  "hymns": "70,383,54",
+  "prayers": {{"대표기도": "...", "중보기도": "...", "축도": "..."}},
+  "qt_range": "에스겔 32장-33장",
+  "headline_verse": "구절 원문",
+  "headline_ref": "에스겔 31:16",
+  "headline_mood": "forest",
+  "notes": "확인이 필요한 사항"
+}}
+```
+
+- **order**: 예배 순서 12~14단계. `name`은 순서 이름(경배와찬양·목회기도·송영·성시교독·
+  신앙고백·찬송·기도·성경봉독·성가대찬양·말씀강해·헌금봉헌·교회소식·찬송·축도 같은
+  전형적 장로교 주일 낮 예배 순서를 이 설교에 맞게), `detail`은 그 항목의 실제 내용
+  (찬송이면 장번호+제목, 성경봉독이면 본문, 말씀강해면 설교 제목 등).
+- **hymns**: order 안에서 실제로 고른 찬송가 장번호만 쉼표로. **장번호가 확실하지
+  않으면 지어내지 말고 `notes`에 "장번호 재확인 요망"이라고 남겨라.**
+- **qt_range**: 아래 실제 QT 일정에 있는 본문 범위만 요약해서 써라(없는 본문을
+  만들지 말 것):
+{qt_lines or "  (등록된 QT 없음 — qt_range를 빈 문자열로 둘 것)"}
+- **headline_verse**: 이 설교 본문(성경 본문 전문이 위에 있으면 그중에서, 없으면
+  `설교원고.md`에 인용된 구절 중에서) 설교의 핵심을 가장 잘 드러내는 한두 절을
+  **원문 그대로** 발췌. 지어내면 절대 안 된다.
+- **headline_ref**: 그 구절의 출처 (예: "에스겔 31:16").
+- **headline_mood**: 이 목록 중 그 구절의 분위기에 가장 어울리는 것 하나만 정확히 그대로:
+  dawn(새벽·여명) · forest(숲·나무) · water(물·바다·강) · mountain(산·광야) ·
+  light(빛·영광) · storm(폭풍·시련) · harvest(추수·열매) · garden(동산·꽃) ·
+  night(밤·별) · city(성·성문·광장)
+"""
 
     return f"""[무인실행]
 
@@ -377,18 +507,7 @@ def build_prompt(sermon, outputs):
 함께 만들어라 — 둘은 같은 슬라이드 구성의 두 표현이라 짝이 맞아야 한다.
 마지막에 `outputs/` 폴더를 실제로 확인해 목록의 파일이 모두 있는지 점검하고,
 빠진 것이 있으면 그 자리에서 마저 만들어라.
-
-`주보.json` 형식 (예배 순서·찬송·기도문을 담는다):
-
-```json
-{{
-  "worship_order": [{{"label": "예배로의 부름", "detail": "시편 100:1-2"}}],
-  "hymns": "1,305,391",
-  "prayers": {{"대표기도": "...", "중보기도": "...", "축도": "..."}},
-  "notes": "확인이 필요한 사항"
-}}
-```
-
+{bulletin_block}
 `설교요약.txt` 는 다른 설명 없이 요약문 본문만 담는다.
 
 ## 원칙
@@ -485,16 +604,96 @@ def upload_outputs(job, sermon, outdir, wanted, on_done=None):
     return made
 
 
-def save_bulletin(sermon, outdir):
+def save_bulletin(sermon, outdir, bulletin_ctx):
+    """Claude가 만든 예배순서·구절(주보.json) + Python이 DB에서 가져온 사실 데이터를
+    합쳐 bulletins 테이블에 저장한다.
+
+    기존에 사람이 이미 입력해 둔 값(헌금·공지 등)은 지우지 않는다 — 그 항목들은
+    이 함수가 아예 건드리지 않으므로 기존 값이 그대로 남는다. 자동화 대상이
+    아닌 06 향기로운 예물은 offerings 테이블의 category 가 아직 비어 있어
+    신뢰할 수 있는 자동 집계가 불가능하므로 지금은 손대지 않는다(사람이 계속 입력).
+    """
     path = os.path.join(outdir, "주보.json")
     if not os.path.exists(path):
         return None
     with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+        claude_data = json.load(f)
 
-    # 이미 있으면 갱신, 없으면 생성. published 는 건드리지 않는다(검토 후 사람이 게시).
-    exist = rest("GET", f"bulletins?select=id&bdate=eq.{sermon['sermon_date']}")
-    body = {"bdate": sermon["sermon_date"], "title": sermon.get("title"),
+    sdate = sermon["sermon_date"]
+    exist = rest("GET", f"bulletins?select=id,data&bdate=eq.{sdate}")
+    data = dict((exist[0].get("data") or {})) if exist else {}
+
+    # 1) Claude가 정한 것 — 예배 순서(필드명은 bulletin-render.js가 읽는 그대로:
+    #    order[].name/detail. 예전 코드는 worship_order/label 로 저장해 실제로는
+    #    화면에 표시되지 않는 숨은 버그가 있었다).
+    order = claude_data.get("order") or []
+    for it in order:
+        if "label" in it and "name" not in it:
+            it["name"] = it.pop("label")
+    data["order"] = order
+    if claude_data.get("hymns"):
+        data["hymns"] = claude_data["hymns"]
+    if claude_data.get("prayers"):
+        data["prayers"] = claude_data["prayers"]
+    if claude_data.get("notes"):
+        data["notes"] = claude_data["notes"]
+
+    # 2) 02 수요기도회 — 그 주 수요일 설교가 실제로 있으면 그대로.
+    general = fetch_setting("general", {}) or {}
+    founded_year = date.fromisoformat(general.get("founded", "1964-03-01")).year
+    wed = bulletin_ctx.get("wed_sermon")
+    if wed:
+        data["wed_series"] = wed.get("series") or ""
+        data["wed_title"] = wed.get("title") or ""
+        data["wed_dateline"] = wed_dateline(sdate, wed)
+
+    # 3) 03 새벽기도회 — 계절 안내문(church_settings.dawn_status). 없으면 기본값.
+    dawn_setting = fetch_setting("dawn_status")
+    data["dawn"] = (dawn_setting or {}).get("text") or "화~금요일 새벽 5시, 함께 기도합니다."
+
+    # 4) 04 매일 말씀 묵상 — Claude가 실제 qt_imports 범위로 요약한 것.
+    if claude_data.get("qt_range"):
+        data["qt"] = claude_data["qt_range"]
+
+    # 5) 05 예배 및 교육 안내 — church_settings 스냅샷을 그대로.
+    svc = fetch_setting("service_schedule")
+    if svc:
+        data["service_schedule"] = svc
+
+    # 6) 07 신앙과 책 — 같은 성경책 예화를 코드가 결정적으로 골랐다(지어낸 것 아님).
+    illus = bulletin_ctx.get("illustration")
+    if illus:
+        data["column_title"] = illus.get("source") or illus.get("title") or ""
+        data["column_body"] = illus.get("content") or ""
+
+    # 9) 섬기는 사람들 · 10) 후원 선교지 — church_settings 스냅샷.
+    servants = fetch_setting("servants")
+    if servants:
+        data["servants"] = servants
+    missions = fetch_setting("missions")
+    if missions:
+        data["missions"] = missions
+
+    # 표지 헤드라인 — 말씀 카드 이미지를 코드로 생성해 올린다(외부 이미지·API 없음).
+    verse = claude_data.get("headline_verse")
+    ref = claude_data.get("headline_ref")
+    if verse and ref:
+        try:
+            im = verse_card.render(verse, ref, mood=claude_data.get("headline_mood"))
+            buf = io.BytesIO()
+            im.save(buf, "PNG", optimize=True)
+            url, _ = r2_upload(f"headline-{sdate}.png", buf.getvalue(), "image/png")
+            data["headline_image_url"] = url
+            data["headline"] = f"말씀: {verse} ({ref})"
+            print("     · 말씀 카드 생성 ✓")
+        except Exception as e:
+            print(f"     · 말씀 카드 생성 실패(건너뜀): {e}", file=sys.stderr)
+
+    # 호수·주차 — 관리자 화면과 같은 공식으로 계산해 미리 채워 둔다.
+    data.setdefault("no", bulletin_no(sdate, founded_year))
+    data.setdefault("week", bulletin_week_label(sdate))
+
+    body = {"bdate": sdate, "title": sermon.get("title"),
             "scripture": sermon.get("scripture"), "preacher": sermon.get("preacher"),
             "data": data}
     if exist:
@@ -504,7 +703,7 @@ def save_bulletin(sermon, outdir):
         body["published"] = False
         rest("POST", "bulletins", body)
         print("     · 주보 생성 ✓ (published=false — 검토 후 게시하세요)")
-    return {"kind": "bulletin", "title": f"{sermon['sermon_date']} 주보"}
+    return {"kind": "bulletin", "title": f"{sdate} 주보"}
 
 
 def save_summary(sermon, outdir):
@@ -536,6 +735,17 @@ def process(job, dry_run=False):
     workdir = prepare_workdir(sermon)
     outdir = os.path.join(workdir, "outputs")
 
+    # 주보에 들어갈 사실 데이터는 Claude를 부르기 전에 코드가 먼저 모아 둔다 —
+    # 헌금·명단·일정처럼 틀리면 안 되는 정보를 Claude가 지어내지 않도록.
+    bulletin_ctx = None
+    if "bulletin" in wanted:
+        set_progress(jid, "주보 자료(수요기도회·예화·QT) 조회 중")
+        bulletin_ctx = {
+            "wed_sermon": fetch_wed_sermon(sdate),
+            "week_qt": fetch_week_qt(sdate),
+            "illustration": fetch_matching_illustration(sermon.get("scripture")),
+        }
+
     set_progress(jid, "예배 자료 생성 중 (수 분 소요)",
                  steps={k: "wait" for k in wanted})
     started = time.time()
@@ -543,7 +753,7 @@ def process(job, dry_run=False):
     watcher = OutputWatcher(jid, outdir, wanted)
     watcher.start()
     try:
-        report = run_claude(build_prompt(sermon, wanted), workdir)
+        report = run_claude(build_prompt(sermon, wanted, bulletin_ctx), workdir)
     finally:
         watcher.stop()
     mins = (time.time() - started) / 60
@@ -565,7 +775,7 @@ def process(job, dry_run=False):
 
     if "bulletin" in wanted:
         set_progress(jid, "주보 저장 중")
-        r = save_bulletin(sermon, outdir)
+        r = save_bulletin(sermon, outdir, bulletin_ctx or {})
         if r:
             made.append(r)
         steps["bulletin"] = "up" if r else "fail"
