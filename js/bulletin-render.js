@@ -71,7 +71,9 @@
       '.foot{margin-top:7mm;padding-top:3.5mm;border-top:1pt solid #ddd;text-align:center;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;color:#9a9a9a;line-height:1.7}',
       '.note{font-size:7.5pt;color:#aaa;text-align:center;margin-top:3mm}',
       // ── 인쇄용 3단 양면 레이아웃(실제 주보 211×380mm · 신문식 3단) ──
-      'body.l3 .page{width:380mm;min-height:211mm;column-count:3;column-gap:8mm;column-rule:1px dotted #cdbf99;padding:9mm 9mm;font-size:8pt}',
+      // 여백은 실제 인쇄 주보를 실측해 맞췄다(위 6.5mm·좌우 8mm 안팎).
+      // 단을 나누던 점선(column-rule)은 뺐다 — 그만큼 단 사이 간격을 넓혀 공백만으로 구분한다.
+      'body.l3 .page{width:380mm;min-height:211mm;column-count:3;column-gap:11mm;padding:7mm 8mm 8mm;font-size:8pt}',
       'body.l3 section{-webkit-column-break-inside:avoid;break-inside:avoid;margin-bottom:4mm}',
       'body.l3 .hd{-webkit-column-break-inside:avoid;break-inside:avoid;padding-bottom:3.5mm;margin-bottom:4mm}',
       'body.l3 .hd .ch{font-size:15pt;letter-spacing:.18em;margin:1.5mm 0 1mm}.body.l3 .hd .eng{font-size:6.5pt}body.l3 .hd .sub{font-size:6.5pt}',
@@ -123,7 +125,7 @@
     var sched = (s.week_this || s.week_default || {});
     var grid = days.map(function (dName) {
       var items = sched[dName] || [];
-      return '<div class="wd"><b>' + esc(dName) + '</b>' + esc(items.join(' ') || '·') + '</div>';
+      return '<div class="wd"><b>' + esc(dName) + '</b>' + (items.length ? items.map(esc).join('<br>') : '·') + '</div>';
     }).join('');
     return '<section><h2>예배 및 교육 안내 <span class="en">WORSHIP &amp; EDUCATION</span></h2>' +
       rows + '<div class="wkgrid">' + grid + '</div></section>';
