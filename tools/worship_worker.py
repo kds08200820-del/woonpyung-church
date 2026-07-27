@@ -42,6 +42,7 @@ import subprocess
 import tempfile
 import urllib.request
 import urllib.error
+import urllib.parse
 from datetime import datetime, date
 
 # 윈도우 콘솔 기본 인코딩(cp949)은 ✓ 같은 기호를 못 써서 print 에서 죽는다.
@@ -76,7 +77,11 @@ SUPABASE_URL = _env("SUPABASE_URL", "https://cetacttsdwzxjzkyozgd.supabase.co").
 SERVICE_KEY = _env("SUPABASE_SERVICE_ROLE_KEY")
 WORKER = os.environ.get("WORSHIP_WORKER_NAME", "home-pc")
 MODEL = os.environ.get("WORSHIP_MODEL", "sonnet")
-BUCKET = "resources"
+
+# 파일은 홈페이지의 다른 자료와 같은 곳(Cloudflare R2)에 둔다.
+# Worker 가 사람 로그인을 요구하므로, 무인 업로드 전용 키를 함께 보낸다.
+R2_URL = _env("R2_UPLOAD_URL", "https://church-files.kds08200820.workers.dev").rstrip("/")
+R2_KEY = _env("WORKER_UPLOAD_KEY")
 
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_SRC = os.path.join(REPO_DIR, ".claude", "skills")
@@ -87,11 +92,12 @@ POLL_SEC = 20
 CLAUDE_TIMEOUT = 75 * 60
 
 # 산출물 정의: (키, 사람이 읽는 이름, 자료실 분류, 기대 확장자)
+# 분류는 js/resources.js 의 슬러그와 반드시 같아야 한다 — 다르면 자료실 화면에 안 보인다.
 OUTPUT_SPEC = {
-    "ppt":      ("방송실용 PPT",     "예배자료", ".pptx"),
-    "cuesheet": ("방송 큐시트",      "예배자료", ".docx"),
-    "youth":    ("중등부 교재",      "교육자료", ".docx"),
-    "teacher":  ("중등부 교사용",    "교육자료", ".docx"),
+    "ppt":      ("방송실용 PPT",     "worship-sunday", ".pptx"),
+    "cuesheet": ("방송 큐시트",      "worship-sunday", ".docx"),
+    "youth":    ("중등부 교재",      "middle",         ".docx"),
+    "teacher":  ("중등부 교사용",    "middle",         ".docx"),
 }
 
 
@@ -152,12 +158,34 @@ def rpc(fn, payload):
     return rest("POST", f"rpc/{fn}", payload)
 
 
-def storage_upload(key, data, content_type):
-    st, raw = _req("POST", f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{key}", data=data,
-                   headers={"apikey": SERVICE_KEY, "Authorization": f"Bearer {SERVICE_KEY}",
-                            "Content-Type": content_type, "x-upsert": "true"}, timeout=180)
-    if st not in (200, 201):
-        raise RuntimeError(f"업로드 실패({st}) {key}: {raw[:200].decode('utf-8', 'replace')}")
+def r2_upload(filename, data, content_type, folder="worship"):
+    """Cloudflare R2 로 올리고 공개 URL 을 돌려준다.
+
+    홈페이지의 다른 자료들과 같은 저장소를 쓴다. Worker 가 최종 파일명을
+    영문 안전키로 다시 지으므로, 한글 원본 이름은 resources.title 에 남긴다.
+    """
+    if not R2_KEY:
+        raise RuntimeError(
+            "WORKER_UPLOAD_KEY 환경변수가 없습니다. "
+            "Cloudflare Worker 에 넣은 것과 같은 값을 PC 에도 설정하세요."
+        )
+    st, raw = _req("POST", f"{R2_URL}/upload", data=data,
+                   headers={"Content-Type": content_type,
+                            "x-filename": urllib.parse.quote(filename),
+                            "x-folder": folder,
+                            "x-worker-key": R2_KEY}, timeout=180)
+    body = raw.decode("utf-8", "replace")
+    if st != 200:
+        if st == 401:
+            raise RuntimeError("R2 업로드 거부(401) — WORKER_UPLOAD_KEY 가 Cloudflare 쪽과 다릅니다.")
+        raise RuntimeError(f"R2 업로드 실패({st}) {filename}: {body[:200]}")
+    try:
+        out = json.loads(body)
+    except Exception:
+        raise RuntimeError(f"R2 응답을 읽지 못했습니다: {body[:200]}")
+    if not out.get("url"):
+        raise RuntimeError(f"R2 응답에 url 이 없습니다: {body[:200]}")
+    return out["url"], out.get("key")
 
 
 # ── 작업 큐 ──────────────────────────────────────────────────
@@ -356,13 +384,6 @@ CONTENT_TYPE = {
 }
 
 
-def safe_key(sermon_date, filename):
-    """Storage 키는 ASCII 만. 원본 이름은 resources.title 에 남긴다(개발지침서 규칙)."""
-    ext = os.path.splitext(filename)[1].lower()
-    kind = {v: k for k, v in FILE_MAP.items()}.get(filename, "file")
-    return f"worship/{sermon_date}-{kind}-{int(time.time())}{ext}"
-
-
 def upload_outputs(job, sermon, outdir, wanted):
     made = []
     for key in wanted:
@@ -378,17 +399,17 @@ def upload_outputs(job, sermon, outdir, wanted):
         with open(path, "rb") as f:
             data = f.read()
         ext = os.path.splitext(fname)[1].lower()
-        skey = safe_key(sermon["sermon_date"], fname)
-        storage_upload(skey, data, CONTENT_TYPE.get(ext, "application/octet-stream"))
+        url, r2key = r2_upload(fname, data, CONTENT_TYPE.get(ext, "application/octet-stream"))
 
+        # 자료실은 path 에 든 값을 그대로 링크로 쓴다(기존 R2 자료들과 같은 형식).
         title = f"{sermon['sermon_date']} {label} — {sermon.get('title') or ''}".strip()
         row = rest("POST", "resources",
-                   {"category": category, "title": title, "path": skey, "size": len(data)},
+                   {"category": category, "title": title, "path": url, "size": len(data)},
                    prefer="return=representation")
-        made.append({"kind": key, "title": title, "path": skey,
+        made.append({"kind": key, "title": title, "path": url, "r2_key": r2key,
                      "size": len(data),
                      "resource_id": (row[0]["id"] if row else None)})
-        print(f"     · 올림 ✓ {label} ({len(data)//1024} KB)")
+        print(f"     · 올림 [OK] {label} ({len(data)//1024} KB)")
     return made
 
 
@@ -503,7 +524,17 @@ def main():
     if not SERVICE_KEY:
         raise SystemExit("환경변수 SUPABASE_SERVICE_ROLE_KEY 를 설정하세요.")
 
+    # 업로드 키는 여기서 확인한다. 없는 채로 돌리면 30~50분 생성한 뒤에야
+    # 업로드 단계에서 실패해 그 시간을 통째로 버리게 된다.
+    if not R2_KEY and not a.dry_run:
+        raise SystemExit(
+            "환경변수 WORKER_UPLOAD_KEY 를 설정하세요.\n"
+            "  Cloudflare Worker 의 Secret 과 같은 값이어야 합니다.\n"
+            "  (생성만 시험하려면 --dry-run 을 쓰세요)"
+        )
+
     print(f"워커 '{WORKER}' / 모델 {MODEL} / claude {find_claude()}")
+    print(f"업로드 → {R2_URL}  (Cloudflare R2)")
 
     if a.date:                      # 큐를 거치지 않는 단독 시험
         fake = {"id": 0, "sermon_date": a.date,

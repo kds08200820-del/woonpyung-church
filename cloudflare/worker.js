@@ -16,6 +16,14 @@
  *         버킷 = 위에서 만든 church-uploads
  *    5) 배포(Deploy) 후 Worker 주소(...workers.dev)를 js/config.js 의
  *       window.R2_UPLOAD_URL 에 넣기
+ *
+ *  ▼ (선택) 무인 워커 업로드 — 주일 자료 자동 생성용
+ *    tools/worship_worker.py 는 사람 로그인 없이 도는 프로그램이라
+ *    사용자 토큰을 만들 수 없다. 그 경우에만 쓰는 전용 비밀키를 둔다.
+ *      Settings → Variables and Secrets 에 Secret 추가
+ *         WORKER_UPLOAD_KEY  = (충분히 긴 무작위 문자열)
+ *    같은 값을 워커 PC 환경변수 WORKER_UPLOAD_KEY 에도 넣는다.
+ *    이 키는 업로드만 허용하며 삭제에는 쓸 수 없다. 미설정 시 무인 업로드는 막힌다.
  ****************************************************************/
 
 // 업로드를 허용할 출처(우리 홈페이지)
@@ -34,6 +42,7 @@ function corsHeaders(req) {
   return {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
+    // x-worker-key 는 일부러 뺀다 — 브라우저에서 쓰라고 만든 키가 아니다.
     "Access-Control-Allow-Headers": "authorization, content-type, x-filename, x-folder",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
@@ -60,6 +69,17 @@ async function verifyUser(token, env) {
   } catch (e) {
     return null;
   }
+}
+
+// 무인 워커 확인 — 길이가 같을 때만 비교하고, 자리마다 XOR 을 누적해
+// 앞부분만 맞춰가며 키를 알아내는 시도(타이밍 공격)를 막는다.
+function isWorkerKey(req, env) {
+  const want = env.WORKER_UPLOAD_KEY || "";
+  const got = req.headers.get("x-worker-key") || "";
+  if (!want || want.length < 24 || got.length !== want.length) return false;
+  let diff = 0;
+  for (let i = 0; i < want.length; i++) diff |= want.charCodeAt(i) ^ got.charCodeAt(i);
+  return diff === 0;
 }
 
 function rand() {
@@ -91,10 +111,11 @@ export default {
       return new Response(obj.body, { headers: h });
     }
 
-    // ----- 여기부터는 로그인 필요 -----
+    // ----- 여기부터는 로그인(또는 무인 워커 키) 필요 -----
     const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
     const user = await verifyUser(token, env);
-    if (!user) return json({ error: "로그인이 필요합니다. 다시 로그인 후 시도해 주세요." }, 401, req);
+    const isWorker = !user && isWorkerKey(req, env);
+    if (!user && !isWorker) return json({ error: "로그인이 필요합니다. 다시 로그인 후 시도해 주세요." }, 401, req);
 
     // ----- 업로드 -----
     if (req.method === "POST" && url.pathname === "/upload") {
@@ -108,7 +129,9 @@ export default {
       const maxMB = Math.round(MAX_BYTES / 1024 / 1024);
       if (len > MAX_BYTES) return json({ error: "파일이 너무 큽니다(최대 " + maxMB + "MB)." }, 413, req);
       if (!req.body || len === 0) return json({ error: "빈 파일입니다." }, 400, req);
-      const key = `${folder}/${user.id}/${Date.now()}-${rand()}${ext}`;
+      // 무인 워커가 올린 것은 사람 파일과 섞이지 않게 system 아래 둔다.
+      const owner = user ? user.id : "system";
+      const key = `${folder}/${owner}/${Date.now()}-${rand()}${ext}`;
       // 메모리에 담지 않고 R2로 바로 스트리밍(큰 파일 안전)
       await env.BUCKET.put(key, req.body, { httpMetadata: { contentType: ct } });
       const fileUrl = `${url.origin}/f/${key.split("/").map(encodeURIComponent).join("/")}`;
@@ -117,6 +140,8 @@ export default {
 
     // ----- 삭제(본인 파일만) -----
     if (req.method === "DELETE" && url.pathname.startsWith("/f/")) {
+      // 무인 워커 키로는 지울 수 없다 — 실수나 유출 시 피해를 업로드로만 묶어둔다.
+      if (!user) return json({ error: "삭제는 로그인 후에만 가능합니다." }, 403, req);
       const key = decodeURIComponent(url.pathname.slice(3));
       if (!key.includes(`/${user.id}/`)) {
         return json({ error: "본인이 올린 파일만 삭제할 수 있습니다." }, 403, req);
