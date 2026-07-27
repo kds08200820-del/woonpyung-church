@@ -3870,8 +3870,16 @@ console.log('[affairs.js] v20260712memo2');
                   (j.result && j.result.minutes ? ' (' + j.result.minutes + '분)' : '') +
                   '<br><span style="opacity:.75;font-size:.92em">' + names.join(' · ') +
                   '<br>자료실에서 확인하세요. 주보는 <b>게시 전 상태</b>로 저장됩니다.</span>', 'green');
-                paint('✓ 완료' + (j.result && j.result.minutes ? ' — ' + j.result.minutes + '분' : ''),
-                  j.steps, '자료실에서 확인하세요.<br>주보는 <b>게시 전 상태</b>로 저장됩니다.');
+                var miss = (j.result && j.result.missing) || [];
+                paint((miss.length ? '⚠ 완료 — 일부 누락' : '✓ 완료') +
+                  (j.result && j.result.minutes ? ' — ' + j.result.minutes + '분' : ''),
+                  j.steps,
+                  (miss.length
+                    ? '<b style="color:#c0392b">만들어지지 않음: ' +
+                      miss.map(function (k) { return LABEL[k] || k; }).join(', ') +
+                      '</b><br>다시 생성하면 채워집니다.<br>'
+                    : '') +
+                  '자료실에서 확인하세요.<br>주보는 <b>게시 전 상태</b>로 저장됩니다.');
                 done();
               } else if (j.status === 'error') {
                 wmsg('❌ 생성 실패 — ' + (j.error || '알 수 없는 오류'), '#c0392b');

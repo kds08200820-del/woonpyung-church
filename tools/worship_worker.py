@@ -370,12 +370,13 @@ def build_prompt(sermon, outputs):
 파일은 **반드시 `outputs/` 폴더 안에** 아래 이름 그대로 저장하라.
 이름이 다르면 홈페이지 업로드가 실패한다.
 
-- `outputs/방송실용_PPT.pptx`
-- `outputs/방송실용_큐시트.docx`
-- `outputs/중등부_교재.docx`
-- `outputs/중등부_교사용.docx`
-- `outputs/주보.json`
-- `outputs/설교요약.txt`
+{chr(10).join('- `outputs/' + (FILE_MAP.get(k) or EXTRA_FILE.get(k)) + '`'
+              for k in outputs if FILE_MAP.get(k) or EXTRA_FILE.get(k))}
+
+**위 목록은 하나도 빠뜨리면 안 된다.** PPT 를 만들었으면 큐시트도 반드시
+함께 만들어라 — 둘은 같은 슬라이드 구성의 두 표현이라 짝이 맞아야 한다.
+마지막에 `outputs/` 폴더를 실제로 확인해 목록의 파일이 모두 있는지 점검하고,
+빠진 것이 있으면 그 자리에서 마저 만들어라.
 
 `주보.json` 형식 (예배 순서·찬송·기도문을 담는다):
 
@@ -578,8 +579,16 @@ def process(job, dry_run=False):
         steps["summary"] = "up" if r else "fail"
         set_steps(jid, steps)
 
+    # 못 만든 것이 있으면 조용히 넘기지 않는다. 예전에는 파일이 없어도
+    # 그냥 건너뛰고 '완료'로 끝나서, 큐시트가 빠진 것을 아무도 몰랐다.
+    missing = [k for k in wanted if steps.get(k) not in ("up", "done")]
+    if missing:
+        names = [OUTPUT_SPEC[k][0] if k in OUTPUT_SPEC else k for k in missing]
+        print(f"   ⚠ 만들어지지 않은 항목: {', '.join(names)}", file=sys.stderr)
+
     shutil.rmtree(workdir, ignore_errors=True)
     return {"items": made, "minutes": round(mins, 1),
+            "missing": missing,
             "finished_at": datetime.now().isoformat(timespec="seconds")}
 
 
