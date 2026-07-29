@@ -113,6 +113,15 @@ const AUDIO_ROUTES = {
   "/bible-audio-delete": { prefix: "bible/", del: true, nameHeader: "x-bible-name" },
 };
 
+// 음원 업로드 대상. 교회PC의 무인 스크립트가 '이름을 지정해' 올린다.
+//   · /upload 는 키를 <folder>/<owner>/<시각>-<난수> 로 만들기 때문에 쓸 수 없다.
+//     홈페이지는 tts/qt-<날짜>-<지문>.wav 라는 정확한 이름으로 음성을 찾는다.
+//   · 교회PC qt_tts_daily.mjs → POST /qt-audio (x-qt-name 헤더에 파일 이름)
+const AUDIO_UPLOAD_ROUTES = {
+  "/qt-audio": { prefix: "tts/", nameHeader: "x-qt-name" },
+  "/bible-audio": { prefix: "bible/", nameHeader: "x-bible-name" },
+};
+
 // R2 목록은 한 번에 1000개까지만 온다. 성경은 1189장이라 반드시 이어받아야 한다.
 async function listAll(bucket, prefix) {
   const out = [];
@@ -185,6 +194,35 @@ export default {
       }
       await env.BUCKET.delete(audio.prefix + name);
       return json({ ok: true, deleted: name }, 200, req);
+    }
+
+    // ----- 음원 업로드 (이름 지정 · 관리자 또는 무인 워커) -----
+    // 교회PC 스크립트가 만든 낭독 음성을 홈페이지가 찾는 정확한 이름으로 저장한다.
+    const audioUp = AUDIO_UPLOAD_ROUTES[url.pathname];
+    if (req.method === "POST" && audioUp) {
+      if (!isWorker && !(user && (await isAdmin(user, token, env)))) {
+        return json({ error: "관리자만 사용할 수 있습니다." }, 403, req);
+      }
+      let name = req.headers.get(audioUp.nameHeader) || "";
+      try { name = decodeURIComponent(name); } catch (e) {}
+      // 파일 이름만 받는다 — 경로를 섞어 다른 폴더에 쓰지 못하게 한다.
+      if (!name || name.includes("/") || name.includes("..") || name.length > 200) {
+        return json({ error: "파일 이름이 올바르지 않습니다." }, 400, req);
+      }
+      if (!/\.(wav|mp3|m4a|ogg)$/i.test(name)) {
+        return json({ error: "음성 파일(wav·mp3·m4a·ogg)만 올릴 수 있습니다." }, 400, req);
+      }
+      const upLen = parseInt(req.headers.get("Content-Length") || "0", 10);
+      if (upLen > MAX_BYTES) {
+        return json({ error: "파일이 너무 큽니다(최대 " + Math.round(MAX_BYTES / 1024 / 1024) + "MB)." }, 413, req);
+      }
+      if (!req.body) return json({ error: "빈 파일입니다." }, 400, req);
+      const audioKey = audioUp.prefix + name;
+      // 메모리에 담지 않고 R2로 바로 스트리밍(낭독 음성은 30MB를 넘는다)
+      await env.BUCKET.put(audioKey, req.body, {
+        httpMetadata: { contentType: req.headers.get("Content-Type") || "audio/wav" },
+      });
+      return json({ ok: true, url: `${url.origin}/f/${audioUp.prefix}${encodeURIComponent(name)}`, key: audioKey }, 200, req);
     }
 
     // ----- 업로드 -----
