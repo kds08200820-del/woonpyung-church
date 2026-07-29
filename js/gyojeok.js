@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단 + 교적추가
- * 콘솔: [gyojeok.js] v20260729access
+ * 콘솔: [gyojeok.js] v20260729access2
  */
-console.log('[gyojeok.js] v20260729access');
+console.log('[gyojeok.js] v20260729access2');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -108,17 +108,27 @@ console.log('[gyojeok.js] v20260729access');
     ov.addEventListener('click', function (e) { if (e.target === ov) { close(); cb(null); } });
     ov.querySelector('#pg_cancel').onclick = function () { close(); cb(null); };
     var q = ov.querySelector('#pg_q'), listEl = ov.querySelector('#pg_list');
+    // 가입 이름과 교적 이름은 띄어쓰기·대소문자가 다를 수 있어 공백을 지우고 비교한다
+    function nkey(s) { return String(s == null ? '' : s).replace(/[\s ​]/g, '').toLowerCase(); }
+    var LIMIT = 80;
     function draw() {
-      var s = q.value.trim();
-      var rows = (s ? gj.filter(function (m) { return String(m['이름']).indexOf(s) >= 0; }) : gj).slice(0, 50);
-      listEl.innerHTML = rows.length ? rows.map(function (m) {
+      var s = q.value.trim(), ns = nkey(s), fellBack = false;
+      var hit = ns ? gj.filter(function (m) { return nkey(m['이름']).indexOf(ns) >= 0; }) : gj;
+      // 못 찾아도 막다른 길이 되지 않도록 전체 명단으로 되돌린다(가입 이름이 교적과 다른 경우)
+      if (ns && !hit.length) { hit = gj; fellBack = true; }
+      var rows = hit.slice(0, LIMIT), note = '';
+      if (fellBack) {
+        note = '<div style="padding:10px 12px;background:#fff8e6;border-bottom:1px solid #f0e3bd;font-size:.84rem;line-height:1.7;color:#8a6d1f">' +
+          '‘<b>' + esc(s) + '</b>’ 로는 찾지 못했습니다. 가입 이름과 교적 이름이 다를 수 있습니다.<br>' +
+          '아래 <b>전체 교적 ' + gj.length + '명</b>에서 고르시거나, 검색창에 이름을 다시 입력해 주세요.<br>' +
+          '교적에 정말 없다면 <b>교적 명단</b> 탭 → <b>＋ 교적 추가</b> 로 먼저 등록해 주세요.</div>';
+      } else if (hit.length > rows.length) {
+        note = '<div style="padding:8px 12px;background:#f5f8fc;border-bottom:1px solid #e6edf5;font-size:.82rem;color:#7b8794">' +
+          hit.length + '명 중 ' + rows.length + '명만 표시합니다. 검색창에 이름을 입력해 좁혀 주세요.</div>';
+      }
+      listEl.innerHTML = note + (rows.length ? rows.map(function (m) {
         return '<div class="pg-item" data-key="' + esc(m['매칭키']) + '" style="padding:9px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer"><b>' + esc(m['이름']) + '</b> <span style="color:#9aa5b1;font-size:.8rem">' + esc(birthOf(m)) + (m['그룹'] ? ' · ' + esc(m['그룹']) : '') + (m['직책'] ? ' · ' + esc(m['직책']) : '') + (m['세대주'] && m['세대주'] !== m['이름'] ? ' · ' + esc(m['세대주']) + '의 가정' : '') + '</span></div>';
-      }).join('') : (s
-        ? '<div style="padding:12px;line-height:1.75;font-size:.87rem"><b style="color:#c0392b">교적에 ‘' + esc(s) + '’ 님이 없습니다.</b><br>' +
-          '<span style="color:#7b8794">정회원은 교적과 연결해야 하므로, 먼저 교적에 등록해 주세요.<br>' +
-          '위 <b>교적 명단</b> 탭 → <b>＋ 교적 추가</b> 로 등록한 뒤 이 화면에서 다시 시도하시면 됩니다.<br>' +
-          '이름 일부만 입력해 다시 찾아보실 수도 있습니다.</span></div>'
-        : '<p style="color:#9aa5b1;padding:10px">교적 명단이 비어 있습니다.</p>');
+      }).join('') : '<p style="color:#9aa5b1;padding:12px">교적 명단이 비어 있습니다. 교적 명단 탭에서 먼저 등록해 주세요.</p>');
       Array.prototype.forEach.call(listEl.querySelectorAll('.pg-item'), function (d) { d.onclick = function () { var m = gj.filter(function (x) { return String(x['매칭키']) === d.dataset.key; })[0]; close(); cb(m || null); }; });
     }
     q.addEventListener('input', draw); draw(); setTimeout(function () { q.focus(); q.select(); }, 50);
