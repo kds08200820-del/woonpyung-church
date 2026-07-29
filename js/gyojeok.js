@@ -1,7 +1,7 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단 + 교적추가
- * 콘솔: [gyojeok.js] v20260731lib15
+ * 콘솔: [gyojeok.js] v20260729access
  */
-console.log('[gyojeok.js] v20260731lib15');
+console.log('[gyojeok.js] v20260729access');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -52,6 +52,9 @@ console.log('[gyojeok.js] v20260731lib15');
         }).join('') + '</tbody></table></div><p class="help" id="gj_msg" style="margin-top:10px"></p></div>';
       var msg = panel.querySelector('#gj_msg');
       function flash(ok, txt) { msg.style.color = ok ? 'green' : '#c0392b'; msg.textContent = txt; }
+      // set_access / admin_set_member 는 거부돼도 HTTP 200 + {ok:false,error} 로 돌아온다.
+      // 그대로 두면 저장 실패인데도 '✓ 저장됨'이 떠서, 새로고침하면 원래 값으로 돌아간다.
+      function assertOk(r) { if (r && r.ok === false) throw new Error(r.error || '저장이 거부되었습니다.'); return r; }
       Array.prototype.forEach.call(panel.querySelectorAll('tr[data-uid]'), function (tr) {
         var uid = tr.getAttribute('data-uid');
         var u = users.filter(function (x) { return x.uid === uid; })[0] || {};
@@ -60,24 +63,26 @@ console.log('[gyojeok.js] v20260731lib15');
         function saveAccess(field, val, revert) {
           var body = { targetUid: uid }; body[field] = val;
           msg.style.color = 'var(--ink-soft)'; msg.textContent = '저장 중…';
-          WPF.call('setAccess', body).then(function () { flash(true, '✓ 저장됨'); }).catch(function (e) { flash(false, '오류: ' + e.message); if (revert) revert(); });
+          WPF.call('setAccess', body).then(assertOk).then(function () { flash(true, '✓ 저장됨'); }).catch(function (e) { flash(false, '오류: ' + e.message); if (revert) revert(); });
         }
         ckA.addEventListener('change', function () { saveAccess('isAdmin', ckA.checked, function () { ckA.checked = !ckA.checked; }); });
         ckF.addEventListener('change', function () { saveAccess('canFinance', ckF.checked, function () { ckF.checked = !ckF.checked; }); });
         function setMember(status, key, name) {
           msg.style.color = 'var(--ink-soft)'; msg.textContent = '저장 중…';
-          WPF.call('adminSetMember', { uid: uid, status: status, memberKey: key, memberName: name }).then(function () {
+          WPF.call('adminSetMember', { uid: uid, status: status, memberKey: key, memberName: name }).then(assertOk).then(function () {
             prevStatus = status; u.status = status; if (name) { u.name = name; tr.querySelector('td b').textContent = name; }
             var sp = tr.querySelector('.st-pill'); if (sp) sp.innerHTML = stPill(status);
-            flash(true, '✓ ' + (name ? esc(name) + ' · ' : '') + status + ' 저장됨');
-          }).catch(function (e) { flash(false, '오류: ' + e.message); sel.value = prevStatus; });
+            flash(true, '✓ ' + (name ? name + ' · ' : '') + status + ' 저장됨');
+          }).catch(function (e) { flash(false, '저장 실패: ' + e.message + ' — 값을 되돌렸습니다.'); sel.value = prevStatus; });
         }
         sel.addEventListener('change', function () {
           if (sel.value === '정회원') {
+            // 정회원은 교적과 연결해야 한다(헌금조회·가정합산). 가입 이름으로 미리 검색해 띄운다.
             pickGyojeok(gj, function (m) {
-              if (!m) { sel.value = prevStatus; return; }
+              if (!m) { sel.value = prevStatus; flash(false, '교적을 선택하지 않아 ‘' + prevStatus + '’ 그대로 두었습니다. 정회원은 교적 연결이 필요합니다.'); return; }
+              if (!m['매칭키']) { sel.value = prevStatus; flash(false, '‘' + m['이름'] + '’ 님은 교적에 생년월일이 없어 연결할 수 없습니다. 교적 명단에서 생년월일을 먼저 입력해 주세요.'); return; }
               setMember('정회원', m['매칭키'], m['이름']);
-            });
+            }, u.name || '');
           } else { setMember('준회원', '', u.name || ''); }
         });
       });
@@ -88,14 +93,14 @@ console.log('[gyojeok.js] v20260731lib15');
     });
   }
 
-  // 교적에서 인물 선택 팝업(정회원 연결용)
-  function pickGyojeok(gj, cb) {
+  // 교적에서 인물 선택 팝업(정회원 연결용). prefill = 가입 이름(미리 검색해 둔다)
+  function pickGyojeok(gj, cb, prefill) {
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:40px 16px;overflow:auto';
     ov.innerHTML = '<div class="fin-card" style="max-width:460px;width:100%;background:#fff;margin:auto">' +
       '<h3 style="margin:0 0 8px;color:var(--accent,#032257)">교적 연결</h3>' +
       '<p style="color:var(--ink-soft);font-size:.86rem;margin-bottom:10px">정회원으로 연결할 교적 인물을 선택하세요. 본인 헌금 조회·가정 합산이 이 교적과 연동됩니다.</p>' +
-      '<input type="text" id="pg_q" placeholder="🔍 이름 검색" style="width:100%;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
+      '<input type="text" id="pg_q" value="' + esc(prefill || '') + '" placeholder="🔍 이름 검색" style="width:100%;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
       '<div id="pg_list" style="max-height:320px;overflow:auto;margin-top:8px;border:1px solid #eef1f5;border-radius:8px"></div>' +
       '<div style="margin-top:12px;text-align:right"><button class="btn btn-line" id="pg_cancel">취소</button></div></div>';
     document.body.appendChild(ov);
@@ -108,10 +113,15 @@ console.log('[gyojeok.js] v20260731lib15');
       var rows = (s ? gj.filter(function (m) { return String(m['이름']).indexOf(s) >= 0; }) : gj).slice(0, 50);
       listEl.innerHTML = rows.length ? rows.map(function (m) {
         return '<div class="pg-item" data-key="' + esc(m['매칭키']) + '" style="padding:9px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer"><b>' + esc(m['이름']) + '</b> <span style="color:#9aa5b1;font-size:.8rem">' + esc(birthOf(m)) + (m['그룹'] ? ' · ' + esc(m['그룹']) : '') + (m['직책'] ? ' · ' + esc(m['직책']) : '') + (m['세대주'] && m['세대주'] !== m['이름'] ? ' · ' + esc(m['세대주']) + '의 가정' : '') + '</span></div>';
-      }).join('') : '<p style="color:#9aa5b1;padding:10px">검색 결과가 없습니다.</p>';
+      }).join('') : (s
+        ? '<div style="padding:12px;line-height:1.75;font-size:.87rem"><b style="color:#c0392b">교적에 ‘' + esc(s) + '’ 님이 없습니다.</b><br>' +
+          '<span style="color:#7b8794">정회원은 교적과 연결해야 하므로, 먼저 교적에 등록해 주세요.<br>' +
+          '위 <b>교적 명단</b> 탭 → <b>＋ 교적 추가</b> 로 등록한 뒤 이 화면에서 다시 시도하시면 됩니다.<br>' +
+          '이름 일부만 입력해 다시 찾아보실 수도 있습니다.</span></div>'
+        : '<p style="color:#9aa5b1;padding:10px">교적 명단이 비어 있습니다.</p>');
       Array.prototype.forEach.call(listEl.querySelectorAll('.pg-item'), function (d) { d.onclick = function () { var m = gj.filter(function (x) { return String(x['매칭키']) === d.dataset.key; })[0]; close(); cb(m || null); }; });
     }
-    q.addEventListener('input', draw); draw(); setTimeout(function () { q.focus(); }, 50);
+    q.addEventListener('input', draw); draw(); setTimeout(function () { q.focus(); q.select(); }, 50);
   }
 
   /* ── 교적 명단 ── */
