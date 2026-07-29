@@ -344,17 +344,37 @@ var WPCTts = (function () {
       if (!active || myGen !== gen) return;
       if (!date || !sig) { browserStart(text, myGen); return; }
       var sb = (window.SUPABASE_URL || "").replace(/\/$/, ""), ak = window.SUPABASE_ANON_KEY;
-      // 생성 요청 등록(이미 요청돼 있으면 무시됨) — 교회 PC 워커가 20초 내 집어 생성 시작
+      // 생성 요청 등록(이미 요청돼 있으면 무시됨) — 교회 PC 워커가 20초 내 집어 생성 시작.
+      // 요청 자체가 실패하면(tts_requests 테이블 없음·권한·네트워크) 아무리 기다려도 음성이
+      // 생기지 않는다. 예전에는 오류를 삼키고 12분을 기다렸으므로, 지금은 바로 알리고 넘어간다.
+      var reqErr = null;
+      var asked;
       try {
-        fetch(sb + "/rest/v1/tts_requests", {
+        asked = fetch(sb + "/rest/v1/tts_requests", {
           method: "POST",
           headers: { apikey: ak, Authorization: "Bearer " + ak, "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,return=minimal" },
           body: JSON.stringify({ qt_date: date, sig: sig }),
-        }).catch(function () {});
-      } catch (e) {}
+        }).then(function (r) {
+          if (r.ok || r.status === 409) return;                       // 409 = 이미 요청됨
+          reqErr = (r.status === 404 || r.status === 401 || r.status === 403)
+            ? "교회 서버 요청함(tts_requests)에 접수되지 않았습니다"
+            : "요청 실패(HTTP " + r.status + ")";
+          throw new Error(reqErr);
+        });
+      } catch (e) { asked = Promise.reject(e); }
+      asked.then(startPoll, function () {
+        if (!active || myGen !== gen) return;
+        // 이유를 잠깐 보여 준 뒤(바로 넘어가면 '멈춤' 글자로 덮여 못 읽는다) 기본 음성으로 전환
+        if (btnEl) btnEl.textContent = (reqErr || "교회 서버에 요청하지 못했습니다") + " — 기본 음성으로 읽어드려요";
+        setTimeout(function () { if (active && myGen === gen) browserStart(text, myGen); }, 2500);
+      });
       // R2에 파일이 나타날 때까지 15초 간격 폴링(최대 12분) → 완성 즉시 재생
       var deadline = Date.now() + 12 * 60 * 1000, tries = 0;
-      (function poll() {
+      function startPoll() {
+        if (!active || myGen !== gen) return;
+        poll();
+      }
+      function poll() {
         if (!active || myGen !== gen) return;
         var remain = Math.max(0, Math.round((deadline - Date.now()) / 1000));
         if (btnEl) btnEl.textContent = "⏳ 교회 서버가 음성을 만드는 중… " + Math.floor(remain / 60) + "분 " + ("0" + (remain % 60)).slice(-2) + "초";
@@ -365,7 +385,7 @@ var WPCTts = (function () {
         var moved = false;
         a.onerror = function () {                        // 아직 없음 → 계속 대기 or 시간 초과 시 기본 음성
           if (moved || !active || myGen !== gen) return; moved = true;
-          if (Date.now() > deadline) { if (btnEl) btnEl.textContent = "생성이 지연되어 기본 음성으로 읽어드려요"; browserStart(text, myGen); }
+          if (Date.now() > deadline) { if (btnEl) btnEl.textContent = "교회 서버가 응답하지 않아 기본 음성으로 읽어드려요 (교회 PC 확인 필요)"; browserStart(text, myGen); }
           else setTimeout(poll, 15000);
         };
         a.oncanplay = function () {                      // 완성! → 재생
@@ -375,7 +395,7 @@ var WPCTts = (function () {
         a.src = ttsBase() + "qt-" + date + "-" + sig + ".wav" + (tries ? "?r=" + tries : "");
         tries++;
         try { a.load(); } catch (e) { setTimeout(poll, 15000); }
-      })();
+      }
     }
   }
   function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } clearHi(); hideBar(); if (btnEl) btnEl.textContent = btnLabel; }
