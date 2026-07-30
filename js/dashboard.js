@@ -173,8 +173,12 @@ console.log('[dashboard.js] v20260705qtfallback');
     if (!window.BIBLE_PLAN) { el.innerHTML = ''; return; }
     var head = '<div class="form-card" style="padding:16px 18px"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257)">📖 나의 성경읽기 <span style="font-weight:400;font-size:.76rem;color:#9aa5b1">구속사 365 · 우리말성경</span></h3>';
     el.innerHTML = head + '<p class="qt-loading">불러오는 중…</p></div>';
+    var uid = sbUser() && sbUser().id;
+    if (!uid) { el.innerHTML = head + '<p style="color:#9aa5b1;font-size:.88rem;margin:0">성경읽기 진도를 불러오지 못했습니다.</p></div>'; return; }
+    // 반드시 본인(user_id) 것만 조회 — 관리자는 RLS상 전체 bible_reading을 읽을 수 있어, 필터가 없으면
+    // 다른 성도의 체크가 섞여 '내 진도'처럼 잘못 표시된다.
     Promise.all([
-      brFetch('bible_reading?select=day_no,done_at&order=day_no'),
+      brFetch('bible_reading?select=day_no,done_at&user_id=eq.' + uid + '&order=day_no'),
       brFetch('rpc/bible_readers_count', { method: 'POST', body: '{}' }).catch(function () { return null; })
     ]).then(function (rs) {
       BR.rows = rs[0] || []; BR.readers = rs[1];
