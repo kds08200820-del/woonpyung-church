@@ -3940,11 +3940,21 @@ console.log('[affairs.js] v20260712memo2');
           }).join('');
         }
 
+        // "3분 전 / 2시간 전 / 8월 1일 21:15" — 실패가 언제 난 것인지 알려 준다.
+        function jobAgo(iso) {
+          if (!iso) return '';
+          var t = new Date(iso); if (isNaN(t)) return '';
+          var m = Math.floor((Date.now() - t.getTime()) / 60000);
+          if (m < 1) return '방금';
+          if (m < 60) return m + '분 전';
+          if (m < 24 * 60) return Math.floor(m / 60) + '시간 전';
+          return (t.getMonth() + 1) + '월 ' + t.getDate() + '일 ' + pad2(t.getHours()) + ':' + pad2(t.getMinutes());
+        }
         // 작업 상태를 5초 간격으로 확인 — 편집창을 닫으면 자동으로 멈춘다.
         function poll(date) {
           clearTimeout(poller);
           if (!document.body.contains(ov)) return;
-          api('GET', 'worship_jobs?select=status,progress,error,result,steps,claimed_by&sermon_date=eq.' + date + '&order=created_at.desc&limit=1')
+          api('GET', 'worship_jobs?select=status,progress,error,result,steps,claimed_by,created_at,updated_at&sermon_date=eq.' + date + '&order=created_at.desc&limit=1')
             .then(function (rows) {
               var j = rows && rows[0]; if (!j) { done(); return; }
               if (j.status === 'pending') {
@@ -3976,8 +3986,12 @@ console.log('[affairs.js] v20260712memo2');
                   '자료실에서 확인하세요.<br>주보는 <b>게시 전 상태</b>로 저장됩니다.');
                 done();
               } else if (j.status === 'error') {
-                wmsg('❌ 생성 실패 — ' + (j.error || '알 수 없는 오류'), '#c0392b');
-                paint('❌ 실패', j.steps, (j.error || '알 수 없는 오류'));
+                // 편집창을 열 때마다 '가장 최근 작업'을 되살려 보여 주므로, 며칠 전 실패가
+                // 방금 난 것처럼 보인다. 언제 시도한 건지 함께 적어 혼동을 없앤다.
+                var when = jobAgo(j.updated_at || j.created_at);
+                wmsg('❌ 생성 실패' + (when ? ' <span style="opacity:.7">(' + when + ' 시도)</span>' : '') + ' — ' + (j.error || '알 수 없는 오류'), '#c0392b');
+                paint('❌ 실패' + (when ? ' <span style="opacity:.6;font-weight:400">· ' + when + ' 시도</span>' : ''), j.steps,
+                  (j.error || '알 수 없는 오류') + '<br><span style="opacity:.7">다시 만들려면 위 <b>📦 주일 자료 일괄 생성</b>을 누르세요.</span>');
                 done();
               }
             })
