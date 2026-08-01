@@ -3989,8 +3989,10 @@ console.log('[affairs.js] v20260712memo2');
                 // 편집창을 열 때마다 '가장 최근 작업'을 되살려 보여 주므로, 며칠 전 실패가
                 // 방금 난 것처럼 보인다. 언제 시도한 건지 함께 적어 혼동을 없앤다.
                 var when = jobAgo(j.updated_at || j.created_at);
-                wmsg('❌ 생성 실패' + (when ? ' <span style="opacity:.7">(' + when + ' 시도)</span>' : '') + ' — ' + (j.error || '알 수 없는 오류'), '#c0392b');
-                paint('❌ 실패' + (when ? ' <span style="opacity:.6;font-weight:400">· ' + when + ' 시도</span>' : ''), j.steps,
+                // 워커가 여러 대(집/교회 PC)면 어느 PC가 실패했는지 알아야 그 PC를 고칠 수 있다.
+                var who = j.claimed_by ? ' · 처리 PC: ' + esc(j.claimed_by) : '';
+                wmsg('❌ 생성 실패' + (when ? ' <span style="opacity:.7">(' + when + ' 시도' + who + ')</span>' : '') + ' — ' + (j.error || '알 수 없는 오류'), '#c0392b');
+                paint('❌ 실패' + (when ? ' <span style="opacity:.6;font-weight:400">· ' + when + ' 시도' + who + '</span>' : ''), j.steps,
                   (j.error || '알 수 없는 오류') + '<br><span style="opacity:.7">다시 만들려면 위 <b>📦 주일 자료 일괄 생성</b>을 누르세요.</span>');
                 done();
               }
