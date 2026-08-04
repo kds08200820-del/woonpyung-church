@@ -33,5 +33,10 @@ __pycache__/
 # DB 백업 파일(개인정보 포함 — 절대 커밋 금지)
 backups/*.sql
 
+# 오디오북 낭독 대본 — 책 «레위기에서 만난 예수 그리스도» 전문이라 공개 저장소에 올리지 않는다.
+# (홈페이지 미리보기는 1장까지만이고, 책은 부크크에서 판매 중)
+tools/_audiobook_scripts/
+tools/_audiobook_out/
+
 # Node.js
 node_modules/

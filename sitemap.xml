@@ -9,6 +9,7 @@
   <url><loc>https://k-logos.com/story.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://k-logos.com/library.html</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://k-logos.com/book.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://k-logos.com/audiobook.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://k-logos.com/mahanaim.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://k-logos.com/world.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://k-logos.com/bylaws.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>

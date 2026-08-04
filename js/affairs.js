@@ -795,6 +795,10 @@ console.log('[affairs.js] v20260712memo2');
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🎧 성경 음원 관리</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#2f6d8f;line-height:1.1;margin-top:4px" id="bibleAudioNum">–</div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">나의 성경읽기 낭독 · 눌러서 관리</div></div>' +
+        '<div class="fin-card" id="bookAudioCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📚 오디오북 음원 관리</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#8a5a2b;line-height:1.1;margin-top:4px" id="bookAudioNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="bookAudioSub">레위기에서 만난 예수 그리스도 · 눌러서 관리</div></div>' +
         '<div class="fin-card" id="wpJobsCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📦 주일 자료 생성</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#b8860b;line-height:1.1;margin-top:4px" id="wpJobsNum">–</div>' +
@@ -831,6 +835,7 @@ console.log('[affairs.js] v20260712memo2');
       loadDashMemo(panel);
       loadVideoMgr(panel);
       loadBibleAudio(panel);
+      loadBookAudio(panel);
       loadWorshipJobs(panel);
     }
 
@@ -1023,6 +1028,131 @@ console.log('[affairs.js] v20260712memo2');
       }
 
       renderGrid();
+    }
+
+    // ── 오디오북 음원 관리: R2 audiobook/ 목록·미리듣기·삭제 ──
+    //    책 «레위기에서 만난 예수 그리스도» 낭독 음원(29트랙: 여는 글 · 1~27장 · 닫는 글).
+    //    성경 음원과 달리 공개 주소(/f/)로 열리지 않으므로, 미리듣기도 워커가 발급한
+    //    서명 주소(/book-audio/…)를 써야 한다.
+    var BOOK_TRACKS = [];   // js/audiobook-data.js 가 실려 있으면 제목까지 보여 준다
+    try { BOOK_TRACKS = (window.AUDIOBOOK && window.AUDIOBOOK.chapters) || []; } catch (e) {}
+
+    function bookAdminApi(body) {
+      var s = sess();
+      var R2 = (window.R2_UPLOAD_URL || 'https://church-files.kds08200820.workers.dev').replace(/\/$/, '');
+      var tok = (s && s.token) || AK;
+      var opt = { method: 'POST', headers: { Authorization: 'Bearer ' + tok } }, ep = '/book-audio-list';
+      if (body.action === 'delete') { ep = '/book-audio-delete'; opt.headers['x-book-name'] = body.name; }
+      if (body.action === 'tickets') {
+        ep = '/book-audio-url';
+        opt.headers['Content-Type'] = 'application/json';
+        opt.body = JSON.stringify({ names: body.names });
+      }
+      return fetch(R2 + ep, opt).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) { j._http = r.status; return j; });
+      });
+    }
+
+    function loadBookAudio(panel) {
+      var numEl = panel.querySelector('#bookAudioNum'), subEl = panel.querySelector('#bookAudioSub');
+      var card = panel.querySelector('#bookAudioCard');
+      if (!numEl || !card) return;
+      bookAdminApi({ action: 'list' }).then(function (j) {
+        var files = (j && j.ok && j.files) || null;
+        if (!files) {
+          numEl.textContent = '–';
+          card.onclick = function () {
+            alert('오디오북 목록을 불러오지 못했습니다.\n(워커 재배포 또는 관리자 권한을 확인해 주세요)');
+          };
+          return;
+        }
+        var total = BOOK_TRACKS.length || 29;
+        numEl.textContent = files.length + '/' + total;
+        if (subEl) {
+          subEl.textContent = files.length >= total
+            ? '레위기에서 만난 예수 그리스도 · 전체 완료'
+            : '아직 ' + (total - files.length) + '개 남음 · 눌러서 관리';
+        }
+        card.onclick = function () { bookAudioModal(files.slice(), panel); };
+      }).catch(function () { numEl.textContent = '–'; });
+    }
+
+    function bookAudioModal(files, panel) {
+      function fmtBytes(x) { x = Number(x) || 0; return x >= 1048576 ? (x / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(x / 1024)) + 'KB'; }
+      function fmtDate(s) { if (!s) return ''; var d = new Date(s); return isNaN(d) ? '' : (d.getMonth() + 1) + '.' + d.getDate(); }
+      // 목차가 실려 있지 않은 페이지에서도 파일 이름만으로 목록이 서게 한다.
+      var tracks = BOOK_TRACKS.length ? BOOK_TRACKS : files.map(function (f) {
+        var m = String(f.name).match(/^book-(\d+)\.mp3$/);
+        var n = m ? Number(m[1]) : 0;
+        return { id: 'book-' + String(n).padStart(2, '0'), no: n, label: '', title: f.name, subtitle: '', scripture: '', estSec: 0 };
+      }).sort(function (a, b) { return a.no - b.no; });
+
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:760px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+        '<h3 style="margin:0;color:var(--accent,#032257)">📚 오디오북 음원 <span id="bk_cnt" style="font-size:.86rem;color:#9aa5b1;font-weight:600"></span></h3>' +
+        '<button class="btn btn-line" id="bk_close" style="padding:3px 11px">닫기</button></div>' +
+        '<p style="margin:0 0 6px;font-size:.76rem;color:#9aa5b1">«레위기에서 만난 예수 그리스도» 낭독 음원입니다. 정회원만 홈페이지에서 들을 수 있고, 공개 주소로는 열리지 않습니다.</p>' +
+        '<p style="margin:0 0 12px;font-size:.74rem;color:#9aa5b1">없는 장을 만들려면 교회 PC에서 <code>node tools/audiobook_tts.mjs --all</code> 을 실행하세요.</p>' +
+        '<div id="bk_body" style="max-height:64vh;overflow:auto"></div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#bk_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      var body = ov.querySelector('#bk_body'), cntEl = ov.querySelector('#bk_cnt');
+      var tickets = null;
+
+      function paint() {
+        var have = {};
+        files.forEach(function (f) { have[f.name] = f; });
+        cntEl.textContent = files.length + '/' + tracks.length + '개';
+        body.innerHTML = tracks.map(function (t) {
+          var name = t.id + '.mp3';
+          var f = have[name];
+          var no = t.no === 0 ? '여는 글' : (t.no === 28 ? '닫는 글' : t.no + '장');
+          var title = esc(t.title || '');
+          if (!f) {
+            return '<div style="display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid #f3f3f3;opacity:.55">' +
+              '<div style="flex:0 0 56px;font-size:.82rem;color:#4a5568">' + no + '</div>' +
+              '<div style="flex:1;min-width:0;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + title + '</div>' +
+              '<div style="flex:0 0 auto;font-size:.74rem;color:#c0392b">아직 없음</div></div>';
+          }
+          var sig = tickets && tickets.files && tickets.files[name];
+          var url = sig ? (tickets.base + encodeURIComponent(name) + '?e=' + tickets.exp + '&s=' + sig) : '';
+          return '<div style="display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid #f3f3f3">' +
+            '<div style="flex:0 0 56px;font-size:.82rem;color:#4a5568">' + no + '</div>' +
+            '<div style="flex:1 1 130px;min-width:0;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + title + '</div>' +
+            (url ? '<audio controls preload="none" src="' + esc(url) + '" style="flex:0 1 220px;height:32px"></audio>'
+                 : '<div style="flex:0 1 220px;font-size:.74rem;color:#9aa5b1">미리듣기 준비 중…</div>') +
+            '<div style="flex:0 0 auto;font-size:.72rem;color:#9aa5b1">' + fmtBytes(f.size) + (fmtDate(f.created_at) ? ' · ' + fmtDate(f.created_at) : '') + '</div>' +
+            '<button class="btn btn-line bk-del" data-name="' + esc(name) + '" title="삭제" style="flex:0 0 auto;padding:3px 8px;color:#c0392b;border-color:#e6b3b3">🗑</button></div>';
+        }).join('');
+        Array.prototype.forEach.call(body.querySelectorAll('.bk-del'), function (b) {
+          b.onclick = function () {
+            var name = b.dataset.name;
+            if (!confirm(name + ' 을(를) 삭제할까요?\n삭제 후 다시 생성할 수 있습니다.')) return;
+            b.disabled = true; b.textContent = '…';
+            bookAdminApi({ action: 'delete', name: name }).then(function (j) {
+              if (!j.ok) throw new Error((j && j.error) || ('HTTP ' + j._http));
+              files = files.filter(function (x) { return x.name !== name; });
+              paint();
+              if (panel) loadBookAudio(panel);
+            }).catch(function (e) {
+              b.disabled = false; b.textContent = '🗑';
+              alert('삭제 실패: ' + ((e && e.message) || '오류'));
+            });
+          };
+        });
+      }
+
+      paint();
+      // 미리듣기 주소는 서명이 있어야 열리므로 목록을 그린 뒤 받아서 다시 그린다.
+      if (files.length) {
+        bookAdminApi({ action: 'tickets', names: files.map(function (f) { return f.name; }) })
+          .then(function (j) { if (j && j.ok) { tickets = j; paint(); } })
+          .catch(function () {});
+      }
     }
 
     // ── QT 영상 관리 카드: 상태 요약 + 클릭 시 전체 관리 모달 ──

@@ -17,6 +17,8 @@
       { href: "word.html#archive", label: "주보" },
       { href: "word.html#believe", label: "우리가 믿는 것" },
       { href: "word.html#column", label: "목사님의 글" },
+      { href: "book.html", label: "목사님의 책" },
+      { href: "audiobook.html", label: "오디오북 듣기" },
     ] },
     { href: "story.html", label: "우리 이야기", sub: [
       { href: "story.html#album", label: "우리들 소식" },

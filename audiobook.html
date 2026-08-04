@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오디오북 듣기 | 레위기에서 만난 예수 그리스도</title>
+  <meta name="description" content="«레위기에서 만난 예수 그리스도» 오디오북 — 여는 글부터 27장까지 낭독으로 듣습니다. 교적 인증을 마친 정회원은 무료로 들을 수 있습니다." />
+  <link rel="canonical" href="https://k-logos.com/audiobook.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="운평장로교회" />
+  <meta property="og:title" content="오디오북 듣기 · 레위기에서 만난 예수 그리스도" />
+  <meta property="og:description" content="정회원은 무료로 듣는 «레위기에서 만난 예수 그리스도» 오디오북" />
+  <meta property="og:image" content="https://k-logos.com/images/icon-512.png" />
+  <meta property="og:url" content="https://k-logos.com/audiobook.html" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="manifest" href="manifest.json?v=20260805ab" />
+  <meta name="theme-color" content="#032257" />
+  <link rel="icon" href="images/favicon-32.png?v=20260805ab" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260805ab" />
+  <meta name="apple-mobile-web-app-title" content="운평장로교회" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260805ab" />
+  <style>
+    .ab-wrap{max-width:840px}
+
+    /* ── 지금 듣는 트랙(위에 고정) ── */
+    .ab-player{position:sticky;top:56px;z-index:40;background:#fff;border:1px solid var(--line,#e3e7ee);
+      border-radius:16px;padding:16px 18px;margin-bottom:22px;box-shadow:0 6px 20px rgba(3,34,87,.06)}
+    .ab-now{display:flex;align-items:center;gap:13px;min-width:0}
+    .ab-now-no{flex:0 0 auto;width:46px;height:46px;border-radius:12px;background:var(--accent,#032257);color:#fff;
+      display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.95rem;line-height:1.1;text-align:center}
+    .ab-now-txt{flex:1;min-width:0}
+    .ab-now-title{font-weight:800;color:var(--accent,#032257);font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ab-now-sub{color:var(--ink-soft,#7b8794);font-size:.82rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ab-audio{width:100%;margin-top:12px}
+    .ab-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .ab-tools button{background:#fff;border:1px solid #cdd7e3;color:var(--accent,#032257);border-radius:999px;
+      padding:6px 13px;font-family:inherit;font-size:.83rem;font-weight:700;cursor:pointer}
+    .ab-tools button:hover{background:#f2f6fb}
+    .ab-tools .ab-rate.on{background:var(--accent,#032257);color:#fff;border-color:var(--accent,#032257)}
+    .ab-tools .ab-spacer{flex:1}
+    .ab-status{color:var(--ink-soft,#7b8794);font-size:.8rem}
+    .ab-status.err{color:#c0392b}
+
+    /* ── 목차 ── */
+    .ab-part{margin:26px 0 10px;font-family:"Noto Serif KR",serif;font-weight:700;color:var(--accent,#032257);
+      font-size:1rem;padding-bottom:7px;border-bottom:2px solid var(--line,#e3e7ee)}
+    .ab-part:first-child{margin-top:6px}
+    .ab-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;
+      border:1px solid var(--line,#e3e7ee);border-radius:12px;padding:12px 14px;margin-bottom:8px;
+      font-family:inherit;cursor:pointer;transition:border-color .15s,background .15s}
+    .ab-item:hover{border-color:var(--accent,#032257);background:#f8fafc}
+    .ab-item.playing{border-color:var(--accent,#032257);background:#f2f6fb}
+    .ab-item.missing{opacity:.5;cursor:default}
+    .ab-item.missing:hover{border-color:var(--line,#e3e7ee);background:#fff}
+    .ab-no{flex:0 0 auto;width:40px;height:40px;border-radius:10px;background:#eef2f7;color:#3a4a63;
+      display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;text-align:center;line-height:1.15}
+    .ab-item.playing .ab-no{background:var(--accent,#032257);color:#fff}
+    .ab-main{flex:1;min-width:0}
+    .ab-title{font-weight:700;font-size:.98rem;color:var(--ink,#22303f)}
+    .ab-meta{color:var(--ink-soft,#7b8794);font-size:.8rem;margin-top:3px;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ab-right{flex:0 0 auto;display:flex;align-items:center;gap:8px}
+    .ab-len{color:var(--ink-soft,#7b8794);font-size:.8rem;font-variant-numeric:tabular-nums}
+    .ab-done{color:#2e7d5b;font-size:.9rem}
+    .ab-bar{height:3px;border-radius:3px;background:#eef2f7;margin-top:7px;overflow:hidden}
+    .ab-bar span{display:block;height:100%;background:var(--accent,#032257)}
+
+    @media (max-width:640px){
+      .ab-player{top:52px;padding:13px 14px;border-radius:13px}
+      .ab-now-no{width:40px;height:40px}
+      .ab-item{padding:10px 12px}
+      .ab-meta{display:none}
+    }
+  </style>
+</head>
+<body>
+
+  <section class="page-hero">
+    <p class="ph-eyebrow">AUDIOBOOK</p>
+    <h1>오디오북 듣기</h1>
+    <p>«레위기에서 만난 예수 그리스도» · 김동석 지음 — 정회원은 무료로 들으실 수 있습니다.</p>
+  </section>
+
+  <section class="section">
+    <div class="container ab-wrap">
+
+      <!-- 로그인/정회원 안내 (게이트) -->
+      <div id="abLock"></div>
+
+      <!-- 본문 -->
+      <div id="abBody" style="display:none">
+        <div class="ab-player">
+          <div class="ab-now">
+            <div class="ab-now-no" id="abNowNo">–</div>
+            <div class="ab-now-txt">
+              <div class="ab-now-title" id="abNowTitle">들으실 장을 선택해 주세요</div>
+              <div class="ab-now-sub" id="abNowSub">아래 목차에서 하나를 누르면 재생됩니다.</div>
+            </div>
+          </div>
+          <audio class="ab-audio" id="abAudio" controls preload="none" controlsList="nodownload"></audio>
+          <div class="ab-tools">
+            <button type="button" id="abPrev">◀ 이전 장</button>
+            <button type="button" id="abNext">다음 장 ▶</button>
+            <button type="button" class="ab-rate" data-rate="1">1배</button>
+            <button type="button" class="ab-rate" data-rate="1.25">1.25배</button>
+            <button type="button" class="ab-rate" data-rate="1.5">1.5배</button>
+            <span class="ab-spacer"></span>
+            <span class="ab-status" id="abStatus"></span>
+          </div>
+        </div>
+
+        <div id="abList"></div>
+
+        <p class="help" style="margin-top:20px;color:var(--ink-soft,#7b8794);font-size:.82rem;line-height:1.7">
+          ※ 들으시던 위치는 이 기기에 저장되어, 다음에 오시면 이어서 들으실 수 있습니다.<br />
+          ※ 오디오북은 정회원 본인만 들으실 수 있으며, 내려받기·재배포는 하실 수 없습니다.
+          이 책은 <a href="https://bookk.co.kr/bookStore/6a51391e531e8c373d86c582" target="_blank" rel="noopener">부크크</a>에서 판매 중입니다.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <script src="js/config.js?v=20260805ab"></script>
+  <script src="js/bulletins.js?v=20260802sum"></script>
+  <script src="js/layout.js?v=20260805ab"></script>
+  <script src="js/main.js?v=20260729tts"></script>
+  <script src="js/audiobook-data.js?v=20260805ab"></script>
+  <script src="js/audiobook.js?v=20260805ab"></script>
+</body>
+</html>
