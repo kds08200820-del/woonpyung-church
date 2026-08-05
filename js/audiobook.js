@@ -5,10 +5,12 @@
    · 접근: 교적 인증을 마친 정회원(member_links.member_status)과 관리자만.
    · 음원: Cloudflare R2 의 audiobook/ 폴더. 공개 주소(/f/)로는 열리지 않고,
            워커의 /book-audio-url 이 발급한 짧은 서명(6시간)이 붙은 주소로만 재생된다.
-   · 이어듣기: 마지막에 듣던 장과 위치를 이 기기(localStorage)에 저장한다.
-   콘솔: [audiobook.js] v20260805ab
+   · 이어듣기: 마지막에 듣던 장과 위치를 이 기기(localStorage)에 저장하고,
+               서버(audiobook_progress)에도 올려 둔다 — 기기를 바꿔도 이어지고,
+               목회행정 '오디오북 듣기 현황' 카드가 이 기록을 읽는다.
+   콘솔: [audiobook.js] v20260806abp
    ============================================================ */
-console.log('[audiobook.js] v20260805ab');
+console.log('[audiobook.js] v20260806abp');
 
 (function () {
   var DATA = window.AUDIOBOOK;
@@ -57,13 +59,71 @@ console.log('[audiobook.js] v20260805ab');
   function saveProgress(p) {
     try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch (e) {}
   }
-  function markPosition(id, sec, dur) {
+  function markPosition(id, sec, dur, flush) {
     var p = loadProgress();
     // 거의 끝까지 들었으면 '들음'으로 남기고 위치는 처음으로 되돌린다.
     var done = dur && sec > dur - 20;
-    p[id] = { sec: done ? 0 : Math.floor(sec), dur: Math.floor(dur || 0), done: done || (p[id] && p[id].done) || false };
+    p[id] = { sec: done ? 0 : Math.floor(sec), dur: Math.floor(dur || 0), done: done || (p[id] && p[id].done) || false, ts: Date.now() };
     p.last = id;
     saveProgress(p);
+    queuePush(id, done || flush);
+  }
+
+  /* ── 서버 동기화 (audiobook_progress) ──
+     기기가 바뀌어도 이어듣도록, 그리고 목회행정 현황 카드가 읽도록
+     들은 위치를 서버에도 저장한다. 실패해도 조용히 넘어간다(다음에 다시 시도). */
+  var PUSH_MIN_MS = 30000;    // 재생 중에는 장마다 최대 30초에 한 번만 올린다
+  var pushedAt = {};          // chapter_id → 마지막으로 올린 시각(ms)
+  function queuePush(id, force) {
+    var me = currentUser();
+    if (!me || !me.id) return;
+    var now = Date.now();
+    if (!force && pushedAt[id] && now - pushedAt[id] < PUSH_MIN_MS) return;
+    var rec = loadProgress()[id];
+    if (!rec || (!rec.done && !(rec.sec > 5))) return;   // 5초 이상 들었을 때부터 기록
+    pushedAt[id] = now;
+    fetch(window.SUPABASE_URL + '/rest/v1/audiobook_progress', {
+      method: 'POST',
+      keepalive: !!force,   // 페이지를 닫는 순간에도 전송이 끊기지 않게
+      headers: {
+        apikey: window.SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + token(),
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify([{ user_id: me.id, chapter_id: id, sec: rec.sec, dur: rec.dur, done: rec.done }])
+    }).catch(function () {});
+  }
+  // 서버 기록을 내려받아 이 기기 기록과 합친다(장마다 더 최근 것을 남김).
+  function pullProgress() {
+    var me = currentUser();
+    if (!me || !me.id) return Promise.resolve();
+    // ※ 관리자 계정은 RLS 상 전체를 볼 수 있으므로 반드시 본인 것만 청한다
+    return fetch(window.SUPABASE_URL + '/rest/v1/audiobook_progress' +
+      '?user_id=eq.' + me.id + '&select=chapter_id,sec,dur,done,updated_at', {
+      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + token() }
+    }).then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (rows) {
+        if (!rows || !rows.length) return;
+        var p = loadProgress();
+        var newest = null;
+        rows.forEach(function (row) {
+          var local = p[row.chapter_id];
+          var serverTs = Date.parse(row.updated_at) || 0;
+          if (!local || serverTs > (local.ts || 0)) {
+            p[row.chapter_id] = {
+              sec: row.sec || 0, dur: row.dur || 0,
+              done: (row.done || (local && local.done)) || false, ts: serverTs
+            };
+          } else if (row.done && !local.done) {
+            local.done = true;   // 완료 표시는 어느 쪽에 있든 남긴다
+          }
+          if (!newest || serverTs > newest.ts) newest = { id: row.chapter_id, ts: serverTs };
+        });
+        if (!p.last && newest) p.last = newest.id;
+        saveProgress(p);
+      })
+      .catch(function () {});
   }
 
   function fmt(sec) {
@@ -226,7 +286,7 @@ console.log('[audiobook.js] v20260805ab');
     }, 3000);
   });
   audio.addEventListener('pause', function () {
-    if (current) markPosition(current.id, audio.currentTime, audio.duration);
+    if (current) markPosition(current.id, audio.currentTime, audio.duration, true);
   });
   audio.addEventListener('ended', function () {
     if (current) { markPosition(current.id, audio.duration, audio.duration); render(); }
@@ -245,7 +305,7 @@ console.log('[audiobook.js] v20260805ab');
     });
   });
   window.addEventListener('pagehide', function () {
-    if (current) markPosition(current.id, audio.currentTime, audio.duration);
+    if (current) markPosition(current.id, audio.currentTime, audio.duration, true);
   });
 
   document.getElementById('abPrev').onclick = function () { step(-1); };
@@ -268,7 +328,7 @@ console.log('[audiobook.js] v20260805ab');
     bodyEl.style.display = '';
     render();
     setStatus('재생 준비 중…');
-    fetchTickets().then(function () {
+    Promise.all([fetchTickets(), pullProgress()]).then(function () {
       setStatus(available.size ? '' : '아직 올라온 음원이 없습니다.', !available.size);
       render();
       // 마지막에 듣던 장이 있으면 그 자리에 미리 올려 둔다(자동 재생은 하지 않음).

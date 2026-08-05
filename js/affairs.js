@@ -2,7 +2,7 @@
  * 데이터는 Supabase(visitations/counsels/memos 등, 관리자 RLS)에 저장.
  * 콘솔: [affairs.js] v20260712memo
  */
-console.log('[affairs.js] v20260712memo2');
+console.log('[affairs.js] v20260806abp');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -799,6 +799,10 @@ console.log('[affairs.js] v20260712memo2');
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📚 오디오북 음원 관리</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#8a5a2b;line-height:1.1;margin-top:4px" id="bookAudioNum">–</div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="bookAudioSub">레위기에서 만난 예수 그리스도 · 눌러서 관리</div></div>' +
+        '<div class="fin-card" id="bookProgCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🎧 오디오북 듣기 현황</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#b45309;line-height:1.1;margin-top:4px" id="bookProgNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">함께 듣는 성도 · 눌러서 현황 보기</div></div>' +
         '<div class="fin-card" id="wpJobsCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📦 주일 자료 생성</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#b8860b;line-height:1.1;margin-top:4px" id="wpJobsNum">–</div>' +
@@ -836,6 +840,7 @@ console.log('[affairs.js] v20260712memo2');
       loadVideoMgr(panel);
       loadBibleAudio(panel);
       loadBookAudio(panel);
+      loadBookProgress(panel);
       loadWorshipJobs(panel);
     }
 
@@ -1221,6 +1226,86 @@ console.log('[affairs.js] v20260712memo2');
                 '<span style="font-size:.82rem;color:var(--accent,#032257);font-weight:700">' + x.cnt + '/365일 (' + pct + '%)</span>' +
                 '<span style="font-size:.75rem;color:#9aa5b1">' + esc(x.last) + '</span></div>' +
                 '<div style="background:#eef2f7;border-radius:5px;height:6px;overflow:hidden;margin:7px 0 0 34px"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#3fa06a,#1e874b)"></div></div>' +
+                '</div>';
+            }).join('') + '</div>';
+        })
+        .catch(function (e) { listEl.innerHTML = '<p style="color:#c0392b">명단 조회 실패: ' + esc((e && e.message) || '') + '</p>'; });
+    }
+
+    // ── 오디오북 듣기 현황: 참여 성도 수 + 개인별 진행(완료 장수·지금 듣는 장) ──
+    function abChapterOf(id) {
+      var chs = (window.AUDIOBOOK && window.AUDIOBOOK.chapters) || [];
+      for (var i = 0; i < chs.length; i++) if (chs[i].id === id) return chs[i];
+      return null;
+    }
+    function abChapterName(id) {
+      var c = abChapterOf(id);
+      if (!c) return id;
+      var no = c.no === 0 ? '여는 글' : (c.no === 28 ? '닫는 글' : c.no + '장');
+      return no + (c.title && c.title !== c.label ? ' ' + c.title : '');
+    }
+    function loadBookProgress(panel) {
+      var numEl = panel.querySelector('#bookProgNum'), card = panel.querySelector('#bookProgCard');
+      if (!numEl || !card) return;
+      api('GET', 'audiobook_progress?select=user_id,chapter_id,sec,dur,done,updated_at')
+        .then(function (rows) {
+          rows = rows || [];
+          var by = {};
+          rows.forEach(function (r) {
+            var u = by[r.user_id] || (by[r.user_id] = { done: 0, secSum: 0, last: '', lastRow: null });
+            if (r.done) u.done++;
+            u.secSum += r.done ? (r.dur || 0) : (r.sec || 0);   // 대략의 총 청취 시간
+            if (String(r.updated_at || '') > u.last) { u.last = String(r.updated_at || ''); u.lastRow = r; }
+          });
+          var ids = Object.keys(by);
+          numEl.textContent = ids.length + '명';
+          card.onclick = function () { bookProgressModal(by, ids); };
+        })
+        .catch(function () { numEl.textContent = '–'; numEl.style.color = '#c0392b'; card.style.cursor = 'default'; });
+    }
+    function bookProgressModal(by, ids) {
+      var TOTAL = ((window.AUDIOBOOK && window.AUDIOBOOK.chapters) || { length: 29 }).length;
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:600px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">🎧 오디오북 듣기 현황 <span style="font-size:.86rem;color:#9aa5b1;font-weight:600">' + ids.length + '명</span></h3><button class="btn btn-line" id="bp_close" style="padding:3px 11px">닫기</button></div>' +
+        '<p style="margin:0 0 10px;font-size:.76rem;color:#9aa5b1">«레위기에서 만난 예수 그리스도» 전체 ' + TOTAL + '장 기준. 완료한 장수와 지금 듣고 있는 장을 보여 줍니다.</p>' +
+        '<div id="bp_list" style="max-height:62vh;overflow:auto"><p class="qt-loading">명단을 불러오는 중…</p></div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#bp_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      var listEl = ov.querySelector('#bp_list');
+      if (!ids.length) { listEl.innerHTML = '<p style="color:#9aa5b1">아직 오디오북을 듣기 시작한 성도가 없습니다.</p>'; return; }
+      var inlist = ids.map(function (id) { return '"' + id + '"'; }).join(',');
+      api('GET', 'member_links?select=user_id,member_name&user_id=in.(' + inlist + ')')
+        .then(function (rows) {
+          var nameById = {}; (rows || []).forEach(function (r) { nameById[r.user_id] = r.member_name; });
+          var list = ids.map(function (id) {
+            var u = by[id];
+            var now = '';
+            if (u.done >= TOTAL) now = '완독';
+            else if (u.lastRow && !u.lastRow.done && u.lastRow.sec > 0) {
+              var m = Math.floor(u.lastRow.sec / 60);
+              now = '지금 ' + abChapterName(u.lastRow.chapter_id) + (m ? ' · ' + m + '분 지점' : '');
+            } else if (u.lastRow) {
+              now = abChapterName(u.lastRow.chapter_id) + ' 마침';
+            }
+            return { name: nameById[id] || '(이름 미확인)', done: u.done, now: now,
+                     hours: u.secSum >= 3600 ? (u.secSum / 3600).toFixed(1) + '시간' : Math.round(u.secSum / 60) + '분',
+                     last: u.last.replace('T', ' ').slice(0, 10) };
+          }).sort(function (a, b) { return b.done - a.done || a.name.localeCompare(b.name, 'ko'); });
+          listEl.innerHTML = '<div style="border:1px solid #eef1f5;border-radius:10px;overflow:hidden">' +
+            list.map(function (x, i) {
+              var pct = Math.min(100, Math.round(x.done / TOTAL * 100));
+              return '<div style="padding:10px 14px;' + (i ? 'border-top:1px solid #f0f3f7;' : '') + '">' +
+                '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+                '<span style="flex:0 0 24px;color:#9aa5b1;font-size:.8rem;text-align:center">' + (i + 1) + '</span>' +
+                '<span style="flex:1;font-weight:600;color:#1f2937">' + esc(x.name) + '</span>' +
+                '<span style="font-size:.82rem;color:#b45309;font-weight:700">' + x.done + '/' + TOTAL + '장 (' + pct + '%)</span>' +
+                '<span style="font-size:.75rem;color:#9aa5b1">듣기 ' + esc(x.hours) + ' · ' + esc(x.last) + '</span></div>' +
+                (x.now ? '<div style="margin:4px 0 0 34px;font-size:.78rem;color:#4b5563">' + esc(x.now) + '</div>' : '') +
+                '<div style="background:#eef2f7;border-radius:5px;height:6px;overflow:hidden;margin:7px 0 0 34px"><div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#e0a45c,#b45309)"></div></div>' +
                 '</div>';
             }).join('') + '</div>';
         })
