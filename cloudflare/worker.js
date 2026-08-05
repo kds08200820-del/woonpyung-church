@@ -52,6 +52,9 @@ const ALLOW_ORIGINS = [
   "https://kds08200820-del.github.io",
   "http://localhost:5500",
   "http://127.0.0.1:5500",
+  // 이 저장소의 로컬 미리보기 서버(.claude/launch.json 의 church-static)
+  "http://localhost:8099",
+  "http://127.0.0.1:8099",
 ];
 const MAX_BYTES = 100 * 1024 * 1024; // 1건 최대 100MB (Cloudflare 무료 플랜 요청 본문 상한)
 
@@ -245,8 +248,11 @@ export default {
       h.set("Accept-Ranges", "bytes");
       // 정회원에게만 들려주는 파일이라 중간 서버(CDN·회사망)에 남지 않게 한다.
       h.set("Cache-Control", "private, max-age=3600");
+      // 206(부분 응답)은 브라우저가 Range 를 실제로 요청했을 때만 준다.
+      // (R2 는 Range 가 없어도 obj.range 를 채워 주므로 헤더로 판단해야 한다)
+      const asked = req.headers.get("range") !== null;
       let status = obj.body ? 200 : 304;
-      if (obj.body && obj.range && typeof obj.range.offset === "number" && typeof obj.range.length === "number") {
+      if (obj.body && asked && obj.range && typeof obj.range.offset === "number" && typeof obj.range.length === "number") {
         const start = obj.range.offset;
         const end = start + obj.range.length - 1;
         h.set("Content-Range", `bytes ${start}-${end}/${obj.size}`);

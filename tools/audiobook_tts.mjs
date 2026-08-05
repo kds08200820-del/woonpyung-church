@@ -15,6 +15,8 @@
 //   node tools/audiobook_tts.mjs --ch 0-5           # 여는 글 ~ 5장
 //   node tools/audiobook_tts.mjs --all --out _out   # 업로드 없이 로컬 저장(시험용)
 //   node tools/audiobook_tts.mjs --ch 3 --force     # 이미 있어도 다시 만들기
+//   node tools/audiobook_tts.mjs --all --upload-from _audiobook_out
+//        ↑ 이미 만들어 둔 MP3를 합성 없이 올리기만 (GPT-SoVITS 꺼져 있어도 됨)
 
 import fs from "node:fs";
 import path from "node:path";
@@ -46,7 +48,10 @@ try { PROMPT_TEXT = fs.readFileSync(REF_TEXT_FILE, "utf8").trim(); } catch {}
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
 const val = (f) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : null; };
-const OPT = { all: has("--all"), ch: val("--ch"), out: val("--out"), force: has("--force") };
+const OPT = {
+  all: has("--all"), ch: val("--ch"), out: val("--out"), force: has("--force"),
+  uploadFrom: val("--upload-from"),
+};
 
 function findFfmpeg() {
   const cands = [process.env.FFMPEG_PATH].filter(Boolean);
@@ -228,6 +233,31 @@ async function main() {
     console.log("대상이 없습니다. --all 또는 --ch 3 / --ch 0-5 를 지정하세요.");
     return;
   }
+  // 이미 만들어 둔 MP3를 올리기만 하는 길 — 합성을 다시 하지 않는다.
+  if (OPT.uploadFrom) {
+    const dir = path.resolve(HERE, OPT.uploadFrom);
+    if (!fs.existsSync(dir)) { console.log(`폴더가 없습니다: ${dir}`); process.exit(1); }
+    const done = OPT.force ? new Set() : await listUploaded();
+    let ok = 0, skip = 0, fail = 0;
+    for (const c of targets) {
+      const name = `${c.id}.mp3`;
+      const p = path.join(dir, name);
+      if (!fs.existsSync(p)) { console.log(`  건너뜀(파일 없음): ${name}`); skip++; continue; }
+      if (done.has(name)) { console.log(`  건너뜀(이미 올라감): ${name}`); skip++; continue; }
+      const buf = fs.readFileSync(p);
+      try {
+        await r2Upload(name, buf);
+        ok++;
+        console.log(`  ✓ ${name} ${(buf.length / 1024 / 1024).toFixed(1)}MB 업로드`);
+      } catch (e) {
+        fail++;
+        console.error(`  ✗ ${name}: ${e.message}`);
+      }
+    }
+    console.log(`\n업로드 완료: ${ok}개 성공, ${skip}개 건너뜀, ${fail}개 실패`);
+    return;
+  }
+
   console.log(`ffmpeg: ${FF}`);
   if (!(await sovitsUp())) {
     console.log("GPT-SoVITS(9880)가 꺼져 있습니다. C:\\GPT-SoVITS-v2pro-20250604\\run_api.bat 을 먼저 실행하세요.");
