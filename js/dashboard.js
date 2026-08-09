@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260809ss4 (주일학교: QT·필사 인증 + 보호자)');
+console.log('[dashboard.js] v20260809ss5 (주일학교: 인증 자동 달란트)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1126,7 +1126,7 @@ console.log('[dashboard.js] v20260809ss4 (주일학교: QT·필사 인증 + 보�
       else if (ctx.role === '어린이') {
         el.innerHTML = '<div id="ssMyTalents" style="margin-bottom:22px;"></div><div id="ssMyCerts"></div>';
         loadMyTalents(el.querySelector('#ssMyTalents'), ctx, me);
-        loadMyCerts(el.querySelector('#ssMyCerts'), me.memberKey, me.memberName || '');
+        loadMyCerts(el.querySelector('#ssMyCerts'), me.memberKey, me.memberName || '', function () { loadMyTalents(el.querySelector('#ssMyTalents'), ctx, me); });
       }
       else {
         // 보호자: 같은 세대(가계도)에 '어린이'가 있으면 자녀 현황 화면
@@ -1587,8 +1587,9 @@ console.log('[dashboard.js] v20260809ss4 (주일학교: QT·필사 인증 + 보�
   }
   function monthKey(d) { return String(d || '').slice(0, 7); }
 
-  /* ── QT·필사 인증 올리기 + 내역 (어린이 본인 또는 보호자가 자녀 대신) ── */
-  function loadMyCerts(container, subjKey, subjName) {
+  /* ── QT·필사 인증 올리기 + 내역 (어린이 본인 또는 보호자가 자녀 대신)
+   * onChange: 업로드/삭제 후 호출 — 달란트 카드 새로고침용(자동 지급 반영) ── */
+  function loadMyCerts(container, subjKey, subjName, onChange) {
     if (!container || !subjKey) return;
     function draw() {
       container.innerHTML = '<div class="form-card" style="padding:16px 18px;"><p class="qt-loading">불러오는 중…</p></div>';
@@ -1601,7 +1602,7 @@ console.log('[dashboard.js] v20260809ss4 (주일학교: QT·필사 인증 + 보�
           container.innerHTML =
             '<div class="form-card" style="padding:16px 18px;">' +
             '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📖 QT·필사 인증</h3>' +
-            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">인증샷을 올리면 선생님이 확인하고 ❤를 눌러 주세요. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
+            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">인증샷을 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고(하루에 종류별 1회), 선생님이 확인하고 ❤를 눌러 주세요. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
             '<button type="button" class="btn btn-solid" id="sscUpQt" style="padding:8px 16px;">📷 QT 인증 올리기</button>' +
             '<button type="button" class="btn btn-solid" id="sscUpPil" style="padding:8px 16px;background:#1e874b;border-color:#1e874b;">✍️ 필사 인증 올리기</button>' +
@@ -1632,7 +1633,7 @@ console.log('[dashboard.js] v20260809ss4 (주일학교: QT·필사 인증 + 보�
             flash(true, ''); msg.style.color = '#7b8794'; msg.textContent = curType + ' 인증샷 올리는 중…';
             ChurchUpload.upload(f, { folder: 'ss-cert' }).then(function (up) {
               return brFetch('ss_submissions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ member_key: subjKey, child_name: subjName || '', stype: curType, photo_url: up.url, photo_key: up.key || '' }) });
-            }).then(function () { flash(true, '✓ ' + curType + ' 인증이 올라갔어요!'); draw(); })
+            }).then(function () { flash(true, '✓ ' + curType + ' 인증이 올라갔어요! 달란트도 확인해 보세요 ⭐'); draw(); if (onChange) onChange(); })
               .catch(function (e) { flash(false, '올리기 실패: ' + e.message); });
           };
           Array.prototype.forEach.call(container.querySelectorAll('.ssc-del'), function (b) {
@@ -1640,7 +1641,7 @@ console.log('[dashboard.js] v20260809ss4 (주일학교: QT·필사 인증 + 보�
             b.onclick = function () {
               if (!confirm('이 인증을 삭제할까요?')) return;
               brFetch('ss_submissions?id=eq.' + b.dataset.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
-                .then(function () { if (r && r.photo_key && window.ChurchUpload) ChurchUpload.remove(r.photo_key); draw(); })
+                .then(function () { if (r && r.photo_key && window.ChurchUpload) ChurchUpload.remove(r.photo_key); draw(); if (onChange) onChange(); })
                 .catch(function (e) { flash(false, '삭제 실패: ' + e.message); });
             };
           });
@@ -1671,7 +1672,7 @@ console.log('[dashboard.js] v20260809ss4 (주일학교: QT·필사 인증 + 보�
         b.onclick = function () { cur = Number(b.dataset.i); draw(); };
       });
       ssGuardianTalents(el.querySelector('#ssgTal'), c);
-      loadMyCerts(el.querySelector('#ssgCerts'), c.member_key, c.name);
+      loadMyCerts(el.querySelector('#ssgCerts'), c.member_key, c.name, function () { ssGuardianTalents(el.querySelector('#ssgTal'), c); });
       ssGuardianOfferings(el.querySelector('#ssgOff'), c);
     }
     draw();
@@ -1789,9 +1790,9 @@ console.log('[dashboard.js] v20260809ss4 (주일학교: QT·필사 인증 + 보�
         Array.prototype.forEach.call(box.querySelectorAll('.ssct-del'), function (b) {
           b.onclick = function () {
             var r = find(b.dataset.id); if (!r) return;
-            if (!confirm((r.child_name || '') + ' 어린이의 ' + r.stype + ' 인증(' + r.sub_date + ')을 삭제할까요?')) return;
+            if (!confirm((r.child_name || '') + ' 어린이의 ' + r.stype + ' 인증(' + r.sub_date + ')을 삭제할까요? (자동 지급된 달란트도 회수됩니다)')) return;
             brFetch('ss_submissions?id=eq.' + r.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
-              .then(function () { if (r.photo_key && window.ChurchUpload) ChurchUpload.remove(r.photo_key); draw(); })
+              .then(function () { if (r.photo_key && window.ChurchUpload) ChurchUpload.remove(r.photo_key); draw(); loadSsStudents(el, ctx, me); })
               .catch(function (e) { ssFlash(el, false, '삭제 실패: ' + e.message); });
           };
         });
