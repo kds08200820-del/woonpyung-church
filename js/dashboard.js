@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260809ss6 (주일학교: 교사 알림태그·교사 보호자 겸용)');
+console.log('[dashboard.js] v20260809ss7 (주일학교: 정렬·어린이 기록 카드)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1296,14 +1296,33 @@ console.log('[dashboard.js] v20260809ss6 (주일학교: 교사 알림태그·교
       if (bulkBtn) bulkBtn.onclick = function () { ssBulkModal(el, ctx, me, students); };
       var view = box.querySelector('#ssStudentsView');
       if (!view) return;
+      // 정렬 상태(머리글 클릭): 이름 가나다 / 생년월일 / 달란트
+      var sortKey = 'name', sortDir = 1, curList = students.slice(), activeBtn = null;
+      function sortedStudents() {
+        var arr = students.slice();
+        arr.sort(function (a, b) {
+          var r = 0;
+          if (sortKey === 'total') r = (Number(a.total) || 0) - (Number(b.total) || 0);
+          else if (sortKey === 'birth') r = String(a.birth || '9999-99-99').localeCompare(String(b.birth || '9999-99-99'));
+          else r = String(a.name).localeCompare(String(b.name), 'ko');
+          return r * sortDir;
+        });
+        return arr;
+      }
       function tableHTML() {
+        curList = sortedStudents();
+        function th(k, label, align) {
+          var mark = sortKey === k ? (sortDir > 0 ? ' ▲' : ' ▼') : ' <span style="color:#c3ccd6;">↕</span>';
+          return '<th class="ss-st-sort" data-s="' + k + '" style="text-align:' + (align || 'left') + ';padding:7px 8px;cursor:pointer;white-space:nowrap;" title="클릭하여 정렬">' + label + mark + '</th>';
+        }
         return '<div style="overflow:auto;max-height:420px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
-          '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:7px 8px;">이름</th><th style="text-align:left;padding:7px 8px;">생년월일</th><th style="text-align:right;padding:7px 8px;">달란트</th><th style="padding:7px 8px;"></th></tr></thead><tbody>' +
-          students.map(function (s, i) {
-            return '<tr><td style="padding:6px 8px;"><b>' + esc(s.name) + '</b></td><td style="padding:6px 8px;color:#7b8794;">' + esc(String(s.birth || '').slice(0, 10)) + '</td>' +
+          '<thead><tr style="background:#f5f8fc;">' + th('name', '이름') + th('birth', '생년월일') + th('total', '달란트', 'right') + '<th style="padding:7px 8px;"></th></tr></thead><tbody>' +
+          curList.map(function (s, i) {
+            return '<tr><td style="padding:6px 8px;"><a href="#" class="ss-st-name" data-i="' + i + '" title="기록 보기" style="color:var(--accent,#032257);font-weight:700;text-decoration:none;border-bottom:1px dashed #9ab;">' + esc(s.name) + '</a></td><td style="padding:6px 8px;color:#7b8794;">' + esc(String(s.birth || '').slice(0, 10)) + '</td>' +
               '<td style="padding:6px 8px;text-align:right;font-weight:700;color:#b7791f;">' + won(s.total) + '</td>' +
               '<td style="padding:6px 8px;text-align:right;white-space:nowrap;"><button type="button" class="btn btn-line ss-st-open" data-i="' + i + '" style="padding:3px 11px;font-size:.76rem;">내역·지급</button></td></tr>';
-          }).join('') + '</tbody></table></div>';
+          }).join('') + '</tbody></table></div>' +
+          '<p style="color:#9aa5b1;font-size:.76rem;margin:6px 0 0;">이름을 클릭하면 출석률·QT·필사 등 기록을 볼 수 있습니다.</p>';
       }
       function chartHTML() {
         var sorted = students.slice().sort(function (a, b) { return (Number(b.total) || 0) - (Number(a.total) || 0); });
@@ -1320,11 +1339,22 @@ console.log('[dashboard.js] v20260809ss6 (주일학교: 교사 알림태그·교
       }
       var tabs = box.querySelectorAll('.ss-view-tab');
       function show(which, btn) {
+        activeBtn = btn;
         Array.prototype.forEach.call(tabs, function (x) { x.style.background = '#fff'; x.style.color = 'var(--accent,#032257)'; x.style.border = '1px solid #cdd7e3'; });
         btn.style.background = 'var(--accent,#032257)'; btn.style.color = '#fff'; btn.style.border = '1px solid var(--accent,#032257)';
         view.innerHTML = which === 'chart' ? chartHTML() : tableHTML();
         Array.prototype.forEach.call(view.querySelectorAll('.ss-st-open'), function (b) {
-          b.onclick = function () { ssTalentModal(el, ctx, me, students[Number(b.dataset.i)]); };
+          b.onclick = function () { ssTalentModal(el, ctx, me, curList[Number(b.dataset.i)]); };
+        });
+        Array.prototype.forEach.call(view.querySelectorAll('.ss-st-name'), function (a) {
+          a.onclick = function (e) { e.preventDefault(); ssChildDetail(el, ctx, me, curList[Number(a.dataset.i)]); };
+        });
+        Array.prototype.forEach.call(view.querySelectorAll('.ss-st-sort'), function (h) {
+          h.onclick = function () {
+            var k = h.dataset.s;
+            if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+            show('table', activeBtn || tabs[0]);
+          };
         });
       }
       Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { show(b.dataset.v, b); }; });
@@ -1404,6 +1434,97 @@ console.log('[dashboard.js] v20260809ss6 (주일학교: 교사 알림태그·교
         });
     }
     draw();
+  }
+
+  /* ── 어린이 기록 카드: 출석률(%)·QT·필사·항목별 집계 (이름 클릭 시) ── */
+  function ssWeekSunday(dstr) {
+    var d = new Date(String(dstr).slice(0, 10) + 'T00:00:00');
+    if (isNaN(d.getTime())) return null;
+    d.setDate(d.getDate() - d.getDay());   // 그 주의 주일(일요일)
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function ssChildDetail(el, ctx, me, s) {
+    if (!s) return;
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:30px 16px;overflow:auto;';
+    ov.innerHTML = '<div class="form-card" id="scdBox" style="max-width:560px;width:100%;background:#fff;margin:auto;padding:18px;"><p class="qt-loading">불러오는 중…</p></div>';
+    document.body.appendChild(ov);
+    var box = ov.querySelector('#scdBox');
+    function close() { ov.remove(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    Promise.all([
+      brFetch('ss_talents?select=id,amount,reason,talent_date,created_by&member_key=eq.' + encodeURIComponent(s.member_key) + '&order=talent_date.desc,id.desc&limit=1000'),
+      brFetch('ss_submissions?select=id,stype,sub_date,confirmed_by,liked_by&member_key=eq.' + encodeURIComponent(s.member_key) + '&order=sub_date.desc,id.desc&limit=500')
+    ]).then(function (res) {
+      var tal = res[0] || [], certs = res[1] || [];
+      var total = tal.reduce(function (x, r) { return x + (Number(r.amount) || 0); }, 0);
+      // 출석률: 최근 1년(52주, 이번 주 포함) 중 '출석' 기록이 있는 주의 비율
+      var attWeeks = {};
+      tal.forEach(function (r) { if (String(r.reason || '').indexOf('출석') >= 0) { var w = ssWeekSunday(r.talent_date); if (w) attWeeks[w] = 1; } });
+      var WEEKS = 52, now = new Date(); now.setDate(now.getDate() - now.getDay());
+      var dots = [], attCnt = 0;
+      for (var i = WEEKS - 1; i >= 0; i--) {
+        var d = new Date(now.getTime()); d.setDate(d.getDate() - 7 * i);
+        var key = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+        var on = !!attWeeks[key]; if (on) attCnt++;
+        dots.push('<span title="' + key + (on ? ' 출석' : ' 기록 없음') + '" style="width:11px;height:11px;border-radius:50%;display:inline-block;background:' + (on ? '#1e874b' : '#e8edf3') + ';"></span>');
+      }
+      var pct = Math.round(attCnt / WEEKS * 100);
+      // QT·필사 집계
+      var ym = monthKey(todayStr());
+      function certStat(t) {
+        var all = certs.filter(function (r) { return r.stype === t; });
+        return { all: all.length, month: all.filter(function (r) { return monthKey(r.sub_date) === ym; }).length };
+      }
+      var qt = certStat('QT'), pil = certStat('필사');
+      // 항목별 집계(달란트 사유 기준)
+      var byReason = {};
+      tal.forEach(function (r) { var k = r.reason || '(내용 없음)'; if (!byReason[k]) byReason[k] = { cnt: 0, sum: 0 }; byReason[k].cnt++; byReason[k].sum += Number(r.amount) || 0; });
+      var reasons = Object.keys(byReason).sort(function (a, b) { return byReason[b].cnt - byReason[a].cnt; });
+      box.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+        '<h3 style="margin:0;color:var(--accent,#032257);font-size:1.05rem;">' + esc(s.name) + ' <span style="font-size:.8rem;color:#7b8794;font-weight:400;">' + esc(String(s.birth || '').slice(0, 10)) + '</span></h3>' +
+        '<button type="button" class="btn btn-line" id="scdClose" style="padding:4px 12px;">닫기</button></div>' +
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">' +
+        statCard('출석률(최근 1년)', pct + '%', pct >= 75 ? '#1e874b' : (pct >= 50 ? '#b7791f' : '#c0392b')) +
+        statCard('달란트', won(total), '#b7791f') +
+        statCard('QT', qt.all + '회', '#2b5797') +
+        statCard('필사', pil.all + '회', '#1e874b') +
+        '</div>' +
+        '<div style="background:#fafbfd;border:1px solid #e8edf3;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">' +
+        '<b style="font-size:.84rem;color:var(--accent,#032257);">🗓 최근 1년 출석 (52주)</b>' +
+        '<span style="font-size:.78rem;color:#7b8794;">' + attCnt + '/' + WEEKS + '주 · 이번 달 QT ' + qt.month + '회 · 필사 ' + pil.month + '회</span></div>' +
+        '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">' + dots.join('') + '</div>' +
+        '<p style="font-size:.72rem;color:#9aa5b1;margin:6px 0 0;">달란트 지급 항목에 ‘출석’이 포함된 기록을 기준으로 계산합니다(왼쪽이 과거).</p></div>' +
+        (reasons.length ?
+          '<b style="font-size:.84rem;color:var(--accent,#032257);display:block;margin-bottom:6px;">📋 항목별 기록</b>' +
+          '<div style="overflow:auto;max-height:220px;margin-bottom:12px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.84rem;">' +
+          '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:6px 8px;">항목</th><th style="text-align:right;padding:6px 8px;">횟수</th><th style="text-align:right;padding:6px 8px;">달란트 합계</th></tr></thead><tbody>' +
+          reasons.map(function (k) {
+            var g = byReason[k];
+            return '<tr><td style="padding:5px 8px;">' + esc(k) + '</td><td style="padding:5px 8px;text-align:right;">' + g.cnt + '회</td><td style="padding:5px 8px;text-align:right;font-weight:700;color:' + (g.sum < 0 ? '#c0392b' : '#1e874b') + ';">' + (g.sum > 0 ? '+' : '') + won(g.sum) + '</td></tr>';
+          }).join('') + '</tbody></table></div>' :
+          '<p style="color:#9aa5b1;font-size:.84rem;margin-bottom:12px;">아직 기록이 없습니다.</p>') +
+        (certs.length ?
+          '<b style="font-size:.84rem;color:var(--accent,#032257);display:block;margin-bottom:6px;">📖 최근 인증</b>' +
+          '<div style="overflow:auto;max-height:180px;margin-bottom:12px;">' +
+          certs.slice(0, 10).map(function (r) {
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 2px;border-bottom:1px dashed #eef1f5;font-size:.82rem;">' +
+              '<span>' + certPill(r.stype) + ' <span style="color:#7b8794;">' + esc(r.sub_date) + '</span></span>' +
+              '<span>' + ((r.liked_by || []).length ? '<span style="color:#e0639b;">❤ ' + (r.liked_by || []).length + '</span> ' : '') +
+              (r.confirmed_by ? '<span style="color:#1e874b;font-weight:700;">✓ 확인</span>' : '<span style="color:#9aa5b1;">대기</span>') + '</span></div>';
+          }).join('') + '</div>' : '') +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button type="button" class="btn btn-solid" id="scdLedger" style="padding:7px 14px;">⭐ 달란트 내역·지급</button>' +
+        '<button type="button" class="btn btn-line" id="scdItems" style="padding:7px 14px;">🏷 항목 관리</button></div>';
+      box.querySelector('#scdClose').onclick = close;
+      box.querySelector('#scdLedger').onclick = function () { close(); ssTalentModal(el, ctx, me, s); };
+      box.querySelector('#scdItems').onclick = function () { ssItemManager(); };
+    }).catch(function (e) {
+      box.innerHTML = '<p style="color:#c0392b;">기록을 불러오지 못했습니다: ' + esc(e.message) + '</p><button type="button" class="btn btn-line" id="scdClose">닫기</button>';
+      var c = box.querySelector('#scdClose'); if (c) c.onclick = close;
+    });
   }
 
   /* ── 달란트 항목(프리셋): '내용' 클릭 시 목록 표시 + 교사단이 추가/수정/삭제 ── */
