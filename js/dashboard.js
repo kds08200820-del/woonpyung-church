@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260809ss7 (주일학교: 정렬·어린이 기록 카드)');
+console.log('[dashboard.js] v20260809ss8 (주일학교: 성장기 자동 게시 안내)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1736,7 +1736,7 @@ console.log('[dashboard.js] v20260809ss7 (주일학교: 정렬·어린이 기록
           container.innerHTML =
             '<div class="form-card" style="padding:16px 18px;">' +
             '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📖 QT·필사 인증</h3>' +
-            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">인증샷을 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고(하루에 종류별 1회), 선생님이 확인하고 ❤를 눌러 주세요. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
+            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">인증샷을 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고(하루에 종류별 1회), 우리들 소식 <b>‘주일학교 성장기’</b>에도 자동으로 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
             '<button type="button" class="btn btn-solid" id="sscUpQt" style="padding:8px 16px;">📷 QT 인증 올리기</button>' +
             '<button type="button" class="btn btn-solid" id="sscUpPil" style="padding:8px 16px;background:#1e874b;border-color:#1e874b;">✍️ 필사 인증 올리기</button>' +
@@ -1767,7 +1767,7 @@ console.log('[dashboard.js] v20260809ss7 (주일학교: 정렬·어린이 기록
             flash(true, ''); msg.style.color = '#7b8794'; msg.textContent = curType + ' 인증샷 올리는 중…';
             ChurchUpload.upload(f, { folder: 'ss-cert' }).then(function (up) {
               return brFetch('ss_submissions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ member_key: subjKey, child_name: subjName || '', stype: curType, photo_url: up.url, photo_key: up.key || '' }) });
-            }).then(function () { flash(true, '✓ ' + curType + ' 인증이 올라갔어요! 달란트도 확인해 보세요 ⭐'); draw(); if (onChange) onChange(); })
+            }).then(function () { flash(true, '✓ ' + curType + ' 인증이 올라갔어요! 달란트 지급 + 성장기 게시 완료 ⭐'); draw(); if (onChange) onChange(); })
               .catch(function (e) { flash(false, '올리기 실패: ' + e.message); });
           };
           Array.prototype.forEach.call(container.querySelectorAll('.ssc-del'), function (b) {
