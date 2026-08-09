@@ -14,8 +14,9 @@
  *     OneSignal REST 키만 비밀이며, 이 스크립트(비공개)에만 들어갑니다.
  *
  * ▼ 설정 방법 (한 번만)
- *   1) 나눔터 푸시와 같은 Apps Script 프로젝트에 이 파일을 추가
- *   2) 아래 SSCERT_CONFIG 의 ONESIGNAL_REST_KEY 채우기 (나눔터 푸시와 동일한 키)
+ *   1) 나눔터/QT 푸시와 같은 Apps Script 프로젝트에 이 파일을 추가
+ *   2) OneSignal REST 키는 같은 프로젝트의 기존 설정(POST_CONFIG/CONFIG)에서
+ *      자동으로 가져옵니다. (별도 프로젝트라면 아래 ONESIGNAL_REST_KEY 채우기)
  *   3) 함수 목록에서  createSsCertPushTrigger  를 한 번 실행 (권한 승인)
  *        → 5분마다 새 인증 확인이 등록됩니다.
  *   4) (테스트) 인증을 하나 올린 뒤  pollSsCerts  를 직접 실행하면 즉시 발송됩니다.
@@ -100,8 +101,19 @@ function primeSsCertId_() {
   }
 }
 
+/** OneSignal REST 키 — 같은 프로젝트의 기존 푸시 설정(나눔터 POST_CONFIG, QT CONFIG)에서 자동 재사용 */
+function ssRestKey_() {
+  function ok(v) { return v && String(v).indexOf("여기에") < 0; }
+  if (ok(SSCERT_CONFIG.ONESIGNAL_REST_KEY)) return SSCERT_CONFIG.ONESIGNAL_REST_KEY;
+  try { if (typeof POST_CONFIG !== "undefined" && ok(POST_CONFIG.ONESIGNAL_REST_KEY)) return POST_CONFIG.ONESIGNAL_REST_KEY; } catch (e) {}
+  try { if (typeof CONFIG !== "undefined" && ok(CONFIG.ONESIGNAL_REST_KEY)) return CONFIG.ONESIGNAL_REST_KEY; } catch (e) {}
+  return "";
+}
+
 /** OneSignal 푸시 전송 — 교사 태그(ss_teacher=1) 기기에만 */
 function osPushSs_(title, body) {
+  const restKey = ssRestKey_();
+  if (!restKey) { Logger.log("OneSignal REST 키를 찾지 못했습니다 — SSCERT_CONFIG 또는 기존 푸시 설정에 키를 넣어 주세요."); return; }
   const payload = {
     app_id: SSCERT_CONFIG.ONESIGNAL_APP_ID,
     target_channel: "push",
@@ -113,7 +125,7 @@ function osPushSs_(title, body) {
   const res = UrlFetchApp.fetch("https://api.onesignal.com/notifications", {
     method: "post",
     contentType: "application/json",
-    headers: { Authorization: "Key " + SSCERT_CONFIG.ONESIGNAL_REST_KEY },
+    headers: { Authorization: "Key " + restKey },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true,
   });
