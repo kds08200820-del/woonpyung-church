@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260809ss5 (주일학교: 인증 자동 달란트)');
+console.log('[dashboard.js] v20260809ss6 (주일학교: 교사 알림태그·교사 보호자 겸용)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1178,10 +1178,23 @@ console.log('[dashboard.js] v20260809ss5 (주일학교: 인증 자동 달란트)
       '<div id="ssBoardBox" style="margin-bottom:14px;"></div>' +
       '<div id="ssCertsBox" style="margin-bottom:14px;"></div>' +
       '<div id="ssStudentsBox"></div>' +
-      '<p class="fin-msg" id="ssMsg" style="margin-top:8px;"></p></div>';
+      '<p class="fin-msg" id="ssMsg" style="margin-top:8px;"></p></div>' +
+      '<div id="ssGuardianBox" style="margin-top:22px;"></div>';
     loadSsBoard(el, ctx, me);
     loadSsCerts(el, ctx, me);
     loadSsStudents(el, ctx, me);
+    // 새 인증 푸시를 받을 수 있게 이 기기를 '교사 기기'로 태그 (apps-script/ss-cert-push.gs가 이 태그로 발송)
+    if (window.ONESIGNAL_APP_ID) {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function (OneSignal) {
+        try { await OneSignal.User.addTag('ss_teacher', '1'); } catch (e) {}
+      });
+    }
+    // 교사·관리자가 보호자(같은 세대에 어린이)이기도 하면 '우리 아이' 섹션을 아래에 표시
+    brFetch('rpc/ss_my_children', { method: 'POST', body: '{}' }).then(function (kids) {
+      kids = kids || [];
+      if (kids.length) renderSsGuardian(el.querySelector('#ssGuardianBox'), ctx, me, kids);
+    }).catch(function () {});
   }
   function ssFlash(el, ok, txt) { var m = el.querySelector('#ssMsg'); if (m) { m.style.color = ok ? 'green' : '#c0392b'; m.textContent = txt; } }
 
