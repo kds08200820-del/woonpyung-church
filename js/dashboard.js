@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260809ss3 (주일학교: QT·필사 인증)');
+console.log('[dashboard.js] v20260809ss4 (주일학교: QT·필사 인증 + 보호자)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1126,9 +1126,16 @@ console.log('[dashboard.js] v20260809ss3 (주일학교: QT·필사 인증)');
       else if (ctx.role === '어린이') {
         el.innerHTML = '<div id="ssMyTalents" style="margin-bottom:22px;"></div><div id="ssMyCerts"></div>';
         loadMyTalents(el.querySelector('#ssMyTalents'), ctx, me);
-        loadMyCerts(el.querySelector('#ssMyCerts'), me);
+        loadMyCerts(el.querySelector('#ssMyCerts'), me.memberKey, me.memberName || '');
       }
-      else loadMyTalents(el, ctx, me);
+      else {
+        // 보호자: 같은 세대(가계도)에 '어린이'가 있으면 자녀 현황 화면
+        brFetch('rpc/ss_my_children', { method: 'POST', body: '{}' }).then(function (kids) {
+          kids = kids || [];
+          if (kids.length) renderSsGuardian(el, ctx, me, kids);
+          else loadMyTalents(el, ctx, me);
+        }).catch(function () { loadMyTalents(el, ctx, me); });
+      }
     }).catch(function () { el.innerHTML = ''; });
   }
 
@@ -1580,12 +1587,12 @@ console.log('[dashboard.js] v20260809ss3 (주일학교: QT·필사 인증)');
   }
   function monthKey(d) { return String(d || '').slice(0, 7); }
 
-  /* ── 어린이: 내 QT·필사 인증 올리기 + 내역 ── */
-  function loadMyCerts(container, me) {
-    if (!container || !me.memberKey) return;
+  /* ── QT·필사 인증 올리기 + 내역 (어린이 본인 또는 보호자가 자녀 대신) ── */
+  function loadMyCerts(container, subjKey, subjName) {
+    if (!container || !subjKey) return;
     function draw() {
       container.innerHTML = '<div class="form-card" style="padding:16px 18px;"><p class="qt-loading">불러오는 중…</p></div>';
-      brFetch('ss_submissions?select=*&member_key=eq.' + encodeURIComponent(me.memberKey) + '&order=sub_date.desc,id.desc&limit=300')
+      brFetch('ss_submissions?select=*&member_key=eq.' + encodeURIComponent(subjKey) + '&order=sub_date.desc,id.desc&limit=300')
         .then(function (rows) {
           rows = rows || [];
           var ym = monthKey(todayStr());
@@ -1624,7 +1631,7 @@ console.log('[dashboard.js] v20260809ss3 (주일학교: QT·필사 인증)');
             if (!(window.ChurchUpload && ChurchUpload.isReady())) { flash(false, '업로드 서버가 설정되지 않았습니다.'); return; }
             flash(true, ''); msg.style.color = '#7b8794'; msg.textContent = curType + ' 인증샷 올리는 중…';
             ChurchUpload.upload(f, { folder: 'ss-cert' }).then(function (up) {
-              return brFetch('ss_submissions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ member_key: me.memberKey, child_name: me.memberName || '', stype: curType, photo_url: up.url, photo_key: up.key || '' }) });
+              return brFetch('ss_submissions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ member_key: subjKey, child_name: subjName || '', stype: curType, photo_url: up.url, photo_key: up.key || '' }) });
             }).then(function () { flash(true, '✓ ' + curType + ' 인증이 올라갔어요!'); draw(); })
               .catch(function (e) { flash(false, '올리기 실패: ' + e.message); });
           };
@@ -1641,6 +1648,71 @@ console.log('[dashboard.js] v20260809ss3 (주일학교: QT·필사 인증)');
         .catch(function () { container.innerHTML = ''; });
     }
     draw();
+  }
+
+  /* ── 보호자: 우리 아이 달란트·인증·헌금 (같은 세대의 '어린이' 자동 판별) ── */
+  function renderSsGuardian(el, ctx, me, kids) {
+    var cur = 0;
+    function draw() {
+      var c = kids[cur];
+      el.innerHTML =
+        '<div class="form-card" style="padding:16px 18px;margin-bottom:14px;">' +
+        '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">👨‍👧 우리 아이 주일학교</h3>' +
+        '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 ' + (kids.length > 1 ? '10px' : '0') + ';">보호자 화면입니다. 자녀의 달란트·QT/필사 인증·헌금을 보고, 인증샷을 대신 올릴 수 있습니다.</p>' +
+        (kids.length > 1 ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + kids.map(function (k, i) {
+          var on = i === cur;
+          return '<button type="button" class="ssg-kid" data-i="' + i + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.84rem;cursor:pointer;">' + esc(k.name) + '</button>';
+        }).join('') + '</div>' : '') +
+        '</div>' +
+        '<div id="ssgTal" style="margin-bottom:14px;"></div>' +
+        '<div id="ssgCerts" style="margin-bottom:14px;"></div>' +
+        '<div id="ssgOff"></div>';
+      Array.prototype.forEach.call(el.querySelectorAll('.ssg-kid'), function (b) {
+        b.onclick = function () { cur = Number(b.dataset.i); draw(); };
+      });
+      ssGuardianTalents(el.querySelector('#ssgTal'), c);
+      loadMyCerts(el.querySelector('#ssgCerts'), c.member_key, c.name);
+      ssGuardianOfferings(el.querySelector('#ssgOff'), c);
+    }
+    draw();
+  }
+  function ssGuardianTalents(container, child) {
+    if (!container) return;
+    brFetch('ss_talents?select=amount,reason,talent_date,created_by&member_key=eq.' + encodeURIComponent(child.member_key) + '&order=talent_date.desc,id.desc&limit=200')
+      .then(function (rows) {
+        rows = rows || [];
+        var total = rows.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+        container.innerHTML =
+          '<div class="form-card" style="padding:16px 18px;">' +
+          '<h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">⭐ ' + esc(child.name) + ' 달란트 — <span style="color:#b7791f;">' + won(total) + '</span></h3>' +
+          (rows.length ?
+            '<div style="overflow:auto;max-height:260px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
+            '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:6px 8px;">날짜</th><th style="text-align:left;padding:6px 8px;">내용</th><th style="text-align:right;padding:6px 8px;">달란트</th></tr></thead><tbody>' +
+            rows.map(function (r) {
+              var a = Number(r.amount) || 0;
+              return '<tr><td style="padding:5px 8px;white-space:nowrap;">' + esc(r.talent_date) + '</td><td style="padding:5px 8px;">' + esc(r.reason || '') + '</td><td style="padding:5px 8px;text-align:right;font-weight:700;color:' + (a < 0 ? '#c0392b' : '#1e874b') + ';">' + (a > 0 ? '+' : '') + won(a) + '</td></tr>';
+            }).join('') + '</tbody></table></div>' :
+            '<p style="color:#9aa5b1;font-size:.86rem;">아직 받은 달란트가 없습니다.</p>');
+      }).catch(function () { container.innerHTML = ''; });
+  }
+  function ssGuardianOfferings(container, child) {
+    if (!container) return;
+    brFetch('rpc/ss_child_offerings', { method: 'POST', body: JSON.stringify({ p_key: child.member_key }) })
+      .then(function (rows) {
+        rows = rows || [];
+        var total = rows.reduce(function (s, o) { return s + (Number(o.amount) || 0); }, 0);
+        container.innerHTML =
+          '<div class="form-card" style="padding:16px 18px;">' +
+          '<h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">💝 ' + esc(child.name) + ' 헌금 — ' + won(total) + '원</h3>' +
+          (rows.length ?
+            '<div style="overflow:auto;max-height:260px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
+            '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:6px 8px;">일자</th><th style="text-align:left;padding:6px 8px;">항목</th><th style="text-align:right;padding:6px 8px;">금액</th></tr></thead><tbody>' +
+            rows.map(function (o) {
+              return '<tr><td style="padding:5px 8px;white-space:nowrap;">' + esc(String(o.date || '').slice(0, 10)) + '</td><td style="padding:5px 8px;">' + esc(o.account || '') + (o.service ? ' <span style="color:#9aa5b1;font-size:.76rem;">· ' + esc(o.service) + '</span>' : '') + '</td><td style="padding:5px 8px;text-align:right;font-variant-numeric:tabular-nums;">' + won(o.amount) + '</td></tr>';
+            }).join('') + '</tbody></table></div>' +
+            '<p style="color:var(--ink-soft);font-size:.78rem;margin-top:8px;">🔒 보호자(같은 세대 가족)에게만 표시됩니다.</p>' :
+            '<p style="color:#9aa5b1;font-size:.86rem;">조회된 헌금 내역이 없습니다.</p>');
+      }).catch(function () { container.innerHTML = ''; });
   }
 
   /* ── 교사단: QT·필사 인증 관리(좋아요·확인·기록) ── */
