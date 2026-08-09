@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260809ss1 (주일학교 달란트)');
+console.log('[dashboard.js] v20260809ss2 (주일학교 달란트: 항목·일괄지급·그래프)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1251,19 +1251,57 @@ console.log('[dashboard.js] v20260809ss1 (주일학교 달란트)');
         statCard('교사진', (ctx.teacherCount || 0) + '명', '#1e874b') +
         statCard('달란트 총계', won(totalT), '#b7791f');
       box.innerHTML =
-        '<b style="font-size:.9rem;color:var(--accent,#032257);display:block;margin-bottom:6px;">⭐ 어린이 달란트 관리</b>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">' +
+        '<b style="font-size:.9rem;color:var(--accent,#032257);">⭐ 어린이 달란트 관리</b>' +
+        '<span style="display:flex;gap:6px;">' +
+        '<button type="button" class="btn btn-line" id="ssItemsBtn" style="padding:3px 11px;font-size:.76rem;">🏷 항목 관리</button>' +
+        (students.length ? '<button type="button" class="btn btn-solid" id="ssBulkBtn" style="padding:3px 11px;font-size:.76rem;">⚡ 일괄 지급</button>' : '') +
+        '</span></div>' +
         (students.length ?
-          '<div style="overflow:auto;max-height:420px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
+          '<div style="display:flex;gap:6px;margin-bottom:8px;">' +
+          '<button type="button" class="btn ss-view-tab" data-v="table" style="padding:3px 14px;font-size:.76rem;">표</button>' +
+          '<button type="button" class="btn ss-view-tab" data-v="chart" style="padding:3px 14px;font-size:.76rem;">📊 그래프</button>' +
+          '</div><div id="ssStudentsView"></div>' :
+          '<p style="color:#9aa5b1;font-size:.84rem;">교적에서 <b>주일학교: 어린이</b>로 지정된 교인이 아직 없습니다.<br>교적관리 → 교적 명단에서 어린이의 ‘주일학교’ 항목을 ‘어린이’로 지정해 주세요.</p>');
+      var itemsBtn = box.querySelector('#ssItemsBtn');
+      if (itemsBtn) itemsBtn.onclick = function () { ssItemManager(); };
+      var bulkBtn = box.querySelector('#ssBulkBtn');
+      if (bulkBtn) bulkBtn.onclick = function () { ssBulkModal(el, ctx, me, students); };
+      var view = box.querySelector('#ssStudentsView');
+      if (!view) return;
+      function tableHTML() {
+        return '<div style="overflow:auto;max-height:420px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
           '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:7px 8px;">이름</th><th style="text-align:left;padding:7px 8px;">생년월일</th><th style="text-align:right;padding:7px 8px;">달란트</th><th style="padding:7px 8px;"></th></tr></thead><tbody>' +
           students.map(function (s, i) {
             return '<tr><td style="padding:6px 8px;"><b>' + esc(s.name) + '</b></td><td style="padding:6px 8px;color:#7b8794;">' + esc(String(s.birth || '').slice(0, 10)) + '</td>' +
               '<td style="padding:6px 8px;text-align:right;font-weight:700;color:#b7791f;">' + won(s.total) + '</td>' +
               '<td style="padding:6px 8px;text-align:right;white-space:nowrap;"><button type="button" class="btn btn-line ss-st-open" data-i="' + i + '" style="padding:3px 11px;font-size:.76rem;">내역·지급</button></td></tr>';
-          }).join('') + '</tbody></table></div>' :
-          '<p style="color:#9aa5b1;font-size:.84rem;">교적에서 <b>주일학교: 어린이</b>로 지정된 교인이 아직 없습니다.<br>교적관리 → 교적 명단에서 어린이의 ‘주일학교’ 항목을 ‘어린이’로 지정해 주세요.</p>');
-      Array.prototype.forEach.call(box.querySelectorAll('.ss-st-open'), function (b) {
-        b.onclick = function () { ssTalentModal(el, ctx, me, students[Number(b.dataset.i)]); };
-      });
+          }).join('') + '</tbody></table></div>';
+      }
+      function chartHTML() {
+        var sorted = students.slice().sort(function (a, b) { return (Number(b.total) || 0) - (Number(a.total) || 0); });
+        var max = 1;
+        sorted.forEach(function (s) { var t = Number(s.total) || 0; if (t > max) max = t; });
+        return '<div style="border:1px solid #e8edf3;border-radius:10px;padding:12px 14px;"><table style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
+          sorted.map(function (s) {
+            var t = Number(s.total) || 0;
+            var w = (Math.max(0, t) / max * 100).toFixed(1);
+            return '<tr><td style="padding:6px 8px 6px 0;white-space:nowrap;">' + esc(s.name) + '</td>' +
+              '<td style="width:55%;padding:6px 0;"><div style="background:#f5f1e6;border-radius:5px;height:14px;overflow:hidden;"><div style="width:' + w + '%;height:100%;background:linear-gradient(90deg,#e2b95e,#b7791f);"></div></div></td>' +
+              '<td style="text-align:right;padding:6px 0 6px 8px;font-variant-numeric:tabular-nums;"><b style="color:' + (t < 0 ? '#c0392b' : '#b7791f') + ';">' + won(t) + '</b></td></tr>';
+          }).join('') + '</table></div>';
+      }
+      var tabs = box.querySelectorAll('.ss-view-tab');
+      function show(which, btn) {
+        Array.prototype.forEach.call(tabs, function (x) { x.style.background = '#fff'; x.style.color = 'var(--accent,#032257)'; x.style.border = '1px solid #cdd7e3'; });
+        btn.style.background = 'var(--accent,#032257)'; btn.style.color = '#fff'; btn.style.border = '1px solid var(--accent,#032257)';
+        view.innerHTML = which === 'chart' ? chartHTML() : tableHTML();
+        Array.prototype.forEach.call(view.querySelectorAll('.ss-st-open'), function (b) {
+          b.onclick = function () { ssTalentModal(el, ctx, me, students[Number(b.dataset.i)]); };
+        });
+      }
+      Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { show(b.dataset.v, b); }; });
+      if (tabs.length) show('table', tabs[0]);
     }).catch(function (e) { box.innerHTML = '<p style="color:#9aa5b1;font-size:.84rem;">어린이 명단을 불러오지 못했습니다: ' + esc(e.message) + '</p>'; });
   }
   function ssTalentModal(el, ctx, me, student) {
@@ -1291,7 +1329,7 @@ console.log('[dashboard.js] v20260809ss1 (주일학교 달란트)');
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:end;">' +
             '<div style="flex:0 0 122px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">날짜</label><input type="date" id="sstDate" value="' + esc(editing ? editing.talent_date : todayStr()) + '" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
             '<div style="flex:0 0 92px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">달란트(±)</label><input type="number" id="sstAmount" value="' + (editing ? (Number(editing.amount) || 0) : '') + '" placeholder="예: 5" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
-            '<div style="flex:1;min-width:130px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">내용</label><input type="text" id="sstReason" value="' + esc(editing ? (editing.reason || '') : '') + '" placeholder="예: 암송 성공" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
+            '<div id="sstReasonWrap" style="flex:1;min-width:130px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">내용</label><input type="text" id="sstReason" value="' + esc(editing ? (editing.reason || '') : '') + '" placeholder="클릭하여 항목 선택" autocomplete="off" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
             '<span style="white-space:nowrap;"><button type="button" class="btn btn-solid" id="sstSave" style="padding:7px 14px;">' + (editing ? '수정 저장' : '지급') + '</button>' + (editing ? ' <button type="button" class="btn btn-line" id="sstEditCancel" style="padding:7px 10px;">취소</button>' : '') + '</span></div>' +
             '<p style="font-size:.72rem;color:#9aa5b1;margin:6px 0 0;">차감은 음수로 입력하세요(예: -3).</p>' +
             '<p class="fin-msg" id="sstMsg"></p></div>' +
@@ -1306,6 +1344,7 @@ console.log('[dashboard.js] v20260809ss1 (주일학교 달란트)');
               }).join('') + '</tbody></table></div>' :
               '<p style="color:#9aa5b1;font-size:.84rem;">아직 지급한 달란트가 없습니다.</p>');
           box.querySelector('#sstClose').onclick = close;
+          attachItemPicker(box.querySelector('#sstReasonWrap'), box.querySelector('#sstReason'), box.querySelector('#sstAmount'));
           var msg = box.querySelector('#sstMsg');
           function fail(t) { msg.style.color = '#c0392b'; msg.textContent = t; }
           box.querySelector('#sstSave').onclick = function () {
@@ -1338,6 +1377,188 @@ console.log('[dashboard.js] v20260809ss1 (주일학교 달란트)');
         });
     }
     draw();
+  }
+
+  /* ── 달란트 항목(프리셋): '내용' 클릭 시 목록 표시 + 교사단이 추가/수정/삭제 ── */
+  var SS_ITEMS = null;   // 캐시(항목 관리에서 변경 시 무효화)
+  function loadSsItems(force) {
+    if (SS_ITEMS && !force) return Promise.resolve(SS_ITEMS);
+    return brFetch('ss_talent_items?select=*&order=sort.asc,id.asc')
+      .then(function (rows) { SS_ITEMS = rows || []; return SS_ITEMS; })
+      .catch(function () { SS_ITEMS = []; return SS_ITEMS; });
+  }
+  // reasonInp 클릭/포커스 → wrap 아래에 항목 드롭다운. 선택하면 내용+달란트 자동 입력.
+  function attachItemPicker(wrap, reasonInp, amountInp) {
+    if (!wrap || !reasonInp) return;
+    var dd = document.createElement('div');
+    dd.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #cdd7e3;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.14);z-index:60;max-height:210px;overflow:auto;display:none;margin-top:2px;';
+    wrap.style.position = 'relative';
+    wrap.appendChild(dd);
+    function render() {
+      loadSsItems().then(function (items) {
+        dd.innerHTML = (items.length ? items.map(function (it) {
+          var a = Number(it.amount) || 0;
+          return '<div class="ssi-opt" data-name="' + esc(it.name) + '" data-amount="' + a + '" style="padding:8px 11px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #f0f3f7;font-size:.86rem;"><span>' + esc(it.name) + '</span><b style="color:#b7791f;">' + (a > 0 ? '+' : '') + a + '</b></div>';
+        }).join('') : '<div style="padding:9px 11px;color:#9aa5b1;font-size:.82rem;">등록된 항목이 없습니다. ‘🏷 항목 관리’에서 추가해 주세요.</div>');
+        Array.prototype.forEach.call(dd.querySelectorAll('.ssi-opt'), function (o) {
+          o.addEventListener('mousedown', function (e) {   // blur보다 먼저 처리되도록 mousedown 사용
+            e.preventDefault();
+            reasonInp.value = o.dataset.name;
+            if (amountInp && Number(o.dataset.amount)) amountInp.value = o.dataset.amount;
+            dd.style.display = 'none';
+          });
+        });
+      });
+    }
+    function open() { render(); dd.style.display = 'block'; }
+    reasonInp.addEventListener('focus', open);
+    reasonInp.addEventListener('click', open);
+    reasonInp.addEventListener('blur', function () { setTimeout(function () { dd.style.display = 'none'; }, 160); });
+  }
+
+  /* 항목 관리(교사단): 추가·수정·삭제. onClose: 닫힐 때 호출(버튼 목록 새로고침용) */
+  function ssItemManager(onClose) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:30px 16px;overflow:auto;';
+    ov.innerHTML = '<div class="form-card" id="ssiBox" style="max-width:440px;width:100%;background:#fff;margin:auto;padding:18px;"></div>';
+    document.body.appendChild(ov);
+    var box = ov.querySelector('#ssiBox');
+    var editing = null;
+    function close() { ov.remove(); if (onClose) onClose(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    function draw() {
+      box.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
+      loadSsItems(true).then(function (items) {
+        box.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+          '<h3 style="margin:0;color:var(--accent,#032257);font-size:1rem;">🏷 달란트 항목 관리</h3>' +
+          '<button type="button" class="btn btn-line" id="ssiClose" style="padding:4px 12px;">닫기</button></div>' +
+          '<p style="color:var(--ink-soft);font-size:.8rem;margin:0 0 10px;">자주 쓰는 항목을 등록해 두면, 지급할 때 ‘내용’ 칸을 클릭해 바로 고를 수 있습니다.</p>' +
+          '<div style="background:#fafbfd;border:1px solid #e8edf3;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+          '<b style="font-size:.84rem;color:var(--accent,#032257);">' + (editing ? '✏️ 항목 수정' : '＋ 새 항목') + '</b>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:end;">' +
+          '<div style="flex:1;min-width:130px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">이름</label><input type="text" id="ssiName" value="' + esc(editing ? editing.name : '') + '" placeholder="예: 출석" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
+          '<div style="flex:0 0 92px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">달란트(±)</label><input type="number" id="ssiAmount" value="' + (editing ? (Number(editing.amount) || 0) : '') + '" placeholder="예: 1" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
+          '<span style="white-space:nowrap;"><button type="button" class="btn btn-solid" id="ssiSave" style="padding:7px 14px;">' + (editing ? '수정 저장' : '추가') + '</button>' + (editing ? ' <button type="button" class="btn btn-line" id="ssiEditCancel" style="padding:7px 10px;">취소</button>' : '') + '</span></div>' +
+          '<p class="fin-msg" id="ssiMsg"></p></div>' +
+          (items.length ?
+            '<table class="board-table" style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
+            '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:6px 8px;">항목</th><th style="text-align:right;padding:6px 8px;">달란트</th><th style="padding:6px 8px;"></th></tr></thead><tbody>' +
+            items.map(function (it) {
+              var a = Number(it.amount) || 0;
+              return '<tr><td style="padding:6px 8px;">' + esc(it.name) + '</td>' +
+                '<td style="padding:6px 8px;text-align:right;font-weight:700;color:' + (a < 0 ? '#c0392b' : '#1e874b') + ';">' + (a > 0 ? '+' : '') + a + '</td>' +
+                '<td style="padding:6px 8px;text-align:right;white-space:nowrap;"><button type="button" class="btn btn-line ssi-edit" data-id="' + it.id + '" style="padding:2px 8px;font-size:.72rem;">수정</button> <button type="button" class="btn btn-line ssi-del" data-id="' + it.id + '" style="padding:2px 8px;font-size:.72rem;color:#c0392b;">삭제</button></td></tr>';
+            }).join('') + '</tbody></table>' :
+            '<p style="color:#9aa5b1;font-size:.84rem;">등록된 항목이 없습니다. 위에서 추가해 주세요.</p>');
+        box.querySelector('#ssiClose').onclick = close;
+        var msg = box.querySelector('#ssiMsg');
+        function fail(t) { msg.style.color = '#c0392b'; msg.textContent = t; }
+        box.querySelector('#ssiSave').onclick = function () {
+          var nm = box.querySelector('#ssiName').value.trim();
+          var amt = Number(box.querySelector('#ssiAmount').value);
+          if (!nm) { fail('이름을 입력해 주세요.'); return; }
+          if (!amt) { fail('달란트를 숫자로 입력해 주세요(차감 항목은 음수).'); return; }
+          msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
+          var req = editing
+            ? brFetch('ss_talent_items?id=eq.' + editing.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ name: nm, amount: amt }) })
+            : brFetch('ss_talent_items', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ name: nm, amount: amt, sort: items.length + 1 }) });
+          req.then(function () { editing = null; SS_ITEMS = null; draw(); }).catch(function (e) { fail('저장 실패: ' + e.message); });
+        };
+        var ec = box.querySelector('#ssiEditCancel');
+        if (ec) ec.onclick = function () { editing = null; draw(); };
+        Array.prototype.forEach.call(box.querySelectorAll('.ssi-edit'), function (b) {
+          b.onclick = function () { editing = items.filter(function (x) { return String(x.id) === b.dataset.id; })[0] || null; draw(); };
+        });
+        Array.prototype.forEach.call(box.querySelectorAll('.ssi-del'), function (b) {
+          var it = items.filter(function (x) { return String(x.id) === b.dataset.id; })[0];
+          b.onclick = function () {
+            if (!confirm('「' + (it ? it.name : '') + '」 항목을 삭제할까요? (이미 지급한 달란트 기록은 그대로 남습니다)')) return;
+            brFetch('ss_talent_items?id=eq.' + b.dataset.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+              .then(function () { SS_ITEMS = null; draw(); }).catch(function (e) { fail('삭제 실패: ' + e.message); });
+          };
+        });
+      });
+    }
+    draw();
+  }
+
+  /* 일괄 지급: 어린이 여러 명 선택 → 같은 항목·달란트를 한 번에 등록 */
+  function ssBulkModal(el, ctx, me, students) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:30px 16px;overflow:auto;';
+    ov.innerHTML = '<div class="form-card" id="ssbkBox" style="max-width:560px;width:100%;background:#fff;margin:auto;padding:18px;"></div>';
+    document.body.appendChild(ov);
+    var box = ov.querySelector('#ssbkBox');
+    function close() { ov.remove(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    box.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+      '<h3 style="margin:0;color:var(--accent,#032257);font-size:1rem;">⚡ 달란트 일괄 지급</h3>' +
+      '<button type="button" class="btn btn-line" id="ssbkClose" style="padding:4px 12px;">닫기</button></div>' +
+      '<p style="color:var(--ink-soft);font-size:.8rem;margin:0 0 10px;">항목 버튼을 누르면 달란트·내용이 채워집니다. 어린이를 선택하고 지급하면 모두에게 한 번에 등록됩니다.</p>' +
+      '<div id="ssbkItems" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:10px;">' +
+      '<div style="flex:0 0 122px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">날짜</label><input type="date" id="ssbkDate" value="' + esc(todayStr()) + '" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
+      '<div style="flex:0 0 92px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">달란트(±)</label><input type="number" id="ssbkAmount" placeholder="예: 1" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
+      '<div id="ssbkReasonWrap" style="flex:1;min-width:140px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">내용</label><input type="text" id="ssbkReason" placeholder="클릭하여 항목 선택" autocomplete="off" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<b style="font-size:.84rem;color:var(--accent,#032257);">어린이 선택</b>' +
+      '<label class="sw" style="font-size:.8rem;"><input type="checkbox" id="ssbkAll"> 전체 선택</label></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;border:1px solid #e8edf3;border-radius:10px;padding:10px;max-height:220px;overflow:auto;margin-bottom:12px;">' +
+      students.map(function (s, i) {
+        return '<label style="display:flex;align-items:center;gap:6px;font-size:.86rem;cursor:pointer;"><input type="checkbox" class="ssbk-kid" data-i="' + i + '"> ' + esc(s.name) + '</label>';
+      }).join('') + '</div>' +
+      '<div style="display:flex;gap:10px;align-items:center;"><button type="button" class="btn btn-solid" id="ssbkSave" style="padding:8px 16px;">선택한 어린이에게 지급</button><span class="fin-msg" id="ssbkMsg"></span></div>';
+    box.querySelector('#ssbkClose').onclick = close;
+    attachItemPicker(box.querySelector('#ssbkReasonWrap'), box.querySelector('#ssbkReason'), box.querySelector('#ssbkAmount'));
+    // 항목 버튼(칩): 누르면 달란트·내용 자동 입력. '항목 관리'로 버튼 추가/삭제.
+    function renderChips() {
+      var wrap = box.querySelector('#ssbkItems'); if (!wrap) return;
+      loadSsItems(true).then(function (items) {
+        wrap.innerHTML = items.map(function (it, i) {
+          var a = Number(it.amount) || 0;
+          return '<button type="button" class="ssbk-chip" data-i="' + i + '" style="border:1px solid #e2cf9b;background:#fffbe8;color:#8a6d1f;border-radius:999px;padding:5px 13px;font:inherit;font-size:.82rem;cursor:pointer;">' + esc(it.name) + ' <b>' + (a > 0 ? '+' : '') + a + '</b></button>';
+        }).join('') +
+        '<button type="button" id="ssbkManage" style="border:1px dashed #cdd7e3;background:#fff;color:#7b8794;border-radius:999px;padding:5px 13px;font:inherit;font-size:.82rem;cursor:pointer;">🏷 항목 관리</button>';
+        Array.prototype.forEach.call(wrap.querySelectorAll('.ssbk-chip'), function (c) {
+          c.onclick = function () {
+            var it = items[Number(c.dataset.i)]; if (!it) return;
+            box.querySelector('#ssbkAmount').value = Number(it.amount) || 0;
+            box.querySelector('#ssbkReason').value = it.name;
+            Array.prototype.forEach.call(wrap.querySelectorAll('.ssbk-chip'), function (x) { x.style.background = '#fffbe8'; x.style.borderColor = '#e2cf9b'; });
+            c.style.background = '#f6e3b0'; c.style.borderColor = '#b7791f';
+          };
+        });
+        var mg = wrap.querySelector('#ssbkManage');
+        if (mg) mg.onclick = function () { ssItemManager(renderChips); };
+      });
+    }
+    renderChips();
+    var allChk = box.querySelector('#ssbkAll'), kids = box.querySelectorAll('.ssbk-kid');
+    allChk.onchange = function () { Array.prototype.forEach.call(kids, function (c) { c.checked = allChk.checked; }); };
+    var msg = box.querySelector('#ssbkMsg');
+    function fail(t) { msg.style.color = '#c0392b'; msg.textContent = t; }
+    box.querySelector('#ssbkSave').onclick = function () {
+      var d = box.querySelector('#ssbkDate').value;
+      var amt = Number(box.querySelector('#ssbkAmount').value);
+      var rsn = box.querySelector('#ssbkReason').value.trim();
+      var sel = [];
+      Array.prototype.forEach.call(kids, function (c) { if (c.checked) { var s = students[Number(c.dataset.i)]; if (s) sel.push(s); } });
+      if (!d) { fail('날짜를 선택해 주세요.'); return; }
+      if (!amt) { fail('달란트를 숫자로 입력해 주세요(차감은 음수).'); return; }
+      if (!sel.length) { fail('어린이를 한 명 이상 선택해 주세요.'); return; }
+      msg.style.color = '#7b8794'; msg.textContent = sel.length + '명에게 지급 중…';
+      var rows = sel.map(function (s) {
+        return { member_key: s.member_key, child_name: s.name, amount: amt, reason: rsn, talent_date: d, created_by: me.memberName || '' };
+      });
+      brFetch('ss_talents', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(rows) })
+        .then(function () {
+          msg.style.color = 'green'; msg.textContent = '✓ ' + sel.length + '명에게 ' + (amt > 0 ? '+' : '') + amt + ' 달란트 지급 완료';
+          setTimeout(function () { close(); loadSsStudents(el, ctx, me); }, 700);
+        })
+        .catch(function (e) { fail('지급 실패: ' + e.message); });
+    };
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', waitLogin);
