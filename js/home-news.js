@@ -109,6 +109,18 @@
     return _isAdmin;
   }
 
+  // '주일학교 성장기' 게시글은 교사단(교사·부장·서기·관리자)도 수정/삭제 가능 (RLS와 동일 기준)
+  const GROWTH_CAT = "주일학교 성장기";
+  let _ssTeacher = null;
+  async function isSsTeacherUser() {
+    if (_ssTeacher !== null) return _ssTeacher;
+    const me = currentUser();
+    if (!me || !me.id) { _ssTeacher = false; return false; }
+    try { _ssTeacher = (await api("POST", "rpc/is_ss_teacher", {})) === true; }
+    catch (e) { _ssTeacher = false; }
+    return _ssTeacher;
+  }
+
   let photos = [];            // 최신순
   let social = true;
   let loadError = false;      // true = 불러오기 실패(빈 소식과 구분) → 재시도 안내 표시
@@ -263,11 +275,12 @@
   function closeFeedDom() { if (feedModal) { feedModal.hidden = true; if (viewer.hidden) document.body.style.overflow = ""; } }
   function closeFeed() { if (window.ModalNav && window.ModalNav.close()) return; closeFeedDom(); }
 
-  let feedAdmin = false;
+  let feedAdmin = false, feedSsTeacher = false;
   async function openFeed() {
     const wasOpen = feedModal && !feedModal.hidden;
     if (!feedModal) buildFeedModal();
     feedAdmin = await isAdminUser();
+    feedSsTeacher = await isSsTeacherUser();
     if (loadError) {
       feedList.className = "album-feed empty";
       feedList.innerHTML = `<p class="placeholder-note">소식을 불러오지 못했어요. <button type="button" class="hn-retry2" style="margin-left:6px;padding:5px 14px;border:0;background:#2f5d3a;color:#fff;border-radius:999px;font-weight:600;cursor:pointer">다시</button></p>`;
@@ -303,12 +316,14 @@
     const liked = myLikes.has(String(p.id));
     const me = currentUser();
     const mine = !!(me && p.user_id && me.id === p.user_id);
-    const canDel = mine || feedAdmin;
+    const growthMgr = p.category === GROWTH_CAT && (feedAdmin || feedSsTeacher);   // 성장기: 교사단 관리
+    const canEdit = mine || growthMgr;
+    const canDel = mine || feedAdmin || growthMgr;
     return `<article class="ig-card" data-id="${p.id}" data-idx="${i}">
       <header class="ig-head">
         <span class="ig-avatar">${esc(initial(p.author_name))}</span>
         <div class="ig-who"><b>${esc(p.author_name || "성도")}</b><span>${esc(fmtDate(p))} · ${esc(timeAgo(p.created_at))}</span></div>
-        ${(mine || canDel) ? `<span style="margin-left:auto;display:inline-flex;gap:2px">${mine ? `<button type="button" class="ig-menu" data-act="editphoto" title="수정" style="margin-left:0;color:var(--accent,#032257)">수정</button>` : ""}${canDel ? `<button type="button" class="ig-menu" data-act="delphoto" title="삭제" style="margin-left:0">삭제</button>` : ""}</span>` : ""}
+        ${(canEdit || canDel) ? `<span style="margin-left:auto;display:inline-flex;gap:2px">${canEdit ? `<button type="button" class="ig-menu" data-act="editphoto" title="수정" style="margin-left:0;color:var(--accent,#032257)">수정</button>` : ""}${canDel ? `<button type="button" class="ig-menu" data-act="delphoto" title="삭제" style="margin-left:0">삭제</button>` : ""}</span>` : ""}
       </header>
       ${mediaHtml(p, i)}
       <div class="ig-actions">
@@ -410,7 +425,8 @@
   function closeEdit() { if (editModal) editModal.hidden = true; document.body.style.overflow = ""; editingPhoto = null; }
   function openEdit(p) {
     const me = currentUser();
-    if (!me || me.id !== p.user_id) { alert("본인이 올린 소식만 수정할 수 있어요."); return; }
+    const growthMgr = p.category === GROWTH_CAT && (_isAdmin === true || _ssTeacher === true);
+    if (!me || (me.id !== p.user_id && !growthMgr)) { alert("본인이 올린 소식만 수정할 수 있어요."); return; }
     if (!editModal) buildEditModal();
     editingPhoto = p;
     const catSel = editModal.querySelector("#edCat"), list = cats();
@@ -707,5 +723,5 @@
   if (addBtn) addBtn.addEventListener("click", openUp);
 
   load();
-  window.addEventListener("church:auth", () => { _isAdmin = null; load(); });
+  window.addEventListener("church:auth", () => { _isAdmin = null; _ssTeacher = null; load(); });
 })();
