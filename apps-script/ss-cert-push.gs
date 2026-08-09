@@ -27,7 +27,7 @@ const SSCERT_CONFIG = {
   SUPABASE_ANON_KEY: "sb_publishable_qfq4Hvs4tF_1ZIezPoMojg_h6XNw01G", // 공개키(안전)
   SITE_URL: "https://k-logos.com/",
   ONESIGNAL_APP_ID: "a22a1ff9-5a05-4915-b70f-b0c6df6ccd71",
-  ONESIGNAL_REST_KEY: "여기에_OneSignal_REST_API_KEY",
+  ONESIGNAL_REST_KEY: "",   // 비워두면 스크립트 속성 ONESIGNAL_REST_KEY 사용(권장)
   POLL_MINUTES: 5,   // 확인 주기(분) — 1/5/10/15/30 중 하나
 };
 
@@ -101,9 +101,10 @@ function primeSsCertId_() {
   }
 }
 
-/** OneSignal REST 키 — 같은 프로젝트의 기존 푸시 설정(나눔터 POST_CONFIG, QT CONFIG)에서 자동 재사용 */
+/** OneSignal REST 키 — 스크립트 속성(ONESIGNAL_REST_KEY) 우선, 같은 프로젝트의 기존 푸시 설정(POST_CONFIG/CONFIG)도 재사용 */
 function ssRestKey_() {
-  function ok(v) { return v && String(v).indexOf("여기에") < 0; }
+  function ok(v) { return v && String(v).indexOf("여기에") < 0 && String(v).length > 10; }
+  try { var p = PropertiesService.getScriptProperties().getProperty("ONESIGNAL_REST_KEY"); if (ok(p)) return p; } catch (e) {}
   if (ok(SSCERT_CONFIG.ONESIGNAL_REST_KEY)) return SSCERT_CONFIG.ONESIGNAL_REST_KEY;
   try { if (typeof POST_CONFIG !== "undefined" && ok(POST_CONFIG.ONESIGNAL_REST_KEY)) return POST_CONFIG.ONESIGNAL_REST_KEY; } catch (e) {}
   try { if (typeof CONFIG !== "undefined" && ok(CONFIG.ONESIGNAL_REST_KEY)) return CONFIG.ONESIGNAL_REST_KEY; } catch (e) {}
