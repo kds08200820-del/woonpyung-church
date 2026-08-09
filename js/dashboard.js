@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260705qtfallback');
+console.log('[dashboard.js] v20260809ss1 (주일학교 달란트)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -117,6 +117,7 @@ console.log('[dashboard.js] v20260705qtfallback');
       '<div id="qtProgress" style="margin-bottom:22px;"></div>' +
       '<div id="myEdu" style="margin-bottom:22px;"></div>' +
       '<h2 style="' + grp + '">💒 나의 교회생활</h2>' +
+      '<div id="ssDash" style="margin-bottom:22px;"></div>' +
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">💝 헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
       '<div id="myDocs" style="margin-bottom:22px;"></div>' +
       '<div id="familyTree" style="margin-bottom:22px;"></div>' +
@@ -126,6 +127,7 @@ console.log('[dashboard.js] v20260705qtfallback');
     loadBibleReading(me);
     loadQtProgress(me);
     loadMyEdu(me);
+    loadSundaySchool(me);
     loadOfferings(me);
     loadMyDocs(me);
     loadFamily(me);
@@ -1109,6 +1111,233 @@ console.log('[dashboard.js] v20260705qtfallback');
       });
       detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+  }
+
+  /* ================= 주일학교 — 교사 현황·달란트 / 어린이 내 달란트 =================
+   * 권한은 supabase/sunday_school.sql 의 RLS·RPC가 결정:
+   *  · 교사/부장/서기(+관리자) → 현황판·어린이 달란트 관리, 부장/서기만 현황판 편집
+   *  · 어린이 → 자기 달란트 조회만
+   * SQL 미실행 등으로 RPC가 없으면 섹션 자체를 조용히 숨긴다. */
+  function loadSundaySchool(me) {
+    var el = document.getElementById('ssDash'); if (!el) return;
+    brFetch('rpc/ss_context', { method: 'POST', body: '{}' }).then(function (ctx) {
+      ctx = ctx || {};
+      if (ctx.isTeacher) renderSsTeacher(el, ctx, me);
+      else loadMyTalents(el, ctx, me);
+    }).catch(function () { el.innerHTML = ''; });
+  }
+
+  /* ── 어린이(달란트 받은 계정): 나의 달란트 ── */
+  function loadMyTalents(el, ctx, me) {
+    if (!me.memberKey) { el.innerHTML = ''; return; }
+    brFetch('ss_talents?select=id,amount,reason,talent_date,created_by&member_key=eq.' + encodeURIComponent(me.memberKey) + '&order=talent_date.desc,id.desc&limit=500')
+      .then(function (rows) {
+        rows = rows || [];
+        if (!rows.length && ctx.role !== '어린이') { el.innerHTML = ''; return; }
+        var total = rows.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+        el.innerHTML =
+          '<div class="form-card" style="padding:16px 18px;">' +
+          '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">⭐ 나의 달란트</h3>' +
+          '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">주일학교 선생님께 받은 달란트 현황입니다.</p>' +
+          '<div style="text-align:center;background:#fffbe8;border:1px solid #f2e2ae;border-radius:12px;padding:16px;margin-bottom:12px;">' +
+          '<div style="font-size:.8rem;color:#8a6d1f;">지금까지 모은 달란트</div>' +
+          '<div style="font-size:1.9rem;font-weight:800;color:#b7791f;">' + won(total) + ' <span style="font-size:1rem;">달란트</span></div></div>' +
+          (rows.length ?
+            '<div style="overflow:auto;max-height:320px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
+            '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:7px 8px;">날짜</th><th style="text-align:left;padding:7px 8px;">내용</th><th style="text-align:right;padding:7px 8px;">달란트</th></tr></thead><tbody>' +
+            rows.map(function (r) {
+              var a = Number(r.amount) || 0;
+              return '<tr><td style="padding:6px 8px;white-space:nowrap;">' + esc(r.talent_date) + '</td><td style="padding:6px 8px;">' + esc(r.reason || '') + '</td>' +
+                '<td style="padding:6px 8px;text-align:right;font-weight:700;color:' + (a < 0 ? '#c0392b' : '#1e874b') + ';">' + (a > 0 ? '+' : '') + won(a) + '</td></tr>';
+            }).join('') + '</tbody></table></div>' :
+            '<p style="color:#9aa5b1;font-size:.86rem;">아직 받은 달란트가 없어요. 첫 달란트를 기대해요! 🌱</p>');
+      }).catch(function () { el.innerHTML = ''; });
+  }
+
+  /* ── 교사단: 주일학교 현황 + 어린이 달란트 관리 ── */
+  function renderSsTeacher(el, ctx, me) {
+    var roleLabel = ctx.role || '관리자';
+    el.innerHTML =
+      '<div class="form-card" style="padding:16px 18px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+      '<h3 style="margin:0;font-size:1rem;color:var(--accent,#032257);">🏫 주일학교 현황</h3>' +
+      '<span style="font-size:.78rem;background:#e8f0fb;color:#2b5797;border-radius:999px;padding:3px 11px;">내 직분: ' + esc(roleLabel) + '</span></div>' +
+      '<div id="ssStats" style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;"></div>' +
+      '<div id="ssBoardBox" style="margin-bottom:14px;"></div>' +
+      '<div id="ssStudentsBox"></div>' +
+      '<p class="fin-msg" id="ssMsg" style="margin-top:8px;"></p></div>';
+    loadSsBoard(el, ctx, me);
+    loadSsStudents(el, ctx, me);
+  }
+  function ssFlash(el, ok, txt) { var m = el.querySelector('#ssMsg'); if (m) { m.style.color = ok ? 'green' : '#c0392b'; m.textContent = txt; } }
+
+  /* 현황판(공지) — 조회는 교사단, 편집은 부장·서기(+관리자) */
+  function loadSsBoard(el, ctx, me) {
+    var box = el.querySelector('#ssBoardBox'); if (!box) return;
+    brFetch('ss_board?select=*&order=sort.asc,id.asc').then(function (rows) {
+      rows = rows || [];
+      var canEdit = !!ctx.isEditor;
+      box.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+        '<b style="font-size:.9rem;color:var(--accent,#032257);">📌 현황판</b>' +
+        (canEdit ? '<button type="button" class="btn btn-line" id="ssBoardAdd" style="padding:3px 12px;font-size:.78rem;">＋ 항목 추가</button>' : '') + '</div>' +
+        (rows.length ? rows.map(function (r) {
+          return '<div style="border:1px solid #e8edf3;border-radius:10px;padding:10px 12px;margin-bottom:8px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+            '<b style="font-size:.88rem;">' + esc(r.title) + '</b>' +
+            (canEdit ? '<span style="white-space:nowrap;"><button type="button" class="btn btn-line ss-bd-edit" data-id="' + r.id + '" style="padding:2px 9px;font-size:.74rem;">수정</button> <button type="button" class="btn btn-line ss-bd-del" data-id="' + r.id + '" style="padding:2px 9px;font-size:.74rem;color:#c0392b;">삭제</button></span>' : '') + '</div>' +
+            (r.content ? '<div style="font-size:.84rem;color:#3a4a63;margin-top:5px;line-height:1.7;">' + esc(r.content).replace(/\n/g, '<br>') + '</div>' : '') +
+            (r.updated_by ? '<div style="font-size:.72rem;color:#9aa5b1;margin-top:5px;">' + esc(r.updated_by) + ' · ' + esc(String(r.updated_at || '').slice(0, 10)) + '</div>' : '') +
+            '</div>';
+        }).join('') : '<p style="color:#9aa5b1;font-size:.84rem;margin:4px 0 0;">' + (canEdit ? '아직 항목이 없습니다. ‘＋ 항목 추가’로 공지·현황을 올려 주세요.' : '아직 등록된 현황이 없습니다. (편집은 부장·서기)') + '</p>');
+      if (!canEdit) return;
+      var addBtn = box.querySelector('#ssBoardAdd');
+      if (addBtn) addBtn.onclick = function () { ssBoardForm(el, ctx, me, null); };
+      Array.prototype.forEach.call(box.querySelectorAll('.ss-bd-edit'), function (b) {
+        var r = rows.filter(function (x) { return String(x.id) === b.dataset.id; })[0];
+        b.onclick = function () { ssBoardForm(el, ctx, me, r); };
+      });
+      Array.prototype.forEach.call(box.querySelectorAll('.ss-bd-del'), function (b) {
+        var r = rows.filter(function (x) { return String(x.id) === b.dataset.id; })[0];
+        b.onclick = function () {
+          if (!confirm('「' + (r ? r.title : '') + '」 항목을 삭제할까요?')) return;
+          brFetch('ss_board?id=eq.' + b.dataset.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+            .then(function () { loadSsBoard(el, ctx, me); })
+            .catch(function (e) { ssFlash(el, false, '삭제 실패: ' + e.message); });
+        };
+      });
+    }).catch(function () { box.innerHTML = ''; });
+  }
+  function ssBoardForm(el, ctx, me, row) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:40px 16px;overflow:auto;';
+    ov.innerHTML = '<div class="form-card" style="max-width:480px;width:100%;background:#fff;margin:auto;padding:18px;">' +
+      '<h3 style="margin:0 0 10px;color:var(--accent,#032257);font-size:1rem;">' + (row ? '현황판 수정' : '현황판 항목 추가') + '</h3>' +
+      '<label style="display:block;font-size:.8rem;color:#7b8794;margin-bottom:4px;">제목</label>' +
+      '<input type="text" id="ssbTitle" value="' + esc(row ? row.title : '') + '" placeholder="예: 8월 둘째 주 공과 안내" style="width:100%;padding:9px 11px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;margin-bottom:10px;box-sizing:border-box;">' +
+      '<label style="display:block;font-size:.8rem;color:#7b8794;margin-bottom:4px;">내용</label>' +
+      '<textarea id="ssbContent" rows="5" style="width:100%;padding:9px 11px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;">' + esc(row ? (row.content || '') : '') + '</textarea>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;"><button type="button" class="btn btn-line" id="ssbCancel">취소</button><button type="button" class="btn btn-solid" id="ssbSave">저장</button></div>' +
+      '<p class="fin-msg" id="ssbMsg"></p></div>';
+    document.body.appendChild(ov);
+    function close() { ov.remove(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    ov.querySelector('#ssbCancel').onclick = close;
+    ov.querySelector('#ssbSave').onclick = function () {
+      var title = ov.querySelector('#ssbTitle').value.trim();
+      var content = ov.querySelector('#ssbContent').value.trim();
+      var msg = ov.querySelector('#ssbMsg');
+      if (!title) { msg.style.color = '#c0392b'; msg.textContent = '제목을 입력해 주세요.'; return; }
+      msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
+      var body = { title: title, content: content, updated_by: me.memberName || '', updated_at: new Date().toISOString() };
+      var req = row
+        ? brFetch('ss_board?id=eq.' + row.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) })
+        : brFetch('ss_board', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
+      req.then(function () { close(); loadSsBoard(el, ctx, me); })
+        .catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; });
+    };
+  }
+
+  /* 어린이 명단 + 달란트 관리(교사단) */
+  function loadSsStudents(el, ctx, me) {
+    var stats = el.querySelector('#ssStats'), box = el.querySelector('#ssStudentsBox');
+    if (!box) return;
+    box.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
+    brFetch('rpc/ss_students', { method: 'POST', body: '{}' }).then(function (students) {
+      students = students || [];
+      var totalT = students.reduce(function (s, r) { return s + (Number(r.total) || 0); }, 0);
+      if (stats) stats.innerHTML =
+        statCard('어린이', students.length + '명', '#032257') +
+        statCard('교사진', (ctx.teacherCount || 0) + '명', '#1e874b') +
+        statCard('달란트 총계', won(totalT), '#b7791f');
+      box.innerHTML =
+        '<b style="font-size:.9rem;color:var(--accent,#032257);display:block;margin-bottom:6px;">⭐ 어린이 달란트 관리</b>' +
+        (students.length ?
+          '<div style="overflow:auto;max-height:420px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
+          '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:7px 8px;">이름</th><th style="text-align:left;padding:7px 8px;">생년월일</th><th style="text-align:right;padding:7px 8px;">달란트</th><th style="padding:7px 8px;"></th></tr></thead><tbody>' +
+          students.map(function (s, i) {
+            return '<tr><td style="padding:6px 8px;"><b>' + esc(s.name) + '</b></td><td style="padding:6px 8px;color:#7b8794;">' + esc(String(s.birth || '').slice(0, 10)) + '</td>' +
+              '<td style="padding:6px 8px;text-align:right;font-weight:700;color:#b7791f;">' + won(s.total) + '</td>' +
+              '<td style="padding:6px 8px;text-align:right;white-space:nowrap;"><button type="button" class="btn btn-line ss-st-open" data-i="' + i + '" style="padding:3px 11px;font-size:.76rem;">내역·지급</button></td></tr>';
+          }).join('') + '</tbody></table></div>' :
+          '<p style="color:#9aa5b1;font-size:.84rem;">교적에서 <b>주일학교: 어린이</b>로 지정된 교인이 아직 없습니다.<br>교적관리 → 교적 명단에서 어린이의 ‘주일학교’ 항목을 ‘어린이’로 지정해 주세요.</p>');
+      Array.prototype.forEach.call(box.querySelectorAll('.ss-st-open'), function (b) {
+        b.onclick = function () { ssTalentModal(el, ctx, me, students[Number(b.dataset.i)]); };
+      });
+    }).catch(function (e) { box.innerHTML = '<p style="color:#9aa5b1;font-size:.84rem;">어린이 명단을 불러오지 못했습니다: ' + esc(e.message) + '</p>'; });
+  }
+  function ssTalentModal(el, ctx, me, student) {
+    if (!student) return;
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:30px 16px;overflow:auto;';
+    ov.innerHTML = '<div class="form-card" id="sstBox" style="max-width:520px;width:100%;background:#fff;margin:auto;padding:18px;"></div>';
+    document.body.appendChild(ov);
+    var box = ov.querySelector('#sstBox');
+    var editing = null;   // 수정 중인 항목(null이면 새로 지급)
+    function close() { ov.remove(); loadSsStudents(el, ctx, me); }   // 닫을 때 합계 새로고침
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    function draw() {
+      box.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
+      brFetch('ss_talents?select=*&member_key=eq.' + encodeURIComponent(student.member_key) + '&order=talent_date.desc,id.desc&limit=1000')
+        .then(function (rows) {
+          rows = rows || [];
+          var total = rows.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+          box.innerHTML =
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+            '<h3 style="margin:0;color:var(--accent,#032257);font-size:1.02rem;">⭐ ' + esc(student.name) + ' — ' + won(total) + ' 달란트</h3>' +
+            '<button type="button" class="btn btn-line" id="sstClose" style="padding:4px 12px;">닫기</button></div>' +
+            '<div style="background:#fafbfd;border:1px solid #e8edf3;border-radius:10px;padding:12px;margin-bottom:12px;">' +
+            '<b style="font-size:.84rem;color:var(--accent,#032257);">' + (editing ? '✏️ 항목 수정' : '＋ 달란트 지급/차감') + '</b>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:end;">' +
+            '<div style="flex:0 0 122px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">날짜</label><input type="date" id="sstDate" value="' + esc(editing ? editing.talent_date : todayStr()) + '" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
+            '<div style="flex:0 0 92px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">달란트(±)</label><input type="number" id="sstAmount" value="' + (editing ? (Number(editing.amount) || 0) : '') + '" placeholder="예: 5" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
+            '<div style="flex:1;min-width:130px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">내용</label><input type="text" id="sstReason" value="' + esc(editing ? (editing.reason || '') : '') + '" placeholder="예: 암송 성공" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
+            '<span style="white-space:nowrap;"><button type="button" class="btn btn-solid" id="sstSave" style="padding:7px 14px;">' + (editing ? '수정 저장' : '지급') + '</button>' + (editing ? ' <button type="button" class="btn btn-line" id="sstEditCancel" style="padding:7px 10px;">취소</button>' : '') + '</span></div>' +
+            '<p style="font-size:.72rem;color:#9aa5b1;margin:6px 0 0;">차감은 음수로 입력하세요(예: -3).</p>' +
+            '<p class="fin-msg" id="sstMsg"></p></div>' +
+            (rows.length ?
+              '<div style="overflow:auto;max-height:340px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.84rem;">' +
+              '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:6px 8px;">날짜</th><th style="text-align:left;padding:6px 8px;">내용</th><th style="text-align:right;padding:6px 8px;">달란트</th><th style="padding:6px 8px;"></th></tr></thead><tbody>' +
+              rows.map(function (r) {
+                var a = Number(r.amount) || 0;
+                return '<tr><td style="padding:5px 8px;white-space:nowrap;">' + esc(r.talent_date) + '</td><td style="padding:5px 8px;">' + esc(r.reason || '') + (r.created_by ? ' <span style="color:#c3ccd6;font-size:.72rem;">· ' + esc(r.created_by) + '</span>' : '') + '</td>' +
+                  '<td style="padding:5px 8px;text-align:right;font-weight:700;color:' + (a < 0 ? '#c0392b' : '#1e874b') + ';">' + (a > 0 ? '+' : '') + won(a) + '</td>' +
+                  '<td style="padding:5px 8px;text-align:right;white-space:nowrap;"><button type="button" class="btn btn-line sst-edit" data-id="' + r.id + '" style="padding:2px 8px;font-size:.72rem;">수정</button> <button type="button" class="btn btn-line sst-del" data-id="' + r.id + '" style="padding:2px 8px;font-size:.72rem;color:#c0392b;">삭제</button></td></tr>';
+              }).join('') + '</tbody></table></div>' :
+              '<p style="color:#9aa5b1;font-size:.84rem;">아직 지급한 달란트가 없습니다.</p>');
+          box.querySelector('#sstClose').onclick = close;
+          var msg = box.querySelector('#sstMsg');
+          function fail(t) { msg.style.color = '#c0392b'; msg.textContent = t; }
+          box.querySelector('#sstSave').onclick = function () {
+            var d = box.querySelector('#sstDate').value;
+            var amt = Number(box.querySelector('#sstAmount').value);
+            var rsn = box.querySelector('#sstReason').value.trim();
+            if (!d) { fail('날짜를 선택해 주세요.'); return; }
+            if (!amt) { fail('달란트를 숫자로 입력해 주세요(차감은 음수).'); return; }
+            msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
+            var req = editing
+              ? brFetch('ss_talents?id=eq.' + editing.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ amount: amt, reason: rsn, talent_date: d }) })
+              : brFetch('ss_talents', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ member_key: student.member_key, child_name: student.name, amount: amt, reason: rsn, talent_date: d, created_by: me.memberName || '' }) });
+            req.then(function () { editing = null; draw(); }).catch(function (e) { fail('저장 실패: ' + e.message); });
+          };
+          var ec = box.querySelector('#sstEditCancel');
+          if (ec) ec.onclick = function () { editing = null; draw(); };
+          Array.prototype.forEach.call(box.querySelectorAll('.sst-edit'), function (b) {
+            b.onclick = function () { editing = rows.filter(function (x) { return String(x.id) === b.dataset.id; })[0] || null; draw(); };
+          });
+          Array.prototype.forEach.call(box.querySelectorAll('.sst-del'), function (b) {
+            b.onclick = function () {
+              if (!confirm('이 달란트 항목을 삭제할까요?')) return;
+              brFetch('ss_talents?id=eq.' + b.dataset.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+                .then(function () { draw(); }).catch(function (e) { fail('삭제 실패: ' + e.message); });
+            };
+          });
+        }).catch(function (e) {
+          box.innerHTML = '<p style="color:#c0392b;">불러오기 실패: ' + esc(e.message) + '</p><button type="button" class="btn btn-line" id="sstClose">닫기</button>';
+          var c = box.querySelector('#sstClose'); if (c) c.onclick = close;
+        });
+    }
+    draw();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', waitLogin);
