@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260809ss8 (주일학교: 성장기 자동 게시 안내)');
+console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1736,7 +1736,7 @@ console.log('[dashboard.js] v20260809ss8 (주일학교: 성장기 자동 게시 
           container.innerHTML =
             '<div class="form-card" style="padding:16px 18px;">' +
             '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📖 QT·필사 인증</h3>' +
-            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">인증샷을 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고(하루에 종류별 1회), 우리들 소식 <b>‘주일학교 성장기’</b>에도 자동으로 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
+            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">인증샷을 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고(하루에 종류별 1회), 홈 화면 <b>‘주일학교 성장기’</b> 섹션에 자동으로 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
             '<button type="button" class="btn btn-solid" id="sscUpQt" style="padding:8px 16px;">📷 QT 인증 올리기</button>' +
             '<button type="button" class="btn btn-solid" id="sscUpPil" style="padding:8px 16px;background:#1e874b;border-color:#1e874b;">✍️ 필사 인증 올리기</button>' +
