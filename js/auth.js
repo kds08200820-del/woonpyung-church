@@ -171,7 +171,7 @@
       try {
         const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/reset.html" });
         if (error) throw error;
-        showMsg("비밀번호 재설정 메일을 보냈습니다. 메일의 링크는 30분 동안 1회만 사용할 수 있습니다.", true);
+        showMsg("비밀번호 재설정 메일을 보냈습니다. 몇 분 안에 안 오면 스팸함을 확인해 주세요. 링크는 1회만 사용할 수 있습니다. ※ 카카오로 가입하셨다면 이 메일은 오지 않습니다 — 노란 '카카오 로그인' 버튼으로 로그인해 주세요.", true);
       } catch (err) {
         showMsg("오류: " + friendlyError(err), false);
       } finally {
