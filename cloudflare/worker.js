@@ -14,6 +14,14 @@
  *    목회행정 대시보드의 "AI 음성 생성"·"성경 음원 관리"·"오디오북 음원 관리" 카드가 쓴다.
  *    성경은 1189장이라 R2 목록 한도(1회 1000개)를 넘으므로 이어받아 모두 가져온다.
  *
+ *  - POST   /admin-temp-password 임시 비밀번호 발급     (담임목사=최고 관리자 전용)
+ *    이메일 가입 성도가 비밀번호를 잊고 재설정 메일도 받기 어려울 때,
+ *    담임목사가 임시 비밀번호를 만들어 전화·문자로 직접 전달한다.
+ *    Settings → Variables and Secrets 에 Secret 2개 추가 필요:
+ *         SUPABASE_SERVICE_ROLE_KEY = (Supabase → Settings → API 의 service_role 키)
+ *         SUPER_ADMIN_EMAIL         = (담임목사 로그인 이메일)
+ *    미설정 시 이 기능만 막히고 나머지는 정상 동작한다.
+ *
  *  - POST   /book-audio-url      오디오북 재생 열쇠 발급 (정회원/관리자)
  *  - GET    /book-audio/<이름>    오디오북 재생          (열쇠 서명 확인 · Range 지원)
  *    책 «레위기에서 만난 예수 그리스도»는 판매 중인 책이라 음원을 공개하면 안 된다.
@@ -313,6 +321,66 @@ export default {
       const files = {};
       for (const n of names) if (have.has(n)) files[n] = await bookSign(n, exp, env);
       return json({ ok: true, exp, base: `${url.origin}/book-audio/`, files }, 200, req);
+    }
+
+    // ----- 임시 비밀번호 발급 (담임목사=최고 관리자 전용) -----
+    // 이메일 가입 성도가 비밀번호를 잊었을 때 담임목사가 임시 비밀번호를 만들어 준다.
+    // 카카오 가입 계정(비밀번호 없음)과 다른 관리자 계정은 대상이 아니다.
+    if (req.method === "POST" && url.pathname === "/admin-temp-password") {
+      if (!user) return json({ error: "로그인이 필요합니다." }, 401, req);
+      const svc = env.SUPABASE_SERVICE_ROLE_KEY || "";
+      const superEmail = String(env.SUPER_ADMIN_EMAIL || "").trim().toLowerCase();
+      if (!svc || !superEmail) {
+        return json({ error: "임시 비밀번호 기능 설정이 아직 끝나지 않았습니다(Cloudflare Secret 필요 — 설정가이드 참고)." }, 503, req);
+      }
+      if (String(user.email || "").toLowerCase() !== superEmail || !(await isAdmin(user, token, env))) {
+        return json({ error: "담임목사(최고 관리자)만 사용할 수 있습니다." }, 403, req);
+      }
+      let email = "";
+      try { email = String(((await req.json()) || {}).email || "").trim().toLowerCase(); } catch (e) {}
+      if (!email || !email.includes("@") || email.length > 200) {
+        return json({ error: "성도의 가입 이메일을 입력해 주세요." }, 400, req);
+      }
+      const base = env.SUPABASE_URL.replace(/\/$/, "");
+      const sh = { apikey: svc, Authorization: "Bearer " + svc, "Content-Type": "application/json" };
+      // 이메일로 계정 찾기 (가입 시 만들어지는 profiles 기준)
+      const pr = await fetch(base + "/rest/v1/profiles?select=id,name,email&email=eq." + encodeURIComponent(email), { headers: sh });
+      const profs = pr.ok ? await pr.json() : [];
+      if (!Array.isArray(profs) || !profs.length) {
+        return json({ error: "해당 이메일로 가입된 계정이 없습니다. (카카오 가입 계정은 이메일이 등록되지 않아 찾을 수 없습니다)" }, 404, req);
+      }
+      const target = profs[0];
+      // 가입 방식 확인 — 이메일 가입자만. 카카오 계정은 비밀번호 자체가 없다.
+      const ur = await fetch(base + "/auth/v1/admin/users/" + target.id, { headers: sh });
+      if (!ur.ok) return json({ error: "계정 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요." }, 502, req);
+      const au = await ur.json();
+      const provider = (au && au.app_metadata && au.app_metadata.provider) || "";
+      if (provider !== "email") {
+        return json({ error: "카카오로 가입한 계정입니다. 비밀번호가 없으니 노란 '카카오 로그인' 버튼을 쓰도록 안내해 주세요." }, 400, req);
+      }
+      // 다른 관리자 계정의 비밀번호는 여기서 못 바꾼다(계정 탈취 방지) — 본인 것은 가능
+      if (target.id !== user.id) {
+        const ar = await fetch(base + "/rest/v1/admins?select=uid&uid=eq." + target.id, { headers: sh });
+        const arows = ar.ok ? await ar.json() : [];
+        if (Array.isArray(arows) && arows.length) {
+          return json({ error: "다른 관리자 계정의 비밀번호는 여기서 바꿀 수 없습니다." }, 403, req);
+        }
+      }
+      // 전화로 불러주기 쉬운 임시 비밀번호 — 헷갈리는 글자(0·O·1·l·I) 제외, xxxx-xxxx-xxxx
+      const chars = "23456789abcdefghjkmnpqrstuvwxyz";
+      const buf = new Uint8Array(12);
+      crypto.getRandomValues(buf);
+      const raw = [...buf].map((b) => chars[b % chars.length]).join("");
+      const temp = raw.slice(0, 4) + "-" + raw.slice(4, 8) + "-" + raw.slice(8, 12);
+      const put = await fetch(base + "/auth/v1/admin/users/" + target.id, {
+        method: "PUT", headers: sh, body: JSON.stringify({ password: temp }),
+      });
+      if (!put.ok) {
+        let m = "";
+        try { m = ((await put.json()) || {}).msg || ""; } catch (e) {}
+        return json({ error: "비밀번호 설정에 실패했습니다." + (m ? " (" + m + ")" : "") }, 502, req);
+      }
+      return json({ ok: true, name: target.name || "", email: target.email || email, tempPassword: temp }, 200, req);
     }
 
     // ----- 음원 목록·삭제 (관리자 전용) -----

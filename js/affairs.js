@@ -2,7 +2,7 @@
  * 데이터는 Supabase(visitations/counsels/memos 등, 관리자 RLS)에 저장.
  * 콘솔: [affairs.js] v20260712memo
  */
-console.log('[affairs.js] v20260806abp');
+console.log('[affairs.js] v20260812tp');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -807,6 +807,10 @@ console.log('[affairs.js] v20260806abp');
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📦 주일 자료 생성</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#b8860b;line-height:1.1;margin-top:4px" id="wpJobsNum">–</div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="wpJobsSub">눌러서 생성 내역 보기</div></div>' +
+        '<div class="fin-card" id="tempPwCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🔑 임시 비밀번호</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#b03a5b;line-height:1.1;margin-top:4px">발급</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px">비밀번호 잊은 이메일 회원 · 담임목사 전용</div></div>' +
         '</div>' +
         '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">' +
         '<b style="color:var(--accent,#032257)">📖 성경 권별 커버리지</b>' +
@@ -842,6 +846,58 @@ console.log('[affairs.js] v20260806abp');
       loadBookAudio(panel);
       loadBookProgress(panel);
       loadWorshipJobs(panel);
+      var tpCard = panel.querySelector('#tempPwCard');
+      if (tpCard) tpCard.onclick = tempPwModal;
+    }
+
+    // ── 🔑 임시 비밀번호 발급 (담임목사 전용) — 비밀번호 잊은 이메일 가입 성도용 ──
+    // 실제 권한 확인과 발급은 R2 워커(/admin-temp-password)가 service_role 키로 수행한다.
+    function tempPwModal() {
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:460px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#032257)">🔑 임시 비밀번호 발급</h3><button class="btn btn-line" id="tp_close" style="padding:3px 11px">닫기</button></div>' +
+        '<p style="margin:0 0 12px;font-size:.78rem;color:#9aa5b1;line-height:1.55">이메일로 가입한 성도가 비밀번호를 잊었을 때 씁니다(담임목사 전용).<br>발급하면 <b>기존 비밀번호는 즉시 무효</b>가 됩니다. 임시 비밀번호를 성도께 전화·문자로 전해 주시고, 로그인 후 <b>내 정보</b>에서 새 비밀번호로 바꾸시게 안내해 주세요.<br>카카오로 가입한 성도는 비밀번호가 없으니 카카오 로그인으로 안내해 주세요.</p>' +
+        '<div style="display:flex;gap:8px"><input type="email" id="tp_email" placeholder="성도의 가입 이메일" style="flex:1;min-width:0;border:1px solid #d7dde6;border-radius:8px;padding:9px 12px;font-size:.9rem" />' +
+        '<button class="btn btn-solid" id="tp_go" style="padding:9px 16px;white-space:nowrap">발급</button></div>' +
+        '<div id="tp_out" style="margin-top:14px"></div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#tp_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      var out = ov.querySelector('#tp_out'), go = ov.querySelector('#tp_go'), em = ov.querySelector('#tp_email');
+      function issue() {
+        var email = (em.value || '').trim();
+        if (!email) { out.innerHTML = '<p style="color:#c0392b;font-size:.85rem;margin:0">이메일을 입력해 주세요.</p>'; em.focus(); return; }
+        var s = sess();
+        if (!s || !s.token) { out.innerHTML = '<p style="color:#c0392b;font-size:.85rem;margin:0">로그인이 만료되었습니다. 새로고침 후 다시 시도해 주세요.</p>'; return; }
+        go.disabled = true;
+        out.innerHTML = '<p class="qt-loading" style="margin:0">발급 중…</p>';
+        var R2 = (window.R2_UPLOAD_URL || 'https://church-files.kds08200820.workers.dev').replace(/\/$/, '');
+        fetch(R2 + '/admin-temp-password', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + s.token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            go.disabled = false;
+            if (!res.ok || !res.d || !res.d.ok) throw new Error((res.d && res.d.error) || '발급에 실패했습니다.');
+            out.innerHTML = '<div style="border:1px solid #cfe3d4;background:#f2faf4;border-radius:10px;padding:14px 16px">' +
+              '<div style="font-size:.82rem;color:#1e874b;font-weight:700;margin-bottom:6px">✅ ' + esc(res.d.name || res.d.email) + ' 님 임시 비밀번호</div>' +
+              '<div style="font-size:1.4rem;font-weight:800;letter-spacing:.5px;color:#0f3d20;user-select:all;word-break:break-all" id="tp_pw">' + esc(res.d.tempPassword) + '</div>' +
+              '<button class="btn btn-line" id="tp_copy" style="margin-top:10px;padding:4px 12px;font-size:.8rem">복사</button>' +
+              '<p style="margin:10px 0 0;font-size:.75rem;color:#7b8794">이 창을 닫으면 다시 볼 수 없습니다. 성도께 전달 후, 로그인 → 내 정보에서 비밀번호를 바꾸시게 안내해 주세요.</p></div>';
+            var pwEl = ov.querySelector('#tp_pw'), cp = ov.querySelector('#tp_copy');
+            cp.onclick = function () {
+              (navigator.clipboard ? navigator.clipboard.writeText(pwEl.textContent) : Promise.reject()).then(
+                function () { cp.textContent = '복사됨'; }, function () { cp.textContent = '드래그해서 직접 복사해 주세요'; });
+            };
+          })
+          .catch(function (e) { go.disabled = false; out.innerHTML = '<p style="color:#c0392b;font-size:.85rem;margin:0">' + esc((e && e.message) || '발급에 실패했습니다.') + '</p>'; });
+      }
+      go.onclick = issue;
+      em.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); issue(); } });
+      setTimeout(function () { em.focus(); }, 50);
     }
 
     // ── 📦 주일 자료 일괄 생성 내역 — 카드 + 누르면 목록 ──
