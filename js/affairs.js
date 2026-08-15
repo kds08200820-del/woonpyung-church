@@ -99,6 +99,52 @@ console.log('[affairs.js] v20260812tp');
     });
   }
 
+  // ── AI 작업(기도문·헤드라인·주보 검수) ─────────────────────
+  //  예전에는 bulletin-ai Edge Function → 구글 Gemini 였으나, 구글 사용 한도가
+  //  걸리면서 멈췄다. 이제는 교회 컴퓨터(24시간 켜짐)에서 도는 워커
+  //  tools/ai_worker.py 가 Claude CLI 로 답을 만든다. 외부 API 키가 없다.
+  //
+  //    aiJob(kind, content) → ai_enqueue() 로 큐에 넣고, 답이 올 때까지 폴링
+  //    onState() 는 교회 PC가 작업을 잡은 순간 한 번 불린다(문구 갱신용).
+  var AI_POLL_MS = 1500;      // 답 확인 간격
+  var AI_OFFLINE_MS = 45000;  // 이 시간 안에 안 가져가면 워커가 꺼진 것으로 본다
+  var AI_GIVEUP_MS = 360000;  // 최대 대기(주보 검수는 오래 걸릴 수 있다)
+
+  function aiJob(kind, content, onState) {
+    return api('POST', 'rpc/ai_enqueue', { p_kind: kind, p_payload: { content: content } })
+      .catch(function (e) {
+        throw new Error(/ai_enqueue/.test(e.message || '')
+          ? 'AI 준비가 아직 끝나지 않았습니다. supabase/ai_jobs.sql 을 SQL Editor에서 한 번 실행해 주세요.'
+          : e.message);
+      })
+      .then(function (r) {
+        if (!r || !r.ok) throw new Error((r && r.error) || 'AI 작업을 등록하지 못했습니다.');
+        return pollAiJob(r.id, onState);
+      });
+  }
+
+  function pollAiJob(id, onState) {
+    var t0 = Date.now(), claimed = false;
+    return new Promise(function (resolve, reject) {
+      (function tick() {
+        setTimeout(function () {
+          api('GET', 'ai_jobs?id=eq.' + id + '&select=status,result,error').then(function (rows) {
+            var j = (rows || [])[0], waited = Date.now() - t0;
+            if (j && j.status === 'done') return resolve(j.result || '');
+            if (j && j.status === 'error') return reject(new Error(j.error || 'AI 처리 중 오류가 발생했습니다.'));
+            if (j && j.status === 'processing' && !claimed) { claimed = true; if (onState) onState(); }
+            // 워커가 꺼져 있으면 상태가 영영 안 바뀐다 — 무엇을 해야 하는지 알려 준다.
+            if (!claimed && waited > AI_OFFLINE_MS) {
+              return reject(new Error('교회 컴퓨터의 AI 워커가 꺼져 있는 것 같습니다. 교회 PC에서 tools/목회AI워커.bat 를 실행해 주세요.'));
+            }
+            if (waited > AI_GIVEUP_MS) return reject(new Error('시간이 너무 오래 걸립니다. 잠시 후 다시 시도해 주세요.'));
+            tick();
+          }).catch(reject);
+        }, AI_POLL_MS);
+      })();
+    });
+  }
+
   // ── 레코드 유형 정의 ──
   var TYPES = {
     visit: {
@@ -4654,19 +4700,16 @@ console.log('[affairs.js] v20260812tp');
         var title = ov.querySelector('#se_title').value.trim(), scripture = ov.querySelector('#se_scripture').value.trim();
         if (!manuscript && !scripture) { msg.style.color = '#c0392b'; msg.textContent = '설교 원고(또는 본문)를 먼저 입력하면 기도문을 생성합니다.'; return; }
         var content = '설교 제목: ' + (title || '(없음)') + '\n본문: ' + (scripture || '(없음)') + '\n\n[설교 원고]\n' + (manuscript.slice(0, 6000) || '(없음)');
-        var btn = this, old = btn.textContent; btn.disabled = true; btn.textContent = '✨ 생성 중…'; msg.style.color = '#7b8794'; msg.textContent = 'AI가 기도문을 작성하는 중입니다… (10초 내외)';
-        fetch(SB.replace(/\/$/, '') + '/functions/v1/bulletin-ai', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token, 'apikey': AK },
-          body: JSON.stringify({ mode: 'prayer', content: content })
-        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
-          .then(function (o) {
+        var btn = this, old = btn.textContent; btn.disabled = true; btn.textContent = '✨ 생성 중…';
+        msg.style.color = '#7b8794'; msg.textContent = '교회 컴퓨터에 요청을 보내는 중입니다…';
+        aiJob('prayer', content, function () { msg.textContent = 'AI가 기도문을 작성하는 중입니다… (30초 내외)'; })
+          .then(function (txt) {
             btn.disabled = false; btn.textContent = old;
-            if (!o.ok) { msg.style.color = '#c0392b'; msg.textContent = '기도문 생성 실패: ' + ((o.j && o.j.error) || ('HTTP ' + o.status)) + ((o.j && o.j.detail) ? ' (' + o.j.detail + ')' : ''); return; }
-            var txt = (o.j && o.j.result || '').trim();
+            txt = (txt || '').trim();
             if (txt) { ov.querySelector('#se_prayer').value = txt; msg.style.color = 'green'; msg.textContent = '✓ 기도문을 생성했습니다 (' + txt.replace(/\s/g, '').length + '자) — 확인 후 다듬어 주세요.'; }
-            else { msg.style.color = '#c0392b'; msg.textContent = '생성 결과가 비어 있습니다 — bulletin-ai 함수가 ‘기도(prayer) 모드’ 최신 코드로 재배포됐는지 확인해 주세요.'; }
+            else { msg.style.color = '#c0392b'; msg.textContent = '생성 결과가 비어 있습니다. 다시 시도해 주세요.'; }
           })
-          .catch(function (e) { btn.disabled = false; btn.textContent = old; msg.style.color = '#c0392b'; msg.textContent = '호출 실패: ' + e.message + ' (bulletin-ai Edge Function 배포 필요)'; });
+          .catch(function (e) { btn.disabled = false; btn.textContent = old; msg.style.color = '#c0392b'; msg.textContent = '기도문 생성 실패: ' + e.message; });
       };
 
       // ── 생명의삶 자동분류 패널 ──
@@ -6754,7 +6797,7 @@ console.log('[affairs.js] v20260812tp');
       }
     };
 
-    // ── ✨ AI 검수: 주보 초안을 직렬화해 bulletin-ai Edge Function 호출 ──
+    // ── ✨ AI 검수: 주보 초안을 직렬화해 교회 PC 워커(aiJob)에 넘긴다 ──
     function serializeBulletin(p) {
       var d = p.data || {}, L = [];
       L.push('[기본] 주일 ' + (p.bdate || '') + ' · 호수 ' + (d.no || '') + ' · ' + (d.week || ''));
@@ -6796,17 +6839,12 @@ console.log('[affairs.js] v20260812tp');
     ov.querySelector('#bt_ai').onclick = function () {
       var s = sess(); if (!s || !s.token) { bmsg('로그인이 필요합니다.', '#c0392b'); return; }
       var bodyEl = aiPanel();
-      bodyEl.innerHTML = '<p style="color:#7b8794">AI가 주보를 검토하는 중입니다… (10~20초)</p>';
-      fetch(SB.replace(/\/$/, '') + '/functions/v1/bulletin-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token, 'apikey': AK },
-        body: JSON.stringify({ content: serializeBulletin(gather()) })
-      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-        .then(function (o) {
-          if (!o.ok) { bodyEl.innerHTML = '<p style="color:#c0392b">' + esc((o.j && o.j.error) || '검수에 실패했습니다.') + '</p>' + ((o.j && o.j.detail) ? '<p style="font-size:.8rem;color:#9aa5b1">' + esc(o.j.detail) + '</p>' : '') + '<p style="font-size:.82rem;color:#9aa5b1;margin-top:10px">※ bulletin-ai Edge Function 배포가 필요할 수 있습니다.</p>'; return; }
-          bodyEl.innerHTML = mdLite((o.j && o.j.result) || '결과가 비어 있습니다.');
-        })
-        .catch(function (e) { bodyEl.innerHTML = '<p style="color:#c0392b">호출 실패: ' + esc(e.message) + '</p><p style="font-size:.82rem;color:#9aa5b1;margin-top:10px">※ Supabase에 bulletin-ai Edge Function을 배포해 주세요.</p>'; });
+      bodyEl.innerHTML = '<p style="color:#7b8794">교회 컴퓨터에 요청을 보내는 중입니다…</p>';
+      aiJob('review', serializeBulletin(gather()), function () {
+        bodyEl.innerHTML = '<p style="color:#7b8794">AI가 주보를 검토하는 중입니다… (1분 내외)</p>';
+      })
+        .then(function (txt) { bodyEl.innerHTML = mdLite(txt || '결과가 비어 있습니다.'); })
+        .catch(function (e) { bodyEl.innerHTML = '<p style="color:#c0392b">검수 실패: ' + esc(e.message) + '</p>'; });
     };
 
     // ── 📜 표지 말씀 헤드라인 자동: 그 주 주일 설교(본문·성경 원문)로 대표 말씀 생성 ──
@@ -6824,18 +6862,14 @@ console.log('[affairs.js] v20260812tp');
         var bible = (sun && sun.bible_text) || '';
         var summary = (sun && sun.content) ? String(sun.content).slice(0, 1500) : '';
         var content = '설교 제목: ' + title + '\n본문: ' + scripture + '\n\n[성경 본문 원문]\n' + (bible || '(없음)') + '\n\n[설교 요약]\n' + (summary || '(없음)');
-        return fetch(SB.replace(/\/$/, '') + '/functions/v1/bulletin-ai', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token, 'apikey': AK },
-          body: JSON.stringify({ mode: 'headline', content: content })
-        });
-      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-        .then(function (o) {
-          if (!o.ok) { done(((o.j && o.j.error) || '생성 실패') + (o.j && o.j.detail ? ' (' + o.j.detail + ')' : '')); return; }
-          var txt = (o.j && o.j.result || '').trim();
+        return aiJob('headline', content, function () { btn.textContent = '✨ 쓰는 중…'; });
+      })
+        .then(function (txt) {
+          txt = (txt || '').trim();
           if (txt) { ov.querySelector('#bt_headline').value = txt; bmsg('✓ 표지 말씀 헤드라인을 생성했습니다', 'green'); }
-          done();
+          done(txt ? '' : '생성 결과가 비어 있습니다.');
         })
-        .catch(function (e) { done('생성 실패: ' + e.message + ' (bulletin-ai 배포 필요)'); });
+        .catch(function (e) { done('생성 실패: ' + e.message); });
     };
     ov.querySelector('#bt_publish').onclick = function () {
       if (!confirm('이 주보를 홈페이지에 게시할까요?\n(헌금 금액은 홈페이지에 노출되지 않습니다)')) return;
