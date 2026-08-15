@@ -191,7 +191,10 @@
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         typing.remove();
-        addMsg("ai", (data.error || "잠시 후 다시 시도해 주세요.") + (data.detail ? "\n\n" + data.detail : ""));
+        // 내부 오류 원문(detail)에는 API 키 정책·클라우드 프로젝트 번호 등이 담기므로
+        // 교인 화면에는 안내 문구만 보이고, 원인은 콘솔로만 남긴다.
+        if (data.detail) console.error("[말씀지기]", data.detail);
+        addMsg("ai", data.error || "잠시 후 다시 시도해 주세요.");
       } else if (res.body && ct.includes("text/plain")) {
         // 스트리밍: 한 글자씩 실시간 표시
         typing.remove();

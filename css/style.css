@@ -1596,6 +1596,21 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
   box-shadow: 0 8px 22px rgba(0,0,0,.18);
 }
 .book-buy-btn:hover { filter: brightness(1.06); transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.24); }
+/* 온라인 서점 구매 버튼 — 서점별 브랜드 색으로 구분 */
+.book-store-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  white-space: nowrap; text-decoration: none; max-width: 100%; box-sizing: border-box;
+  font-family: inherit; font-size: .92rem; font-weight: 700; color: #fff;
+  border: 0; border-radius: 26px; padding: 12px 20px; cursor: pointer;
+  transition: filter .25s ease, transform .2s ease, box-shadow .25s ease;
+}
+.book-store-btn svg { width: 17px; height: 17px; flex: none; }
+.book-store-btn:hover { filter: brightness(1.08); transform: translateY(-2px); }
+.book-store-yes24 { background: #1149A5; box-shadow: 0 8px 22px rgba(17,73,165,.28); }
+.book-store-yes24:hover { box-shadow: 0 12px 28px rgba(17,73,165,.34); }
+/* 알라딘 브랜드 마젠타(#DD2483)를 흰 글씨 대비 기준(4.5:1)에 맞춰 살짝 어둡게 */
+.book-store-aladin { background: #C9186E; box-shadow: 0 8px 22px rgba(201,24,110,.28); }
+.book-store-aladin:hover { box-shadow: 0 12px 28px rgba(201,24,110,.34); }
 @media (max-width: 680px) {
   .book-info { text-align: center; }
   .book-peek { opacity: 1; transform: translateX(-50%); }
