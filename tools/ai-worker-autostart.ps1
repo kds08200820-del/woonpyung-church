@@ -1,4 +1,4 @@
-# 운평장로교회 — 홈페이지 AI 워커 자동시작 등록/해제
+﻿# 운평장로교회 — 홈페이지 AI 워커 자동시작 등록/해제
 #
 #   .\ai-worker-autostart.ps1          로그인 시 자동 실행 등록
 #   .\ai-worker-autostart.ps1 -Off     해제
