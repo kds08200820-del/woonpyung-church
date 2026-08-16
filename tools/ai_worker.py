@@ -45,7 +45,7 @@ import subprocess
 import tempfile
 import urllib.request
 import urllib.error
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 # 윈도우 콘솔(cp949)에서 이모지·기호 때문에 print 가 죽지 않도록.
 for _s in (sys.stdout, sys.stderr):
@@ -283,6 +283,91 @@ def claim_job():
     return rows[0] if rows else None
 
 
+# ── 말씀지기 참고자료 — 목회행정에서 직접 가져온다 ───────────
+#  예전에는 주보 파일(bulletins.js)에 사람이 복사해 둔 설교 전문만 참고했다.
+#  이제는 워커가 설교 매니저(sermons)와 QT(qt_imports)를 직접 읽으므로,
+#  목회행정에 입력만 되어 있으면 홈페이지 파일을 갱신하지 않아도 반영된다.
+
+def strip_html(s):
+    if not s:
+        return ""
+    s = re.sub(r"<br\s*/?>", "\n", str(s), flags=re.I)
+    s = re.sub(r"</(p|div|li|h[1-6])>", "\n", s, flags=re.I)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = s.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    s = re.sub(r"[ \t]+", " ", s)
+    return re.sub(r"\n{3,}", "\n\n", s).strip()
+
+
+def fetch_week_sermon():
+    """이번 주(다가오는 주일 기준) 주일 낮 예배 설교 1건."""
+    today = date.today()
+    sunday = today + timedelta(days=(6 - today.weekday()) % 7)   # 이번 주 일요일
+    start = sunday - timedelta(days=6)
+    cols = "sermon_date,service,title,scripture,preacher,series,content,bible_text"
+    rows = rest("GET", f"sermons?select={cols}"
+                       f"&sermon_date=gte.{start}&sermon_date=lte.{sunday}"
+                       f"&order=sermon_date.desc") or []
+    for r in rows:                                # 주일 낮 예배 우선
+        if r.get("service") and "주일" in r["service"]:
+            return r
+    return rows[0] if rows else None
+
+
+def fetch_today_qt():
+    """오늘(없으면 가장 최근) QT — 홈 화면과 같은 qt_published 뷰에서 읽는다."""
+    rows = rest("GET", f"qt_published?select=sermon_date,title,scripture,qt_bible_text,content,prayer"
+                       f"&sermon_date=lte.{date.today()}&order=sermon_date.desc&limit=1") or []
+    return rows[0] if rows else None
+
+
+_CTX_CACHE = {"at": 0.0, "text": ""}
+CTX_TTL = 300          # 5분 — 질문이 몰려도 DB 조회는 5분에 한 번
+
+
+def build_db_context():
+    """설교 전문 + 오늘 QT 를 하나의 참고자료 텍스트로 묶는다. 실패하면 ""."""
+    now = time.time()
+    if now - _CTX_CACHE["at"] < CTX_TTL:
+        return _CTX_CACHE["text"]
+
+    parts = []
+    try:
+        s = fetch_week_sermon()
+        if s and (s.get("content") or s.get("bible_text")):
+            head = " / ".join(filter(None, [
+                f"이번 주({s.get('sermon_date')}) {s.get('service') or '주일'} 설교",
+                s.get("title"), s.get("scripture"), s.get("preacher")]))
+            block = [f"[{head}]"]
+            if s.get("bible_text"):
+                block.append("(성경 본문 전문)\n" + _clip(strip_html(s["bible_text"]), 4000))
+            if s.get("content"):
+                block.append("(설교 원고)\n" + _clip(strip_html(s["content"]), 12000))
+            parts.append("\n".join(block))
+    except Exception as e:
+        print(f"   · 설교 조회 실패(건너뜀): {e}", file=sys.stderr)
+
+    try:
+        q = fetch_today_qt()
+        if q and (q.get("content") or q.get("qt_bible_text")):
+            head = " / ".join(filter(None, [
+                f"오늘({q.get('sermon_date')}) QT", q.get("title"), q.get("scripture")]))
+            block = [f"[{head}]"]
+            if q.get("qt_bible_text"):
+                block.append("(성경 본문)\n" + _clip(strip_html(q["qt_bible_text"]), 3000))
+            if q.get("content"):
+                block.append("(묵상)\n" + _clip(strip_html(q["content"]), 5000))
+            if q.get("prayer"):
+                block.append("(기도)\n" + _clip(strip_html(q["prayer"]), 1000))
+            parts.append("\n".join(block))
+    except Exception as e:
+        print(f"   · QT 조회 실패(건너뜀): {e}", file=sys.stderr)
+
+    text = "\n\n".join(parts)
+    _CTX_CACHE["at"], _CTX_CACHE["text"] = now, text
+    return text
+
+
 def finish_job(job_id, status, result=None, error=None):
     body = {"status": status}
     if result is not None:
@@ -302,12 +387,12 @@ def _clip(s, n):
 def build_counsel_prompt(payload):
     """말씀지기 — 페르소나(system)와 대화 내용(prompt)을 나눠 돌려준다."""
     system = SYSTEM["counsel"]
-    context = _clip(payload.get("context"), 16000)
+    context = _clip(payload.get("context"), 24000)
     if context:
         system += (
-            "\n\n[이번 주 설교 전문 — 아래는 김동석 목사님의 이번 주 실제 주일 설교입니다. "
-            "본문·설교 관련 질문에는 이 내용을 최우선 근거로 삼아 목사님의 해석·예화·강조점을 반영해 답하세요. "
-            "설교에 없는 내용을 지어내지 말고, 설교 흐름과 다른 일반 질문에는 평소대로 답하세요.]\n" + context
+            "\n\n[이번 주 말씀 자료 — 아래는 김동석 목사님의 이번 주 실제 주일 설교(와 오늘 QT 본문)입니다. "
+            "설교·본문·QT 관련 질문에는 이 내용을 최우선 근거로 삼아 목사님의 해석·예화·강조점을 반영해 답하세요. "
+            "자료에 없는 내용을 지어내지 말고, 자료와 무관한 일반 질문에는 평소대로 답하세요.]\n" + context
         )
 
     lines = []
@@ -401,6 +486,13 @@ def process(job):
         if CRISIS_RE.search(last):
             print("   · 위기 신호 감지 → 안전 안내로 즉시 응답")
             return CRISIS_REPLY
+
+        # 목회행정(설교 매니저·QT)에서 이번 주 자료를 직접 읽어 참고자료로 쓴다.
+        # 실패하면 화면(bulletins.js)이 보내 준 설교 전문으로 대신한다.
+        db_ctx = build_db_context()
+        if db_ctx:
+            payload = dict(payload, context=db_ctx)
+            print(f"   · 목회행정 자료 참조 ({len(db_ctx)}자)")
 
     model = MODEL_COUNSEL if kind == "counsel" else MODEL_ADMIN
     system, prompt = build_prompt(kind, payload)
