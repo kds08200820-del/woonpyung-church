@@ -3,7 +3,7 @@
  * → finance.js / gyojeok.js / affairs.js 는 수정 없이 동작.
  * 콘솔: [finance-api.js] v20260701di (Supabase)
  */
-console.log('[finance-api.js] v20260809ss1 (Supabase + 주일학교 ss_role)');
+console.log('[finance-api.js] v20260817gjdel (Supabase + 교적 삭제/복원)');
 
 window.WPF = (function () {
   var SB = function () { return window.SUPABASE_URL || ''; };
@@ -163,6 +163,17 @@ window.WPF = (function () {
           return { ok: true, key: nm + '|' + bd, name: nm, id: row.id };
         });
       }
+      // 교적 삭제 — 행을 지우지 않고 gyojeok_deleted 보관표로 옮긴다(supabase/20260817_2330_gyojeok_delete_archive.sql).
+      // 1차 호출(force 없음)에서 헌금·계정연결·가족 등 걸림돌이 있으면 {ok:false,needConfirm:true,…건수}
+      // 를 돌려주므로, 호출한 쪽이 관리자에게 보여준 뒤 force:true 로 다시 부른다.
+      case 'deleteGyojeok':
+        return rpc('delete_gyojeok', { p_id: params.id, p_reason: params.reason || null, p_force: !!params.force });
+      case 'restoreGyojeok':
+        return rpc('restore_gyojeok', { p_id: params.id });
+      case 'listDeletedGyojeok':
+        return rest('GET', 'gyojeok_deleted?select=*&order=deleted_at.desc&limit=2000').then(function (rows) {
+          return { ok: true, members: (rows || []).map(function (r) { var o = gjOut(r); o['삭제일시'] = r.deleted_at; o['삭제사유'] = r.delete_reason || ''; return o; }) };
+        });
       case 'updateGyojeok': {
         var f = params.fields || {}, patch = {};
         Object.keys(f).forEach(function (k) {

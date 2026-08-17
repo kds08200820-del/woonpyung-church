@@ -1,7 +1,14 @@
 /* gyojeok.js — 교적관리(관리자 전용): 권한관리 + 교적명단 + 교적추가
- * 콘솔: [gyojeok.js] v20260809ss1
+ * 콘솔: [gyojeok.js] v20260817gjdel
+ *
+ * [행 식별 규칙 — 중요]
+ *  명단·가족표에서 사람을 가리킬 때 '매칭키'(이름|생년월일)를 쓰면 안 된다.
+ *  생년월일이 비어 있으면 매칭키가 '이름|' 이 되어 동명이인끼리 똑같아지고,
+ *  그러면 자녀를 클릭했는데 같은 이름의 세대주 상세가 열리거나(또는 매칭키가
+ *  비어 있어 아무것도 안 열린다). 그래서 화면 안에서는 항상 rid(=교적ID,
+ *  없으면 불러온 순번)로 사람을 찾는다.
  */
-console.log('[gyojeok.js] v20260809ss1');
+console.log('[gyojeok.js] v20260817gjdel');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -14,6 +21,9 @@ console.log('[gyojeok.js] v20260809ss1');
   function msgCard(t, x) { return '<div class="fin-card" style="text-align:center;padding:40px 18px;"><h3 style="margin:0 0 8px;color:var(--accent,#032257);">' + esc(t) + '</h3><p style="color:var(--ink-soft,#7b8794);">' + esc(x) + '</p></div>'; }
   function loading(el) { el.innerHTML = '<p class="qt-loading">불러오는 중…</p>'; }
   function stPill(st) { return '<span class="fin-pill ' + (st === '정회원' ? 'in' : 'out') + '">' + (st === '정회원' ? '정회원' : '준회원') + '</span>'; }
+  // 화면 안에서 사람을 가리키는 열쇠(파일 머리말 참고). 교적ID가 있으면 그것, 없으면 순번.
+  function tagRids(list) { list.forEach(function (m, i) { m._rid = String(m['교적ID'] != null && m['교적ID'] !== '' ? m['교적ID'] : 'i' + i); }); return list; }
+  function byRid(list, rid) { for (var i = 0; i < list.length; i++) if (list[i]._rid === rid) return list[i]; return null; }
 
   var tries = 0, tab = 'access';
   function boot() {
@@ -39,7 +49,7 @@ console.log('[gyojeok.js] v20260809ss1');
     loading(panel);
     Promise.all([WPF.call('listAccess'), WPF.call('listGyojeok')]).then(function (res) {
       var users = (res[0].users || []).sort(function (a, b) { return (b.isAdmin - a.isAdmin) || (b.canFinance - a.canFinance) || String(a.name).localeCompare(String(b.name), 'ko'); });
-      var gj = (res[1].members || []).filter(function (m) { return m['이름']; });
+      var gj = tagRids((res[1].members || []).filter(function (m) { return m['이름']; }));
       panel.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">홈페이지에 가입한 회원입니다. <b>회원</b> 칸에서 정/준회원을 바꿀 수 있고, <b>정회원</b>으로 바꾸면 교적과 연결됩니다(헌금조회·가정합산 연동). <b>관리자</b>는 교적관리·전체 기능, <b>재정권한</b>은 재정관리에 접근합니다.</p>' +
         '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>이름</th><th>이메일</th><th>회원</th><th style="text-align:center">관리자</th><th style="text-align:center">재정권한</th></tr></thead><tbody>' +
         users.map(function (u) {
@@ -127,9 +137,9 @@ console.log('[gyojeok.js] v20260809ss1');
           hit.length + '명 중 ' + rows.length + '명만 표시합니다. 검색창에 이름을 입력해 좁혀 주세요.</div>';
       }
       listEl.innerHTML = note + (rows.length ? rows.map(function (m) {
-        return '<div class="pg-item" data-key="' + esc(m['매칭키']) + '" style="padding:9px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer"><b>' + esc(m['이름']) + '</b> <span style="color:#9aa5b1;font-size:.8rem">' + esc(birthOf(m)) + (m['그룹'] ? ' · ' + esc(m['그룹']) : '') + (m['직책'] ? ' · ' + esc(m['직책']) : '') + (m['세대주'] && m['세대주'] !== m['이름'] ? ' · ' + esc(m['세대주']) + '의 가정' : '') + '</span></div>';
+        return '<div class="pg-item" data-rid="' + esc(m._rid) + '" style="padding:9px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer"><b>' + esc(m['이름']) + '</b> <span style="color:#9aa5b1;font-size:.8rem">' + esc(birthOf(m)) + (m['그룹'] ? ' · ' + esc(m['그룹']) : '') + (m['직책'] ? ' · ' + esc(m['직책']) : '') + (m['세대주'] && m['세대주'] !== m['이름'] ? ' · ' + esc(m['세대주']) + '의 가정' : '') + '</span></div>';
       }).join('') : '<p style="color:#9aa5b1;padding:12px">교적 명단이 비어 있습니다. 교적 명단 탭에서 먼저 등록해 주세요.</p>');
-      Array.prototype.forEach.call(listEl.querySelectorAll('.pg-item'), function (d) { d.onclick = function () { var m = gj.filter(function (x) { return String(x['매칭키']) === d.dataset.key; })[0]; close(); cb(m || null); }; });
+      Array.prototype.forEach.call(listEl.querySelectorAll('.pg-item'), function (d) { d.onclick = function () { var m = byRid(gj, d.dataset.rid); close(); cb(m || null); }; });
     }
     q.addEventListener('input', draw); draw(); setTimeout(function () { q.focus(); q.select(); }, 50);
   }
@@ -141,19 +151,28 @@ console.log('[gyojeok.js] v20260809ss1');
     WPF.call('listGyojeok').then(function (r) {
       var ms = (r.members || []).filter(function (m) { return m['이름']; });
       ms.sort(function (a, b) { var ha = a['세대주'] || a['이름'], hb = b['세대주'] || b['이름']; if (ha !== hb) return ha.localeCompare(hb, 'ko'); return (a['이름'] === ha ? -1 : 1) - (b['이름'] === hb ? -1 : 1); });
-      ALL = ms;
+      ALL = tagRids(ms);
+      // 이름+생년월일이 똑같은 행(중복 등록)은 표에서 눈에 띄게 표시해 정리할 수 있게 한다.
+      var dupCount = {};
+      ms.forEach(function (m) { var k = m['이름'] + '|' + birthOf(m); dupCount[k] = (dupCount[k] || 0) + 1; });
+      function isDup(m) { return dupCount[m['이름'] + '|' + birthOf(m)] > 1; }
+      var dupTotal = ms.filter(isDup).length;
       var couples = ms.filter(function (m) { return m['배우자']; }).length / 2;
-      panel.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap"><b>교적 명단 (' + ms.length + '명)</b><input type="text" id="gj_search" placeholder="🔍 이름 검색" style="padding:7px 11px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;flex:1;min-width:140px;max-width:260px"><span style="display:flex;gap:10px;align-items:center"><span style="color:var(--ink-soft);font-size:.85rem">부부 ' + Math.round(couples) + '쌍</span><button class="btn btn-solid" id="gj_add" style="padding:7px 14px;white-space:nowrap">＋ 교적 추가</button></span></div><p style="color:var(--ink-soft);font-size:.83rem;margin-bottom:8px">이름을 클릭하면 개인 신상을 볼 수 있습니다.</p><div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th>세대주</th><th>관계</th><th>배우자</th><th>그룹</th><th>직책</th><th>주일학교</th><th>휴대폰</th></tr></thead><tbody id="gj_tbody"></tbody></table></div></div>';
+      panel.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap"><b>교적 명단 (' + ms.length + '명)</b><input type="text" id="gj_search" placeholder="🔍 이름 검색" style="padding:7px 11px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;flex:1;min-width:140px;max-width:260px"><span style="display:flex;gap:10px;align-items:center"><span style="color:var(--ink-soft);font-size:.85rem">부부 ' + Math.round(couples) + '쌍</span><button class="btn btn-line" id="gj_trash" style="padding:7px 12px;white-space:nowrap">🗑 삭제 보관함</button><button class="btn btn-solid" id="gj_add" style="padding:7px 14px;white-space:nowrap">＋ 교적 추가</button></span></div>' +
+        '<p style="color:var(--ink-soft);font-size:.83rem;margin-bottom:8px">이름을 클릭하면 개인 신상을 볼 수 있습니다. 상세에서 <b>수정</b>·<b>삭제</b>할 수 있습니다.</p>' +
+        (dupTotal ? '<p style="background:#fff8e6;border:1px solid #f0e3bd;color:#8a6d1f;border-radius:8px;padding:8px 11px;font-size:.83rem;margin-bottom:8px">⚠ 이름·생년월일이 똑같은 교적이 <b>' + dupTotal + '건</b> 있습니다(아래 ⚠ 표시). 같은 사람이 두 번 등록된 것이라면 하나를 삭제해 주세요.</p>' : '') +
+        '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th>세대주</th><th>관계</th><th>배우자</th><th>그룹</th><th>직책</th><th>주일학교</th><th>휴대폰</th></tr></thead><tbody id="gj_tbody"></tbody></table></div></div>';
       var tbody = panel.querySelector('#gj_tbody');
       function draw(q) {
         q = (q || '').trim();
         var rows = q ? ms.filter(function (m) { return String(m['이름']).indexOf(q) >= 0; }) : ms;
-        tbody.innerHTML = rows.map(function (m) { var isHead = (m['세대주'] || m['이름']) === m['이름']; return '<tr' + (isHead ? ' style="background:#f7faff"' : '') + '><td><a href="#" class="gj-name" data-key="' + esc(m['매칭키']) + '" style="color:var(--accent,#032257);font-weight:700;text-decoration:none;border-bottom:1px dashed #9ab">' + esc(m['이름']) + '</a></td><td>' + esc(birthOf(m)) + '</td><td>' + esc(m['세대주'] || '') + '</td><td>' + esc(m['관계'] || '') + '</td><td>' + (m['배우자'] ? '💑 ' + esc(m['배우자']) : '') + '</td><td>' + esc(m['그룹']) + '</td><td>' + esc(m['직책']) + '</td><td>' + (m['주일학교'] ? '<span class="fin-pill" style="background:#fff3d6;color:#8a6d1f">' + esc(m['주일학교']) + '</span>' : '') + '</td><td>' + esc(fmtPhone(m['휴대폰'])) + '</td></tr>'; }).join('');
-        Array.prototype.forEach.call(tbody.querySelectorAll('.gj-name'), function (a) { a.onclick = function (e) { e.preventDefault(); var m = ms.filter(function (x) { return String(x['매칭키']) === a.dataset.key; })[0]; if (m) showDetail(m); }; });
+        tbody.innerHTML = rows.map(function (m) { var isHead = (m['세대주'] || m['이름']) === m['이름']; return '<tr' + (isHead ? ' style="background:#f7faff"' : '') + '><td><a href="#" class="gj-name" data-rid="' + esc(m._rid) + '" style="color:var(--accent,#032257);font-weight:700;text-decoration:none;border-bottom:1px dashed #9ab">' + esc(m['이름']) + '</a>' + (isDup(m) ? ' <span title="이름·생년월일이 같은 교적이 또 있습니다" style="color:#c9a227">⚠</span>' : '') + '</td><td>' + esc(birthOf(m)) + '</td><td>' + esc(m['세대주'] || '') + '</td><td>' + esc(m['관계'] || '') + '</td><td>' + (m['배우자'] ? '💑 ' + esc(m['배우자']) : '') + '</td><td>' + esc(m['그룹']) + '</td><td>' + esc(m['직책']) + '</td><td>' + (m['주일학교'] ? '<span class="fin-pill" style="background:#fff3d6;color:#8a6d1f">' + esc(m['주일학교']) + '</span>' : '') + '</td><td>' + esc(fmtPhone(m['휴대폰'])) + '</td></tr>'; }).join('');
+        Array.prototype.forEach.call(tbody.querySelectorAll('.gj-name'), function (a) { a.onclick = function (e) { e.preventDefault(); var m = byRid(ms, a.dataset.rid); if (m) showDetail(m); }; });
       }
       draw('');
       panel.querySelector('#gj_search').addEventListener('input', function () { draw(this.value); });
       panel.querySelector('#gj_add').onclick = function () { showAddMember(panel); };
+      panel.querySelector('#gj_trash').onclick = function () { showTrash(panel); };
     }).catch(function (e) {
       panel.innerHTML = msgCard('조회 실패', e.message);
     });
@@ -249,7 +268,9 @@ console.log('[gyojeok.js] v20260809ss1');
   ];
   var GRADE_OPTS = ['원입', '학습', '세례', '입교', '유아세례', '안수'];
   var ROLE_OPTS = ['담임목사', '원로목사', '장로', '원로장로', '안수집사', '권사', '은퇴권사', '집사', '권찰', '성도'];
-  var SS_OPTS = ['부장', '서기', '교사', '어린이'];   // 주일학교 직분(대시보드 권한과 연동)
+  // 주일학교 직분(대시보드 권한·학생 명단과 연동).
+  // 학생 3종(어린이·중학생·고등학생)은 supabase ss_student_roles() 와 값이 같아야 한다.
+  var SS_OPTS = ['부장', '서기', '교사', '어린이', '중학생', '고등학생'];
   var STATUS_OPTS = ['준회원', '정회원후보', '정회원'];
   var GROUP_PRESET = ['여전도회', '권사회', '남전도회', '구제선교위원회', '성가대', '찬양대'];
   function selOpts(opts, v) { var has = opts.indexOf(v) >= 0; return '<option value=""></option>' + (v && !has ? '<option selected>' + esc(v) + '</option>' : '') + opts.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); }
@@ -308,11 +329,11 @@ console.log('[gyojeok.js] v20260809ss1');
       function row(label, val) { return val ? '<div style="display:flex;padding:7px 0;border-bottom:1px solid #f0f3f7"><div style="flex:0 0 96px;color:#7b8794;font-size:.85rem">' + esc(label) + '</div><div style="flex:1;font-size:.92rem">' + esc(val) + '</div></div>' : ''; }
       var age = '', bd = (String(cur['매칭키'] || '').split('|')[1]) || '';
       if (bd.length === 8) { var y = Number(bd.slice(0, 4)); if (y) age = (new Date().getFullYear() - y + 1) + '세'; }
-      var famRows = family.map(function (f) { var isMe = f['매칭키'] === cur['매칭키']; return '<tr' + (isMe ? ' style="background:#eef4ff"' : '') + '><td><a href="#" class="gd-fam" data-key="' + esc(f['매칭키']) + '" style="color:var(--accent,#032257);text-decoration:none;font-weight:600">' + esc(f['이름']) + '</a></td><td>' + esc(f['관계'] || '') + '</td><td>' + esc(birthOf(f)) + '</td><td>' + esc(f['직책'] || '') + '</td></tr>'; }).join('');
+      var famRows = family.map(function (f) { var isMe = f._rid === cur._rid; return '<tr' + (isMe ? ' style="background:#eef4ff"' : '') + '><td><a href="#" class="gd-fam" data-rid="' + esc(f._rid) + '" style="color:var(--accent,#032257);text-decoration:none;font-weight:600">' + esc(f['이름']) + '</a></td><td>' + esc(f['관계'] || '') + '</td><td>' + esc(birthOf(f)) + '</td><td>' + esc(f['직책'] || '') + '</td></tr>'; }).join('');
       box.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px">' +
         '<div style="display:flex;gap:14px;align-items:center">' + avatar(cur, 84) + '<div><h3 style="margin:0;color:var(--accent,#032257)">' + esc(cur['이름']) + (cur['직책'] ? ' <span style="font-size:.8rem;color:#7b8794">' + esc(cur['직책']) + '</span>' : '') + '</h3><div style="color:#7b8794;font-size:.85rem;margin-top:3px">' + esc(cur['그룹'] || '') + (cur['세대주'] ? ' · ' + esc(cur['세대주']) + '의 가정' : '') + '</div></div></div>' +
-        '<div style="display:flex;gap:6px"><button class="btn btn-solid" id="gd_edit" style="padding:4px 14px">수정</button><button class="btn btn-line" id="gd_close" style="padding:4px 12px">닫기</button></div></div>' +
+        '<div style="display:flex;gap:6px"><button class="btn btn-solid" id="gd_edit" style="padding:4px 14px">수정</button><button class="btn btn-line" id="gd_del" style="padding:4px 12px;color:#c0392b">🗑 삭제</button><button class="btn btn-line" id="gd_close" style="padding:4px 12px">닫기</button></div></div>' +
         '<div style="display:flex;gap:18px;flex-wrap:wrap"><div style="flex:1;min-width:240px">' +
         row('생년월일', birthOf(cur) + (age ? ' (' + age + ')' : '')) + row('성별', cur['성별']) + row('휴대폰', fmtPhone(cur['휴대폰'])) + row('신급', cur['신급']) + row('세례일', cur['세례일']) +
         '</div><div style="flex:1;min-width:240px">' +
@@ -322,8 +343,9 @@ console.log('[gyojeok.js] v20260809ss1');
         '<div style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="color:var(--accent,#032257)">가족 관계</b><button class="btn btn-line" id="gd_family" style="padding:3px 12px;font-size:.8rem">👪 가족 구성/수정</button></div><div style="overflow:auto;margin-top:6px"><table class="fin-table" style="font-size:.86rem"><thead><tr><th>이름</th><th>관계</th><th>생년월일</th><th>직책</th></tr></thead><tbody>' + famRows + '</tbody></table></div></div>';
       box.querySelector('#gd_close').onclick = close;
       box.querySelector('#gd_edit').onclick = function () { editMode(cur); };
+      box.querySelector('#gd_del').onclick = function () { showDelete(cur, function () { close(); renderMembers(document.getElementById('gjPanel')); }); };
       box.querySelector('#gd_family').onclick = function () { familyMode(cur); };
-      Array.prototype.forEach.call(box.querySelectorAll('.gd-fam'), function (a) { a.onclick = function (e) { e.preventDefault(); var f = ALL.filter(function (x) { return String(x['매칭키']) === a.dataset.key; })[0]; if (f) viewMode(f); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.gd-fam'), function (a) { a.onclick = function (e) { e.preventDefault(); var f = byRid(ALL, a.dataset.rid); if (f) viewMode(f); }; });
       loadOngoingEdu().then(function () {
         var el = box.querySelector('#gd_edu'); if (!el) return;
         var list = eduOf(cur['매칭키']);
@@ -424,7 +446,7 @@ console.log('[gyojeok.js] v20260809ss1');
       var cand = ALL.filter(function (x) { return (x['세대주'] || x['이름']) !== head; }).sort(function (a, b) { return String(a['이름']).localeCompare(String(b['이름']), 'ko'); });
       var msgEl;
       function setMsg(t, ok) { if (msgEl) { msgEl.style.color = ok ? 'green' : '#c0392b'; msgEl.textContent = t; } }
-      function rerun(id) { setMsg('처리 중…', true); return WPF.call('listGyojeok').then(function (r) { ALL = (r.members || []).filter(function (m) { return m['이름']; }); var nc = ALL.filter(function (x) { return String(x['교적ID']) === String(id); })[0] || cur; familyMode(nc); }).catch(function (e) { setMsg('오류: ' + e.message, false); }); }
+      function rerun(id) { setMsg('처리 중…', true); return WPF.call('listGyojeok').then(function (r) { ALL = tagRids((r.members || []).filter(function (m) { return m['이름']; })); var nc = ALL.filter(function (x) { return String(x['교적ID']) === String(id); })[0] || cur; familyMode(nc); }).catch(function (e) { setMsg('오류: ' + e.message, false); }); }
       function doLink(memberRow, rel) {
         var fields = { 세대주: head, 관계: rel };
         var calls = [];
@@ -478,7 +500,7 @@ console.log('[gyojeok.js] v20260809ss1');
         setMsg('추가 중…', true);
         WPF.call('addGyojeok', { name: nm, birth: bd }).then(function (r) {
           return WPF.call('listGyojeok').then(function (lr) {
-            ALL = (lr.members || []).filter(function (m) { return m['이름']; });
+            ALL = tagRids((lr.members || []).filter(function (m) { return m['이름']; }));
             var newM = ALL.filter(function (x) { return String(x['매칭키']) === r.key; })[0];
             if (!newM) throw new Error('추가된 교인을 찾지 못했습니다.');
             return doLink(newM, rel);
@@ -488,6 +510,119 @@ console.log('[gyojeok.js] v20260809ss1');
     }
 
     viewMode(m);
+  }
+
+  /* ── 교적 삭제(보관함으로 이동) ──
+   * 실제로 지우지 않고 supabase gyojeok_deleted 보관표로 옮긴다(delete_gyojeok RPC).
+   * 헌금·계정연결·가족구성이 걸려 있으면 서버가 1차 요청을 거부하고 건수를 돌려주므로,
+   * 그 내용을 그대로 보여준 뒤 관리자가 한 번 더 누를 때만 강제 진행한다. */
+  // "함수/표가 없다"(SQL 미실행)만 골라 안내한다. 권한 오류 등은 원문을 그대로 보여줘야 한다.
+  function needSqlMsg(e) {
+    return /PGRST202|PGRST205|Could not find (the )?(function|table)|does not exist/i.test(e.message || '')
+      ? '아직 백엔드 준비가 안 됐습니다. Supabase ▸ SQL Editor 에서 supabase/20260817_2330_gyojeok_delete_archive.sql 을 실행해 주세요.'
+      : null;
+  }
+  function showDelete(cur, onDeleted) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;z-index:10000;padding:24px 16px;overflow:auto';
+    ov.innerHTML = '<div class="fin-card" id="dl_box" style="max-width:480px;width:100%;background:#fff;margin:auto"></div>';
+    document.body.appendChild(ov);
+    var box = ov.querySelector('#dl_box');
+    function close() { ov.remove(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    var head = cur['세대주'] || cur['이름'];
+    box.innerHTML =
+      '<h3 style="margin:0 0 10px;color:#c0392b">🗑 교적 삭제</h3>' +
+      '<div style="background:#f7f9fc;border:1px solid #e6edf5;border-radius:10px;padding:10px 12px;font-size:.9rem;line-height:1.8;margin-bottom:10px">' +
+      '<b style="font-size:1rem">' + esc(cur['이름']) + '</b> ' + esc(cur['직책'] || '') + '<br>' +
+      '<span style="color:#7b8794;font-size:.85rem">생년월일 ' + (birthOf(cur) || '(없음)') + ' · ' + esc(head) + '의 가정' + (cur['관계'] ? ' · ' + esc(cur['관계']) : '') + '</span></div>' +
+      '<p style="font-size:.85rem;color:#3a4a63;line-height:1.75;margin:0 0 10px">지운 교적은 <b>삭제 보관함</b>에 남아 있어 되돌릴 수 있습니다. 명단·헌금 입력·가계도·주일학교에서는 즉시 빠집니다. 이미 입력된 <b>헌금 기록은 그대로 보존</b>됩니다.</p>' +
+      '<div class="af-field" style="margin-bottom:12px"><label>삭제 사유(선택)</label><input type="text" id="dl_reason" placeholder="예: 같은 사람이 두 번 등록됨"></div>' +
+      '<div id="dl_warn"></div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:6px"><span class="fin-msg" id="dl_msg" style="flex:1"></span><button class="btn btn-line" id="dl_cancel">취소</button><button class="btn btn-solid" id="dl_ok" style="background:#c0392b;border-color:#c0392b">삭제</button></div>';
+    var msg = box.querySelector('#dl_msg'), warn = box.querySelector('#dl_warn'), okBtn = box.querySelector('#dl_ok');
+    box.querySelector('#dl_cancel').onclick = close;
+    function fail(t) { msg.style.color = '#c0392b'; msg.textContent = t; okBtn.disabled = false; }
+    function run(force) {
+      if (cur['교적ID'] == null || cur['교적ID'] === '') { fail('이 행에는 교적ID가 없어 삭제할 수 없습니다.'); return; }
+      msg.style.color = '#7b8794'; msg.textContent = '처리 중…'; okBtn.disabled = true;
+      WPF.call('deleteGyojeok', { id: cur['교적ID'], reason: box.querySelector('#dl_reason').value, force: !!force })
+        .then(function (r) {
+          r = r || {};
+          if (r.needConfirm) { showBlockers(r); return; }
+          if (r.ok === false) { fail(r.error || '삭제가 거부되었습니다.'); return; }
+          msg.style.color = 'green'; msg.textContent = '✓ ' + cur['이름'] + ' 님을 보관함으로 옮겼습니다';
+          setTimeout(function () { close(); if (onDeleted) onDeleted(); }, 700);
+        })
+        .catch(function (e) { fail(needSqlMsg(e) || ('삭제 실패: ' + e.message)); });
+    }
+    function showBlockers(r) {
+      var items = [];
+      if (r.offerings) items.push('헌금 기록 <b>' + r.offerings + '건</b> — 삭제해도 기록은 남지만 이름 연결이 끊깁니다');
+      if (r.receipts) items.push('기부금영수증 <b>' + r.receipts + '건</b>');
+      if (r.links) items.push('홈페이지 계정 <b>' + r.links + '개</b>가 연결됨 — 준회원으로 되돌려집니다');
+      if (r.submissions) items.push('주일학교 QT·필사 인증 <b>' + r.submissions + '건</b>');
+      if (r.files) items.push('개인 파일 <b>' + r.files + '건</b>');
+      if (r.family) items.push('이 사람을 세대주로 둔 가족 <b>' + r.family + '명</b> — 각자 세대주로 분리됩니다');
+      if (r.branches) items.push('분가한 자녀 세대 <b>' + r.branches + '가정</b> — 부모 세대 연결이 해제됩니다');
+      if (r.sameName) items.push('같은 이름의 교적이 <b>' + r.sameName + '건</b> 더 있어, 배우자·가족 연결 정리는 건너뜁니다');
+      warn.innerHTML = '<div style="background:#fff4f2;border:1px solid #f3c7bf;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:.85rem;line-height:1.9;color:#8c3a2b">' +
+        '<b>확인해 주세요 — 이 교적에 연결된 것이 있습니다</b><ul style="margin:6px 0 0;padding-left:18px">' +
+        items.map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ul></div>';
+      msg.style.color = '#c0392b'; msg.textContent = '위 내용을 확인한 뒤 다시 눌러 주세요.';
+      okBtn.disabled = false;
+      okBtn.textContent = '확인했습니다 · 삭제';
+      okBtn.onclick = function () { run(true); };
+    }
+    okBtn.onclick = function () { run(false); };
+    setTimeout(function () { var f = box.querySelector('#dl_reason'); if (f) f.focus(); }, 50);
+  }
+
+  /* ── 삭제 보관함(복원) ── */
+  function showTrash(panel) {
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:24px 16px;overflow:auto';
+    ov.innerHTML = '<div class="fin-card" id="tr_box" style="max-width:620px;width:100%;background:#fff;margin:auto"></div>';
+    document.body.appendChild(ov);
+    var box = ov.querySelector('#tr_box');
+    function close() { ov.remove(); }
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    function load() {
+      box.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
+      WPF.call('listDeletedGyojeok').then(function (r) {
+        var rows = r.members || [];
+        box.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:var(--accent,#032257)">🗑 삭제 보관함 (' + rows.length + ')</h3><button class="btn btn-line" id="tr_close" style="padding:4px 12px">닫기</button></div>' +
+          '<p style="color:var(--ink-soft);font-size:.83rem;margin-bottom:10px">삭제한 교적이 여기 남아 있습니다. <b>복원</b>하면 교적 명단으로 되돌아옵니다(가족·배우자 연결은 다시 지정해야 합니다).</p>' +
+          (rows.length
+            ? '<div style="overflow:auto;max-height:420px"><table class="fin-table" style="font-size:.86rem"><thead><tr><th>이름</th><th>생년월일</th><th>세대주</th><th>삭제일</th><th>사유</th><th></th></tr></thead><tbody>' +
+              rows.map(function (m) {
+                return '<tr><td><b>' + esc(m['이름']) + '</b></td><td>' + esc(birthOf(m)) + '</td><td>' + esc(m['세대주'] || '') + '</td><td>' + esc(String(m['삭제일시'] || '').slice(0, 10)) + '</td><td style="color:#7b8794">' + esc(m['삭제사유'] || '') + '</td>' +
+                  '<td><button class="btn btn-line tr-restore" data-id="' + esc(m['교적ID']) + '" data-name="' + esc(m['이름']) + '" style="padding:2px 10px;font-size:.76rem">복원</button></td></tr>';
+              }).join('') + '</tbody></table></div>'
+            : '<p style="color:#9aa5b1;padding:10px 0">삭제한 교적이 없습니다.</p>') +
+          '<p class="fin-msg" id="tr_msg" style="margin-top:8px"></p>' +
+          '<p class="help" style="margin-top:6px">※ 보관함에서 완전히 지우는 일은 백업 확인 후 사람이 직접 합니다(4주 보관 원칙).</p>';
+        box.querySelector('#tr_close').onclick = close;
+        var msg = box.querySelector('#tr_msg');
+        Array.prototype.forEach.call(box.querySelectorAll('.tr-restore'), function (b) {
+          b.onclick = function () {
+            if (!confirm(b.dataset.name + ' 님을 교적으로 복원할까요?')) return;
+            msg.style.color = '#7b8794'; msg.textContent = '복원 중…';
+            WPF.call('restoreGyojeok', { id: b.dataset.id }).then(function (r) {
+              r = r || {};
+              if (r.ok === false) { msg.style.color = '#c0392b'; msg.textContent = r.error || '복원이 거부되었습니다.'; return; }
+              renderMembers(panel); load();
+            }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = needSqlMsg(e) || ('복원 실패: ' + e.message); });
+          };
+        });
+      }).catch(function (e) {
+        box.innerHTML = msgCard('보관함을 열 수 없습니다', needSqlMsg(e) || e.message) +
+          '<div style="text-align:right;margin-top:10px"><button class="btn btn-line" id="tr_close2">닫기</button></div>';
+        box.querySelector('#tr_close2').onclick = close;
+      });
+    }
+    load();
   }
 
   /* ── 가족관계: 드래그 가계도 구성 ── */
