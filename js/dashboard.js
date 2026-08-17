@@ -1118,12 +1118,18 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
    *  · 교사/부장/서기(+관리자) → 현황판·어린이 달란트 관리, 부장/서기만 현황판 편집
    *  · 어린이 → 자기 달란트 조회만
    * SQL 미실행 등으로 RPC가 없으면 섹션 자체를 조용히 숨긴다. */
+  // 학생으로 취급하는 주일학교 직분 — supabase ss_student_roles() 와 값·순서를 맞춘다.
+  var SS_LEVELS = ['어린이', '중학생', '고등학생'];
+  // isStudent 는 20260817_2345_ss_school_levels.sql 이후에 내려온다. 아직 안 돌렸으면 role 로 판단.
+  function isSsStudent(ctx) { return !!(ctx && (ctx.isStudent || SS_LEVELS.indexOf(ctx.role) >= 0)); }
+  function ssLevelOrder(r) { var i = SS_LEVELS.indexOf(r || '어린이'); return i < 0 ? 99 : i; }
+
   function loadSundaySchool(me) {
     var el = document.getElementById('ssDash'); if (!el) return;
     brFetch('rpc/ss_context', { method: 'POST', body: '{}' }).then(function (ctx) {
       ctx = ctx || {};
       if (ctx.isTeacher) renderSsTeacher(el, ctx, me);
-      else if (ctx.role === '어린이') {
+      else if (isSsStudent(ctx)) {
         el.innerHTML = '<div id="ssMyTalents" style="margin-bottom:22px;"></div><div id="ssMyCerts"></div>';
         loadMyTalents(el.querySelector('#ssMyTalents'), ctx, me);
         loadMyCerts(el.querySelector('#ssMyCerts'), me.memberKey, me.memberName || '', function () { loadMyTalents(el.querySelector('#ssMyTalents'), ctx, me); });
@@ -1145,7 +1151,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
     brFetch('ss_talents?select=id,amount,reason,talent_date,created_by&member_key=eq.' + encodeURIComponent(me.memberKey) + '&order=talent_date.desc,id.desc&limit=500')
       .then(function (rows) {
         rows = rows || [];
-        if (!rows.length && ctx.role !== '어린이') { el.innerHTML = ''; return; }
+        if (!rows.length && !isSsStudent(ctx)) { el.innerHTML = ''; return; }
         var total = rows.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
         el.innerHTML =
           '<div class="form-card" style="padding:16px 18px;">' +
@@ -1273,13 +1279,18 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
     brFetch('rpc/ss_students', { method: 'POST', body: '{}' }).then(function (students) {
       students = students || [];
       var totalT = students.reduce(function (s, r) { return s + (Number(r.total) || 0); }, 0);
+      // 학년별 인원(어린이·중학생·고등학생) — 교적의 '주일학교' 항목에서 온다.
+      var byLevel = SS_LEVELS.map(function (lv) {
+        return { lv: lv, n: students.filter(function (s) { return (s.ss_role || '어린이') === lv; }).length };
+      }).filter(function (x) { return x.n; });
       if (stats) stats.innerHTML =
-        statCard('어린이', students.length + '명', '#032257') +
+        statCard('학생', students.length + '명', '#032257') +
         statCard('교사진', (ctx.teacherCount || 0) + '명', '#1e874b') +
         statCard('달란트 총계', won(totalT), '#b7791f');
       box.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">' +
-        '<b style="font-size:.9rem;color:var(--accent,#032257);">⭐ 어린이 달란트 관리</b>' +
+        '<b style="font-size:.9rem;color:var(--accent,#032257);">⭐ 학생 달란트 관리' +
+        (byLevel.length ? ' <span style="font-weight:400;font-size:.78rem;color:#7b8794;">' + byLevel.map(function (x) { return esc(x.lv) + ' ' + x.n; }).join(' · ') + '</span>' : '') + '</b>' +
         '<span style="display:flex;gap:6px;">' +
         '<button type="button" class="btn btn-line" id="ssItemsBtn" style="padding:3px 11px;font-size:.76rem;">🏷 항목 관리</button>' +
         (students.length ? '<button type="button" class="btn btn-solid" id="ssBulkBtn" style="padding:3px 11px;font-size:.76rem;">⚡ 일괄 지급</button>' : '') +
@@ -1289,7 +1300,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           '<button type="button" class="btn ss-view-tab" data-v="table" style="padding:3px 14px;font-size:.76rem;">표</button>' +
           '<button type="button" class="btn ss-view-tab" data-v="chart" style="padding:3px 14px;font-size:.76rem;">📊 그래프</button>' +
           '</div><div id="ssStudentsView"></div>' :
-          '<p style="color:#9aa5b1;font-size:.84rem;">교적에서 <b>주일학교: 어린이</b>로 지정된 교인이 아직 없습니다.<br>교적관리 → 교적 명단에서 어린이의 ‘주일학교’ 항목을 ‘어린이’로 지정해 주세요.</p>');
+          '<p style="color:#9aa5b1;font-size:.84rem;">교적에서 <b>주일학교</b>가 <b>어린이·중학생·고등학생</b>으로 지정된 교인이 아직 없습니다.<br>교적관리 → 교적 명단에서 학생의 이름을 클릭 → <b>수정</b> → ‘주일학교’ 항목을 지정해 주세요.</p>');
       var itemsBtn = box.querySelector('#ssItemsBtn');
       if (itemsBtn) itemsBtn.onclick = function () { ssItemManager(); };
       var bulkBtn = box.querySelector('#ssBulkBtn');
@@ -1304,6 +1315,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           var r = 0;
           if (sortKey === 'total') r = (Number(a.total) || 0) - (Number(b.total) || 0);
           else if (sortKey === 'birth') r = String(a.birth || '9999-99-99').localeCompare(String(b.birth || '9999-99-99'));
+          else if (sortKey === 'level') r = ssLevelOrder(a.ss_role) - ssLevelOrder(b.ss_role) || String(a.name).localeCompare(String(b.name), 'ko');
           else r = String(a.name).localeCompare(String(b.name), 'ko');
           return r * sortDir;
         });
@@ -1316,9 +1328,12 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           return '<th class="ss-st-sort" data-s="' + k + '" style="text-align:' + (align || 'left') + ';padding:7px 8px;cursor:pointer;white-space:nowrap;" title="클릭하여 정렬">' + label + mark + '</th>';
         }
         return '<div style="overflow:auto;max-height:420px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.86rem;">' +
-          '<thead><tr style="background:#f5f8fc;">' + th('name', '이름') + th('birth', '생년월일') + th('total', '달란트', 'right') + '<th style="padding:7px 8px;"></th></tr></thead><tbody>' +
+          '<thead><tr style="background:#f5f8fc;">' + th('name', '이름') + th('level', '학년') + th('birth', '생년월일') + th('total', '달란트', 'right') + '<th style="padding:7px 8px;"></th></tr></thead><tbody>' +
           curList.map(function (s, i) {
-            return '<tr><td style="padding:6px 8px;"><a href="#" class="ss-st-name" data-i="' + i + '" title="기록 보기" style="color:var(--accent,#032257);font-weight:700;text-decoration:none;border-bottom:1px dashed #9ab;">' + esc(s.name) + '</a></td><td style="padding:6px 8px;color:#7b8794;">' + esc(String(s.birth || '').slice(0, 10)) + '</td>' +
+            var lv = s.ss_role || '어린이';
+            return '<tr><td style="padding:6px 8px;"><a href="#" class="ss-st-name" data-i="' + i + '" title="기록 보기" style="color:var(--accent,#032257);font-weight:700;text-decoration:none;border-bottom:1px dashed #9ab;">' + esc(s.name) + '</a></td>' +
+              '<td style="padding:6px 8px;"><span style="font-size:.76rem;background:#fff3d6;color:#8a6d1f;border-radius:999px;padding:2px 9px;white-space:nowrap;">' + esc(lv) + '</span></td>' +
+              '<td style="padding:6px 8px;color:#7b8794;">' + esc(String(s.birth || '').slice(0, 10)) + '</td>' +
               '<td style="padding:6px 8px;text-align:right;font-weight:700;color:#b7791f;">' + won(s.total) + '</td>' +
               '<td style="padding:6px 8px;text-align:right;white-space:nowrap;"><button type="button" class="btn btn-line ss-st-open" data-i="' + i + '" style="padding:3px 11px;font-size:.76rem;">내역·지급</button></td></tr>';
           }).join('') + '</tbody></table></div>' +
@@ -1359,7 +1374,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
       }
       Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { show(b.dataset.v, b); }; });
       if (tabs.length) show('table', tabs[0]);
-    }).catch(function (e) { box.innerHTML = '<p style="color:#9aa5b1;font-size:.84rem;">어린이 명단을 불러오지 못했습니다: ' + esc(e.message) + '</p>'; });
+    }).catch(function (e) { box.innerHTML = '<p style="color:#9aa5b1;font-size:.84rem;">학생 명단을 불러오지 못했습니다: ' + esc(e.message) + '</p>'; });
   }
   function ssTalentModal(el, ctx, me, student) {
     if (!student) return;
@@ -1644,20 +1659,20 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
       '<h3 style="margin:0;color:var(--accent,#032257);font-size:1rem;">⚡ 달란트 일괄 지급</h3>' +
       '<button type="button" class="btn btn-line" id="ssbkClose" style="padding:4px 12px;">닫기</button></div>' +
-      '<p style="color:var(--ink-soft);font-size:.8rem;margin:0 0 10px;">항목 버튼을 누르면 달란트·내용이 채워집니다. 어린이를 선택하고 지급하면 모두에게 한 번에 등록됩니다.</p>' +
+      '<p style="color:var(--ink-soft);font-size:.8rem;margin:0 0 10px;">항목 버튼을 누르면 달란트·내용이 채워집니다. 학생을 선택하고 지급하면 모두에게 한 번에 등록됩니다.</p>' +
       '<div id="ssbkItems" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:10px;">' +
       '<div style="flex:0 0 122px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">날짜</label><input type="date" id="ssbkDate" value="' + esc(todayStr()) + '" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
       '<div style="flex:0 0 92px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">달란트(±)</label><input type="number" id="ssbkAmount" placeholder="예: 1" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div>' +
       '<div id="ssbkReasonWrap" style="flex:1;min-width:140px;"><label style="display:block;font-size:.74rem;color:#7b8794;margin-bottom:3px;">내용</label><input type="text" id="ssbkReason" placeholder="클릭하여 항목 선택" autocomplete="off" style="width:100%;padding:7px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;box-sizing:border-box;"></div></div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-      '<b style="font-size:.84rem;color:var(--accent,#032257);">어린이 선택</b>' +
+      '<b style="font-size:.84rem;color:var(--accent,#032257);">학생 선택</b>' +
       '<label class="sw" style="font-size:.8rem;"><input type="checkbox" id="ssbkAll"> 전체 선택</label></div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;border:1px solid #e8edf3;border-radius:10px;padding:10px;max-height:220px;overflow:auto;margin-bottom:12px;">' +
       students.map(function (s, i) {
         return '<label style="display:flex;align-items:center;gap:6px;font-size:.86rem;cursor:pointer;"><input type="checkbox" class="ssbk-kid" data-i="' + i + '"> ' + esc(s.name) + '</label>';
       }).join('') + '</div>' +
-      '<div style="display:flex;gap:10px;align-items:center;"><button type="button" class="btn btn-solid" id="ssbkSave" style="padding:8px 16px;">선택한 어린이에게 지급</button><span class="fin-msg" id="ssbkMsg"></span></div>';
+      '<div style="display:flex;gap:10px;align-items:center;"><button type="button" class="btn btn-solid" id="ssbkSave" style="padding:8px 16px;">선택한 학생에게 지급</button><span class="fin-msg" id="ssbkMsg"></span></div>';
     box.querySelector('#ssbkClose').onclick = close;
     attachItemPicker(box.querySelector('#ssbkReasonWrap'), box.querySelector('#ssbkReason'), box.querySelector('#ssbkAmount'));
     // 항목 버튼(칩): 누르면 달란트·내용 자동 입력. '항목 관리'로 버튼 추가/삭제.
@@ -1695,7 +1710,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
       Array.prototype.forEach.call(kids, function (c) { if (c.checked) { var s = students[Number(c.dataset.i)]; if (s) sel.push(s); } });
       if (!d) { fail('날짜를 선택해 주세요.'); return; }
       if (!amt) { fail('달란트를 숫자로 입력해 주세요(차감은 음수).'); return; }
-      if (!sel.length) { fail('어린이를 한 명 이상 선택해 주세요.'); return; }
+      if (!sel.length) { fail('학생을 한 명 이상 선택해 주세요.'); return; }
       msg.style.color = '#7b8794'; msg.textContent = sel.length + '명에게 지급 중…';
       var rows = sel.map(function (s) {
         return { member_key: s.member_key, child_name: s.name, amount: amt, reason: rsn, talent_date: d, created_by: me.memberName || '' };
@@ -1879,7 +1894,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
               return '<button type="button" class="ssct-type" data-t="' + t + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:3px 13px;font:inherit;font-size:.76rem;cursor:pointer;">' + (t === 'all' ? '전체' : t) + '</button>';
             }).join('') +
             '<label class="sw" style="font-size:.78rem;margin-left:4px;"><input type="checkbox" id="ssctPending"' + (fPending ? ' checked' : '') + '> 미확인만</label>' +
-            '<select id="ssctChild" style="padding:4px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;font-size:.78rem;"><option value="">어린이 전체</option>' +
+            '<select id="ssctChild" style="padding:4px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;font-size:.78rem;"><option value="">자녀 전체</option>' +
             childNames.map(function (n) { return '<option' + (fChild === n ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></div>' +
             (list.length ? '<div style="max-height:440px;overflow:auto;">' + list.map(function (r) {
               var likes = r.liked_by || [];
