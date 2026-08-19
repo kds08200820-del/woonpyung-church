@@ -1736,6 +1736,14 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
   }
   function monthKey(d) { return String(d || '').slice(0, 7); }
 
+  // 교사 화면 인증 줄의 '좋아요 이름' 표시 — 그릴 때와 하트를 누른 뒤 갱신할 때 함께 쓴다
+  function likeLine(r) {
+    var names = r.liked_by || [];
+    return (names.length ? '❤ ' + names.map(esc).join(', ') : '아직 좋아요가 없습니다') +
+      (r.confirmed_by ? ' · <span style="color:#1e874b;font-weight:700;">✓ ' + esc(r.confirmed_by) + ' 확인</span>' : '');
+  }
+  function likeBtnStyle(mine) { return 'padding:3px 10px;font-size:.78rem;' + (mine ? 'background:#fdeef5;border-color:#e0639b;color:#e0639b;' : ''); }
+
   /* ── QT·필사 인증 올리기 + 내역 (어린이 본인 또는 보호자가 자녀 대신)
    * onChange: 업로드/삭제 후 호출 — 달란트 카드 새로고침용(자동 지급 반영) ── */
   function loadMyCerts(container, subjKey, subjName, onChange) {
@@ -1920,12 +1928,11 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
                 certThumb(r, 56) +
                 '<div style="flex:1;min-width:0;">' +
                 '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;"><b style="font-size:.88rem;">' + esc(r.child_name || '') + '</b>' + certPill(r.stype) + '<span style="font-size:.78rem;color:#7b8794;">' + esc(r.sub_date) + '</span></div>' +
-                '<div style="font-size:.76rem;color:#9aa5b1;margin-top:3px;">' +
-                (likes.length ? '❤ ' + likes.map(esc).join(', ') : '아직 좋아요가 없습니다') +
-                (r.confirmed_by ? ' · <span style="color:#1e874b;font-weight:700;">✓ ' + esc(r.confirmed_by) + ' 확인</span>' : '') +
+                '<div class="ssct-likes" data-id="' + r.id + '" style="font-size:.76rem;color:#9aa5b1;margin-top:3px;">' +
+                likeLine(r) +
                 '</div></div>' +
                 '<span style="white-space:nowrap;display:flex;gap:4px;">' +
-                '<button type="button" class="btn btn-line ssct-like" data-id="' + r.id + '" style="padding:3px 10px;font-size:.78rem;' + (iLiked ? 'background:#fdeef5;border-color:#e0639b;color:#e0639b;' : '') + '">❤ ' + likes.length + '</button>' +
+                '<button type="button" class="btn btn-line ssct-like" data-id="' + r.id + '" style="' + likeBtnStyle(iLiked) + '">❤ ' + likes.length + '</button>' +
                 '<button type="button" class="btn ' + (r.confirmed_by ? 'btn-line' : 'btn-solid') + ' ssct-ok" data-id="' + r.id + '" style="padding:3px 10px;font-size:.78rem;">' + (r.confirmed_by ? '확인 취소' : '✔ 확인') + '</button>' +
                 '<button type="button" class="btn btn-line ssct-del" data-id="' + r.id + '" style="padding:3px 8px;font-size:.72rem;color:#c0392b;">삭제</button></span></div>';
             }).join('') + '</div>' : '<p style="color:#9aa5b1;font-size:.84rem;">조건에 맞는 인증이 없습니다.</p>') :
@@ -1938,8 +1945,21 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           b.onclick = function () {
             var r = find(b.dataset.id); if (!r) return;
             // 성도용 좋아요와 같은 함수를 쓴다 — 내 계정으로 기록돼 동명이인이 있어도 정확히 취소된다
+            if (b.disabled) return;
+            b.disabled = true;
             brFetch('rpc/ss_toggle_like', { method: 'POST', body: JSON.stringify({ p_id: r.id }) })
-              .then(draw).catch(function (e) { ssFlash(el, false, '좋아요 실패: ' + e.message); });
+              .then(function () { return brFetch('ss_submissions?select=liked_by&id=eq.' + r.id); })
+              .then(function (rr) {
+                // 목록 전체를 다시 그리면 보고 있던 자리를 잃는다(휴대폰에서 특히) — 이 줄만 고쳐 쓴다
+                r.liked_by = (rr && rr[0] && rr[0].liked_by) || [];
+                var mine = r.liked_by.indexOf(myName) >= 0;
+                b.textContent = '❤ ' + r.liked_by.length;
+                b.setAttribute('style', likeBtnStyle(mine));
+                var ln = box.querySelector('.ssct-likes[data-id="' + r.id + '"]');
+                if (ln) ln.innerHTML = likeLine(r);
+                b.disabled = false;
+              })
+              .catch(function (e) { b.disabled = false; ssFlash(el, false, '좋아요 실패: ' + e.message); });
           };
         });
         Array.prototype.forEach.call(box.querySelectorAll('.ssct-ok'), function (b) {

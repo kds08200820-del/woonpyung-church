@@ -3,9 +3,9 @@
  * 데이터: rpc/ss_growth_feed — 이름·종류·날짜·사진·❤·확인 여부만(개인정보 없음), 보기는 로그인 불필요.
  * 좋아요: rpc/ss_toggle_like — 로그인한 성도 누구나 누를 수 있다(교사단 전용이 아니다).
  *   · 로그인했으면 내 토큰으로 피드를 불러와 '내가 누른 하트'(mine)를 채워서 보여 준다.
- * 콘솔: [ss-growth.js] v20260819like
+ * 콘솔: [ss-growth.js] v20260820heart
  */
-console.log('[ss-growth.js] v20260819like');
+console.log('[ss-growth.js] v20260820heart');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
@@ -33,6 +33,20 @@ console.log('[ss-growth.js] v20260819like');
   }
   function monthKey(d) { return String(d || '').slice(0, 7); }
 
+  // 하트 버튼 모양 — 카드를 그릴 때와 누른 뒤 갱신할 때 같은 함수를 쓴다
+  function likeStyle(mine) {
+    return 'border:1px solid ' + (mine ? '#e0639b' : '#e3e7ee') +
+      ';background:' + (mine ? '#fdeef5' : '#fff') +
+      ';color:' + (mine ? '#e0639b' : '#9aa5b1') +
+      ';border-radius:999px;padding:3px 10px;font:inherit;font-size:.76rem;cursor:pointer;line-height:1.4;';
+  }
+  // 누른 뒤 그 버튼만 고쳐 그린다 — 목록을 다시 그리면 스크롤이 맨 위로 튄다(휴대폰에서 특히)
+  function paintLike(btn, likes, mine) {
+    btn.setAttribute('style', likeStyle(mine));
+    btn.title = mine ? '좋아요 취소' : '어린이를 응원해 주세요';
+    btn.textContent = (mine ? '❤' : '♡') + ' ' + (likes || 0);
+  }
+
   function card(r) {
     var mine = !!r.mine;
     return '<div style="border:1px solid var(--line,#e3e7ee);border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 3px 14px rgba(3,34,87,.06);">' +
@@ -44,8 +58,7 @@ console.log('[ss-growth.js] v20260819like');
       '<span>' + esc(String(r.date || '').slice(0, 10)) + '</span>' +
       '<span style="display:flex;align-items:center;gap:6px;">' +
       '<button type="button" class="ssg-like" data-id="' + esc(r.id) + '" title="' + (mine ? '좋아요 취소' : '어린이를 응원해 주세요') + '" ' +
-      'style="border:1px solid ' + (mine ? '#e0639b' : '#e3e7ee') + ';background:' + (mine ? '#fdeef5' : '#fff') + ';color:' + (mine ? '#e0639b' : '#9aa5b1') + ';border-radius:999px;padding:3px 10px;font:inherit;font-size:.76rem;cursor:pointer;line-height:1.4;">' +
-      (mine ? '❤' : '♡') + ' ' + (r.likes || 0) + '</button>' +
+      'style="' + likeStyle(mine) + '">' + (mine ? '❤' : '♡') + ' ' + (r.likes || 0) + '</button>' +
       (r.confirmed ? '<span style="color:#1e874b;font-weight:700;">✓ 확인</span>' : '') +
       '</span></div></div></div>';
   }
@@ -67,7 +80,8 @@ console.log('[ss-growth.js] v20260819like');
           .then(function (res) {
             var row = rows.filter(function (x) { return String(x.id) === String(b.dataset.id); })[0];
             if (row && res) { row.likes = res.likes; row.mine = res.mine; }
-            render();
+            paintLike(b, res && res.likes, res && res.mine);   // 이 버튼만 갱신 → 보던 자리 그대로
+            b.disabled = false;
           })
           .catch(function () { b.disabled = false; alert('좋아요를 저장하지 못했어요. 잠시 후 다시 눌러 주세요.'); });
       };
