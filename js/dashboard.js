@@ -1748,13 +1748,17 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           var ym = monthKey(todayStr());
           var mQt = rows.filter(function (r) { return r.stype === 'QT' && monthKey(r.sub_date) === ym; }).length;
           var mPil = rows.filter(function (r) { return r.stype === '필사' && monthKey(r.sub_date) === ym; }).length;
+          // 하루 한 번 규칙 — 오늘 이미 올린 종류는 버튼을 '완료'로 바꿔 헛걸음을 막는다
+          var td = todayStr();
+          function doneToday(t) { return rows.filter(function (r) { return r.stype === t && r.sub_date === td; }).length > 0; }
+          var doneQt = doneToday('QT'), donePil = doneToday('필사');
           container.innerHTML =
             '<div class="form-card" style="padding:16px 18px;">' +
             '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📖 QT·필사 인증</h3>' +
-            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">인증샷을 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고(하루에 종류별 1회), 홈 화면 <b>‘주일학교 성장기’</b> 섹션에 자동으로 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
+            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">QT·필사는 <b>각각 하루에 한 번</b>만 올릴 수 있어요. 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고, 홈 화면 <b>‘주일학교 성장기’</b> 섹션에 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
-            '<button type="button" class="btn btn-solid" id="sscUpQt" style="padding:8px 16px;">📷 QT 인증 올리기</button>' +
-            '<button type="button" class="btn btn-solid" id="sscUpPil" style="padding:8px 16px;background:#1e874b;border-color:#1e874b;">✍️ 필사 인증 올리기</button>' +
+            '<button type="button" class="btn ' + (doneQt ? 'btn-line' : 'btn-solid') + '" id="sscUpQt" style="padding:8px 16px;' + (doneQt ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : '') + '">' + (doneQt ? '✓ 오늘 QT 인증 완료' : '📷 QT 인증 올리기') + '</button>' +
+            '<button type="button" class="btn ' + (donePil ? 'btn-line' : 'btn-solid') + '" id="sscUpPil" style="padding:8px 16px;' + (donePil ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : 'background:#1e874b;border-color:#1e874b;') + '">' + (donePil ? '✓ 오늘 필사 인증 완료' : '✍️ 필사 인증 올리기') + '</button>' +
             '<input type="file" id="sscFile" accept="image/*" style="display:none;"></div>' +
             '<p class="fin-msg" id="sscMsg" style="margin:0 0 8px;"></p>' +
             (rows.length ? rows.map(function (r) {
@@ -1772,8 +1776,16 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           var msg = container.querySelector('#sscMsg');
           function flash(ok, t) { msg.style.color = ok ? 'green' : '#c0392b'; msg.textContent = t; }
           var fileInp = container.querySelector('#sscFile'), curType = 'QT';
-          container.querySelector('#sscUpQt').onclick = function () { curType = 'QT'; fileInp.click(); };
-          container.querySelector('#sscUpPil').onclick = function () { curType = '필사'; fileInp.click(); };
+          // 하루 한 번 — 이미 올렸으면 사진 고르는 창을 열지 않는다(서버도 트리거로 한 번 더 막는다)
+          function pick(t) {
+            if (doneToday(t)) {
+              flash(false, '오늘 ' + t + ' 인증은 이미 올렸어요. 하루에 한 번만 올릴 수 있어요. 바꾸시려면 아래 목록에서 오늘 것을 삭제한 뒤 다시 올려 주세요.');
+              return;
+            }
+            curType = t; fileInp.click();
+          }
+          container.querySelector('#sscUpQt').onclick = function () { pick('QT'); };
+          container.querySelector('#sscUpPil').onclick = function () { pick('필사'); };
           fileInp.onchange = function () {
             var f = fileInp.files && fileInp.files[0]; fileInp.value = '';
             if (!f) return;
@@ -1783,7 +1795,12 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
             ChurchUpload.upload(f, { folder: 'ss-cert' }).then(function (up) {
               return brFetch('ss_submissions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ member_key: subjKey, child_name: subjName || '', stype: curType, photo_url: up.url, photo_key: up.key || '' }) });
             }).then(function () { flash(true, '✓ ' + curType + ' 인증이 올라갔어요! 달란트 지급 + 성장기 게시 완료 ⭐'); draw(); if (onChange) onChange(); })
-              .catch(function (e) { flash(false, '올리기 실패: ' + e.message); });
+              .catch(function (e) {
+                var m = (e && e.message) || '';
+                try { var j = JSON.parse(m); if (j && j.message) m = j.message; } catch (x) { }
+                flash(false, /이미 올렸/.test(m) ? m : ('올리기 실패: ' + m));
+                draw();
+              });
           };
           Array.prototype.forEach.call(container.querySelectorAll('.ssc-del'), function (b) {
             var r = rows.filter(function (x) { return String(x.id) === b.dataset.id; })[0];
@@ -1920,10 +1937,8 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
         Array.prototype.forEach.call(box.querySelectorAll('.ssct-like'), function (b) {
           b.onclick = function () {
             var r = find(b.dataset.id); if (!r) return;
-            var arr = (r.liked_by || []).slice();
-            var i = arr.indexOf(myName);
-            if (i >= 0) arr.splice(i, 1); else arr.push(myName);
-            brFetch('ss_submissions?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ liked_by: arr }) })
+            // 성도용 좋아요와 같은 함수를 쓴다 — 내 계정으로 기록돼 동명이인이 있어도 정확히 취소된다
+            brFetch('rpc/ss_toggle_like', { method: 'POST', body: JSON.stringify({ p_id: r.id }) })
               .then(draw).catch(function (e) { ssFlash(el, false, '좋아요 실패: ' + e.message); });
           };
         });

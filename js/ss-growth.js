@@ -1,9 +1,11 @@
 /* ss-growth.js — 홈 '주일학교 성장기' 섹션
  * 어린이들의 QT·필사 인증 기록을 전용 섹션으로 게시(우리들 소식과 분리).
- * 데이터: rpc/ss_growth_feed — 이름·종류·날짜·사진·❤·확인 여부만(개인정보 없음), 로그인 불필요.
- * 콘솔: [ss-growth.js] v20260809ss9
+ * 데이터: rpc/ss_growth_feed — 이름·종류·날짜·사진·❤·확인 여부만(개인정보 없음), 보기는 로그인 불필요.
+ * 좋아요: rpc/ss_toggle_like — 로그인한 성도 누구나 누를 수 있다(교사단 전용이 아니다).
+ *   · 로그인했으면 내 토큰으로 피드를 불러와 '내가 누른 하트'(mine)를 채워서 보여 준다.
+ * 콘솔: [ss-growth.js] v20260819like
  */
-console.log('[ss-growth.js] v20260809ss9');
+console.log('[ss-growth.js] v20260819like');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
@@ -12,6 +14,19 @@ console.log('[ss-growth.js] v20260809ss9');
   var SHOW = 8;                       // 처음에 보여줄 카드 수(더 보기로 확장)
   var rows = [], filterName = '', expanded = false;
 
+  // 로그인 정보(다른 홈 섹션과 같은 방식) — 없으면 보기만 가능
+  function localSession() {
+    try {
+      var ref = new URL(window.SUPABASE_URL).hostname.split('.')[0];
+      var raw = localStorage.getItem('sb-' + ref + '-auth-token');
+      if (!raw) return null;
+      var v = JSON.parse(raw);
+      return v && v.currentSession ? v.currentSession : v;
+    } catch (e) { return null; }
+  }
+  function token() { var ss = localSession(); return (ss && ss.access_token) || null; }
+  function openLogin() { var m = document.getElementById('authModal'); if (m) { m.hidden = false; document.body.style.overflow = 'hidden'; } }
+
   function pill(stype) {
     var qt = stype === 'QT';
     return '<span style="font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;background:' + (qt ? '#e8f0fb' : '#e8f6ee') + ';color:' + (qt ? '#2b5797' : '#1e874b') + ';">' + esc(stype) + '</span>';
@@ -19,14 +34,44 @@ console.log('[ss-growth.js] v20260809ss9');
   function monthKey(d) { return String(d || '').slice(0, 7); }
 
   function card(r) {
-    return '<a href="' + esc(r.photo) + '" target="_blank" rel="noopener" style="display:block;border:1px solid var(--line,#e3e7ee);border-radius:14px;overflow:hidden;background:#fff;text-decoration:none;color:inherit;box-shadow:0 3px 14px rgba(3,34,87,.06);">' +
-      '<div style="aspect-ratio:1/1;overflow:hidden;background:#f2f4f8;"><img src="' + esc(r.photo) + '" alt="' + esc(r.name || '') + ' ' + esc(r.stype) + ' 인증" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div>' +
+    var mine = !!r.mine;
+    return '<div style="border:1px solid var(--line,#e3e7ee);border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 3px 14px rgba(3,34,87,.06);">' +
+      '<a href="' + esc(r.photo) + '" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit;">' +
+      '<div style="aspect-ratio:1/1;overflow:hidden;background:#f2f4f8;"><img src="' + esc(r.photo) + '" alt="' + esc(r.name || '') + ' ' + esc(r.stype) + ' 인증" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div></a>' +
       '<div style="padding:10px 12px;">' +
       '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><b style="font-size:.9rem;color:var(--accent,#032257);">' + esc(r.name || '어린이') + '</b>' + pill(r.stype) + '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:.76rem;color:#7b8794;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:.76rem;color:#7b8794;">' +
       '<span>' + esc(String(r.date || '').slice(0, 10)) + '</span>' +
-      '<span>' + (r.likes ? '<span style="color:#e0639b;">❤ ' + r.likes + '</span> ' : '') + (r.confirmed ? '<span style="color:#1e874b;font-weight:700;">✓ 확인</span>' : '') + '</span>' +
-      '</div></div></a>';
+      '<span style="display:flex;align-items:center;gap:6px;">' +
+      '<button type="button" class="ssg-like" data-id="' + esc(r.id) + '" title="' + (mine ? '좋아요 취소' : '어린이를 응원해 주세요') + '" ' +
+      'style="border:1px solid ' + (mine ? '#e0639b' : '#e3e7ee') + ';background:' + (mine ? '#fdeef5' : '#fff') + ';color:' + (mine ? '#e0639b' : '#9aa5b1') + ';border-radius:999px;padding:3px 10px;font:inherit;font-size:.76rem;cursor:pointer;line-height:1.4;">' +
+      (mine ? '❤' : '♡') + ' ' + (r.likes || 0) + '</button>' +
+      (r.confirmed ? '<span style="color:#1e874b;font-weight:700;">✓ 확인</span>' : '') +
+      '</span></div></div></div>';
+  }
+
+  // 좋아요 — 로그인한 성도 누구나. 교사 화면과 같은 함수(rpc/ss_toggle_like)를 쓴다.
+  function bindLikes() {
+    Array.prototype.forEach.call(body.querySelectorAll('.ssg-like'), function (b) {
+      b.onclick = function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        var tk = token();
+        if (!tk) { alert('좋아요를 누르려면 로그인해 주세요.'); openLogin(); return; }
+        if (b.disabled) return;
+        b.disabled = true;
+        fetch(window.SUPABASE_URL + '/rest/v1/rpc/ss_toggle_like', {
+          method: 'POST',
+          headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_id: Number(b.dataset.id) })
+        }).then(function (r) { return r.ok ? r.json() : r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); }); })
+          .then(function (res) {
+            var row = rows.filter(function (x) { return String(x.id) === String(b.dataset.id); })[0];
+            if (row && res) { row.likes = res.likes; row.mine = res.mine; }
+            render();
+          })
+          .catch(function () { b.disabled = false; alert('좋아요를 저장하지 못했어요. 잠시 후 다시 눌러 주세요.'); });
+      };
+    });
   }
 
   function render() {
@@ -64,13 +109,14 @@ console.log('[ss-growth.js] v20260809ss9');
     });
     var more = body.querySelector('#ssgMore'); if (more) more.onclick = function () { expanded = true; render(); };
     var less = body.querySelector('#ssgLess'); if (less) less.onclick = function () { expanded = false; render(); };
+    bindLikes();
   }
 
   function load() {
     if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) { body.innerHTML = ''; return; }
     fetch(window.SUPABASE_URL + '/rest/v1/rpc/ss_growth_feed', {
       method: 'POST',
-      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + window.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (token() || window.SUPABASE_ANON_KEY), 'Content-Type': 'application/json' },
       body: '{}'
     }).then(function (r) { return r.ok ? r.json() : []; })
       .then(function (data) { rows = data || []; render(); })
