@@ -225,6 +225,12 @@ var WPCTts = (function () {
     if (btnEl && myGen === gen) btnEl.textContent = "멈춤 (기본 음성)";
     browserNext(myGen);
   }
+  // 낭독 규칙 판(版) — 숫자 읽기 같은 '읽는 방식'이 바뀌면 이 값을 올린다.
+  //   올리면 저장 파일 이름(qt-<날짜>-<지문>.wav)이 통째로 달라져, 브라우저·CDN에 1년치로
+  //   캐시된 옛 음성 대신 새 규칙으로 만든 음성을 받아 온다. (파일은 30일 뒤 자동 삭제)
+  //   ⚠ 교회PC qt_tts_daily.mjs 의 TTS_RULES_VER 과 반드시 같은 값이어야 한다.
+  //   판2(2026-08-19): 숫자를 한글로 읽음 — 100규빗 "일영영"이 아니라 "백 규빗"
+  var TTS_RULES_VER = "2";
   // 낭독 텍스트의 짧은 지문(내용이 바뀌면 값도 바뀜) — 저장 파일명에 넣어 옛 음성 재사용을 막는다
   function textSig(s) { var h = 2166136261 >>> 0; s = String(s || ""); for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); }
   function ttsBase() { return "https://church-files.kds08200820.workers.dev/f/tts/"; }   // QT 음성은 Cloudflare R2에 저장(Supabase 용량 문제로 이전)
@@ -313,7 +319,7 @@ var WPCTts = (function () {
     try { if (synth) { synth.resume(); if (!window.__ttsPrimed) { var _w = new SpeechSynthesisUtterance(" "); _w.volume = 0; synth.speak(_w); window.__ttsPrimed = true; } } } catch (e) {}
     if (btnEl) btnEl.textContent = "⏳ 음성 준비 중…";
     var date = (opts && opts.date) || null;
-    var sig = date ? textSig(text) : null;   // 내용 지문(내용 바뀌면 파일명도 바뀜 → 옛 음성 안 씀)
+    var sig = date ? textSig(TTS_RULES_VER + "|" + text) : null;   // 내용·규칙 지문(둘 중 하나만 바뀌어도 파일명이 바뀜 → 옛 음성 안 씀)
     // ① 저장본 후보: 지문이 있으면 '내용 일치 파일'만(qt-<날짜>-<지문>.wav) — 내용이 바뀌면 새로 생성.
     //    지문이 없을 때만 미리 만든 로컬 음성(mp3/wav) 후보를 쓴다.
     var cands = sig ? [ttsBase() + "qt-" + date + "-" + sig + ".wav"]
