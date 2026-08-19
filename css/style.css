@@ -1812,6 +1812,12 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 .askai-typing span:nth-child(3) { animation-delay: .4s; }
 @keyframes askaiBlink { 0%, 80%, 100% { opacity: .3; } 40% { opacity: 1; } }
 
+/* 답을 기다리는 동안의 안내 한 줄 — 교회 컴퓨터가 답을 쓰는 데 20~30초 걸려서,
+   멈춘 것이 아니라는 것을 알려 준다. 점 세 개 아래에 붙는다. */
+.askai-msg.askai-waiting { flex-direction: column; align-items: flex-start; }
+.askai-wait { margin: 6px 4px 0; font-size: .8rem; color: var(--muted); }
+.askai-wait[hidden] { display: none; }
+
 .askai-note { margin-top: 18px; font-size: .82rem; color: var(--muted); line-height: 1.6; text-align: center; }
 
 @media (max-width: 560px) {

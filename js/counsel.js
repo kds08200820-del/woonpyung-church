@@ -1,14 +1,24 @@
 /* ============================================================
    운평장로교회 — 운평 말씀지기 (페이지 내장 AI 질문창)
-   #askForm 이 있는 페이지에서만 작동 · Supabase Edge Function(counsel) 호출
+   #askForm 이 있는 페이지에서만 작동
    추천 질문은 '이번 주 말씀'(BULLETINS)에 맞춰 자동 생성
+
+   답변은 교회 컴퓨터(24시간 켜짐)의 Claude CLI 가 만듭니다.
+     ① ai_enqueue() 로 질문을 큐(ai_jobs)에 넣고
+     ② 교회 PC 워커(tools/ai_worker.py)가 가져가 답을 쓰고
+     ③ 이 화면이 폴링해서 답이 오면 보여 줍니다.
+   (예전에는 Edge Function → 구글 Gemini 였는데, 구글 사용 한도가
+    걸리면서 전부 멈춰 이 방식으로 바꿨습니다. 외부 API 키가 없습니다.)
    ============================================================ */
 (function () {
   const form = document.getElementById("askForm");
   if (!form) return; // 질문창이 있는 페이지에서만
   if (!window.SUPABASE_URL) return;
 
-  const ENDPOINT = window.SUPABASE_URL.replace(/\/$/, "") + "/functions/v1/counsel-";
+  const REST = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1";
+  const POLL_MS = 1500;      // 답 확인 간격
+  const OFFLINE_MS = 45000;  // 이 시간 안에 워커가 안 가져가면 '꺼져 있음'으로 안내
+  const GIVEUP_MS = 240000;  // 최대 대기
   const input = document.getElementById("askInput");
   const sendBtn = document.getElementById("askSend");
   const thread = document.getElementById("askThread");
@@ -72,10 +82,18 @@
   function addTyping() {
     thread.hidden = false;
     const el = document.createElement("div");
-    el.className = "askai-msg ai";
-    el.innerHTML = `<div class="askai-bubble askai-typing"><span></span><span></span><span></span></div>`;
+    el.className = "askai-msg ai askai-waiting";
+    el.innerHTML =
+      `<div class="askai-bubble askai-typing"><span></span><span></span><span></span></div>` +
+      `<div class="askai-wait" hidden></div>`;
     thread.appendChild(el);
     el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // 답이 오기까지 20~30초쯤 걸리므로, 멈춘 게 아니라는 것을 알려 준다.
+    el.note = (t) => {
+      const n = el.querySelector(".askai-wait");
+      n.textContent = t || "";
+      n.hidden = !t;
+    };
     return el;
   }
 
@@ -156,6 +174,62 @@
     return "";
   }
 
+  // ── 교회 PC(Claude CLI)에 질문을 맡기고 답을 기다린다 ──
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function headers(token) {
+    return {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token,
+      "apikey": window.SUPABASE_ANON_KEY || "",
+    };
+  }
+
+  // 질문을 큐에 넣는다. 한도 초과·권한 문제는 { ok:false, error } 로 돌아온다.
+  async function enqueue(token, payload) {
+    const res = await fetch(REST + "/rpc/ai_enqueue", {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify({ p_kind: "counsel", p_payload: payload }),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      console.error("[말씀지기] ai_enqueue", res.status, t);
+      throw new Error(
+        res.status === 404
+          ? "AI 준비가 아직 끝나지 않았습니다. (supabase/ai_jobs.sql 실행 필요)"
+          : "질문을 보내지 못했어요. 잠시 후 다시 시도해 주세요."
+      );
+    }
+    return await res.json();
+  }
+
+  // 답이 올 때까지 확인한다. onState('writing') 은 교회 PC가 작업을 잡은 순간.
+  async function waitForAnswer(token, id, onState) {
+    const t0 = Date.now();
+    let claimed = false;
+    while (Date.now() - t0 < GIVEUP_MS) {
+      await sleep(POLL_MS);
+      const res = await fetch(
+        REST + "/ai_jobs?id=eq." + encodeURIComponent(id) + "&select=status,result,error",
+        { headers: headers(token) }
+      );
+      if (res.ok) {
+        const row = (await res.json().catch(() => []))[0];
+        if (row) {
+          if (row.status === "done") return { text: row.result || "" };
+          if (row.status === "error") return { error: row.error || "답변을 만들지 못했어요." };
+          if (row.status === "processing" && !claimed) { claimed = true; onState && onState(); }
+        }
+      }
+      // 워커가 꺼져 있으면 아무리 기다려도 상태가 바뀌지 않는다 — 일찍 알려 준다.
+      if (!claimed && Date.now() - t0 > OFFLINE_MS) {
+        return { error: "지금은 말씀지기가 잠시 쉬고 있어요. 조금 뒤에 다시 물어봐 주세요. 🙏", offline: true };
+      }
+    }
+    return { error: "답변이 평소보다 오래 걸리고 있어요. 잠시 후 다시 한 번 물어봐 주세요." };
+  }
+
   async function ask() {
     const msg = (input.value || "").trim();
     if (!msg || busy) return;
@@ -173,60 +247,38 @@
       busy = false; sendBtn.disabled = false; return;
     }
 
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 60000); // 60초 지나면 무한 대기 방지
+    typing.note("교회 컴퓨터에 질문을 전하고 있어요…");
     try {
-      const res = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + token,
-          "apikey": window.SUPABASE_ANON_KEY || "",
-        },
-        body: JSON.stringify({ messages: history.slice(-12), context: sermonContext() }),
-        signal: ctrl.signal,
+      const q = await enqueue(token, {
+        messages: history.slice(-12),
+        context: sermonContext(),
       });
-      const ct = res.headers.get("content-type") || "";
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+      // 한도 초과·권한 등은 서버가 안내 문구를 그대로 담아 보낸다.
+      if (!q || !q.ok) {
         typing.remove();
-        // 내부 오류 원문(detail)에는 API 키 정책·클라우드 프로젝트 번호 등이 담기므로
-        // 교인 화면에는 안내 문구만 보이고, 원인은 콘솔로만 남긴다.
-        if (data.detail) console.error("[말씀지기]", data.detail);
-        addMsg("ai", data.error || "잠시 후 다시 시도해 주세요.");
-      } else if (res.body && ct.includes("text/plain")) {
-        // 스트리밍: 한 글자씩 실시간 표시
-        typing.remove();
-        const el = addMsg("ai", "");
-        const bubble = el.querySelector(".askai-bubble");
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let full = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          full += decoder.decode(value, { stream: true });
-          bubble.innerHTML = mdToHtml(full);
-          el.scrollIntoView({ block: "nearest" });
-        }
-        full = full.trim();
-        if (!full) { bubble.innerHTML = fmt("죄송해요, 답변을 만들지 못했어요. 다시 한 번 물어봐 주세요."); }
-        else { history.push({ role: "assistant", content: full }); }
+        addMsg("ai", (q && q.error) || "잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      typing.note("답을 기다리는 중이에요… (20~30초쯤 걸려요)");
+      const r = await waitForAnswer(token, q.id, () => {
+        typing.note("말씀지기가 답을 쓰고 있어요…");
+      });
+      typing.remove();
+
+      const text = (r.text || "").trim();
+      if (text) {
+        addMsg("ai", text);
+        history.push({ role: "assistant", content: text });
       } else {
-        // JSON (위기 안내 / 일일 한도 / 일반 응답)
-        const data = await res.json().catch(() => ({}));
-        typing.remove();
-        addMsg("ai", data.reply || data.error || "잠시 후 다시 시도해 주세요.");
-        if (data.reply) history.push({ role: "assistant", content: data.reply });
+        if (r.offline) console.error("[말씀지기] 교회 PC 워커 응답 없음 — ai_worker.py 실행 여부 확인");
+        addMsg("ai", r.error || "죄송해요, 답변을 만들지 못했어요. 다시 한 번 물어봐 주세요.");
       }
     } catch (err) {
       typing.remove();
-      addMsg("ai", err && err.name === "AbortError"
-        ? "응답이 평소보다 오래 걸리고 있어요. 잠시 후 다시 한 번 물어봐 주세요."
-        : "연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.");
+      addMsg("ai", (err && err.message) || "연결에 문제가 있어요. 잠시 후 다시 시도해 주세요.");
     } finally {
-      clearTimeout(timer);
       busy = false; sendBtn.disabled = false; input.focus();
     }
   }
