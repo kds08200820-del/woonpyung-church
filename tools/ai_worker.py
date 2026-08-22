@@ -54,6 +54,21 @@ for _s in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
+# 콘솔 창을 마우스로 클릭·드래그하면 '빠른 편집 모드'의 선택 상태가 되어
+# print 가 블로킹되고 워커 전체가 조용히 얼어붙는다. 이 콘솔에서만 그 모드를 끈다.
+# (2026-08-18~21 사이 워커가 며칠간 무응답이던 일의 재발 방지)
+if sys.platform == "win32":
+    try:
+        import ctypes
+        _k32 = ctypes.windll.kernel32
+        _h = _k32.GetStdHandle(-10)            # STD_INPUT_HANDLE
+        _mode = ctypes.c_uint32()
+        if _k32.GetConsoleMode(_h, ctypes.byref(_mode)):
+            # ENABLE_QUICK_EDIT_MODE(0x40) 해제 + ENABLE_EXTENDED_FLAGS(0x80) 설정
+            _k32.SetConsoleMode(_h, (_mode.value & ~0x40) | 0x80)
+    except Exception:
+        pass
+
 
 def _env(name, default=""):
     """환경변수를 읽되, 없으면 윈도우 사용자 환경변수(레지스트리)까지 확인한다.

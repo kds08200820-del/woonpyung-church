@@ -1820,6 +1820,10 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 
 .askai-note { margin-top: 18px; font-size: .82rem; color: var(--muted); line-height: 1.6; text-align: center; }
 
+/* 질문 기록의 날짜 구분선 — "8월 21일" 처럼 날짜가 바뀔 때마다 한 줄 */
+.askai-day { display: flex; align-items: center; gap: 10px; margin: 8px 0 -2px; color: var(--muted); font-size: .76rem; }
+.askai-day::before, .askai-day::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+
 @media (max-width: 560px) {
   .askai-br { display: none; }
   .askai-form button { padding: 0 18px; }
