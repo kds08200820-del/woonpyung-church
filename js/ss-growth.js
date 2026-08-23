@@ -3,16 +3,17 @@
  * 데이터: rpc/ss_growth_feed — 이름·종류·날짜·사진·❤·확인 여부만(개인정보 없음), 보기는 로그인 불필요.
  * 좋아요: rpc/ss_toggle_like — 로그인한 성도 누구나 누를 수 있다(교사단 전용이 아니다).
  *   · 로그인했으면 내 토큰으로 피드를 불러와 '내가 누른 하트'(mine)를 채워서 보여 준다.
- * 콘솔: [ss-growth.js] v20260820heart
+ * 이번주 미션: rpc/ss_current_mission — 있으면 배너로 안내(로그인 불필요).
+ * 콘솔: [ss-growth.js] v20260823mission
  */
-console.log('[ss-growth.js] v20260820heart');
+console.log('[ss-growth.js] v20260823mission');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
   if (!body) return;
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var SHOW = 8;                       // 처음에 보여줄 카드 수(더 보기로 확장)
-  var rows = [], filterName = '', expanded = false;
+  var rows = [], filterName = '', expanded = false, mission = null;
 
   // 로그인 정보(다른 홈 섹션과 같은 방식) — 없으면 보기만 가능
   function localSession() {
@@ -28,8 +29,17 @@ console.log('[ss-growth.js] v20260820heart');
   function openLogin() { var m = document.getElementById('authModal'); if (m) { m.hidden = false; document.body.style.overflow = 'hidden'; } }
 
   function pill(stype) {
-    var qt = stype === 'QT';
-    return '<span style="font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;background:' + (qt ? '#e8f0fb' : '#e8f6ee') + ';color:' + (qt ? '#2b5797' : '#1e874b') + ';">' + esc(stype) + '</span>';
+    var qt = stype === 'QT', ms = stype === '미션';
+    return '<span style="font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;background:' + (ms ? '#fdf3e0' : qt ? '#e8f0fb' : '#e8f6ee') + ';color:' + (ms ? '#b7791f' : qt ? '#2b5797' : '#1e874b') + ';">' + esc(stype) + '</span>';
+  }
+  // 이번주 미션 배너 — 기록이 없어도, 미션만 정해져 있으면 보여 준다
+  function missionBanner() {
+    if (!mission) return '';
+    return '<div style="max-width:620px;margin:0 auto 16px;text-align:center;border:1px solid #f2e2ae;background:#fffbe8;border-radius:12px;padding:11px 16px;">' +
+      '<b style="color:#8a6d1f;font-size:.9rem;">🎯 이번주 미션</b> · <span style="font-size:.9rem;color:#3a4a63;">' + esc(mission.title) + '</span> ' +
+      '<span style="color:#b7791f;font-weight:700;font-size:.86rem;">(달란트 ' + (Number(mission.amount) || 1) + '개)</span>' +
+      (mission.description ? '<div style="font-size:.8rem;color:#6b5b26;margin-top:4px;line-height:1.6;">' + esc(mission.description).replace(/\n/g, '<br>') + '</div>' : '') +
+      '<div style="font-size:.74rem;color:#9aa5b1;margin-top:4px;">주중 언제든 한 번, 대시보드에서 인증샷을 올리면 달란트가 지급돼요</div></div>';
   }
   function monthKey(d) { return String(d || '').slice(0, 7); }
 
@@ -90,7 +100,7 @@ console.log('[ss-growth.js] v20260820heart');
 
   function render() {
     if (!rows.length) {
-      body.innerHTML =
+      body.innerHTML = missionBanner() +
         '<div style="max-width:560px;margin:0 auto;text-align:center;border:1px dashed #cdd7e3;border-radius:16px;padding:34px 20px;background:#fafbfd;">' +
         '<div style="font-size:2rem;">🌱</div>' +
         '<p style="margin:10px 0 4px;font-weight:700;color:var(--accent,#032257);">아직 올라온 성장 기록이 없어요</p>' +
@@ -100,13 +110,14 @@ console.log('[ss-growth.js] v20260820heart');
     var ym = monthKey(new Date().toISOString());
     var mQt = rows.filter(function (r) { return r.stype === 'QT' && monthKey(r.date) === ym; }).length;
     var mPil = rows.filter(function (r) { return r.stype === '필사' && monthKey(r.date) === ym; }).length;
+    var mMs = rows.filter(function (r) { return r.stype === '미션' && monthKey(r.date) === ym; }).length;
     var names = [];
     rows.forEach(function (r) { if (r.name && names.indexOf(r.name) < 0) names.push(r.name); });
     names.sort(function (a, b) { return a.localeCompare(b, 'ko'); });
     var list = filterName ? rows.filter(function (r) { return r.name === filterName; }) : rows;
     var shown = expanded ? list : list.slice(0, SHOW);
-    body.innerHTML =
-      '<p style="text-align:center;color:var(--ink-soft,#7b8794);font-size:.86rem;margin:0 0 14px;">함께 자라는 어린이 <b style="color:var(--accent,#032257);">' + names.length + '명</b> · 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
+    body.innerHTML = missionBanner() +
+      '<p style="text-align:center;color:var(--ink-soft,#7b8794);font-size:.86rem;margin:0 0 14px;">함께 자라는 어린이 <b style="color:var(--accent,#032257);">' + names.length + '명</b> · 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b>' + (mMs ? ' · 미션 <b>' + mMs + '회</b>' : '') + '</p>' +
       (names.length > 1 ?
         '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;">' +
         '<button type="button" class="ssg-chip" data-n="" style="border:1px solid ' + (!filterName ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (!filterName ? 'var(--accent,#032257)' : '#fff') + ';color:' + (!filterName ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.82rem;cursor:pointer;">전체</button>' +
@@ -128,12 +139,15 @@ console.log('[ss-growth.js] v20260820heart');
 
   function load() {
     if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) { body.innerHTML = ''; return; }
-    fetch(window.SUPABASE_URL + '/rest/v1/rpc/ss_growth_feed', {
-      method: 'POST',
-      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (token() || window.SUPABASE_ANON_KEY), 'Content-Type': 'application/json' },
-      body: '{}'
-    }).then(function (r) { return r.ok ? r.json() : []; })
-      .then(function (data) { rows = data || []; render(); })
+    function rpc(name) {
+      return fetch(window.SUPABASE_URL + '/rest/v1/rpc/' + name, {
+        method: 'POST',
+        headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (token() || window.SUPABASE_ANON_KEY), 'Content-Type': 'application/json' },
+        body: '{}'
+      }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+    }
+    Promise.all([rpc('ss_growth_feed'), rpc('ss_current_mission')])
+      .then(function (res) { rows = res[0] || []; mission = res[1] || null; render(); })
       .catch(function () { body.innerHTML = ''; });
   }
 

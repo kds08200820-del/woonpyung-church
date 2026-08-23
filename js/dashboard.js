@@ -1181,11 +1181,13 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
       '<h3 style="margin:0;font-size:1rem;color:var(--accent,#032257);">🏫 주일학교 현황</h3>' +
       '<span style="font-size:.78rem;background:#e8f0fb;color:#2b5797;border-radius:999px;padding:3px 11px;">내 직분: ' + esc(roleLabel) + '</span></div>' +
       '<div id="ssStats" style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;"></div>' +
+      '<div id="ssMissionBox" style="margin-bottom:14px;"></div>' +
       '<div id="ssBoardBox" style="margin-bottom:14px;"></div>' +
       '<div id="ssCertsBox" style="margin-bottom:14px;"></div>' +
       '<div id="ssStudentsBox"></div>' +
       '<p class="fin-msg" id="ssMsg" style="margin-top:8px;"></p></div>' +
       '<div id="ssGuardianBox" style="margin-top:22px;"></div>';
+    loadSsMission(el, ctx, me);
     loadSsBoard(el, ctx, me);
     loadSsCerts(el, ctx, me);
     loadSsStudents(el, ctx, me);
@@ -1203,6 +1205,71 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
     }).catch(function () {});
   }
   function ssFlash(el, ok, txt) { var m = el.querySelector('#ssMsg'); if (m) { m.style.color = ok ? 'green' : '#c0392b'; m.textContent = txt; } }
+
+  /* ── 이번주 미션 — 교사단이 한 주에 하나 설정, 어린이가 인증하면 달란트 자동 지급 ──
+   * 데이터: ss_missions (supabase/20260823_1500_ss_weekly_mission.sql)
+   * SQL 미실행 등으로 테이블이 없으면 박스를 조용히 숨긴다(다른 SS 섹션과 동일). */
+  function ssWeekStartStr() {
+    var d = new Date(todayStr() + 'T00:00:00');
+    d.setDate(d.getDate() - d.getDay());          // 이번 주 일요일
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function loadSsMission(el, ctx, me) {
+    var box = el.querySelector('#ssMissionBox'); if (!box) return;
+    var ws = ssWeekStartStr();
+    brFetch('ss_missions?select=*&week_start=eq.' + ws).then(function (rows) {
+      var m = (rows || [])[0] || null;
+      var editing = !m;                            // 아직 없으면 바로 입력 폼
+      var opened = !!m;                            // 폼은 '미션 정하기'를 눌러야 펼침
+      function head(btnHtml) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<b style="font-size:.9rem;color:var(--accent,#032257);">🎯 이번주 미션</b>' + (btnHtml || '') + '</div>';
+      }
+      function draw() {
+        if (m && !editing) {
+          box.innerHTML = head('<button type="button" class="btn btn-line" id="ssMsEdit" style="padding:3px 12px;font-size:.78rem;">수정</button>') +
+            '<div style="border:1px solid #f2e2ae;background:#fffbe8;border-radius:10px;padding:10px 12px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
+            '<b style="font-size:.88rem;color:#8a6d1f;">' + esc(m.title) + '</b>' +
+            '<span style="font-size:.76rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#b7791f;font-weight:700;">달란트 ' + (Number(m.amount) || 1) + '개</span></div>' +
+            (m.description ? '<div style="font-size:.82rem;color:#6b5b26;margin-top:5px;line-height:1.6;">' + esc(m.description).replace(/\n/g, '<br>') + '</div>' : '') +
+            '<div style="font-size:.72rem;color:#9aa5b1;margin-top:5px;">' + esc(ws) + ' 주간 · ' + esc(m.created_by || '') + ' · 어린이가 주중 언제든 한 번 인증하면 자동 지급</div></div>';
+          box.querySelector('#ssMsEdit').onclick = function () { editing = true; draw(); };
+          return;
+        }
+        if (!opened) {
+          box.innerHTML = head('<button type="button" class="btn btn-line" id="ssMsAdd" style="padding:3px 12px;font-size:.78rem;">＋ 미션 정하기</button>') +
+            '<p style="color:#9aa5b1;font-size:.84rem;margin:4px 0 0;">이번 주 미션이 아직 없습니다. 한 주에 하나, 어린이들이 주중에 수행할 미션을 정해 주세요.</p>';
+          box.querySelector('#ssMsAdd').onclick = function () { opened = true; draw(); };
+          return;
+        }
+        box.innerHTML = head() +
+          '<div style="border:1px solid #e8edf3;border-radius:10px;padding:12px;">' +
+          '<div class="af-field" style="margin-bottom:8px;"><label style="font-size:.78rem;color:#7b8794;">미션 이름</label>' +
+          '<input type="text" id="ssMsTitle" maxlength="60" placeholder="예: 부모님 안마해 드리기" value="' + esc(m ? m.title : '') + '" style="width:100%;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;"></div>' +
+          '<div class="af-field" style="margin-bottom:8px;"><label style="font-size:.78rem;color:#7b8794;">설명(선택)</label>' +
+          '<textarea id="ssMsDesc" maxlength="300" placeholder="어떻게 하면 되는지, 인증샷은 무엇을 찍으면 되는지" style="width:100%;min-height:56px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;">' + esc(m ? (m.description || '') : '') + '</textarea></div>' +
+          '<div class="af-field" style="margin-bottom:10px;"><label style="font-size:.78rem;color:#7b8794;">달성 시 달란트</label>' +
+          '<input type="number" id="ssMsAmt" min="1" max="100" value="' + esc(m ? m.amount : 3) + '" style="width:110px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;"></div>' +
+          '<div style="display:flex;gap:8px;">' +
+          '<button type="button" class="btn btn-solid" id="ssMsSave" style="padding:6px 16px;">저장</button>' +
+          '<button type="button" class="btn btn-line" id="ssMsCancel" style="padding:6px 16px;">취소</button></div></div>';
+        box.querySelector('#ssMsCancel').onclick = function () { editing = !!m ? false : true; opened = !!m; draw(); };
+        box.querySelector('#ssMsSave').onclick = function () {
+          var title = box.querySelector('#ssMsTitle').value.trim();
+          var desc = box.querySelector('#ssMsDesc').value.trim();
+          var amt = Math.max(1, Number(box.querySelector('#ssMsAmt').value) || 1);
+          if (!title) { ssFlash(el, false, '미션 이름을 입력해 주세요.'); return; }
+          var req = m
+            ? brFetch('ss_missions?id=eq.' + m.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ title: title, description: desc, amount: amt }) })
+            : brFetch('ss_missions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ week_start: ws, title: title, description: desc, amount: amt, created_by: me.memberName || '관리자' }) });
+          req.then(function () { ssFlash(el, true, '✓ 이번주 미션이 저장되었습니다.'); loadSsMission(el, ctx, me); })
+            .catch(function (e) { ssFlash(el, false, '미션 저장 실패: ' + e.message); });
+        };
+      }
+      draw();
+    }).catch(function () { box.innerHTML = ''; });
+  }
 
   /* 현황판(공지) — 조회는 교사단, 편집은 부장·서기(+관리자) */
   function loadSsBoard(el, ctx, me) {
@@ -1726,8 +1793,8 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
 
   /* ================= QT·필사 인증 (인증샷 → R2, 기록 → ss_submissions) ================= */
   function certPill(stype) {
-    var qt = stype === 'QT';
-    return '<span style="font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 9px;background:' + (qt ? '#e8f0fb' : '#e8f6ee') + ';color:' + (qt ? '#2b5797' : '#1e874b') + ';">' + esc(stype) + '</span>';
+    var qt = stype === 'QT', ms = stype === '미션';
+    return '<span style="font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 9px;background:' + (ms ? '#fdf3e0' : qt ? '#e8f0fb' : '#e8f6ee') + ';color:' + (ms ? '#b7791f' : qt ? '#2b5797' : '#1e874b') + ';">' + esc(stype) + '</span>';
   }
   function certThumb(r, size) {
     size = size || 56;
@@ -1750,9 +1817,14 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
     if (!container || !subjKey) return;
     function draw() {
       container.innerHTML = '<div class="form-card" style="padding:16px 18px;"><p class="qt-loading">불러오는 중…</p></div>';
-      brFetch('ss_submissions?select=*&member_key=eq.' + encodeURIComponent(subjKey) + '&order=sub_date.desc,id.desc&limit=300')
-        .then(function (rows) {
-          rows = rows || [];
+      Promise.all([
+        brFetch('ss_submissions?select=*&member_key=eq.' + encodeURIComponent(subjKey) + '&order=sub_date.desc,id.desc&limit=300'),
+        // 이번 주 미션(없으면 null) — SQL 미실행 등으로 RPC가 없으면 조용히 없는 것으로 처리
+        brFetch('rpc/ss_current_mission', { method: 'POST', body: '{}' }).catch(function () { return null; })
+      ])
+        .then(function (res) {
+          var rows = res[0] || [];
+          var mission = res[1] || null;
           var ym = monthKey(todayStr());
           var mQt = rows.filter(function (r) { return r.stype === 'QT' && monthKey(r.sub_date) === ym; }).length;
           var mPil = rows.filter(function (r) { return r.stype === '필사' && monthKey(r.sub_date) === ym; }).length;
@@ -1760,10 +1832,23 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           var td = todayStr();
           function doneToday(t) { return rows.filter(function (r) { return r.stype === t && r.sub_date === td; }).length > 0; }
           var doneQt = doneToday('QT'), donePil = doneToday('필사');
+          // 미션은 '한 주에 한 번' — 이번 주 미션으로 올린 인증이 있으면 완료
+          var doneMission = !!(mission && rows.filter(function (r) { return r.stype === '미션' && String(r.mission_id) === String(mission.id); }).length);
           container.innerHTML =
             '<div class="form-card" style="padding:16px 18px;">' +
-            '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📖 QT·필사 인증</h3>' +
-            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">QT·필사는 <b>각각 하루에 한 번</b>만 올릴 수 있어요. 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고, 홈 화면 <b>‘주일학교 성장기’</b> 섹션에 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
+            '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📖 QT·필사·미션 인증</h3>' +
+            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">QT·필사는 <b>각각 하루에 한 번</b>, 미션은 <b>한 주에 한 번</b> 올릴 수 있어요. 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고, 홈 화면 <b>‘주일학교 성장기’</b> 섹션에 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
+            (mission ?
+              '<div style="border:1px solid #f2e2ae;background:#fffbe8;border-radius:12px;padding:12px 14px;margin-bottom:12px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
+              '<b style="font-size:.92rem;color:#8a6d1f;">🎯 이번주 미션 · ' + esc(mission.title) + '</b>' +
+              '<span style="font-size:.78rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#b7791f;font-weight:700;">달란트 ' + (Number(mission.amount) || 1) + '개</span></div>' +
+              (mission.description ? '<div style="font-size:.82rem;color:#6b5b26;margin-top:5px;line-height:1.6;">' + esc(mission.description).replace(/\n/g, '<br>') + '</div>' : '') +
+              '<div style="margin-top:10px;">' +
+              (doneMission ?
+                '<button type="button" class="btn btn-line" disabled style="padding:7px 15px;color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;">✓ 이번 주 미션 완료!</button>' :
+                '<button type="button" class="btn btn-solid" id="sscUpMs" style="padding:7px 15px;background:#b7791f;border-color:#b7791f;">📷 미션 인증 올리기</button>') +
+              '</div></div>' : '') +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
             '<button type="button" class="btn ' + (doneQt ? 'btn-line' : 'btn-solid') + '" id="sscUpQt" style="padding:8px 16px;' + (doneQt ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : '') + '">' + (doneQt ? '✓ 오늘 QT 인증 완료' : '📷 QT 인증 올리기') + '</button>' +
             '<button type="button" class="btn ' + (donePil ? 'btn-line' : 'btn-solid') + '" id="sscUpPil" style="padding:8px 16px;' + (donePil ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : 'background:#1e874b;border-color:#1e874b;') + '">' + (donePil ? '✓ 오늘 필사 인증 완료' : '✍️ 필사 인증 올리기') + '</button>' +
@@ -1784,16 +1869,20 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           var msg = container.querySelector('#sscMsg');
           function flash(ok, t) { msg.style.color = ok ? 'green' : '#c0392b'; msg.textContent = t; }
           var fileInp = container.querySelector('#sscFile'), curType = 'QT';
-          // 하루 한 번 — 이미 올렸으면 사진 고르는 창을 열지 않는다(서버도 트리거로 한 번 더 막는다)
+          // 하루 한 번(QT·필사)/주 1회(미션) — 이미 올렸으면 사진 고르는 창을 열지 않는다(서버도 트리거로 한 번 더 막는다)
           function pick(t) {
-            if (doneToday(t)) {
-              flash(false, '오늘 ' + t + ' 인증은 이미 올렸어요. 하루에 한 번만 올릴 수 있어요. 바꾸시려면 아래 목록에서 오늘 것을 삭제한 뒤 다시 올려 주세요.');
+            if (t === '미션' ? doneMission : doneToday(t)) {
+              flash(false, t === '미션'
+                ? '이번 주 미션 인증은 이미 올렸어요. 미션은 한 주에 한 번만 올릴 수 있어요.'
+                : '오늘 ' + t + ' 인증은 이미 올렸어요. 하루에 한 번만 올릴 수 있어요. 바꾸시려면 아래 목록에서 오늘 것을 삭제한 뒤 다시 올려 주세요.');
               return;
             }
             curType = t; fileInp.click();
           }
           container.querySelector('#sscUpQt').onclick = function () { pick('QT'); };
           container.querySelector('#sscUpPil').onclick = function () { pick('필사'); };
+          var msBtn = container.querySelector('#sscUpMs');
+          if (msBtn) msBtn.onclick = function () { pick('미션'); };
           fileInp.onchange = function () {
             var f = fileInp.files && fileInp.files[0]; fileInp.value = '';
             if (!f) return;
@@ -1801,7 +1890,9 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
             if (!(window.ChurchUpload && ChurchUpload.isReady())) { flash(false, '업로드 서버가 설정되지 않았습니다.'); return; }
             flash(true, ''); msg.style.color = '#7b8794'; msg.textContent = curType + ' 인증샷 올리는 중…';
             ChurchUpload.upload(f, { folder: 'ss-cert' }).then(function (up) {
-              return brFetch('ss_submissions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ member_key: subjKey, child_name: subjName || '', stype: curType, photo_url: up.url, photo_key: up.key || '' }) });
+              var body = { member_key: subjKey, child_name: subjName || '', stype: curType, photo_url: up.url, photo_key: up.key || '' };
+              if (curType === '미션' && mission) body.mission_id = mission.id;
+              return brFetch('ss_submissions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
             }).then(function () { flash(true, '✓ ' + curType + ' 인증이 올라갔어요! 달란트 지급 + 성장기 게시 완료 ⭐'); draw(); if (onChange) onChange(); })
               .catch(function (e) {
                 var m = (e && e.message) || '';
@@ -1910,11 +2001,11 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
         var pending = rows.filter(function (r) { return !r.confirmed_by; }).length;
         box.innerHTML =
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">' +
-          '<b style="font-size:.9rem;color:var(--accent,#032257);">📖 QT·필사 인증 관리</b>' +
+          '<b style="font-size:.9rem;color:var(--accent,#032257);">📖 QT·필사·미션 인증 관리</b>' +
           '<span style="font-size:.78rem;color:#7b8794;">전체 ' + rows.length + '건 · 미확인 <b style="color:' + (pending ? '#c0392b' : '#1e874b') + ';">' + pending + '건</b></span></div>' +
           (rows.length ?
             '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' +
-            ['all', 'QT', '필사'].map(function (t) {
+            ['all', 'QT', '필사', '미션'].map(function (t) {
               var on = fType === t;
               return '<button type="button" class="ssct-type" data-t="' + t + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:3px 13px;font:inherit;font-size:.76rem;cursor:pointer;">' + (t === 'all' ? '전체' : t) + '</button>';
             }).join('') +
