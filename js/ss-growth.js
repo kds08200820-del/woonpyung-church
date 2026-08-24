@@ -6,7 +6,7 @@
  * 이번주 미션: rpc/ss_current_mission — 있으면 배너로 안내(로그인 불필요).
  * 콘솔: [ss-growth.js] v20260823mission
  */
-console.log('[ss-growth.js] v20260823mission');
+console.log('[ss-growth.js] v20260825fix');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
@@ -137,19 +137,36 @@ console.log('[ss-growth.js] v20260823mission');
     bindLikes();
   }
 
+  function callRpc(name, auth) {
+    return fetch(window.SUPABASE_URL + '/rest/v1/rpc/' + name, {
+      method: 'POST',
+      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + auth, 'Content-Type': 'application/json' },
+      body: '{}'
+    }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  }
+  // 홈을 오랜만에 열면 저장된 로그인 토큰이 만료돼 401이 나면서 성장기가
+  // '기록 없음'으로 비어 보이던 문제(2026-08-25) — 실패하면 익명 키로 다시
+  // 시도한다. 피드·미션은 익명으로도 볼 수 있어 화면은 항상 채워진다.
+  // (익명 폴백에서는 '내가 누른 하트' 표시만 빠지며, 토큰이 갱신되면 복원됨)
+  function rpc(name) {
+    var tk = token();
+    var p = callRpc(name, tk || window.SUPABASE_ANON_KEY);
+    if (tk) p = p.catch(function () { return callRpc(name, window.SUPABASE_ANON_KEY); });
+    return p.catch(function () { return null; });   // null = 진짜 실패(빈 배열과 구분)
+  }
+  var retries = 0;
   function load() {
     if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) { body.innerHTML = ''; return; }
-    function rpc(name) {
-      return fetch(window.SUPABASE_URL + '/rest/v1/rpc/' + name, {
-        method: 'POST',
-        headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (token() || window.SUPABASE_ANON_KEY), 'Content-Type': 'application/json' },
-        body: '{}'
-      }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
-    }
     Promise.all([rpc('ss_growth_feed'), rpc('ss_current_mission')])
-      .then(function (res) { rows = res[0] || []; mission = res[1] || null; render(); })
+      .then(function (res) {
+        // 네트워크가 잠깐 막힌 경우 — 빈 화면으로 확정하지 말고 잠시 뒤 다시 시도
+        if (res[0] === null && retries < 2) { retries++; setTimeout(load, 2000 * retries); return; }
+        rows = res[0] || []; mission = res[1] || null; render();
+      })
       .catch(function () { body.innerHTML = ''; });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load); else load();
+  // 로그인 세션이 준비되면(토큰 갱신 포함) 한 번 더 불러와 '내 하트' 표시를 복원
+  window.addEventListener('sb-ready', function () { setTimeout(load, 400); }, { once: true });
 })();

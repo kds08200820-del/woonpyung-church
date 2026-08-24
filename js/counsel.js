@@ -340,7 +340,7 @@
     }
   }
 
-  async function loadHistory() {
+  async function loadHistory(retry) {
     const token = getToken();
     if (!token) return;
     let rows = [];
@@ -351,9 +351,18 @@
           "&order=created_at.desc&limit=" + HISTORY_N,
         { headers: headers(token) }
       );
-      if (!res.ok) { console.error("[말씀지기] 기록 조회 실패", res.status); return; }
+      if (!res.ok) {
+        console.error("[말씀지기] 기록 조회 실패", res.status);
+        // 오랜만에 연 화면은 저장된 토큰이 만료돼 401이 난다 — 로그인 클라이언트가
+        // 토큰을 갱신할 시간을 준 뒤 한 번 더 시도한다. (성장기와 같은 문제, 2026-08-25)
+        if (!retry) setTimeout(() => loadHistory(true), 3000);
+        return;
+      }
       rows = (await res.json().catch(() => [])) || [];
-    } catch (e) { return; }
+    } catch (e) {
+      if (!retry) setTimeout(() => loadHistory(true), 3000);
+      return;
+    }
     if (!rows.length) return;
 
     rows.reverse(); // 오래된 것부터 위에서 아래로
