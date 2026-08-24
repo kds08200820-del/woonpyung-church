@@ -1837,10 +1837,12 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           var doneQt = doneToday('QT'), donePil = doneToday('필사');
           // 미션은 '한 주에 한 번' — 이번 주 미션으로 올린 인증이 있으면 완료
           var doneMission = !!(mission && rows.filter(function (r) { return r.stype === '미션' && String(r.mission_id) === String(mission.id); }).length);
+          var calParts = certCalendarHtml();   // { cal: 달력, list: 인증 목록 }
           container.innerHTML =
             '<div class="form-card" style="padding:16px 18px;">' +
             '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📖 QT·필사·미션 인증</h3>' +
             '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">QT·필사는 <b>각각 하루에 한 번</b>, 미션은 <b>한 주에 한 번</b> 올릴 수 있어요. 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고, 홈 화면 <b>‘주일학교 성장기’</b> 섹션에 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
+            calParts.cal +   // 달력을 맨 위로(2026-08-25 요청) — 미션·버튼은 그 아래
             (mission ?
               '<div style="border:1px solid #f2e2ae;background:#fffbe8;border-radius:12px;padding:12px 14px;margin-bottom:12px;">' +
               '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
@@ -1857,12 +1859,13 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
             '<button type="button" class="btn ' + (donePil ? 'btn-line' : 'btn-solid') + '" id="sscUpPil" style="padding:8px 16px;' + (donePil ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : 'background:#1e874b;border-color:#1e874b;') + '">' + (donePil ? '✓ 오늘 필사 인증 완료' : '✍️ 필사 인증 올리기') + '</button>' +
             '<input type="file" id="sscFile" accept="image/*" style="display:none;"></div>' +
             '<p class="fin-msg" id="sscMsg" style="margin:0 0 8px;"></p>' +
-            certCalendarHtml() +
+            calParts.list +
             '</div>';
           // ── 인증 달력 — 월별로 관리(◀ ▶ 이동), 인증한 날에 종류별 색 점,
-          //    날짜를 누르면 그날 인증만 아래에, 목록은 스크롤 박스 안에(2026-08-25) ──
+          //    날짜를 누르면 그날 인증만 아래에, 목록은 스크롤 박스 안에(2026-08-25)
+          //    달력(cal)과 목록(list)을 나눠 돌려준다 — 달력은 카드 맨 위, 목록은 맨 아래 ──
           function certCalendarHtml() {
-            if (!rows.length) return '<p style="color:#9aa5b1;font-size:.86rem;">아직 올린 인증이 없어요. 첫 인증샷을 올려 보세요! 🌱</p>';
+            if (!rows.length) return { cal: '', list: '<p style="color:#9aa5b1;font-size:.86rem;">아직 올린 인증이 없어요. 첫 인증샷을 올려 보세요! 🌱</p>' };
             var mLabel = Number(fMonth.slice(0, 4)) + '년 ' + Number(fMonth.slice(5, 7)) + '월';
             var monthRows = rows.filter(function (r) { return monthKey(r.sub_date) === fMonth; });
             var byDay = {};
@@ -1890,7 +1893,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
                 '<div style="display:flex;gap:2px;justify-content:center;margin-top:3px;min-height:6px;">' + dots.join('') + '</div></div>';
             }
             var list = fDay ? monthRows.filter(function (r) { return r.sub_date === fDay; }) : monthRows;
-            return '<div style="border:1px solid #e8edf3;border-radius:12px;padding:10px 12px;margin-bottom:10px;">' +
+            var calHtml = '<div style="border:1px solid #e8edf3;border-radius:12px;padding:10px 12px;margin-bottom:10px;">' +
               '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
               '<button type="button" class="btn btn-line" id="sscPrevM" style="padding:2px 11px;font-size:.82rem;">◀</button>' +
               '<b style="font-size:.9rem;color:var(--accent,#032257);">' + mLabel + ' <span style="font-weight:400;color:#7b8794;font-size:.78rem;">인증 ' + monthRows.length + '건</span></b>' +
@@ -1899,8 +1902,8 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
               ['일', '월', '화', '수', '목', '금', '토'].map(function (w, i) { return '<div style="' + (i === 0 ? 'color:#c0392b;' : '') + '">' + w + '</div>'; }).join('') + '</div>' +
               '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">' + cells + '</div>' +
               '<div style="display:flex;gap:10px;justify-content:center;margin-top:8px;font-size:.72rem;color:#7b8794;">' +
-              ['QT', '필사', '미션'].map(function (t) { return '<span><span style="width:6px;height:6px;border-radius:50%;background:' + TYPE_COLOR[t] + ';display:inline-block;margin-right:3px;"></span>' + t + '</span>'; }).join('') + '</div></div>' +
-              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+              ['QT', '필사', '미션'].map(function (t) { return '<span><span style="width:6px;height:6px;border-radius:50%;background:' + TYPE_COLOR[t] + ';display:inline-block;margin-right:3px;"></span>' + t + '</span>'; }).join('') + '</div></div>';
+            var listHtml = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
               '<b style="font-size:.84rem;color:var(--accent,#032257);">🗂 ' + (fDay ? Number(fDay.slice(8, 10)) + '일 인증 (' + list.length + '건)' : mLabel + ' 인증 (' + list.length + '건)') + '</b>' +
               (fDay ? '<button type="button" class="btn btn-line" id="sscAllDays" style="padding:2px 10px;font-size:.74rem;">이 달 전체 보기</button>' : '') + '</div>' +
               (list.length ?
@@ -1918,6 +1921,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
                     '<button type="button" class="btn btn-line ssc-del" data-id="' + r.id + '" style="padding:2px 8px;font-size:.72rem;color:#c0392b;">삭제</button></div>';
                 }).join('') + '</div>' :
                 '<p style="color:#9aa5b1;font-size:.84rem;">이 달에는 올린 인증이 없어요.</p>');
+            return { cal: calHtml, list: listHtml };
           }
           function shiftMonth(delta) {
             var d = new Date(fMonth + '-01T00:00:00');
