@@ -2001,8 +2001,9 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           return '<button type="button" class="ssg-kid" data-i="' + i + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.84rem;cursor:pointer;">' + esc(k.name) + '</button>';
         }).join('') + '</div>' : '') +
         '</div>' +
-        '<div id="ssgTal" style="margin-bottom:14px;"></div>' +
+        // 인증(달력)을 '우리 아이 주일학교' 바로 다음에 — 매일 쓰는 화면이 맨 위(2026-08-25)
         '<div id="ssgCerts" style="margin-bottom:14px;"></div>' +
+        '<div id="ssgTal" style="margin-bottom:14px;"></div>' +
         '<div id="ssgOff"></div>';
       Array.prototype.forEach.call(el.querySelectorAll('.ssg-kid'), function (b) {
         b.onclick = function () { cur = Number(b.dataset.i); draw(); };
