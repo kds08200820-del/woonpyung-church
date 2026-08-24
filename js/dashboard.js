@@ -1792,6 +1792,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
   }
 
   /* ================= QT·필사 인증 (인증샷 → R2, 기록 → ss_submissions) ================= */
+  var TYPE_COLOR = { 'QT': '#2b5797', '필사': '#1e874b', '미션': '#b7791f' };  // 달력 점 색
   function certPill(stype) {
     var qt = stype === 'QT', ms = stype === '미션';
     return '<span style="font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 9px;background:' + (ms ? '#fdf3e0' : qt ? '#e8f0fb' : '#e8f6ee') + ';color:' + (ms ? '#b7791f' : qt ? '#2b5797' : '#1e874b') + ';">' + esc(stype) + '</span>';
@@ -1815,6 +1816,8 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
    * onChange: 업로드/삭제 후 호출 — 달란트 카드 새로고침용(자동 지급 반영) ── */
   function loadMyCerts(container, subjKey, subjName, onChange) {
     if (!container || !subjKey) return;
+    var fMonth = monthKey(todayStr());   // 인증 달력에 표시할 달 — 기본은 이번 달
+    var fDay = '';                       // 달력에서 고른 날짜('' = 그 달 전체)
     function draw() {
       container.innerHTML = '<div class="form-card" style="padding:16px 18px;"><p class="qt-loading">불러오는 중…</p></div>';
       Promise.all([
@@ -1854,18 +1857,86 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
             '<button type="button" class="btn ' + (donePil ? 'btn-line' : 'btn-solid') + '" id="sscUpPil" style="padding:8px 16px;' + (donePil ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : 'background:#1e874b;border-color:#1e874b;') + '">' + (donePil ? '✓ 오늘 필사 인증 완료' : '✍️ 필사 인증 올리기') + '</button>' +
             '<input type="file" id="sscFile" accept="image/*" style="display:none;"></div>' +
             '<p class="fin-msg" id="sscMsg" style="margin:0 0 8px;"></p>' +
-            (rows.length ? rows.map(function (r) {
-              var likes = (r.liked_by || []).length;
-              return '<div style="display:flex;gap:10px;align-items:center;border:1px solid #e8edf3;border-radius:10px;padding:8px 10px;margin-bottom:8px;">' +
-                certThumb(r, 56) +
-                '<div style="flex:1;min-width:0;">' +
-                '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' + certPill(r.stype) + '<span style="font-size:.8rem;color:#7b8794;">' + esc(r.sub_date) + '</span></div>' +
-                '<div style="font-size:.8rem;margin-top:3px;">' +
-                (likes ? '<span style="color:#e0639b;">❤ ' + likes + '</span> ' : '') +
-                (r.confirmed_by ? '<span style="color:#1e874b;font-weight:700;">✓ ' + esc(r.confirmed_by) + ' 선생님 확인</span>' : '<span style="color:#9aa5b1;">확인 대기중</span>') +
-                '</div></div>' +
-                '<button type="button" class="btn btn-line ssc-del" data-id="' + r.id + '" style="padding:2px 8px;font-size:.72rem;color:#c0392b;">삭제</button></div>';
-            }).join('') : '<p style="color:#9aa5b1;font-size:.86rem;">아직 올린 인증이 없어요. 첫 인증샷을 올려 보세요! 🌱</p>');
+            certCalendarHtml() +
+            '</div>';
+          // ── 인증 달력 — 월별로 관리(◀ ▶ 이동), 인증한 날에 종류별 색 점,
+          //    날짜를 누르면 그날 인증만 아래에, 목록은 스크롤 박스 안에(2026-08-25) ──
+          function certCalendarHtml() {
+            if (!rows.length) return '<p style="color:#9aa5b1;font-size:.86rem;">아직 올린 인증이 없어요. 첫 인증샷을 올려 보세요! 🌱</p>';
+            var mLabel = Number(fMonth.slice(0, 4)) + '년 ' + Number(fMonth.slice(5, 7)) + '월';
+            var monthRows = rows.filter(function (r) { return monthKey(r.sub_date) === fMonth; });
+            var byDay = {};
+            monthRows.forEach(function (r) { (byDay[r.sub_date] = byDay[r.sub_date] || []).push(r.stype); });
+            // 달력 격자
+            var first = new Date(fMonth + '-01T00:00:00');
+            var startDow = first.getDay();
+            var days = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+            var td = todayStr();
+            var cells = '';
+            for (var i = 0; i < startDow; i++) cells += '<div></div>';
+            for (var d = 1; d <= days; d++) {
+              var ds = fMonth + '-' + pad2(d);
+              var types = byDay[ds] || [];
+              var dots = [];
+              ['QT', '필사', '미션'].forEach(function (t) {
+                if (types.indexOf(t) >= 0) dots.push('<span style="width:6px;height:6px;border-radius:50%;background:' + TYPE_COLOR[t] + ';display:inline-block;"></span>');
+              });
+              var sel = fDay === ds, isToday = ds === td;
+              cells += '<div class="ssc-day" data-d="' + ds + '" style="min-height:44px;border-radius:9px;padding:4px 2px 3px;text-align:center;' +
+                (types.length ? 'cursor:pointer;background:#f7fafd;' : 'color:#c3ccd6;') +
+                (sel ? 'outline:2px solid var(--accent,#032257);background:#eef3fb;' : '') +
+                (isToday && !sel ? 'outline:1px dashed #b7c4d6;' : '') + '">' +
+                '<div style="font-size:.78rem;' + (types.length ? 'font-weight:700;color:var(--accent,#032257);' : '') + '">' + d + '</div>' +
+                '<div style="display:flex;gap:2px;justify-content:center;margin-top:3px;min-height:6px;">' + dots.join('') + '</div></div>';
+            }
+            var list = fDay ? monthRows.filter(function (r) { return r.sub_date === fDay; }) : monthRows;
+            return '<div style="border:1px solid #e8edf3;border-radius:12px;padding:10px 12px;margin-bottom:10px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+              '<button type="button" class="btn btn-line" id="sscPrevM" style="padding:2px 11px;font-size:.82rem;">◀</button>' +
+              '<b style="font-size:.9rem;color:var(--accent,#032257);">' + mLabel + ' <span style="font-weight:400;color:#7b8794;font-size:.78rem;">인증 ' + monthRows.length + '건</span></b>' +
+              '<button type="button" class="btn btn-line" id="sscNextM" style="padding:2px 11px;font-size:.82rem;">▶</button></div>' +
+              '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;font-size:.72rem;color:#9aa5b1;text-align:center;margin-bottom:3px;">' +
+              ['일', '월', '화', '수', '목', '금', '토'].map(function (w, i) { return '<div style="' + (i === 0 ? 'color:#c0392b;' : '') + '">' + w + '</div>'; }).join('') + '</div>' +
+              '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;">' + cells + '</div>' +
+              '<div style="display:flex;gap:10px;justify-content:center;margin-top:8px;font-size:.72rem;color:#7b8794;">' +
+              ['QT', '필사', '미션'].map(function (t) { return '<span><span style="width:6px;height:6px;border-radius:50%;background:' + TYPE_COLOR[t] + ';display:inline-block;margin-right:3px;"></span>' + t + '</span>'; }).join('') + '</div></div>' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+              '<b style="font-size:.84rem;color:var(--accent,#032257);">🗂 ' + (fDay ? Number(fDay.slice(8, 10)) + '일 인증 (' + list.length + '건)' : mLabel + ' 인증 (' + list.length + '건)') + '</b>' +
+              (fDay ? '<button type="button" class="btn btn-line" id="sscAllDays" style="padding:2px 10px;font-size:.74rem;">이 달 전체 보기</button>' : '') + '</div>' +
+              (list.length ?
+                '<div style="max-height:380px;overflow:auto;padding-right:2px;">' +
+                list.map(function (r) {
+                  var likes = (r.liked_by || []).length;
+                  return '<div style="display:flex;gap:10px;align-items:center;border:1px solid #e8edf3;border-radius:10px;padding:8px 10px;margin-bottom:8px;">' +
+                    certThumb(r, 56) +
+                    '<div style="flex:1;min-width:0;">' +
+                    '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' + certPill(r.stype) + '<span style="font-size:.8rem;color:#7b8794;">' + esc(r.sub_date) + '</span></div>' +
+                    '<div style="font-size:.8rem;margin-top:3px;">' +
+                    (likes ? '<span style="color:#e0639b;">❤ ' + likes + '</span> ' : '') +
+                    (r.confirmed_by ? '<span style="color:#1e874b;font-weight:700;">✓ ' + esc(r.confirmed_by) + ' 선생님 확인</span>' : '<span style="color:#9aa5b1;">확인 대기중</span>') +
+                    '</div></div>' +
+                    '<button type="button" class="btn btn-line ssc-del" data-id="' + r.id + '" style="padding:2px 8px;font-size:.72rem;color:#c0392b;">삭제</button></div>';
+                }).join('') + '</div>' :
+                '<p style="color:#9aa5b1;font-size:.84rem;">이 달에는 올린 인증이 없어요.</p>');
+          }
+          function shiftMonth(delta) {
+            var d = new Date(fMonth + '-01T00:00:00');
+            d.setMonth(d.getMonth() + delta);
+            fMonth = d.getFullYear() + '-' + pad2(d.getMonth() + 1);
+            fDay = '';
+            draw();
+          }
+          var pm = container.querySelector('#sscPrevM'); if (pm) pm.onclick = function () { shiftMonth(-1); };
+          var nm = container.querySelector('#sscNextM'); if (nm) nm.onclick = function () { shiftMonth(1); };
+          var ad = container.querySelector('#sscAllDays'); if (ad) ad.onclick = function () { fDay = ''; draw(); };
+          Array.prototype.forEach.call(container.querySelectorAll('.ssc-day'), function (c) {
+            c.onclick = function () {
+              var ds = c.dataset.d;
+              if (!rows.filter(function (r) { return r.sub_date === ds; }).length) return; // 인증 없는 날은 무시
+              fDay = (fDay === ds) ? '' : ds;
+              draw();
+            };
+          });
           var msg = container.querySelector('#sscMsg');
           function flash(ok, t) { msg.style.color = ok ? 'green' : '#c0392b'; msg.textContent = t; }
           var fileInp = container.querySelector('#sscFile'), curType = 'QT';
