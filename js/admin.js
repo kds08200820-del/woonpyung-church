@@ -237,6 +237,9 @@
       };
     }
 
+    // ===== 우리 아이 교적 정보 (보호자가 직접 수정) =====
+    await setupChildBox();
+
     const adminRows = await api("GET", `admins?uid=eq.${me.id}&select=uid`);
     const isAdmin = Array.isArray(adminRows) && adminRows.length > 0;
 
@@ -255,6 +258,88 @@
       const mine = rows.filter((r) => r.id === me.id);
       box.innerHTML = `<p class="member-role-note">내 정보입니다.</p>` + memberTable(mine.length ? mine : [{ name: (me.user_metadata && me.user_metadata.name) || (me.email ? me.email.split("@")[0] : "성도"), provider: (me.app_metadata && me.app_metadata.provider) || "email", email: me.email, created_at: me.created_at }], false);
     }
+  }
+
+  /* ============================================================
+     우리 아이 교적 정보 — 보호자(세대주 또는 그 배우자)가 자녀 교적을 직접 수정
+     · 목록·저장 권한은 모두 Supabase RPC 가 판정한다
+       (supabase/20260826_1930_parent_child_gyojeok.sql)
+     · 생년월일을 채우면 매칭키(이름|생년월일)가 자동으로 만들어져
+       주일학교 달란트·QT/필사 인증이 그 아이와 연결된다.
+     · RPC 가 없으면(SQL 미실행) 카드를 조용히 숨긴다.
+     ============================================================ */
+  const SS_LEVELS = ["어린이", "중학생", "고등학생"];
+  const selOpts = (opts, v) =>
+    `<option value="">선택</option>` + opts.map((o) => `<option${o === v ? " selected" : ""}>${esc(o)}</option>`).join("");
+  const fmtPhone = (p) => {
+    const d = String(p || "").replace(/[^0-9]/g, "");
+    return d.length === 11 ? `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}` : (p || "");
+  };
+
+  function childCard(k) {
+    const birth = k.birth ? String(k.birth).slice(0, 10) : "";
+    return `<div class="child-card" data-id="${esc(k.id)}" style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <b style="color:var(--accent);font-size:1rem;">${esc(k.name)}</b>
+        <span style="font-size:.78rem;background:#eef3fb;color:#2b5797;border-radius:999px;padding:2px 10px;">${esc(k.relation || "자녀")}</span>
+        ${k.member_key ? "" : '<span style="font-size:.78rem;background:#fff3d6;color:#8a6d1f;border-radius:999px;padding:2px 10px;">생년월일 필요</span>'}
+      </div>
+      <div class="form-grid" style="gap:12px;">
+        <div class="form-field"><label>생년월일</label><input type="text" class="c-birth" maxlength="10" inputmode="numeric" placeholder="예: 2016-05-03" value="${esc(birth)}" /></div>
+        <div class="form-field"><label>성별</label><select class="c-sex">${selOpts(["남", "여"], k.sex)}</select></div>
+        <div class="form-field"><label>주일학교</label><select class="c-ss">${selOpts(SS_LEVELS, k.ss_role)}</select></div>
+        <div class="form-field"><label>휴대폰 (선택)</label><input type="tel" class="c-phone" maxlength="20" placeholder="010-0000-0000" value="${esc(fmtPhone(k.phone))}" /></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap;">
+        <button type="button" class="btn btn-solid c-save" style="padding:8px 18px;">저장</button>
+        <span class="profile-msg c-msg" style="font-size:.86rem;"></span>
+      </div>
+    </div>`;
+  }
+
+  async function setupChildBox() {
+    const wrap = document.getElementById("childBox");
+    const rowsEl = document.getElementById("childRows");
+    if (!wrap || !rowsEl) return;
+    let kids = null;
+    try {
+      kids = await api("POST", "rpc/my_child_rows", {});
+    } catch (e) { return; }                       // RPC 미설치·권한 없음 → 카드 숨김
+    if (!Array.isArray(kids) || !kids.length) return;
+    rowsEl.innerHTML = kids.map(childCard).join("");
+    wrap.hidden = false;
+    rowsEl.querySelectorAll(".child-card").forEach((card) => {
+      const msg = card.querySelector(".c-msg");
+      const say = (t, ok) => { msg.textContent = t; msg.style.color = ok ? "var(--accent)" : "#c0392b"; };
+      // 생년월일: 숫자만 쳐도 2016-05-03 형태로 맞춰 준다
+      const bi = card.querySelector(".c-birth");
+      bi.addEventListener("blur", () => {
+        const d = bi.value.replace(/[^0-9]/g, "");
+        if (d.length === 8) bi.value = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`;
+      });
+      card.querySelector(".c-save").onclick = async () => {
+        const birth = bi.value.trim().replace(/[^0-9]/g, "").replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3");
+        if (birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)) { say("생년월일은 2016-05-03 처럼 적어 주세요.", false); return; }
+        say("저장 중…", true);
+        try {
+          const r = await api("POST", "rpc/update_my_child", {
+            p_id: Number(card.dataset.id),
+            p_birth: birth,
+            p_sex: card.querySelector(".c-sex").value,
+            p_ss_role: card.querySelector(".c-ss").value,
+            p_phone: card.querySelector(".c-phone").value.trim(),
+          });
+          const note = r && r.note;
+          say(note ? "저장했습니다 ✓ " + note : "저장되었습니다 ✓ 대시보드에서 확인해 보세요.", !note);
+          if (r && r.member_key) {
+            const pill = card.querySelector('span[style*="fff3d6"]');
+            if (pill) pill.remove();
+          }
+        } catch (err) {
+          say("오류: " + err.message, false);
+        }
+      };
+    });
   }
 
   // ===== 회원 목록 테이블 =====
