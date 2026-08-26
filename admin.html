@@ -59,7 +59,7 @@
             <label>가족 <span style="font-weight:400;color:var(--ink-soft);font-size:.85rem;">— 관계를 선택하고 이름을 적은 뒤 ＋로 추가</span></label>
             <div id="familyRows"></div>
             <button type="button" class="btn btn-line" id="familyAdd" style="margin-top:6px;padding:6px 14px;font-size:.85rem;">＋ 가족 추가</button>
-            <p style="color:var(--ink-soft);font-size:.82rem;margin-top:8px;">※ 부부 헌금은 교적의 배우자 정보로 자동 합산됩니다. 이 칸은 가족 현황 기록용입니다.</p>
+            <p style="color:var(--ink-soft);font-size:.82rem;margin-top:8px;">※ 부부 헌금은 교적의 배우자 정보로 자동 합산됩니다. 이 칸은 가족 현황 기록용입니다. 자녀의 <b>교적</b> 정보(생년월일·주일학교)는 아래 <b>‘우리 아이 교적 정보’</b>에서 직접 수정할 수 있습니다.</p>
           </div>
         </div>
         <div class="form-actions" style="margin-top:18px;display:flex;gap:10px;align-items:center;">
@@ -67,6 +67,13 @@
           <span class="profile-msg" id="profileMsg"></span>
         </div>
       </form>
+
+      <!-- 우리 아이 교적 정보 (보호자만 표시 · SQL 미실행이면 자동 숨김) -->
+      <div class="form-card" id="childBox" hidden style="max-width:640px;margin-bottom:28px;">
+        <h3 class="sub-title" style="text-align:left;margin-bottom:6px;">우리 아이 교적 정보</h3>
+        <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:14px;">같은 세대(가족)로 등록된 자녀의 교적입니다. <b>생년월일</b>을 넣어야 주일학교 달란트·QT/필사 인증이 아이와 연결되고, 대시보드에 <b>‘우리 아이 주일학교’</b>가 나타납니다. (이름·가족관계 변경은 교회 사무실에 문의해 주세요.)</p>
+        <div id="childRows"></div>
+      </div>
 
       <!-- 계정 관리: 이메일·비밀번호 변경 (이메일 가입자, 로그인 시에만 표시) -->
       <div class="form-card" id="accountBox" hidden style="max-width:640px;margin-bottom:28px;">
@@ -121,7 +128,7 @@
   <script src="js/layout.js?v=20260812pw"></script>
   <script src="js/counsel.js?v=20260825fix"></script>
   <script src="js/main.js?v=20260819num"></script>
-  <script src="js/admin.js?v=20260717adm1"></script>
+  <script src="js/admin.js?v=20260826child1"></script>
   <script src="js/account.js?v=20260717auth1"></script>
   <script src="js/finance-api.js?v=20260817gjdel"></script>
   <script src="js/finance-member.js?v=20260730lib15"></script>

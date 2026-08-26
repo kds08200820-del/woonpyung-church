@@ -1197,8 +1197,10 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
         '<h3 style="margin:0 0 6px;font-size:1rem;color:var(--accent,#032257);">👨‍👧 우리 아이 주일학교</h3>' +
         '<p style="color:var(--ink-soft);font-size:.84rem;margin:0 0 8px;line-height:1.75;">' +
         '<b>' + names + '</b> 자녀가 아직 <b>주일학교와 연결되지 않았습니다</b>. 연결되면 이곳에서 자녀의 달란트·QT/필사·미션 인증·헌금을 보고, 인증샷을 대신 올릴 수 있어요.</p>' +
-        '<p style="font-size:.82rem;color:#7b8794;margin:0;line-height:1.75;">교회 사무실·관리자에게 교적의 <b>‘주일학교’ 학년(어린이·중학생·고등학생) 지정</b>' +
-        (noKey.length ? '과 <b>생년월일 등록</b>' : '') + '을 요청해 주세요.</p>' +
+        '<p style="font-size:.82rem;color:#7b8794;margin:0 0 10px;line-height:1.75;">교적에 자녀의 <b>' +
+        (noKey.length ? '생년월일' : '주일학교 학년(어린이·중학생·고등학생)') + '</b>이 없어서 그렇습니다. <b>내 정보</b>에서 직접 입력하실 수 있어요.</p>' +
+        '<a class="btn btn-line" href="admin.html" style="padding:7px 15px;font-size:.85rem;">내 정보에서 자녀 교적 정보 입력 →</a>' +
+        '<p style="font-size:.76rem;color:#9aa5b1;margin:10px 0 0;">※ 세대주와 그 배우자만 수정할 수 있습니다. 이름·가족관계 변경은 교회 사무실에 문의해 주세요.</p>' +
         '</div>';
     }).catch(function () { el.innerHTML = ''; });
   }
