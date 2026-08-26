@@ -957,19 +957,37 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
   }
 
   /* ================= 가계도 ================= */
+  // 가족 명단(my_family)은 가계도와 주일학교 안내가 같이 쓰므로 한 번만 불러 재사용한다.
+  var FAM_CACHE = null;
+  function famMembers() {
+    if (FAM_CACHE) return FAM_CACHE;
+    if (!(window.WPF && WPF.call)) return Promise.reject(new Error('no-wpf'));
+    FAM_CACHE = WPF.call('myFamily').then(function (r) { return (r && r.members) || []; });
+    return FAM_CACHE;
+  }
+  // 생년월일: 매칭키(이름|YYYYMMDD)에서 정확히 추출, 없으면 birth 앞 10자. 없으면 ''.
+  function famBirth(m) { var bd = (String(m.member_key || '').split('|')[1]) || ''; if (bd.length === 8) return bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8); return String(m.birth || '').slice(0, 10); }
+  // 만 나이. 생년월일이 없으면 null(= 나이를 모름).
+  function famAge(m) {
+    var b = famBirth(m); if (!/^\d{4}-\d{2}-\d{2}$/.test(b)) return null;
+    var d = new Date(b + 'T00:00:00'); if (isNaN(d)) return null;
+    var n = new Date(), a = n.getFullYear() - d.getFullYear();
+    if ((n.getMonth() - d.getMonth() || n.getDate() - d.getDate()) < 0) a--;
+    return a;
+  }
+  function famHeadOf(m) { return m.head || m.name; }
   function loadFamily(me) {
     var el = document.getElementById('familyTree'); if (!el) return;
     if (!(window.WPF && WPF.call)) return;
-    WPF.call('myFamily').then(function (r) {
-      var ms = (r && r.members) || [];
+    famMembers().then(function (ms) {
       if (!ms.length) { el.innerHTML = ''; return; }
       el.innerHTML = renderFamilyTree(ms, me);
     }).catch(function () { el.innerHTML = ''; });
   }
   function renderFamilyTree(ms, me) {
     var myKeys = [me.memberKey, me.spouseKey].filter(Boolean).map(String);
-    function bday(m) { var bd = (String(m.member_key || '').split('|')[1]) || ''; if (bd.length === 8) return bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8); return String(m.birth || '').slice(0, 10); }
-    function headOf(m) { return m.head || m.name; }
+    var bday = famBirth;
+    function headOf(m) { return famHeadOf(m); }
     var heads = {}, order = [];
     ms.forEach(function (m) { var h = headOf(m); if (!heads[h]) { heads[h] = []; order.push(h); } heads[h].push(m); });
     var myHead = (function () { for (var i = 0; i < ms.length; i++) if (myKeys.indexOf(String(ms[i].member_key)) >= 0) return headOf(ms[i]); return order[0]; })();
@@ -1138,10 +1156,50 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
         // 보호자: 같은 세대(가계도)에 '어린이'가 있으면 자녀 현황 화면
         brFetch('rpc/ss_my_children', { method: 'POST', body: '{}' }).then(function (kids) {
           kids = kids || [];
-          if (kids.length) renderSsGuardian(el, ctx, me, kids);
-          else loadMyTalents(el, ctx, me);
+          if (kids.length) { renderSsGuardian(el, ctx, me, kids); return; }
+          // 자녀가 0명 — 교적상 자녀는 있는데 주일학교와 연결이 안 됐을 수 있으므로,
+          // 그냥 숨기지 말고 무엇이 빠졌는지 안내한다(2026-08-26).
+          el.innerHTML = '<div id="ssTalBox"></div><div id="ssKidHint"></div>';
+          loadMyTalents(el.querySelector('#ssTalBox'), ctx, me);
+          ssGuardianHint(el.querySelector('#ssKidHint'), me);
         }).catch(function () { loadMyTalents(el, ctx, me); });
       }
+    }).catch(function () { el.innerHTML = ''; });
+  }
+
+  /* ── 보호자 안내: 교적에 자녀가 있는데 ss_my_children() 이 0명일 때 ──
+   * 자녀가 '우리 아이 주일학교'에 뜨려면 교적(gyojeok)이 세 가지를 모두 갖춰야 한다.
+   *   ① 세대주가 나와 같을 것            ② 주일학교 = 어린이·중학생·고등학생
+   *   ③ 매칭키(이름|생년월일)가 비어 있지 않을 것
+   * ①은 가계도에 자녀가 보이는 것으로 이미 확인되므로, 남은 ②·③을 짚어 준다.
+   * (my_family 는 주일학교 칸을 돌려주지 않으므로 ②는 단정하지 않고 함께 안내) */
+  var SS_CHILD_REL = /^(장남|차남|삼남|사남|아들|장녀|차녀|삼녀|사녀|딸|자녀|손자|손녀)$/;
+  function ssGuardianHint(el, me) {
+    if (!el) return;
+    famMembers().then(function (ms) {
+      var myKeys = [me.memberKey, me.spouseKey].filter(Boolean).map(String);
+      var myHead = '';
+      for (var i = 0; i < ms.length; i++) if (myKeys.indexOf(String(ms[i].member_key)) >= 0) { myHead = famHeadOf(ms[i]); break; }
+      if (!myHead) { el.innerHTML = ''; return; }
+      // 같은 세대의 자녀 중 미성년(또는 생년월일 미등록으로 나이를 모르는) 경우만 안내한다.
+      var kids = ms.filter(function (m) {
+        if (famHeadOf(m) !== myHead) return false;
+        if (myKeys.indexOf(String(m.member_key)) >= 0) return false;
+        if (!SS_CHILD_REL.test(String(m.relation || '').trim())) return false;
+        var a = famAge(m);
+        return a === null || a < 20;
+      });
+      if (!kids.length) { el.innerHTML = ''; return; }
+      var noKey = kids.filter(function (m) { return !String(m.member_key || '').trim(); });
+      var names = kids.map(function (m) { return esc(m.name); }).join('·');
+      el.innerHTML =
+        '<div class="form-card" style="padding:16px 18px;">' +
+        '<h3 style="margin:0 0 6px;font-size:1rem;color:var(--accent,#032257);">👨‍👧 우리 아이 주일학교</h3>' +
+        '<p style="color:var(--ink-soft);font-size:.84rem;margin:0 0 8px;line-height:1.75;">' +
+        '<b>' + names + '</b> 자녀가 아직 <b>주일학교와 연결되지 않았습니다</b>. 연결되면 이곳에서 자녀의 달란트·QT/필사·미션 인증·헌금을 보고, 인증샷을 대신 올릴 수 있어요.</p>' +
+        '<p style="font-size:.82rem;color:#7b8794;margin:0;line-height:1.75;">교회 사무실·관리자에게 교적의 <b>‘주일학교’ 학년(어린이·중학생·고등학생) 지정</b>' +
+        (noKey.length ? '과 <b>생년월일 등록</b>' : '') + '을 요청해 주세요.</p>' +
+        '</div>';
     }).catch(function () { el.innerHTML = ''; });
   }
 
