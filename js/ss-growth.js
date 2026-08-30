@@ -4,9 +4,9 @@
  * 좋아요: rpc/ss_toggle_like — 로그인한 성도 누구나 누를 수 있다(교사단 전용이 아니다).
  *   · 로그인했으면 내 토큰으로 피드를 불러와 '내가 누른 하트'(mine)를 채워서 보여 준다.
  * 이번주 미션: rpc/ss_current_mission — 있으면 배너로 안내(로그인 불필요).
- * 콘솔: [ss-growth.js] v20260823mission
+ * 콘솔: [ss-growth.js] v20260830msphoto
  */
-console.log('[ss-growth.js] v20260825fix');
+console.log('[ss-growth.js] v20260830msphoto');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
@@ -35,11 +35,12 @@ console.log('[ss-growth.js] v20260825fix');
   // 이번주 미션 배너 — 기록이 없어도, 미션만 정해져 있으면 보여 준다
   function missionBanner() {
     if (!mission) return '';
+    var cnt = Math.max(1, Number(mission.photo_count) || 1);
     return '<div style="max-width:620px;margin:0 auto 16px;text-align:center;border:1px solid #f2e2ae;background:#fffbe8;border-radius:12px;padding:11px 16px;">' +
       '<b style="color:#8a6d1f;font-size:.9rem;">🎯 이번주 미션</b> · <span style="font-size:.9rem;color:#3a4a63;">' + esc(mission.title) + '</span> ' +
-      '<span style="color:#b7791f;font-weight:700;font-size:.86rem;">(달란트 ' + (Number(mission.amount) || 1) + '개)</span>' +
+      '<span style="color:#b7791f;font-weight:700;font-size:.86rem;">(달란트 ' + (Number(mission.amount) || 1) + '개' + (cnt > 1 ? ' · 사진 ' + cnt + '장' : '') + ')</span>' +
       (mission.description ? '<div style="font-size:.8rem;color:#6b5b26;margin-top:4px;line-height:1.6;">' + esc(mission.description).replace(/\n/g, '<br>') + '</div>' : '') +
-      '<div style="font-size:.74rem;color:#9aa5b1;margin-top:4px;">주중 언제든 한 번, 대시보드에서 인증샷을 올리면 달란트가 지급돼요</div></div>';
+      '<div style="font-size:.74rem;color:#9aa5b1;margin-top:4px;">주중 언제든 한 번, 대시보드에서 인증샷' + (cnt > 1 ? ' ' + cnt + '장' : '') + '을 올리면 달란트가 지급돼요</div></div>';
   }
   function monthKey(d) { return String(d || '').slice(0, 7); }
 
@@ -57,11 +58,30 @@ console.log('[ss-growth.js] v20260825fix');
     btn.textContent = (mine ? '❤' : '♡') + ' ' + (likes || 0);
   }
 
+  // 카드의 사진 영역 — 여러 장 미션(photos 배열)이면 나눠서, 아니면 한 장 크게
+  function photoArea(r) {
+    var alt = esc(r.name || '') + ' ' + esc(r.stype) + ' 인증';
+    var ps = (Array.isArray(r.photos) && r.photos.length > 1 ? r.photos : [r.photo]).filter(Boolean);
+    if (ps.length <= 1) {
+      return '<a href="' + esc(ps[0] || r.photo) + '" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit;">' +
+        '<div style="aspect-ratio:1/1;overflow:hidden;background:#f2f4f8;"><img src="' + esc(ps[0] || r.photo) + '" alt="' + alt + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div></a>';
+    }
+    var shown = ps.slice(0, 4);   // 카드에는 4장까지, 나머지는 +n 으로
+    return '<div style="aspect-ratio:1/1;overflow:hidden;background:#f2f4f8;display:grid;grid-template-columns:repeat(2,1fr);' +
+      (shown.length > 2 ? 'grid-template-rows:repeat(2,1fr);' : '') + 'gap:2px;">' +
+      shown.map(function (u, i) {
+        var extra = (i === shown.length - 1) ? ps.length - shown.length : 0;
+        return '<a href="' + esc(u) + '" target="_blank" rel="noopener" style="position:relative;display:block;overflow:hidden;">' +
+          '<img src="' + esc(u) + '" alt="' + alt + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">' +
+          (extra > 0 ? '<span style="position:absolute;inset:0;background:rgba(3,34,87,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;">+' + extra + '</span>' : '') +
+          '</a>';
+      }).join('') + '</div>';
+  }
+
   function card(r) {
     var mine = !!r.mine;
     return '<div style="border:1px solid var(--line,#e3e7ee);border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 3px 14px rgba(3,34,87,.06);">' +
-      '<a href="' + esc(r.photo) + '" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit;">' +
-      '<div style="aspect-ratio:1/1;overflow:hidden;background:#f2f4f8;"><img src="' + esc(r.photo) + '" alt="' + esc(r.name || '') + ' ' + esc(r.stype) + ' 인증" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div></a>' +
+      photoArea(r) +
       '<div style="padding:10px 12px;">' +
       '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><b style="font-size:.9rem;color:var(--accent,#032257);">' + esc(r.name || '어린이') + '</b>' + pill(r.stype) + '</div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:.76rem;color:#7b8794;">' +
