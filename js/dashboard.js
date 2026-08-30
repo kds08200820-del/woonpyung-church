@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)');
+console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설정)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1286,12 +1286,15 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           '<b style="font-size:.9rem;color:var(--accent,#032257);">🎯 이번주 미션</b>' + (btnHtml || '') + '</div>';
       }
       function draw() {
+        var mCnt = m ? Math.max(1, Number(m.photo_count) || 1) : 1;
         if (m && !editing) {
           box.innerHTML = head('<button type="button" class="btn btn-line" id="ssMsEdit" style="padding:3px 12px;font-size:.78rem;">수정</button>') +
             '<div style="border:1px solid #f2e2ae;background:#fffbe8;border-radius:10px;padding:10px 12px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
             '<b style="font-size:.88rem;color:#8a6d1f;">' + esc(m.title) + '</b>' +
-            '<span style="font-size:.76rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#b7791f;font-weight:700;">달란트 ' + (Number(m.amount) || 1) + '개</span></div>' +
+            '<span style="display:flex;gap:5px;">' +
+            (mCnt > 1 ? '<span style="font-size:.76rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#8a6d1f;font-weight:700;">📷 사진 ' + mCnt + '장</span>' : '') +
+            '<span style="font-size:.76rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#b7791f;font-weight:700;">달란트 ' + (Number(m.amount) || 1) + '개</span></span></div>' +
             (m.description ? '<div style="font-size:.82rem;color:#6b5b26;margin-top:5px;line-height:1.6;">' + esc(m.description).replace(/\n/g, '<br>') + '</div>' : '') +
             '<div style="font-size:.72rem;color:#9aa5b1;margin-top:5px;">' + esc(ws) + ' 주간 · ' + esc(m.created_by || '') + ' · 어린이가 주중 언제든 한 번 인증하면 자동 지급</div></div>';
           box.querySelector('#ssMsEdit').onclick = function () { editing = true; draw(); };
@@ -1309,8 +1312,11 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           '<input type="text" id="ssMsTitle" maxlength="60" placeholder="예: 부모님 안마해 드리기" value="' + esc(m ? m.title : '') + '" style="width:100%;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;"></div>' +
           '<div class="af-field" style="margin-bottom:8px;"><label style="font-size:.78rem;color:#7b8794;">설명(선택)</label>' +
           '<textarea id="ssMsDesc" maxlength="300" placeholder="어떻게 하면 되는지, 인증샷은 무엇을 찍으면 되는지" style="width:100%;min-height:56px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;">' + esc(m ? (m.description || '') : '') + '</textarea></div>' +
-          '<div class="af-field" style="margin-bottom:10px;"><label style="font-size:.78rem;color:#7b8794;">달성 시 달란트</label>' +
+          '<div class="af-field" style="margin-bottom:8px;"><label style="font-size:.78rem;color:#7b8794;">달성 시 달란트</label>' +
           '<input type="number" id="ssMsAmt" min="1" max="100" value="' + esc(m ? m.amount : 3) + '" style="width:110px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;"></div>' +
+          '<div class="af-field" style="margin-bottom:10px;"><label style="font-size:.78rem;color:#7b8794;">인증 사진 개수(장)</label><div style="display:flex;align-items:center;gap:8px;">' +
+          '<input type="number" id="ssMsCnt" min="1" max="5" value="' + mCnt + '" style="width:110px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;">' +
+          '<span style="font-size:.74rem;color:#9aa5b1;">예: 치우기 전·후 사진이면 2장</span></div></div>' +
           '<div style="display:flex;gap:8px;">' +
           '<button type="button" class="btn btn-solid" id="ssMsSave" style="padding:6px 16px;">저장</button>' +
           '<button type="button" class="btn btn-line" id="ssMsCancel" style="padding:6px 16px;">취소</button></div></div>';
@@ -1319,12 +1325,28 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           var title = box.querySelector('#ssMsTitle').value.trim();
           var desc = box.querySelector('#ssMsDesc').value.trim();
           var amt = Math.max(1, Number(box.querySelector('#ssMsAmt').value) || 1);
+          var cnt = Math.min(5, Math.max(1, Number(box.querySelector('#ssMsCnt').value) || 1));
           if (!title) { ssFlash(el, false, '미션 이름을 입력해 주세요.'); return; }
-          var req = m
-            ? brFetch('ss_missions?id=eq.' + m.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ title: title, description: desc, amount: amt }) })
-            : brFetch('ss_missions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ week_start: ws, title: title, description: desc, amount: amt, created_by: me.memberName || '관리자' }) });
-          req.then(function () { ssFlash(el, true, '✓ 이번주 미션이 저장되었습니다.'); loadSsMission(el, ctx, me); })
-            .catch(function (e) { ssFlash(el, false, '미션 저장 실패: ' + e.message); });
+          function save(withCnt) {
+            var body = { title: title, description: desc, amount: amt };
+            if (withCnt) body.photo_count = cnt;
+            if (!m) { body.week_start = ws; body.created_by = me.memberName || '관리자'; }
+            return m
+              ? brFetch('ss_missions?id=eq.' + m.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) })
+              : brFetch('ss_missions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
+          }
+          save(true).then(function () { ssFlash(el, true, '✓ 이번주 미션이 저장되었습니다.'); loadSsMission(el, ctx, me); })
+            .catch(function (e) {
+              // photo_count 칼럼이 아직 없으면(SQL 미실행) 개수 없이 저장하고 안내
+              if (/photo_count/.test(e.message || '')) {
+                save(false).then(function () {
+                  ssFlash(el, false, '미션은 저장됐지만 사진 개수는 저장하지 못했어요. supabase/20260830_1420_ss_mission_photo_count.sql 을 SQL Editor에서 실행한 뒤 다시 저장해 주세요.');
+                  loadSsMission(el, ctx, me);
+                }).catch(function (e2) { ssFlash(el, false, '미션 저장 실패: ' + e2.message); });
+                return;
+              }
+              ssFlash(el, false, '미션 저장 실패: ' + e.message);
+            });
         };
       }
       draw();
@@ -1857,10 +1879,27 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
     var qt = stype === 'QT', ms = stype === '미션';
     return '<span style="font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 9px;background:' + (ms ? '#fdf3e0' : qt ? '#e8f0fb' : '#e8f6ee') + ';color:' + (ms ? '#b7791f' : qt ? '#2b5797' : '#1e874b') + ';">' + esc(stype) + '</span>';
   }
+  // 인증샷 목록 — 여러 장 미션(photos 배열)이면 전부, 아니면 photo_url 한 장
+  function certPhotos(r) {
+    var ps = (Array.isArray(r.photos) ? r.photos : []).filter(function (p) { return p && p.url; });
+    if (!ps.length && r.photo_url) ps = [{ url: r.photo_url, key: r.photo_key || '' }];
+    return ps;
+  }
   function certThumb(r, size) {
     size = size || 56;
-    if (!r.photo_url) return '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:8px;background:#eef2f7;display:flex;align-items:center;justify-content:center;color:#9aa5b1;flex:0 0 auto;">📷</div>';
-    return '<a href="' + esc(r.photo_url) + '" target="_blank" rel="noopener" style="flex:0 0 auto;"><img src="' + esc(r.photo_url) + '" alt="인증샷" loading="lazy" style="width:' + size + 'px;height:' + size + 'px;border-radius:8px;object-fit:cover;border:1px solid #e3e7ee;"></a>';
+    var ps = certPhotos(r);
+    if (!ps.length) return '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:8px;background:#eef2f7;display:flex;align-items:center;justify-content:center;color:#9aa5b1;flex:0 0 auto;">📷</div>';
+    if (ps.length > 2) size = Math.min(size, 44);   // 여러 장이면 줄이 넘치지 않게 조금 작게
+    return '<span style="display:flex;gap:4px;flex:0 0 auto;">' + ps.map(function (p) {
+      return '<a href="' + esc(p.url) + '" target="_blank" rel="noopener"><img src="' + esc(p.url) + '" alt="인증샷" loading="lazy" style="width:' + size + 'px;height:' + size + 'px;border-radius:8px;object-fit:cover;border:1px solid #e3e7ee;display:block;"></a>';
+    }).join('') + '</span>';
+  }
+  // 인증 삭제 시 R2 사진 파일도 정리(여러 장이면 전부)
+  function certRemoveFiles(r) {
+    if (!r || !window.ChurchUpload) return;
+    var keys = (Array.isArray(r.photos) ? r.photos : []).map(function (p) { return p && p.key; }).filter(Boolean);
+    if (!keys.length && r.photo_key) keys = [r.photo_key];
+    keys.forEach(function (k) { ChurchUpload.remove(k); });
   }
   function monthKey(d) { return String(d || '').slice(0, 7); }
 
@@ -1897,6 +1936,8 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
           var doneQt = doneToday('QT'), donePil = doneToday('필사');
           // 미션은 '한 주에 한 번' — 이번 주 미션으로 올린 인증이 있으면 완료
           var doneMission = !!(mission && rows.filter(function (r) { return r.stype === '미션' && String(r.mission_id) === String(mission.id); }).length);
+          // 미션 인증에 필요한 사진 장수(교사가 미션을 정할 때 설정, 기본 1장)
+          var msCnt = mission ? Math.min(5, Math.max(1, Number(mission.photo_count) || 1)) : 1;
           var calParts = certCalendarHtml();   // { cal: 달력, list: 인증 목록 }
           container.innerHTML =
             '<div class="form-card" style="padding:16px 18px;">' +
@@ -1907,12 +1948,15 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
               '<div style="border:1px solid #f2e2ae;background:#fffbe8;border-radius:12px;padding:12px 14px;margin-bottom:12px;">' +
               '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
               '<b style="font-size:.92rem;color:#8a6d1f;">🎯 이번주 미션 · ' + esc(mission.title) + '</b>' +
-              '<span style="font-size:.78rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#b7791f;font-weight:700;">달란트 ' + (Number(mission.amount) || 1) + '개</span></div>' +
+              '<span style="display:flex;gap:5px;">' +
+              (msCnt > 1 ? '<span style="font-size:.78rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#8a6d1f;font-weight:700;">📷 사진 ' + msCnt + '장</span>' : '') +
+              '<span style="font-size:.78rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#b7791f;font-weight:700;">달란트 ' + (Number(mission.amount) || 1) + '개</span></span></div>' +
               (mission.description ? '<div style="font-size:.82rem;color:#6b5b26;margin-top:5px;line-height:1.6;">' + esc(mission.description).replace(/\n/g, '<br>') + '</div>' : '') +
               '<div style="margin-top:10px;">' +
               (doneMission ?
                 '<button type="button" class="btn btn-line" disabled style="padding:7px 15px;color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;">✓ 이번 주 미션 완료!</button>' :
-                '<button type="button" class="btn btn-solid" id="sscUpMs" style="padding:7px 15px;background:#b7791f;border-color:#b7791f;">📷 미션 인증 올리기</button>') +
+                '<button type="button" class="btn btn-solid" id="sscUpMs" style="padding:7px 15px;background:#b7791f;border-color:#b7791f;">📷 미션 인증 올리기' + (msCnt > 1 ? ' (사진 ' + msCnt + '장)' : '') + '</button>') +
+              (doneMission || msCnt <= 1 ? '' : '<div style="font-size:.76rem;color:#8a6d1f;margin-top:5px;">사진을 고르는 창에서 <b>' + msCnt + '장을 한 번에</b> 선택해 주세요.</div>') +
               '</div></div>' : '') +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
             '<button type="button" class="btn ' + (doneQt ? 'btn-line' : 'btn-solid') + '" id="sscUpQt" style="padding:8px 16px;' + (doneQt ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : '') + '">' + (doneQt ? '✓ 오늘 QT 인증 완료' : '📷 QT 인증 올리기') + '</button>' +
@@ -2012,24 +2056,48 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
                 : '오늘 ' + t + ' 인증은 이미 올렸어요. 하루에 한 번만 올릴 수 있어요. 바꾸시려면 아래 목록에서 오늘 것을 삭제한 뒤 다시 올려 주세요.');
               return;
             }
-            curType = t; fileInp.click();
+            curType = t;
+            fileInp.multiple = (t === '미션' && msCnt > 1);   // 미션은 정해진 장수만큼 한 번에 선택
+            fileInp.click();
           }
           container.querySelector('#sscUpQt').onclick = function () { pick('QT'); };
           container.querySelector('#sscUpPil').onclick = function () { pick('필사'); };
           var msBtn = container.querySelector('#sscUpMs');
           if (msBtn) msBtn.onclick = function () { pick('미션'); };
           fileInp.onchange = function () {
-            var f = fileInp.files && fileInp.files[0]; fileInp.value = '';
-            if (!f) return;
-            if (!/^image\//.test(f.type)) { flash(false, '이미지 파일만 올릴 수 있어요.'); return; }
+            var files = Array.prototype.slice.call(fileInp.files || []); fileInp.value = '';
+            if (!files.length) return;
+            var need = (curType === '미션') ? msCnt : 1;
+            if (need === 1) files = files.slice(0, 1);
+            else if (files.length !== need) {
+              flash(false, '이번 미션은 사진 ' + need + '장을 함께 올려야 해요. 사진을 고르는 창에서 ' + need + '장을 한 번에 선택해 주세요. (지금 ' + files.length + '장 선택됨)');
+              return;
+            }
+            for (var i = 0; i < files.length; i++) {
+              if (!/^image\//.test(files[i].type)) { flash(false, '이미지 파일만 올릴 수 있어요.'); return; }
+            }
             if (!(window.ChurchUpload && ChurchUpload.isReady())) { flash(false, '업로드 서버가 설정되지 않았습니다.'); return; }
-            flash(true, ''); msg.style.color = '#7b8794'; msg.textContent = curType + ' 인증샷 올리는 중…';
-            ChurchUpload.upload(f, { folder: 'ss-cert' }).then(function (up) {
-              var body = { member_key: subjKey, child_name: subjName || '', stype: curType, photo_url: up.url, photo_key: up.key || '' };
+            flash(true, ''); msg.style.color = '#7b8794';
+            msg.textContent = curType + ' 인증샷 올리는 중…' + (files.length > 1 ? ' (0/' + files.length + ')' : '');
+            var ups = [];                              // 올라간 사진 [{url,key}] — 실패 시 정리용
+            var chain = Promise.resolve();
+            files.forEach(function (f) {
+              chain = chain.then(function () {
+                return ChurchUpload.upload(f, { folder: 'ss-cert' }).then(function (up) {
+                  ups.push({ url: up.url, key: up.key || '' });
+                  if (files.length > 1) msg.textContent = curType + ' 인증샷 올리는 중… (' + ups.length + '/' + files.length + ')';
+                });
+              });
+            });
+            chain.then(function () {
+              var body = { member_key: subjKey, child_name: subjName || '', stype: curType, photo_url: ups[0].url, photo_key: ups[0].key };
+              if (ups.length > 1) body.photos = ups;   // 여러 장일 때만(1장은 기존 칼럼 그대로)
               if (curType === '미션' && mission) body.mission_id = mission.id;
               return brFetch('ss_submissions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
             }).then(function () { flash(true, '✓ ' + curType + ' 인증이 올라갔어요! 달란트 지급 + 성장기 게시 완료 ⭐'); draw(); if (onChange) onChange(); })
               .catch(function (e) {
+                // 기록 저장에 실패하면 이미 올라간 사진 파일은 지워 둔다
+                if (window.ChurchUpload) ups.forEach(function (u) { if (u.key) ChurchUpload.remove(u.key); });
                 var m = (e && e.message) || '';
                 try { var j = JSON.parse(m); if (j && j.message) m = j.message; } catch (x) { }
                 flash(false, /이미 올렸/.test(m) ? m : ('올리기 실패: ' + m));
@@ -2041,7 +2109,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
             b.onclick = function () {
               if (!confirm('이 인증을 삭제할까요?')) return;
               brFetch('ss_submissions?id=eq.' + b.dataset.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
-                .then(function () { if (r && r.photo_key && window.ChurchUpload) ChurchUpload.remove(r.photo_key); draw(); if (onChange) onChange(); })
+                .then(function () { certRemoveFiles(r); draw(); if (onChange) onChange(); })
                 .catch(function (e) { flash(false, '삭제 실패: ' + e.message); });
             };
           });
@@ -2203,7 +2271,7 @@ console.log('[dashboard.js] v20260809ss9 (주일학교: 성장기 전용 섹션)
             var r = find(b.dataset.id); if (!r) return;
             if (!confirm((r.child_name || '') + ' 어린이의 ' + r.stype + ' 인증(' + r.sub_date + ')을 삭제할까요? (자동 지급된 달란트도 회수됩니다)')) return;
             brFetch('ss_submissions?id=eq.' + r.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
-              .then(function () { if (r.photo_key && window.ChurchUpload) ChurchUpload.remove(r.photo_key); draw(); loadSsStudents(el, ctx, me); })
+              .then(function () { certRemoveFiles(r); draw(); loadSsStudents(el, ctx, me); })
               .catch(function (e) { ssFlash(el, false, '삭제 실패: ' + e.message); });
           };
         });
