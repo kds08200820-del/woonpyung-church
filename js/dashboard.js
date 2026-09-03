@@ -683,7 +683,7 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
           var readText = window.WPCQtText.readTextFromRow(q);
           var preText = [q.title || '', q.scripture || ''].filter(Boolean).join(' ');
           tb.onclick = function () {
-            var starting = tb.textContent.indexOf('멈춤') < 0 && tb.textContent.indexOf('준비') < 0;
+            var starting = tb.textContent.indexOf('멈춤') < 0 && tb.textContent.indexOf('준비') < 0 && tb.textContent.indexOf('이어 듣기') < 0;
             if (starting) { openFull(); try { document.getElementById('dashQtFull').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }
             window.WPCTts.toggle(readText, tb, '🔊 오늘의 말씀 듣기', { date: qDate, trackEl: document.getElementById('dashQtFull'), preText: preText });
           };
