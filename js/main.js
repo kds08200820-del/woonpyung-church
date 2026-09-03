@@ -290,17 +290,52 @@ var WPCTts = (function () {
     updateBar();
   }
   function hideBar() { if (barWrap && barWrap.parentNode) barWrap.parentNode.removeChild(barWrap); userSeeking = false; }
+  // ── 이어 듣기: 재생 위치를 날짜별로 저장해 두고, 나갔다 들어와도 그 지점부터 ──
+  var POS_LSK = "wpcQtPos", posDate = null, lastPosSave = 0;
+  function savePos() {
+    if (!audio || !posDate) return;
+    try {
+      var t = audio.currentTime || 0, d = audio.duration || 0;
+      if (d && t >= d - 5) { clearPos(); return; }                       // 거의 끝 = 다 들은 것
+      if (t > 5) localStorage.setItem(POS_LSK, JSON.stringify({ d: posDate, t: Math.floor(t) }));
+    } catch (e) { }
+  }
+  function clearPos() { try { var sv = JSON.parse(localStorage.getItem(POS_LSK) || "null"); if (sv && sv.d === posDate) localStorage.removeItem(POS_LSK); } catch (e) { } }
+  function restorePos() {
+    try {
+      var sv = JSON.parse(localStorage.getItem(POS_LSK) || "null");
+      if (sv && sv.d === posDate && sv.t > 5 && audio && audio.duration && sv.t < audio.duration - 5) { audio.currentTime = sv.t; updateBar(); }
+    } catch (e) { }
+  }
+  // ── 일시정지/재개 — 소리·위치를 유지한 채 잠시 멈춘다(듣기 버튼이 토글) ──
+  function pause() {
+    if (!audio) return;
+    try { audio.pause(); } catch (e) { }
+    savePos();
+    if (btnEl) btnEl.textContent = "▶ 이어 듣기";
+  }
+  function resume() {
+    if (!audio) return;
+    audio.play().catch(function () { });
+    if (btnEl) btnEl.textContent = "⏸ 잠시 멈춤";
+  }
   // 스트리밍본·생성본 공통 재생: 하이라이트·재생바까지 함께 연결
   function bindAndPlay(a, myGen) {
     audio = a;
     audio.playbackRate = 1.08;                          // 10% 느리게
     try { audio.preservesPitch = true; } catch (e) {}   // 음정 유지
-    audio.onended = function () { if (myGen === gen) reset(); };
+    audio.onended = function () { if (myGen === gen) { clearPos(); reset(); } };
     audio.onerror = function () { if (myGen === gen) reset(); };
-    audio.onloadedmetadata = function () { updateBar(); };
-    audio.ontimeupdate = function () { if (myGen === gen && audio && audio.duration) { hiFrac(audio.currentTime / audio.duration); updateBar(); } };
+    audio.onloadedmetadata = function () { updateBar(); restorePos(); };
+    audio.ontimeupdate = function () {
+      if (myGen === gen && audio && audio.duration) {
+        hiFrac(audio.currentTime / audio.duration); updateBar();
+        var now = Date.now(); if (now - lastPosSave > 2000) { lastPosSave = now; savePos(); }   // 위치 저장(2초 간격)
+      }
+    };
     showBar();
-    if (btnEl) btnEl.textContent = "낭독 멈춤";
+    if (btnEl) btnEl.textContent = "⏸ 잠시 멈춤";
+    if (audio.duration) restorePos();                   // 이미 메타데이터가 있으면 바로 이어 듣기 지점으로
     audio.play().catch(function () { });
   }
   function playAudio(url, myGen) {   // blob URL 재생(생성본)
@@ -319,6 +354,7 @@ var WPCTts = (function () {
     try { if (synth) { synth.resume(); if (!window.__ttsPrimed) { var _w = new SpeechSynthesisUtterance(" "); _w.volume = 0; synth.speak(_w); window.__ttsPrimed = true; } } } catch (e) {}
     if (btnEl) btnEl.textContent = "⏳ 음성 준비 중…";
     var date = (opts && opts.date) || null;
+    posDate = date;                                     // 이어 듣기 저장 키(날짜) — 날짜가 다르면 저장 위치를 안 쓴다
     var sig = date ? textSig(TTS_RULES_VER + "|" + text) : null;   // 내용·규칙 지문(둘 중 하나만 바뀌어도 파일명이 바뀜 → 옛 음성 안 씀)
     // ① 저장본 후보: 지문이 있으면 '내용 일치 파일'만(qt-<날짜>-<지문>.wav) — 내용이 바뀌면 새로 생성.
     //    지문이 없을 때만 미리 만든 로컬 음성(mp3/wav) 후보를 쓴다.
@@ -404,8 +440,13 @@ var WPCTts = (function () {
       }
     }
   }
-  function stop() { gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } clearHi(); hideBar(); if (btnEl) btnEl.textContent = btnLabel; }
-  function toggle(text, btn, label, opts) { if (active) stop(); else start(text, btn, label, opts); }
+  function stop() { savePos(); gen++; active = false; stopAudio(); if (synth) { try { synth.cancel(); } catch (e) {} } clearHi(); hideBar(); if (btnEl) btnEl.textContent = btnLabel; }
+  // 듣기 버튼: 재생 중 = 일시정지, 일시정지 중 = 이어 재생. (생성 대기·기본음성 중엔 기존처럼 정지)
+  function toggle(text, btn, label, opts) {
+    if (active && audio) { if (audio.paused) resume(); else pause(); return; }
+    if (active) { stop(); return; }
+    start(text, btn, label, opts);
+  }
   // 날짜(YYYY-MM-DD)로 미리 만든 로컬 음성 후보 URL(mp3→wav)
   function preUrlsForDate(dashDate) {
     if (!dashDate) return [];

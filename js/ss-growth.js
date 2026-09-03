@@ -4,9 +4,11 @@
  * 좋아요: rpc/ss_toggle_like — 로그인한 성도 누구나 누를 수 있다(교사단 전용이 아니다).
  *   · 로그인했으면 내 토큰으로 피드를 불러와 '내가 누른 하트'(mine)를 채워서 보여 준다.
  * 이번주 미션: rpc/ss_current_mission — 있으면 배너로 안내(로그인 불필요).
- * 콘솔: [ss-growth.js] v20260830msphoto
+ * 교사단(rpc/ss_context.isTeacher)에게는 카드마다 [📣 소식으로] 버튼 —
+ *   잘 나온 인증샷을 '우리들 소식' 갤러리(album_photos)에 게시한다(파일 복사 없이 URL 공유, 중복 방지).
+ * 콘솔: [ss-growth.js] v20260902pub
  */
-console.log('[ss-growth.js] v20260830msphoto');
+console.log('[ss-growth.js] v20260902pub');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
@@ -14,6 +16,7 @@ console.log('[ss-growth.js] v20260830msphoto');
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var SHOW = 8;                       // 처음에 보여줄 카드 수(더 보기로 확장)
   var rows = [], filterName = '', expanded = false, mission = null;
+  var isTeacher = false;              // 교사단이면 카드에 [📣 소식으로] 버튼 표시
 
   // 로그인 정보(다른 홈 섹션과 같은 방식) — 없으면 보기만 가능
   function localSession() {
@@ -90,7 +93,12 @@ console.log('[ss-growth.js] v20260830msphoto');
       '<button type="button" class="ssg-like" data-id="' + esc(r.id) + '" title="' + (mine ? '좋아요 취소' : '어린이를 응원해 주세요') + '" ' +
       'style="' + likeStyle(mine) + '">' + (mine ? '❤' : '♡') + ' ' + (r.likes || 0) + '</button>' +
       (r.confirmed ? '<span style="color:#1e874b;font-weight:700;">✓ 확인</span>' : '') +
-      '</span></div></div></div>';
+      '</span></div>' +
+      (isTeacher
+        ? '<button type="button" class="ssg-pub" data-id="' + esc(r.id) + '" title="이 인증샷을 홈 \'우리들 소식\' 갤러리에 게시합니다(교사)" ' +
+          'style="margin-top:8px;width:100%;border:1px solid #cdd7e3;background:#f7f9fc;color:var(--accent,#032257);border-radius:9px;padding:5px 8px;font:inherit;font-size:.78rem;font-weight:600;cursor:pointer;">📣 우리들 소식으로 올리기</button>'
+        : '') +
+      '</div></div>';
   }
 
   // 좋아요 — 로그인한 성도 누구나. 교사 화면과 같은 함수(rpc/ss_toggle_like)를 쓴다.
@@ -116,6 +124,82 @@ console.log('[ss-growth.js] v20260830msphoto');
           .catch(function () { b.disabled = false; alert('좋아요를 저장하지 못했어요. 잠시 후 다시 눌러 주세요.'); });
       };
     });
+  }
+
+  // ── [교사] 인증샷을 '우리들 소식' 갤러리에 게시 ──
+  //   파일은 복사하지 않고 같은 URL을 album_photos에 등록(key=null → 갤러리에서 지워도 원본 인증샷 파일은 유지).
+  //   같은 URL이 이미 갤러리에 있으면 중복 게시하지 않는다.
+  function restHeaders(extra) {
+    var h = { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (token() || window.SUPABASE_ANON_KEY), 'Content-Type': 'application/json' };
+    if (extra) for (var k in extra) h[k] = extra[k];
+    return h;
+  }
+  function publishRow(r, btn) {
+    var ss = localSession(), me = ss && ss.user;
+    if (!me) { alert('로그인이 필요합니다.'); openLogin(); return; }
+    var photos = (Array.isArray(r.photos) && r.photos.length ? r.photos : [r.photo]).filter(Boolean);
+    if (!photos.length) { alert('사진 주소를 찾지 못했습니다.'); return; }
+    if (!confirm(r.name + ' 어린이의 ' + r.stype + ' 인증샷 ' + photos.length + '장을\n홈 \'우리들 소식\' 갤러리에 올릴까요?')) return;
+    btn.disabled = true; btn.textContent = '올리는 중…';
+    var authorName = (me.user_metadata && (me.user_metadata.name || me.user_metadata.full_name)) || (me.email ? me.email.split('@')[0] : '교사');
+    var title = '주일학교 · ' + (r.name || '어린이') + ' ' + r.stype + ' 인증';
+    var date = String(r.date || '').slice(0, 10) || null;
+    var posted = 0, dup = 0;
+    function one(i) {
+      if (i >= photos.length) {
+        btn.textContent = posted ? '✓ 소식에 올렸습니다' : '이미 올라가 있어요';
+        btn.style.color = '#1e874b'; btn.style.borderColor = '#bfe0c8'; btn.style.background = '#f0f9f2';
+        if (posted) try { window.dispatchEvent(new Event('church:auth')); } catch (e) {}   // 홈 '우리들 소식' 즉시 갱신
+        return;
+      }
+      var u = photos[i];
+      // 중복 확인 → 없을 때만 게시
+      fetch(window.SUPABASE_URL + '/rest/v1/album_photos?select=id&url=eq.' + encodeURIComponent(u) + '&limit=1', { headers: restHeaders() })
+        .then(function (res) { return res.ok ? res.json() : []; })
+        .then(function (ex) {
+          if (ex && ex.length) { dup++; one(i + 1); return null; }
+          var base = { category: '주일학교', url: u, key: null, caption: null, user_id: me.id, author_name: authorName };
+          var withCols = Object.assign({ title: title, event_date: date }, base);
+          return fetch(window.SUPABASE_URL + '/rest/v1/album_photos', { method: 'POST', headers: restHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify(withCols) })
+            .then(function (res) {
+              if (res.ok) return true;
+              return res.text().then(function (t) {
+                // title/event_date 컬럼이 없는 옛 스키마면 기본 필드로 재시도
+                if (/column|event_date|title|schema cache/i.test(t)) {
+                  return fetch(window.SUPABASE_URL + '/rest/v1/album_photos', { method: 'POST', headers: restHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify(base) })
+                    .then(function (r2) { if (!r2.ok) return r2.text().then(function (t2) { throw new Error(t2); }); return true; });
+                }
+                throw new Error(t || ('HTTP ' + res.status));
+              });
+            })
+            .then(function (ok) { if (ok) posted++; one(i + 1); });
+        })
+        .catch(function (e) {
+          btn.disabled = false; btn.textContent = '📣 우리들 소식으로 올리기';
+          alert('게시하지 못했습니다: ' + ((e && e.message) || '오류') + '\n잠시 후 다시 시도해 주세요.');
+        });
+    }
+    one(0);
+  }
+  function bindPublish() {
+    Array.prototype.forEach.call(body.querySelectorAll('.ssg-pub'), function (b) {
+      b.onclick = function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        var row = rows.filter(function (x) { return String(x.id) === String(b.dataset.id); })[0];
+        if (row) publishRow(row, b);
+      };
+    });
+  }
+  // 교사단 여부 — 로그인한 경우에만 확인(교사면 다시 그려서 버튼 표시)
+  function checkTeacher() {
+    var tk = token(); if (!tk || isTeacher) return;
+    fetch(window.SUPABASE_URL + '/rest/v1/rpc/ss_context', {
+      method: 'POST',
+      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' },
+      body: '{}'
+    }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (ctx) { if (ctx && ctx.isTeacher) { isTeacher = true; if (rows.length) render(); } })
+      .catch(function () {});
   }
 
   function render() {
@@ -155,6 +239,7 @@ console.log('[ss-growth.js] v20260830msphoto');
     var more = body.querySelector('#ssgMore'); if (more) more.onclick = function () { expanded = true; render(); };
     var less = body.querySelector('#ssgLess'); if (less) less.onclick = function () { expanded = false; render(); };
     bindLikes();
+    bindPublish();
   }
 
   function callRpc(name, auth) {
@@ -182,6 +267,7 @@ console.log('[ss-growth.js] v20260830msphoto');
         // 네트워크가 잠깐 막힌 경우 — 빈 화면으로 확정하지 말고 잠시 뒤 다시 시도
         if (res[0] === null && retries < 2) { retries++; setTimeout(load, 2000 * retries); return; }
         rows = res[0] || []; mission = res[1] || null; render();
+        checkTeacher();   // 교사단이면 카드에 [📣 우리들 소식으로] 버튼을 붙여 다시 그림
       })
       .catch(function () { body.innerHTML = ''; });
   }
