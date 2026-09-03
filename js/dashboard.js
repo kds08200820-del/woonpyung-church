@@ -1930,10 +1930,14 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
           var ym = monthKey(todayStr());
           var mQt = rows.filter(function (r) { return r.stype === 'QT' && monthKey(r.sub_date) === ym; }).length;
           var mPil = rows.filter(function (r) { return r.stype === '필사' && monthKey(r.sub_date) === ym; }).length;
-          // 하루 한 번 규칙 — 오늘 이미 올린 종류는 버튼을 '완료'로 바꿔 헛걸음을 막는다
+          // QT는 하루 한 번, 필사는 한 주에 한 번 — 이미 올렸으면 버튼을 '완료'로 바꿔 헛걸음을 막는다
           var td = todayStr();
           function doneToday(t) { return rows.filter(function (r) { return r.stype === t && r.sub_date === td; }).length > 0; }
-          var doneQt = doneToday('QT'), donePil = doneToday('필사');
+          // 이번 주 일요일 — 주일학교의 '한 주'는 주일에 시작(서버 ss_week_start와 같은 기준)
+          var wsD = new Date(td + 'T00:00:00'); wsD.setDate(wsD.getDate() - wsD.getDay());
+          var weekStart = wsD.getFullYear() + '-' + pad2(wsD.getMonth() + 1) + '-' + pad2(wsD.getDate());
+          function doneThisWeek(t) { return rows.filter(function (r) { return r.stype === t && r.sub_date >= weekStart; }).length > 0; }
+          var doneQt = doneToday('QT'), donePil = doneThisWeek('필사');
           // 미션은 '한 주에 한 번' — 이번 주 미션으로 올린 인증이 있으면 완료
           var doneMission = !!(mission && rows.filter(function (r) { return r.stype === '미션' && String(r.mission_id) === String(mission.id); }).length);
           // 미션 인증에 필요한 사진 장수(교사가 미션을 정할 때 설정, 기본 1장)
@@ -1942,7 +1946,7 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
           container.innerHTML =
             '<div class="form-card" style="padding:16px 18px;">' +
             '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">📖 QT·필사·미션 인증</h3>' +
-            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">QT·필사는 <b>각각 하루에 한 번</b>, 미션은 <b>한 주에 한 번</b> 올릴 수 있어요. 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고, 홈 화면 <b>‘주일학교 성장기’</b> 섹션에 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
+            '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 12px;">QT는 <b>하루에 한 번</b>, 필사·미션은 <b>한 주에 한 번</b> 올릴 수 있어요. 올리면 <b style="color:#b7791f;">달란트가 자동 지급</b>되고, 홈 화면 <b>‘주일학교 성장기’</b> 섹션에 게시됩니다. 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b></p>' +
             calParts.cal +   // 달력을 맨 위로(2026-08-25 요청) — 미션·버튼은 그 아래
             (mission ?
               '<div style="border:1px solid #f2e2ae;background:#fffbe8;border-radius:12px;padding:12px 14px;margin-bottom:12px;">' +
@@ -1960,7 +1964,7 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
               '</div></div>' : '') +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
             '<button type="button" class="btn ' + (doneQt ? 'btn-line' : 'btn-solid') + '" id="sscUpQt" style="padding:8px 16px;' + (doneQt ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : '') + '">' + (doneQt ? '✓ 오늘 QT 인증 완료' : '📷 QT 인증 올리기') + '</button>' +
-            '<button type="button" class="btn ' + (donePil ? 'btn-line' : 'btn-solid') + '" id="sscUpPil" style="padding:8px 16px;' + (donePil ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : 'background:#1e874b;border-color:#1e874b;') + '">' + (donePil ? '✓ 오늘 필사 인증 완료' : '✍️ 필사 인증 올리기') + '</button>' +
+            '<button type="button" class="btn ' + (donePil ? 'btn-line' : 'btn-solid') + '" id="sscUpPil" style="padding:8px 16px;' + (donePil ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : 'background:#1e874b;border-color:#1e874b;') + '">' + (donePil ? '✓ 이번 주 필사 인증 완료' : '✍️ 필사 인증 올리기') + '</button>' +
             '<input type="file" id="sscFile" accept="image/*" style="display:none;"></div>' +
             '<p class="fin-msg" id="sscMsg" style="margin:0 0 8px;"></p>' +
             calParts.list +
@@ -2048,12 +2052,15 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
           var msg = container.querySelector('#sscMsg');
           function flash(ok, t) { msg.style.color = ok ? 'green' : '#c0392b'; msg.textContent = t; }
           var fileInp = container.querySelector('#sscFile'), curType = 'QT';
-          // 하루 한 번(QT·필사)/주 1회(미션) — 이미 올렸으면 사진 고르는 창을 열지 않는다(서버도 트리거로 한 번 더 막는다)
+          // QT 하루 1회 / 필사·미션 주 1회 — 이미 올렸으면 사진 고르는 창을 열지 않는다(서버도 트리거로 한 번 더 막는다)
           function pick(t) {
-            if (t === '미션' ? doneMission : doneToday(t)) {
+            var done = (t === '미션') ? doneMission : (t === '필사') ? donePil : doneToday(t);
+            if (done) {
               flash(false, t === '미션'
                 ? '이번 주 미션 인증은 이미 올렸어요. 미션은 한 주에 한 번만 올릴 수 있어요.'
-                : '오늘 ' + t + ' 인증은 이미 올렸어요. 하루에 한 번만 올릴 수 있어요. 바꾸시려면 아래 목록에서 오늘 것을 삭제한 뒤 다시 올려 주세요.');
+                : t === '필사'
+                  ? '이번 주 필사 인증은 이미 올렸어요. 필사는 한 주에 한 번만 올릴 수 있어요. 바꾸시려면 아래 목록에서 이번 주 것을 삭제한 뒤 다시 올려 주세요.'
+                  : '오늘 ' + t + ' 인증은 이미 올렸어요. 하루에 한 번만 올릴 수 있어요. 바꾸시려면 아래 목록에서 오늘 것을 삭제한 뒤 다시 올려 주세요.');
               return;
             }
             curType = t;
