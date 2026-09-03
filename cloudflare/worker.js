@@ -272,20 +272,36 @@ export default {
       return new Response(obj.body, { status, headers: h });
     }
 
-    // ----- 파일 보기/다운로드 (공개) -----
+    // ----- 파일 보기/다운로드 (공개, Range 지원) -----
+    //   Range 를 못 받으면 QT 낭독·오디오북 미리듣기 등에서 '이어 듣기'로 저장해 둔
+    //   지점으로 이동(seek)이 안 된다(브라우저가 seekable을 [0,0]으로 봄) — /book-audio/ 와 동일한 처리.
     if (req.method === "GET" && url.pathname.startsWith("/f/")) {
       const key = decodeURIComponent(url.pathname.slice(3));
       // 오디오북은 판매 중인 책이라 공개 경로로 내보내지 않는다.
       if (key.startsWith(BOOK_PREFIX)) {
         return json({ error: "오디오북은 정회원 로그인 후 들을 수 있습니다." }, 403, req);
       }
-      const obj = await env.BUCKET.get(key);
+      const obj = await env.BUCKET.get(key, { range: req.headers, onlyIf: req.headers });
       if (!obj) return new Response("Not found", { status: 404, headers: corsHeaders(req) });
       const h = new Headers(corsHeaders(req));
       obj.writeHttpMetadata(h);
       h.set("etag", obj.httpEtag);
       h.set("Cache-Control", "public, max-age=31536000, immutable");
-      return new Response(obj.body, { headers: h });
+      h.set("Accept-Ranges", "bytes");
+      // 206(부분 응답)은 브라우저가 Range 를 실제로 요청했을 때만 준다.
+      // (R2 는 Range 가 없어도 obj.range 를 채워 주므로 헤더로 판단해야 한다)
+      const asked = req.headers.get("range") !== null;
+      let status = obj.body ? 200 : 304;
+      if (obj.body && asked && obj.range && typeof obj.range.offset === "number" && typeof obj.range.length === "number") {
+        const start = obj.range.offset;
+        const end = start + obj.range.length - 1;
+        h.set("Content-Range", `bytes ${start}-${end}/${obj.size}`);
+        h.set("Content-Length", String(obj.range.length));
+        status = 206;
+      } else if (obj.body) {
+        h.set("Content-Length", String(obj.size));
+      }
+      return new Response(obj.body, { status, headers: h });
     }
 
     // ----- 여기부터는 로그인(또는 무인 워커 키) 필요 -----
