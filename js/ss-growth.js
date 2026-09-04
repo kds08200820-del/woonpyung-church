@@ -6,16 +6,23 @@
  * 이번주 미션: rpc/ss_current_mission — 있으면 배너로 안내(로그인 불필요).
  * 교사단(rpc/ss_context.isTeacher)에게는 카드마다 [📣 소식으로] 버튼 —
  *   잘 나온 인증샷을 '우리들 소식' 갤러리(album_photos)에 게시한다(파일 복사 없이 URL 공유, 중복 방지).
- * 콘솔: [ss-growth.js] v20260902pub
+ * 지난 기록: '성장 기록 더 보기'를 누르면 rpc/ss_growth_feed(p_limit,p_offset)로 60건씩 이어 받아온다
+ *   (예전에는 최신 60건만 받아 와서, 그보다 오래된 인증 사진은 눌러도 볼 수 없었다 — 2026-09-04)
+ * 콘솔: [ss-growth.js] v20260904page
  */
-console.log('[ss-growth.js] v20260902pub');
+console.log('[ss-growth.js] v20260904page');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
   if (!body) return;
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var SHOW = 8;                       // 처음에 보여줄 카드 수(더 보기로 확장)
-  var rows = [], filterName = '', expanded = false, mission = null;
+  var STEP = 24;                      // '더 보기' 한 번에 늘려 보여줄 카드 수
+  var PAGE = 60;                      // 서버에서 한 번에 받아오는 기록 수
+  var rows = [], filterName = '', shownCount = SHOW, mission = null;
+  var hasMore = true;                 // 서버에 아직 더 지난 기록이 남아 있는지
+  var loadingMore = false;            // 이어 불러오는 중(버튼 중복 클릭 방지)
+  var pagingOk = true;                // 서버 함수가 p_offset(페이지 넘김)을 지원하는지
   var isTeacher = false;              // 교사단이면 카드에 [📣 소식으로] 버튼 표시
 
   // 로그인 정보(다른 홈 섹션과 같은 방식) — 없으면 보기만 가능
@@ -219,7 +226,7 @@ console.log('[ss-growth.js] v20260902pub');
     rows.forEach(function (r) { if (r.name && names.indexOf(r.name) < 0) names.push(r.name); });
     names.sort(function (a, b) { return a.localeCompare(b, 'ko'); });
     var list = filterName ? rows.filter(function (r) { return r.name === filterName; }) : rows;
-    var shown = expanded ? list : list.slice(0, SHOW);
+    var shown = list.slice(0, shownCount);
     body.innerHTML = missionBanner() +
       '<p style="text-align:center;color:var(--ink-soft,#7b8794);font-size:.86rem;margin:0 0 14px;">함께 자라는 어린이 <b style="color:var(--accent,#032257);">' + names.length + '명</b> · 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b>' + (mMs ? ' · 미션 <b>' + mMs + '회</b>' : '') + '</p>' +
       (names.length > 1 ?
@@ -230,43 +237,76 @@ console.log('[ss-growth.js] v20260902pub');
           return '<button type="button" class="ssg-chip" data-n="' + esc(n) + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.82rem;cursor:pointer;">' + esc(n) + '</button>';
         }).join('') + '</div>' : '') +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;">' + shown.map(card).join('') + '</div>' +
-      (list.length > shown.length ?
-        '<div style="text-align:center;margin-top:16px;"><button type="button" class="btn btn-line" id="ssgMore">성장 기록 더 보기 (' + list.length + '건)</button></div>' :
-        (expanded && list.length > SHOW ? '<div style="text-align:center;margin-top:16px;"><button type="button" class="btn btn-line" id="ssgLess">접기</button></div>' : ''));
+      ((list.length > shown.length || hasMore) ?
+        '<div style="text-align:center;margin-top:16px;"><button type="button" class="btn btn-line" id="ssgMore"' + (loadingMore ? ' disabled' : '') + '>' +
+          (loadingMore ? '불러오는 중…' : '성장 기록 더 보기' + (list.length > shown.length ? ' (' + list.length + '건)' : '')) +
+        '</button></div>' :
+        (shownCount > SHOW ? '<div style="text-align:center;margin-top:16px;"><button type="button" class="btn btn-line" id="ssgLess">접기</button></div>' : ''));
     Array.prototype.forEach.call(body.querySelectorAll('.ssg-chip'), function (b) {
-      b.onclick = function () { filterName = b.dataset.n; expanded = false; render(); };
+      b.onclick = function () { filterName = b.dataset.n; shownCount = SHOW; render(); };
     });
-    var more = body.querySelector('#ssgMore'); if (more) more.onclick = function () { expanded = true; render(); };
-    var less = body.querySelector('#ssgLess'); if (less) less.onclick = function () { expanded = false; render(); };
+    var more = body.querySelector('#ssgMore');
+    if (more) more.onclick = function () {
+      shownCount += STEP;
+      // 보여 줄 만큼 이미 받아 뒀으면 그리기만, 모자라면 서버에서 지난 기록을 이어 받아온다
+      if (shownCount > list.length && hasMore) loadMore(); else render();
+    };
+    var less = body.querySelector('#ssgLess'); if (less) less.onclick = function () { shownCount = SHOW; render(); };
     bindLikes();
     bindPublish();
   }
 
-  function callRpc(name, auth) {
+  function callRpc(name, auth, args) {
     return fetch(window.SUPABASE_URL + '/rest/v1/rpc/' + name, {
       method: 'POST',
       headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + auth, 'Content-Type': 'application/json' },
-      body: '{}'
+      body: JSON.stringify(args || {})
     }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   }
   // 홈을 오랜만에 열면 저장된 로그인 토큰이 만료돼 401이 나면서 성장기가
   // '기록 없음'으로 비어 보이던 문제(2026-08-25) — 실패하면 익명 키로 다시
   // 시도한다. 피드·미션은 익명으로도 볼 수 있어 화면은 항상 채워진다.
   // (익명 폴백에서는 '내가 누른 하트' 표시만 빠지며, 토큰이 갱신되면 복원됨)
-  function rpc(name) {
+  function rpc(name, args) {
     var tk = token();
-    var p = callRpc(name, tk || window.SUPABASE_ANON_KEY);
-    if (tk) p = p.catch(function () { return callRpc(name, window.SUPABASE_ANON_KEY); });
+    var p = callRpc(name, tk || window.SUPABASE_ANON_KEY, args);
+    if (tk) p = p.catch(function () { return callRpc(name, window.SUPABASE_ANON_KEY, args); });
     return p.catch(function () { return null; });   // null = 진짜 실패(빈 배열과 구분)
+  }
+  // 지난 기록 한 장(page) 받아오기.
+  //   서버 함수가 아직 p_offset 없는 예전 판이면 인자를 붙인 호출이 실패하므로,
+  //   그때는 인자 없는 예전 방식(최신 60건)으로 한 번만 받아 오고 페이지 넘김을 끈다.
+  function fetchPage(offset) {
+    if (!pagingOk) return offset === 0 ? rpc('ss_growth_feed') : Promise.resolve([]);
+    return rpc('ss_growth_feed', { p_limit: PAGE, p_offset: offset }).then(function (res) {
+      if (res !== null) return res;
+      pagingOk = false; hasMore = false;
+      return offset === 0 ? rpc('ss_growth_feed') : [];
+    });
+  }
+  // '더 보기' — 서버에서 다음 장을 받아 이어 붙인다
+  function loadMore() {
+    if (loadingMore || !hasMore) { render(); return; }
+    loadingMore = true; render();
+    fetchPage(rows.length).then(function (more) {
+      loadingMore = false;
+      if (!more || !more.length) { hasMore = false; render(); return; }
+      rows = rows.concat(more);
+      if (more.length < PAGE) hasMore = false;   // 마지막 장
+      render();
+    });
   }
   var retries = 0;
   function load() {
     if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) { body.innerHTML = ''; return; }
-    Promise.all([rpc('ss_growth_feed'), rpc('ss_current_mission')])
+    Promise.all([fetchPage(0), rpc('ss_current_mission')])
       .then(function (res) {
         // 네트워크가 잠깐 막힌 경우 — 빈 화면으로 확정하지 말고 잠시 뒤 다시 시도
         if (res[0] === null && retries < 2) { retries++; setTimeout(load, 2000 * retries); return; }
-        rows = res[0] || []; mission = res[1] || null; render();
+        rows = res[0] || []; mission = res[1] || null;
+        shownCount = SHOW;
+        hasMore = pagingOk && rows.length >= PAGE;   // 첫 장이 덜 찼으면 그게 전부
+        render();
         checkTeacher();   // 교사단이면 카드에 [📣 우리들 소식으로] 버튼을 붙여 다시 그림
       })
       .catch(function () { body.innerHTML = ''; });
