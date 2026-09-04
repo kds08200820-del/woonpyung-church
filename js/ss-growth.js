@@ -8,9 +8,9 @@
  *   잘 나온 인증샷을 '우리들 소식' 갤러리(album_photos)에 게시한다(파일 복사 없이 URL 공유, 중복 방지).
  * 지난 기록: '성장 기록 더 보기'를 누르면 rpc/ss_growth_feed(p_limit,p_offset)로 60건씩 이어 받아온다
  *   (예전에는 최신 60건만 받아 와서, 그보다 오래된 인증 사진은 눌러도 볼 수 없었다 — 2026-09-04)
- * 콘솔: [ss-growth.js] v20260904page
+ * 콘솔: [ss-growth.js] v20260904page2
  */
-console.log('[ss-growth.js] v20260904page');
+console.log('[ss-growth.js] v20260904page2');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
@@ -237,11 +237,18 @@ console.log('[ss-growth.js] v20260904page');
           return '<button type="button" class="ssg-chip" data-n="' + esc(n) + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.82rem;cursor:pointer;">' + esc(n) + '</button>';
         }).join('') + '</div>' : '') +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;">' + shown.map(card).join('') + '</div>' +
-      ((list.length > shown.length || hasMore) ?
-        '<div style="text-align:center;margin-top:16px;"><button type="button" class="btn btn-line" id="ssgMore"' + (loadingMore ? ' disabled' : '') + '>' +
-          (loadingMore ? '불러오는 중…' : '성장 기록 더 보기' + (list.length > shown.length ? ' (' + list.length + '건)' : '')) +
-        '</button></div>' :
-        (shownCount > SHOW ? '<div style="text-align:center;margin-top:16px;"><button type="button" class="btn btn-line" id="ssgLess">접기</button></div>' : ''));
+      // '더 보기'와 '접기'는 함께 보인다 — 지난 기록이 아직 남아 있어도 펼친 걸 되접을 수 있게
+      (function () {
+        var canMore = (list.length > shown.length || hasMore);
+        var canLess = shownCount > SHOW;
+        if (!canMore && !canLess) return '';
+        return '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px;">' +
+          (canMore ? '<button type="button" class="btn btn-line" id="ssgMore"' + (loadingMore ? ' disabled' : '') + '>' +
+            (loadingMore ? '불러오는 중…' : '성장 기록 더 보기' + (list.length > shown.length ? ' (' + list.length + '건)' : '')) +
+          '</button>' : '') +
+          (canLess ? '<button type="button" class="btn btn-line" id="ssgLess">접기</button>' : '') +
+          '</div>';
+      })();
     Array.prototype.forEach.call(body.querySelectorAll('.ssg-chip'), function (b) {
       b.onclick = function () { filterName = b.dataset.n; shownCount = SHOW; render(); };
     });
@@ -251,7 +258,12 @@ console.log('[ss-growth.js] v20260904page');
       // 보여 줄 만큼 이미 받아 뒀으면 그리기만, 모자라면 서버에서 지난 기록을 이어 받아온다
       if (shownCount > list.length && hasMore) loadMore(); else render();
     };
-    var less = body.querySelector('#ssgLess'); if (less) less.onclick = function () { shownCount = SHOW; render(); };
+    var less = body.querySelector('#ssgLess');
+    if (less) less.onclick = function () {
+      shownCount = SHOW; render();
+      // 많이 펼친 뒤 접으면 화면이 섹션 아래(빈 곳)에 남는다 — 성장기 첫머리로 되돌려 준다
+      try { (body.closest('section') || body).scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { }
+    };
     bindLikes();
     bindPublish();
   }
