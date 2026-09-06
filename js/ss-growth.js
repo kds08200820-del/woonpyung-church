@@ -10,7 +10,7 @@
  *   (예전에는 최신 60건만 받아 와서, 그보다 오래된 인증 사진은 눌러도 볼 수 없었다 — 2026-09-04)
  * 콘솔: [ss-growth.js] v20260904page2
  */
-console.log('[ss-growth.js] v20260904page2');
+console.log('[ss-growth.js] v20260906msdaily');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
@@ -45,12 +45,17 @@ console.log('[ss-growth.js] v20260904page2');
   // 이번주 미션 배너 — 기록이 없어도, 미션만 정해져 있으면 보여 준다
   function missionBanner() {
     if (!mission) return '';
-    var cnt = Math.max(1, Number(mission.photo_count) || 1);
+    var daily = Math.max(0, Number(mission.daily_days) || 0);   // 0=일반, n=연속미션 n일(하루 1장씩)
+    var cnt = daily > 0 ? 1 : Math.max(1, Number(mission.photo_count) || 1);
     return '<div style="max-width:620px;margin:0 auto 16px;text-align:center;border:1px solid #f2e2ae;background:#fffbe8;border-radius:12px;padding:11px 16px;">' +
       '<b style="color:#8a6d1f;font-size:.9rem;">🎯 이번주 미션</b> · <span style="font-size:.9rem;color:#3a4a63;">' + esc(mission.title) + '</span> ' +
-      '<span style="color:#b7791f;font-weight:700;font-size:.86rem;">(달란트 ' + (Number(mission.amount) || 1) + '개' + (cnt > 1 ? ' · 사진 ' + cnt + '장' : '') + ')</span>' +
+      '<span style="color:#b7791f;font-weight:700;font-size:.86rem;">(달란트 ' + (Number(mission.amount) || 1) + '개' +
+      (daily > 0 ? ' · 🔁 하루 1장 × ' + daily + '일' : (cnt > 1 ? ' · 사진 ' + cnt + '장' : '')) + ')</span>' +
       (mission.description ? '<div style="font-size:.8rem;color:#6b5b26;margin-top:4px;line-height:1.6;">' + esc(mission.description).replace(/\n/g, '<br>') + '</div>' : '') +
-      '<div style="font-size:.74rem;color:#9aa5b1;margin-top:4px;">주중 언제든 한 번, 대시보드에서 인증샷' + (cnt > 1 ? ' ' + cnt + '장' : '') + '을 올리면 달란트가 지급돼요</div></div>';
+      '<div style="font-size:.74rem;color:#9aa5b1;margin-top:4px;">' +
+      (daily > 0
+        ? '대시보드에서 하루 1장씩 인증샷을 올려 ' + daily + '일을 채우면 달란트를 한 번에 받아요'
+        : '주중 언제든 한 번, 대시보드에서 인증샷' + (cnt > 1 ? ' ' + cnt + '장' : '') + '을 올리면 달란트가 지급돼요') + '</div></div>';
   }
   function monthKey(d) { return String(d || '').slice(0, 7); }
 

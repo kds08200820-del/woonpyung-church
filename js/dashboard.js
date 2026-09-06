@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설정)');
+console.log('[dashboard.js] v20260906msdaily (연속미션: 하루 1장 × n일)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1287,16 +1287,19 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
       }
       function draw() {
         var mCnt = m ? Math.max(1, Number(m.photo_count) || 1) : 1;
+        var mDaily = m ? Math.max(0, Number(m.daily_days) || 0) : 0;   // 0=일반, n=연속미션 n일
         if (m && !editing) {
           box.innerHTML = head('<button type="button" class="btn btn-line" id="ssMsEdit" style="padding:3px 12px;font-size:.78rem;">수정</button>') +
             '<div style="border:1px solid #f2e2ae;background:#fffbe8;border-radius:10px;padding:10px 12px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
             '<b style="font-size:.88rem;color:#8a6d1f;">' + esc(m.title) + '</b>' +
             '<span style="display:flex;gap:5px;">' +
-            (mCnt > 1 ? '<span style="font-size:.76rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#8a6d1f;font-weight:700;">📷 사진 ' + mCnt + '장</span>' : '') +
+            (mDaily > 0 ? '<span style="font-size:.76rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#8a6d1f;font-weight:700;">🔁 하루 1장 × ' + mDaily + '일</span>' : '') +
+            (mDaily <= 0 && mCnt > 1 ? '<span style="font-size:.76rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#8a6d1f;font-weight:700;">📷 사진 ' + mCnt + '장</span>' : '') +
             '<span style="font-size:.76rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#b7791f;font-weight:700;">달란트 ' + (Number(m.amount) || 1) + '개</span></span></div>' +
             (m.description ? '<div style="font-size:.82rem;color:#6b5b26;margin-top:5px;line-height:1.6;">' + esc(m.description).replace(/\n/g, '<br>') + '</div>' : '') +
-            '<div style="font-size:.72rem;color:#9aa5b1;margin-top:5px;">' + esc(ws) + ' 주간 · ' + esc(m.created_by || '') + ' · 어린이가 주중 언제든 한 번 인증하면 자동 지급</div></div>';
+            '<div style="font-size:.72rem;color:#9aa5b1;margin-top:5px;">' + esc(ws) + ' 주간 · ' + esc(m.created_by || '') + ' · ' +
+            (mDaily > 0 ? '하루 1장씩 ' + mDaily + '일을 채우면 달란트 자동 지급' : '어린이가 주중 언제든 한 번 인증하면 자동 지급') + '</div></div>';
           box.querySelector('#ssMsEdit').onclick = function () { editing = true; draw(); };
           return;
         }
@@ -1314,32 +1317,56 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
           '<textarea id="ssMsDesc" maxlength="300" placeholder="어떻게 하면 되는지, 인증샷은 무엇을 찍으면 되는지" style="width:100%;min-height:56px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;">' + esc(m ? (m.description || '') : '') + '</textarea></div>' +
           '<div class="af-field" style="margin-bottom:8px;"><label style="font-size:.78rem;color:#7b8794;">달성 시 달란트</label>' +
           '<input type="number" id="ssMsAmt" min="1" max="100" value="' + esc(m ? m.amount : 3) + '" style="width:110px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;"></div>' +
-          '<div class="af-field" style="margin-bottom:10px;"><label style="font-size:.78rem;color:#7b8794;">인증 사진 개수(장)</label><div style="display:flex;align-items:center;gap:8px;">' +
+          '<div class="af-field" style="margin-bottom:8px;"><label style="font-size:.78rem;color:#7b8794;">미션 방식</label>' +
+          '<select id="ssMsMode" style="width:100%;max-width:280px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;background:#fff;">' +
+          '<option value="once"' + (mDaily > 0 ? '' : ' selected') + '>한 번에 인증 (주 1회)</option>' +
+          '<option value="daily"' + (mDaily > 0 ? ' selected' : '') + '>연속미션 — 하루 1장씩 여러 날</option></select></div>' +
+          '<div class="af-field" id="ssMsCntWrap" style="margin-bottom:10px;' + (mDaily > 0 ? 'display:none;' : '') + '"><label style="font-size:.78rem;color:#7b8794;">인증 사진 개수(장)</label><div style="display:flex;align-items:center;gap:8px;">' +
           '<input type="number" id="ssMsCnt" min="1" max="5" value="' + mCnt + '" style="width:110px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;">' +
           '<span style="font-size:.74rem;color:#9aa5b1;">예: 치우기 전·후 사진이면 2장</span></div></div>' +
+          '<div class="af-field" id="ssMsDayWrap" style="margin-bottom:10px;' + (mDaily > 0 ? '' : 'display:none;') + '"><label style="font-size:.78rem;color:#7b8794;">연속미션 날수(일)</label><div style="display:flex;align-items:center;gap:8px;">' +
+          '<input type="number" id="ssMsDays" min="2" max="7" value="' + (mDaily > 0 ? mDaily : 3) + '" style="width:110px;padding:8px 10px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;">' +
+          '<span style="font-size:.74rem;color:#9aa5b1;">하루 1장씩, 이 날수를 채우면 성공 · 달란트는 마지막 날 한 번에 지급</span></div></div>' +
           '<div style="display:flex;gap:8px;">' +
           '<button type="button" class="btn btn-solid" id="ssMsSave" style="padding:6px 16px;">저장</button>' +
           '<button type="button" class="btn btn-line" id="ssMsCancel" style="padding:6px 16px;">취소</button></div></div>';
         box.querySelector('#ssMsCancel').onclick = function () { editing = !!m ? false : true; opened = !!m; draw(); };
+        // 방식에 따라 '사진 개수'(한 번에) ↔ '연속 날수'(연속미션) 입력을 번갈아 보여준다
+        var modeSel = box.querySelector('#ssMsMode');
+        modeSel.onchange = function () {
+          var daily = modeSel.value === 'daily';
+          box.querySelector('#ssMsCntWrap').style.display = daily ? 'none' : '';
+          box.querySelector('#ssMsDayWrap').style.display = daily ? '' : 'none';
+        };
         box.querySelector('#ssMsSave').onclick = function () {
           var title = box.querySelector('#ssMsTitle').value.trim();
           var desc = box.querySelector('#ssMsDesc').value.trim();
           var amt = Math.max(1, Number(box.querySelector('#ssMsAmt').value) || 1);
-          var cnt = Math.min(5, Math.max(1, Number(box.querySelector('#ssMsCnt').value) || 1));
+          var daily = modeSel.value === 'daily';
+          var cnt = daily ? 1 : Math.min(5, Math.max(1, Number(box.querySelector('#ssMsCnt').value) || 1));
+          var days = daily ? Math.min(7, Math.max(2, Number(box.querySelector('#ssMsDays').value) || 3)) : 0;
           if (!title) { ssFlash(el, false, '미션 이름을 입력해 주세요.'); return; }
-          function save(withCnt) {
+          function save(withCnt, withDays) {
             var body = { title: title, description: desc, amount: amt };
             if (withCnt) body.photo_count = cnt;
+            if (withDays) body.daily_days = days;      // 0 = 일반 미션(연속 아님)
             if (!m) { body.week_start = ws; body.created_by = me.memberName || '관리자'; }
             return m
               ? brFetch('ss_missions?id=eq.' + m.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) })
               : brFetch('ss_missions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
           }
-          save(true).then(function () { ssFlash(el, true, '✓ 이번주 미션이 저장되었습니다.'); loadSsMission(el, ctx, me); })
+          save(true, true).then(function () { ssFlash(el, true, '✓ 이번주 미션이 저장되었습니다.'); loadSsMission(el, ctx, me); })
             .catch(function (e) {
+              // daily_days 칼럼이 아직 없으면(SQL 미실행) 연속 설정 없이 저장하고 안내
+              if (/daily_days/.test(e.message || '')) {
+                if (daily) { ssFlash(el, false, '연속미션을 쓰려면 supabase/20260906_1420_ss_mission_daily.sql 을 SQL Editor에서 먼저 실행해 주세요. (미션은 저장하지 않았어요)'); return; }
+                save(true, false).then(function () { ssFlash(el, true, '✓ 이번주 미션이 저장되었습니다.'); loadSsMission(el, ctx, me); })
+                  .catch(function (e2) { ssFlash(el, false, '미션 저장 실패: ' + e2.message); });
+                return;
+              }
               // photo_count 칼럼이 아직 없으면(SQL 미실행) 개수 없이 저장하고 안내
               if (/photo_count/.test(e.message || '')) {
-                save(false).then(function () {
+                save(false, false).then(function () {
                   ssFlash(el, false, '미션은 저장됐지만 사진 개수는 저장하지 못했어요. supabase/20260830_1420_ss_mission_photo_count.sql 을 SQL Editor에서 실행한 뒤 다시 저장해 주세요.');
                   loadSsMission(el, ctx, me);
                 }).catch(function (e2) { ssFlash(el, false, '미션 저장 실패: ' + e2.message); });
@@ -1938,10 +1965,14 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
           var weekStart = wsD.getFullYear() + '-' + pad2(wsD.getMonth() + 1) + '-' + pad2(wsD.getDate());
           function doneThisWeek(t) { return rows.filter(function (r) { return r.stype === t && r.sub_date >= weekStart; }).length > 0; }
           var doneQt = doneToday('QT'), donePil = doneThisWeek('필사');
-          // 미션은 '한 주에 한 번' — 이번 주 미션으로 올린 인증이 있으면 완료
-          var doneMission = !!(mission && rows.filter(function (r) { return r.stype === '미션' && String(r.mission_id) === String(mission.id); }).length);
-          // 미션 인증에 필요한 사진 장수(교사가 미션을 정할 때 설정, 기본 1장)
-          var msCnt = mission ? Math.min(5, Math.max(1, Number(mission.photo_count) || 1)) : 1;
+          // 이번 주 미션으로 올린 내 인증들
+          var msMine = mission ? rows.filter(function (r) { return r.stype === '미션' && String(r.mission_id) === String(mission.id); }) : [];
+          // 연속미션(daily_days>0): 하루 1장씩 n일 채우면 성공 / 일반(0): 주 1회 한 번에
+          var msDaily = mission ? Math.max(0, Number(mission.daily_days) || 0) : 0;
+          var msDoneToday = msMine.filter(function (r) { return r.sub_date === td; }).length > 0;
+          var doneMission = !!(mission && (msDaily > 0 ? msMine.length >= msDaily : msMine.length > 0));
+          // 미션 인증에 필요한 사진 장수(연속미션은 항상 하루 1장)
+          var msCnt = msDaily > 0 ? 1 : (mission ? Math.min(5, Math.max(1, Number(mission.photo_count) || 1)) : 1);
           var calParts = certCalendarHtml();   // { cal: 달력, list: 인증 목록 }
           container.innerHTML =
             '<div class="form-card" style="padding:16px 18px;">' +
@@ -1953,14 +1984,28 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
               '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
               '<b style="font-size:.92rem;color:#8a6d1f;">🎯 이번주 미션 · ' + esc(mission.title) + '</b>' +
               '<span style="display:flex;gap:5px;">' +
-              (msCnt > 1 ? '<span style="font-size:.78rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#8a6d1f;font-weight:700;">📷 사진 ' + msCnt + '장</span>' : '') +
+              (msDaily > 0 ? '<span style="font-size:.78rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#8a6d1f;font-weight:700;">🔁 하루 1장 × ' + msDaily + '일</span>' : '') +
+              (msDaily <= 0 && msCnt > 1 ? '<span style="font-size:.78rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#8a6d1f;font-weight:700;">📷 사진 ' + msCnt + '장</span>' : '') +
               '<span style="font-size:.78rem;background:#fff;border:1px solid #f2e2ae;border-radius:999px;padding:2px 10px;color:#b7791f;font-weight:700;">달란트 ' + (Number(mission.amount) || 1) + '개</span></span></div>' +
               (mission.description ? '<div style="font-size:.82rem;color:#6b5b26;margin-top:5px;line-height:1.6;">' + esc(mission.description).replace(/\n/g, '<br>') + '</div>' : '') +
+              // 연속미션 진행 — 날짜별 도장(●=인증한 날)으로 며칠 채웠는지 보여준다
+              (msDaily > 0 ?
+                '<div style="display:flex;align-items:center;gap:6px;margin-top:9px;">' +
+                Array.apply(null, Array(msDaily)).map(function (_, i) {
+                  var done = i < msMine.length;
+                  return '<span style="width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;' +
+                    (done ? 'background:#b7791f;color:#fff;border:1px solid #b7791f;' : 'background:#fff;color:#c9b98a;border:1px dashed #e0d3a8;') + '">' +
+                    (done ? '✓' : (i + 1)) + '</span>';
+                }).join('') +
+                '<span style="font-size:.8rem;color:#8a6d1f;font-weight:700;margin-left:2px;">' + msMine.length + '/' + msDaily + '일</span></div>' : '') +
               '<div style="margin-top:10px;">' +
               (doneMission ?
-                '<button type="button" class="btn btn-line" disabled style="padding:7px 15px;color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;">✓ 이번 주 미션 완료!</button>' :
-                '<button type="button" class="btn btn-solid" id="sscUpMs" style="padding:7px 15px;background:#b7791f;border-color:#b7791f;">📷 미션 인증 올리기' + (msCnt > 1 ? ' (사진 ' + msCnt + '장)' : '') + '</button>') +
-              (doneMission || msCnt <= 1 ? '' : '<div style="font-size:.76rem;color:#8a6d1f;margin-top:5px;">사진을 고르는 창에서 <b>' + msCnt + '장을 한 번에</b> 선택해 주세요.</div>') +
+                '<button type="button" class="btn btn-line" disabled style="padding:7px 15px;color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;">' + (msDaily > 0 ? '🎉 연속미션 ' + msDaily + '일 성공!' : '✓ 이번 주 미션 완료!') + '</button>' :
+                (msDaily > 0 && msDoneToday ?
+                  '<button type="button" class="btn btn-line" disabled style="padding:7px 15px;color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;">✓ 오늘 인증 완료 — 내일 또 올려요!</button>' :
+                  '<button type="button" class="btn btn-solid" id="sscUpMs" style="padding:7px 15px;background:#b7791f;border-color:#b7791f;">📷 ' + (msDaily > 0 ? '오늘의 미션 인증 올리기' : '미션 인증 올리기' + (msCnt > 1 ? ' (사진 ' + msCnt + '장)' : '')) + '</button>')) +
+              (doneMission || msDaily > 0 || msCnt <= 1 ? '' : '<div style="font-size:.76rem;color:#8a6d1f;margin-top:5px;">사진을 고르는 창에서 <b>' + msCnt + '장을 한 번에</b> 선택해 주세요.</div>') +
+              (msDaily > 0 && !doneMission ? '<div style="font-size:.76rem;color:#8a6d1f;margin-top:5px;">하루에 <b>1장만</b> 올릴 수 있어요. ' + msDaily + '일을 다 채우면 달란트 ' + (Number(mission.amount) || 1) + '개를 한 번에 받아요!</div>' : '') +
               '</div></div>' : '') +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
             '<button type="button" class="btn ' + (doneQt ? 'btn-line' : 'btn-solid') + '" id="sscUpQt" style="padding:8px 16px;' + (doneQt ? 'color:#1e874b;border-color:#bfe3cc;background:#f7fcf8;' : '') + '">' + (doneQt ? '✓ 오늘 QT 인증 완료' : '📷 QT 인증 올리기') + '</button>' +
@@ -2054,10 +2099,14 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
           var fileInp = container.querySelector('#sscFile'), curType = 'QT';
           // QT 하루 1회 / 필사·미션 주 1회 — 이미 올렸으면 사진 고르는 창을 열지 않는다(서버도 트리거로 한 번 더 막는다)
           function pick(t) {
-            var done = (t === '미션') ? doneMission : (t === '필사') ? donePil : doneToday(t);
+            var done = (t === '미션') ? (doneMission || (msDaily > 0 && msDoneToday)) : (t === '필사') ? donePil : doneToday(t);
             if (done) {
               flash(false, t === '미션'
-                ? '이번 주 미션 인증은 이미 올렸어요. 미션은 한 주에 한 번만 올릴 수 있어요.'
+                ? (msDaily > 0
+                  ? (doneMission
+                    ? '연속미션 ' + msDaily + '일을 모두 인증했어요. 이번 주 미션 성공! 🎉'
+                    : '오늘 미션 인증은 이미 올렸어요. 연속미션은 하루에 1장만 올릴 수 있어요. 내일 또 올려 주세요!')
+                  : '이번 주 미션 인증은 이미 올렸어요. 미션은 한 주에 한 번만 올릴 수 있어요.')
                 : t === '필사'
                   ? '이번 주 필사 인증은 이미 올렸어요. 필사는 한 주에 한 번만 올릴 수 있어요. 바꾸시려면 아래 목록에서 이번 주 것을 삭제한 뒤 다시 올려 주세요.'
                   : '오늘 ' + t + ' 인증은 이미 올렸어요. 하루에 한 번만 올릴 수 있어요. 바꾸시려면 아래 목록에서 오늘 것을 삭제한 뒤 다시 올려 주세요.');
@@ -2101,7 +2150,17 @@ console.log('[dashboard.js] v20260830msphoto (미션: 인증 사진 개수 설�
               if (ups.length > 1) body.photos = ups;   // 여러 장일 때만(1장은 기존 칼럼 그대로)
               if (curType === '미션' && mission) body.mission_id = mission.id;
               return brFetch('ss_submissions', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) });
-            }).then(function () { flash(true, '✓ ' + curType + ' 인증이 올라갔어요! 달란트 지급 + 성장기 게시 완료 ⭐'); draw(); if (onChange) onChange(); })
+            }).then(function () {
+              if (curType === '미션' && msDaily > 0) {
+                var got = msMine.length + 1;   // 이번 것 포함 며칠째인지
+                flash(true, got >= msDaily
+                  ? '🎉 연속미션 ' + msDaily + '일 성공! 달란트 ' + (Number(mission.amount) || 1) + '개 지급 + 성장기 게시 완료 ⭐'
+                  : '✓ 오늘 미션 인증 완료! (' + got + '/' + msDaily + '일) ' + msDaily + '일을 다 채우면 달란트를 한 번에 받아요.');
+              } else {
+                flash(true, '✓ ' + curType + ' 인증이 올라갔어요! 달란트 지급 + 성장기 게시 완료 ⭐');
+              }
+              draw(); if (onChange) onChange();
+            })
               .catch(function (e) {
                 // 기록 저장에 실패하면 이미 올라간 사진 파일은 지워 둔다
                 if (window.ChurchUpload) ups.forEach(function (u) { if (u.key) ChurchUpload.remove(u.key); });
