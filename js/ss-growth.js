@@ -6,11 +6,14 @@
  * 이번주 미션: rpc/ss_current_mission — 있으면 배너로 안내(로그인 불필요).
  * 교사단(rpc/ss_context.isTeacher)에게는 카드마다 [📣 소식으로] 버튼 —
  *   잘 나온 인증샷을 '우리들 소식' 갤러리(album_photos)에 게시한다(파일 복사 없이 URL 공유, 중복 방지).
+ *   · 이미 게시된 인증샷(album_photos에 같은 URL이 있음)은 버튼 대신 '✓ 이미 게시됨' 표시 —
+ *     예전에는 누가 로그인하든 버튼이 늘 다시 떠서 다른 교사가 또 누르면 중복 게시될 수 있었다(2026-09-08).
+ *     게시 직전에도 서버에서 게시 여부를 다시 확인하고, 확인 자체가 실패하면 게시하지 않는다(안전 우선).
  * 지난 기록: '성장 기록 더 보기'를 누르면 rpc/ss_growth_feed(p_limit,p_offset)로 60건씩 이어 받아온다
  *   (예전에는 최신 60건만 받아 와서, 그보다 오래된 인증 사진은 눌러도 볼 수 없었다 — 2026-09-04)
- * 콘솔: [ss-growth.js] v20260904page2
+ * 콘솔: [ss-growth.js] v20260908pubonce
  */
-console.log('[ss-growth.js] v20260906msdaily');
+console.log('[ss-growth.js] v20260908pubonce');
 
 (function () {
   var body = document.getElementById('ssGrowthBody');
@@ -24,6 +27,7 @@ console.log('[ss-growth.js] v20260906msdaily');
   var loadingMore = false;            // 이어 불러오는 중(버튼 중복 클릭 방지)
   var pagingOk = true;                // 서버 함수가 p_offset(페이지 넘김)을 지원하는지
   var isTeacher = false;              // 교사단이면 카드에 [📣 소식으로] 버튼 표시
+  var pubUrls = null;                 // 이미 '우리들 소식'에 게시된 인증샷 URL 목록({url:true}) — null=아직 못 받음
 
   // 로그인 정보(다른 홈 섹션과 같은 방식) — 없으면 보기만 가능
   function localSession() {
@@ -106,11 +110,42 @@ console.log('[ss-growth.js] v20260906msdaily');
       'style="' + likeStyle(mine) + '">' + (mine ? '❤' : '♡') + ' ' + (r.likes || 0) + '</button>' +
       (r.confirmed ? '<span style="color:#1e874b;font-weight:700;">✓ 확인</span>' : '') +
       '</span></div>' +
-      (isTeacher
-        ? '<button type="button" class="ssg-pub" data-id="' + esc(r.id) + '" title="이 인증샷을 홈 \'우리들 소식\' 갤러리에 게시합니다(교사)" ' +
-          'style="margin-top:8px;width:100%;border:1px solid #cdd7e3;background:#f7f9fc;color:var(--accent,#032257);border-radius:9px;padding:5px 8px;font:inherit;font-size:.78rem;font-weight:600;cursor:pointer;">📣 우리들 소식으로 올리기</button>'
-        : '') +
+      (isTeacher ? pubArea(r) : '') +
       '</div></div>';
+  }
+  // [교사] 카드 아래 게시 영역 — 이미 게시된 인증샷이면 버튼 대신 표시만(누가 로그인해도 같음)
+  function publishedLabel() {
+    return '<div class="ssg-pubdone" style="margin-top:8px;width:100%;box-sizing:border-box;border:1px solid #bfe0c8;background:#f0f9f2;color:#1e874b;border-radius:9px;padding:5px 8px;font-size:.78rem;font-weight:600;text-align:center;">✓ 이미 우리들 소식에 게시되었습니다</div>';
+  }
+  function pubArea(r) {
+    if (pubUrls === null) return '';                 // 게시 여부를 아직 못 받았으면 버튼을 내지 않는다(중복 게시 방지)
+    if (isPublished(r)) return publishedLabel();
+    return '<button type="button" class="ssg-pub" data-id="' + esc(r.id) + '" title="이 인증샷을 홈 \'우리들 소식\' 갤러리에 게시합니다(교사)" ' +
+      'style="margin-top:8px;width:100%;border:1px solid #cdd7e3;background:#f7f9fc;color:var(--accent,#032257);border-radius:9px;padding:5px 8px;font:inherit;font-size:.78rem;font-weight:600;cursor:pointer;">📣 우리들 소식으로 올리기</button>';
+  }
+  function rowPhotos(r) {
+    return (Array.isArray(r.photos) && r.photos.length ? r.photos : [r.photo]).filter(Boolean);
+  }
+  // 인증샷 사진이 전부 갤러리에 있으면 '게시됨'
+  function isPublished(r) {
+    var ps = rowPhotos(r);
+    if (!ps.length || !pubUrls) return false;
+    for (var i = 0; i < ps.length; i++) if (!pubUrls[ps[i]]) return false;
+    return true;
+  }
+  // 갤러리에 이미 올라간 인증샷 URL 목록을 서버에서 받아온다(인증샷 주소는 모두 /f/ss-cert/ 를 포함).
+  //   개별 URL을 조회 조건에 넣지 않고 목록을 통째로 받아 비교하므로 주소 인코딩 문제가 끼어들 여지가 없다.
+  //   실패하면 null(알 수 없음) — 이때는 버튼을 내지 않는다.
+  function fetchPublished() {
+    return fetch(window.SUPABASE_URL + '/rest/v1/album_photos?select=url&url=like.*%2Ff%2Fss-cert%2F*&limit=2000', { headers: restHeaders() })
+      .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error('HTTP ' + res.status)); })
+      .then(function (list) {
+        var m = {};
+        (list || []).forEach(function (p) { if (p && p.url) m[p.url] = true; });
+        pubUrls = m;
+        return m;
+      })
+      .catch(function () { return null; });
   }
 
   // 좋아요 — 로그인한 성도 누구나. 교사 화면과 같은 함수(rpc/ss_toggle_like)를 쓴다.
@@ -149,7 +184,7 @@ console.log('[ss-growth.js] v20260906msdaily');
   function publishRow(r, btn) {
     var ss = localSession(), me = ss && ss.user;
     if (!me) { alert('로그인이 필요합니다.'); openLogin(); return; }
-    var photos = (Array.isArray(r.photos) && r.photos.length ? r.photos : [r.photo]).filter(Boolean);
+    var photos = rowPhotos(r);
     if (!photos.length) { alert('사진 주소를 찾지 못했습니다.'); return; }
     if (!confirm(r.name + ' 어린이의 ' + r.stype + ' 인증샷 ' + photos.length + '장을\n홈 \'우리들 소식\' 갤러리에 올릴까요?')) return;
     btn.disabled = true; btn.textContent = '올리는 중…';
@@ -157,19 +192,23 @@ console.log('[ss-growth.js] v20260906msdaily');
     var title = '주일학교 · ' + (r.name || '어린이') + ' ' + r.stype + ' 인증';
     var date = String(r.date || '').slice(0, 10) || null;
     var posted = 0, dup = 0;
+    function reset() { btn.disabled = false; btn.textContent = '📣 우리들 소식으로 올리기'; }
+    function done() {
+      // 버튼을 '게시됨' 표시로 바꾼다(다시 누를 수 없음). 다음에 다시 그려도 같은 표시가 나온다(pubUrls).
+      var wrap = document.createElement('div'); wrap.innerHTML = publishedLabel();
+      if (btn.parentNode) btn.parentNode.replaceChild(wrap.firstChild, btn);
+      if (posted) try { window.dispatchEvent(new Event('church:auth')); } catch (e) {}   // 홈 '우리들 소식' 즉시 갱신
+      else alert('이 인증샷은 이미 우리들 소식에 올라가 있어요. 다시 올리지 않았습니다.');
+    }
     function one(i) {
-      if (i >= photos.length) {
-        btn.textContent = posted ? '✓ 소식에 올렸습니다' : '이미 올라가 있어요';
-        btn.style.color = '#1e874b'; btn.style.borderColor = '#bfe0c8'; btn.style.background = '#f0f9f2';
-        if (posted) try { window.dispatchEvent(new Event('church:auth')); } catch (e) {}   // 홈 '우리들 소식' 즉시 갱신
-        return;
-      }
+      if (i >= photos.length) { done(); return; }
       var u = photos[i];
-      // 중복 확인 → 없을 때만 게시
-      fetch(window.SUPABASE_URL + '/rest/v1/album_photos?select=id&url=eq.' + encodeURIComponent(u) + '&limit=1', { headers: restHeaders() })
-        .then(function (res) { return res.ok ? res.json() : []; })
-        .then(function (ex) {
-          if (ex && ex.length) { dup++; one(i + 1); return null; }
+      // 중복 확인(게시 직전, 서버 기준으로 다시) → 갤러리에 없을 때만 게시
+      //   ※ 확인이 실패하면 '없다'고 보지 않고 게시를 중단한다 — 예전에는 실패를 '없음'으로 취급해 중복 게시가 날 수 있었다.
+      Promise.resolve(pubUrls && pubUrls[u] ? pubUrls : fetchPublished())
+        .then(function (m) {
+          if (!m) throw new Error('게시 여부를 확인하지 못했습니다');
+          if (m[u]) { dup++; one(i + 1); return null; }
           var base = { category: '주일학교', url: u, key: null, caption: null, user_id: me.id, author_name: authorName };
           var withCols = Object.assign({ title: title, event_date: date }, base);
           return fetch(window.SUPABASE_URL + '/rest/v1/album_photos', { method: 'POST', headers: restHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify(withCols) })
@@ -184,10 +223,10 @@ console.log('[ss-growth.js] v20260906msdaily');
                 throw new Error(t || ('HTTP ' + res.status));
               });
             })
-            .then(function (ok) { if (ok) posted++; one(i + 1); });
+            .then(function (ok) { if (ok) { posted++; if (pubUrls) pubUrls[u] = true; } one(i + 1); });
         })
         .catch(function (e) {
-          btn.disabled = false; btn.textContent = '📣 우리들 소식으로 올리기';
+          reset();
           alert('게시하지 못했습니다: ' + ((e && e.message) || '오류') + '\n잠시 후 다시 시도해 주세요.');
         });
     }
@@ -210,7 +249,12 @@ console.log('[ss-growth.js] v20260906msdaily');
       headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' },
       body: '{}'
     }).then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (ctx) { if (ctx && ctx.isTeacher) { isTeacher = true; if (rows.length) render(); } })
+      .then(function (ctx) {
+        if (!ctx || !ctx.isTeacher) return;
+        isTeacher = true;
+        // 어떤 인증샷이 이미 게시됐는지 먼저 받은 뒤에 그린다 — 게시된 카드는 버튼 대신 '✓ 이미 게시됨'
+        return fetchPublished().then(function () { if (rows.length) render(); });
+      })
       .catch(function () {});
   }
 

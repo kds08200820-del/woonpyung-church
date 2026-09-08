@@ -1,0 +1,41 @@
+-- ============================================================
+--  우리들 소식 — 이미 두 번 게시된 주일학교 인증샷 정리 (⚠ 파괴적: 사람이 직접 실행)
+--  2026-09-08
+--
+--  [왜]
+--   교사용 [📣 우리들 소식으로 올리기] 버튼이 이미 게시된 인증샷에도 다시 떠서,
+--   같은 사진이 '우리들 소식'에 두 번 이상 올라간 경우가 생겼다.
+--   같은 주소(url)의 게시글이 여러 개면 가장 먼저 올라간 것(id 가 가장 작은 것)만 남기고 지운다.
+--
+--  [대상] 주일학교 인증샷 파일(주소에 /f/ss-cert/ 포함)만. 다른 앨범 사진·링크는 건드리지 않는다.
+--   게시글의 좋아요·댓글(album_likes, album_comments)은 남는 첫 게시글 기준으로만 유지된다
+--   (중복 게시글에 달린 좋아요·댓글은 함께 사라짐 — 실행 전 2단계 미리보기로 확인).
+--
+--  [실행 순서]
+--   1) 아래 '미리보기'를 먼저 실행해 지워질 행 수를 확인한다.
+--   2) 문제 없으면 '정리' 블록을 실행한다.
+--   3) 그다음 supabase/20260908_2355_album_photos_ss_cert_url_unique.sql 로 재발을 막는다.
+--
+--  [되돌리기(롤백)]
+--   삭제는 되돌릴 수 없다. 실행 전에 Supabase 대시보드에서 백업(또는 아래 보관 테이블)을 확인할 것.
+--   정리 블록은 지우기 전에 보관 테이블(album_photos_ss_dupes_archived)에 복사해 두므로,
+--   되돌리려면:  insert into public.album_photos select * from public.album_photos_ss_dupes_archived;
+-- ============================================================
+
+-- 1) 미리보기 — 지워질 중복 게시글 수(원본은 남김)
+-- select count(*) as will_delete
+--   from public.album_photos p
+--  where p.url like '%/f/ss-cert/%'
+--    and p.id <> (select min(q.id) from public.album_photos q where q.url = p.url);
+
+-- 2) 정리 — 보관 후 삭제 (사람이 직접 실행)
+-- begin;
+-- create table if not exists public.album_photos_ss_dupes_archived (like public.album_photos including all);
+-- insert into public.album_photos_ss_dupes_archived
+--   select p.* from public.album_photos p
+--    where p.url like '%/f/ss-cert/%'
+--      and p.id <> (select min(q.id) from public.album_photos q where q.url = p.url);
+-- delete from public.album_photos p
+--  where p.url like '%/f/ss-cert/%'
+--    and p.id <> (select min(q.id) from public.album_photos q where q.url = p.url);
+-- commit;
