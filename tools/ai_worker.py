@@ -28,6 +28,13 @@
   python ai_worker.py --once           대기 작업 1건만 처리하고 종료
   python ai_worker.py --test "질문"    큐를 거치지 않고 말씀지기 답변만 시험
 
+── 로그인이 풀렸을 때 ──────────────────────────────────────
+· claude CLI 의 구독 로그인이 풀리면(토큰 만료 등) 모든 답변이
+  "Not logged in · Please run /login" 으로 실패합니다. 워커는 이를 따로 감지해
+  화면에는 한국어 안내를, 이 창에는 재로그인 방법을 크게 보여 줍니다.
+· 교회 PC 에서 tools/목회AI_로그인.bat 을 실행해 다시 로그인하면
+  워커를 다시 켜지 않아도 곧바로 정상 동작합니다.
+
 ── 안전 설계 ────────────────────────────────────────────────
 · Claude 는 저장소가 아니라 **빈 임시 폴더**에서 실행됩니다.
 · 파일·명령 도구를 전부 차단(--disallowed-tools)하고 승인 우회도 쓰지 않습니다.
@@ -260,6 +267,54 @@ def find_claude():
     raise SystemExit("claude CLI 를 찾을 수 없습니다. CLAUDE_BIN 환경변수로 경로를 지정하세요.")
 
 
+# ── 로그인 상태 ──────────────────────────────────────────────
+#  2026-09-16: 교회 PC 의 claude 구독 로그인이 풀려(토큰 만료) 모든 답변이
+#  "Not logged in · Please run /login" 으로만 실패했다. 화면에는 이 영어 오류가
+#  그대로 떠서 무엇을 해야 하는지 알 수 없었다. 이제 로그인 풀림을 따로 감지해
+#  화면과 워커 창에 한국어로 조치 방법을 보여 준다.
+
+class LoginRequired(RuntimeError):
+    """claude CLI 가 로그아웃 상태 — 사람이 다시 로그인하기 전에는 답할 수 없다."""
+
+
+LOGIN_RE = re.compile(
+    r"not logged in|please run /login|run `?/login|invalid api key|authentication_error|"
+    r"oauth token (has )?(expired|been revoked)", re.I)
+
+LOGIN_MSG = {
+    # 교인 화면(말씀지기) — 교인이 할 수 있는 일은 없으니 부드럽게
+    "counsel": "지금은 말씀지기가 잠시 쉬고 있어요. (교회 컴퓨터의 AI 로그인이 풀렸습니다) "
+               "목사님께 알려 주시면 곧 다시 열립니다.",
+    # 관리자 화면(기도문·헤드라인·검수) — 바로 조치할 수 있게 방법까지
+    "admin": "교회 컴퓨터의 Claude 로그인이 풀렸습니다. 교회 PC에서 tools\\목회AI_로그인.bat 을 "
+             "더블클릭해 다시 로그인해 주세요. (워커를 다시 켤 필요는 없습니다)",
+}
+
+LOGIN_HELP = (
+    "\n" + "!" * 66 + "\n"
+    "!!  claude CLI 로그인이 풀렸습니다 — 지금은 모든 AI 요청이 실패합니다.\n"
+    "!!  이 컴퓨터에서 tools\\목회AI_로그인.bat 을 더블클릭해 다시 로그인하세요.\n"
+    "!!  (명령창이라면:  claude auth login )\n"
+    "!!  로그인만 하면 됩니다. 이 워커 창은 끄지 말고 그대로 두세요.\n"
+    + "!" * 66 + "\n"
+)
+
+
+def claude_logged_in():
+    """`claude auth status --json` 으로 로그인 여부를 본다.
+
+    True/False 를 돌려주고, 옛 버전 CLI 처럼 판단할 수 없으면 None.
+    """
+    try:
+        p = subprocess.run([find_claude(), "auth", "status", "--json"],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        out = p.stdout.decode("utf-8", "replace")
+        m = re.search(r'"loggedIn"\s*:\s*(true|false)', out)
+        return (m.group(1) == "true") if m else None
+    except Exception:
+        return None
+
+
 # ── Supabase REST ────────────────────────────────────────────
 
 def _req(method, url, data=None, headers=None, timeout=30):
@@ -472,13 +527,19 @@ def run_claude(system, prompt, model, timeout):
     out = p.stdout.decode("utf-8", "replace").strip()
     err = p.stderr.decode("utf-8", "replace").strip()
     if not out:
+        if LOGIN_RE.search(err):
+            raise LoginRequired(err[:200])
         raise RuntimeError(f"claude 응답 없음 (exit={p.returncode}) {err[:400]}")
     try:
         obj = json.loads(out)
     except Exception:
         return out[:8000]          # JSON 이 아니면 원문 그대로
     if obj.get("is_error"):
-        raise RuntimeError(f"claude 오류: {str(obj.get('result'))[:400]}")
+        res = str(obj.get("result"))
+        # 로그아웃 상태면 {"is_error":true,"result":"Not logged in · Please run /login"}
+        if LOGIN_RE.search(res):
+            raise LoginRequired(res[:200])
+        raise RuntimeError(f"claude 오류: {res[:400]}")
     return str(obj.get("result", "")).strip()
 
 
@@ -534,6 +595,13 @@ def run_once():
     except subprocess.TimeoutExpired:
         finish_job(jid, "error", error="AI 응답 시간이 초과되었습니다. 다시 시도해 주세요.")
         print(f"❌ #{jid} 시간 초과", file=sys.stderr)
+    except LoginRequired as e:
+        # 로그인이 풀린 것은 이 PC 에서 사람이 고쳐야 한다 — 화면에는 상황에 맞는
+        # 한국어 안내를, 이 창에는 무엇을 하면 되는지를 크게 남긴다.
+        who = "counsel" if job.get("kind") == "counsel" else "admin"
+        finish_job(jid, "error", error=LOGIN_MSG[who])
+        print(f"❌ #{jid} 실패: claude 로그인 풀림 ({e})", file=sys.stderr)
+        print(LOGIN_HELP, file=sys.stderr)
     except Exception as e:
         # 화면에는 짧은 안내만 나가도록 — 자세한 원인은 이 창의 로그로 본다.
         finish_job(jid, "error", error=f"AI 처리 중 문제가 생겼습니다. ({str(e)[:200]})")
@@ -550,8 +618,12 @@ def main():
 
     if a.test:
         print(f"모델 {MODEL_COUNSEL} / claude {find_claude()}\n")
-        print(process({"kind": "counsel",
-                       "payload": {"messages": [{"role": "user", "content": a.test}]}}))
+        try:
+            print(process({"kind": "counsel",
+                           "payload": {"messages": [{"role": "user", "content": a.test}]}}))
+        except LoginRequired:
+            print(LOGIN_HELP, file=sys.stderr)
+            sys.exit(1)
         return
 
     if not SERVICE_KEY:
@@ -563,6 +635,8 @@ def main():
     print(f"워커 '{WORKER}' / 모델 교인={MODEL_COUNSEL} 관리={MODEL_ADMIN}")
     print(f"claude {find_claude()}")
     print(f"큐 {SUPABASE_URL}/rest/v1/ai_jobs")
+    if claude_logged_in() is False:
+        print(LOGIN_HELP, file=sys.stderr)
 
     if not a.watch and not a.once:
         a.watch = True                       # 그냥 실행하면 상시 대기가 기본
@@ -581,6 +655,9 @@ def main():
             else:
                 if time.time() - idle_since >= IDLE_LOG_SEC:
                     print(f"   (대기 중 — {datetime.now().strftime('%m-%d %H:%M')})")
+                    # 조용한 사이에 로그인이 풀려도 화면 앞의 사람이 알 수 있게
+                    if claude_logged_in() is False:
+                        print(LOGIN_HELP, file=sys.stderr)
                     idle_since = time.time()
                 time.sleep(POLL_SEC)
         except KeyboardInterrupt:
