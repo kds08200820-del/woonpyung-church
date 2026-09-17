@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260906msdaily (연속미션: 하루 1장 × n일)');
+console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 유지, 자녀 순서)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1945,6 +1945,8 @@ console.log('[dashboard.js] v20260906msdaily (연속미션: 하루 1장 × n일)
     var fMonth = monthKey(todayStr());   // 인증 달력에 표시할 달 — 기본은 이번 달
     var fDay = '';                       // 달력에서 고른 날짜('' = 그 달 전체)
     function draw() {
+      // 다시 그리는 동안 카드 높이를 유지 — '불러오는 중…' 한 줄로 줄어들면 휴대폰 화면이 위로 튄다(2026-09-18)
+      var keepH = container.offsetHeight; container.style.minHeight = keepH ? keepH + 'px' : '';
       container.innerHTML = '<div class="form-card" style="padding:16px 18px;"><p class="qt-loading">불러오는 중…</p></div>';
       Promise.all([
         brFetch('ss_submissions?select=*&member_key=eq.' + encodeURIComponent(subjKey) + '&order=sub_date.desc,id.desc&limit=300'),
@@ -2014,6 +2016,7 @@ console.log('[dashboard.js] v20260906msdaily (연속미션: 하루 1장 × n일)
             '<p class="fin-msg" id="sscMsg" style="margin:0 0 8px;"></p>' +
             calParts.list +
             '</div>';
+          container.style.minHeight = '';
           // ── 인증 달력 — 월별로 관리(◀ ▶ 이동), 인증한 날에 종류별 색 점,
           //    날짜를 누르면 그날 인증만 아래에, 목록은 스크롤 박스 안에(2026-08-25)
           //    달력(cal)과 목록(list)을 나눠 돌려준다 — 달력은 카드 맨 위, 목록은 맨 아래 ──
@@ -2180,12 +2183,16 @@ console.log('[dashboard.js] v20260906msdaily (연속미션: 하루 1장 × n일)
             };
           });
         })
-        .catch(function () { container.innerHTML = ''; });
+        .catch(function () { container.innerHTML = ''; container.style.minHeight = ''; });
     }
     draw();
   }
 
-  /* ── 보호자: 우리 아이 달란트·인증·헌금 (같은 세대의 '어린이' 자동 판별) ── */
+  /* ── 보호자: 우리 아이 달란트·인증·헌금 (같은 세대의 '어린이' 자동 판별)
+   * 자녀가 둘 이상이면 맨 앞 자녀가 자동 선택된다. 큰아이는 제 계정으로 직접 인증하고
+   * 보호자는 작은아이 것만 대신 올리는 집을 위해 '맨 앞으로' 버튼으로 순서를 바꿀 수 있다.
+   * 순서는 서버(gyojeok.ss_sort — supabase/20260918_0100_ss_child_order.sql)에 저장되어
+   * 어느 기기에서 들어와도 같다(2026-09-18 요청). ── */
   function renderSsGuardian(el, ctx, me, kids) {
     var cur = 0;
     function draw() {
@@ -2194,10 +2201,15 @@ console.log('[dashboard.js] v20260906msdaily (연속미션: 하루 1장 × n일)
         '<div class="form-card" style="padding:16px 18px;margin-bottom:14px;">' +
         '<h3 style="margin:0 0 4px;font-size:1rem;color:var(--accent,#032257);">👨‍👧 우리 아이 주일학교</h3>' +
         '<p style="color:var(--ink-soft);font-size:.82rem;margin:0 0 ' + (kids.length > 1 ? '10px' : '0') + ';">보호자 화면입니다. 자녀의 달란트·QT/필사 인증·헌금을 보고, 인증샷을 대신 올릴 수 있습니다.</p>' +
-        (kids.length > 1 ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + kids.map(function (k, i) {
-          var on = i === cur;
-          return '<button type="button" class="ssg-kid" data-i="' + i + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.84rem;cursor:pointer;">' + esc(k.name) + '</button>';
-        }).join('') + '</div>' : '') +
+        (kids.length > 1 ?
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' + kids.map(function (k, i) {
+            var on = i === cur;
+            return '<button type="button" class="ssg-kid" data-i="' + i + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.84rem;cursor:pointer;">' + esc(k.name) + '</button>';
+          }).join('') +
+          // 고른 아이가 맨 앞이 아닐 때만 — 누르면 서버에 저장되어 다음부터 이 아이가 먼저 선택된다
+          (cur > 0 ? '<button type="button" class="btn btn-line" id="ssgFront" title="이 아이를 맨 앞에 두면 들어올 때 자동으로 선택됩니다" style="padding:4px 11px;font-size:.76rem;margin-left:auto;">◀ ' + esc(c.name) + ' 맨 앞으로</button>' : '') +
+          '</div>' +
+          '<p id="ssgMsg" style="font-size:.74rem;color:#9aa5b1;margin:6px 0 0;">맨 앞 아이가 들어올 때 자동으로 선택돼요. 인증샷을 자주 대신 올리는 아이를 맨 앞에 두세요.</p>' : '') +
         '</div>' +
         // 인증(달력)을 '우리 아이 주일학교' 바로 다음에 — 매일 쓰는 화면이 맨 위(2026-08-25)
         '<div id="ssgCerts" style="margin-bottom:14px;"></div>' +
@@ -2206,6 +2218,27 @@ console.log('[dashboard.js] v20260906msdaily (연속미션: 하루 1장 × n일)
       Array.prototype.forEach.call(el.querySelectorAll('.ssg-kid'), function (b) {
         b.onclick = function () { cur = Number(b.dataset.i); draw(); };
       });
+      var fb = el.querySelector('#ssgFront');
+      if (fb) fb.onclick = function () {
+        if (fb.disabled) return;
+        var next = [c].concat(kids.filter(function (k) { return k !== c; }));
+        fb.disabled = true; fb.textContent = '저장 중…';
+        brFetch('rpc/ss_set_child_order', { method: 'POST', body: JSON.stringify({ p_keys: next.map(function (k) { return k.member_key; }) }) })
+          .then(function () { kids = next; cur = 0; draw(); })
+          .catch(function (e) {
+            var m = (e && e.message) || '';
+            try { var j = JSON.parse(m); if (j && j.message) m = j.message; } catch (x) { }
+            var mg = el.querySelector('#ssgMsg');
+            if (mg) {
+              mg.style.color = '#c0392b';
+              // RPC 자체가 없으면(마이그레이션 미실행) PostgREST가 PGRST202 를 돌려준다
+              mg.textContent = /PGRST202|Could not find the function/.test(m)
+                ? '순서 저장 기능이 아직 서버에 준비되지 않았습니다. 교회 사무실에 알려 주세요.'
+                : '순서 저장 실패: ' + m;
+            }
+            fb.disabled = false; fb.textContent = '◀ ' + c.name + ' 맨 앞으로';
+          });
+      };
       ssGuardianTalents(el.querySelector('#ssgTal'), c);
       loadMyCerts(el.querySelector('#ssgCerts'), c.member_key, c.name, function () { ssGuardianTalents(el.querySelector('#ssgTal'), c); });
       ssGuardianOfferings(el.querySelector('#ssgOff'), c);
@@ -2251,97 +2284,144 @@ console.log('[dashboard.js] v20260906msdaily (연속미션: 하루 1장 × n일)
       }).catch(function () { container.innerHTML = ''; });
   }
 
-  /* ── 교사단: QT·필사 인증 관리(좋아요·확인·기록) ── */
+  /* ── 교사단: QT·필사 인증 관리(좋아요·확인·기록)
+   * · 목록은 주(일요일 시작) 단위로 묶고 '이번 주'를 항상 맨 위에 둔다(비어 있어도).
+   *   지난 주 이전은 접어 두고 버튼으로 펼친다 — '미확인만'으로 볼 때 지난달 것이
+   *   맨 위에 올라오던 문제(2026-09-18 요청).
+   * · ✔ 확인·삭제 뒤에는 서버를 다시 읽지 않고 가진 목록으로만 다시 그리고
+   *   스크롤 위치를 그대로 둔다 — 휴대폰에서 화면이 위로 튀지 않게. ── */
   function loadSsCerts(el, ctx, me) {
     var box = el.querySelector('#ssCertsBox'); if (!box) return;
-    var fType = 'all', fPending = false, fChild = '';
-    function draw() {
-      brFetch('ss_submissions?select=*&order=sub_date.desc,id.desc&limit=300').then(function (rows) {
-        rows = rows || [];
-        var myName = me.memberName || '관리자';
-        var childNames = [];
-        rows.forEach(function (r) { var n = r.child_name || ''; if (n && childNames.indexOf(n) < 0) childNames.push(n); });
-        childNames.sort(function (a, b) { return a.localeCompare(b, 'ko'); });
-        var list = rows.filter(function (r) {
-          if (fType !== 'all' && r.stype !== fType) return false;
-          if (fPending && r.confirmed_by) return false;
-          if (fChild && r.child_name !== fChild) return false;
-          return true;
-        });
-        var pending = rows.filter(function (r) { return !r.confirmed_by; }).length;
-        box.innerHTML =
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">' +
-          '<b style="font-size:.9rem;color:var(--accent,#032257);">📖 QT·필사·미션 인증 관리</b>' +
-          '<span style="font-size:.78rem;color:#7b8794;">전체 ' + rows.length + '건 · 미확인 <b style="color:' + (pending ? '#c0392b' : '#1e874b') + ';">' + pending + '건</b></span></div>' +
-          (rows.length ?
-            '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' +
-            ['all', 'QT', '필사', '미션'].map(function (t) {
-              var on = fType === t;
-              return '<button type="button" class="ssct-type" data-t="' + t + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:3px 13px;font:inherit;font-size:.76rem;cursor:pointer;">' + (t === 'all' ? '전체' : t) + '</button>';
-            }).join('') +
-            '<label class="sw" style="font-size:.78rem;margin-left:4px;"><input type="checkbox" id="ssctPending"' + (fPending ? ' checked' : '') + '> 미확인만</label>' +
-            '<select id="ssctChild" style="padding:4px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;font-size:.78rem;"><option value="">자녀 전체</option>' +
-            childNames.map(function (n) { return '<option' + (fChild === n ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></div>' +
-            (list.length ? '<div style="max-height:440px;overflow:auto;">' + list.map(function (r) {
-              var likes = r.liked_by || [];
-              var iLiked = likes.indexOf(myName) >= 0;
-              return '<div style="display:flex;gap:10px;align-items:center;border:1px solid ' + (r.confirmed_by ? '#d7ead9' : '#e8edf3') + ';background:' + (r.confirmed_by ? '#f7fcf8' : '#fff') + ';border-radius:10px;padding:8px 10px;margin-bottom:8px;">' +
-                certThumb(r, 56) +
-                '<div style="flex:1;min-width:0;">' +
-                '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;"><b style="font-size:.88rem;">' + esc(r.child_name || '') + '</b>' + certPill(r.stype) + '<span style="font-size:.78rem;color:#7b8794;">' + esc(r.sub_date) + '</span></div>' +
-                '<div class="ssct-likes" data-id="' + r.id + '" style="font-size:.76rem;color:#9aa5b1;margin-top:3px;">' +
-                likeLine(r) +
-                '</div></div>' +
-                '<span style="white-space:nowrap;display:flex;gap:4px;">' +
-                '<button type="button" class="btn btn-line ssct-like" data-id="' + r.id + '" style="' + likeBtnStyle(iLiked) + '">❤ ' + likes.length + '</button>' +
-                '<button type="button" class="btn ' + (r.confirmed_by ? 'btn-line' : 'btn-solid') + ' ssct-ok" data-id="' + r.id + '" style="padding:3px 10px;font-size:.78rem;">' + (r.confirmed_by ? '확인 취소' : '✔ 확인') + '</button>' +
-                '<button type="button" class="btn btn-line ssct-del" data-id="' + r.id + '" style="padding:3px 8px;font-size:.72rem;color:#c0392b;">삭제</button></span></div>';
-            }).join('') + '</div>' : '<p style="color:#9aa5b1;font-size:.84rem;">조건에 맞는 인증이 없습니다.</p>') :
-            '<p style="color:#9aa5b1;font-size:.84rem;margin:4px 0 0;">아직 올라온 인증이 없습니다. 어린이가 대시보드에서 QT·필사 인증샷을 올리면 여기에 표시됩니다.</p>');
-        function find(id) { return rows.filter(function (x) { return String(x.id) === id; })[0]; }
-        Array.prototype.forEach.call(box.querySelectorAll('.ssct-type'), function (b) { b.onclick = function () { fType = b.dataset.t; draw(); }; });
-        var pd = box.querySelector('#ssctPending'); if (pd) pd.onchange = function () { fPending = pd.checked; draw(); };
-        var cs = box.querySelector('#ssctChild'); if (cs) cs.onchange = function () { fChild = cs.value; draw(); };
-        Array.prototype.forEach.call(box.querySelectorAll('.ssct-like'), function (b) {
-          b.onclick = function () {
-            var r = find(b.dataset.id); if (!r) return;
-            // 성도용 좋아요와 같은 함수를 쓴다 — 내 계정으로 기록돼 동명이인이 있어도 정확히 취소된다
-            if (b.disabled) return;
-            b.disabled = true;
-            brFetch('rpc/ss_toggle_like', { method: 'POST', body: JSON.stringify({ p_id: r.id }) })
-              .then(function () { return brFetch('ss_submissions?select=liked_by&id=eq.' + r.id); })
-              .then(function (rr) {
-                // 목록 전체를 다시 그리면 보고 있던 자리를 잃는다(휴대폰에서 특히) — 이 줄만 고쳐 쓴다
-                r.liked_by = (rr && rr[0] && rr[0].liked_by) || [];
-                var mine = r.liked_by.indexOf(myName) >= 0;
-                b.textContent = '❤ ' + r.liked_by.length;
-                b.setAttribute('style', likeBtnStyle(mine));
-                var ln = box.querySelector('.ssct-likes[data-id="' + r.id + '"]');
-                if (ln) ln.innerHTML = likeLine(r);
-                b.disabled = false;
-              })
-              .catch(function (e) { b.disabled = false; ssFlash(el, false, '좋아요 실패: ' + e.message); });
-          };
-        });
-        Array.prototype.forEach.call(box.querySelectorAll('.ssct-ok'), function (b) {
-          b.onclick = function () {
-            var r = find(b.dataset.id); if (!r) return;
-            var body = r.confirmed_by ? { confirmed_by: null, confirmed_at: null } : { confirmed_by: myName, confirmed_at: new Date().toISOString() };
-            if (r.confirmed_by && !confirm('확인을 취소할까요?')) return;
-            brFetch('ss_submissions?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) })
-              .then(draw).catch(function (e) { ssFlash(el, false, '확인 실패: ' + e.message); });
-          };
-        });
-        Array.prototype.forEach.call(box.querySelectorAll('.ssct-del'), function (b) {
-          b.onclick = function () {
-            var r = find(b.dataset.id); if (!r) return;
-            if (!confirm((r.child_name || '') + ' 어린이의 ' + r.stype + ' 인증(' + r.sub_date + ')을 삭제할까요? (자동 지급된 달란트도 회수됩니다)')) return;
-            brFetch('ss_submissions?id=eq.' + r.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
-              .then(function () { certRemoveFiles(r); draw(); loadSsStudents(el, ctx, me); })
-              .catch(function (e) { ssFlash(el, false, '삭제 실패: ' + e.message); });
-          };
-        });
-      }).catch(function () { box.innerHTML = ''; });
+    var fType = 'all', fPending = false, fChild = '', showOld = false, rows = [];
+    var myName = me.memberName || '관리자';
+    function weekLabel(ws) {   // '2026-09-13' → '9/13~9/19'
+      var a = new Date(ws + 'T00:00:00'), b = new Date(a.getTime()); b.setDate(b.getDate() + 6);
+      return (a.getMonth() + 1) + '/' + a.getDate() + '~' + (b.getMonth() + 1) + '/' + b.getDate();
+    }
+    function draw(keepScroll) {
+      brFetch('ss_submissions?select=*&order=sub_date.desc,id.desc&limit=300')
+        .then(function (rs) { rows = rs || []; render(keepScroll); })
+        .catch(function () { box.innerHTML = ''; });
+    }
+    function render(keepScroll) {
+      var sc = box.querySelector('#ssctList'), scTop = (keepScroll && sc) ? sc.scrollTop : 0;
+      var childNames = [];
+      rows.forEach(function (r) { var n = r.child_name || ''; if (n && childNames.indexOf(n) < 0) childNames.push(n); });
+      childNames.sort(function (a, b) { return a.localeCompare(b, 'ko'); });
+      var list = rows.filter(function (r) {
+        if (fType !== 'all' && r.stype !== fType) return false;
+        if (fPending && r.confirmed_by) return false;
+        if (fChild && r.child_name !== fChild) return false;
+        return true;
+      });
+      var pending = rows.filter(function (r) { return !r.confirmed_by; }).length;
+      // 주 단위 묶기 — 이번 주(항상 맨 위) → 지난 주 → 그 이전(접힘)
+      var thisWs = ssWeekSunday(todayStr());
+      var lw = new Date(thisWs + 'T00:00:00'); lw.setDate(lw.getDate() - 7);
+      var lastWs = lw.getFullYear() + '-' + pad2(lw.getMonth() + 1) + '-' + pad2(lw.getDate());
+      var groups = [], byWs = {};
+      list.forEach(function (r) {
+        var ws = ssWeekSunday(r.sub_date) || '0000-00-00';
+        if (!byWs[ws]) { byWs[ws] = { ws: ws, rows: [] }; groups.push(byWs[ws]); }
+        byWs[ws].rows.push(r);
+      });
+      if (!byWs[thisWs]) groups.push({ ws: thisWs, rows: [] });   // 이번 주는 비어 있어도 맨 위에
+      groups.sort(function (a, b) { return a.ws < b.ws ? 1 : (a.ws > b.ws ? -1 : 0); });   // 최신 주 먼저
+      var recent = groups.filter(function (g) { return g.ws >= lastWs; });
+      var older = groups.filter(function (g) { return g.ws < lastWs; });
+      var olderCnt = older.reduce(function (s, g) { return s + g.rows.length; }, 0);
+      function rowHtml(r) {
+        var likes = r.liked_by || [];
+        var iLiked = likes.indexOf(myName) >= 0;
+        return '<div style="display:flex;gap:10px;align-items:center;border:1px solid ' + (r.confirmed_by ? '#d7ead9' : '#e8edf3') + ';background:' + (r.confirmed_by ? '#f7fcf8' : '#fff') + ';border-radius:10px;padding:8px 10px;margin-bottom:8px;">' +
+          certThumb(r, 56) +
+          '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;"><b style="font-size:.88rem;">' + esc(r.child_name || '') + '</b>' + certPill(r.stype) + '<span style="font-size:.78rem;color:#7b8794;">' + esc(r.sub_date) + '</span></div>' +
+          '<div class="ssct-likes" data-id="' + r.id + '" style="font-size:.76rem;color:#9aa5b1;margin-top:3px;">' +
+          likeLine(r) +
+          '</div></div>' +
+          '<span style="white-space:nowrap;display:flex;gap:4px;">' +
+          '<button type="button" class="btn btn-line ssct-like" data-id="' + r.id + '" style="' + likeBtnStyle(iLiked) + '">❤ ' + likes.length + '</button>' +
+          '<button type="button" class="btn ' + (r.confirmed_by ? 'btn-line' : 'btn-solid') + ' ssct-ok" data-id="' + r.id + '" style="padding:3px 10px;font-size:.78rem;">' + (r.confirmed_by ? '확인 취소' : '✔ 확인') + '</button>' +
+          '<button type="button" class="btn btn-line ssct-del" data-id="' + r.id + '" style="padding:3px 8px;font-size:.72rem;color:#c0392b;">삭제</button></span></div>';
+      }
+      function groupHtml(g) {
+        var isThis = g.ws === thisWs, isLast = g.ws === lastWs;
+        var pend = g.rows.filter(function (r) { return !r.confirmed_by; }).length;
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin:2px 0 6px;padding:5px 9px;border-radius:8px;background:' + (isThis ? '#e8f0fb' : '#f5f8fc') + ';">' +
+          '<b style="font-size:.8rem;color:var(--accent,#032257);">' + (isThis ? '📌 이번 주 ' : (isLast ? '지난 주 ' : '')) + '<span style="font-weight:400;color:#7b8794;">' + weekLabel(g.ws) + '</span></b>' +
+          '<span style="font-size:.74rem;color:#7b8794;">' + g.rows.length + '건' + (pend ? ' · 미확인 <b style="color:#c0392b;">' + pend + '</b>' : '') + '</span></div>' +
+          (g.rows.length ? g.rows.map(rowHtml).join('') : '<p style="color:#9aa5b1;font-size:.82rem;margin:0 0 10px 4px;">이번 주에는 조건에 맞는 인증이 없습니다.</p>');
+      }
+      var oldBtn = olderCnt
+        ? '<button type="button" class="btn btn-line" id="ssctOld" style="width:100%;padding:6px;font-size:.78rem;margin-top:2px;">' + (showOld ? '▲ 지난 주 이전 접기' : '▼ 지난 주 이전 인증 ' + olderCnt + '건 보기') + '</button>'
+        : '';
+      box.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;">' +
+        '<b style="font-size:.9rem;color:var(--accent,#032257);">📖 QT·필사·미션 인증 관리</b>' +
+        '<span style="font-size:.78rem;color:#7b8794;">전체 ' + rows.length + '건 · 미확인 <b style="color:' + (pending ? '#c0392b' : '#1e874b') + ';">' + pending + '건</b></span></div>' +
+        (rows.length ?
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' +
+          ['all', 'QT', '필사', '미션'].map(function (t) {
+            var on = fType === t;
+            return '<button type="button" class="ssct-type" data-t="' + t + '" style="border:1px solid ' + (on ? 'var(--accent,#032257)' : '#cdd7e3') + ';background:' + (on ? 'var(--accent,#032257)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#032257)') + ';border-radius:999px;padding:3px 13px;font:inherit;font-size:.76rem;cursor:pointer;">' + (t === 'all' ? '전체' : t) + '</button>';
+          }).join('') +
+          '<label class="sw" style="font-size:.78rem;margin-left:4px;"><input type="checkbox" id="ssctPending"' + (fPending ? ' checked' : '') + '> 미확인만</label>' +
+          '<select id="ssctChild" style="padding:4px 8px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;font-size:.78rem;"><option value="">자녀 전체</option>' +
+          childNames.map(function (n) { return '<option' + (fChild === n ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></div>' +
+          '<div id="ssctList" style="max-height:440px;overflow:auto;">' +
+          recent.map(groupHtml).join('') +
+          (showOld ? older.map(groupHtml).join('') : '') +
+          oldBtn + '</div>' :
+          '<p style="color:#9aa5b1;font-size:.84rem;margin:4px 0 0;">아직 올라온 인증이 없습니다. 어린이가 대시보드에서 QT·필사 인증샷을 올리면 여기에 표시됩니다.</p>');
+      // 확인·삭제·펼치기 뒤에도 보던 자리를 지킨다(같은 작업 안에서 복원하므로 화면이 튀지 않는다)
+      var sc2 = box.querySelector('#ssctList'); if (sc2 && scTop) sc2.scrollTop = scTop;
+      function find(id) { return rows.filter(function (x) { return String(x.id) === id; })[0]; }
+      Array.prototype.forEach.call(box.querySelectorAll('.ssct-type'), function (b) { b.onclick = function () { fType = b.dataset.t; draw(); }; });
+      var pd = box.querySelector('#ssctPending'); if (pd) pd.onchange = function () { fPending = pd.checked; draw(); };
+      var cs = box.querySelector('#ssctChild'); if (cs) cs.onchange = function () { fChild = cs.value; draw(); };
+      var ob = box.querySelector('#ssctOld'); if (ob) ob.onclick = function () { showOld = !showOld; render(true); };
+      Array.prototype.forEach.call(box.querySelectorAll('.ssct-like'), function (b) {
+        b.onclick = function () {
+          var r = find(b.dataset.id); if (!r) return;
+          // 성도용 좋아요와 같은 함수를 쓴다 — 내 계정으로 기록돼 동명이인이 있어도 정확히 취소된다
+          if (b.disabled) return;
+          b.disabled = true;
+          brFetch('rpc/ss_toggle_like', { method: 'POST', body: JSON.stringify({ p_id: r.id }) })
+            .then(function () { return brFetch('ss_submissions?select=liked_by&id=eq.' + r.id); })
+            .then(function (rr) {
+              // 목록 전체를 다시 그리면 보고 있던 자리를 잃는다(휴대폰에서 특히) — 이 줄만 고쳐 쓴다
+              r.liked_by = (rr && rr[0] && rr[0].liked_by) || [];
+              var mine = r.liked_by.indexOf(myName) >= 0;
+              b.textContent = '❤ ' + r.liked_by.length;
+              b.setAttribute('style', likeBtnStyle(mine));
+              var ln = box.querySelector('.ssct-likes[data-id="' + r.id + '"]');
+              if (ln) ln.innerHTML = likeLine(r);
+              b.disabled = false;
+            })
+            .catch(function (e) { b.disabled = false; ssFlash(el, false, '좋아요 실패: ' + e.message); });
+        };
+      });
+      Array.prototype.forEach.call(box.querySelectorAll('.ssct-ok'), function (b) {
+        b.onclick = function () {
+          var r = find(b.dataset.id); if (!r || b.disabled) return;
+          if (r.confirmed_by && !confirm('확인을 취소할까요?')) return;
+          var body = r.confirmed_by ? { confirmed_by: null, confirmed_at: null } : { confirmed_by: myName, confirmed_at: new Date().toISOString() };
+          b.disabled = true;
+          brFetch('ss_submissions?id=eq.' + r.id, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(body) })
+            .then(function () { r.confirmed_by = body.confirmed_by; r.confirmed_at = body.confirmed_at; render(true); })   // 서버를 다시 읽지 않고 그 자리에서
+            .catch(function (e) { b.disabled = false; ssFlash(el, false, '확인 실패: ' + e.message); });
+        };
+      });
+      Array.prototype.forEach.call(box.querySelectorAll('.ssct-del'), function (b) {
+        b.onclick = function () {
+          var r = find(b.dataset.id); if (!r) return;
+          if (!confirm((r.child_name || '') + ' 어린이의 ' + r.stype + ' 인증(' + r.sub_date + ')을 삭제할까요? (자동 지급된 달란트도 회수됩니다)')) return;
+          brFetch('ss_submissions?id=eq.' + r.id, { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+            .then(function () { certRemoveFiles(r); rows = rows.filter(function (x) { return x !== r; }); render(true); loadSsStudents(el, ctx, me); })
+            .catch(function (e) { ssFlash(el, false, '삭제 실패: ' + e.message); });
+        };
+      });
     }
     draw();
   }
