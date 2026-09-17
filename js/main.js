@@ -858,14 +858,22 @@ const bulletinMonth = document.getElementById("bulletinMonth");
 const bulletinSearch = document.getElementById("bulletinSearch");
 const bulletinEmpty = document.getElementById("bulletinEmpty");
 
+// 월 선택 목록 — 정적 BULLETINS 와 Supabase 게시분의 달을 합쳐 최신 달부터. 고른 값은 유지.
 function buildMonthOptions() {
   const months = [];
   BULLETINS.forEach((b) => {
     if (!months.find((m) => m.value === b.month)) months.push({ value: b.month, label: b.monthLabel });
   });
+  SB_BULLETINS.forEach((b) => {
+    const ym = String(b.bdate || "").slice(0, 7);
+    if (ym.length === 7 && !months.find((m) => m.value === ym)) months.push({ value: ym, label: `${Number(ym.slice(0, 4))}년 ${Number(ym.slice(5, 7))}월` });
+  });
+  months.sort((a, b) => (a.value < b.value ? 1 : a.value > b.value ? -1 : 0));
+  const cur = bulletinMonth.value;
   bulletinMonth.innerHTML =
     `<option value="all">전체 보기</option>` +
     months.map((m) => `<option value="${m.value}">${m.label}</option>`).join("");
+  if (cur && months.find((m) => m.value === cur)) bulletinMonth.value = cur;
 }
 
 function bulletinCardHTML(b, idx) {
@@ -903,20 +911,25 @@ function sbBulletinCardHTML(b, i) {
 function renderBulletins() {
   const month = bulletinMonth.value;
   const q = bulletinSearch.value.trim().toLowerCase();
-  const sbItems = SB_BULLETINS.map((b, i) => ({ b, i })).filter(({ b }) => {
-    const text = `${b.title || ""} ${b.scripture || ""} ${String(b.bdate || "")} ${(b.data && b.data.week) || ""}`.toLowerCase();
-    return !q || text.includes(q);
+  // Supabase 게시분과 정적 BULLETINS 를 한 목록으로 합쳐 날짜 내림차순 — 항상 최신 주보가 맨 위.
+  // (예전엔 Supabase 분을 무조건 앞에 두어 8월 첫째 주가 9월 주보 위에 고정돼 보였고,
+  //  같은 날짜가 양쪽에 있으면 두 번 나왔다 — 2026-09-18. 같은 날짜는 게시분 하나만 보인다)
+  const sbDates = {};
+  const cards = [];
+  SB_BULLETINS.forEach((b, i) => {
+    const date = String(b.bdate || "").slice(0, 10);
+    sbDates[date] = true;
+    const text = `${b.title || ""} ${b.scripture || ""} ${date} ${(b.data && b.data.week) || ""}`.toLowerCase();
+    if ((month === "all" || date.slice(0, 7) === month) && (!q || text.includes(q))) cards.push({ date, html: sbBulletinCardHTML(b, i) });
   });
-  const items = BULLETINS.map((b, i) => ({ b, i })).filter(({ b }) => {
-    const monthOk = month === "all" || b.month === month;
+  BULLETINS.forEach((b, i) => {
+    if (sbDates[b.date]) return;
     const text = `${b.title} ${b.scripture} ${b.dateLabel} ${b.week} ${b.preacher}`.toLowerCase();
-    const searchOk = !q || text.includes(q);
-    return monthOk && searchOk;
+    if ((month === "all" || b.month === month) && (!q || text.includes(q))) cards.push({ date: b.date, html: bulletinCardHTML(b, i) });
   });
-  bulletinList.innerHTML =
-    sbItems.map(({ b, i }) => sbBulletinCardHTML(b, i)).join("") +
-    items.map(({ b, i }) => bulletinCardHTML(b, i)).join("");
-  bulletinEmpty.hidden = (items.length + sbItems.length) > 0;
+  cards.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  bulletinList.innerHTML = cards.map((c) => c.html).join("");
+  bulletinEmpty.hidden = cards.length > 0;
 }
 
 function loadSBBulletins() {
@@ -924,7 +937,7 @@ function loadSBBulletins() {
   const u = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/bulletins_public?select=*&order=bdate.desc&limit=60";
   fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + window.SUPABASE_ANON_KEY } })
     .then((r) => (r.ok ? r.json() : []))
-    .then((rows) => { SB_BULLETINS = rows || []; if (SB_BULLETINS.length) renderBulletins(); })
+    .then((rows) => { SB_BULLETINS = rows || []; if (SB_BULLETINS.length) { buildMonthOptions(); renderBulletins(); } })
     .catch(() => {});
 }
 
