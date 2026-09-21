@@ -2,7 +2,7 @@
  * 데이터는 Supabase(visitations/counsels/memos 등, 관리자 RLS)에 저장.
  * 콘솔: [affairs.js] v20260712memo
  */
-console.log('[affairs.js] v20260812tp');
+console.log('[affairs.js] v20260921kk');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -3412,6 +3412,7 @@ console.log('[affairs.js] v20260812tp');
         '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 저장</button>' +
         (worshipMode ? '' : '<button class="btn btn-line" id="se_settings" title="자동 임시저장 설정" style="padding:8px 11px;border-radius:9px">⚙</button>') +
         '<button class="btn btn-line" id="se_kakao" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">💬 카카오톡 복사</button>' +
+        '<button class="btn btn-line" id="se_kakao_at" title="이 QT를 정해진 시각에 카카오톡 단톡방으로 자동 발송합니다 (집/교회 PC 워커가 보냅니다)" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">⏰ 예약 발송</button>' +
         '<button class="btn btn-line" id="se_preview" style="padding:8px 13px;border-radius:9px">👁 미리보기</button>' +
         (worshipMode ? '' : '<button class="btn btn-line" id="se_present" style="padding:8px 13px;border-radius:9px">🖥 발표자 모드</button>') +
         (worshipMode ? '' : '<button class="btn btn-line" id="se_pdf" style="padding:8px 13px;border-radius:9px">📄 내보내기</button>') +
@@ -3919,6 +3920,7 @@ console.log('[affairs.js] v20260812tp');
       var wmChk = ov.querySelector('#se_woorimal_chk');
       var bibleColsEl = ov.querySelector('#se_bible_cols');
       var kakaoBtn = ov.querySelector('#se_kakao');
+      var kakaoAtBtn = ov.querySelector('#se_kakao_at');
       function qtOn() { return !!(qtToggle && qtToggle.checked); }
       function wmOn() { return !!(wmChk && wmChk.checked); }
       // 우리말성경 본문 칸(2단)은 오직 '우리말성경' 체크박스로만 열고 닫는다 — 끄면 즉시 사라짐
@@ -3927,6 +3929,7 @@ console.log('[affairs.js] v20260812tp');
         if (qtWrap) qtWrap.style.display = showW ? '' : 'none';
         if (bibleColsEl) bibleColsEl.style.gridTemplateColumns = showW ? '1fr 1fr' : '1fr';
         if (kakaoBtn) kakaoBtn.style.display = qtOn() ? '' : 'none';
+        if (kakaoAtBtn) kakaoAtBtn.style.display = qtOn() ? '' : 'none';
       }
       var isQtSvc = (rec.service === '매일 QT' || rec.service === '새벽기도');
       if (qtToggle) {
@@ -4385,6 +4388,19 @@ console.log('[affairs.js] v20260812tp');
       ov.querySelector('#se_kakao').onclick = function () {
         save(function (saved) { copyKakaoQt(saved); });
       };
+      // ⏰ 예약 발송 — 먼저 저장해 최신 원고로 양식을 만든 뒤 예약창을 연다
+      (function () {
+        var kb = ov.querySelector('#se_kakao_at'); if (!kb) return;
+        kb.onclick = function () {
+          var d = ov.querySelector('#se_date').value;
+          if (!d) {
+            var m3 = ov.querySelector('#se_msg');
+            m3.style.color = '#c0392b'; m3.textContent = '예약 발송에는 일자가 필요합니다.';
+            return;
+          }
+          save(function (saved) { openKakaoScheduler(saved); });
+        };
+      })();
       var pdfBtn = ov.querySelector('#se_pdf');
       if (pdfBtn) pdfBtn.onclick = function () {
         var msg = ov.querySelector('#se_msg');
@@ -5777,6 +5793,238 @@ console.log('[affairs.js] v20260812tp');
       navigator.clipboard.writeText(text).then(function () { alert('✓ 카카오톡 양식이 복사되었습니다. 카카오톡에 붙여 넣으세요.'); }, fallback);
     } else fallback();
   }
+
+  // ── ⏰ 카카오톡 예약 발송 ──────────────────────────────────────
+  //  카카오 공식 메시지 API 로는 단톡방에 보낼 수 없다(나에게 보내기·친구 1:1만 지원).
+  //  그래서 kakao_send_jobs 큐에 넣어 두면, 집/교회 PC 워커(tools/kakao_worker.py)가
+  //  예약 시각에 카카오톡 PC 창을 조작해 단톡방으로 보낸다.
+  //  보낼 본문은 예약할 때 내용을 그대로 저장한다 — 나중에 원고를 고쳐도 예약분은 안 바뀐다.
+  //  자세한 내용: docs/카카오QT-자동발송-안내.md
+  var KK_ST = {
+    pending: { t: '예약됨', c: '#2d6cdf' },
+    processing: { t: '발송 중', c: '#b8860b' },
+    sent: { t: '발송 완료', c: '#1e8e5a' },
+    error: { t: '실패', c: '#c0392b' },
+    canceled: { t: '취소됨', c: '#9aa5b1' }
+  };
+
+  // datetime-local 입력칸이 쓰는 형식(로컬 시각)
+  function kkLocal(d) {
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
+      'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+  function kkWhen(iso) {
+    var d = new Date(iso); if (isNaN(d)) return String(iso || '');
+    var DOW = ['일', '월', '화', '수', '목', '금', '토'];
+    return (d.getMonth() + 1) + '월 ' + d.getDate() + '일(' + DOW[d.getDay()] + ') ' +
+      pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+  function kkHint(e) {
+    return /kakao_send_jobs|kakao_channels|claim_kakao_job|relation|PGRST2|schema cache|Could not find/i.test((e && e.message) || '')
+      ? ' — Supabase SQL Editor에서 supabase/20260921_2345_kakao_send_jobs.sql 을 1회 실행해 주세요.' : '';
+  }
+
+  function openKakaoScheduler(rec) {
+    rec = rec || {};
+    var date = fmtD(rec.sermon_date) || today();
+    var prev = document.getElementById('kk_ov'); if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+
+    // 기본 예약 시각: 설교 날짜 오전 6시. 이미 지났으면 내일 오전 6시.
+    var def = new Date((date || today()) + 'T06:00:00');
+    if (isNaN(def) || def.getTime() <= Date.now()) {
+      def = new Date(); def.setDate(def.getDate() + 1); def.setHours(6, 0, 0, 0);
+    }
+
+    var m = document.createElement('div');
+    m.id = 'kk_ov';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(8,12,20,.72);z-index:99995;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 14px';
+    m.innerHTML =
+      '<div style="background:#fff;border-radius:16px;max-width:780px;width:100%;padding:22px 24px;box-shadow:0 30px 80px rgba(0,0,0,.5)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+      '<h3 style="margin:0;color:var(--accent,#032257)">⏰ 카카오톡 예약 발송 ' +
+      '<span style="font-size:.85rem;color:#9aa5b1;font-weight:600">' + esc(date) + ' QT</span></h3>' +
+      '<button class="btn btn-line" id="kk_close" style="padding:4px 12px">닫기</button></div>' +
+      '<p style="margin:0 0 14px;font-size:.78rem;color:#9aa5b1">예약해 두면 집·교회 PC의 카카오톡이 그 시각에 단톡방으로 보냅니다. ' +
+      '<b>그 시각에 PC가 켜져 있고 카카오톡이 로그인돼 있어야 합니다.</b></p>' +
+
+      '<div style="font-size:.8rem;font-weight:700;color:#3a4a5e;margin-bottom:5px">보낼 내용 ' +
+      '<span style="font-weight:400;color:#9aa5b1">— 카카오톡 복사와 같은 양식입니다. 여기서 고쳐도 됩니다.</span></div>' +
+      '<textarea id="kk_msg" rows="9" style="width:100%;padding:10px 12px;border:1px solid #dde3ec;border-radius:10px;font-size:.85rem;line-height:1.6;resize:vertical"></textarea>' +
+      '<div id="kk_len" style="font-size:.74rem;color:#9aa5b1;text-align:right;margin-bottom:12px"></div>' +
+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">' +
+      '<span style="font-size:.8rem;font-weight:700;color:#3a4a5e">보낼 채널 (단톡방)</span>' +
+      '<button class="btn btn-line" id="kk_addch" style="padding:3px 10px;font-size:.78rem">＋ 채널 추가</button></div>' +
+      '<div id="kk_ch" style="border:1px solid #eef1f6;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.85rem;color:#9aa5b1">불러오는 중…</div>' +
+
+      '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:6px">' +
+      '<label style="font-size:.8rem;font-weight:700;color:#3a4a5e">발송 시각<br>' +
+      '<input type="datetime-local" id="kk_at" style="margin-top:4px;padding:7px 10px;border:1px solid #dde3ec;border-radius:8px;font-size:.85rem"></label>' +
+      '<button class="btn btn-line" id="kk_q1" style="padding:5px 11px;font-size:.78rem">설교일 06:00</button>' +
+      '<button class="btn btn-line" id="kk_q2" style="padding:5px 11px;font-size:.78rem">내일 06:00</button>' +
+      '<button class="btn btn-line" id="kk_q3" style="padding:5px 11px;font-size:.78rem">1시간 뒤</button>' +
+      '<div style="flex:1"></div>' +
+      '<button class="btn btn-solid" id="kk_go" style="padding:9px 22px;font-weight:700">⏰ 예약하기</button>' +
+      '</div>' +
+      '<div id="kk_msg2" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right;margin-bottom:10px"></div>' +
+
+      '<div style="font-size:.8rem;font-weight:700;color:#3a4a5e;margin-bottom:5px;border-top:1px solid #eef1f6;padding-top:12px">예약 내역</div>' +
+      '<div id="kk_list" style="font-size:.84rem;color:#9aa5b1">불러오는 중…</div>' +
+      '</div>';
+    document.body.appendChild(m);
+
+    function close() { if (m.parentNode) m.parentNode.removeChild(m); }
+    m.querySelector('#kk_close').onclick = close;
+    m.addEventListener('click', function (e) { if (e.target === m) close(); });
+
+    var msgEl = m.querySelector('#kk_msg');
+    var lenEl = m.querySelector('#kk_len');
+    var atEl = m.querySelector('#kk_at');
+    var noteEl = m.querySelector('#kk_msg2');
+
+    msgEl.value = kakaoQtText(rec);
+    atEl.value = kkLocal(def);
+    function syncLen() {
+      var n = (msgEl.value || '').length;
+      lenEl.textContent = n.toLocaleString() + '자' + (n > 4000 ? ' — 4,000자가 넘어 여러 통으로 나뉘어 발송됩니다.' : '');
+    }
+    msgEl.oninput = syncLen; syncLen();
+
+    function note(t, color) { noteEl.style.color = color || '#9aa5b1'; noteEl.textContent = t || ''; }
+
+    m.querySelector('#kk_q1').onclick = function () { var d = new Date(date + 'T06:00:00'); if (!isNaN(d)) atEl.value = kkLocal(d); };
+    m.querySelector('#kk_q2').onclick = function () { var d = new Date(); d.setDate(d.getDate() + 1); d.setHours(6, 0, 0, 0); atEl.value = kkLocal(d); };
+    m.querySelector('#kk_q3').onclick = function () { var d = new Date(Date.now() + 3600000); d.setSeconds(0, 0); atEl.value = kkLocal(d); };
+
+    // ── 채널 목록 ──
+    var CH = [];
+    function drawCh() {
+      var box = m.querySelector('#kk_ch');
+      if (!CH.length) {
+        box.innerHTML = '<span style="color:#c0392b">등록된 채널이 없습니다.</span> 오른쪽 위 <b>＋ 채널 추가</b>로 ' +
+          '카카오톡에 보이는 <b>단톡방 이름을 정확히</b> 넣어 주세요.';
+        return;
+      }
+      box.innerHTML = CH.map(function (c) {
+        var off = !c.active;
+        return '<label style="display:flex;align-items:center;gap:8px;padding:3px 0;color:' + (off ? '#c3cad4' : '#3a4a5e') + '">' +
+          '<input type="checkbox" class="kk_chk" value="' + c.id + '" data-room="' + esc(c.room_name) + '"' + (off ? ' disabled' : '') + '>' +
+          '<span style="font-weight:600">' + esc(c.label || c.room_name) + '</span>' +
+          (c.label && c.label !== c.room_name ? '<span style="font-size:.76rem;color:#9aa5b1">(' + esc(c.room_name) + ')</span>' : '') +
+          (off ? '<span style="font-size:.74rem">· 중지됨</span>' : '') +
+          '<span style="flex:1"></span>' +
+          '<a href="#" class="kk_tog" data-id="' + c.id + '" data-on="' + (off ? '1' : '0') + '" style="font-size:.74rem;color:#9aa5b1">' +
+          (off ? '사용' : '중지') + '</a></label>';
+      }).join('');
+      Array.prototype.forEach.call(box.querySelectorAll('.kk_tog'), function (a) {
+        a.onclick = function (e) {
+          e.preventDefault();
+          var id = a.getAttribute('data-id'), on = a.getAttribute('data-on') === '1';
+          api('PATCH', 'kakao_channels?id=eq.' + id, { active: on }, 'return=minimal')
+            .then(loadCh)
+            .catch(function (err) { note('채널 변경 실패: ' + err.message + kkHint(err), '#c0392b'); });
+        };
+      });
+    }
+    function loadCh() {
+      return api('GET', 'kakao_channels?select=id,room_name,label,active,sort&order=sort.asc,id.asc')
+        .then(function (rows) { CH = rows || []; drawCh(); })
+        .catch(function (e) {
+          m.querySelector('#kk_ch').innerHTML = '<span style="color:#c0392b">채널 조회 실패: ' + esc(e.message) + esc(kkHint(e)) + '</span>';
+        });
+    }
+    m.querySelector('#kk_addch').onclick = function () {
+      var room = prompt('카카오톡에 보이는 단톡방 이름을 정확히 입력하세요.\n(이름이 다르면 발송되지 않고 멈춥니다)');
+      if (room == null) return;
+      room = room.trim(); if (!room) return;
+      var label = prompt('화면에 표시할 이름 (비우면 방 이름 그대로)', room);
+      api('POST', 'kakao_channels', { room_name: room, label: (label || '').trim() || room, sort: CH.length }, 'return=minimal')
+        .then(loadCh)
+        .then(function () { note('채널을 추가했습니다.', '#1e8e5a'); })
+        .catch(function (e) {
+          note(/duplicate|unique/i.test(e.message || '') ? '이미 등록된 방입니다.' : ('채널 추가 실패: ' + e.message + kkHint(e)), '#c0392b');
+        });
+    };
+
+    // ── 예약 내역 ──
+    function drawJobs(rows) {
+      var box = m.querySelector('#kk_list');
+      if (!rows || !rows.length) { box.textContent = '아직 예약이 없습니다.'; return; }
+      box.innerHTML = rows.map(function (j) {
+        var st = KK_ST[j.status] || { t: j.status, c: '#9aa5b1' };
+        return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f4f6fa">' +
+          '<span style="min-width:62px;font-weight:700;font-size:.76rem;color:' + st.c + '">' + esc(st.t) + '</span>' +
+          '<span style="color:#3a4a5e">' + esc(kkWhen(j.scheduled_at)) + '</span>' +
+          '<span style="color:#7b8794">· ' + esc(j.room_name) + '</span>' +
+          (j.error ? '<span style="color:#c0392b;font-size:.76rem">· ' + esc(j.error) + '</span>' : '') +
+          '<span style="flex:1"></span>' +
+          (j.status === 'pending' ? '<a href="#" class="kk_cancel" data-id="' + j.id + '" style="font-size:.76rem;color:#c0392b">취소</a>' : '') +
+          '</div>';
+      }).join('');
+      Array.prototype.forEach.call(box.querySelectorAll('.kk_cancel'), function (a) {
+        a.onclick = function (e) {
+          e.preventDefault();
+          if (!confirm('이 예약을 취소할까요?')) return;
+          api('PATCH', 'kakao_send_jobs?id=eq.' + a.getAttribute('data-id'), { status: 'canceled' }, 'return=minimal')
+            .then(loadJobs)
+            .catch(function (err) { note('취소 실패: ' + err.message, '#c0392b'); });
+        };
+      });
+    }
+    function loadJobs() {
+      return api('GET', 'kakao_send_jobs?select=id,room_name,scheduled_at,status,error,sent_at&sermon_date=eq.' +
+        encodeURIComponent(date) + '&order=scheduled_at.desc&limit=20')
+        .then(drawJobs)
+        .catch(function (e) {
+          m.querySelector('#kk_list').innerHTML = '<span style="color:#c0392b">예약 조회 실패: ' + esc(e.message) + esc(kkHint(e)) + '</span>';
+        });
+    }
+
+    // ── 예약하기 ──
+    var goBtn = m.querySelector('#kk_go');
+    goBtn.onclick = function () {
+      var text = (msgEl.value || '').trim();
+      if (!text) { note('보낼 내용이 비어 있습니다.', '#c0392b'); return; }
+
+      var picked = Array.prototype.filter.call(m.querySelectorAll('.kk_chk'), function (c) { return c.checked; });
+      if (!picked.length) { note('보낼 채널을 하나 이상 선택해 주세요.', '#c0392b'); return; }
+
+      if (!atEl.value) { note('발송 시각을 선택해 주세요.', '#c0392b'); return; }
+      var when = new Date(atEl.value);
+      if (isNaN(when)) { note('발송 시각을 읽을 수 없습니다.', '#c0392b'); return; }
+      if (when.getTime() <= Date.now()) { note('이미 지난 시각입니다. 앞으로의 시각을 골라 주세요.', '#c0392b'); return; }
+
+      var names = picked.map(function (c) { return c.getAttribute('data-room'); });
+      if (!confirm(kkWhen(when.toISOString()) + ' 에\n' + names.join(', ') + '\n로 보냅니다. 예약할까요?')) return;
+
+      var payload = picked.map(function (c) {
+        return {
+          sermon_date: date,
+          channel_id: Number(c.value),
+          room_name: c.getAttribute('data-room'),
+          message: text,
+          scheduled_at: when.toISOString()
+        };
+      });
+      goBtn.disabled = true; note('예약하는 중…');
+      api('POST', 'kakao_send_jobs', payload, 'return=minimal')
+        .then(function () {
+          goBtn.disabled = false;
+          note('✓ ' + payload.length + '건 예약했습니다.', '#1e8e5a');
+          picked.forEach(function (c) { c.checked = false; });
+          loadJobs();
+        })
+        .catch(function (e) {
+          goBtn.disabled = false;
+          note('예약 실패: ' + e.message + kkHint(e), '#c0392b');
+        });
+    };
+
+    loadCh(); loadJobs();
+  }
+
+  // VideoStudio 와 같은 방식으로 밖에서도 열 수 있게 노출 (테스트 하네스에서도 사용)
+  window.KakaoScheduler = { open: openKakaoScheduler };
 
   // 아이패드용 설교문 보기(큰 글씨·스크롤·페이지넘김·전체화면·다크모드·인쇄)
   function sermonReadingView(r, opts) {

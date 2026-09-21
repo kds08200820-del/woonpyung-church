@@ -103,9 +103,12 @@ def log(msg):
         f.write(line + "\n")
 
 
+class SendError(Exception):
+    """발송을 중단해야 하는 상황. 워커(kakao_worker.py)가 잡아서 작업을 실패 처리한다."""
+
+
 def die(msg, code=1):
-    log(f"중단: {msg}")
-    sys.exit(code)
+    raise SendError(msg)
 
 
 def children(parent, cls=None, text_prefix=None):
@@ -458,6 +461,30 @@ def mark_sent(date_str, room):
 
 
 # ── main ───────────────────────────────────────────────────────────────
+def send_to_room(room_name, message, dry_run=False):
+    """임의의 본문을 지정한 단톡방으로 보낸다. 실패하면 SendError.
+
+    CLI(오늘의 QT)와 예약 발송 워커(kakao_worker.py)가 함께 쓰는 진입점이다.
+    보낸 메시지 건수를 돌려준다.
+    """
+    if not room_name:
+        raise SendError("보낼 채팅방 이름이 비어 있습니다.")
+
+    main_hwnd = ensure_kakao()
+    if lock_mode_on(main_hwnd):
+        raise SendError("카카오톡 잠금모드가 켜져 있어 발송할 수 없습니다. 잠금모드를 해제해 주세요.")
+
+    room_hwnd = open_room(main_hwnd, room_name)
+    title = win32gui.GetWindowText(room_hwnd)
+    if title != room_name:
+        raise SendError(f"열린 창 제목이 다릅니다(열림='{title}', 목표='{room_name}') "
+                        f"— 오발송 방지로 중단합니다.")
+
+    chunks = split_message(message)
+    send_chunks(room_hwnd, chunks, dry_run=dry_run)
+    return len(chunks)
+
+
 def main():
     ap = argparse.ArgumentParser(description="오늘의 QT 카카오톡 단톡방 발송")
     ap.add_argument("--room", default=ROOM_NAME, help="보낼 채팅방 이름")
@@ -494,16 +521,7 @@ def main():
         log(f"{date_str} QT는 이미 '{args.room}'에 발송했습니다 — 중복 발송하지 않습니다.")
         return
 
-    main_hwnd = ensure_kakao()
-    if lock_mode_on(main_hwnd):
-        die("카카오톡 잠금모드가 켜져 있어 발송할 수 없습니다. 잠금모드를 해제해 주세요.")
-
-    room_hwnd = open_room(main_hwnd, args.room)
-    title = win32gui.GetWindowText(room_hwnd)
-    if title != args.room:
-        die(f"열린 창 제목이 다릅니다(열림='{title}', 목표='{args.room}') — 오발송 방지로 중단합니다.")
-
-    send_chunks(room_hwnd, chunks, dry_run=args.dry_run)
+    send_to_room(args.room, message, dry_run=args.dry_run)
 
     if args.dry_run:
         log("dry-run 완료 — 실제로는 아무것도 보내지 않았습니다.")
@@ -513,4 +531,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SendError as e:
+        log(f"중단: {e}")
+        sys.exit(1)
