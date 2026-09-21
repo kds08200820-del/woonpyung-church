@@ -1,0 +1,6 @@
+{
+  "_설명": "이 파일을 kakao_qt_config.json 으로 복사한 뒤 room_name 을 채우세요.",
+  "room_name": "여기에 카카오톡에 보이는 단톡방 이름을 그대로",
+  "kakao_exe": "C:\\Program Files (x86)\\Kakao\\KakaoTalk\\KakaoTalk.exe",
+  "max_chars": 4000
+}

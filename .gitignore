@@ -40,3 +40,7 @@ tools/_audiobook_out/
 
 # Node.js
 node_modules/
+
+# 카카오톡 QT 자동 발송 — 단톡방 이름 등 운영 정보와 실행 로그
+tools/kakao_qt_config.json
+tools/logs/
