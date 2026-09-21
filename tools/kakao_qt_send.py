@@ -39,18 +39,45 @@ import time
 from ctypes import wintypes
 from datetime import datetime
 
+# 콘솔 인코딩을 가장 먼저 잡는다.
+# 바로 아래 자동 설치 안내가 한글이라, 이 처리가 뒤에 있으면
+# cp949 콘솔에서 UnicodeEncodeError 로 죽어 버린다(실제로 겪음).
+for _s in (sys.stdout, sys.stderr):
+    if _s and hasattr(_s, "reconfigure"):
+        _s.reconfigure(encoding="utf-8", errors="replace")
+
+_RETRY_FLAG = "KAKAO_DEPS_RETRY"
+
+
 def _install(pkg, why):
-    """없는 패키지를 그 자리에서 설치한다.
+    """없는 패키지를 그 자리에서 설치하고 프로그램을 다시 시작한다.
 
     PC마다 파이썬 환경이 달라 "ModuleNotFoundError"로 멈추는 일이 잦다.
     새 PC에서도 배치 파일만 켜면 되도록 여기서 알아서 챙긴다.
+
+    설치 후 '다시 시작'이 꼭 필요하다. pywin32 는 .pth 파일로 DLL 경로를 잡는데
+    .pth 는 파이썬이 시작할 때만 처리되므로, 방금 설치한 프로세스 안에서는
+    import 가 여전히 실패한다.
     """
+    # 이미 설치를 시도해 본 패키지 목록 (새 PC 는 여러 개가 한꺼번에 없을 수 있어
+    # 패키지별로 기록한다 — 하나 설치하고 재시작, 또 하나 설치하고 재시작)
+    tried = set(filter(None, os.environ.get(_RETRY_FLAG, "").split(",")))
+    if pkg in tried:
+        sys.exit(f"{pkg} 를 설치했는데도 불러오지 못했습니다. 아래 명령을 직접 실행해 보세요:\n"
+                 f'  "{sys.executable}" -m pip install --force-reinstall {pkg}\n'
+                 f"그래도 안 되면 파이썬을 다시 설치해야 할 수 있습니다.")
+
     print(f"[설치] {why}에 필요한 {pkg} 이(가) 없어 설치합니다. 잠시만 기다려 주세요…")
     try:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", pkg])
     except Exception as e:
         sys.exit(f"{pkg} 설치에 실패했습니다. 아래 명령을 직접 실행해 주세요:\n"
                  f'  "{sys.executable}" -m pip install {pkg}\n원인: {e}')
+
+    print("[설치] 완료 - 프로그램을 다시 시작합니다.")
+    argv = [sys.executable, os.path.abspath(sys.argv[0])] + sys.argv[1:]
+    marker = ",".join(sorted(tried | {pkg}))
+    sys.exit(subprocess.call(argv, env=dict(os.environ, **{_RETRY_FLAG: marker})))
 
 
 try:
@@ -72,10 +99,6 @@ except ImportError:
     import win32con
     import win32gui
     import win32process
-
-for _s in (sys.stdout, sys.stderr):
-    if _s and hasattr(_s, "reconfigure"):
-        _s.reconfigure(encoding="utf-8", errors="replace")
 
 # ── 설정 ───────────────────────────────────────────────────────────────
 SITE_URL = "https://k-logos.com"
