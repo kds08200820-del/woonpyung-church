@@ -39,12 +39,39 @@ import time
 from ctypes import wintypes
 from datetime import datetime
 
-import requests
-import win32api
-import win32clipboard
-import win32con
-import win32gui
-import win32process
+def _install(pkg, why):
+    """없는 패키지를 그 자리에서 설치한다.
+
+    PC마다 파이썬 환경이 달라 "ModuleNotFoundError"로 멈추는 일이 잦다.
+    새 PC에서도 배치 파일만 켜면 되도록 여기서 알아서 챙긴다.
+    """
+    print(f"[설치] {why}에 필요한 {pkg} 이(가) 없어 설치합니다. 잠시만 기다려 주세요…")
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", pkg])
+    except Exception as e:
+        sys.exit(f"{pkg} 설치에 실패했습니다. 아래 명령을 직접 실행해 주세요:\n"
+                 f'  "{sys.executable}" -m pip install {pkg}\n원인: {e}')
+
+
+try:
+    import requests
+except ImportError:
+    _install("requests", "홈페이지 QT 조회")
+    import requests
+
+try:
+    import win32api
+    import win32clipboard
+    import win32con
+    import win32gui
+    import win32process
+except ImportError:
+    _install("pywin32", "카카오톡 창 조작")
+    import win32api
+    import win32clipboard
+    import win32con
+    import win32gui
+    import win32process
 
 for _s in (sys.stdout, sys.stderr):
     if _s and hasattr(_s, "reconfigure"):
@@ -332,17 +359,104 @@ def find_main(timeout=0):
 def ensure_kakao():
     """카카오톡이 로그인된 상태인지 확인하고, 아니면 실행만 한다(비밀번호 입력 없음)."""
     h = find_main()
-    if h:
+    if h and not login_window():
         return h
-    if not os.path.exists(KAKAO_EXE):
-        die(f"카카오톡 실행 파일을 찾지 못했습니다: {KAKAO_EXE}")
-    log("카카오톡이 실행돼 있지 않아 시작합니다 (자동 로그인 설정 필요)")
-    subprocess.Popen([KAKAO_EXE])
-    h = find_main(timeout=90)
+
     if not h:
-        die("카카오톡 로그인 창을 넘어가지 못했습니다. "
-            "카카오톡 PC 설정에서 '자동 로그인'을 켜 주세요.")
+        if not os.path.exists(KAKAO_EXE):
+            raise SendError(f"카카오톡 실행 파일을 찾지 못했습니다: {KAKAO_EXE}")
+        log("카카오톡이 실행돼 있지 않아 시작합니다 (자동 로그인 설정 필요)")
+        subprocess.Popen([KAKAO_EXE])
+        h = find_main(timeout=90)
+
+    # 로그인 창이 떠 있으면 목록이 비어 있어 방을 찾을 수 없다 — 바로 알린다
+    if login_window():
+        raise SendError(LOGIN_MSG)
+    if not h:
+        raise SendError("카카오톡 로그인 창을 넘어가지 못했습니다. "
+                        "카카오톡 PC 설정에서 '자동 로그인'을 켜 주세요.")
     return h
+
+
+def login_window():
+    """로그인 창이 떠 있으면 그 핸들, 아니면 0. (로그아웃 상태 판별)
+
+    로그아웃되면 메인 창(EVA_Window_Dblclk '카카오톡')은 그대로 남은 채 숨고,
+    별도의 로그인 창(EVA_Window, 같은 제목)이 뜬다. 이때 채팅·친구 목록이
+    비어 있어서, 확인하지 않으면 "방을 열지 못했습니다"라는 엉뚱한 사유로 실패한다.
+    """
+    found = []
+
+    def cb(h, _):
+        if (win32gui.IsWindowVisible(h)
+                and win32gui.GetClassName(h) == "EVA_Window"
+                and win32gui.GetWindowText(h) == "카카오톡"):
+            found.append(h)
+    win32gui.EnumWindows(cb, None)
+    return found[0] if found else 0
+
+
+LOGIN_MSG = ("카카오톡이 로그아웃되어 로그인 창이 떠 있습니다. "
+             "카카오톡에 로그인한 뒤 '자동 로그인'을 켜 주세요. "
+             "(보안을 위해 이 프로그램은 비밀번호를 대신 입력하지 않습니다)")
+
+
+def show_main(main_hwnd):
+    """트레이에 내려가 있던 카카오톡 메인 창을 다시 띄운다.
+
+    ShowWindow(SW_SHOW)로 억지로 띄우면 창은 보이지만 목록이 채워지지 않는다.
+    WM_SYSCOMMAND/SC_RESTORE 로 앱 자신의 복원 경로를 타야 제대로 살아난다.
+    """
+    if not win32gui.IsWindowVisible(main_hwnd) or win32gui.IsIconic(main_hwnd):
+        win32api.PostMessage(main_hwnd, win32con.WM_SYSCOMMAND, win32con.SC_RESTORE, 0)
+        for _ in range(20):
+            time.sleep(0.25)
+            if win32gui.IsWindowVisible(main_hwnd) and not win32gui.IsIconic(main_hwnd):
+                break
+    try:
+        win32gui.SetForegroundWindow(main_hwnd)
+    except Exception:
+        pass
+    time.sleep(0.6)
+
+
+def ensure_chat_tab(main_hwnd):
+    """'친구' 탭에 있으면 '채팅' 탭으로 옮긴다.
+
+    채팅 탭이 아니면 채팅 목록·검색칸이 숨어 있어 방을 찾을 수 없다.
+    왼쪽 탭 막대는 별도 컨트롤 없이 OnlineMainView 에 직접 그려져 있어서
+    좌표로 눌러야 한다. 버전·배율에 따라 위치가 달라질 수 있으므로
+    맨 위 영역(친구/채팅/더보기)만 훑고, 채팅 목록이 나타나면 즉시 멈춘다.
+    """
+    views = children(main_hwnd, "EVA_Window", "ChatRoomListView")
+    if not views:
+        return False
+    view = views[0]
+    if win32gui.IsWindowVisible(view):
+        return True
+
+    omv = children(main_hwnd, "EVA_ChildWindow", "OnlineMainView")
+    if not omv:
+        return False
+    omv = omv[0]
+    for y in range(24, 200, 8):
+        lp = (y << 16) | 31
+        win32api.PostMessage(omv, win32con.WM_LBUTTONDOWN, win32con.MK_LBUTTON, lp)
+        time.sleep(0.05)
+        win32api.PostMessage(omv, win32con.WM_LBUTTONUP, 0, lp)
+        time.sleep(0.45)
+        if win32gui.IsWindowVisible(view):
+            log("채팅 탭으로 전환했습니다")
+            return True
+    return False
+
+
+def hide_main(main_hwnd):
+    """발송 전에 숨어 있었다면 원래대로 트레이로 되돌린다."""
+    try:
+        win32gui.ShowWindow(main_hwnd, win32con.SW_HIDE)
+    except Exception:
+        pass
 
 
 def lock_mode_on(main):
@@ -359,6 +473,8 @@ def open_room(main, room_name, timeout=20):
         log(f"이미 열려 있는 창 사용: {room_name}")
         return h
 
+    show_main(main)          # 트레이에 내려가 있으면 띄운다 — 숨은 채로는 검색이 안 된다
+    ensure_chat_tab(main)    # '친구' 탭이면 채팅 목록이 숨어 있다
     view = children(main, "EVA_Window", "ChatRoomListView")
     if not view:
         die("채팅 목록(ChatRoomListView)을 찾지 못했습니다.")
@@ -383,7 +499,11 @@ def open_room(main, room_name, timeout=20):
             return h
         time.sleep(0.5)
     set_text(edit[0], "")
-    die(f"'{room_name}' 방을 열지 못했습니다. 카카오톡에 보이는 방 이름과 정확히 같은지 확인하세요.")
+    if login_window():
+        raise SendError(LOGIN_MSG)
+    raise SendError(f"'{room_name}' 방을 열지 못했습니다. "
+                    f"카카오톡에 보이는 방 이름과 정확히 같은지, "
+                    f"카카오톡 채팅 목록이 정상으로 보이는지 확인하세요.")
 
 
 def input_box(room_hwnd):
@@ -474,15 +594,21 @@ def send_to_room(room_name, message, dry_run=False):
     if lock_mode_on(main_hwnd):
         raise SendError("카카오톡 잠금모드가 켜져 있어 발송할 수 없습니다. 잠금모드를 해제해 주세요.")
 
-    room_hwnd = open_room(main_hwnd, room_name)
-    title = win32gui.GetWindowText(room_hwnd)
-    if title != room_name:
-        raise SendError(f"열린 창 제목이 다릅니다(열림='{title}', 목표='{room_name}') "
-                        f"— 오발송 방지로 중단합니다.")
+    # 발송 때문에 띄운 창은 발송이 끝나면 원래대로 트레이에 되돌려 놓는다
+    was_hidden = not win32gui.IsWindowVisible(main_hwnd)
+    try:
+        room_hwnd = open_room(main_hwnd, room_name)
+        title = win32gui.GetWindowText(room_hwnd)
+        if title != room_name:
+            raise SendError(f"열린 창 제목이 다릅니다(열림='{title}', 목표='{room_name}') "
+                            f"— 오발송 방지로 중단합니다.")
 
-    chunks = split_message(message)
-    send_chunks(room_hwnd, chunks, dry_run=dry_run)
-    return len(chunks)
+        chunks = split_message(message)
+        send_chunks(room_hwnd, chunks, dry_run=dry_run)
+        return len(chunks)
+    finally:
+        if was_hidden:
+            hide_main(main_hwnd)
 
 
 def main():
