@@ -2,5 +2,10 @@
   "_설명": "이 파일을 kakao_qt_config.json 으로 복사한 뒤 room_name 을 채우세요.",
   "room_name": "여기에 카카오톡에 보이는 단톡방 이름을 그대로",
   "kakao_exe": "C:\\Program Files (x86)\\Kakao\\KakaoTalk\\KakaoTalk.exe",
-  "max_chars": 4000
+  "max_chars": 4000,
+  "_heart_설명": "💗 댓글 하트 보정값. button_dx/dy 가 비어 있으면 하트를 실제로 누르지 않습니다. docs/카카오QT-자동발송-안내.md 의 '화면 보정' 참고.",
+  "heart": {
+    "button_dx": null,
+    "button_dy": null
+  }
 }

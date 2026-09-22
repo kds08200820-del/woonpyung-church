@@ -5820,8 +5820,20 @@ console.log('[affairs.js] v20260921kk');
       pad2(d.getHours()) + ':' + pad2(d.getMinutes());
   }
   function kkHint(e) {
-    return /kakao_send_jobs|kakao_channels|claim_kakao_job|relation|PGRST2|schema cache|Could not find/i.test((e && e.message) || '')
+    var msg = (e && e.message) || '';
+    if (/heart_/i.test(msg)) return ' — Supabase SQL Editor에서 supabase/20260923_0800_kakao_heart.sql 을 1회 실행해 주세요.';
+    return /kakao_send_jobs|kakao_channels|claim_kakao_job|relation|PGRST2|schema cache|Could not find/i.test(msg)
       ? ' — Supabase SQL Editor에서 supabase/20260921_2345_kakao_send_jobs.sql 을 1회 실행해 주세요.' : '';
+  }
+  // 💗 댓글 하트 상태 표시 (예약 내역 한 줄에 붙는다)
+  function kkHeartLabel(j) {
+    if (!j.heart_minutes) return '';
+    var st = j.heart_status, t, c = '#c2185b';
+    if (st === 'done') t = '💗 ' + (j.heart_count || 0) + '명에게 하트';
+    else if (st === 'processing') t = '💗 하트 다는 중';
+    else if (st === 'error') { t = '💗 하트 실패' + (j.heart_error ? ': ' + j.heart_error : ''); c = '#c0392b'; }
+    else t = '💗 보낸 뒤 ' + j.heart_minutes + '분 댓글에 하트 예정';
+    return '<span style="font-size:.76rem;color:' + c + '">· ' + esc(t) + '</span>';
   }
 
   function openKakaoScheduler(rec) {
@@ -5866,6 +5878,13 @@ console.log('[affairs.js] v20260921kk');
       '<div style="flex:1"></div>' +
       '<button class="btn btn-solid" id="kk_go" style="padding:9px 22px;font-weight:700">⏰ 예약하기</button>' +
       '</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 6px;padding:8px 12px;background:#fff5f8;border:1px solid #f8d7e3;border-radius:10px;font-size:.82rem;color:#3a4a5e">' +
+      '<label style="display:flex;align-items:center;gap:6px;font-weight:700;cursor:pointer"><input type="checkbox" id="kk_heart"> 💗 댓글에 하트 달기</label>' +
+      '<span>— 글 보낸 뒤</span>' +
+      '<input type="number" id="kk_hmin" min="1" max="180" step="1" value="30" style="width:64px;padding:4px 6px;border:1px solid #dde3ec;border-radius:6px;font-size:.82rem">' +
+      '<span>분 안에 달린 댓글</span>' +
+      '<span style="flex-basis:100%;font-size:.74rem;color:#9aa5b1">그 시간이 끝나면 PC가 방을 다시 열어 하트를 누릅니다. 그때까지 PC와 카카오톡이 켜져 있어야 하고, 1~2분 동안 마우스가 저절로 움직입니다.</span>' +
+      '</div>' +
       '<div id="kk_msg2" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right;margin-bottom:10px"></div>' +
 
       '<div style="font-size:.8rem;font-weight:700;color:#3a4a5e;margin-bottom:5px;border-top:1px solid #eef1f6;padding-top:12px">예약 내역</div>' +
@@ -5891,6 +5910,18 @@ console.log('[affairs.js] v20260921kk');
     msgEl.oninput = syncLen; syncLen();
 
     function note(t, color) { noteEl.style.color = color || '#9aa5b1'; noteEl.textContent = t || ''; }
+
+    // 💗 하트 설정은 이 브라우저에 기억해 둔다 (매일 같은 설정으로 예약하는 경우가 많다)
+    var heartEl = m.querySelector('#kk_heart');
+    var hminEl = m.querySelector('#kk_hmin');
+    try {
+      var hp = JSON.parse(localStorage.getItem('kk_heart_pref') || 'null');
+      if (hp) { heartEl.checked = !!hp.on; if (hp.min) hminEl.value = hp.min; }
+    } catch (e) { }
+    function saveHeartPref() {
+      try { localStorage.setItem('kk_heart_pref', JSON.stringify({ on: heartEl.checked, min: hminEl.value })); } catch (e) { }
+    }
+    heartEl.onchange = saveHeartPref; hminEl.onchange = saveHeartPref;
 
     m.querySelector('#kk_q1').onclick = function () { var d = new Date(date + 'T06:00:00'); if (!isNaN(d)) atEl.value = kkLocal(d); };
     m.querySelector('#kk_q2').onclick = function () { var d = new Date(); d.setDate(d.getDate() + 1); d.setHours(6, 0, 0, 0); atEl.value = kkLocal(d); };
@@ -5956,6 +5987,7 @@ console.log('[affairs.js] v20260921kk');
           '<span style="min-width:62px;font-weight:700;font-size:.76rem;color:' + st.c + '">' + esc(st.t) + '</span>' +
           '<span style="color:#3a4a5e">' + esc(kkWhen(j.scheduled_at)) + '</span>' +
           '<span style="color:#7b8794">· ' + esc(j.room_name) + '</span>' +
+          kkHeartLabel(j) +
           (j.error ? '<span style="color:#c0392b;font-size:.76rem">· ' + esc(j.error) + '</span>' : '') +
           '<span style="flex:1"></span>' +
           (j.status === 'pending' ? '<a href="#" class="kk_cancel" data-id="' + j.id + '" style="font-size:.76rem;color:#c0392b">취소</a>' : '') +
@@ -5972,8 +6004,14 @@ console.log('[affairs.js] v20260921kk');
       });
     }
     function loadJobs() {
-      return api('GET', 'kakao_send_jobs?select=id,room_name,scheduled_at,status,error,sent_at&sermon_date=eq.' +
-        encodeURIComponent(date) + '&order=scheduled_at.desc&limit=20')
+      var base = 'id,room_name,scheduled_at,status,error,sent_at';
+      var q = '&sermon_date=eq.' + encodeURIComponent(date) + '&order=scheduled_at.desc&limit=20';
+      return api('GET', 'kakao_send_jobs?select=' + base + ',heart_minutes,heart_status,heart_count,heart_error' + q)
+        .catch(function (e) {
+          // 하트 칼럼이 아직 없으면(20260923 SQL 실행 전) 하트 없이 다시 조회
+          if (/heart_/i.test(e.message || '')) return api('GET', 'kakao_send_jobs?select=' + base + q);
+          throw e;
+        })
         .then(drawJobs)
         .catch(function (e) {
           m.querySelector('#kk_list').innerHTML = '<span style="color:#c0392b">예약 조회 실패: ' + esc(e.message) + esc(kkHint(e)) + '</span>';
@@ -5994,17 +6032,26 @@ console.log('[affairs.js] v20260921kk');
       if (isNaN(when)) { note('발송 시각을 읽을 수 없습니다.', '#c0392b'); return; }
       if (when.getTime() <= Date.now()) { note('이미 지난 시각입니다. 앞으로의 시각을 골라 주세요.', '#c0392b'); return; }
 
+      var hmin = 0;
+      if (heartEl.checked) {
+        hmin = parseInt(hminEl.value, 10);
+        if (!(hmin >= 1 && hmin <= 180)) { note('하트 시간은 1~180분 사이로 넣어 주세요.', '#c0392b'); return; }
+      }
+
       var names = picked.map(function (c) { return c.getAttribute('data-room'); });
-      if (!confirm(kkWhen(when.toISOString()) + ' 에\n' + names.join(', ') + '\n로 보냅니다. 예약할까요?')) return;
+      if (!confirm(kkWhen(when.toISOString()) + ' 에\n' + names.join(', ') + '\n로 보냅니다.' +
+        (hmin ? '\n💗 보낸 뒤 ' + hmin + '분 안에 달린 댓글에 하트를 답니다.' : '') + '\n예약할까요?')) return;
 
       var payload = picked.map(function (c) {
-        return {
+        var row = {
           sermon_date: date,
           channel_id: Number(c.value),
           room_name: c.getAttribute('data-room'),
           message: text,
           scheduled_at: when.toISOString()
         };
+        if (hmin) { row.heart_minutes = hmin; row.heart_status = 'pending'; }
+        return row;
       });
       goBtn.disabled = true; note('예약하는 중…');
       api('POST', 'kakao_send_jobs', payload, 'return=minimal')

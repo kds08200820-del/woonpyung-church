@@ -27,6 +27,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 import kakao_qt_send as K
+import kakao_heart as H                     # 💗 댓글 하트 (필요 패키지는 시작할 때 설치)
 
 for _s in (sys.stdout, sys.stderr):
     if _s and hasattr(_s, "reconfigure"):
@@ -159,6 +160,78 @@ def handle(job, dry_run=False):
     log(f"작업 #{jid} 발송 완료 ({n}건)")
 
 
+# ── 💗 댓글 하트 ───────────────────────────────────────────────────────
+# 보낸 뒤 N분이 지났는데 이만큼 더 늦었으면 하트를 달지 않는다.
+# (댓글이 많이 쌓여 엉뚱한 날 글까지 훑는 일을 막는다)
+HEART_MAX_LATE_HOURS = 3
+_heart_rpc_missing = False
+
+
+def claim_heart_job():
+    """하트 차례가 된 작업 1건. 20260923 SQL 실행 전이면 조용히 None."""
+    global _heart_rpc_missing
+    if _heart_rpc_missing:
+        return None
+    try:
+        rows = rest("POST", "rpc/claim_kakao_heart_job", {"p_worker": WORKER})
+    except RuntimeError as e:
+        if "claim_kakao_heart_job" in str(e) or "PGRST202" in str(e):
+            _heart_rpc_missing = True
+            log("댓글 하트 기능은 꺼져 있습니다 — supabase/20260923_0800_kakao_heart.sql 실행 전")
+            return None
+        raise
+    return rows[0] if rows else None
+
+
+def finish_heart(job_id, status, count=None, error=None):
+    body = {"heart_status": status, "heart_error": error}
+    if count is not None:
+        body["heart_count"] = count
+    if status == "done":
+        body["heart_done_at"] = datetime.now(timezone.utc).isoformat()
+    rest("PATCH", f"kakao_send_jobs?id=eq.{job_id}", body, prefer="return=minimal")
+
+
+def handle_heart(job, dry_run=False):
+    jid = job.get("id")
+    room = job.get("room_name") or ""
+    minutes = int(job.get("heart_minutes") or 0)
+    try:
+        sent = datetime.fromisoformat((job.get("sent_at") or "").replace("Z", "+00:00"))
+    except Exception:
+        finish_heart(jid, "error", error="보낸 시각을 읽을 수 없습니다.")
+        return
+    if sent.tzinfo is None:
+        sent = sent.replace(tzinfo=timezone.utc)
+    sent_local = sent.astimezone().replace(tzinfo=None)           # 카카오톡 화면은 이 PC 시각
+    log(f"하트 작업 #{jid} — '{room}' {sent_local:%m-%d %H:%M} 보낸 글, {minutes}분 안 댓글")
+
+    late_h = (datetime.now() - sent_local).total_seconds() / 3600.0 - minutes / 60.0
+    if late_h > HEART_MAX_LATE_HOURS or sent_local.date() != datetime.now().date():
+        reason = (f"하트 시각이 {late_h:.1f}시간 지나 건너뛰었습니다. PC가 꺼져 있었을 수 있습니다.")
+        log(f"하트 작업 #{jid} — {reason}")
+        finish_heart(jid, "error", error=reason)
+        return
+
+    try:
+        n = H.heart_room(room, sent_local, minutes, dry_run=dry_run)
+    except (H.HeartError, K.SendError) as e:
+        log(f"하트 작업 #{jid} 실패 — {e}")
+        finish_heart(jid, "error", error=str(e))
+        return
+    except Exception as e:
+        log(f"하트 작업 #{jid} 오류 — {e}")
+        finish_heart(jid, "error", error=f"{type(e).__name__}: {e}")
+        return
+
+    if dry_run:
+        log(f"하트 작업 #{jid} dry-run — 대상 {n}개 (누르지 않음, pending 으로 되돌림)")
+        finish_heart(jid, "pending")
+        return
+    finish_heart(jid, "done", count=n)
+    log(f"하트 작업 #{jid} 완료 — {n}개")
+
+
 def main():
     ap = argparse.ArgumentParser(description="카카오톡 QT 예약 발송 워커")
     ap.add_argument("--watch", action="store_true", help="계속 돌면서 예약을 처리")
@@ -184,6 +257,12 @@ def main():
                 if args.once:
                     return
                 continue                        # 밀린 작업이 더 있을 수 있으니 바로 다시
+            hjob = claim_heart_job()            # 발송이 먼저, 하트는 그다음
+            if hjob:
+                handle_heart(hjob, dry_run=args.dry_run)
+                if args.once:
+                    return
+                continue
             if args.once:
                 log("지금 보낼 예약이 없습니다.")
                 return
