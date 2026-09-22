@@ -40,6 +40,7 @@ import re
 import sys
 import tempfile
 import time
+from collections import Counter
 from datetime import datetime
 
 import kakao_qt_send as K
@@ -82,8 +83,10 @@ LOG_DIR = os.path.join(K.BASE_DIR, "logs")
 #  picker_box   : 공감 버튼을 누른 뒤 하트 고르는 창을 찾을 범위(버튼 중심에서 ± 픽셀)
 #  scroll_notches : 한 화면 위로 올릴 때 휠을 몇 칸 굴릴지
 _HEART_DEFAULTS = {
-    "button_dx": None,
-    "button_dy": None,
+    # 2026-09-23 교회 당회실PC 카카오톡 화면에서 잰 값. 말풍선에 마우스를 올리면
+    # 시각 자리에 [답장 ↳](x +11~+20) [공감 ☺+](x +31~+43) 버튼이 뜬다 — 답장을 누르지 않게 주의.
+    "button_dx": 37,
+    "button_dy": -14,
     "hover_dx": -24,
     "hover_dy": -10,
     "picker_box": 220,
@@ -96,7 +99,8 @@ HEART.update({k: v for k, v in (K.CONFIG.get("heart") or {}).items() if v is not
 
 # OCR 이 '오전'을 '결전'처럼 앞 글자를 틀리게 읽는 일이 있어 '전/후'만 본다.
 # 콜론은 자주 빠진다("오전 601") — 뒤 두 자리를 분으로 읽는다.
-TIME_RE = re.compile(r"[가-힣]?(전|후)\s*(\d{1,2})\s*[:;.]?\s*(\d{2})")
+# 콜론을 다른 글자로 읽기도 한다("6*25") — 숫자 사이 한 글자는 무엇이든 허용.
+TIME_RE = re.compile(r"[가-힣]?(전|후)\s*(\d{1,2})\s*[^\d\s]?\s*(\d{2})")
 DATE_RE = re.compile(r"\d{4}\s*년\s*\d{1,2}\s*월")
 OCR_SCALE = 2
 
@@ -119,8 +123,35 @@ def grab(rect):
     return full.crop((l - vx, t - vy, r - vx, b - vy)).convert("RGB")
 
 
+def hide_photos(img):
+    """사진·프로필처럼 배경도 흰 말풍선도 아닌 큰 덩어리를 배경색으로 칠한다.
+
+    사진 바로 옆의 시각 표시("오전 6:07")는 OCR 이 사진과 한 덩어리로 보고 못 읽는다.
+    8×8 칸 단위로, 칸의 80% 넘게가 '배경·흰색이 아닌 색'이면 지운다(글자 칸은 대부분 배경이라 남는다).
+    """
+    px = img.load()
+    bg = Counter(px[x, y] for x in range(0, img.width, 7)
+                 for y in range(0, img.height, 7)).most_common(1)[0][0]
+
+    def plain(p):
+        return abs(p[0] - bg[0]) + abs(p[1] - bg[1]) + abs(p[2] - bg[2]) < 40 or min(p[:3]) > 235
+
+    out = img.copy()
+    od = ImageDraw.Draw(out)
+    C = 8
+    for cy in range(0, img.height, C):
+        for cx in range(0, img.width, C):
+            x1, y1 = min(cx + C, img.width), min(cy + C, img.height)
+            n = (x1 - cx) * (y1 - cy)
+            other = sum(1 for y in range(cy, y1) for x in range(cx, x1) if not plain(px[x, y]))
+            if other > 0.8 * n:
+                od.rectangle((cx, cy, x1 - 1, y1 - 1), fill=bg)
+    return out
+
+
 def ocr_lines(img):
     """윈도우 내장 OCR(한국어)로 줄 단위 글자와 위치를 읽는다. [(글자, x, y, w, h)] (img 좌표)"""
+    img = hide_photos(img)
     big = img.resize((img.width * OCR_SCALE, img.height * OCR_SCALE), Image.LANCZOS)
     fd, path = tempfile.mkstemp(suffix=".png")
     os.close(fd)
@@ -182,21 +213,39 @@ def count_px(img, box, pred):
     return n
 
 
-def red_center(img, box, min_px=12):
-    """box 안 빨간 점들의 중심 (img 좌표). 없으면 None."""
-    l, t, r, b = [int(v) for v in box]
-    l, t = max(l, 0), max(t, 0)
-    r, b = min(r, img.width), min(img.height, b)
-    px = img.load()
-    xs, ys = [], []
-    for y in range(t, b):
-        for x in range(l, r):
-            if _is_red(px[x, y]):
-                xs.append(x)
-                ys.append(y)
-    if len(xs) < min_px:
+def new_red_center(before, after, min_px=150):
+    """하트 고르는 창의 하트 중심. 없으면 None.
+
+    - 이웃 댓글의 ❤1 이 섞이지 않게, 공감 버튼을 누르기 전·후를 비교해 새로 나타난 빨간 점만 본다.
+    - 고르는 창의 다른 이모티콘에도 작은 빨간 부분(볼·입)이 있어서 전체 평균을 누르면 빈 곳을 누른다.
+      하트는 꽉 찬 한 덩어리(약 24×21, 390점)라 '가장 큰 연결 덩어리'를 고른다. (2026-09-23 실측)
+    """
+    pa, pb = after.load(), before.load()
+    w, h = min(after.width, before.width), min(after.height, before.height)
+    new = set((x, y) for y in range(h) for x in range(w)
+              if _is_red(pa[x, y]) and not _is_red(pb[x, y]))
+    best, seen = [], set()
+    for p in new:
+        if p in seen:
+            continue
+        seen.add(p)
+        stack, comp = [p], []
+        while stack:
+            q = stack.pop()
+            comp.append(q)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    r = (q[0] + dx, q[1] + dy)
+                    if r in new and r not in seen:
+                        seen.add(r)
+                        stack.append(r)
+        if len(comp) > len(best):
+            best = comp
+    if len(best) < min_px:
         return None
-    return sum(xs) / len(xs), sum(ys) / len(ys)
+    xs = [x for x, _ in best]
+    ys = [y for _, y in best]
+    return (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
 
 
 # ── 대화 목록 읽기 ─────────────────────────────────────────────────────
@@ -335,6 +384,22 @@ def list_rect(lst):
     return l, t, r - 16, b                  # 오른쪽 스크롤바는 뺀다
 
 
+def park(lst):
+    """마우스를 대화 목록 밖으로 치운다.
+
+    마우스가 말풍선 위에 있으면 그 자리의 시각 표시가 [답장][공감] 버튼으로 바뀌어
+    OCR 이 그 댓글을 못 찾는다. 캡처 전에 항상 부른다.
+    """
+    l, t, r, b = win32gui.GetWindowRect(lst)
+    move(r + 20, t - 30)
+    time.sleep(0.35)
+
+
+def snap(lst):
+    park(lst)
+    return grab(list_rect(lst))
+
+
 # ── 하트 한 개 ─────────────────────────────────────────────────────────
 def press_heart(lst, it):
     """it 말풍선에 하트를 누르고, 생겼는지 확인한다. 실패하면 HeartError."""
@@ -343,14 +408,17 @@ def press_heart(lst, it):
     move(bx + HEART["hover_dx"], by + HEART["hover_dy"])            # 말풍선 위에 올려 공감 버튼을 띄운다
     time.sleep(0.7)
     btn = (bx + HEART["button_dx"], by + HEART["button_dy"])
+    pb = int(HEART["picker_box"])
+    area = (btn[0] - pb, btn[1] - pb, btn[0] + pb, btn[1] + pb)
+    move(*btn)
+    time.sleep(0.3)
+    before = grab(area)
     click(*btn)
     time.sleep(0.8)
 
-    # 하트 고르는 창에서 빨간 하트를 찾아 누른다
-    pb = int(HEART["picker_box"])
-    area = (btn[0] - pb, btn[1] - pb, btn[0] + pb, btn[1] + pb)
+    # 하트 고르는 창에서 (새로 나타난) 빨간 하트를 찾아 누른다
     shot = grab(area)
-    c = red_center(shot, (0, 0, shot.width, shot.height))
+    c = new_red_center(before, shot)
     if not c:
         win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0)
         win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -358,8 +426,7 @@ def press_heart(lst, it):
                          f"(보정값 button_dx/dy 확인 필요).")
     click(area[0] + c[0], area[1] + c[1])
     time.sleep(1.0)
-    move(R + 30, T + 10)                                           # 마우스를 목록 밖으로 치운다
-    time.sleep(0.3)
+    park(lst)
 
 
 # ── 전체 ───────────────────────────────────────────────────────────────
@@ -386,7 +453,7 @@ def heart_room(room_name, since, minutes, dry_run=False):
             pages += 1
             stop_here = False
             for _ in range(60):                              # 한 화면 안에서 반복 (누를 때마다 다시 캡처)
-                img = grab(list_rect(lst))
+                img = snap(lst)
                 items, dates = scan(img)
 
                 # 이 화면에서 볼 범위의 위쪽 경계: 내 원글(보낸 시각의 노란 말풍선), 날짜 구분선
@@ -419,7 +486,10 @@ def heart_room(room_name, since, minutes, dry_run=False):
                 press_heart(lst, it)
 
                 # 확인: 같은 시각·비슷한 높이의 말풍선에 하트가 생겼는지
-                img2 = grab(list_rect(lst))
+                # (맨 아래 댓글은 새로 생긴 하트 줄이 화면 아래로 잘리므로 다시 맨 아래로 내린다)
+                if pages == 1:
+                    wheel(cx, cy, -10)
+                img2 = snap(lst)
                 after, _ = scan(img2)
                 ok = any(a.minute == it.minute and not a.mine and a.hearted
                          and abs(a.ty - it.ty) < 60 for a in after)
@@ -453,7 +523,7 @@ def probe(room_name):
     try:
         L, T, R, B = list_rect(lst)
         wheel((L + R) // 2, (T + B) // 2, -60)
-        img = grab(list_rect(lst))
+        img = snap(lst)
         items, _ = scan(img)
         others = [i for i in items if not i.mine]
         p0 = annotate(img, items, others[-1:], "probe_before")
@@ -464,7 +534,7 @@ def probe(room_name):
         it = others[-1]
         move(L + it.bubble_right + HEART["hover_dx"], T + it.bubble_bottom + HEART["hover_dy"])
         time.sleep(1.0)
-        img2 = grab(list_rect(lst))
+        img2 = snap(lst)
         os.makedirs(LOG_DIR, exist_ok=True)
         p1 = os.path.join(LOG_DIR, f"kakao_heart_probe_hover_{datetime.now():%Y%m%d_%H%M%S}.png")
         img2.save(p1)
