@@ -183,19 +183,31 @@ def claim_heart_job():
     return rows[0] if rows else None
 
 
-def finish_heart(job_id, status, count=None, error=None):
+def finish_heart(job_id, status, count=None, error=None, passes=None):
     body = {"heart_status": status, "heart_error": error}
     if count is not None:
         body["heart_count"] = count
+    if passes is not None:
+        body["heart_passes"] = passes
     if status == "done":
         body["heart_done_at"] = datetime.now(timezone.utc).isoformat()
     rest("PATCH", f"kakao_send_jobs?id=eq.{job_id}", body, prefer="return=minimal")
 
 
 def handle_heart(job, dry_run=False):
+    """하트 확인 한 차례. '30분 동안, 10분마다'면 10·20·30분에 한 번씩 이 함수가 불린다.
+
+    매번 보낸 시각 ~ +30분 댓글 중 하트 없는 것에만 누르므로(이미 누른 건 건너뜀)
+    앞 차례에 누른 댓글을 다시 건드리지 않는다.
+    """
     jid = job.get("id")
     room = job.get("room_name") or ""
     minutes = int(job.get("heart_minutes") or 0)
+    every = int(job.get("heart_every") or 0) or minutes           # 없으면 끝날 때 한 번
+    every = max(1, min(every, max(minutes, 1)))
+    repeat = -(-minutes // every)                                   # 확인 횟수 (올림)
+    done = int(job.get("heart_passes") or 0)
+    total = int(job.get("heart_count") or 0)
     try:
         sent = datetime.fromisoformat((job.get("sent_at") or "").replace("Z", "+00:00"))
     except Exception:
@@ -204,32 +216,44 @@ def handle_heart(job, dry_run=False):
     if sent.tzinfo is None:
         sent = sent.replace(tzinfo=timezone.utc)
     sent_local = sent.astimezone().replace(tzinfo=None)           # 카카오톡 화면은 이 PC 시각
-    log(f"하트 작업 #{jid} — '{room}' {sent_local:%m-%d %H:%M} 보낸 글, {minutes}분 안 댓글")
+    elapsed = (datetime.now() - sent_local).total_seconds() / 60.0
 
-    late_h = (datetime.now() - sent_local).total_seconds() / 3600.0 - minutes / 60.0
+    # PC가 꺼져 있다 늦게 켜졌으면 지나간 차례는 한 번으로 합친다
+    this_pass = min(repeat, max(done + 1, int(elapsed // every)))
+    last = this_pass >= repeat
+    log(f"하트 작업 #{jid} — '{room}' {sent_local:%m-%d %H:%M} 보낸 글, "
+        f"{minutes}분 안 댓글 ({this_pass}/{repeat}번째)")
+
+    late_h = (elapsed - minutes) / 60.0
     if late_h > HEART_MAX_LATE_HOURS or sent_local.date() != datetime.now().date():
         reason = (f"하트 시각이 {late_h:.1f}시간 지나 건너뛰었습니다. PC가 꺼져 있었을 수 있습니다.")
         log(f"하트 작업 #{jid} — {reason}")
         finish_heart(jid, "error", error=reason)
         return
 
+    err = None
+    n = 0
     try:
         n = H.heart_room(room, sent_local, minutes, dry_run=dry_run)
     except (H.HeartError, K.SendError) as e:
-        log(f"하트 작업 #{jid} 실패 — {e}")
-        finish_heart(jid, "error", error=str(e))
-        return
+        err = str(e)
     except Exception as e:
-        log(f"하트 작업 #{jid} 오류 — {e}")
-        finish_heart(jid, "error", error=f"{type(e).__name__}: {e}")
-        return
+        err = f"{type(e).__name__}: {e}"
 
     if dry_run:
         log(f"하트 작업 #{jid} dry-run — 대상 {n}개 (누르지 않음, pending 으로 되돌림)")
-        finish_heart(jid, "pending")
+        finish_heart(jid, "pending", error=err)
         return
-    finish_heart(jid, "done", count=n)
-    log(f"하트 작업 #{jid} 완료 — {n}개")
+
+    if err:
+        log(f"하트 작업 #{jid} {this_pass}/{repeat}번째 실패 — {err}")
+        # 중간 차례 실패는 다음 차례에 다시 해 본다. 마지막 차례 실패만 '실패'로 남긴다.
+        finish_heart(jid, "error" if last else "pending", error=err, passes=this_pass)
+        return
+
+    total += n
+    finish_heart(jid, "done" if last else "pending", count=total, passes=this_pass)
+    log(f"하트 작업 #{jid} {this_pass}/{repeat}번째 완료 — 이번 {n}개, 누적 {total}개")
 
 
 def main():

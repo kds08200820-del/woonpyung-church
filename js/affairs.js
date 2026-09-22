@@ -5821,6 +5821,7 @@ console.log('[affairs.js] v20260921kk');
   }
   function kkHint(e) {
     var msg = (e && e.message) || '';
+    if (/heart_every|heart_passes/i.test(msg)) return ' — Supabase SQL Editor에서 supabase/20260923_0900_kakao_heart_every.sql 을 1회 실행해 주세요.';
     if (/heart_/i.test(msg)) return ' — Supabase SQL Editor에서 supabase/20260923_0800_kakao_heart.sql 을 1회 실행해 주세요.';
     return /kakao_send_jobs|kakao_channels|claim_kakao_job|relation|PGRST2|schema cache|Could not find/i.test(msg)
       ? ' — Supabase SQL Editor에서 supabase/20260921_2345_kakao_send_jobs.sql 을 1회 실행해 주세요.' : '';
@@ -5829,10 +5830,14 @@ console.log('[affairs.js] v20260921kk');
   function kkHeartLabel(j) {
     if (!j.heart_minutes) return '';
     var st = j.heart_status, t, c = '#c2185b';
-    if (st === 'done') t = '💗 ' + (j.heart_count || 0) + '명에게 하트';
-    else if (st === 'processing') t = '💗 하트 다는 중';
+    var every = j.heart_every || 0;
+    var total = every ? Math.ceil(j.heart_minutes / every) : 1;
+    var prog = total > 1 ? ' (' + (j.heart_passes || 0) + '/' + total + '회 확인)' : '';
+    if (st === 'done') t = '💗 ' + (j.heart_count || 0) + '명에게 하트' + prog;
+    else if (st === 'processing') t = '💗 하트 다는 중' + prog;
     else if (st === 'error') { t = '💗 하트 실패' + (j.heart_error ? ': ' + j.heart_error : ''); c = '#c0392b'; }
-    else t = '💗 보낸 뒤 ' + j.heart_minutes + '분 댓글에 하트 예정';
+    else if (j.heart_passes) t = '💗 ' + (j.heart_count || 0) + '명에게 하트' + prog + (j.heart_error ? ' · 직전 확인 실패' : '');
+    else t = '💗 보낸 뒤 ' + j.heart_minutes + '분 댓글에 하트 예정' + (every && total > 1 ? ' (' + every + '분마다 확인)' : '');
     return '<span style="font-size:.76rem;color:' + c + '">· ' + esc(t) + '</span>';
   }
 
@@ -5882,8 +5887,12 @@ console.log('[affairs.js] v20260921kk');
       '<label style="display:flex;align-items:center;gap:6px;font-weight:700;cursor:pointer"><input type="checkbox" id="kk_heart"> 💗 댓글에 하트 달기</label>' +
       '<span>— 글 보낸 뒤</span>' +
       '<input type="number" id="kk_hmin" min="1" max="180" step="1" value="30" style="width:64px;padding:4px 6px;border:1px solid #dde3ec;border-radius:6px;font-size:.82rem">' +
-      '<span>분 안에 달린 댓글</span>' +
-      '<span style="flex-basis:100%;font-size:.74rem;color:#9aa5b1">그 시간이 끝나면 PC가 방을 다시 열어 하트를 누릅니다. 그때까지 PC와 카카오톡이 켜져 있어야 하고, 1~2분 동안 마우스가 저절로 움직입니다.</span>' +
+      '<span>분 안에 달린 댓글,</span>' +
+      '<select id="kk_hevery" style="padding:4px 6px;border:1px solid #dde3ec;border-radius:6px;font-size:.82rem">' +
+      '<option value="5">5분마다 확인</option><option value="10" selected>10분마다 확인</option>' +
+      '<option value="15">15분마다 확인</option><option value="0">끝날 때 한 번만</option></select>' +
+      '<span id="kk_hplan" style="font-size:.76rem;color:#c2185b"></span>' +
+      '<span style="flex-basis:100%;font-size:.74rem;color:#9aa5b1">확인할 때마다 PC가 방을 열어 아직 하트가 없는 댓글에만 누릅니다(이미 누른 건 그대로). 그때까지 PC와 카카오톡이 켜져 있어야 하고, 확인할 때마다 1분쯤 마우스가 저절로 움직입니다.</span>' +
       '</div>' +
       '<div id="kk_msg2" style="font-size:.8rem;color:#9aa5b1;min-height:18px;text-align:right;margin-bottom:10px"></div>' +
 
@@ -5914,14 +5923,31 @@ console.log('[affairs.js] v20260921kk');
     // 💗 하트 설정은 이 브라우저에 기억해 둔다 (매일 같은 설정으로 예약하는 경우가 많다)
     var heartEl = m.querySelector('#kk_heart');
     var hminEl = m.querySelector('#kk_hmin');
+    var heveryEl = m.querySelector('#kk_hevery');
+    var hplanEl = m.querySelector('#kk_hplan');
     try {
       var hp = JSON.parse(localStorage.getItem('kk_heart_pref') || 'null');
-      if (hp) { heartEl.checked = !!hp.on; if (hp.min) hminEl.value = hp.min; }
+      if (hp) {
+        heartEl.checked = !!hp.on; if (hp.min) hminEl.value = hp.min;
+        if (hp.every != null) heveryEl.value = String(hp.every);
+      }
     } catch (e) { }
-    function saveHeartPref() {
-      try { localStorage.setItem('kk_heart_pref', JSON.stringify({ on: heartEl.checked, min: hminEl.value })); } catch (e) { }
+    // "10분 후, 20분 후, 30분 후 (3번)" 처럼 언제 확인하는지 미리 보여 준다
+    function heartPlan() {
+      var mins = parseInt(hminEl.value, 10), ev = parseInt(heveryEl.value, 10) || 0;
+      if (!(mins >= 1)) { hplanEl.textContent = ''; return; }
+      if (!ev || ev >= mins) { hplanEl.textContent = '→ ' + mins + '분 후 1번'; return; }
+      var at = [];
+      for (var k = ev; k < mins; k += ev) at.push(k);
+      at.push(mins);
+      hplanEl.textContent = '→ ' + (at.length > 6 ? at.slice(0, 3).join('·') + '…' + mins : at.join('·')) + '분 후 (' + at.length + '번)';
     }
-    heartEl.onchange = saveHeartPref; hminEl.onchange = saveHeartPref;
+    function saveHeartPref() {
+      heartPlan();
+      try { localStorage.setItem('kk_heart_pref', JSON.stringify({ on: heartEl.checked, min: hminEl.value, every: heveryEl.value })); } catch (e) { }
+    }
+    heartEl.onchange = saveHeartPref; hminEl.onchange = saveHeartPref; hminEl.oninput = heartPlan; heveryEl.onchange = saveHeartPref;
+    heartPlan();
 
     m.querySelector('#kk_q1').onclick = function () { var d = new Date(date + 'T06:00:00'); if (!isNaN(d)) atEl.value = kkLocal(d); };
     m.querySelector('#kk_q2').onclick = function () { var d = new Date(); d.setDate(d.getDate() + 1); d.setHours(6, 0, 0, 0); atEl.value = kkLocal(d); };
@@ -6006,11 +6032,15 @@ console.log('[affairs.js] v20260921kk');
     function loadJobs() {
       var base = 'id,room_name,scheduled_at,status,error,sent_at';
       var q = '&sermon_date=eq.' + encodeURIComponent(date) + '&order=scheduled_at.desc&limit=20';
-      return api('GET', 'kakao_send_jobs?select=' + base + ',heart_minutes,heart_status,heart_count,heart_error' + q)
+      var heart = ',heart_minutes,heart_status,heart_count,heart_error';
+      return api('GET', 'kakao_send_jobs?select=' + base + heart + ',heart_every,heart_passes' + q)
         .catch(function (e) {
-          // 하트 칼럼이 아직 없으면(20260923 SQL 실행 전) 하트 없이 다시 조회
-          if (/heart_/i.test(e.message || '')) return api('GET', 'kakao_send_jobs?select=' + base + q);
-          throw e;
+          // 하트 칼럼이 아직 없으면(20260923 SQL 실행 전) 있는 칼럼만으로 다시 조회
+          if (!/heart_/i.test(e.message || '')) throw e;
+          return api('GET', 'kakao_send_jobs?select=' + base + heart + q).catch(function (e2) {
+            if (/heart_/i.test(e2.message || '')) return api('GET', 'kakao_send_jobs?select=' + base + q);
+            throw e2;
+          });
         })
         .then(drawJobs)
         .catch(function (e) {
@@ -6032,15 +6062,18 @@ console.log('[affairs.js] v20260921kk');
       if (isNaN(when)) { note('발송 시각을 읽을 수 없습니다.', '#c0392b'); return; }
       if (when.getTime() <= Date.now()) { note('이미 지난 시각입니다. 앞으로의 시각을 골라 주세요.', '#c0392b'); return; }
 
-      var hmin = 0;
+      var hmin = 0, hevery = 0;
       if (heartEl.checked) {
         hmin = parseInt(hminEl.value, 10);
         if (!(hmin >= 1 && hmin <= 180)) { note('하트 시간은 1~180분 사이로 넣어 주세요.', '#c0392b'); return; }
+        hevery = parseInt(heveryEl.value, 10) || 0;
+        if (hevery >= hmin) hevery = 0;                 // 간격이 전체보다 길면 끝날 때 한 번
       }
 
       var names = picked.map(function (c) { return c.getAttribute('data-room'); });
       if (!confirm(kkWhen(when.toISOString()) + ' 에\n' + names.join(', ') + '\n로 보냅니다.' +
-        (hmin ? '\n💗 보낸 뒤 ' + hmin + '분 안에 달린 댓글에 하트를 답니다.' : '') + '\n예약할까요?')) return;
+        (hmin ? '\n💗 보낸 뒤 ' + hmin + '분 안에 달린 댓글에 하트를 답니다' +
+          (hevery ? ' (' + hevery + '분마다 확인)' : '') + '.' : '') + '\n예약할까요?')) return;
 
       var payload = picked.map(function (c) {
         var row = {
@@ -6051,6 +6084,7 @@ console.log('[affairs.js] v20260921kk');
           scheduled_at: when.toISOString()
         };
         if (hmin) { row.heart_minutes = hmin; row.heart_status = 'pending'; }
+        if (hevery) row.heart_every = hevery;          // 20260923_0900 SQL 필요
         return row;
       });
       goBtn.disabled = true; note('예약하는 중…');
