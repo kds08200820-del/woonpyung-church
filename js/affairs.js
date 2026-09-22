@@ -2708,7 +2708,7 @@ console.log('[affairs.js] v20260921kk');
   function renderSermon(panel, opts) {
     var worshipMode = !!(opts && opts.worship);
     var _now = new Date();   // 목록 기본 필터: 오늘 기준 연·월
-    var WTPL = {}, smView = 'list', smRows = [], calYM = null, smTableState = { svc: '전체', ser: '전체', year: String(_now.getFullYear()), month: pad2(_now.getMonth() + 1), week: '전체', sort: 'desc', perPage: 20, page: 1 };
+    var WTPL = {}, smView = 'list', smRows = [], smKk = {}, calYM = null, smTableState = { svc: '전체', ser: '전체', year: String(_now.getFullYear()), month: pad2(_now.getMonth() + 1), week: '전체', sort: 'desc', perPage: 20, page: 1 };
     var SERVICE_COLORS = { '주일 낮 예배': '#2563eb', '주일 밤 예배': '#4f46e5', '수요기도회': '#1e874b', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#d97706', '특별집회': '#c0392b', '기타': '#64748b' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#64748b'; }
     function orderCount(r) { try { var a = JSON.parse(r.worship_order || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
@@ -2805,7 +2805,35 @@ console.log('[affairs.js] v20260921kk');
       next();
     }
 
+    // ⏰ 카카오톡 예약 발송 — 캘린더에 날짜별로 표시 (취소된 것은 빼고)
+    //  예약창에서 예약·취소하면 window.__kkCalReload 로 다시 불러온다.
+    function loadKk() {
+      return api('GET', 'kakao_send_jobs?select=sermon_date,scheduled_at,status,heart_minutes' +
+        '&status=in.(pending,processing,sent,error)&order=scheduled_at.asc&limit=1000')
+        .then(function (rows) {
+          smKk = {};
+          (rows || []).forEach(function (j) { var d = fmtD(j.sermon_date); if (d) (smKk[d] = smKk[d] || []).push(j); });
+          renderCalendar();
+        })
+        .catch(function () { smKk = {}; });   // 예약 테이블이 없거나 권한이 없으면 표시만 생략
+    }
+    window.__kkCalReload = loadKk;
+    function kkCalBadge(jobs) {
+      return (jobs || []).map(function (j) {
+        var d = new Date(j.scheduled_at), hm = isNaN(d) ? '' : pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+        var t, bg, fg;
+        if (j.status === 'sent') { t = '✓ 발송됨'; bg = '#e7f6ee'; fg = '#1e8e5a'; }
+        else if (j.status === 'error') { t = '⚠ 발송 실패'; bg = '#fdecea'; fg = '#c0392b'; }
+        else { t = '⏰ ' + hm + ' 예약'; bg = '#e8f0fe'; fg = '#2d6cdf'; }
+        return '<span title="카카오톡 ' + (j.status === 'sent' ? '발송 완료' : j.status === 'error' ? '발송 실패' : '예약 발송') +
+          (hm ? ' · ' + hm : '') + (j.heart_minutes ? ' · 댓글 하트 ' + j.heart_minutes + '분' : '') + '" ' +
+          'style="display:inline-block;white-space:nowrap;margin-top:2px;margin-right:3px;padding:0 5px;border-radius:8px;font-size:.66rem;font-weight:700;line-height:1.5;background:' + bg + ';color:' + fg + '">' +
+          esc(t) + (j.heart_minutes ? ' 💗' : '') + '</span>';
+      }).join('');
+    }
+
     function loadList() {
+      loadKk();
       api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) { smRows = rows || []; renderView(); }).catch(function (e) {
         var listBox = panel.querySelector('#sm_list');
         if (/42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message)) listBox.innerHTML = msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/affairs_modules.sql 을 1회 실행해 주세요.');
@@ -3004,7 +3032,15 @@ console.log('[affairs.js] v20260921kk');
       for (var b = 0; b < startDow; b++) html += '<div></div>';
       for (var dd = 1; dd <= days; dd++) {
         var ds = y + '-' + pad2(m + 1) + '-' + pad2(dd), dow = new Date(y, m, dd).getDay(), isToday = (ds === todayStr);
-        var items = (byDate[ds] || []).map(function (r) { var c = svcColor(r.service); return '<div class="cal-item" data-id="' + esc(r.id) + '" title="' + esc((r.service || '') + ' · ' + (r.title || '') + (r.scripture ? ' · ' + r.scripture : '')) + '" style="background:' + c + '1a;border-left:3px solid ' + c + ';border-radius:4px;padding:2px 5px;margin-top:3px;cursor:pointer;font-size:.72rem;line-height:1.25"><b style="color:' + c + '">' + esc(r.title || '(제목없음)') + '</b>' + (r.scripture ? '<div style="color:#7b8794">' + esc(r.scripture) + '</div>' : '') + '</div>'; }).join('');
+        var dayRows = byDate[ds] || [];
+        var kkHtml = (!worshipMode && smKk[ds]) ? kkCalBadge(smKk[ds]) : '';
+        var kkAt = -1;
+        if (kkHtml && dayRows.length) {
+          kkAt = 0;
+          dayRows.forEach(function (r, i) { if (kkAt === 0 && r.service === '매일 QT') kkAt = i; });
+        }
+        var items = dayRows.map(function (r, ri) { var c = svcColor(r.service); return '<div class="cal-item" data-id="' + esc(r.id) + '" title="' + esc((r.service || '') + ' · ' + (r.title || '') + (r.scripture ? ' · ' + r.scripture : '')) + '" style="background:' + c + '1a;border-left:3px solid ' + c + ';border-radius:4px;padding:2px 5px;margin-top:3px;cursor:pointer;font-size:.72rem;line-height:1.25"><b style="color:' + c + '">' + esc(r.title || '(제목없음)') + '</b>' + (r.scripture ? '<div style="color:#7b8794">' + esc(r.scripture) + '</div>' : '') + (ri === kkAt ? '<div>' + kkHtml + '</div>' : '') + '</div>'; }).join('');
+        if (kkHtml && kkAt < 0) items = '<div>' + kkHtml + '</div>' + items;
         var dnumColor = isToday ? '#fff' : (dow === 0 ? '#c0392b' : (dow === 6 ? '#2563eb' : '#48576b'));
         var dnum = isToday
           ? '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:50%;background:#2f5d50;color:#fff;font-size:.74rem;font-weight:700">' + dd + '</span>'
@@ -6025,6 +6061,7 @@ console.log('[affairs.js] v20260921kk');
           if (!confirm('이 예약을 취소할까요?')) return;
           api('PATCH', 'kakao_send_jobs?id=eq.' + a.getAttribute('data-id'), { status: 'canceled' }, 'return=minimal')
             .then(loadJobs)
+            .then(function () { if (window.__kkCalReload) window.__kkCalReload(); })
             .catch(function (err) { note('취소 실패: ' + err.message, '#c0392b'); });
         };
       });
@@ -6094,6 +6131,7 @@ console.log('[affairs.js] v20260921kk');
           note('✓ ' + payload.length + '건 예약했습니다.', '#1e8e5a');
           picked.forEach(function (c) { c.checked = false; });
           loadJobs();
+          if (window.__kkCalReload) window.__kkCalReload();
         })
         .catch(function (e) {
           goBtn.disabled = false;
