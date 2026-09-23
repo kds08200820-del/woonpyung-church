@@ -2,7 +2,7 @@
 //  설교자의 성경 — 설치 등록·월 인증 Edge Function
 //  설치 마법사와 앱이 부른다. 로그인 없이 부르되, 식별 코드 해시로만 찾는다.
 //    POST { op: "activate" | "verify", code, pc_id, pc_info:{name,board,os}, app }
-//    → { ok:true, token, sig }  (token = base64url JSON, sig = Ed25519 서명)
+//    → { ok:true, token, sig, dk }  (token = base64url JSON, sig = Ed25519 서명, dk = 주석 암호화 열쇠)
 //    → { ok:false, why: "no-code" | "in-use" | "revoked" | "mismatch" }
 //  배포: supabase functions deploy license --no-verify-jwt --project-ref cetacttsdwzxjzkyozgd
 //  비밀키: supabase secrets set LICENSE_SIGN_KEY=(Ed25519 개인키 32바이트 base64) --project-ref cetacttsdwzxjzkyozgd
@@ -12,6 +12,7 @@
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const SIGN_KEY = Deno.env.get("LICENSE_SIGN_KEY") ?? "";
+const COMMENTARY_KEY = Deno.env.get("COMMENTARY_KEY") ?? "";   // 주석 암호화 열쇠 — 인증된 컴퓨터에만 내려 준다
 const VALID_DAYS = 35;   // 허가증 유효 기간 — 앱은 한 달마다 다시 인증한다
 
 const JSONH = { "Content-Type": "application/json" };
@@ -85,5 +86,5 @@ Deno.serve(async (req) => {
   const exp = Math.floor(now.getTime() / 1000) + VALID_DAYS * 86400;
   const token = b64url(JSON.stringify({ ch: hash, pid: pcId, iat: Math.floor(now.getTime() / 1000), exp, label: cut(row.label, 40), no: row.no }));
   const sig = await sign(token);
-  return out({ ok: true, token, sig, exp });
+  return out({ ok: true, token, sig, exp, dk: COMMENTARY_KEY || undefined });
 });
