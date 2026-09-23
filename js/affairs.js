@@ -856,7 +856,7 @@ console.log('[affairs.js] v20260923lic');
         '<div class="fin-card" id="appLicCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">💻 설교자의 성경 설치</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#2c4a86;line-height:1.1;margin-top:4px" id="appLicNum">–</div>' +
-        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="appLicSub">식별 코드·설치된 PC · 눌러서 관리</div></div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="appLicSub">인증 코드·설치된 PC · 눌러서 관리</div></div>' +
         '<div class="fin-card" id="tempPwCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🔑 임시 비밀번호</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#b03a5b;line-height:1.1;margin-top:4px">발급</div>' +
@@ -901,7 +901,7 @@ console.log('[affairs.js] v20260923lic');
       if (tpCard) tpCard.onclick = tempPwModal;
     }
 
-    // ── 💻 설교자의 성경 설치 — 식별 코드와 설치된 PC 를 관리 ──
+    // ── 💻 설교자의 성경 설치 — 인증 코드와 설치된 PC 를 관리 ──
     //  코드 본문은 서버에 없다(해시만). 설치 마법사·앱이 Edge Function(license)으로 등록·월 인증한다.
     //  'PC 정보 지우기' → 그 코드로 다른 컴퓨터에 다시 설치할 수 있고, 예전 PC 는 다음 인증에서 막힌다.
     //  '사용 중지' → 그 코드는 어디서도 인증되지 않는다.
@@ -921,9 +921,13 @@ console.log('[affairs.js] v20260923lic');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
       ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:1080px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;flex-wrap:wrap"><h3 style="margin:0;color:var(--accent,#032257)">💻 설교자의 성경 — 설치 관리</h3>' +
-        '<div style="display:flex;gap:6px"><button class="btn btn-line" id="al_reload" style="padding:3px 11px">새로고침</button><button class="btn btn-line" id="al_close" style="padding:3px 11px">닫기</button></div></div>' +
-        '<p style="margin:0 0 12px;font-size:.78rem;color:#9aa5b1;line-height:1.55">식별 코드 하나는 컴퓨터 한 대에만 등록됩니다. 앱은 한 달마다 여기 정보와 맞는지 인증합니다.<br>' +
-        '<b>PC 정보 지우기</b>: 그 코드로 다른 컴퓨터에 새로 설치할 수 있게 합니다(예전 컴퓨터는 다음 인증부터 막힘). <b>사용 중지</b>: 그 코드를 어디서도 못 쓰게 합니다. 코드 본문은 배포자가 보관한 목록(바탕 화면 TXT)에만 있습니다.</p>' +
+        '<div style="display:flex;gap:6px"><button class="btn btn-line" id="al_import" style="padding:3px 11px">코드 목록 넣기</button><button class="btn btn-line" id="al_reload" style="padding:3px 11px">새로고침</button><button class="btn btn-line" id="al_close" style="padding:3px 11px">닫기</button></div></div>' +
+        '<p style="margin:0 0 12px;font-size:.78rem;color:#9aa5b1;line-height:1.55">인증 코드 하나는 컴퓨터 한 대에만 등록됩니다. 앱은 한 달마다 여기 정보와 맞는지 인증합니다.<br>' +
+        '<b>PC 정보 지우기</b>: 그 코드로 다른 컴퓨터에 새로 설치할 수 있게 합니다(예전 컴퓨터는 다음 인증부터 막힘). <b>사용 중지</b>: 그 코드를 어디서도 못 쓰게 합니다.<br>' +
+        '코드 원문이 비어 있으면 <b>코드 목록 넣기</b>에 바탕 화면 TXT 내용을 붙여넣으세요. 각 코드가 제 줄을 찾아 들어갑니다(관리자만 볼 수 있음).</p>' +
+        '<div id="al_imp" hidden style="margin:0 0 12px;border:1px solid #d7dde6;border-radius:10px;padding:12px 14px;background:#f8fafc">' +
+        '<textarea id="al_imp_txt" rows="5" placeholder="1. XXXX-XXXX-XXXX-XXXX\n2. XXXX-XXXX-XXXX-XXXX\n…  (TXT 파일 내용을 그대로 붙여넣어도 됩니다)" style="width:100%;box-sizing:border-box;border:1px solid #d7dde6;border-radius:8px;padding:8px 10px;font:inherit;font-size:.82rem;font-family:monospace"></textarea>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn btn-solid" id="al_imp_go" style="padding:5px 14px;font-size:.82rem">넣기</button><span id="al_imp_msg" style="font-size:.78rem;color:#7b8794"></span></div></div>' +
         '<div id="al_out"><p class="qt-loading" style="margin:0">불러오는 중…</p></div></div>';
       document.body.appendChild(ov);
       var close = pushBackClose(function () { ov.remove(); });
@@ -938,11 +942,13 @@ console.log('[affairs.js] v20260923lic');
           if (!rows.length) { out.innerHTML = '<p style="color:#c0392b;font-size:.85rem;margin:0">코드 표가 비어 있습니다. supabase/20260923_1930_app_licenses.sql 을 실행해 주세요.</p>'; return; }
           var ist = 'width:100%;padding:4px 6px;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.8rem;box-sizing:border-box';
           out.innerHTML = '<div style="overflow:auto"><table class="fin-table" style="width:100%;min-width:960px;font-size:.82rem">' +
-            '<thead><tr><th style="width:36px">번호</th><th style="width:150px">누구에게</th><th style="width:70px">상태</th><th>설치된 PC</th><th style="width:96px">등록</th><th style="width:96px">마지막 인증</th><th style="width:52px">버전</th><th style="width:200px">처리</th></tr></thead><tbody>' +
+            '<thead><tr><th style="width:36px">번호</th><th style="width:190px">인증 코드</th><th style="width:130px">누구에게</th><th style="width:70px">상태</th><th>설치된 PC</th><th style="width:96px">등록</th><th style="width:96px">마지막 인증</th><th style="width:52px">버전</th><th style="width:200px">처리</th></tr></thead><tbody>' +
             rows.map(function (r) {
               var st = r.revoked ? '<span style="color:#c0392b;font-weight:700">중지</span>' : r.pc_id ? (stale(r.last_verified_at) ? '<span style="color:#b45309;font-weight:700">인증 지남</span>' : '<span style="color:#1e874b;font-weight:700">사용 중</span>') : '<span style="color:#9aa5b1">비어 있음</span>';
               var pc = r.pc_id ? '<b>' + esc(r.pc_name || '') + '</b><div style="color:#7b8794;font-size:.74rem">' + esc(r.pc_board || '') + (r.pc_os ? ' · ' + esc(r.pc_os) : '') + '</div><div style="color:#b0b8c4;font-size:.68rem;font-family:monospace">' + esc(String(r.pc_id).slice(0, 16)) + '…</div>' : '<span style="color:#b0b8c4">–</span>';
+              var codeCell = r.code ? '<span style="font-family:monospace;font-weight:700;letter-spacing:.3px;user-select:all">' + esc(r.code) + '</span> <button class="btn btn-line al-copy" data-code="' + esc(r.code) + '" style="padding:1px 7px;font-size:.7rem" title="복사">복사</button>' : '<span style="color:#b0b8c4;font-size:.76rem">— (코드 목록 넣기)</span>';
               return '<tr data-id="' + r.id + '"><td style="text-align:center;font-weight:700">' + r.no + '</td>' +
+                '<td>' + codeCell + '</td>' +
                 '<td><input class="al-label" value="' + esc(r.label || '') + '" placeholder="이름·교회" style="' + ist + '"></td>' +
                 '<td>' + st + '</td><td>' + pc + '</td>' +
                 '<td>' + fmtT(r.activated_at) + '</td><td>' + fmtT(r.last_verified_at) + (r.verify_count ? '<div style="color:#9aa5b1;font-size:.7rem">' + r.verify_count + '회</div>' : '') + '</td>' +
@@ -952,6 +958,9 @@ console.log('[affairs.js] v20260923lic');
                 '<button class="btn btn-line al-rev" style="padding:3px 8px;font-size:.76rem;color:' + (r.revoked ? '#1e874b' : '#c0392b') + '">' + (r.revoked ? '다시 허용' : '사용 중지') + '</button></td></tr>';
             }).join('') + '</tbody></table></div>' +
             '<p style="margin:10px 0 0;font-size:.74rem;color:#9aa5b1">"누구에게" 칸은 적으면 바로 저장됩니다.</p>';
+          Array.prototype.forEach.call(out.querySelectorAll('.al-copy'), function (b) {
+            b.onclick = function () { (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.code) : Promise.reject()).then(function () { b.textContent = '복사됨'; setTimeout(function () { b.textContent = '복사'; }, 1500); }, function () { alert('드래그해서 직접 복사해 주세요'); }); };
+          });
           Array.prototype.forEach.call(out.querySelectorAll('tr[data-id]'), function (tr) {
             var id = tr.dataset.id, lab = tr.querySelector('.al-label');
             var t = null;
@@ -970,6 +979,37 @@ console.log('[affairs.js] v20260923lic');
         }).catch(function (e) { out.innerHTML = '<p style="color:#c0392b;font-size:.85rem;margin:0">' + esc(e.message || '불러오지 못했습니다.') + '</p>'; });
       }
       ov.querySelector('#al_reload').onclick = load;
+      // 코드 목록 넣기 — 붙여넣은 글에서 16자리 코드를 찾아 sha256 으로 제 줄을 찾고 code 칸을 채운다
+      var impBox = ov.querySelector('#al_imp'), impMsg = ov.querySelector('#al_imp_msg');
+      ov.querySelector('#al_import').onclick = function () { impBox.hidden = !impBox.hidden; if (!impBox.hidden) ov.querySelector('#al_imp_txt').focus(); };
+      function sha256hex(str) {
+        return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function (buf) {
+          return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+        });
+      }
+      ov.querySelector('#al_imp_go').onclick = function () {
+        var txt = ov.querySelector('#al_imp_txt').value || '';
+        var found = txt.toUpperCase().match(/[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/g) || [];
+        found = found.filter(function (c, i) { return found.indexOf(c) === i; });
+        if (!found.length) { impMsg.textContent = 'XXXX-XXXX-XXXX-XXXX 꼴의 코드를 찾지 못했습니다.'; return; }
+        impMsg.textContent = '확인 중…';
+        api('GET', 'app_licenses?select=id,code_hash,code').then(function (rows) {
+          var byHash = {}; (rows || []).forEach(function (r) { byHash[r.code_hash] = r; });
+          var ok = 0, miss = 0, done = Promise.resolve();
+          found.forEach(function (c) {
+            done = done.then(function () { return sha256hex(c.replace(/-/g, '')); }).then(function (h) {
+              var r = byHash[h];
+              if (!r) { miss++; return; }
+              if (r.code === c) { ok++; return; }
+              return api('PATCH', 'app_licenses?id=eq.' + r.id, { code: c }, 'return=minimal').then(function () { ok++; });
+            });
+          });
+          return done;
+        }).then(function () {
+          impMsg.textContent = '넣음 ' + ok + '개' + (miss ? ' · 이 표에 없는 코드 ' + miss + '개' : '');
+          load();
+        }).catch(function (e) { impMsg.textContent = '실패: ' + (e.message || e); });
+      };
       load();
     }
 
