@@ -2,7 +2,7 @@
  * 데이터는 Supabase(visitations/counsels/memos 등, 관리자 RLS)에 저장.
  * 콘솔: [affairs.js] v20260712memo
  */
-console.log('[affairs.js] v20260921kk');
+console.log('[affairs.js] v20260923lic');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -853,6 +853,10 @@ console.log('[affairs.js] v20260921kk');
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📦 주일 자료 생성</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#b8860b;line-height:1.1;margin-top:4px" id="wpJobsNum">–</div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="wpJobsSub">눌러서 생성 내역 보기</div></div>' +
+        '<div class="fin-card" id="appLicCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">💻 설교자의 성경 설치</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#2c4a86;line-height:1.1;margin-top:4px" id="appLicNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="appLicSub">식별 코드·설치된 PC · 눌러서 관리</div></div>' +
         '<div class="fin-card" id="tempPwCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🔑 임시 비밀번호</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#b03a5b;line-height:1.1;margin-top:4px">발급</div>' +
@@ -892,8 +896,81 @@ console.log('[affairs.js] v20260921kk');
       loadBookAudio(panel);
       loadBookProgress(panel);
       loadWorshipJobs(panel);
+      loadAppLicenses(panel);
       var tpCard = panel.querySelector('#tempPwCard');
       if (tpCard) tpCard.onclick = tempPwModal;
+    }
+
+    // ── 💻 설교자의 성경 설치 — 식별 코드와 설치된 PC 를 관리 ──
+    //  코드 본문은 서버에 없다(해시만). 설치 마법사·앱이 Edge Function(license)으로 등록·월 인증한다.
+    //  'PC 정보 지우기' → 그 코드로 다른 컴퓨터에 다시 설치할 수 있고, 예전 PC 는 다음 인증에서 막힌다.
+    //  '사용 중지' → 그 코드는 어디서도 인증되지 않는다.
+    function loadAppLicenses(panel) {
+      var numEl = panel.querySelector('#appLicNum'), subEl = panel.querySelector('#appLicSub'), card = panel.querySelector('#appLicCard');
+      if (!card) return;
+      api('GET', 'app_licenses?select=no,pc_id,revoked,last_verified_at&order=no.asc').then(function (rows) {
+        rows = rows || [];
+        var used = rows.filter(function (r) { return r.pc_id; }).length, off = rows.filter(function (r) { return r.revoked; }).length;
+        numEl.textContent = used + '대';
+        subEl.textContent = '코드 ' + rows.length + '개 중 설치 ' + used + (off ? ' · 중지 ' + off : '') + ' · 눌러서 관리';
+      }).catch(function () { numEl.textContent = '–'; subEl.textContent = '불러오지 못함 (표가 아직 없으면 마이그레이션 실행)'; });
+      card.onclick = appLicModal;
+    }
+    function appLicModal() {
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:1080px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;flex-wrap:wrap"><h3 style="margin:0;color:var(--accent,#032257)">💻 설교자의 성경 — 설치 관리</h3>' +
+        '<div style="display:flex;gap:6px"><button class="btn btn-line" id="al_reload" style="padding:3px 11px">새로고침</button><button class="btn btn-line" id="al_close" style="padding:3px 11px">닫기</button></div></div>' +
+        '<p style="margin:0 0 12px;font-size:.78rem;color:#9aa5b1;line-height:1.55">식별 코드 하나는 컴퓨터 한 대에만 등록됩니다. 앱은 한 달마다 여기 정보와 맞는지 인증합니다.<br>' +
+        '<b>PC 정보 지우기</b>: 그 코드로 다른 컴퓨터에 새로 설치할 수 있게 합니다(예전 컴퓨터는 다음 인증부터 막힘). <b>사용 중지</b>: 그 코드를 어디서도 못 쓰게 합니다. 코드 본문은 배포자가 보관한 목록(바탕 화면 TXT)에만 있습니다.</p>' +
+        '<div id="al_out"><p class="qt-loading" style="margin:0">불러오는 중…</p></div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#al_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      var out = ov.querySelector('#al_out');
+      function fmtT(t) { return t ? String(t).replace('T', ' ').slice(0, 16) : ''; }
+      function stale(t) { return t && (Date.now() - new Date(t).getTime()) > 35 * 864e5; }
+      function load() {
+        api('GET', 'app_licenses?select=*&order=no.asc').then(function (rows) {
+          rows = rows || [];
+          if (!rows.length) { out.innerHTML = '<p style="color:#c0392b;font-size:.85rem;margin:0">코드 표가 비어 있습니다. supabase/20260923_1930_app_licenses.sql 을 실행해 주세요.</p>'; return; }
+          var ist = 'width:100%;padding:4px 6px;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.8rem;box-sizing:border-box';
+          out.innerHTML = '<div style="overflow:auto"><table class="fin-table" style="width:100%;min-width:960px;font-size:.82rem">' +
+            '<thead><tr><th style="width:36px">번호</th><th style="width:150px">누구에게</th><th style="width:70px">상태</th><th>설치된 PC</th><th style="width:96px">등록</th><th style="width:96px">마지막 인증</th><th style="width:52px">버전</th><th style="width:200px">처리</th></tr></thead><tbody>' +
+            rows.map(function (r) {
+              var st = r.revoked ? '<span style="color:#c0392b;font-weight:700">중지</span>' : r.pc_id ? (stale(r.last_verified_at) ? '<span style="color:#b45309;font-weight:700">인증 지남</span>' : '<span style="color:#1e874b;font-weight:700">사용 중</span>') : '<span style="color:#9aa5b1">비어 있음</span>';
+              var pc = r.pc_id ? '<b>' + esc(r.pc_name || '') + '</b><div style="color:#7b8794;font-size:.74rem">' + esc(r.pc_board || '') + (r.pc_os ? ' · ' + esc(r.pc_os) : '') + '</div><div style="color:#b0b8c4;font-size:.68rem;font-family:monospace">' + esc(String(r.pc_id).slice(0, 16)) + '…</div>' : '<span style="color:#b0b8c4">–</span>';
+              return '<tr data-id="' + r.id + '"><td style="text-align:center;font-weight:700">' + r.no + '</td>' +
+                '<td><input class="al-label" value="' + esc(r.label || '') + '" placeholder="이름·교회" style="' + ist + '"></td>' +
+                '<td>' + st + '</td><td>' + pc + '</td>' +
+                '<td>' + fmtT(r.activated_at) + '</td><td>' + fmtT(r.last_verified_at) + (r.verify_count ? '<div style="color:#9aa5b1;font-size:.7rem">' + r.verify_count + '회</div>' : '') + '</td>' +
+                '<td>' + esc(r.app_version || '') + '</td>' +
+                '<td style="white-space:nowrap">' +
+                (r.pc_id ? '<button class="btn btn-line al-clear" style="padding:3px 8px;font-size:.76rem">PC 정보 지우기</button> ' : '') +
+                '<button class="btn btn-line al-rev" style="padding:3px 8px;font-size:.76rem;color:' + (r.revoked ? '#1e874b' : '#c0392b') + '">' + (r.revoked ? '다시 허용' : '사용 중지') + '</button></td></tr>';
+            }).join('') + '</tbody></table></div>' +
+            '<p style="margin:10px 0 0;font-size:.74rem;color:#9aa5b1">"누구에게" 칸은 적으면 바로 저장됩니다.</p>';
+          Array.prototype.forEach.call(out.querySelectorAll('tr[data-id]'), function (tr) {
+            var id = tr.dataset.id, lab = tr.querySelector('.al-label');
+            var t = null;
+            lab.oninput = function () { clearTimeout(t); t = setTimeout(function () { api('PATCH', 'app_licenses?id=eq.' + id, { label: lab.value.trim() }, 'return=minimal').catch(function () { }); }, 500); };
+            var cl = tr.querySelector('.al-clear');
+            if (cl) cl.onclick = function () {
+              if (!confirm('이 코드의 PC 정보를 지울까요?\n예전 컴퓨터는 다음 인증부터 쓸 수 없고, 같은 코드로 다른 컴퓨터에 설치할 수 있게 됩니다.')) return;
+              api('PATCH', 'app_licenses?id=eq.' + id, { pc_id: null, pc_name: null, pc_board: null, pc_os: null, activated_at: null }, 'return=minimal').then(load).catch(function (e) { alert('실패: ' + e.message); });
+            };
+            var rv = tr.querySelector('.al-rev'), on = rv.textContent === '사용 중지';
+            rv.onclick = function () {
+              if (on && !confirm('이 코드를 사용 중지할까요? 설치된 컴퓨터는 다음 인증부터 프로그램이 열리지 않습니다.')) return;
+              api('PATCH', 'app_licenses?id=eq.' + id, { revoked: on }, 'return=minimal').then(load).catch(function (e) { alert('실패: ' + e.message); });
+            };
+          });
+        }).catch(function (e) { out.innerHTML = '<p style="color:#c0392b;font-size:.85rem;margin:0">' + esc(e.message || '불러오지 못했습니다.') + '</p>'; });
+      }
+      ov.querySelector('#al_reload').onclick = load;
+      load();
     }
 
     // ── 🔑 임시 비밀번호 발급 (담임목사 전용) — 비밀번호 잊은 이메일 가입 성도용 ──
