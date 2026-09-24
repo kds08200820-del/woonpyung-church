@@ -256,6 +256,20 @@ def handle_heart(job, dry_run=False):
     log(f"하트 작업 #{jid} {this_pass}/{repeat}번째 완료 — 이번 {n}개, 누적 {total}개")
 
 
+_MUTEX = None
+
+
+def _single_instance():
+    """--watch 워커가 이미 돌고 있으면 False. (윈도우 이름 있는 뮤텍스)"""
+    global _MUTEX
+    if sys.platform != "win32":
+        return True
+    import ctypes
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _MUTEX = k32.CreateMutexW(None, False, "Local\\WoonpyungKakaoWorker")
+    return ctypes.get_last_error() != 183       # ERROR_ALREADY_EXISTS
+
+
 def main():
     ap = argparse.ArgumentParser(description="카카오톡 QT 예약 발송 워커")
     ap.add_argument("--watch", action="store_true", help="계속 돌면서 예약을 처리")
@@ -269,6 +283,11 @@ def main():
 
     if not args.watch and not args.once:
         args.watch = True
+
+    # 감시 작업(kakao-worker-watchdog.ps1)과 시작프로그램이 겹쳐 켜도 한 개만 돈다.
+    if args.watch and not _single_instance():
+        print("이미 다른 워커가 돌고 있어 이 창은 닫습니다.")
+        sys.exit(0)
 
     log(f"시작 — 워커 이름 '{WORKER}', {POLL_SEC}초마다 확인 "
         f"(지각 허용 {MAX_LATE_HOURS:g}시간)")
