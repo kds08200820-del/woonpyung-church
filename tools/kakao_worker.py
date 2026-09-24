@@ -61,6 +61,9 @@ POLL_SEC = 30
 # 예약 시각이 이만큼 넘게 지났으면 보내지 않는다.
 # (PC가 꺼져 있다가 한참 뒤에 켜졌을 때 새벽 QT가 한밤중에 날아가는 것을 막는다)
 MAX_LATE_HOURS = float(_env("KAKAO_MAX_LATE_HOURS", "6") or 6)
+# 화면 입력이 막혀 보내지 못했을 때(원격 접속 입력 차단 등) 다시 시도할 간격
+RETRY_SEC = 180
+_retry_after = 0.0
 
 
 def log(msg):
@@ -138,8 +141,16 @@ def handle(job, dry_run=False):
         finish(jid, "error", "보낼 본문이 비어 있습니다.")
         return
 
+    global _retry_after
     try:
         n = K.send_to_room(room, msg, dry_run=dry_run)
+    except K.NotReadyError as e:                # 보낸 것 없음 — 대기로 되돌리고 잠시 뒤 다시
+        log(f"작업 #{jid} 보류 — {e} {RETRY_SEC // 60}분 뒤 다시 시도합니다")
+        rest("PATCH", f"kakao_send_jobs?id=eq.{jid}",
+             {"status": "pending", "claimed_by": None, "claimed_at": None,
+              "error": f"재시도 대기: {e}"}, prefer="return=minimal")
+        _retry_after = time.time() + RETRY_SEC
+        return
     except K.SendError as e:
         log(f"작업 #{jid} 실패 — {e}")
         finish(jid, "error", str(e))
@@ -294,6 +305,9 @@ def main():
 
     while True:
         try:
+            if time.time() < _retry_after:      # 보류된 발송이 있으면 잠시 쉰다
+                time.sleep(POLL_SEC)
+                continue
             job = claim_job()
             if job:
                 handle(job, dry_run=args.dry_run)

@@ -157,6 +157,10 @@ class SendError(Exception):
     """발송을 중단해야 하는 상황. 워커(kakao_worker.py)가 잡아서 작업을 실패 처리한다."""
 
 
+class NotReadyError(SendError):
+    """아무것도 보내기 전에 막힘(창을 앞으로 못 냄 등). 워커는 잠시 뒤 다시 시도한다."""
+
+
 def die(msg, code=1):
     raise SendError(msg)
 
@@ -243,25 +247,59 @@ def key(vk, ctrl=False):
         win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
 
 
+def click_box(box_hwnd):
+    """입력창 가운데를 한 번 클릭해 키보드 포커스를 준다. 마우스 위치는 되돌린다."""
+    l, t, r, b = win32gui.GetWindowRect(box_hwnd)
+    saved = win32api.GetCursorPos()
+    win32api.SetCursorPos(((l + r) // 2, (t + b) // 2))
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+    time.sleep(0.2)
+    win32api.SetCursorPos(saved)
+
+
 def activate(room_hwnd, box_hwnd):
-    """채팅창을 앞으로 내보내고 입력창에 키보드 포커스를 준다."""
+    """채팅창을 앞으로 내보내고 입력창에 키보드 포커스를 준다.
+
+    카카오톡이 AttachThreadInput 을 거부하는 때가 있다(2026-09-25 새벽, 액세스 거부).
+    그때는 Alt 키 한 번 + SetForegroundWindow 로 창을 앞으로 내고 입력창을 클릭한다.
+    """
     cur = win32api.GetCurrentThreadId()
     tid = win32process.GetWindowThreadProcessId(room_hwnd)[0]
     try:
         win32process.AttachThreadInput(cur, tid, True)
+        attached = True
+    except Exception:
+        attached = False
+    try:
         win32gui.ShowWindow(room_hwnd, win32con.SW_RESTORE)
+        if not attached:
+            # 방금 키 입력이 있었던 프로세스는 창을 앞으로 가져올 수 있다
+            win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+            win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
         try:
             win32gui.SetForegroundWindow(room_hwnd)
         except Exception:
             pass
-        win32gui.SetFocus(box_hwnd)
+        if attached:
+            win32gui.SetFocus(box_hwnd)
     finally:
-        try:
-            win32process.AttachThreadInput(cur, tid, False)
-        except Exception:
-            pass
+        if attached:
+            try:
+                win32process.AttachThreadInput(cur, tid, False)
+            except Exception:
+                pass
     time.sleep(0.5)
-    return win32gui.GetForegroundWindow() == room_hwnd
+    if win32gui.GetForegroundWindow() != room_hwnd:
+        return False
+    if not attached:
+        try:
+            click_box(box_hwnd)
+        except Exception:
+            # 커서 이동까지 막힌 때가 있다(9/25). 방은 이미 맨 앞이고 기본 포커스는
+            # 입력창이다. 붙여넣은 뒤 입력창 내용을 확인하므로 잘못 보내지 않는다.
+            pass
+    return True
 
 
 def clear_box(box_hwnd):
@@ -568,11 +606,15 @@ def send_chunks(room_hwnd, chunks, dry_run=False):
             set_clipboard(saved_clip)   # 사용자의 클립보드 원상복구
 
     try:
+        # 채팅창이 맨 앞이 아니면 Ctrl+A·Delete·Ctrl+V 가 다른 프로그램에 들어간다 — 멈춘다
         if not activate(room_hwnd, box):
-            log("경고: 채팅창을 앞으로 내보내지 못했습니다 — 그대로 시도합니다")
+            raise NotReadyError("채팅창을 앞으로 내보내지 못했습니다 (화면 잠금·다른 창이 막고 있을 수 있음). "
+                "다른 프로그램에 키가 들어가지 않도록 발송을 멈춥니다.")
 
         for i, chunk in enumerate(chunks, 1):
             if not paste_text(box, chunk):
+                if i == 1:                      # 아직 아무것도 안 보냄 — 나중에 다시
+                    raise NotReadyError("입력창에 글이 들어가지 않습니다 (키보드 입력이 막혀 있을 수 있음).")
                 die(f"{i}번째 메시지가 입력창에 제대로 들어가지 않아 중단합니다.")
 
             key(win32con.VK_RETURN)
