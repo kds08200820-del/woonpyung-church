@@ -345,7 +345,15 @@ def msg_paste(box_hwnd, text, attempts=3):
 
 
 def msg_enter(box_hwnd):
-    """창 메시지로 Enter. (같은 이유로 keybd_event 대신)"""
+    """창 메시지로 Enter. (같은 이유로 keybd_event 대신)
+
+    먼저 입력창을 창 메시지로 한 번 클릭해 키보드 포커스를 입력창에 둔다 —
+    포커스가 채팅 목록에 있으면 카카오톡이 Enter 를 전송으로 받지 않는다.
+    """
+    lp = (30 << 16) | 30
+    win32gui.SendMessage(box_hwnd, win32con.WM_LBUTTONDOWN, win32con.MK_LBUTTON, lp)
+    win32gui.SendMessage(box_hwnd, win32con.WM_LBUTTONUP, 0, lp)
+    time.sleep(0.5)
     win32gui.PostMessage(box_hwnd, win32con.WM_KEYDOWN, win32con.VK_RETURN, 0x001C0001)
     win32gui.PostMessage(box_hwnd, win32con.WM_KEYUP, win32con.VK_RETURN, 0xC01C0001)
 
