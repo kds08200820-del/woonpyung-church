@@ -323,6 +323,33 @@ def paste_text(box_hwnd, text, attempts=6, delay=0.7):
     return False
 
 
+def msg_paste(box_hwnd, text, attempts=3):
+    """키보드 대신 창 메시지(WM_PASTE)로 붙여넣는다.
+
+    원격 접속 프로그램이 '입력 차단'을 걸어 두면 keybd_event 같은 가짜 입력은
+    모두 버려지지만, 창에 직접 보내는 메시지는 그대로 통한다(2026-09-25 확인).
+    WM_SETTEXT 와 달리 붙여넣기는 카카오톡 내부 버퍼에도 들어간다.
+    """
+    want = text.strip()
+    for _ in range(attempts):
+        win32gui.SendMessage(box_hwnd, win32con.EM_SETSEL, 0, -1)
+        win32gui.SendMessage(box_hwnd, win32con.WM_CLEAR, 0, 0)
+        if not set_clipboard(text):
+            time.sleep(0.5)
+            continue
+        win32gui.SendMessage(box_hwnd, win32con.WM_PASTE, 0, 0)
+        time.sleep(1.5)
+        if box_content(box_hwnd).replace("\r\n", "\n").strip() == want:
+            return True
+    return False
+
+
+def msg_enter(box_hwnd):
+    """창 메시지로 Enter. (같은 이유로 keybd_event 대신)"""
+    win32gui.PostMessage(box_hwnd, win32con.WM_KEYDOWN, win32con.VK_RETURN, 0x001C0001)
+    win32gui.PostMessage(box_hwnd, win32con.WM_KEYUP, win32con.VK_RETURN, 0xC01C0001)
+
+
 def wait_until_sent(hwnd, timeout=20.0):
     """입력창이 비워지면 전송된 것으로 본다."""
     deadline = time.time() + timeout
@@ -611,13 +638,20 @@ def send_chunks(room_hwnd, chunks, dry_run=False):
             raise NotReadyError("채팅창을 앞으로 내보내지 못했습니다 (화면 잠금·다른 창이 막고 있을 수 있음). "
                 "다른 프로그램에 키가 들어가지 않도록 발송을 멈춥니다.")
 
+        via_msg = False                         # 키보드가 막혀 창 메시지 경로로 보내는 중
         for i, chunk in enumerate(chunks, 1):
-            if not paste_text(box, chunk):
+            if not via_msg and paste_text(box, chunk):
+                key(win32con.VK_RETURN)
+            elif msg_paste(box, chunk):
+                if not via_msg:
+                    log("키보드 입력이 막혀 있어 창 메시지 경로로 보냅니다")
+                    via_msg = True
+                msg_enter(box)
+            else:
                 if i == 1:                      # 아직 아무것도 안 보냄 — 나중에 다시
                     raise NotReadyError("입력창에 글이 들어가지 않습니다 (키보드 입력이 막혀 있을 수 있음).")
                 die(f"{i}번째 메시지가 입력창에 제대로 들어가지 않아 중단합니다.")
 
-            key(win32con.VK_RETURN)
             if not wait_until_sent(box):
                 die(f"{i}번째 메시지가 전송되지 않았습니다(입력창에 그대로 남음).")
             log(f"전송 완료 {i}/{len(chunks)} ({len(chunk)}자)")
