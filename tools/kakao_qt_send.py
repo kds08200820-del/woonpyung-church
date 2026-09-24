@@ -661,6 +661,10 @@ def send_chunks(room_hwnd, chunks, dry_run=False):
                 die(f"{i}번째 메시지가 입력창에 제대로 들어가지 않아 중단합니다.")
 
             if not wait_until_sent(box):
+                if via_msg and i == 1:          # 창 메시지 Enter 는 통하지 않을 때가 많다 — 비우고 나중에 다시
+                    win32gui.SendMessage(box, win32con.EM_SETSEL, 0, -1)
+                    win32gui.SendMessage(box, win32con.WM_CLEAR, 0, 0)
+                    raise NotReadyError("창 메시지 경로로도 전송되지 않았습니다 (입력 차단이 풀리면 보냅니다).")
                 die(f"{i}번째 메시지가 전송되지 않았습니다(입력창에 그대로 남음).")
             log(f"전송 완료 {i}/{len(chunks)} ({len(chunk)}자)")
             if i < len(chunks):
