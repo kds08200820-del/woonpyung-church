@@ -683,6 +683,8 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="전송 직전까지만 실행")
     ap.add_argument("--preview", action="store_true", help="메시지 본문만 출력")
     ap.add_argument("--force", action="store_true", help="같은 날 재발송 허용")
+    ap.add_argument("--retry-minutes", type=int, default=0,
+                    help="화면 입력이 막혀 못 보내면 3분마다 다시 시도할 최대 시간(분)")
     args = ap.parse_args()
 
     if not args.room:
@@ -712,7 +714,17 @@ def main():
         log(f"{date_str} QT는 이미 '{args.room}'에 발송했습니다 — 중복 발송하지 않습니다.")
         return
 
-    send_to_room(args.room, message, dry_run=args.dry_run)
+    # 원격 접속 입력 차단 등으로 아무것도 못 보냈으면 잠시 뒤 다시 (9/25 새벽 겪음)
+    deadline = time.time() + args.retry_minutes * 60
+    while True:
+        try:
+            send_to_room(args.room, message, dry_run=args.dry_run)
+            break
+        except NotReadyError as e:
+            if time.time() + 180 > deadline:
+                raise
+            log(f"보류 — {e} 3분 뒤 다시 시도합니다")
+            time.sleep(180)
 
     if args.dry_run:
         log("dry-run 완료 — 실제로는 아무것도 보내지 않았습니다.")
