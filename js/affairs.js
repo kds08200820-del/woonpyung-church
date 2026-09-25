@@ -949,7 +949,7 @@ console.log('[affairs.js] v20260923lic');
               var codeCell = r.code ? '<span style="font-family:monospace;font-weight:700;letter-spacing:.3px;user-select:all">' + esc(r.code) + '</span> <button class="btn btn-line al-copy" data-code="' + esc(r.code) + '" style="padding:1px 7px;font-size:.7rem" title="복사">복사</button>' : '<span style="color:#b0b8c4;font-size:.76rem">— (코드 목록 넣기)</span>';
               return '<tr data-id="' + r.id + '"><td style="text-align:center;font-weight:700">' + r.no + '</td>' +
                 '<td>' + codeCell + '</td>' +
-                '<td><input class="al-label" value="' + esc(r.label || '') + '" placeholder="이름·교회" style="' + ist + '"></td' +
+                '<td><input class="al-label" value="' + esc(r.label || '') + '" placeholder="이름·교회" style="' + ist + '">' +
                   '<input class="al-uname" value="' + esc(r.user_name || '') + '" placeholder="등록 이름(교회)" title="프로그램에서 등록한 이름 — 직접 고칠 수 있음" style="' + ist + ';margin-top:4px;font-size:.76rem">' +
                   '<input class="al-uemail" type="email" value="' + esc(r.user_email || '') + '" placeholder="등록 이메일" title="프로그램에서 등록한 이메일 — 직접 고칠 수 있음' + (r.registered_at ? ' (등록 ' + esc(fmtT(r.registered_at)) + ')' : '') + '" style="' + ist + ';margin-top:3px;font-size:.76rem">' +
                   (r.user_email ? '<a href="mailto:' + esc(r.user_email) + '" style="font-size:.7rem;color:#2563eb">메일 보내기</a>' : '') + '</td>' +
