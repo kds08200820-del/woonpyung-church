@@ -1849,3 +1849,7 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 
 /* 휴대폰: 머리글에 성경·대시보드 단추가 함께 보일 때 교회 이름이 줄바꿈되지 않게 */
 @media (max-width: 480px) { .logo-kr { font-size: 1.02rem; letter-spacing: .02em; } .logo-mark { width: 36px; height: 36px; } }
+
+/* 넓은 화면(가로 메뉴가 보일 때)에는 메뉴 안에 대시보드가 있으므로 둥근 대시보드 단추는 숨긴다 · 교회 이름은 한 줄로 */
+.logo-kr { white-space: nowrap; }
+@media (min-width: 761px) { #hdrDash { display: none !important; } .hdr-bible-btn { margin-left: 16px; margin-right: 6px; } }
