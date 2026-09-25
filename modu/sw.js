@@ -8,7 +8,8 @@ var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.
 
 self.addEventListener('install', function(e){
   self.skipWaiting();                                                    /* 새 판은 기다리지 않고 바로 갈아탄다 */
-  e.waitUntil(caches.open(SHELL).then(function(c){ return c.addAll(CORE).catch(function(){}); }));
+  /* 새 판은 브라우저 HTTP 캐시(GitHub Pages 10분)를 건너뛰고 서버에서 받는다 — 안 그러면 새 판 이름에 옛 파일이 담긴다 */
+  e.waitUntil(caches.open(SHELL).then(function(c){ return c.addAll(CORE.map(function(u){ return new Request(u, { cache:'reload' }); })).catch(function(){}); }));
 });
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return (k.indexOf('modu-shell-') === 0 && k !== SHELL) || (k.indexOf('modu-data-') === 0 && k !== DATA); }).map(function(k){ return caches.delete(k); })); }).then(function(){ return self.clients.claim(); }));
