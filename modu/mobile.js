@@ -449,8 +449,17 @@
     $('moInstallX').onclick = function(){ bar.remove(); try{ localStorage.setItem('modu.installLater', String(Date.now())); }catch(e){} };
   }
   function doInstall(){
+    if(standalone) return toast('이미 홈 화면에 설치된 앱으로 보고 계십니다');
     if(deferred){ deferred.prompt(); deferred.userChoice.then(function(){ deferred = null; var b = $('moInstallBar'); if(b) b.remove(); }); return; }
-    toast(ios ? 'Safari 의 공유(⬆) 단추 → "홈 화면에 추가"를 누르세요' : '브라우저 메뉴(⋮)에서 "앱 설치" 또는 "홈 화면에 추가"를 누르세요');
+    if(ios) return toast('Safari 의 공유(⬆) 단추 → "홈 화면에 추가"를 누르세요');
+    /* 설치 창을 띄울 수 없는 경우(카카오톡 등 다른 앱 안의 브라우저, 이미 설치됨) → 크롬으로 직접 연다 */
+    var android = /Android/.test(navigator.userAgent);
+    if(android){
+      toast('Chrome 으로 엽니다 — 열린 뒤 메뉴(⋮) → "앱 설치"를 누르세요. 이미 설치되어 있으면 홈 화면에서 여세요');
+      setTimeout(function(){ location.href = 'intent://k-logos.com/modu/#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=https%3A%2F%2Fk-logos.com%2Fmodu%2F;end'; }, 900);
+      return;
+    }
+    toast('브라우저 메뉴(⋮)에서 "앱 설치" 또는 "홈 화면에 추가"를 누르세요');
   }
   window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; var b = $('moInstall'); if(b) b.hidden = false; if(narrow.matches) installBar(); });
   window.addEventListener('appinstalled', function(){ var b = $('moInstallBar'); if(b) b.remove(); toast('홈 화면에 설치되었습니다'); });
