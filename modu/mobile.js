@@ -420,12 +420,14 @@
   }
 
   /* ── 뒤로 단추: 창이 열려 있으면 닫고, 아니면 앞 화면으로 ── */
-  /* 가짜 기록을 두 칸 쌓아 둔다 — 아이패드·아이폰 Safari 는 뒤로 이동 중 넣는 pushState 를 가끔 버리므로, 한 칸만 두면
-     다음 뒤로에서 앱 밖(홈페이지)으로 나가 버린다. 바닥(state 없음)까지 내려왔으면 두 칸을 다시 쌓는다 */
-  function trap(n){ try{ for(var i = 0; i < (n || 1); i++) history.pushState({ modu:1 }, ''); }catch(e){} }
-  trap(2);
-  window.addEventListener('popstate', function(e){
-    trap(e.state && e.state.modu ? 1 : 2);
+  /* 뒤로 단추가 앱 밖(홈페이지)으로 나가지 않도록 가짜 기록 한 칸을 둔다.
+     단, 켤 때 미리 넣으면 안 된다 — Safari·Chrome 은 사용자 조작 없이 넣은 기록을 뒤로 단추에서 건너뛰어(Safari 는 앞 문서까지 되돌아간다)
+     아이패드에서 지도 창을 열고 뒤로를 누르면 홈페이지로 나갔다. 그래서 사용자가 화면을 누르는 순간(조작이 인정되는 사건 안에서) 넣고,
+     뒤로로 그 칸이 빠지면 다음 누름에 다시 넣는다 */
+  function armed(){ var st = history.state; return !!(st && st.modu); }
+  function trap(e){ if(armed() || (e && e.isTrusted === false)) return; try{ history.pushState({ modu:1 }, ''); }catch(err){} }   /* 프로그램이 만든 사건(가짜 Escape 등)은 조작이 아니다 */
+  ['pointerdown', 'touchend', 'keydown'].forEach(function(t){ document.addEventListener(t, trap, { capture:true, passive:true }); });
+  window.addEventListener('popstate', function(){
     if(pick && !pick.hidden){ closePick(); return; }
     if(more && !more.hidden){ closeMore(); return; }
     if(S.showNav && narrow.matches){ toggleNav(); return; }
