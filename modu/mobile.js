@@ -348,16 +348,23 @@
         mouse('mousemove', m.x, m.y);                                             /* 두 손가락 가운데를 따라 옮긴다 */
         while(pinch.acc > 1.09){ cv.dispatchEvent(new WheelEvent('wheel', { bubbles:true, cancelable:true, clientX:m.x, clientY:m.y, deltaY:-100 })); pinch.acc /= 1.18; }
         while(pinch.acc < 1 / 1.09){ cv.dispatchEvent(new WheelEvent('wheel', { bubbles:true, cancelable:true, clientX:m.x, clientY:m.y, deltaY:100 })); pinch.acc *= 1.18; }
-      } else if(e.touches.length === 1 && one){ var t = e.touches[0]; mouse('mousemove', t.clientX, t.clientY); }
+      } else if(e.touches.length === 1 && one){ var t = e.touches[0]; if(Math.hypot(t.clientX - one.x, t.clientY - one.y) > 8) one.moved = true; mouse('mousemove', t.clientX, t.clientY); }
       e.preventDefault();
     }, { passive:false });
     function end(e){
-      if(e.touches.length === 0){ var t = e.changedTouches[0]; mouse('mouseup', t.clientX, t.clientY, window); pinch = null; one = null; }
+      if(e.touches.length === 0){
+        var t = e.changedTouches[0]; mouse('mouseup', t.clientX, t.clientY, window);
+        /* 지명을 톡 누르면(끌지 않고) 거리 재기의 출발·도착으로도 찍힌다 — 데스크탑의 오른쪽 단추와 같다 */
+        if(one && !one.moved) cv.dispatchEvent(new MouseEvent('contextmenu', { bubbles:true, cancelable:true, clientX:t.clientX, clientY:t.clientY, button:2 }));
+        pinch = null; one = null;
+      }
       else if(e.touches.length === 1 && pinch){ pinch = null; var t1 = e.touches[0]; mouse('mouseup', t1.clientX, t1.clientY, window); one = { x:t1.clientX, y:t1.clientY }; mouse('mousedown', t1.clientX, t1.clientY); }
       e.preventDefault();
     }
     cv.addEventListener('touchend', end, { passive:false });
     cv.addEventListener('touchcancel', end, { passive:false });
+    /* 거리 재기 안내문의 '오른쪽 단추' 를 휴대폰 말로 */
+    new MutationObserver(function(){ var m = $('atMeas'); if(!m || !narrow.matches) return; [].forEach.call(m.querySelectorAll('.dim'), function(d){ if(/오른쪽 단추/.test(d.textContent)) d.textContent = d.textContent.replace(/오른쪽 단추로 다시 찍거나 빈 곳을 눌러 지움/, '지명을 톡 눌러 다시 찍거나 빈 곳을 눌러 지움').replace(/오른쪽 단추로 찍으세요/, '톡 누르세요'); }); }).observe(document.body, { childList:true, subtree:true, characterData:true });
   })();
 
   /* ── 좌우로 밀어 앞·뒤 장 ── */
