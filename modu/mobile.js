@@ -39,7 +39,7 @@
       '<button type="button" class="mo-ib" id="moSearchBtn" title="찾기"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>' +
       '<button type="button" class="mo-ib" id="moMoreBtn" title="더보기"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>';
     vh.appendChild(icons);
-    $('moVerBtn').onclick = function(){ var b = $('verBtn'); if(b) b.click(); };
+    $('moVerBtn').onclick = function(e){ e.stopPropagation(); var b = $('verBtn'); if(b) b.click(); };   /* 문서 click 이 드롭다운을 곧바로 닫지 않도록 */
     $('moSearchBtn').onclick = function(){ APP.showView('search'); };
     $('moMoreBtn').onclick = openMore;
     var cnt = $('verCnt');
@@ -118,7 +118,7 @@
         ['📖', '책 개관', function(){ var b = $('introBtn'); if(b) b.click(); }],
         ['🌍', '지도·고고학 표시', function(){ var b = $('geoBtn'); if(b) b.click(); }],
         ['📋', '본문 복사', function(){ var b = $('copyBtn'); if(b) b.click(); }],
-        ['🔤', '스테판 원어 성경', function(){ var b = $('stephBtn'); if(b && !b.hidden) b.click(); else toast('이 책은 원어 자료가 없습니다'); }],
+        ['🔤', '스테판 원어 성경', function(){ if(!window.STEPH) return toast('원어 자료를 읽지 못했습니다'); STEPH.setOn(!STEPH.active()); toast(STEPH.active() ? '스테판 원어 성경으로 봅니다 — 본문 위 줄에서 보일 항목을 고르세요' : '일반 본문으로 돌아왔습니다'); }],
         ['🎓', '원어 학습', function(){ APP.showView('vocab'); }],
         ['✨', '지식 그래프', function(){ if(window.KG) KG.open(); }],
         ['🖍', '형광펜 모아 보기', function(){ APP.showView('notes'); if(window.NT) NT.setMode('hl'); }],
@@ -126,7 +126,8 @@
         ['A+', '글자 크게', function(){ if(X.bumpFont) X.bumpFont(1); }],
         ['🌓', '화면 색', function(){ if(X.cycleTheme) X.cycleTheme(); }],
         ['⚙', '설정', function(){ APP.showView('settings'); }],
-        ['🔄', '업데이트 확인', function(){ if(window.UPD) UPD.manual(); }]
+        ['🔄', '업데이트 확인', function(){ if(window.UPD) UPD.manual(); }],
+        ['📲', '홈 화면에 설치', function(){ doInstall(); }]
       ];
       grid.innerHTML = rows.map(function(r, i){ return '<button type="button" class="mm-it" data-i="' + i + '"><span class="mm-ic">' + r[0] + '</span>' + esc(r[1]) + '</button>'; }).join('');
       /* 데스크탑 메뉴 묶음도 그대로 (편집·이동·찾기·학습·성경연구·보기·본문성경·환경설정·도움말) */
@@ -284,13 +285,31 @@
     if(goBackToRead) goBackToRead();
   });
 
-  /* ── 설치 안내 (홈 화면에 추가) ── */
-  var deferred = null;
-  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; var b = $('moInstall'); if(b) b.hidden = false; });
+  /* ── 홈 화면에 설치: 안드로이드는 설치 창을 바로 띄우고, 아이폰은 방법을 안내한다. 설치된 앱도 켤 때마다 로그인·정회원 확인을 거친다 ── */
+  var deferred = null, standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+  function installBar(){
+    if(standalone || $('moInstallBar')) return;
+    try{ if(localStorage.getItem('modu.installLater') && Date.now() - (+localStorage.getItem('modu.installLater')) < 7 * 864e5) return; }catch(e){}
+    var bar = document.createElement('div'); bar.id = 'moInstallBar';
+    bar.innerHTML = '<img src="icon.png" alt=""><div class="t"><b>홈 화면에 설치</b><small>' + (ios ? '공유(⬆) → "홈 화면에 추가"를 누르세요' : '앱처럼 바로 열 수 있습니다') + '</small></div>' +
+      (ios ? '' : '<button type="button" class="btn primary" id="moInstallGo">설치</button>') + '<button type="button" class="btn" id="moInstallX" aria-label="닫기">✕</button>';
+    document.body.appendChild(bar);
+    var go = $('moInstallGo'); if(go) go.onclick = doInstall;
+    $('moInstallX').onclick = function(){ bar.remove(); try{ localStorage.setItem('modu.installLater', String(Date.now())); }catch(e){} };
+  }
+  function doInstall(){
+    if(deferred){ deferred.prompt(); deferred.userChoice.then(function(){ deferred = null; var b = $('moInstallBar'); if(b) b.remove(); }); return; }
+    toast(ios ? 'Safari 의 공유(⬆) 단추 → "홈 화면에 추가"를 누르세요' : '브라우저 메뉴(⋮)에서 "앱 설치" 또는 "홈 화면에 추가"를 누르세요');
+  }
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferred = e; var b = $('moInstall'); if(b) b.hidden = false; if(narrow.matches) installBar(); });
+  window.addEventListener('appinstalled', function(){ var b = $('moInstallBar'); if(b) b.remove(); toast('홈 화면에 설치되었습니다'); });
+  if(ios && narrow.matches && !standalone) window.addEventListener('modu-opened', installBar, { once:true });
+  window.MODU_INSTALL = doInstall;
   var about = $('aboutCard');
   if(about){
     var ib = document.createElement('button'); ib.type = 'button'; ib.className = 'btn primary'; ib.id = 'moInstall'; ib.textContent = '홈 화면에 설치'; ib.hidden = true;
-    ib.onclick = function(){ if(deferred){ deferred.prompt(); deferred = null; ib.hidden = true; } };
+    ib.onclick = doInstall; if(!standalone) ib.hidden = false;
     about.appendChild(ib);
   }
 

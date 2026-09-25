@@ -1856,3 +1856,8 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 
 /* 휴대폰: 성경·대시보드 단추를 교회 이름과 메뉴 단추 사이 가운데에 */
 @media (max-width: 760px) { .hdr-bible-btn { margin-left: auto; } #hdrDash { margin-left: 6px; margin-right: auto; } }
+
+/* 머리글 '성경' 단추: 성경책 아이콘 */
+.hdr-bible-btn { padding: 6px 10px; }
+.hdr-bible-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; display: block; }
+@media (max-width: 480px) { .hdr-bible-btn { padding: 5px 9px; } .hdr-bible-btn svg { width: 18px; height: 18px; } }
