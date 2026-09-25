@@ -31,6 +31,9 @@
   /* ── 위 막대: 제목을 누르면 목차, 오른쪽 아이콘 ── */
   var vh = document.querySelector('#v-read .vhead'), title = $('readTitle');
   if(vh && title){
+    var home = document.createElement('a'); home.className = 'mo-home'; home.href = '../'; home.title = '운평장로교회 홈페이지로';
+    home.innerHTML = '<img src="../images/icon-192.png" alt="운평장로교회">';
+    vh.insertBefore(home, vh.firstChild);
     title.classList.add('mo-title'); title.setAttribute('role', 'button');
     title.addEventListener('click', function(){ if(narrow.matches) openPick(); });
     var icons = document.createElement('div'); icons.className = 'mo-icons';
