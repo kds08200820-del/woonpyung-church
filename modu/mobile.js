@@ -35,10 +35,14 @@
     title.addEventListener('click', function(){ if(narrow.matches) openPick(); });
     var icons = document.createElement('div'); icons.className = 'mo-icons';
     icons.innerHTML =
+      '<button type="button" class="mo-ib mo-fs" id="moFsDown" title="글자 작게">A−</button>' +
+      '<button type="button" class="mo-ib mo-fs" id="moFsUp" title="글자 크게">A+</button>' +
       '<button type="button" class="mo-ib" id="moVerBtn" title="대조 성경"><svg viewBox="0 0 24 24"><path d="M4 5h6a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4z"/><path d="M20 5h-6a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h7z"/></svg><span class="mo-cnt" id="moVerCnt"></span></button>' +
       '<button type="button" class="mo-ib" id="moSearchBtn" title="찾기"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>' +
       '<button type="button" class="mo-ib" id="moMoreBtn" title="더보기"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></button>';
     vh.appendChild(icons);
+    $('moFsDown').onclick = function(){ if(X.bumpFont) X.bumpFont(-1); };
+    $('moFsUp').onclick = function(){ if(X.bumpFont) X.bumpFont(1); };
     $('moVerBtn').onclick = function(e){ e.stopPropagation(); var b = $('verBtn'); if(b) b.click(); };   /* 문서 click 이 드롭다운을 곧바로 닫지 않도록 */
     $('moSearchBtn').onclick = function(){ APP.showView('search'); };
     $('moMoreBtn').onclick = openMore;

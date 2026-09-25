@@ -60,6 +60,8 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 .mo-ib{position:relative;width:42px;height:42px;border:none;background:transparent;color:var(--accent-fg);border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
 .mo-ib svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .mo-ib:active{background:rgba(255,255,255,.18)}
+.mo-ib.mo-fs{width:36px;font-size:14px;font-weight:700;letter-spacing:-.02em}
+.vhead h1.mo-title{font-size:19px}
 .mo-cnt{position:absolute;top:4px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#e0874a;color:#fff;font-size:10.5px;font-weight:700;line-height:16px;text-align:center}
 .mo-cnt:empty{display:none}
 #stBack:disabled{opacity:.75;pointer-events:none}
