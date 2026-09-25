@@ -331,6 +331,35 @@
     var hint = tools.querySelector('.st-3dhint'); if(hint) hint.textContent = '한 손가락: 돌리기 · 두 손가락: 확대·옮기기';
   }); }); }).observe(document.body, { childList:true, subtree:true });
 
+  /* ── 지도(평면도): 한 손가락 끌기 = 옮기기, 두 손가락 = 확대·축소 (마우스·휠 사건으로 바꿔 넣는다) ── */
+  (function(){
+    var cv = $('atCanvas'); if(!cv) return;
+    var pinch = null, one = null;
+    function mouse(type, x, y, target){ (target || cv).dispatchEvent(new MouseEvent(type, { bubbles:true, cancelable:true, clientX:x, clientY:y, button:0, buttons:type === 'mouseup' ? 0 : 1 })); }
+    function mid(t){ return { x:(t[0].clientX + t[1].clientX) / 2, y:(t[0].clientY + t[1].clientY) / 2, d:Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) }; }
+    cv.addEventListener('touchstart', function(e){
+      if(e.touches.length === 1){ var t = e.touches[0]; one = { x:t.clientX, y:t.clientY }; mouse('mousedown', t.clientX, t.clientY); }
+      else if(e.touches.length === 2){ var m = mid(e.touches); pinch = { d:m.d, acc:1 }; mouse('mouseup', m.x, m.y, window); mouse('mousedown', m.x, m.y); one = null; }
+      e.preventDefault();
+    }, { passive:false });
+    cv.addEventListener('touchmove', function(e){
+      if(e.touches.length === 2 && pinch){
+        var m = mid(e.touches), ratio = m.d / pinch.d; pinch.d = m.d; pinch.acc *= ratio;
+        mouse('mousemove', m.x, m.y);                                             /* 두 손가락 가운데를 따라 옮긴다 */
+        while(pinch.acc > 1.09){ cv.dispatchEvent(new WheelEvent('wheel', { bubbles:true, cancelable:true, clientX:m.x, clientY:m.y, deltaY:-100 })); pinch.acc /= 1.18; }
+        while(pinch.acc < 1 / 1.09){ cv.dispatchEvent(new WheelEvent('wheel', { bubbles:true, cancelable:true, clientX:m.x, clientY:m.y, deltaY:100 })); pinch.acc *= 1.18; }
+      } else if(e.touches.length === 1 && one){ var t = e.touches[0]; mouse('mousemove', t.clientX, t.clientY); }
+      e.preventDefault();
+    }, { passive:false });
+    function end(e){
+      if(e.touches.length === 0){ var t = e.changedTouches[0]; mouse('mouseup', t.clientX, t.clientY, window); pinch = null; one = null; }
+      else if(e.touches.length === 1 && pinch){ pinch = null; var t1 = e.touches[0]; mouse('mouseup', t1.clientX, t1.clientY, window); one = { x:t1.clientX, y:t1.clientY }; mouse('mousedown', t1.clientX, t1.clientY); }
+      e.preventDefault();
+    }
+    cv.addEventListener('touchend', end, { passive:false });
+    cv.addEventListener('touchcancel', end, { passive:false });
+  })();
+
   /* ── 좌우로 밀어 앞·뒤 장 ── */
   var sw = null, reader = $('reader');
   if(reader){
