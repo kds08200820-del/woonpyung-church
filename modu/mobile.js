@@ -247,6 +247,10 @@
   document.addEventListener('touchcancel', clearLP, { passive:true });
   var lastCM = 0;
   document.addEventListener('contextmenu', function(){ lastCM = Date.now(); }, true);
+  /* 오른쪽 단추 메뉴에서 원어 듣기·학습 담기 항목은 뺀다 (모바일판에는 음성이 없다) */
+  new MutationObserver(function(ms){ ms.forEach(function(m){ [].forEach.call(m.addedNodes, function(n){ if(n.nodeType === 1 && n.classList && n.classList.contains('cmenu')) [].forEach.call(n.querySelectorAll('button'), function(b){ if(/^🔊|원어 학습에 담기/.test(b.textContent.trim())) b.remove(); }); }); }); }).observe(document.body, { childList:true });
+  /* 원어 학습 화면은 낱말 공부로 고정 */
+  var lsWord = document.querySelector('#lsMode button[data-m="word"]'); if(lsWord && narrow.matches) setTimeout(function(){ lsWord.click(); }, 0);
   document.addEventListener('click', function(e){ if(Date.now() - lastCM < 400 && e.target.closest && !e.target.closest('.cmenu')){ e.stopPropagation(); e.preventDefault(); } }, true);
 
   /* ── 낱말 톡 누르기 → 뜻 상자(아래 시트) ── */

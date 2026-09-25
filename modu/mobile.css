@@ -37,7 +37,8 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 /* 다른 화면(찾기·메모·학습·설정)의 머리 줄은 원래 색 그대로, 줄바꿈만 허용 */
 .view:not(#v-read) .vhead{flex-wrap:wrap;gap:6px 8px;padding:8px 10px}
 .view:not(#v-read) .vhead h1{font-size:16px}
-.view:not(#v-read) .vhead input,.view:not(#v-read) .vhead select{color:var(--fg);background:var(--bg)}
+.view:not(#v-read) .vhead input,.view:not(#v-read) .vhead select,#q,.searchwrap input,#ntSearch{color:#241f1a!important;background:#fff!important;-webkit-text-fill-color:#241f1a}
+.view:not(#v-read) .vhead input::placeholder{color:#9a9086}
 .searchwrap input{font-size:16px}
 /* 메모장 머리: 제목 → 보기 전환 단추 한 줄 → 찾기·새 메모 */
 #v-notes .vhead h1{flex:1 1 auto}
@@ -45,6 +46,9 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 #ntMode button{flex:1;white-space:nowrap;padding:7px 2px;font-size:12.5px}
 #ntSearch{order:6;flex:1 1 60%;min-width:0;font-size:15px}
 #ntNew{order:7;white-space:nowrap}
+/* 원어 학습: 구절 따라 읽기(음성)는 없다 */
+#lsMode,#lsPane,#lsResume,.say-rate{display:none!important}
+#v-vocab .vhead{flex-wrap:wrap}
 .vhead h1.mo-title{font-size:21px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--accent-fg);cursor:pointer}
 .vhead h1.mo-title::after{content:' ▾';font-size:14px;opacity:.7}
 .vhead .spacer,.vhead .read-ver,#prev,#next,#geoBtn,#introBtn,#copyDrop,#navToggle,.mo-navbtn{display:none!important}
