@@ -3283,7 +3283,7 @@ document.title = APP_TITLE + ' ' + APP_VERSION + ' · ' + vinfo(S.base).name;
 $('boot').remove();
 
 /* notes.js·license.js 가 쓰는 것들 (app.js 는 닫힌 함수 안이라 밖으로 내보낸다) */
-window.MODU_X = { S:S, toggleNav:toggleNav, saveSettings:saveSettings, applySettings:applySettings, infoFromEvent:infoFromEvent, fillWordBox:fillWordBox, anyPopupOpen:anyPopupOpen, goBackToRead:goBackToRead };
+window.MODU_X = { S:S, toggleNav:toggleNav, saveSettings:saveSettings, applySettings:applySettings, infoFromEvent:infoFromEvent, fillWordBox:fillWordBox, anyPopupOpen:anyPopupOpen, goBackToRead:goBackToRead, step:step, verses:verses, parseRefList:parseRefList, bumpFont:bumpFont, cycleTheme:cycleTheme };
 window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:showView, openChapter:openChapter,
                parseRefList:parseRefList, BOOKS:BOOKS, st:st, CM:CM, korText:korText, ref:ref, closeCMenu:closeCMenu, setComm:setComm,
                render:function(){ render(); }, openWord:function(info){ openWordModal(info); },

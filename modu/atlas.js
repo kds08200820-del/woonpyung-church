@@ -98,7 +98,7 @@ var ATLAS = (function(){
   }
   function ensureImg(id, cb){
     if(imgCache[id]) return cb();
-    var im = new Image(); im.onload = function(){ imgCache[id] = im; cb(); }; im.onerror = function(){ cb(); }; im.src = MODU.dataBase + 'maps/' + id + '.jpg';
+    var im = Object.assign(new Image(), { crossOrigin:'anonymous' }); im.onload = function(){ imgCache[id] = im; cb(); }; im.onerror = function(){ cb(); }; im.src = MODU.dataBase + 'maps/' + id + '.jpg';
   }
   var texLabels = [];
   function paintTexture(canvas, win){
@@ -147,13 +147,13 @@ var ATLAS = (function(){
   var wideLoading = {};
   function loadWide(id){
     if(wideLoading[id]) return; wideLoading[id] = true;
-    var im = new Image(); im.onload = function(){ imgCache[id] = im; draw(); }; im.src = MODU.dataBase + 'maps/' + id + '.jpg';
+    var im = Object.assign(new Image(), { crossOrigin:'anonymous' }); im.onload = function(){ imgCache[id] = im; draw(); }; im.src = MODU.dataBase + 'maps/' + id + '.jpg';
   }
   function loadBase(id, cb){
     base = ATLAS_BASES[id]; img = null;
     if(base && base.vector){ cb(); return; }
     if(imgCache[id]){ img = imgCache[id]; cb(); return; }
-    var im = new Image();
+    var im = Object.assign(new Image(), { crossOrigin:'anonymous' });
     im.onload = function(){ imgCache[id] = im; img = im; cb(); };
     im.onerror = function(){ APP.toast('지형 그림(data/maps/' + id + '.jpg)을 읽지 못했습니다'); cb(); };
     im.src = MODU.dataBase + 'maps/' + id + '.jpg';

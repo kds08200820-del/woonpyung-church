@@ -246,7 +246,7 @@ window.STUDY = (function(){
       lb.hidden = false; if(active3d) restore3d(); activate3d(f, ref, host); host.querySelector('.st-3dbox').classList.add('big'); $('stLightX').focus(); return;
     }
     var src = f.querySelector('img, canvas'); if(!src) return;
-    if(src.tagName === 'IMG'){ var im = new Image(); im.src = src.src; inner.appendChild(im); }
+    if(src.tagName === 'IMG'){ var im = Object.assign(new Image(), { crossOrigin:'anonymous' }); im.src = src.src; inner.appendChild(im); }
     else { var c = document.createElement('canvas'); c.width = src.width; c.height = src.height; c.getContext('2d').drawImage(src, 0, 0); inner.appendChild(c); }
     var cap = f.querySelector('figcaption'); $('stLightCap').textContent = cap ? cap.textContent : '';
     lb.hidden = false; $('stLightX').focus();
@@ -260,7 +260,7 @@ window.STUDY = (function(){
   function withBase(id, cb){
     if(base3d){ cb(null); return; }
     if(baseCache[id]){ cb(baseCache[id]); return; }
-    var im = new Image(); im.onload = function(){ baseCache[id] = im; cb(im); }; im.onerror = function(){ cb(null); }; im.src = MODU.dataBase + 'maps/' + id + '.jpg';
+    var im = Object.assign(new Image(), { crossOrigin:'anonymous' }); im.onload = function(){ baseCache[id] = im; cb(im); }; im.onerror = function(){ cb(null); }; im.src = MODU.dataBase + 'maps/' + id + '.jpg';
   }
   /* 레반트 바탕(등장방형): ATLAS_BASES.levant 범위 안의 창을 잘라 그린다 */
   function mapCtx(c, win){

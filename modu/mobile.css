@@ -1,23 +1,19 @@
 /* 2026 모두의 성경 — 휴대폰 배치 (style.css 뒤에 읽는다) */
 :root{--fs:17px;--lh:1.85;--maxw:100%;--mo-bar:54px;--sab:env(safe-area-inset-bottom,0px)}
 html,body{height:100%;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
-body{display:flex;flex-direction:column;min-height:100dvh}
 button,.btn{touch-action:manipulation}
-
-/* ── 위: 메뉴 줄만 얇게 (가로로 밀어 본다) ── */
-#topbar{position:sticky;top:0}
-#menubar{overflow-x:auto;overflow-y:hidden;white-space:nowrap;flex-wrap:nowrap;scrollbar-width:none;padding:3px 6px}
-#menubar::-webkit-scrollbar{display:none}
-.mb-item{flex:0 0 auto;padding:6px 10px;font-size:13.5px}
-.mb-item u{text-decoration:none}
-/* 도구 단추는 아래로 */
-#toolbar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--panel);border-top:1px solid var(--line);
-  flex-wrap:nowrap;overflow-x:auto;padding:5px 8px calc(5px + var(--sab));gap:4px;scrollbar-width:none;box-shadow:0 -4px 14px rgba(0,0,0,.06)}
-#toolbar::-webkit-scrollbar{display:none}
-#toolbar .tb-b{flex:0 0 auto;width:42px;height:42px}
-#toolbar .tb-b svg{width:21px;height:21px}
 .tb-tip{display:none!important}
+#listenBtn,#player,#readModal,#recPop{display:none!important}
+.mo-wbclose{margin-left:auto}
+/* 좁은 화면(휴대폰·작은 태블릿)에서만 휴대폰 배치. PC 브라우저는 데스크탑 배치 그대로 */
+@media (max-width: 900px){
+body{display:flex;flex-direction:column;min-height:100dvh}
+
+/* ── 데스크탑의 메뉴 줄·도구 줄은 감춘다 (더보기 시트·아래 탭이 대신한다) ── */
+#topbar{display:none}
 #shell{flex:1;min-height:0;padding-bottom:calc(var(--mo-bar) + var(--sab))}
+#booknav{display:none!important}
+#moBack{display:none!important}
 #stage{min-width:0}
 #reader{padding-bottom:40px}
 .readwrap{padding:10px 14px 0}
@@ -36,22 +32,70 @@ button,.btn{touch-action:manipulation}
   border-radius:16px 16px 0 0;padding-bottom:calc(10px + var(--sab));z-index:110}
 .dropmenu label,.dropmenu button{padding:11px 14px;font-size:15px}
 
-/* ── 본문 머리 ── */
-.vhead{flex-wrap:wrap;gap:6px 6px;padding:8px 10px}
-.vhead h1{font-size:16px;flex:1 1 120px;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center}
-.vhead .spacer{display:none}
-.vhead::after{content:'';flex-basis:100%;height:0;order:4}
-#stephBtn,#geoBtn,#introBtn,#verDrop,#copyDrop{order:5}
-#verDrop{margin-left:auto}
-.vhead .read-ver{display:none}
-.mo-navbtn{font-weight:700}
-#listenBtn,#player,#readModal,#recPop{display:none!important}
+/* ── 위 막대: 큰 제목(누르면 목차) + 아이콘 ── */
+.vhead{flex-wrap:nowrap;gap:4px;padding:8px 6px 8px 14px;background:var(--accent);color:var(--accent-fg);border-bottom:none;position:sticky;top:0;z-index:30}
+.vhead h1.mo-title{font-size:21px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--accent-fg);cursor:pointer}
+.vhead h1.mo-title::after{content:' ▾';font-size:14px;opacity:.7}
+.vhead .spacer,.vhead .read-ver,#prev,#next,#geoBtn,#introBtn,#copyDrop,#navToggle,.mo-navbtn{display:none!important}
+#stephBtn{order:2;background:rgba(255,255,255,.16);color:var(--accent-fg);border-color:rgba(255,255,255,.35);padding:5px 9px;font-size:13px}
+#verDrop{order:9;width:0;height:0;overflow:visible}
+#verDrop>#verBtn{display:none}
+.mo-icons{display:flex;gap:2px;order:3}
+.mo-ib{position:relative;width:42px;height:42px;border:none;background:transparent;color:var(--accent-fg);border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+.mo-ib svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mo-ib:active{background:rgba(255,255,255,.18)}
+.mo-cnt{position:absolute;top:4px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#e0874a;color:#fff;font-size:10.5px;font-weight:700;line-height:16px;text-align:center}
+.mo-cnt:empty{display:none}
+/* 목차 */
+#moPick{position:fixed;inset:0;z-index:150;display:flex;flex-direction:column;background:var(--bg)}
+#moPick[hidden]{display:none}
+.mp-head{display:flex;align-items:center;gap:10px;padding:12px 8px 12px 16px;background:#4b5b73;color:#fff;font-size:19px}
+.mp-head b{flex:1;font-weight:600}
+.mp-x{width:40px;height:40px;border:none;background:transparent;color:inherit;font-size:22px}
+.mp-body{flex:1;min-height:0;display:flex}
+.mp-col{overflow-y:auto;overscroll-behavior:contain;padding-bottom:var(--sab)}
+.mp-books{flex:1 1 58%;border-right:1px solid var(--line)}
+.mp-chs,.mp-vs{flex:1 1 21%}
+.mp-chs{border-right:1px solid var(--line)}
+.mp-grp{padding:5px 12px;font-size:12.5px;color:var(--fg3);background:var(--panel2);border-bottom:1px solid var(--line2)}
+.mp-bk{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;border:none;border-bottom:1px solid var(--line2);background:transparent;text-align:left;color:var(--fg)}
+.mp-bk .mp-ab{flex:0 0 38px;text-align:center;font-size:14px;font-weight:700;color:#3a6db8}
+.mp-bk .mp-nm{font-size:18px;line-height:1.2}
+.mp-bk .mp-nm small{display:block;font-size:12px;color:var(--fg3);font-weight:400}
+.mp-bk.on{background:#dcdccb}
+.mp-chs button,.mp-vs button{display:block;width:100%;padding:14px 4px;border:none;border-bottom:1px solid var(--line2);background:transparent;font-size:19px;color:var(--fg);text-align:center}
+.mp-chs button.on{background:#c9caae}
+.mp-none{padding:14px;color:var(--fg3);font-size:13px;text-align:center}
+.mp-foot{display:flex;gap:8px;padding:8px 10px calc(8px + var(--sab));border-top:1px solid var(--line);background:var(--panel)}
+.mp-foot input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font-size:16px;background:var(--bg);color:var(--fg)}
+/* 더보기 시트 */
+#moMore{position:fixed;inset:0;z-index:140;background:rgba(0,0,0,.4);display:flex;align-items:flex-end}
+#moMore[hidden]{display:none}
+.mm-sheet{width:100%;max-height:82dvh;overflow:auto;background:var(--panel);border-radius:18px 18px 0 0;padding:6px 12px calc(14px + var(--sab))}
+.mm-head{display:flex;align-items:center;padding:6px 4px 4px 6px;font-size:16px}
+.mm-head b{flex:1}
+.mm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mm-it{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--line2);border-radius:12px;background:var(--bg);font-size:12.5px;color:var(--fg);line-height:1.3;text-align:center}
+.mm-it .mm-ic{font-size:22px;line-height:1}
+.mm-it.mm-menu{padding:11px 4px;font-weight:600}
+.mm-sub{grid-column:1/-1;margin:8px 4px 0;font-size:12px;color:var(--fg3)}
+/* 둥근 단추·아래 탭 */
+#moFab{position:fixed;right:10px;bottom:calc(var(--mo-bar) + var(--sab) + 12px);z-index:35;display:flex;flex-direction:column;gap:8px}
+#moFab[hidden]{display:none}
+.mo-fab{width:56px;height:56px;border-radius:50%;border:none;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 12px rgba(0,0,0,.25);font-size:10.5px;line-height:1.1;padding:0}
+.mo-fab .ic{font-size:18px;line-height:1}
+.mo-fab.note{background:#7556b3}.mo-fab.lex{background:#e0874a}.mo-fab.map{background:#2f8d68}.mo-fab.kg{background:#3a6db8}
+#moTabs{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;background:var(--panel);border-top:1px solid var(--line);padding:4px 0 var(--sab);box-shadow:0 -4px 14px rgba(0,0,0,.06)}
+.mo-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0 3px;border:none;background:transparent;color:var(--fg3);font-size:11.5px}
+.mo-tab .ic{font-size:20px;line-height:1.1;filter:grayscale(1);opacity:.75}
+.mo-tab.on{color:var(--accent);font-weight:700}
+.mo-tab.on .ic{filter:none;opacity:1}
 .steph-bar{padding:6px 10px}
 
 /* ── 책·장 서랍 ── */
 #booknav{position:fixed;left:0;top:0;bottom:0;width:min(88vw,380px);z-index:70;box-shadow:0 0 40px rgba(0,0,0,.3);
   border-right:none;padding-bottom:var(--sab)}
-#booknav .bn-bookcol .bn-grid{grid-template-columns:repeat(4,1fr)}
+#booknav .bn-bookcol .bn-grid{grid-template-columns:repeat(2,1fr)}
 #booknav .bn-grid button{min-height:40px;font-size:15px}
 #booknav .bn-chapcol{flex:0 0 110px}
 #moBack{position:fixed;inset:0;z-index:65;background:rgba(0,0,0,.35)}
@@ -62,7 +106,6 @@ button,.btn{touch-action:manipulation}
 #wordbox.mo-on{display:block!important;position:fixed;left:0;right:0;bottom:0;z-index:100;max-height:60dvh;overflow:auto;
   background:var(--panel);border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);padding-bottom:var(--sab)}
 .wb-hint{display:none}
-.mo-wbclose{margin-left:auto}
 
 /* ── 창(모달)은 전체 화면 ── */
 .modal{padding:0;align-items:stretch}
@@ -91,10 +134,24 @@ button,.btn{touch-action:manipulation}
 .card{padding:14px 14px;border-radius:12px}
 #vbList{padding:12px 12px 60px}
 .vcard{flex-direction:column;gap:8px}
-.cols{grid-template-columns:36px 1fr!important;column-gap:10px}
-.cols .colhead{font-size:12px}
+/* 대조 성경: 옆으로 나란히 대신 절마다 한 줄씩 쌓는다 (개역개정 → 함께 볼 성경 순) */
+.cols{display:block!important}
+.cols .colhead{display:none}
+.vrow{display:block;padding:8px 0 6px;border-bottom:1px solid var(--line2)}
+.vrow>div{padding:2px 0}
+.vrow .vno{display:inline-block;text-align:left;padding:0 6px 0 0;font-weight:700;color:var(--accent)}
+.vrow .vcell{display:block;padding:3px 0 3px 4px}
+.vrow .vcell+.vcell{border-left:2px solid var(--line);margin-top:4px;padding-left:10px}
+.vrow .vcell[data-v]::before{content:attr(data-v);display:block;font-size:11px;color:var(--fg3);letter-spacing:.04em;margin-bottom:1px}
+.vrow .vcell:first-of-type[data-v]::before{display:none}
+.vrow:hover>div:not(.vhit){background:transparent}
 .upd-ov{padding:0;align-items:flex-end}
 .upd-card{border-radius:16px 16px 0 0;max-width:100%;padding:18px 18px calc(18px + var(--sab))}
+
+}
+
+/* PC 폭에서는 휴대폰 전용 요소를 감춘다 */
+@media (min-width: 901px){ #moFab,#moTabs,.mo-icons,#moPick,#moMore{display:none!important} .vhead h1.mo-title::after{content:''} }
 
 /* ── 문(로그인) ── */
 #moGate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;
