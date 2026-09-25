@@ -125,6 +125,10 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 /* 지도·학습: 옆 글 칸을 아래로 */
 .at-body,.st-wrap{flex-direction:column}
 .at-side,.st-side{flex:0 0 auto;height:var(--sd,38dvh);max-height:none;border-left:none;border-right:none;border-top:1px solid var(--line)}
+/* 지도 창: 지도와 해설·목록을 한 덩어리로 스크롤 — 아래로 넘기면 지도가 올라가고 글이 길게 펼쳐진다 */
+#atlasModal .at-body{display:block;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+#atlasModal .at-map{height:58dvh;flex:none}
+#atlasModal .at-side{height:auto!important;max-height:none;overflow:visible;flex:none}
 .st-side{border-top:none;border-bottom:none}
 .mo-grip{flex:0 0 20px;display:flex;align-items:center;justify-content:center;background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);touch-action:none;cursor:row-resize}
 .mo-grip i{width:46px;height:5px;border-radius:3px;background:var(--fg3);opacity:.6}

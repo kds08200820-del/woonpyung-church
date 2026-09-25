@@ -208,7 +208,6 @@
   function armSplits(){
     if(!narrow.matches) return;
     var st = $('stSide'); if(st && st.parentNode) splitHandle(st, { after:true, keep:'.st-parts' });
-    var at = document.querySelector('#atlasModal .at-side'); if(at) splitHandle(at, { after:false, big:true });
   }
   var stm = $('studyModal');
   if(stm){
@@ -216,8 +215,6 @@
     var stBody = $('stBody');
     if(stBody) new MutationObserver(function(){ var sd = $('stSide'); if(narrow.matches && sd && sd._collapse && !stm.hidden) sd._collapse(); }).observe(stBody, { childList:true });   /* 글을 열면 목록을 접어 읽는 칸을 넓힌다 */
   }
-  var atm = $('atlasModal');
-  if(atm) new MutationObserver(function(){ if(!atm.hidden) setTimeout(armSplits, 50); }).observe(atm, { attributes:true, attributeFilter:['hidden'] });
 
   /* ── 좌우로 밀어 앞·뒤 장 ── */
   var sw = null, reader = $('reader');
