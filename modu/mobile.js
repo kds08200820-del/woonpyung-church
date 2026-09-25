@@ -168,6 +168,7 @@
       var row = e.target.closest('.vpara[data-b], .vrow[data-b], .vrow .vcell'); if(!row) return;
       if(row.classList.contains('vcell')) row = row.closest('.vrow'); if(!row || row.dataset.b === undefined) return;
       var k = row.dataset.b + ':' + row.dataset.c + ':' + row.dataset.v;
+      if(row.classList.contains('vhit') && !SEL[k]){ row.classList.remove('vhit'); if(APP.st) APP.st.vi = -1; paintSel(); return; }   /* 찾기·목차로 와서 미리 표시된 절은 한 번 누르면 풀린다 */
       if(SEL[k]) delete SEL[k]; else SEL[k] = true;
       paintSel();
     });
