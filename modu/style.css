@@ -1183,6 +1183,12 @@ body{flex-direction:column}
 .at-idx.on{border-color:var(--accent);background:var(--accent-bg)}
 .at-idx b{font-weight:600}
 .at-idxtext{margin:8px 0 4px;padding:10px 12px;border-radius:10px;background:var(--accent-bg);font-size:13px}
+.at-seenh{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.at-seenclear{margin-left:auto;border:1px solid var(--line);background:var(--bg);color:var(--fg3);border-radius:7px;padding:2px 8px;font-size:11px;cursor:pointer}
+.at-seenclear:hover{color:var(--fg);border-color:var(--fg3)}
+.at-seenrow{position:relative;align-items:center;cursor:pointer;padding-right:34px}
+.at-seenx{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:24px;height:24px;border:0;border-radius:6px;background:transparent;color:var(--fg3);font-size:13px;cursor:pointer;line-height:1}
+.at-seenx:hover{background:var(--line);color:var(--fg)}
 #atIndexBtn.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 
 /* 주석 목록 */

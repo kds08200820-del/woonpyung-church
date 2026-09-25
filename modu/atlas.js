@@ -40,6 +40,19 @@ var ATLAS = (function(){
     if(r[0] <= 4) return '모세오경'; if(r[0] <= 16) return '역사서'; if(r[0] <= 21) return '시가서'; if(r[0] <= 38) return '선지서';
     if(r[0] <= 42) return '복음서'; if(r[0] === 43) return '사도행전'; return '서신·계시록';
   }
+  /* ── 나의 지도: 내가 본 지도를 최근 것부터 기억한다 (이 기기의 localStorage, 최대 100장) ── */
+  var SEENKEY = 'bibleApp.atlasSeen';
+  function seenList(){ try{ var a = JSON.parse(localStorage.getItem(SEENKEY) || '[]'); return Array.isArray(a) ? a.filter(function(x){ return x && byId(x.id); }) : []; }catch(e){ return []; } }
+  function seenSave(a){ try{ localStorage.setItem(SEENKEY, JSON.stringify(a.slice(0, 100))); }catch(e){} }
+  function seenAdd(m){ if(!m || !m.id) return; var a = seenList().filter(function(x){ return x.id !== m.id; }); a.unshift({ id:m.id, t:Date.now() }); seenSave(a); }
+  function seenRemove(id){ seenSave(seenList().filter(function(x){ return x.id !== id; })); }
+  function seenDate(t){ var d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate(); }
+  function paintSeen(){
+    var seen = seenList();
+    return '<div class="at-h at-seenh">나의 지도 <span class="dim">' + (seen.length ? '내가 본 ' + seen.length + '장 · 최근 순' : '아직 본 지도가 없습니다') + '</span>' +
+      (seen.length ? '<button type="button" class="at-seenclear" title="나의 지도 목록을 모두 지웁니다">모두 지우기</button>' : '') + '</div>' +
+      (seen.length ? '<div class="at-others at-seen">' + seen.map(function(x){ var m = byId(x.id); return '<div class="at-other at-idx at-seenrow' + (m === cur ? ' on' : '') + '" data-id="' + esc(m.id) + '" role="button" tabindex="0"><span><b>' + esc(m.title) + '</b><br><span class="dim">' + esc(m.ref || '') + '</span></span><span class="dim">' + seenDate(x.t) + '</span><button type="button" class="at-seenx" data-id="' + esc(m.id) + '" title="목록에서 지우기" aria-label="목록에서 지우기">✕</button></div>'; }).join('') + '</div>' : '');
+  }
   function openIndex(){
     list = allMaps(); indexMode = true;
     open(list[0], null); paintIndex();
@@ -49,9 +62,15 @@ var ATLAS = (function(){
     list.forEach(function(m){ var gname = groupOf(m); if(!byG[gname]){ byG[gname] = []; groups.push(gname); } byG[gname].push(m); });
     side.innerHTML = '<div class="at-idxhead"><b>성경 지도 목록</b> <span class="dim">' + list.length + '장 · 성경 순서</span></div>' +
       '<input class="at-idxq" id="atIdxQ" placeholder="지도 이름·구절 찾기…" autocomplete="off">' +
+      paintSeen() +
+      '<div class="at-h">모든 지도 <span class="dim">성경 순서</span></div>' +
       groups.map(function(gname){ return '<div class="at-h">' + esc(gname) + ' <span class="dim">' + byG[gname].length + '</span></div><div class="at-others">' +
         byG[gname].map(function(m){ return '<button type="button" class="at-other at-idx' + (m === cur ? ' on' : '') + '" data-id="' + esc(m.id) + '"><span><b>' + esc(m.title) + '</b><br><span class="dim">' + esc(m.ref || '') + '</span></span><span class="dim">' + esc(m.era || '') + '</span></button>'; }).join('') + '</div>'; }).join('');
-    [].forEach.call(side.querySelectorAll('.at-idx'), function(b){ b.onclick = function(){ var m = byId(b.dataset.id); if(m){ open(m, null); paintIndex(); side.scrollTop = 0; } }; });
+    [].forEach.call(side.querySelectorAll('.at-idx'), function(b){ b.onclick = function(e){ if(e.target.closest && e.target.closest('.at-seenx')) return; var m = byId(b.dataset.id); if(m){ open(m, null); paintIndex(); side.scrollTop = 0; } }; b.onkeydown = function(e){ if(b.tagName !== 'BUTTON' && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); b.onclick(e); } }; });
+    /* 나의 지도: ✕ 는 한 장만, '모두 지우기'는 전부 — 목록만 다시 그리고 지도는 그대로 둔다 */
+    [].forEach.call(side.querySelectorAll('.at-seenx'), function(x){ x.onclick = function(e){ e.stopPropagation(); seenRemove(x.dataset.id); var top = side.scrollTop; paintIndex(); side.scrollTop = top; }; });
+    var clr = side.querySelector('.at-seenclear');
+    if(clr) clr.onclick = function(e){ e.stopPropagation(); if(!confirm('나의 지도 목록을 모두 지울까요?')) return; seenSave([]); paintIndex(); side.scrollTop = 0; };
     $('atIdxQ').oninput = function(){
       var q = this.value.trim().toLowerCase();
       [].forEach.call(side.querySelectorAll('.at-idx'), function(b){ var m = byId(b.dataset.id); b.hidden = !!q && (m.title + ' ' + (m.ref || '') + ' ' + (m.era || '')).toLowerCase().indexOf(q) < 0; });
@@ -69,6 +88,7 @@ var ATLAS = (function(){
     meas = { a:null, b:null }; var _me = $('atMeas'); if(_me) _me.hidden = true;
     opener = document.activeElement;
     cur = m; cur.from = from || null; focusId = null; hover = null;
+    seenAdd(m);
     if(!list.length || list.indexOf(m) < 0) list = [m];
     cv = $('atCanvas'); g = cv.getContext('2d');
     $('atlasModal').hidden = false; fit();
