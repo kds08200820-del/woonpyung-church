@@ -928,8 +928,43 @@ console.log('[affairs.js] v20260923lic');
         '<div id="al_imp" hidden style="margin:0 0 12px;border:1px solid #d7dde6;border-radius:10px;padding:12px 14px;background:#f8fafc">' +
         '<textarea id="al_imp_txt" rows="5" placeholder="1. XXXX-XXXX-XXXX-XXXX\n2. XXXX-XXXX-XXXX-XXXX\n…  (TXT 파일 내용을 그대로 붙여넣어도 됩니다)" style="width:100%;box-sizing:border-box;border:1px solid #d7dde6;border-radius:8px;padding:8px 10px;font:inherit;font-size:.82rem;font-family:monospace"></textarea>' +
         '<div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button class="btn btn-solid" id="al_imp_go" style="padding:5px 14px;font-size:.82rem">넣기</button><span id="al_imp_msg" style="font-size:.78rem;color:#7b8794"></span></div></div>' +
+        '<div id="al_rel" style="margin:0 0 14px;border:1px solid #d7dde6;border-radius:10px;padding:12px 14px;background:#f8fafc"><h4 style="margin:0 0 6px;font-size:.9rem;color:var(--accent,#032257)">🔄 원격 업데이트 — 배포 중인 판</h4>' +
+        '<p style="margin:0 0 8px;font-size:.76rem;color:#7b8794;line-height:1.55">새 판을 만들면 <code>node tools/make-update.js</code> 가 R2 에 올리고 아래에 붙여넣을 JSON 을 줍니다. 붙여넣고 <b>판 추가·저장</b> 뒤 <b>배포 켜기</b>를 하면, 그보다 낮은 판을 쓰는 사용자에게 다음 실행(인증) 때 업데이트 안내가 갑니다. 안 받아도 프로그램은 그대로 쓸 수 있습니다.</p>' +
+        '<div id="al_rel_list" style="font-size:.8rem;margin-bottom:8px"></div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input id="al_rel_json" placeholder="make-update.js 가 복사해 준 JSON 을 붙여넣으세요  {&quot;version&quot;:&quot;3.6.0&quot;, …}" style="flex:1;min-width:280px;padding:5px 8px;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.78rem">' +
+        '<button class="btn btn-line" id="al_rel_add" style="padding:4px 12px;font-size:.8rem">판 추가·저장</button><span id="al_rel_msg" style="font-size:.76rem;color:#7b8794"></span></div></div>' +
         '<div id="al_out"><p class="qt-loading" style="margin:0">불러오는 중…</p></div></div>';
       document.body.appendChild(ov);
+      // ── 원격 업데이트 판 목록 ──
+      var relList = ov.querySelector('#al_rel_list'), relMsg = ov.querySelector('#al_rel_msg');
+      function loadRel() {
+        api('GET', 'app_release?select=*&order=updated_at.desc').then(function (rows) {
+          rows = rows || [];
+          if (!rows.length) { relList.innerHTML = '<span style="color:#9aa5b1">아직 올린 판이 없습니다.</span>'; return; }
+          relList.innerHTML = '<table class="fin-table" style="width:100%;font-size:.78rem"><thead><tr><th style="width:70px">판</th><th style="width:70px">배포</th><th style="width:80px">크기</th><th>공지문</th><th style="width:60px">전체설치</th><th style="width:150px">올린 때</th><th style="width:190px"></th></tr></thead><tbody>' +
+            rows.map(function (r) {
+              return '<tr data-id="' + r.id + '"><td style="font-weight:700">' + esc(r.version) + '</td><td>' + (r.enabled ? '<span style="color:#1e874b;font-weight:700">켜짐</span>' : '<span style="color:#9aa5b1">꺼짐</span>') + '</td>' +
+                '<td>' + (r.size ? (r.size / 1048576).toFixed(1) + 'MB' : '') + '</td><td><textarea class="al-rel-notes" rows="2" style="width:100%;box-sizing:border-box;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.76rem;padding:3px 6px">' + esc(r.notes || '') + '</textarea></td>' +
+                '<td>' + (r.full_only ? '예' : '') + '</td><td>' + String(r.updated_at || '').replace('T', ' ').slice(0, 16) + '</td>' +
+                '<td style="white-space:nowrap"><button class="btn btn-line al-rel-on" style="padding:3px 8px;font-size:.74rem;color:' + (r.enabled ? '#c0392b' : '#1e874b') + '">' + (r.enabled ? '배포 끄기' : '배포 켜기') + '</button> ' +
+                (r.url ? '<a class="btn btn-line" href="' + esc(r.url) + '" target="_blank" style="padding:3px 8px;font-size:.74rem">zip</a> ' : '') + '<button class="btn btn-line al-rel-del" style="padding:3px 8px;font-size:.74rem">지우기</button></td></tr>';
+            }).join('') + '</tbody></table>';
+          Array.prototype.forEach.call(relList.querySelectorAll('tr[data-id]'), function (tr) {
+            var id = tr.dataset.id, ta = tr.querySelector('.al-rel-notes'), t = null;
+            ta.oninput = function () { clearTimeout(t); t = setTimeout(function () { api('PATCH', 'app_release?id=eq.' + id, { notes: ta.value, updated_at: new Date().toISOString() }, 'return=minimal').catch(function () { }); }, 600); };
+            var on = tr.querySelector('.al-rel-on');
+            on.onclick = function () { var en = on.textContent === '배포 켜기'; api('PATCH', 'app_release?id=eq.' + id, { enabled: en, updated_at: new Date().toISOString() }, 'return=minimal').then(loadRel).catch(function (e) { alert('실패: ' + e.message); }); };
+            tr.querySelector('.al-rel-del').onclick = function () { if (!confirm('이 판 정보를 지울까요? (R2 의 파일은 남습니다)')) return; api('DELETE', 'app_release?id=eq.' + id, null, 'return=minimal').then(loadRel).catch(function (e) { alert('실패: ' + e.message); }); };
+          });
+        }).catch(function (e) { relList.innerHTML = '<span style="color:#c0392b">' + esc(e.message || '표가 없습니다 — supabase/20260925_1600_app_release.sql 실행') + '</span>'; });
+      }
+      ov.querySelector('#al_rel_add').onclick = function () {
+        var j; try { j = JSON.parse(ov.querySelector('#al_rel_json').value); } catch (e) { relMsg.textContent = 'JSON 이 올바르지 않습니다.'; return; }
+        if (!j.version || !/^\d+\.\d+\.\d+$/.test(j.version)) { relMsg.textContent = 'version 이 없습니다.'; return; }
+        var body = { version: j.version, url: j.url || '', size: j.size || 0, sha256: j.sha256 || '', full_only: !!j.full, full_url: j.full_url || '', notes: j.notes || '', updated_at: new Date().toISOString() };
+        api('POST', 'app_release?on_conflict=version', body, 'resolution=merge-duplicates,return=minimal').then(function () { relMsg.textContent = j.version + ' 저장됨 — 배포 켜기를 눌러 내보내세요.'; ov.querySelector('#al_rel_json').value = ''; loadRel(); }).catch(function (e) { relMsg.textContent = '실패: ' + e.message; });
+      };
+      loadRel();
       var close = pushBackClose(function () { ov.remove(); });
       ov.querySelector('#al_close').onclick = close;
       ov.addEventListener('click', function (e) { if (e.target === ov) close(); });

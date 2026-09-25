@@ -2,6 +2,7 @@
 //  설교자의 성경 — 설치 등록·월 인증 Edge Function
 //  설치 마법사와 앱이 부른다. 로그인 없이 부르되, 식별 코드 해시로만 찾는다.
 //    POST { op: "activate" | "verify" | "release", code, pc_id, pc_info:{name,board,os}, app, user?:{name,email} }
+//    POST { op: "update", app }  → { ok:true, release:{version,url,size,sha256,full,full_url,notes,enabled} | null }  (배포 중인 가장 새 판)
 //    → { ok:true, token, sig, dk }  (token = base64url JSON, sig = Ed25519 서명, dk = 주석 암호화 열쇠)
 //    → { ok:false, why: "no-code" | "in-use" | "revoked" | "mismatch" }
 //  배포: supabase functions deploy license --no-verify-jwt --project-ref cetacttsdwzxjzkyozgd
@@ -55,6 +56,14 @@ Deno.serve(async (req) => {
   let b: any;
   try { b = await req.json(); } catch { return out({ ok: false, why: "bad-json" }, 400); }
 
+  // 원격 업데이트 — 배포 중인 가장 새 판 (코드 없이도 답한다; 판 정보만 공개)
+  if (b.op === "update") {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/app_release?enabled=eq.true&select=version,url,size,sha256,full_only,full_url,notes,enabled,updated_at&order=updated_at.desc&limit=20`, { headers: H });
+    const rows = await r.json().catch(() => []);
+    const cmp = (a: string, c: string) => { const x = a.split(".").map((n) => parseInt(n, 10) || 0), y = c.split(".").map((n) => parseInt(n, 10) || 0); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; };
+    const best = (Array.isArray(rows) ? rows : []).sort((p: any, q: any) => cmp(q.version, p.version))[0] ?? null;
+    return out({ ok: true, release: best ? { ...best, full: !!best.full_only, date: best.updated_at } : null });
+  }
   const op = b.op === "verify" ? "verify" : "activate";
   const code = String(b.code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   const pcId = String(b.pc_id ?? "").trim();
