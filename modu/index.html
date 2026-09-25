@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev; img-src 'self' data: blob: https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev; font-src 'self' https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev; media-src 'self' blob: data:; connect-src 'self' https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev https://cetacttsdwzxjzkyozgd.supabase.co wss://cetacttsdwzxjzkyozgd.supabase.co; frame-src https://kauth.kakao.com https://accounts.kakao.com; worker-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8a5a2b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="모두의 성경">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>2026 모두의 성경</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="mobile.css">
+<script src="boot.js"></script>
+</head>
+<body>
+
+<div id="boot"><div class="bootbox"><div class="bootspin"></div><div>모두의 성경을 불러오는 중… (처음에는 자료를 받느라 오래 걸립니다)</div></div></div>
+
+<header id="topbar">
+  <div id="menubar" role="menubar" aria-label="주 메뉴"></div>
+  <div id="toolbar" role="toolbar" aria-label="도구 단추"></div>
+</header>
+<div id="menupop" class="mb-pop" role="menu" hidden></div>
+<div id="tbTip" class="tb-tip" role="tooltip" hidden></div>
+<div id="shell">
+<nav id="rail">
+  <div class="rail-brand">설교자의<br>성경</div>
+  <button class="rnav" data-view="read"><span class="ri">본</span><span class="rl">본문</span></button>
+  <button class="rnav" data-view="search"><span class="ri">찾</span><span class="rl">검색</span></button>
+  <button class="rnav" data-view="vocab"><span class="ri">학</span><span class="rl">원어 학습</span></button>
+  <button class="rnav" data-view="notes"><span class="ri">메</span><span class="rl">메모장</span></button>
+  <span class="rail-gap"></span>
+  <button class="rnav" id="navToggle" title="책 목록 보이기·숨기기 (Ctrl+B)"><span class="ri">목</span><span class="rl">목록</span></button>
+  <button class="rnav" data-view="settings"><span class="ri">설</span><span class="rl">설정</span></button>
+</nav>
+
+<aside id="booknav">
+  <div class="bn-col bn-bookcol">
+    <div class="bn-head">책</div>
+    <div class="bn-scroll" id="bnBooks"></div>
+    <div class="bn-hist" id="bnHist">
+      <div class="bn-head bn-histhead"><span>히스토리</span><button type="button" class="lnk" id="rdHistClear" title="묵상 기록을 모두 지웁니다">지우기</button></div>
+      <div class="bn-histlist" id="rdHist"></div>
+    </div>
+  </div>
+  <div class="bn-col bn-chapcol">
+    <div class="bn-head" id="bnChapHead">장</div>
+    <div class="bn-scroll" id="bnChaps"></div>
+  </div>
+</aside>
+
+<main id="stage">
+
+  <!-- ─────────── 본문 ─────────── -->
+  <section class="view" id="v-read">
+    <header class="vhead">
+      <button class="btn icon" id="prev" title="이전 장 (←)">◀</button>
+      <h1 id="readTitle">본문</h1>
+      <span class="read-ver" id="readVer"></span>
+      <button class="btn icon" id="next" title="다음 장 (→)">▶</button>
+      <span class="spacer"></span>
+      <button class="btn sb-btn" id="stephBtn" hidden title="스테판 원어 성경 — 원문·스트롱 번호·문법·뜻을 행간으로 봅니다" aria-pressed="false">원어</button>
+      <button class="btn icon" id="geoBtn" title="지도·고고학 연동 — 지도나 해설이 있는 절 번호를 진하게 표시합니다" aria-pressed="false">🌍</button>
+      <button class="btn" id="introBtn" title="이 책의 저자·연대·목적·구조">개관</button>
+      <button class="btn" id="listenBtn" title="이 장을 원어로 듣기">🔊 원어로 듣기</button>
+      <div class="drop" id="verDrop">
+        <button class="btn" id="verBtn">대조 성경 <span class="cnt" id="verCnt">1</span> ▾</button>
+        <div class="dropmenu" id="verMenu" hidden></div>
+      </div>
+      <div class="drop" id="copyDrop">
+        <button class="btn" id="copyBtn">복사 ▾</button>
+        <div class="dropmenu" id="copyMenu" hidden></div>
+      </div>
+    </header>
+    <div class="steph-bar" id="stephBar" hidden></div>
+    <div class="vbody" id="reader"></div>
+    <div id="wordbox" hidden>
+      <div class="wb-head">
+        <b id="wbTitle">낱말 뜻 보기</b>
+        <span class="wb-hint">낱말에 마우스를 올리면 여기에 나옵니다</span>
+        <span class="spacer"></span>
+        <button class="wb-btn" id="wbSay" hidden>발음 듣기</button>
+        <button class="wb-btn" id="wbFind" hidden>이 낱말 찾기</button>
+      </div>
+      <div class="wb-body" id="wbBody"><span class="dim">아직 고른 낱말이 없습니다.</span></div>
+    </div>
+  </section>
+
+  <!-- ─────────── 검색 ─────────── -->
+  <section class="view" id="v-search">
+    <header class="vhead">
+      <h1>검색</h1>
+      <div class="searchwrap">
+        <input id="q" placeholder="낱말·구절(요 3:16)·지명·지도·지형·기후·원어·주석 — 프로그램 안의 모든 자료를 찾습니다" autocomplete="off" spellcheck="false">
+        <button class="qclear" id="qclear" title="지우기" hidden>×</button>
+      </div>
+      <button class="btn primary" id="go">찾기</button>
+    </header>
+    <div class="searchopts">
+      <span class="lab">범위</span>
+      <select id="scope"><option value="all">전체</option><option value="ot">구약</option><option value="nt">신약</option></select>
+      <select id="scopeBook"><option value="">— 특정 책 —</option></select>
+      <span class="sep"></span>
+      <span class="lab">역본</span>
+      <select id="sver"></select>
+      <span class="sep"></span>
+      <label><input type="checkbox" id="ci" checked> 대소문자 무시</label>
+      <label><input type="checkbox" id="re"> 정규식</label>
+      <label title="헬라어로 검색할 때 활용형이 달라도 원형이 같으면 찾습니다"><input type="checkbox" id="lemmaSearch" checked> 헬라어 원형까지</label>
+    </div>
+    <div class="vbody split">
+      <div class="col-list">
+        <div class="status" id="status">찾을 낱말이나 구절을 적고 <kbd>Enter</kbd>.</div>
+        <div id="hits"></div>
+      </div>
+      <aside class="col-side">
+        <div class="side-head">최근 <button class="lnk" id="histClear">지우기</button></div>
+        <div id="histList"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ─────────── 단어장 ─────────── -->
+  <section class="view" id="v-vocab">
+    <header class="vhead">
+      <h1>원어 학습</h1>
+      <span class="seg" id="lsMode">
+        <button type="button" data-m="passage" class="on" title="원어 구절을 듣고 따라 읽기">구절 따라 읽기</button>
+        <button type="button" data-m="word">낱말 공부</button>
+      </span>
+      <span class="seg" id="vbTabs">
+        <button type="button" data-k="all" class="on">전체</button>
+        <button type="button" data-k="heb">히브리어</button>
+        <button type="button" data-k="grk">헬라어</button>
+        <button type="button" data-k="eng">영어</button>
+      </span>
+      <span class="spacer"></span>
+      <label class="ip-pill say-rate" title="발음 듣기 속도 — 모든 낱말에 똑같이 적용되고 저장됩니다">발음 속도 <select id="vbSayRate" class="wrate-sel"></select></label>
+      <button class="btn primary" id="vbQuiz">학습 시작</button>
+      <button class="btn" id="vbExport" title="단어장을 TXT 파일로 내보내기">내보내기</button>
+      <button class="btn" id="vbClear">비우기</button>
+    </header>
+    <div class="vbody">
+      <div id="lsPane">
+        <div class="ls-top">
+          <div class="ls-add">
+            <input id="lsInput" placeholder="담을 구절 — 예: 창 1:1-5 · 시 23 · 요 3:16-21 · 롬 8" autocomplete="off" spellcheck="false">
+            <button class="btn primary" id="lsAddBtn">담기</button>
+            <button class="btn" id="lsAddCur" title="지금 본문 화면에 열린 장을 담습니다">지금 보는 장 담기</button>
+            <button class="btn" id="lsResume" hidden>▶ 이어 듣기</button>
+          </div>
+          <div class="ls-how">
+            <b>따라 읽기 순서</b>
+            <span>① 먼저 듣기만 (속도 0.7~0.8) → ② <b>따라 읽기</b>를 켜고 절마다 소리 내어 따라 하기 → ③ 속도를 1.0으로 올려 반복 → ④ 소리를 끄고 스스로 읽어 본 뒤 다시 듣고 맞춰 보기.
+            한 번에 3~5절, 하루 10분씩이 가장 오래 남습니다.</span>
+          </div>
+        </div>
+        <div id="lsList"></div>
+      </div>
+      <div id="vbQuizPane" hidden></div>
+      <div id="vbStats"></div>
+      <div id="vbList"></div>
+    </div>
+  </section>
+
+  <!-- ─────────── 메모장 ─────────── -->
+  <section class="view" id="v-notes">
+    <header class="vhead">
+      <h1>메모장</h1>
+      <span class="seg" id="ntMode">
+        <button type="button" data-m="list" class="on">메모</button>
+        <button type="button" data-m="hl">형광펜</button>
+        <button type="button" data-m="graph">연결 그래프</button>
+        <button type="button" data-m="insight">관심사 분석</button>
+      </span>
+      <input id="ntSearch" class="nt-search" placeholder="찾기 — 제목·좌표·주제·내용·#태그" autocomplete="off" spellcheck="false">
+      <span class="spacer"></span>
+      <button class="btn primary" id="ntNew">＋ 새 메모</button>
+    </header>
+    <div class="vbody" id="ntBody">
+      <div id="ntListPane" class="nt-split">
+        <div class="nt-list" id="ntList"></div>
+        <div class="nt-editor" id="ntEditor">
+          <div class="nt-empty" id="ntEmpty">
+            <b>메모장</b>
+            <p>주석·성경 구절·설교 생각을 적고 <code>[[다른 메모 제목]]</code> 으로 서로 잇습니다.
+              <code>#주제/은혜</code> <code>#형태/주석</code> 같은 태그로 묶고, <b>연결 그래프</b>에서 어디에 생각이 모이는지 봅니다.</p>
+            <p>본문 화면에서 절을 <b>오른쪽 단추</b> → <b>메모에 담기</b>, 주석 창에서 <b>메모에 담기</b> 를 누르면 본문·주석이 바로 들어옵니다.</p>
+          </div>
+          <form id="ntForm" hidden autocomplete="off">
+            <div class="nt-row">
+              <input id="ntRef" placeholder="본문 좌표 — 예: 창 1:1" class="nt-ref">
+              <input id="ntTitle" placeholder="제목" class="nt-title" required>
+            </div>
+            <div class="nt-row">
+              <input id="ntTheme" placeholder="핵심 주제 — 예: 창조와 안식">
+              <input id="ntTags" placeholder="태그 — #주제/은혜 #형태/주석">
+            </div>
+            <textarea id="ntContent" placeholder="내용 — 성경 본문·주석·생각.  [[관련 메모 제목]] 으로 연결합니다." spellcheck="false"></textarea>
+            <div class="nt-row nt-links" id="ntLinks"></div>
+            <div class="nt-foot">
+              <span class="hint" id="ntMeta"></span>
+              <span class="spacer"></span>
+              <button type="button" class="btn" id="ntOpenRef" title="이 좌표의 본문 열기">본문 열기</button>
+              <button type="button" class="btn" id="ntDelete">지우기</button>
+              <button type="submit" class="btn primary" id="ntSave">저장 (Ctrl+S)</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div id="ntHlPane" hidden>
+        <div class="hl-bar">
+          <div class="hl-chips" id="hlChips"></div>
+          <span class="spacer"></span>
+          <span class="hint" id="hlCount"></span>
+        </div>
+        <div id="hlList" class="hl-list"></div>
+      </div>
+      <div id="ntGraphPane" hidden>
+        <div class="nt-graphbar">
+          <span class="hint">큰 점은 메모, 작은 색 점은 형광펜 절, 타원은 형광펜 분류, 상자는 #태그. 같은 절을 다루는 메모와 형광펜은 서로 이어집니다. 누르면 그곳으로 갑니다.</span>
+          <span class="spacer"></span>
+          <button class="btn" id="ntGraphFit">전체 보기</button>
+        </div>
+        <div id="ntGraph"></div>
+      </div>
+      <div id="ntInsightPane" hidden>
+        <div class="setwrap nt-insight">
+          <section class="card">
+            <h2>내 관심사 분석</h2>
+            <div id="ntStats" class="nt-stats"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── 설정 ─────────── -->
+  <section class="view" id="v-settings">
+    <header class="vhead"><h1>설정</h1></header>
+    <div class="vbody">
+      <div class="setwrap">
+
+        <section class="card">
+          <h2>화면</h2>
+          <div class="field">
+            <label class="flab">바탕</label>
+            <div class="themes" id="themePick">
+              <button type="button" data-theme="light"><span class="sw sw-light"></span>밝게</button>
+              <button type="button" data-theme="sepia"><span class="sw sw-sepia"></span>세피아</button>
+              <button type="button" data-theme="dark"><span class="sw sw-dark"></span>어둡게</button>
+              <button type="button" data-theme="navy"><span class="sw sw-navy"></span>네이비</button>
+            </div>
+            <p class="hint">Ctrl + D 로도 차례대로 바꿉니다.</p>
+          </div>
+          <div class="field">
+            <label class="flab">글꼴</label>
+            <div class="fontpick" id="fontPick">
+              <button type="button" data-font="system" style="font-family:'맑은 고딕','Malgun Gothic',sans-serif">본문 글꼴<small>맑은 고딕 (기본)</small></button>
+              <button type="button" data-font="myungjo" style="font-family:'Bookk Myungjo',serif">본문 글꼴<small>부크크명조</small></button>
+              <button type="button" data-font="gothic" style="font-family:'Bookk Gothic',sans-serif">본문 글꼴<small>부크크고딕</small></button>
+            </div>
+            <p class="hint">성경 본문과 검색 결과에 쓰이는 글꼴입니다. 메뉴·단추는 그대로 둡니다.</p>
+          </div>
+          <div class="field">
+            <label class="flab">글자 크기 <b id="fsVal">17px</b></label>
+            <div class="rangerow">
+              <button class="btn icon" id="fsDown">가<small>−</small></button>
+              <input type="range" id="fs" min="14" max="34" step="1">
+              <button class="btn icon" id="fsUp">가<small>+</small></button>
+            </div>
+            <p class="hint">Ctrl + <kbd>+</kbd> / <kbd>−</kbd> 로도 조절합니다.</p>
+          </div>
+          <div class="field">
+            <label class="flab">줄 간격 <b id="lhVal">1.85</b></label>
+            <input type="range" id="lh" min="1.4" max="2.4" step="0.05">
+          </div>
+          <div class="field">
+            <label class="flab">미리보기</label>
+            <div class="preview" id="fsPreview"></div>
+          </div>
+          <div class="field">
+            <label class="flab">본문 폭</label>
+            <span class="seg" id="widthPick">
+              <button type="button" data-w="narrow">좁게</button>
+              <button type="button" data-w="normal">보통</button>
+              <button type="button" data-w="wide">넓게</button>
+            </span>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="showNav"> 왼쪽에 책·장 목록 보이기 <span class="hint">(Ctrl+B)</span></label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>성경</h2>
+          <div class="field">
+            <label class="flab" for="baseVer">기본 성경</label>
+            <select id="baseVer"></select>
+            <p class="hint">본문에서 늘 첫 단에 나오는 성경입니다.</p>
+          </div>
+          <div class="field">
+            <label class="flab">대조할 성경</label>
+            <div class="checks" id="extraVer"></div>
+            <p class="hint">체크한 성경이 기본 성경 옆에 나란히 붙습니다. 본문 화면의 <b>대조 성경</b> 단추로도 바꿀 수 있습니다.</p>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="dictHover"> 낱말에 마우스를 올리면 아래 상자에 뜻 보이기
+              <span class="hint">(히브리어·헬라어·NASB·KJV)</span></label>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="hebAccent"> 히브리어 성경 기호(악센트) 보이기
+              <span class="hint">(글꼴에 따라 네모로 보일 수 있습니다)</span></label>
+          </div>
+          <div class="field">
+            <label class="flab">주석</label>
+            <span class="hint" id="commWhere">—</span>
+            <ul class="cm-works" id="commWorks"></ul>
+            <p class="hint">본문에서 절을 오른쪽 단추로 누르면 <b>주석 보기</b> 가 나옵니다.</p>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="nonote"> 각주 기호 숨기기 <span class="hint">(표준새번역의 a·b 같은 표시)</span></label>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>원어 듣기</h2>
+          <div class="field">
+            <label class="flab">음성 엔진</label>
+            <div class="rangerow">
+              <span class="hint" id="audStatus" style="flex:1">살펴보는 중…</span>
+              <button class="btn" id="audFolder">음성 폴더 열기</button>
+            </div>
+            <p class="hint">히브리어·헬라어 절을 이 컴퓨터 안의 <b>Piper</b>(신경망 음성)로 읽어 줍니다. 인터넷이나 바깥 서버는 쓰지 않습니다.
+              절마다 한 번 만든 소리는 저장해 두고 다음부터 바로 씁니다.
+              본문에서 절을 <b>오른쪽 단추</b>로 누르거나 여러 절을 긁은 뒤 오른쪽 단추를 누르면 <b>원어로 듣기</b>가 나옵니다.</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>복사</h2>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="optNum"> 절 번호 넣기</label>
+            <label class="check"><input type="checkbox" id="optSrc"> 출처 넣기 <span class="hint">(예: 요한복음 3:16 (개역개정))</span></label>
+          </div>
+          <p class="hint">본문에서 절을 누르면 그 절이 바로 복사됩니다.</p>
+        </section>
+
+        <section class="card">
+          <h2>형광펜 분류</h2>
+          <p class="hint" style="margin:0 0 12px">본문에서 절을 오른쪽 단추로 누르면 형광펜 색을 고를 수 있습니다. 색마다 뜻(분류 이름)을 정해 두면 메모장의 <b>형광펜</b> 탭에서 분류별로 모아 보고 찾을 수 있습니다.</p>
+          <div id="hlNames" class="hl-names"></div>
+        </section>
+
+        <section class="card">
+          <h2>설정 보관</h2>
+          <div class="field savebar">
+            <button class="btn primary" id="saveAll">설정 저장하기</button>
+            <button class="btn" id="resetAll">처음으로 되돌리기</button>
+          </div>
+          <p class="hint">바꾼 설정은 바로 저장되고, 다음에 열 때도 그대로 나옵니다.
+            확실히 해 두려면 <b>설정 저장하기</b> 를 눌러 주세요.</p>
+        </section>
+
+        <section class="card" id="aboutCard">
+          <h2>이 프로그램</h2>
+          <div class="abouthead">
+            <img src="icon.png" alt="" class="abouticon">
+            <div>
+              <div class="aboutname"><span data-app-title>2026 모두의 성경</span> <span class="aboutver" id="aboutVer">1.0.0</span></div>
+              <div class="aboutdesc">개역개정을 기본으로 우리말성경·표준새번역·공동번역·NASB·KJV·히브리어·헬라어를
+                나란히 놓고 읽고 찾는 설교자용 데스크탑 성경입니다. 원어 낱말 사전과 파싱, 원어 절 듣고 따라 읽기,
+                66권 개관, 절마다 이어진 주석 보기까지 인터넷 없이 이 컴퓨터 안에서 돌아갑니다.</div>
+            </div>
+          </div>
+          <ul class="aboutlist" id="aboutList"></ul>
+          <div class="field">
+            <label class="flab">사용 허가</label>
+            <div id="licInfo" class="licinfo"></div>
+            <button class="btn lic-release" id="licRelease" type="button">설치 영구 삭제</button>
+            <div class="hint">이 컴퓨터의 인증을 서버에서 풀고 프로그램을 지웁니다. 같은 인증 코드로 다른 컴퓨터에 다시 설치할 수 있습니다.</div>
+          </div>
+          <div class="frow">
+            <label class="flab">업데이트</label>
+            <div id="updInfo" class="licinfo">아직 확인하지 않았습니다</div>
+            <button class="btn" id="updCheck" type="button">최신 업데이트 확인</button>
+            <label class="hint" style="display:block;margin-top:6px"><input type="checkbox" id="updAuto" checked> 시작할 때 새 판이 있는지 확인해 알려 줍니다 (업데이트하지 않아도 쓰는 데 지장 없음)</label>
+            <div class="hint">새 판은 프로그램 본체만 받아 바꿉니다. 메모·형광펜·단어장·설정·인증은 그대로 유지됩니다.</div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </section>
+
+  <div id="player" class="ipod" hidden>
+    <div class="ip-trans" data-p="pl"></div>
+    <div class="pl-info">
+      <b id="plRef">—</b>
+      <span id="plSub"></span>
+      <div class="pl-bar"><div class="pl-fill" id="plFill"></div></div>
+    </div>
+    <div class="ip-tools" data-p="pl"></div>
+    <button class="wb-x" id="plClose" title="듣기 끝내기">×</button>
+  </div>
+</main>
+</div><!-- #shell -->
+
+<div class="modal" id="readModal" hidden>
+  <div class="modal-card readcard">
+    <div class="m-head">
+      <div class="rd-title"><b id="rdRef">—</b> <span class="dim" id="rdLang"></span></div>
+      <span class="spacer"></span>
+      <button class="wb-btn" id="rdAdd">원어 학습에 담기</button>
+      <button class="wb-x" id="rdClose" title="창 닫기 (재생도 멈춥니다)">×</button>
+    </div>
+    <div class="m-body rd-body">
+      <div class="rd-orig" id="rdOrig"></div>
+      <div class="rd-kor" id="rdKor"></div>
+      <div class="rd-hint" id="rdHint"></div>
+    </div>
+    <div class="rd-progress" title="이 장(구간)에서 들은 만큼"><div class="rd-bar"><div class="rd-fill" id="rdFill"></div></div><span id="rdProg">0%</span></div>
+    <div class="m-foot rd-ctrl ipod">
+      <div class="ip-trans" data-p="rd"></div>
+      <div class="ip-tools" data-p="rd"></div>
+      <span class="dim rd-pos" id="rdPos"></span>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="introModal" hidden>
+  <div class="modal-card introcard">
+    <div class="m-head">
+      <div class="m-word ltr" id="inTitle">—</div>
+      <span class="dim" id="inSub"></span>
+      <span class="spacer"></span>
+      <button class="wb-x" id="inClose" title="닫기">×</button>
+    </div>
+    <div class="m-body" id="inBody"></div>
+    <div class="m-foot">
+      <button class="btn" id="inPrev">◀ 앞 책</button>
+      <button class="btn" id="inNext">다음 책 ▶</button>
+      <span class="spacer"></span>
+      <button class="btn" id="inCopy">개관 복사</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="commModal" hidden>
+  <div class="modal-card commcard">
+    <div class="m-head">
+      <div class="m-word ltr" id="cmTitle">주석</div>
+      <span class="spacer"></span>
+      <button class="wb-x" id="cmClose" title="닫기">×</button>
+    </div>
+    <div class="cm-tabs" id="cmTabs"></div>
+    <div class="cm-meta">
+      <div class="cm-name" id="cmName"></div>
+      <div class="cm-crumbs" id="cmCrumb"></div>
+      <div class="cm-now" id="cmNow"></div>
+    </div>
+    <div class="m-body" id="cmBody">
+      <h3 class="cm-head" id="cmHead"></h3>
+      <div class="cm-text" id="cmText"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn" id="cmWider">◀ 넓은 범위</button>
+      <button class="btn" id="cmNarrow">좁은 범위 ▶</button>
+      <span class="spacer"></span>
+      <button class="btn" id="cmNote">메모에 담기</button>
+      <button class="btn" id="cmCopy">주석 복사</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="askModal" hidden>
+  <div class="modal-card askcard">
+    <div class="m-head">
+      <div class="m-word ltr" id="askWord"></div>
+      <span class="spacer"></span>
+      <button class="wb-x" id="askClose" title="닫기">×</button>
+    </div>
+    <div class="m-body">
+      <label class="flab" id="askLabel">이 낱말의 뜻을 적어 주세요</label>
+      <input id="askInput" class="askinput" placeholder="예: 궁창, 창공" autocomplete="off">
+      <p class="hint">적어 넣은 뜻은 이 프로그램에 저장되어, 다음부터 그 낱말에 계속 나옵니다.</p>
+    </div>
+    <div class="m-foot">
+      <button class="btn primary" id="askOk">저장하고 단어장에 담기</button>
+      <button class="btn" id="askWeb">인터넷에서 찾아보기</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="wordModal" hidden>
+  <div class="modal-card">
+    <div class="m-head">
+      <div class="m-word" id="mWord"></div>
+      <span class="spacer"></span>
+      <button class="wb-x" id="mClose" title="닫기">×</button>
+    </div>
+    <div class="m-body" id="mBody"></div>
+    <div class="m-foot">
+      <button class="btn primary" id="mSave">단어장에 담기</button>
+      <button class="btn" id="mSay">발음 듣기</button>
+      <label class="ip-pill say-rate" title="발음 듣기 속도 — 모든 낱말에 똑같이 적용되고 저장됩니다">속도 <select id="mSayRate" class="wrate-sel"></select></label>
+      <button class="btn" id="mFind">이 낱말이 나오는 곳 찾기</button>
+      <button class="btn" id="mWeb">인터넷에서 찾기</button>
+      <button class="btn" id="mAsk">뜻 적어 넣기</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal at-modal" id="atlasModal" role="dialog" aria-modal="true" aria-label="성경 지도" hidden>
+  <div class="modal-card atlascard">
+    <div class="m-head at-head">
+      <div class="at-titles"><b id="atTitle">—</b><span class="at-meta"><span id="atEra"></span> · <span id="atRef"></span></span></div>
+      <select id="atPick" class="at-pick" title="이 본문에 맞는 다른 지도" hidden></select>
+      <span class="spacer"></span>
+      <button type="button" class="at-star" id="atFavBtn" title="즐겨찾기에 넣기·빼기" aria-label="즐겨찾기" aria-pressed="false">★</button>
+      <button class="btn" id="atFavListBtn" title="즐겨찾기한 지도 목록">즐겨찾기</button>
+      <span class="seg at-view" id="atViewSeg" hidden><button type="button" data-v="3d" class="on">3D 복원</button><button type="button" data-v="2d">평면도</button></span>
+      <button class="btn" id="atIndexBtn" title="모든 지도를 성경 순서로 훑어봅니다">지도 목록</button>
+      <button class="btn" id="atGoVerse" title="지도를 닫고 본문으로">본문으로</button>
+      <span class="seg at-zoom"><button type="button" id="atOut" title="축소">−</button><button type="button" id="atFit" title="지도 전체 보기">맞춤</button><button type="button" id="atIn" title="확대">＋</button></span>
+      <button class="wb-x" id="atClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </div>
+    <div class="at-body">
+      <div class="at-map"><canvas id="atCanvas"></canvas><div class="j3-box" id="atJ3" hidden></div><div class="at-credit">지형 자료: SRTM 90m (CGIAR-CSI) · ETOPO 2022 (NOAA) — 음영·지명·경로·해설: 설교자의 성경</div></div>
+      <aside class="at-side" id="atSide"></aside>
+    </div>
+  </div>
+</div>
+<div class="modal" id="ciModal" role="dialog" aria-modal="true" aria-label="주석 목록" hidden>
+  <div class="modal-card cicard">
+    <div class="m-head">
+      <div><b>주석 목록</b> <span class="dim" id="ciCount"></span></div>
+      <select id="ciBook" class="at-pick" title="책 고르기"></select>
+      <select id="ciWork" class="at-pick" title="주석 고르기"></select>
+      <label class="check" style="font-size:12.5px"><input type="checkbox" id="ciBig" checked> 큰 단락만</label>
+      <span class="spacer"></span>
+      <button class="wb-x" id="ciClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </div>
+    <div class="m-body ci-body" id="ciBody"></div>
+  </div>
+</div>
+<div class="modal" id="trModal" role="dialog" aria-modal="true" aria-label="번역" hidden>
+  <div class="modal-card trcard">
+    <div class="m-head">
+      <div><b>번역</b> <span class="dim" id="trInfo">구글 번역 · 영어 → 한국어</span></div>
+      <span class="spacer"></span>
+      <button class="btn" id="trCopy">번역 복사</button>
+      <button class="btn" id="trWeb" title="구글 번역 사이트에서 열기">사이트에서 열기</button>
+      <button class="wb-x" id="trClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </div>
+    <div class="m-body tr-body">
+      <div class="tr-col"><div class="tr-h">원문</div><div class="tr-text" id="trSrc"></div></div>
+      <div class="tr-col"><div class="tr-h">번역</div><div class="tr-text tr-out" id="trOut"><span class="dim">번역하는 중…</span></div></div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="findModal" role="dialog" aria-modal="true" aria-label="낱말 찾기" hidden>
+  <div class="modal-card findcard">
+    <div class="m-head">
+      <div><b class="fp-q" id="fpQ">—</b> <span class="dim" id="fpCount"></span></div>
+      <span class="seg" id="fpScope"><button type="button" data-s="all" class="on">전체</button><button type="button" data-s="ot">구약</button><button type="button" data-s="nt">신약</button></span>
+      <span class="spacer"></span>
+      <button class="btn" id="fpMore" title="검색 화면에서 다른 성경·정규식으로 더 찾기">검색 화면에서 자세히</button>
+      <button class="wb-x" id="fpClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </div>
+    <div class="m-body fp-body" id="fpBody"></div>
+  </div>
+</div>
+<!-- 성경지도 학습 — 성서 지리·고고학·시대사 해설 -->
+<div class="modal at-modal" id="studyModal" role="dialog" aria-modal="true" aria-label="성경지도 학습" hidden>
+  <div class="modal-card atlascard st-card">
+    <div class="m-head at-head">
+      <button class="btn" id="stBack" title="이전 해설로 (Backspace)" disabled>← 뒤로</button>
+      <div class="at-titles"><b>성경지도 학습</b><span class="at-meta">성서 지리 · 고고학 · 시대사</span></div>
+      <span class="spacer"></span>
+      <button class="btn" id="stPrint" title="이 해설을 인쇄합니다">인쇄</button>
+      <button class="wb-x" id="stClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </div>
+    <div class="at-body">
+      <aside class="at-side st-side" id="stSide"></aside>
+      <div class="st-body" id="stBody"></div>
+    </div>
+  </div>
+</div>
+<div class="st-vpop" id="stVpop" hidden role="dialog" aria-label="성경 구절"><div class="st-vpop-head"><b id="stVpopRef"></b><span class="spacer"></span><button class="btn" id="stVpopGo">본문으로</button><button class="wb-x" id="stVpopX" aria-label="닫기">×</button></div><div class="st-vpop-body" id="stVpopBody"></div></div>
+<div class="st-light" id="stLight" hidden><button class="wb-x st-light-x" id="stLightX" aria-label="닫기">×</button><div class="st-light-in" id="stLightIn"></div><div class="st-light-cap" id="stLightCap"></div></div>
+<div class="modal kg-modal" id="kgModal" role="dialog" aria-modal="true" aria-label="지식 그래프" hidden>
+  <div class="modal-card kgcard">
+    <div class="m-head kg-head">
+      <b class="kg-h1">지식 그래프</b>
+      <span class="kg-stats" id="kgStats"></span>
+      <span class="spacer"></span>
+      <input id="kgSearch" class="kg-search" placeholder="마디 찾기…" autocomplete="off" spellcheck="false">
+      <button class="btn" id="kgReset" title="회전·확대를 처음으로 되돌립니다">처음 보기</button>
+      <button class="btn" id="kgShuffle" title="마디를 흔들어 다시 배치합니다">다시 배치</button>
+      <button class="btn" id="kgReload" title="메모장을 다시 읽습니다">새로 읽기</button>
+      <button class="wb-x" id="kgClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </div>
+    <div class="kg-body">
+      <canvas id="kgCanvas"></canvas>
+      <aside class="kg-side" id="kgSide" hidden></aside>
+      <div class="kg-legend" id="kgLegend"></div>
+      <div class="kg-empty" id="kgEmpty" hidden>아직 메모가 없습니다.<br>메모장에서 글을 쓰고 <b>[[다른 메모]]</b>로 잇거나 <b>#태그</b>를 달면, 본문에 형광펜을 칠하면 여기에 지식의 별자리가 생깁니다.</div>
+      <div class="kg-help">끌어서 돌리기 · 휠로 확대 · 누르면 이어진 지식과 메모 보기 · 두 번 누르면 열기</div>
+    </div>
+  </div>
+</div>
+<div id="recPop" class="recpop" role="dialog" aria-label="내 목소리 녹음" hidden>
+  <div class="rp-head">
+    <span class="rp-dot" id="rpDot"></span>
+    <b id="rpTitle">녹음 중</b>
+    <span class="rp-ref" id="rpRef"></span>
+    <span class="spacer"></span>
+    <span class="rp-time" id="rpTime">0:00</span>
+    <button class="wb-x" id="rpClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+  </div>
+  <canvas class="rp-wave" id="rpWave" width="680" height="120" aria-hidden="true"></canvas>
+  <div class="rp-msg" id="rpMsg">들은 절을 소리 내어 따라 읽어 보세요</div>
+  <div class="rp-btns" id="rpRecBtns">
+    <button class="btn" id="rpStop">■ 녹음 끝내기</button>
+  </div>
+  <div class="rp-btns" id="rpRevBtns" hidden>
+    <button class="btn" id="rpPlay">▶ 들어 보기</button>
+    <button class="btn" id="rpRedo" title="이 절을 다시 듣고 다시 녹음합니다">↻ 다시 녹음</button>
+    <button class="btn" id="rpDel">삭제</button>
+    <button class="btn primary" id="rpSave" title="저장하고 다음 절로 넘어갑니다">저장</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- 사용 허가 — 인증 코드가 확인될 때까지 프로그램을 가린다 -->
+<div id="licGate" hidden>
+  <div class="lic-card">
+    <div class="lic-brand"><img src="icon.png" alt="" class="lic-icon"><span data-app-title>2026 모두의 성경</span></div>
+    <h1 id="licTitle">인증 코드를 입력하세요</h1>
+    <div id="licMsg" class="lic-msg"></div>
+    <div id="licCodeRow" hidden>
+      <div class="lic-seg">
+        <input class="lic-box" maxlength="4" autocomplete="off" spellcheck="false" aria-label="인증 코드 1"><span>–</span>
+        <input class="lic-box" maxlength="4" autocomplete="off" spellcheck="false" aria-label="인증 코드 2"><span>–</span>
+        <input class="lic-box" maxlength="4" autocomplete="off" spellcheck="false" aria-label="인증 코드 3"><span>–</span>
+        <input class="lic-box" maxlength="4" autocomplete="off" spellcheck="false" aria-label="인증 코드 4">
+      </div>
+      <button class="btn primary lic-go" id="licActivate">인증</button>
+    </div>
+    <div class="lic-row">
+      <button class="btn primary lic-go" id="licVerify" hidden>지금 인증</button>
+      <button class="btn" id="licRetry" hidden>다시 확인</button>
+      <button class="btn" id="licReenter" hidden>다른 코드로 인증</button>
+    </div>
+    <div id="licVerse" class="lic-verse" hidden></div>
+    <p class="lic-foot"><span id="licVer"></span>© K-LOGOS</p>
+  </div>
+</div>
+
+<!-- 사용자 등록 — 업그레이드 안내를 위해 이름(교회)·이메일을 한 번 받는다 -->
+<div id="regModal" class="reg-ov" hidden role="dialog" aria-modal="true" aria-labelledby="regTitle">
+  <div class="reg-card">
+    <div class="lic-brand"><img src="icon.png" alt="" class="lic-icon"><span data-app-title>2026 모두의 성경</span></div>
+    <h2 id="regTitle">사용자 등록</h2>
+    <p class="reg-why">새 판(업그레이드)이 나오면 알려 드리기 위해 필요합니다.<br>이름(교회)과 이메일을 한 번만 적어 주세요.</p>
+    <label class="reg-f"><span>이름 (교회)</span><input id="regName" maxlength="80" autocomplete="off" placeholder="예) 홍길동 (○○교회)"></label>
+    <label class="reg-f"><span>이메일</span><input id="regEmail" type="email" maxlength="120" autocomplete="off" placeholder="name@example.com"></label>
+    <div id="regMsg" class="lic-msg"></div>
+    <div class="reg-row"><button class="btn" id="regLater" type="button">나중에</button><button class="btn primary" id="regSave" type="button">등록</button></div>
+    <p class="reg-foot">적어 주신 정보는 업그레이드 안내에만 씁니다.</p>
+  </div>
+</div>
+
+<!-- 설치 영구 삭제 확인 -->
+<div id="relModal" class="reg-ov" hidden role="dialog" aria-modal="true" aria-labelledby="relTitle">
+  <div class="reg-card">
+    <h2 id="relTitle">설치 영구 삭제</h2>
+    <p class="reg-why">이 컴퓨터에 등록된 인증을 서버에서 지우고, 프로그램 제거를 시작합니다.<br>
+      지운 뒤에는 같은 인증 코드로 <b>다른 컴퓨터에 다시 설치</b>할 수 있습니다.<br>
+      이 컴퓨터에서 다시 쓰려면 인증 코드를 새로 입력해야 합니다.</p>
+    <label class="reg-f"><span>확인을 위해 <b>삭제</b> 라고 적어 주세요</span><input id="relConfirm" autocomplete="off" placeholder="삭제"></label>
+    <div id="relMsg" class="lic-msg"></div>
+    <div class="reg-row"><button class="btn" id="relCancel" type="button">취소</button><button class="btn danger" id="relGo" type="button" disabled>영구 삭제</button></div>
+  </div>
+</div>
+
+<script src="lib/vis-network.min.js"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/bible.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/dict.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/hebrew.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/greek.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/intro.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/atlas-places.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/atlas-maps.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/atlas-maps2.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/maps/bases.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/jer3d-terrain.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/jer3d-sites.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/atlas-jerusalem.js" crossorigin="anonymous"></script>
+<script src="lib/three.min.js"></script>
+<script src="lib/OrbitControls.js"></script>
+<script src="jer3d.js"></script>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="bridge.js"></script>
+<script src="app.js"></script>
+<script src="notes.js"></script>
+<script src="highlight.js"></script>
+<script src="kgraph.js"></script>
+<script src="stephan.js"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/geo-names.js" crossorigin="anonymous"></script>
+<script src="atlas.js"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/study/articles.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/study/dem-levant.js" crossorigin="anonymous"></script>
+<script src="https://pub-0dda7b52b67649e18ba5569a006c564c.r2.dev/modu/d1/study/dem-ane.js" crossorigin="anonymous"></script>
+<script src="terrain3d.js"></script>
+<script src="study.js"></script>
+<script src="omni.js"></script>
+<script src="update.js"></script>
+<script src="mobile.js"></script>
+</body>
+</html>
