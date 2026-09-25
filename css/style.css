@@ -1853,3 +1853,6 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 /* 넓은 화면(가로 메뉴가 보일 때)에는 메뉴 안에 대시보드가 있으므로 둥근 대시보드 단추는 숨긴다 · 교회 이름은 한 줄로 */
 .logo-kr { white-space: nowrap; }
 @media (min-width: 761px) { #hdrDash { display: none !important; } .hdr-bible-btn { margin-left: 16px; margin-right: 6px; } }
+
+/* 휴대폰: 성경·대시보드 단추를 교회 이름과 메뉴 단추 사이 가운데에 */
+@media (max-width: 760px) { .hdr-bible-btn { margin-left: auto; } #hdrDash { margin-left: 6px; margin-right: auto; } }
