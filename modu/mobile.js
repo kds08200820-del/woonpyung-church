@@ -201,9 +201,9 @@
   }
   function doComm(){
     var gs = target(); if(!gs.length) return toast('절을 먼저 고르세요');
-    var g = gs[0], hits = APP.commHits ? APP.commHits(g.bi, g.ci, g.from) : [];
-    if(!hits || !hits.length) return toast('이 절에는 주석이 없습니다');
-    APP.showComm(g.bi, g.ci, g.from, hits);
+    var g = gs[0];
+    if(X.openComm) X.openComm(g.bi, g.ci, g.from);                     /* 오른쪽 단추 메뉴의 '주석 보기'와 같은 길 */
+    else { var hits = APP.commHits ? APP.commHits(g.bi, g.ci, g.from) : []; if(!hits || !hits.length) return toast('이 절에는 주석이 없습니다'); APP.showComm(g.bi, g.ci, g.from, hits); }
   }
   function doMap(){ var gs = target(); if(!window.ATLAS) return; if(!gs.length) return ATLAS.openIndex(); var g = gs[0]; ATLAS.openFor(g.bi, g.ci, g.from); }
   /* 색 고르기: 색연필을 길게 누르면 타원 팔레트가 부드럽게 튀어나온다 */
