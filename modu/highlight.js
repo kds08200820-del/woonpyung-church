@@ -122,5 +122,5 @@ var HL = (function(){
   paintSettings();
 
   function setFilter(c){ filter = c || ''; paintPane(); }
-  return { paint: paint, menuRow: menuRow, paintPane: paintPane, nameOf: nameOf, COLORS: COLORS, setFilter: setFilter };
+  return { setColor: setColor, currentColor: currentColor, paint: paint, menuRow: menuRow, paintPane: paintPane, nameOf: nameOf, COLORS: COLORS, setFilter: setFilter };
 })();

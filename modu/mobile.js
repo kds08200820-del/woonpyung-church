@@ -146,15 +146,93 @@
   }
   function closeMore(){ if(more) more.hidden = true; }
 
-  /* ── 둥근 단추·아래 탭 ── */
+  /* ── 절 고르기: 절을 톡 누르면 골라진다(여러 절 가능). 오른쪽 둥근 단추가 고른 절에 작용한다 ── */
+  var SEL = {};                                  /* "bi:ci:vi" → true */
+  function selKeys(){ return Object.keys(SEL); }
+  function paintSel(){ [].forEach.call(document.querySelectorAll('#reader .vpara[data-b], #reader .vrow[data-b]'), function(r){ r.classList.toggle('mo-sel', !!SEL[r.dataset.b + ':' + r.dataset.c + ':' + r.dataset.v]); }); fab.classList.toggle('has-sel', selKeys().length > 0); }
+  function clearSel(){ SEL = {}; paintSel(); }
+  function selGroups(){
+    var ks = selKeys().map(function(k){ var a = k.split(':').map(Number); return { bi:a[0], ci:a[1], vi:a[2] }; }).sort(function(x, y){ return x.bi - y.bi || x.ci - y.ci || x.vi - y.vi; });
+    var out = [], cur = null;
+    ks.forEach(function(v){ if(cur && cur.bi === v.bi && cur.ci === v.ci && v.vi === cur.to + 1){ cur.to = v.vi; return; } cur = { bi:v.bi, ci:v.ci, from:v.vi, to:v.vi }; out.push(cur); });
+    out.forEach(function(g){ g.label = BOOKS[g.bi].n + ' ' + (g.ci + 1) + ':' + (g.from + 1) + (g.to > g.from ? '-' + (g.to + 1) : ''); });
+    return out;
+  }
+  function target(){ var g = selGroups(); if(g.length) return g; var st = APP.st; if(st.bi < 0) return []; var vi = st.vi >= 0 ? st.vi : 0; return [{ bi:st.bi, ci:st.ci, from:vi, to:vi, label:BOOKS[st.bi].n + ' ' + (st.ci + 1) + ':' + (vi + 1) }]; }
+  var reader0 = $('reader');
+  if(reader0){
+    reader0.addEventListener('click', function(e){
+      if(!narrow.matches || Date.now() - lastCM < 400) return;
+      if(e.target.closest('a, button, input, select, .wpop, .morph, .hw, .gw, .eng, .stw')) return;
+      var sel = window.getSelection(); if(sel && String(sel).trim()) return;
+      var row = e.target.closest('.vpara[data-b], .vrow[data-b], .vrow .vcell'); if(!row) return;
+      if(row.classList.contains('vcell')) row = row.closest('.vrow'); if(!row || row.dataset.b === undefined) return;
+      var k = row.dataset.b + ':' + row.dataset.c + ':' + row.dataset.v;
+      if(SEL[k]) delete SEL[k]; else SEL[k] = true;
+      paintSel();
+    });
+    new MutationObserver(function(){ var st = APP.st; var keep = {}; selKeys().forEach(function(k){ if(k.indexOf(st.bi + ':' + st.ci + ':') === 0) keep[k] = true; }); SEL = keep; paintSel(); }).observe(reader0, { childList:true });
+  }
+
+  /* ── 오른쪽 둥근 단추: 색연필 · 복사 · 주석 · 지도 ── */
+  var HLC = ['yellow', 'green', 'blue', 'pink', 'orange', 'purple'], hlColor = 'yellow';
+  try{ hlColor = localStorage.getItem('modu.hlColor') || 'yellow'; }catch(e){}
   var fab = document.createElement('div'); fab.id = 'moFab';
-  fab.innerHTML = [['note', '📝', '메모', function(){ APP.showView('notes'); }],
-                   ['lex', 'א', '원어\n학습', function(){ APP.showView('vocab'); }],
-                   ['map', '🗺', '지도', function(){ if(window.ATLAS){ var st = APP.st; if(st.bi >= 0) ATLAS.openFor(st.bi, st.ci, Math.max(0, st.vi)); else ATLAS.openIndex(); } }],
-                   ['kg', '✨', '그래프', function(){ if(window.KG) KG.open(); }]]
-    .map(function(b){ return '<button type="button" class="mo-fab ' + b[0] + '" data-k="' + b[0] + '"><span class="ic">' + b[1] + '</span><span class="lb">' + esc(b[2]).replace(/\n/g, '<br>') + '</span></button>'; }).join('');
+  fab.innerHTML = '<button type="button" class="mo-fab pen" data-k="pen"><span class="ic">🖍</span><span class="lb">색연필</span><i class="dot"></i></button>' +
+                  '<button type="button" class="mo-fab copy" data-k="copy"><span class="ic">📋</span><span class="lb">복사</span></button>' +
+                  '<button type="button" class="mo-fab comm" data-k="comm"><span class="ic">📖</span><span class="lb">주석</span></button>' +
+                  '<button type="button" class="mo-fab map" data-k="map"><span class="ic">🗺</span><span class="lb">지도</span></button>';
   document.body.appendChild(fab);
-  fab.addEventListener('click', function(e){ var b = e.target.closest('.mo-fab'); if(!b) return; ({ note:function(){ APP.showView('notes'); }, lex:function(){ APP.showView('vocab'); }, map:function(){ if(window.ATLAS){ var st = APP.st; if(st.bi >= 0) ATLAS.openFor(st.bi, st.ci, Math.max(0, st.vi)); else ATLAS.openIndex(); } }, kg:function(){ if(window.KG) KG.open(); } })[b.dataset.k](); });
+  var pen = fab.querySelector('.pen');
+  function paintPen(){ pen.className = 'mo-fab pen hl-' + hlColor; pen.title = '색연필 — ' + (window.HL && HL.nameOf ? HL.nameOf(hlColor) : ''); }
+  paintPen();
+  function doPen(){
+    if(!window.HL || !HL.setColor) return toast('형광펜을 쓸 수 없습니다');
+    var gs = target(); if(!gs.length) return toast('절을 먼저 고르세요');
+    var allOn = gs.every(function(g){ for(var v = g.from; v <= g.to; v++) if(HL.currentColor({ bi:g.bi, ci:g.ci, from:v }) !== hlColor) return false; return true; });
+    gs.forEach(function(g){ HL.setColor(g, allOn ? null : hlColor); });   /* 이미 그 색이면 지운다 */
+    clearSel();
+  }
+  function doCopy(){
+    var gs = target(); if(!gs.length) return toast('절을 먼저 고르세요');
+    var vs = [{ id:S.base, name:APP.vname() }], text = (APP.copyText ? APP.copyText(vs, gs) : '') || '';
+    if(!text) return toast('복사할 본문이 없습니다');
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function(){ toast(gs.map(function(g){ return g.label; }).join(', ') + ' 복사됨'); clearSel(); }, function(){ toast('복사하지 못했습니다'); });
+  }
+  function doComm(){
+    var gs = target(); if(!gs.length) return toast('절을 먼저 고르세요');
+    var g = gs[0], hits = APP.commHits ? APP.commHits(g.bi, g.ci, g.from) : [];
+    if(!hits || !hits.length) return toast('이 절에는 주석이 없습니다');
+    APP.showComm(g.bi, g.ci, g.from, hits);
+  }
+  function doMap(){ var gs = target(); if(!window.ATLAS) return; if(!gs.length) return ATLAS.openIndex(); var g = gs[0]; ATLAS.openFor(g.bi, g.ci, g.from); }
+  /* 색 고르기: 색연필을 길게 누르면 타원 팔레트가 부드럽게 튀어나온다 */
+  var pal = document.createElement('div'); pal.id = 'moPal'; pal.hidden = true;
+  pal.innerHTML = HLC.map(function(c){ return '<button type="button" class="pal-c hl-' + c + '" data-c="' + c + '"></button>'; }).join('') + '<button type="button" class="pal-x" data-c="" title="지우기">✕</button>';
+  document.body.appendChild(pal);
+  function palOpen(){
+    [].forEach.call(pal.querySelectorAll('.pal-c'), function(b){ b.classList.toggle('on', b.dataset.c === hlColor); b.title = window.HL && HL.nameOf ? HL.nameOf(b.dataset.c) : b.dataset.c; });
+    var r = pen.getBoundingClientRect();
+    pal.style.top = (r.top + r.height / 2) + 'px'; pal.style.right = (window.innerWidth - r.left + 8) + 'px';
+    pal.hidden = false; requestAnimationFrame(function(){ pal.classList.add('open'); });
+  }
+  function palClose(){ pal.classList.remove('open'); setTimeout(function(){ if(!pal.classList.contains('open')) pal.hidden = true; }, 220); }
+  pal.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    e.stopPropagation();
+    if(b.dataset.c){ hlColor = b.dataset.c; try{ localStorage.setItem('modu.hlColor', hlColor); }catch(err){} paintPen(); palClose(); if(selKeys().length) doPen(); else toast('색연필 · ' + (window.HL && HL.nameOf ? HL.nameOf(hlColor) : hlColor)); }
+    else { var gs = target(); if(gs.length && window.HL && HL.setColor) gs.forEach(function(g){ HL.setColor(g, null); }); clearSel(); palClose(); }
+  });
+  document.addEventListener('click', function(e){ if(!pal.hidden && !e.target.closest('#moPal') && !e.target.closest('.pen')) palClose(); });
+  var penT = null, penLong = false;
+  pen.addEventListener('touchstart', function(){ penLong = false; clearTimeout(penT); penT = setTimeout(function(){ penLong = true; try{ navigator.vibrate && navigator.vibrate(10); }catch(e){} palOpen(); }, 420); }, { passive:true });
+  pen.addEventListener('touchend', function(e){ clearTimeout(penT); if(penLong){ e.preventDefault(); setTimeout(function(){ penLong = false; }, 300); } }, { passive:false });
+  pen.addEventListener('touchmove', function(){ clearTimeout(penT); }, { passive:true });
+  pen.addEventListener('contextmenu', function(e){ e.preventDefault(); palOpen(); });
+  fab.addEventListener('click', function(e){
+    var b = e.target.closest('.mo-fab'); if(!b || penLong) return;
+    ({ pen:doPen, copy:doCopy, comm:doComm, map:doMap })[b.dataset.k]();
+  });
 
   var tabs = document.createElement('nav'); tabs.id = 'moTabs';
   tabs.innerHTML = [['read', '📖', '성경'], ['search', '🔍', '찾기'], ['notes', '📝', '메모'], ['atlas', '🗺', '지도'], ['more', '☰', '더보기']]
@@ -216,6 +294,34 @@
     var stBody = $('stBody');
     if(stBody) new MutationObserver(function(){ var sd = $('stSide'); if(narrow.matches && sd && sd._collapse && !stm.hidden) sd._collapse(); }).observe(stBody, { childList:true });   /* 글을 열면 목록을 접어 읽는 칸을 넓힌다 */
   }
+
+  /* ── 지도 창 '본문으로': 절에서 연 게 아니면 그냥 닫고 본문으로 · 학습 창 '← 뒤로': 앞 글이 없으면 닫는다 ── */
+  var agv = $('atGoVerse');
+  if(agv) agv.addEventListener('click', function(){ setTimeout(function(){ var m = $('atlasModal'); if(m && !m.hidden && window.ATLAS){ ATLAS.close(); APP.showView('read'); } }, 0); });
+  var stBack = $('stBack');
+  if(stBack){
+    /* 앞 글이 없어 비활성일 때 그 자리를 누르면 학습 창을 닫고 본문으로 (비활성 단추는 click 을 내지 않으므로 손가락 위치로 본다) */
+    var head = stBack.parentNode;
+    head.addEventListener('touchend', function(e){
+      if(!stBack.disabled || !narrow.matches) return;
+      var t = e.changedTouches[0], r = stBack.getBoundingClientRect();
+      if(t.clientX >= r.left - 6 && t.clientX <= r.right + 6 && t.clientY >= r.top - 6 && t.clientY <= r.bottom + 6){ e.preventDefault(); var c = $('stClose'); if(c) c.click(); APP.showView('read'); }
+    }, { passive:false });
+    head.addEventListener('click', function(e){
+      if(!stBack.disabled || !narrow.matches) return;
+      var r = stBack.getBoundingClientRect();
+      if(e.clientX >= r.left - 6 && e.clientX <= r.right + 6 && e.clientY >= r.top - 6 && e.clientY <= r.bottom + 6){ var c = $('stClose'); if(c) c.click(); APP.showView('read'); }
+    });
+  }
+  /* 3D 그림 → '평면 그림' 단추 */
+  new MutationObserver(function(ms){ ms.forEach(function(m){ [].forEach.call(m.addedNodes, function(n){
+    if(n.nodeType !== 1 || !n.classList || !n.classList.contains('st-3dbox')) return;
+    var tools = n.querySelector('.st-3dtools'); if(!tools || tools.querySelector('.mo-2d')) return;
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn mo-2d'; b.textContent = '평면 그림';
+    b.onclick = function(e){ e.stopPropagation(); try{ if(window.TERRAIN3D) TERRAIN3D.hide(); }catch(err){} var host = n.parentNode; n.remove(); var pv = host && host.querySelector('.st-preview'); if(pv) pv.hidden = false; };
+    tools.insertBefore(b, tools.firstChild.nextSibling);
+    var hint = tools.querySelector('.st-3dhint'); if(hint) hint.textContent = '한 손가락: 돌리기 · 두 손가락: 확대·옮기기';
+  }); }); }).observe(document.body, { childList:true, subtree:true });
 
   /* ── 좌우로 밀어 앞·뒤 장 ── */
   var sw = null, reader = $('reader');

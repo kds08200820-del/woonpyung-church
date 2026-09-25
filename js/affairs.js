@@ -941,6 +941,7 @@ console.log('[affairs.js] v20260923lic');
         '<button class="btn btn-line" id="al_mob_add" style="padding:4px 12px;font-size:.8rem">판 추가·저장</button><span id="al_mob_msg" style="font-size:.76rem;color:#7b8794"></span></div></div>' +
         '<div id="al_out"><p class="qt-loading" style="margin:0">불러오는 중…</p></div></div>';
       document.body.appendChild(ov);
+      function koTime(t) { if (!t) return ''; var d = new Date(t); if (isNaN(d)) return String(t).replace('T', ' ').slice(0, 16); var p = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(d); return p.replace('T', ' ').slice(0, 16); }
       // ── 원격 업데이트 판 목록 ──
       var relList = ov.querySelector('#al_rel_list'), relMsg = ov.querySelector('#al_rel_msg');
       function loadRel() {
@@ -993,7 +994,7 @@ console.log('[affairs.js] v20260923lic');
             rows.map(function (r) {
               return '<tr data-id="' + r.id + '"><td style="font-weight:700">' + esc(r.version) + (r.version === mobSiteVer ? ' <span style="font-size:.7rem;color:#1e874b">(사이트)</span>' : '') + '</td><td>' + (r.enabled ? '<span style="color:#1e874b;font-weight:700">켜짐</span>' : '<span style="color:#9aa5b1">꺼짐</span>') + '</td>' +
                 '<td><textarea class="al-mob-notes" rows="2" style="width:100%;box-sizing:border-box;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.76rem;padding:4px 6px">' + esc(r.notes || '') + '</textarea></td>' +
-                '<td>' + String(r.updated_at || '').replace('T', ' ').slice(0, 16) + '</td>' +
+                '<td>' + koTime(r.updated_at) + '</td>' +
                 '<td style="white-space:nowrap"><button class="btn btn-line al-mob-on" style="padding:3px 8px;font-size:.74rem;color:' + (r.enabled ? '#c0392b' : '#1e874b') + '">' + (r.enabled ? '배포 끄기' : '배포 켜기') + '</button> ' +
                 '<button class="btn btn-line al-mob-del" style="padding:3px 8px;font-size:.74rem">지우기</button></td></tr>';
             }).join('') + '</tbody></table>';
@@ -1017,7 +1018,7 @@ console.log('[affairs.js] v20260923lic');
       ov.querySelector('#al_close').onclick = close;
       ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
       var out = ov.querySelector('#al_out');
-      function fmtT(t) { return t ? String(t).replace('T', ' ').slice(0, 16) : ''; }
+      function fmtT(t) { return koTime(t); }
       function stale(t) { return t && (Date.now() - new Date(t).getTime()) > 35 * 864e5; }
       function load() {
         api('GET', 'app_licenses?select=*&order=no.asc').then(function (rows) {
