@@ -639,10 +639,11 @@
 <div class="toast" id="toast"></div>
 
 <!-- 사용 허가 — 인증 코드가 확인될 때까지 프로그램을 가린다 -->
+<!-- 사용 허가 문: 처음부터 열어 둔다 — 창이 뜨는 첫 화면이 "로딩 중"이어야 하고, 인증 확인이 끝나야 본문을 보인다 (모바일 빌드는 이 문을 감추고 bridge.js 의 문을 쓴다) -->
 <div id="licGate" hidden>
   <div class="lic-card">
     <div class="lic-brand"><img src="icon.png" alt="" class="lic-icon"><span data-app-title>2026 모두의 성경</span></div>
-    <h1 id="licTitle">인증 코드를 입력하세요</h1>
+    <h1 id="licTitle">로딩 중</h1>
     <div id="licMsg" class="lic-msg"></div>
     <div id="licCodeRow" hidden>
       <div class="lic-seg">
