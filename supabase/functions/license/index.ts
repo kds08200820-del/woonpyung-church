@@ -107,5 +107,6 @@ Deno.serve(async (req) => {
   const exp = Math.floor(now.getTime() / 1000) + VALID_DAYS * 86400;
   const token = b64url(JSON.stringify({ ch: hash, pid: pcId, iat: Math.floor(now.getTime() / 1000), exp, label: cut(row.label, 40), no: row.no }));
   const sig = await sign(token);
-  return out({ ok: true, token, sig, exp, dk: COMMENTARY_KEY || undefined, user_saved: userSaved });
+  const un = (patch.user_name as string) ?? row.user_name ?? null, ue = (patch.user_email as string) ?? row.user_email ?? null;
+  return out({ ok: true, token, sig, exp, dk: COMMENTARY_KEY || undefined, user_saved: userSaved, user_name: un || undefined, user_email: ue || undefined });
 });
