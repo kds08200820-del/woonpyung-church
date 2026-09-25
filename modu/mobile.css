@@ -33,7 +33,12 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 .dropmenu label,.dropmenu button{padding:11px 14px;font-size:15px}
 
 /* ── 위 막대: 큰 제목(누르면 목차) + 아이콘 ── */
-.vhead{flex-wrap:nowrap;gap:4px;padding:8px 6px 8px 14px;background:var(--accent);color:var(--accent-fg);border-bottom:none;position:sticky;top:0;z-index:30}
+#v-read .vhead{flex-wrap:nowrap;gap:4px;padding:8px 6px 8px 14px;background:var(--accent);color:var(--accent-fg);border-bottom:none;position:sticky;top:0;z-index:30}
+/* 다른 화면(찾기·메모·학습·설정)의 머리 줄은 원래 색 그대로, 줄바꿈만 허용 */
+.view:not(#v-read) .vhead{flex-wrap:wrap;gap:6px 8px;padding:8px 10px}
+.view:not(#v-read) .vhead h1{font-size:16px}
+.view:not(#v-read) .vhead input,.view:not(#v-read) .vhead select{color:var(--fg);background:var(--bg)}
+.searchwrap input{font-size:16px}
 .vhead h1.mo-title{font-size:21px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--accent-fg);cursor:pointer}
 .vhead h1.mo-title::after{content:' ▾';font-size:14px;opacity:.7}
 .vhead .spacer,.vhead .read-ver,#prev,#next,#geoBtn,#introBtn,#copyDrop,#navToggle,.mo-navbtn{display:none!important}

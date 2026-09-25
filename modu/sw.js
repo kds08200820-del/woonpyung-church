@@ -2,15 +2,15 @@
    · 앱 껍데기(html·css·js·글꼴)는 판(version)마다 새 저장소에 담고 옛것은 지운다
    · 큰 자료(R2 의 성경·사전·지도·주석)는 한 번 받으면 오래 둔다 (자료 판이 바뀌면 주소가 바뀐다)
    · Supabase(로그인·메모)는 늘 네트워크 */
-var VERSION = '1.0.1';
-var SHELL = 'modu-shell-' + VERSION, DATA = 'modu-data-v1';
+var VERSION = '1.0.2';
+var SHELL = 'modu-shell-' + VERSION, DATA = 'modu-data-v2';   /* v2: crossOrigin 없이 받아 둔 불투명 응답을 버린다 */
 var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'icon.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', function(e){
   e.waitUntil(caches.open(SHELL).then(function(c){ return c.addAll(CORE).catch(function(){}); }));
 });
 self.addEventListener('activate', function(e){
-  e.waitUntil(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return k.indexOf('modu-shell-') === 0 && k !== SHELL; }).map(function(k){ return caches.delete(k); })); }).then(function(){ return self.clients.claim(); }));
+  e.waitUntil(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return (k.indexOf('modu-shell-') === 0 && k !== SHELL) || (k.indexOf('modu-data-') === 0 && k !== DATA); }).map(function(k){ return caches.delete(k); })); }).then(function(){ return self.clients.claim(); }));
 });
 self.addEventListener('message', function(e){ if(e.data && e.data.type === 'skip') self.skipWaiting(); });
 
@@ -22,8 +22,9 @@ self.addEventListener('fetch', function(e){
   if(isData){
     e.respondWith(caches.open(DATA).then(function(c){
       return c.match(req).then(function(hit){
-        if(hit) return hit;
-        return fetch(req).then(function(r){ if(r && (r.ok || r.type === 'opaque')) c.put(req, r.clone()); return r; });
+        /* CORS 로 달라는 요청(캔버스·WebGL 에 쓰는 그림)에 불투명 응답을 주면 텍스처가 막힌다 → 다시 받는다 */
+        if(hit && !(req.mode === 'cors' && hit.type === 'opaque')) return hit;
+        return fetch(req).then(function(r){ if(r && r.ok) c.put(req, r.clone()); return r; });
       });
     }));
     return;

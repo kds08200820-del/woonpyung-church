@@ -193,11 +193,15 @@
   window.UPDATE = {
     check: function(){
       var cur = M.version || '0';
-      return callFn({ op:'me' }).then(function(r){
-        if(!r.ok) return { ok:false, why:'offline', cur:cur };
-        latest = r.release || null;
-        var newer = !!(latest && cmpVer(latest.version, cur) > 0);
-        return { ok:true, cur:cur, latest:latest ? { version:latest.version, notes:latest.notes, date:latest.updated_at, size:0, full:false } : null, newer:newer, ready:false, skipped:newer && prefs().skip === latest.version };
+      /* 사이트에 올라간 config.js 의 판이 곧 배포 판이다 (git push 만으로 안내가 나간다). 관리 화면의 공지문이 있으면 덧붙인다 */
+      var site = fetch('config.js?t=' + Date.now(), { cache:'no-store' }).then(function(r){ return r.text(); }).then(function(t){ var m = t.match(/"version":\s*"([^"]+)"/); var b = t.match(/"built":\s*"([^"]+)"/); return m ? { version:m[1], date:b ? b[1] : '' } : null; }).catch(function(){ return null; });
+      var srv = callFn({ op:'me' }).then(function(r){ return r.ok ? (r.release || null) : null; }).catch(function(){ return null; });
+      return Promise.all([site, srv]).then(function(a){
+        var s = a[0], rel = a[1];
+        if(!s) return { ok:false, why:'offline', cur:cur };
+        latest = { version:s.version, notes:(rel && rel.version === s.version ? rel.notes : '') || (rel && cmpVer(rel.version, s.version) >= 0 ? rel.notes : '') || '', updated_at:s.date };
+        var newer = cmpVer(latest.version, cur) > 0;
+        return { ok:true, cur:cur, latest:{ version:latest.version, notes:latest.notes, date:latest.updated_at, size:0, full:false }, newer:newer, ready:false, skipped:newer && prefs().skip === latest.version };
       });
     },
     download: function(){

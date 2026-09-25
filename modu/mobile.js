@@ -197,13 +197,18 @@
     grip.addEventListener('touchmove', function(e){ if(!d) return; var dy = e.touches[0].clientY - d.y; if(Math.abs(dy) > 4) d.moved = true; setH(o.after ? d.h + dy : d.h - dy); e.preventDefault(); }, { passive:false });
     grip.addEventListener('touchend', function(){ if(d && !d.moved) toggle(); d = null; });
     grip.addEventListener('click', function(e){ if(!('ontouchstart' in window)) toggle(); });
-    function toggle(){ var h = side.getBoundingClientRect().height; setH(h <= minH() + 4 ? Math.round(window.innerHeight * .38) : minH()); side.scrollTop = 0; }
+    function toggle(){
+      var h = side.getBoundingClientRect().height, mid = Math.round(window.innerHeight * .38);
+      if(o.big){ setH(h < maxH() - 4 ? maxH() : mid); }                    /* 지도 해설: 톡 누르면 크게 ↔ 보통 */
+      else setH(h <= minH() + 4 ? mid : minH());                              /* 학습 목록: 접기 ↔ 보통 */
+      side.scrollTop = 0;
+    }
     side._collapse = function(){ setH(minH()); side.scrollTop = 0; };
   }
   function armSplits(){
     if(!narrow.matches) return;
     var st = $('stSide'); if(st && st.parentNode) splitHandle(st, { after:true, keep:'.st-parts' });
-    var at = document.querySelector('#atlasModal .at-side'); if(at) splitHandle(at, { after:false });
+    var at = document.querySelector('#atlasModal .at-side'); if(at) splitHandle(at, { after:false, big:true });
   }
   var stm = $('studyModal');
   if(stm){
