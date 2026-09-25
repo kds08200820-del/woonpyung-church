@@ -112,6 +112,7 @@ console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 
       '<h2 id="dashWelcome" style="margin:0;font-size:1.15rem;color:var(--accent,#032257);">' + esc(me.memberName || '') + '님, 환영합니다 🙏</h2>' +
       '</div>' +
       '<h2 style="' + grp + 'margin-top:6px;">🕊 나의 신앙생활</h2>' +
+      '<div id="moduApp" style="margin-bottom:22px;"></div>' +
       '<div id="dashQt" style="margin-bottom:22px;"></div>' +
       '<div id="bibleRead" style="margin-bottom:22px;"></div>' +
       '<div id="qtProgress" style="margin-bottom:22px;"></div>' +
@@ -123,6 +124,7 @@ console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 
       '<div id="familyTree" style="margin-bottom:22px;"></div>' +
       '<p style="text-align:center;margin-top:14px;"><a class="btn btn-line" href="index.html#qt">이번 주 말씀·주보는 홈에서 보기 →</a></p>';
     loadWelcomeName(me);
+    loadModuApp(me);
     loadTodayQt(me);
     loadBibleReading(me);
     loadQtProgress(me);
@@ -131,6 +133,24 @@ console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 
     loadOfferings(me);
     loadMyDocs(me);
     loadFamily(me);
+  }
+
+  /* ================= 2026 모두의 성경 (모바일 웹앱) ================= */
+  function loadModuApp(me) {
+    var box = document.getElementById('moduApp'); if (!box) return;
+    var ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
+    var how = ios ? 'Safari 로 열어 <b>공유(⬆)</b> → <b>홈 화면에 추가</b>를 누르면 앱처럼 설치됩니다.'
+            : android ? '열린 뒤 <b>설정 → 홈 화면에 설치</b>(또는 Chrome 메뉴의 <b>앱 설치</b>)를 누르면 앱처럼 설치됩니다.'
+            : '휴대폰에서 이 페이지를 열어 설치하세요. PC 에서는 브라우저로 그대로 볼 수 있습니다.';
+    box.innerHTML = '<div class="form-card" style="padding:16px 18px;">' +
+      '<h3 style="margin:0 0 8px;font-size:1rem;color:var(--accent,#032257);">📱 2026 모두의 성경 <span id="moduVer" style="font-weight:400;font-size:.78rem;color:#7b8794"></span></h3>' +
+      '<p style="margin:0 0 10px;font-size:.86rem;line-height:1.6;color:#4b5563;">개역개정·역본 대조·원어 낱말 사전·주석·성경지도·메모장·형광펜을 휴대폰에서 씁니다. 정회원만 열 수 있고, 지금 로그인한 계정으로 바로 들어갑니다.</p>' +
+      '<p style="margin:0 0 12px;font-size:.8rem;line-height:1.6;color:#7b8794;">' + how + '</p>' +
+      '<a class="btn btn-solid" href="modu/" style="padding:8px 18px;">모두의 성경 열기 →</a></div>';
+    brFetch('modu_release?select=version,notes&enabled=eq.true&order=updated_at.desc&limit=1').then(function (rows) {
+      var r = rows && rows[0], el = document.getElementById('moduVer');
+      if (r && el) el.textContent = '판 ' + r.version;
+    }).catch(function () { });
   }
 
   /* ================= 나의 성경읽기 (구속사 365 · 우리말성경) ================= */

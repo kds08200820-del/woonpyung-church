@@ -933,6 +933,12 @@ console.log('[affairs.js] v20260923lic');
         '<div id="al_rel_list" style="font-size:.8rem;margin-bottom:8px"></div>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input id="al_rel_json" placeholder="make-update.js 가 복사해 준 JSON 을 붙여넣으세요  {&quot;version&quot;:&quot;3.6.0&quot;, …}" style="flex:1;min-width:280px;padding:5px 8px;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.78rem">' +
         '<button class="btn btn-line" id="al_rel_add" style="padding:4px 12px;font-size:.8rem">판 추가·저장</button><span id="al_rel_msg" style="font-size:.76rem;color:#7b8794"></span></div></div>' +
+        '<div id="al_mob" style="margin:0 0 14px;border:1px solid #d7dde6;border-radius:10px;padding:12px 14px;background:#f8fafc"><h4 style="margin:0 0 6px;font-size:.9rem;color:var(--accent,#032257)">📱 2026 모두의 성경(모바일) — 배포 중인 판</h4>' +
+        '<p style="margin:0 0 8px;font-size:.76rem;color:#7b8794;line-height:1.55">모바일판은 홈페이지 <code>/modu/</code> 에 올린 웹앱입니다. <code>node tools/build-mobile.js</code> 로 만들어 git 으로 올린 뒤, 여기에 같은 판 번호를 적고 <b>배포 켜기</b>를 누르면 켜 둔 휴대폰마다 새 판 안내가 뜹니다. 정회원 로그인으로만 열립니다.</p>' +
+        '<div id="al_mob_list" style="font-size:.8rem;margin-bottom:8px"></div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input id="al_mob_ver" placeholder="판 번호 (예: 1.0.0)" style="width:120px;padding:5px 8px;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.8rem">' +
+        '<input id="al_mob_notes" placeholder="공지문(바뀐 점)" style="flex:1;min-width:200px;padding:5px 8px;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.8rem">' +
+        '<button class="btn btn-line" id="al_mob_add" style="padding:4px 12px;font-size:.8rem">판 추가·저장</button><span id="al_mob_msg" style="font-size:.76rem;color:#7b8794"></span></div></div>' +
         '<div id="al_out"><p class="qt-loading" style="margin:0">불러오는 중…</p></div></div>';
       document.body.appendChild(ov);
       // ── 원격 업데이트 판 목록 ──
@@ -964,6 +970,35 @@ console.log('[affairs.js] v20260923lic');
         var body = { version: j.version, url: j.url || '', size: j.size || 0, sha256: j.sha256 || '', full_only: !!j.full, full_url: j.full_url || '', notes: j.notes || '', updated_at: new Date().toISOString() };
         api('POST', 'app_release?on_conflict=version', body, 'resolution=merge-duplicates,return=minimal').then(function () { relMsg.textContent = j.version + ' 저장됨 — 배포 켜기를 눌러 내보내세요.'; ov.querySelector('#al_rel_json').value = ''; loadRel(); }).catch(function (e) { relMsg.textContent = '실패: ' + e.message; });
       };
+      // ── 모바일판(2026 모두의 성경) 배포 판 목록 ──
+      var mobList = ov.querySelector('#al_mob_list'), mobMsg = ov.querySelector('#al_mob_msg');
+      function loadMob() {
+        api('GET', 'modu_release?select=*&order=updated_at.desc').then(function (rows) {
+          rows = rows || [];
+          if (!rows.length) { mobList.innerHTML = '<span style="color:#9aa5b1">아직 적은 판이 없습니다.</span>'; return; }
+          mobList.innerHTML = '<table class="fin-table" style="width:100%;font-size:.78rem"><thead><tr><th style="width:70px">판</th><th style="width:70px">배포</th><th>공지문</th><th style="width:120px">고친 때</th><th style="width:150px"></th></tr></thead><tbody>' +
+            rows.map(function (r) {
+              return '<tr data-id="' + r.id + '"><td style="font-weight:700">' + esc(r.version) + '</td><td>' + (r.enabled ? '<span style="color:#1e874b;font-weight:700">켜짐</span>' : '<span style="color:#9aa5b1">꺼짐</span>') + '</td>' +
+                '<td><textarea class="al-mob-notes" rows="2" style="width:100%;box-sizing:border-box;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.76rem;padding:4px 6px">' + esc(r.notes || '') + '</textarea></td>' +
+                '<td>' + String(r.updated_at || '').replace('T', ' ').slice(0, 16) + '</td>' +
+                '<td style="white-space:nowrap"><button class="btn btn-line al-mob-on" style="padding:3px 8px;font-size:.74rem;color:' + (r.enabled ? '#c0392b' : '#1e874b') + '">' + (r.enabled ? '배포 끄기' : '배포 켜기') + '</button> ' +
+                '<button class="btn btn-line al-mob-del" style="padding:3px 8px;font-size:.74rem">지우기</button></td></tr>';
+            }).join('') + '</tbody></table>';
+          Array.prototype.forEach.call(mobList.querySelectorAll('tr[data-id]'), function (tr) {
+            var id = tr.dataset.id, ta = tr.querySelector('.al-mob-notes'), t = null;
+            ta.oninput = function () { clearTimeout(t); t = setTimeout(function () { api('PATCH', 'modu_release?id=eq.' + id, { notes: ta.value, updated_at: new Date().toISOString() }, 'return=minimal').catch(function () { }); }, 600); };
+            var on = tr.querySelector('.al-mob-on');
+            on.onclick = function () { var en = on.textContent === '배포 켜기'; api('PATCH', 'modu_release?id=eq.' + id, { enabled: en, updated_at: new Date().toISOString() }, 'return=minimal').then(loadMob).catch(function (e) { alert('저장하지 못했습니다: ' + e.message); }); };
+            tr.querySelector('.al-mob-del').onclick = function () { if (!confirm('이 판 정보를 지울까요?')) return; api('DELETE', 'modu_release?id=eq.' + id, null, 'return=minimal').then(loadMob).catch(function (e) { alert('지우지 못했습니다: ' + e.message); }); };
+          });
+        }).catch(function (e) { mobList.innerHTML = '<span style="color:#c0392b">' + esc(e.message || '표가 없습니다 — supabase/20260925_2200_modu_bible.sql 실행') + '</span>'; });
+      }
+      ov.querySelector('#al_mob_add').onclick = function () {
+        var v = ov.querySelector('#al_mob_ver').value.trim(), n = ov.querySelector('#al_mob_notes').value.trim();
+        if (!/^\d+\.\d+\.\d+$/.test(v)) { mobMsg.textContent = '판 번호는 1.0.0 꼴로 적어 주세요.'; return; }
+        api('POST', 'modu_release?on_conflict=version', { version: v, notes: n, updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal').then(function () { mobMsg.textContent = v + ' 저장됨 — 배포 켜기를 눌러 내보내세요.'; ov.querySelector('#al_mob_ver').value = ''; ov.querySelector('#al_mob_notes').value = ''; loadMob(); }).catch(function (e) { mobMsg.textContent = '저장하지 못했습니다: ' + e.message; });
+      };
+      loadMob();
       loadRel();
       var close = pushBackClose(function () { ov.remove(); });
       ov.querySelector('#al_close').onclick = close;

@@ -1,0 +1,117 @@
+/* 2026 모두의 성경 — 휴대폰 배치 (style.css 뒤에 읽는다) */
+:root{--fs:17px;--lh:1.85;--maxw:100%;--mo-bar:54px;--sab:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;-webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+body{display:flex;flex-direction:column;min-height:100dvh}
+button,.btn{touch-action:manipulation}
+
+/* ── 위: 메뉴 줄만 얇게 (가로로 밀어 본다) ── */
+#topbar{position:sticky;top:0}
+#menubar{overflow-x:auto;overflow-y:hidden;white-space:nowrap;flex-wrap:nowrap;scrollbar-width:none;padding:3px 6px}
+#menubar::-webkit-scrollbar{display:none}
+.mb-item{flex:0 0 auto;padding:6px 10px;font-size:13.5px}
+.mb-item u{text-decoration:none}
+/* 도구 단추는 아래로 */
+#toolbar{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--panel);border-top:1px solid var(--line);
+  flex-wrap:nowrap;overflow-x:auto;padding:5px 8px calc(5px + var(--sab));gap:4px;scrollbar-width:none;box-shadow:0 -4px 14px rgba(0,0,0,.06)}
+#toolbar::-webkit-scrollbar{display:none}
+#toolbar .tb-b{flex:0 0 auto;width:42px;height:42px}
+#toolbar .tb-b svg{width:21px;height:21px}
+.tb-tip{display:none!important}
+#shell{flex:1;min-height:0;padding-bottom:calc(var(--mo-bar) + var(--sab))}
+#stage{min-width:0}
+#reader{padding-bottom:40px}
+.readwrap{padding:10px 14px 0}
+
+/* ── 메뉴 팝업은 아래 시트로 ── */
+.mb-pop{left:0!important;right:0!important;top:auto!important;bottom:0!important;min-width:0;max-height:70dvh;overflow:auto;
+  border-radius:16px 16px 0 0;padding:8px 8px calc(10px + var(--sab));box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+.mb-row{padding:11px 12px 11px 6px;font-size:15px;white-space:normal}
+/* 오른쪽 단추 메뉴도 시트로 */
+.cmenu{left:0!important;right:0!important;top:auto!important;bottom:0!important;min-width:0;max-height:72dvh;overflow:auto;
+  border-radius:16px 16px 0 0;padding:8px 8px calc(10px + var(--sab));box-shadow:0 -10px 40px rgba(0,0,0,.25);z-index:120}
+.cmenu button{padding:12px 14px;font-size:15px;white-space:normal}
+.cmenu .hl-row .hl-opts{max-width:none}
+/* 대조 성경·복사 드롭다운 */
+.dropmenu{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;max-height:70dvh;overflow:auto;
+  border-radius:16px 16px 0 0;padding-bottom:calc(10px + var(--sab));z-index:110}
+.dropmenu label,.dropmenu button{padding:11px 14px;font-size:15px}
+
+/* ── 본문 머리 ── */
+.vhead{flex-wrap:wrap;gap:6px 6px;padding:8px 10px}
+.vhead h1{font-size:16px;flex:1 1 120px;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.vhead .spacer{display:none}
+.vhead::after{content:'';flex-basis:100%;height:0;order:4}
+#stephBtn,#geoBtn,#introBtn,#verDrop,#copyDrop{order:5}
+#verDrop{margin-left:auto}
+.vhead .read-ver{display:none}
+.mo-navbtn{font-weight:700}
+#listenBtn,#player,#readModal,#recPop{display:none!important}
+.steph-bar{padding:6px 10px}
+
+/* ── 책·장 서랍 ── */
+#booknav{position:fixed;left:0;top:0;bottom:0;width:min(88vw,380px);z-index:70;box-shadow:0 0 40px rgba(0,0,0,.3);
+  border-right:none;padding-bottom:var(--sab)}
+#booknav .bn-bookcol .bn-grid{grid-template-columns:repeat(4,1fr)}
+#booknav .bn-grid button{min-height:40px;font-size:15px}
+#booknav .bn-chapcol{flex:0 0 110px}
+#moBack{position:fixed;inset:0;z-index:65;background:rgba(0,0,0,.35)}
+#moBack[hidden]{display:none}
+
+/* ── 낱말 뜻 상자: 톡 누르면 아래 시트 ── */
+#wordbox{display:none!important}
+#wordbox.mo-on{display:block!important;position:fixed;left:0;right:0;bottom:0;z-index:100;max-height:60dvh;overflow:auto;
+  background:var(--panel);border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);padding-bottom:var(--sab)}
+.wb-hint{display:none}
+.mo-wbclose{margin-left:auto}
+
+/* ── 창(모달)은 전체 화면 ── */
+.modal{padding:0;align-items:stretch}
+.modal-card,.atlascard,.kg-card,.studycard{width:100%;max-width:100%;height:100dvh;max-height:100dvh;border-radius:0;border:none}
+.at-modal,.kg-modal{padding:0}
+.m-body{padding:12px 14px}
+.m-head{padding:12px 14px 10px}
+.m-word{font-size:26px}
+.m-row{flex-direction:column;gap:2px}
+.m-row .k{flex:none}
+.m-foot{padding:10px 14px calc(12px + var(--sab))}
+/* 지도·학습: 옆 글 칸을 아래로 */
+.at-body,.st-wrap{flex-direction:column}
+.at-side,.st-side{flex:0 0 38dvh;border-left:none;border-right:none;border-top:1px solid var(--line);max-height:38dvh}
+.st-body{padding:14px 16px 60px}
+.at-head{flex-wrap:wrap}
+.at-pick{max-width:100%}
+
+/* ── 검색·메모·설정 ── */
+.searchwrap{max-width:100%}
+.searchopts{flex-wrap:wrap;gap:6px 10px}
+.nt-split{flex-direction:column}
+.nt-list{flex:0 0 36dvh;border-right:none;border-bottom:1px solid var(--line);max-height:36dvh}
+.nt-editor{padding:12px 14px}
+#ntForm{height:auto}
+.card{padding:14px 14px;border-radius:12px}
+#vbList{padding:12px 12px 60px}
+.vcard{flex-direction:column;gap:8px}
+.cols{grid-template-columns:36px 1fr!important;column-gap:10px}
+.cols .colhead{font-size:12px}
+.upd-ov{padding:0;align-items:flex-end}
+.upd-card{border-radius:16px 16px 0 0;max-width:100%;padding:18px 18px calc(18px + var(--sab))}
+
+/* ── 문(로그인) ── */
+#moGate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(circle at 30% 20%,#2b2420,#15110f 70%)}
+#moGate[hidden]{display:none}
+.mo-card{width:100%;max-width:420px;padding:26px 22px 18px;background:#fffdf9;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.55);color:#241f1a}
+.mo-brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;letter-spacing:.04em;color:#8a5a2b;margin-bottom:18px}
+.mo-brand img{width:30px;height:30px;border-radius:7px}
+.mo-msg{margin:0 0 14px;font-size:14.5px;line-height:1.7;color:#6b6055;word-break:keep-all}
+.mo-msg.bad{color:#b3261e}
+.mo-btn{display:block;width:100%;box-sizing:border-box;margin:8px 0;padding:13px 14px;border:1px solid #d9d2c6;border-radius:10px;background:#fff;
+  font-size:15.5px;font-weight:600;color:#241f1a;text-align:center;text-decoration:none}
+.mo-btn.primary{background:#8a5a2b;border-color:#8a5a2b;color:#fff}
+.mo-btn.kakao{background:#fee500;border-color:#fee500;color:#191919}
+.mo-or{margin:14px 0 6px;font-size:12.5px;color:#9a9086;text-align:center}
+.mo-in{display:block;width:100%;box-sizing:border-box;margin:6px 0;padding:12px 12px;border:1.5px solid #d9d2c6;border-radius:9px;background:#fff;font-size:16px}
+.mo-in:focus{border-color:#8a5a2b;outline:none}
+.mo-hint{margin-top:12px;font-size:12px;line-height:1.6;color:#9a9086;word-break:keep-all}
+.mo-foot{margin:18px 0 0;padding-top:12px;border-top:1px solid #efeae2;font-size:11.5px;color:#9a9086}
+#licGate,#regModal,#relModal{display:none!important}

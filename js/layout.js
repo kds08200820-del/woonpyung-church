@@ -69,6 +69,7 @@
           <img src="images/icon-192.png?v=20260625e" alt="" class="logo-mark" />
           <span class="logo-kr">운평장로교회</span>
         </a>
+        <a href="modu/" class="hdr-dash-btn hdr-bible-btn" id="hdrBible" style="display:none" title="2026 모두의 성경 — 정회원 전용">성경</a>
         <a href="dashboard.html" class="hdr-dash-btn" id="hdrDash" style="display:none">대시보드</a>
         <nav class="nav-menu" id="navMenu">${navLinks}</nav>
         <div class="auth-slot" id="authSlot"></div>
@@ -380,6 +381,8 @@
             if (row && row.member_status === "정회원") {
               const el = document.getElementById("navMember");
               if (el) el.style.display = "";
+              const hb = document.getElementById("hdrBible");            // 모두의 성경 — 정회원에게만
+              if (hb) hb.style.display = "";
               const card = document.querySelector(".auth-card");
               if (card && !card.querySelector(".ac-dash-go")) {
                 const a = document.createElement("a");
