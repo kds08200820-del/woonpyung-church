@@ -3287,10 +3287,11 @@ console.log('[affairs.js] v20260923lic');
       // 페이지 넘김용으로 쪼갠 조각(.pg-cont)을 모두 원상복구해, 원래 문단 구조 그대로의 HTML을 준다(wdPageView에서 대입).
       var wdCleanHtml = null;
       var ov = document.createElement('div');
-      ov.className = worshipMode ? 'sed-lightov' : 'sed-dark';   // 설교 매니저 = 다크 스튜디오, 예배 매니저 = 기존 라이트
+      // 설교 매니저·예배 매니저 모두 같은 Word 365(라이트) 테마(.sed-dark = 테마 루트). sed-lightov 는 예배 매니저 배치(스택형)용 표식만
+      ov.className = 'sed-dark' + (worshipMode ? ' sed-lightov' : '');
       ov.style.cssText = worshipMode
-        ? 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto'
-        : 'position:fixed;inset:0;background:#0d1526;z-index:9000;overflow:hidden;display:flex;flex-direction:column';
+        ? 'position:fixed;inset:0;background:#3d4b5c;z-index:9000;overflow:auto'
+        : 'position:fixed;inset:0;background:#3d4b5c;z-index:9000;overflow:hidden;display:flex;flex-direction:column';
       var svcList = SVC_OPTS.slice();
       (smRows || []).forEach(function (r) { if (r.service && svcList.indexOf(r.service) < 0) svcList.push(r.service); });   // 사용자 정의 분류(기타→새 이름)도 목록에
       if (rec.service && svcList.indexOf(rec.service) < 0) svcList.unshift(rec.service);   // 옛 명칭(예: 수요예배) 보존
@@ -3449,13 +3450,13 @@ console.log('[affairs.js] v20260923lic');
         '@media(max-width:1240px){.sed-lightov .sed-aside{position:static;left:auto;top:auto;width:auto;max-width:820px;margin:0 auto 20px}.sed-lightov .sed-form{max-width:820px}}' +
         '@media(max-width:560px){.sed-row2{grid-template-columns:1fr}.sed-aside-l{left:8px;right:8px;width:auto;top:64px}}' +
         // ═══ 설교 매니저 스튜디오(다크 3분할) — 헤더·리본·바인더·미리보기·상태바 ═══
-        '.sed-hd{position:sticky;top:0;z-index:6;background:linear-gradient(180deg,#ffffff 0%,#f7f9fc 100%);border-bottom:1px solid #e1e6ef;box-shadow:0 2px 10px rgba(3,34,87,.06)}' +
-        '.sed-brand{font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.18rem;letter-spacing:-.01em;color:var(--accent,#032257)}' +
-        '.sed-sub{font-size:.7rem;color:#9aa5b1;margin-top:1px;letter-spacing:.02em}' +
-        '.sed-status{font:inherit;font-size:.84rem;border:1px solid #dde3ec;border-radius:9px;padding:8px 10px;background:#fff;cursor:pointer;color:#33415c;font-weight:700}' +
-        '.sed-hbtn{padding:8px 13px;border-radius:9px}' +
-        '.sed-ribbon{display:flex;justify-content:center;padding:7px 12px;overflow-x:auto;flex:none}' +
-        '.sed-ribbon .se-toolbar{position:static;top:auto;flex-wrap:nowrap;white-space:nowrap;border-bottom:1px solid #e3e8f0;border-radius:11px}' +
+        '.sed-hd{position:sticky;top:0;z-index:6;background:var(--title,#2b579a);border-bottom:none;box-shadow:none}' +
+        '.sed-brand{font-weight:600;font-size:15px;letter-spacing:0;color:#fff}' +
+        '.sed-sub{font-size:12px;color:rgba(255,255,255,.75);margin-top:1px;letter-spacing:0}' +
+        '.sed-status{font:inherit;font-size:12.5px;border:1px solid rgba(255,255,255,.35);border-radius:4px;padding:0 8px;background:transparent;cursor:pointer;color:#fff;font-weight:600}' +
+        '.sed-hbtn{padding:0 11px;border-radius:4px}' +
+        '.sed-ribbon{display:flex;justify-content:center;padding:4px 12px 2px;overflow-x:auto;flex:none;background:var(--panel,#fff);border-bottom:1px solid var(--line,#e0e0e0)}' +
+        '.sed-ribbon .se-toolbar{position:static;top:auto;flex-wrap:nowrap;white-space:nowrap;border:none;border-radius:0;background:transparent;box-shadow:none}' +
         '.se-editor{border-radius:11px;border-top:1px solid #e3e8f0}' +
         '.se-editor h1{font-size:1.62em;font-weight:800;margin:.6em 0 .3em;color:#08213f}' +
         '.se-editor .se-note{background:#fef3c7;border-bottom:2px dotted #d4a53f;cursor:help}' +
@@ -3558,37 +3559,38 @@ console.log('[affairs.js] v20260923lic');
         '.sed-dark .wd-pagenum-item{color:#8b96a5}' +
         // ── 리본 2줄째(제목·본문·불러오기·용지·여백·배율) ──
         '.sed-ribbon2{padding-top:0}' +
-        '.sed-r2{display:flex;align-items:center;gap:7px;flex-wrap:wrap;width:100%;max-width:1400px;background:linear-gradient(180deg,#ffffff 0%,#f5f8fc 100%);border:1px solid #e3e8f0;border-radius:11px;padding:7px 10px}' +
+        '.sed-r2{display:flex;align-items:center;gap:7px;flex-wrap:wrap;width:100%;max-width:1400px;background:transparent;border:none;border-radius:0;padding:5px 4px}' +
         '.sed-r2 input[type=text]{font:inherit;font-size:.9rem;border:1px solid #dde3ec;border-radius:8px;padding:7px 10px;background:#fff;color:#22303f}' +
         '.r2-title{flex:2;min-width:180px;font-weight:700}' +
         '.r2-scrip{flex:1;min-width:150px}' +
         '.r2-btn{font:inherit;font-size:.82rem;border:1px solid #dde3ec;background:#fff;border-radius:8px;padding:7px 11px;cursor:pointer;color:#33415c;white-space:nowrap}' +
         '.r2-lbl{font-size:.76rem;color:#8a93a0;white-space:nowrap}' +
-        '.sed-dark .sed-r2{background:var(--panel);border-color:var(--line);border-radius:13px;box-shadow:var(--shadow)}' +
-        '.sed-dark .sed-r2 input[type=text]{background:var(--panel2);border-color:var(--line);color:var(--fg);border-radius:8px}' +
+        '.sed-dark .sed-r2{background:transparent;border:none;border-radius:0;box-shadow:none}' +
+        '.sed-dark .sed-r2 input[type=text]{background:#fff;border:1px solid #c8c8c8;color:var(--fg);border-radius:3px;height:28px;padding:0 9px;font-size:13px}' +
         '.sed-dark .sed-r2 input[type=text]:focus{border-color:var(--accent);outline:none}' +
         '.sed-dark .sed-r2 input[type=text]::placeholder{color:var(--fg3)}' +
-        '.sed-dark .r2-btn{background:var(--panel);border-color:var(--line);color:var(--fg2);border-radius:8px}' +
-        '.sed-dark .r2-btn:hover{border-color:var(--accent);color:var(--accent)}' +
-        '.sed-dark .r2-btn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
-        '.sed-dark .r2-lbl{color:var(--fg3)}' +
+        '.sed-dark .r2-btn{background:#fff;border:1px solid #c8c8c8;color:#444;border-radius:4px;height:28px;padding:0 10px;display:inline-flex;align-items:center;font-size:12.5px}' +
+        '.sed-dark .r2-btn:hover{background:#f0f0f0;border-color:#b0b0b0;color:#242424}' +
+        '.sed-dark .r2-btn.on{background:var(--sel);border-color:#b9cbe6;color:var(--fg)}' +
+        '.sed-dark .r2-lbl{color:var(--fg2)}' +
+        '.sed-dark .sed-r2 .se-sep{height:20px;align-self:center}' +
         '.sed-dark .sed-r2 input[type=range]{accent-color:var(--accent)}' +
         '.sed-lightov .wd-ctl{display:none}' +   // 예배 매니저에서는 용지·여백·배율 숨김
         '.sed-lightov .r2-sm{display:none}' +    // 예배 매니저에서는 본문 텍스트·기도 패널 버튼 숨김
-        '.r2-btn.on{background:#2c4a86;border-color:#2c4a86;color:#fff}' +
+        '.r2-btn.on{background:#dbe6f5;border-color:#b9cbe6;color:#242424}' +
         // ── 접이식 패널(성경 본문 텍스트 · 기도) — 리본과 같은 다크 바 ──
-        '.sed-panel{background:#10151d;border-bottom:1px solid #242e3e;padding:10px 16px 14px;flex:none;max-height:44vh;overflow-y:auto}' +
+        '.sed-panel{background:#fff;border-bottom:1px solid #e0e0e0;padding:10px 16px 14px;flex:none;max-height:44vh;overflow-y:auto}' +
         '.sed-panel-in{max-width:1100px;margin:0 auto}' +
-        '.sed-panel textarea{background:#161d29;border:1px solid #2a3547;color:#dde5f0;border-radius:9px;padding:9px 11px;font:inherit;resize:vertical}' +
-        '.sed-panel textarea:focus{border-color:#3f5578;outline:none}' +
+        '.sed-panel textarea{background:#fff;border:1px solid #c8c8c8;color:#242424;border-radius:3px;padding:9px 11px;font:inherit;resize:vertical}' +
+        '.sed-panel textarea:focus{border-color:#185abd;outline:none}' +
         '.sed-dark .sed-panel{background:var(--panel);border-bottom:1px solid var(--line)}' +
-        '.sed-dark .sed-panel textarea{background:var(--panel2);border-color:var(--line);color:var(--fg);border-radius:8px}' +
+        '.sed-dark .sed-panel textarea{background:#fff;border-color:#c8c8c8;color:var(--fg);border-radius:3px}' +
         '.sed-dark .sed-panel textarea:focus{border-color:var(--accent)}' +
         '.sed-dark .sed-panel textarea::placeholder{color:var(--fg3)}' +
         '.sed-dark .pn-h{color:var(--fg2)}.sed-dark .pn-h span{color:var(--fg3)}' +
         '.sed-dark .pn-sub{color:var(--fg3)}' +
         '.sed-dark #se_woorimal_chk{accent-color:var(--accent)}.sed-dark .pn-chk{color:var(--fg2)}' +
-        '.sed-dark #se_prayer_ai{color:var(--accent);border-color:var(--line);background:var(--panel2)}.sed-dark #se_prayer_ai:hover{border-color:var(--accent)}' +
+        '.sed-dark #se_prayer_ai:hover{background:#f0f0f0!important;border-color:#b0b0b0!important}' +
         // ── 시리즈 목록 머리글 + PDF 시리즈 줄 ──
         '.bd-serhead{font-size:.74rem;font-weight:700;color:#8fa0b5;margin:9px 0 5px}' +
         '.bd-serhead span{font-weight:400;color:#6d7c92}' +
@@ -3630,97 +3632,105 @@ console.log('[affairs.js] v20260923lic');
         '.rp-paper img{max-width:100%}' +
         '.rp-pageinfo{text-align:center;font-size:.74rem;color:#8b96a5;padding:8px 0 2px}' +
         '.sed-sb{display:flex;align-items:center;gap:18px;padding:7px 18px;font-size:.76rem;flex:none}' +
-        // ── 다크 테마(설교 매니저 스튜디오) — 「설교자의 성경」 네이비 테마 토큰: 단일 금색 강조, 평면·조용한 표면 ──
-        '.sed-dark{--bg:#0d1526;--panel:#141e36;--panel2:#1b2947;--line:#2a3a5c;--line2:#1e2c4a;--fg:#e8edf7;--fg2:#aab7d2;--fg3:#7d8cab;--accent:#e2b76b;--accent-fg:#0e1729;--accent-bg:#33301f;--sel:#1d2b4a;--shadow:0 1px 3px rgba(0,0,0,.45);--shadow2:0 10px 30px rgba(0,0,0,.55);background:var(--bg);color:var(--fg)}' +
+        // ── 테마 토큰(.sed-dark = 테마 루트, 두 모드 공통) — Microsoft Word 365 라이트: 흰 패널·Word 파랑 강조·짙은 회색 캔버스 위 흰 용지 ──
+        '.sed-dark{--bg:#3d4b5c;--panel:#ffffff;--panel2:#f3f3f3;--line:#e0e0e0;--line2:#ededed;--fg:#242424;--fg2:#616161;--fg3:#8a8a8a;--accent:#185abd;--accent-fg:#fff;--accent-bg:#e8f0fb;--sel:#dbe6f5;--title:#2b579a;--shadow:0 1px 2px rgba(0,0,0,.08);--shadow2:0 8px 28px rgba(0,0,0,.35);background:radial-gradient(ellipse at 50% 30%,#3d4b5c 0%,#2f3b4a 100%);color:var(--fg);font-family:\'Segoe UI\',\'맑은 고딕\',\'Malgun Gothic\',system-ui,sans-serif;font-size:13px}' +
+        '.sed-dark :focus-visible{outline:1px solid var(--accent);outline-offset:1px}' +
         // 아이콘(인라인 SVG) 공통
         '.ic{width:16px;height:16px;vertical-align:-3px;margin-right:5px;flex:none}' +
         '.ic-only .ic,.se-toolbar .ic{margin-right:0}' +
         '.se-toolbar button .ic + span{margin-left:5px}' +
         '.se-caret .ic{width:9px;height:9px;margin:0;vertical-align:0}' +
         // 헤더
-        '.sed-dark .sed-hd{background:var(--panel);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}' +
-        '.sed-dark .sed-brand{color:var(--fg)}.sed-dark .sed-sub{color:var(--fg3)}' +
-        '.sed-dark .sed-hd .btn{background:var(--panel);border:1px solid var(--line);color:var(--fg2);border-radius:8px;height:36px;padding:0 13px;display:inline-flex;align-items:center;font-weight:600;font-size:.84rem;box-shadow:none;transition:border-color .12s,color .12s,background .12s}' +
-        '.sed-dark .sed-hd .btn:hover{border-color:var(--accent);color:var(--accent);background:var(--panel)}' +
-        '.sed-dark .sed-hd .btn:focus-visible,.sed-dark .se-toolbar button:focus-visible,.sed-dark .r2-btn:focus-visible,.sed-dark .bd-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}' +
-        '.sed-dark .sed-hd .btn-solid,.sed-dark .btn-solid{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
-        '.sed-dark .sed-hd .btn-solid:hover,.sed-dark .btn-solid:hover{background:#ecc67f;border-color:#ecc67f;color:var(--accent-fg)}' +
-        '.sed-dark .sed-hd .btn-kakao{background:#fbe94d;border-color:#e6d23f;color:#3a2e00}.sed-dark .sed-hd .btn-kakao:hover{background:#fff27a;border-color:#e6d23f;color:#3a2e00}' +
-        '.sed-dark .sed-status{background:var(--panel2);border:1px solid var(--line);color:var(--accent);border-radius:8px;height:36px;padding:0 10px;font-weight:700}' +
-        '.sed-dark .sed-status:focus-visible{outline:2px solid var(--accent);outline-offset:1px}' +
-        '.sed-dark #se_msg{color:var(--fg2)}' +
-        // 리본
-        '.sed-dark .sed-ribbon{background:var(--bg);border-bottom:none;padding:8px 12px 0}' +
-        '.sed-dark .sed-ribbon2{padding:6px 12px 8px}' +
-        '.sed-dark .se-toolbar{background:var(--panel);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);padding:5px 9px;gap:2px}' +
-        '.sed-dark .se-toolbar button{color:var(--accent);background:transparent;border:1px solid transparent;border-radius:9px;min-width:34px;height:34px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;font-size:.84rem;font-weight:600;transition:background .12s}' +
-        '.sed-dark .se-toolbar button:hover{background:var(--accent-bg);box-shadow:none}' +
-        '.sed-dark .se-toolbar button:active{background:var(--sel)}' +
-        '.sed-dark .se-toolbar button.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}' +   /* 선택 글자가 굵게·기울임 등일 때 켜진 표시 */
+        // 제목 표시줄 — Word 파랑 바탕, 흰 글씨, 고스트 버튼
+        '.sed-dark .sed-hd{background:var(--title);border-bottom:none;box-shadow:none;color:#fff}' +
+        '.sed-dark .sed-brand{color:#fff}.sed-dark .sed-sub{color:rgba(255,255,255,.75)}' +
+        '.sed-dark .sed-hd .btn{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:4px;height:30px;padding:0 11px;display:inline-flex;align-items:center;font-weight:500;font-size:12.5px;box-shadow:none;transition:background .12s,border-color .12s}' +
+        '.sed-dark .sed-hd .btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.55);color:#fff}' +
+        '.sed-dark .sed-hd .btn:focus-visible,.sed-dark .sed-status:focus-visible{outline:1px solid #fff;outline-offset:1px}' +
+        '.sed-dark .sed-hd .btn-solid{background:#fff;border-color:#fff;color:var(--title);font-weight:600}' +
+        '.sed-dark .sed-hd .btn-solid:hover{background:#eef3fb;border-color:#eef3fb;color:var(--title)}' +
+        '.sed-dark .btn-solid{background:var(--accent);border:1px solid var(--accent);color:var(--accent-fg)}' +
+        '.sed-dark .btn-solid:hover{background:#1450a8;border-color:#1450a8;color:var(--accent-fg)}' +
+        '.sed-dark .sed-hd .btn-kakao,.sed-dark .btn-kakao{background:#fee500!important;border-color:#fee500!important;color:#191919!important}.sed-dark .sed-hd .btn-kakao:hover,.sed-dark .btn-kakao:hover{background:#f7de00!important;border-color:#f7de00!important;color:#191919!important}' +
+        '.sed-dark .sed-status{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:4px;height:30px;padding:0 8px;font-weight:600}' +
+        '.sed-dark .sed-status:hover{background:rgba(255,255,255,.14)}' +
+        '.sed-dark .sed-status option{color:#242424;background:#fff}' +
+        '.sed-dark #se_msg{color:rgba(255,255,255,.88)}' +
+        // 리본 — 흰 띠, 그룹 아래 이름표, 그룹 사이 세로선
+        '.sed-dark .sed-ribbon{background:var(--panel);border-bottom:1px solid var(--line);padding:4px 12px 2px}' +
+        '.sed-dark .sed-ribbon2{background:var(--panel2);border-bottom:1px solid var(--line);padding:4px 12px}' +
+        '.sed-dark .se-toolbar{background:transparent;border:none;border-radius:0;box-shadow:none;padding:2px 4px 0;gap:0;align-items:stretch}' +
+        '.sed-dark .se-grp{position:relative;padding:2px 4px 16px;gap:1px}' +
+        '.sed-dark .se-grp::after{content:attr(data-lbl);position:absolute;left:0;right:0;bottom:1px;text-align:center;font-size:10.5px;line-height:1;color:#767676;white-space:nowrap;pointer-events:none}' +
+        '.sed-dark .se-toolbar button{color:#444;background:transparent;border:1px solid transparent;border-radius:4px;min-width:30px;height:30px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:500;transition:background .1s}' +
+        '.sed-dark .se-toolbar button:hover{background:#f0f0f0;box-shadow:none}' +
+        '.sed-dark .se-toolbar button:active{background:#e6e6e6}' +
+        '.sed-dark .se-toolbar button.on{background:var(--sel);color:var(--fg);border-color:transparent;box-shadow:inset 0 0 0 1px #b9cbe6}' +   /* 선택 글자가 굵게·기울임 등일 때 켜진 표시 */
         '.se-toolbar button.on{background:#dbe6f5;box-shadow:inset 0 0 0 1px #b9cbe6}' +
-        '.sed-dark .se-toolbar select,.sed-dark .se-selflat{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:8px;height:34px;padding:0 8px}' +
+        '.sed-dark .se-toolbar select,.sed-dark .se-selflat{background:#fff;border:1px solid #c8c8c8;color:var(--fg);border-radius:3px;height:26px;padding:0 6px;font-size:12.5px;align-self:center}' +
         '.sed-dark .se-toolbar select:focus,.sed-dark .se-selflat:focus{border-color:var(--accent);outline:none}' +
-        '.sed-dark .se-size{background:var(--panel2);border:1px solid var(--line);border-radius:8px;height:34px}' +
-        '.sed-dark .se-size button{background:transparent;color:var(--accent);border-radius:0;min-width:26px;height:32px;padding:0}' +
-        '.sed-dark .se-size button:hover{background:var(--accent-bg)}' +
-        '.sed-dark .se-size select{background:var(--panel2);border:none;border-left:1px solid var(--line);border-right:1px solid var(--line);border-radius:0;color:var(--fg);height:32px;padding:0 4px}' +
-        '.sed-dark .se-sep{background:var(--line);height:20px;margin:0 6px}' +
+        '.sed-dark .se-size{background:#fff;border:1px solid #c8c8c8;border-radius:3px;height:26px;align-self:center}' +
+        '.sed-dark .se-size button{background:transparent;color:#444;border-radius:0;min-width:22px;height:24px;padding:0;font-size:13px}' +
+        '.sed-dark .se-size button:hover{background:#f0f0f0}' +
+        '.sed-dark .se-size select{background:#fff;border:none;border-left:1px solid #e0e0e0;border-right:1px solid #e0e0e0;border-radius:0;color:var(--fg);height:24px;padding:0 2px;width:42px;font-size:12.5px}' +
+        '.sed-dark .se-sep{background:#d6d6d6;height:auto;align-self:stretch;margin:2px 4px 6px}' +
         '.sed-dark .se-swbtn b{color:var(--fg)}' +
         '.sed-dark .se-hiico{color:#3a2e00}' +
         '.sed-dark .se-caret{color:var(--fg3)}' +
-        '.sed-dark .se-bible-btn{color:var(--accent)!important}.sed-dark .se-bible-btn:hover{background:var(--accent-bg)!important}' +
-        '.sed-dark .se-pop{background:var(--panel2);border-color:var(--line);box-shadow:var(--shadow2)}' +
-        '.sed-dark .se-setpop{background:var(--panel2);border-color:var(--line);box-shadow:var(--shadow2);color:var(--fg2);border-radius:13px}' +
+        '.sed-dark .se-bible-btn{color:var(--accent)!important;font-weight:600}.sed-dark .se-bible-btn:hover{background:var(--accent-bg)!important}' +
+        '.sed-dark .se-pop{background:#fff;border-color:#c8c8c8;box-shadow:var(--shadow2);border-radius:4px}' +
+        '.sed-dark .se-setpop{background:#fff;border-color:#c8c8c8;box-shadow:var(--shadow2);color:var(--fg2);border-radius:4px}' +
         '.sed-dark .se-setpop-h{color:var(--fg)}.sed-dark .se-setpop-note{color:var(--fg3)}' +
         '.sed-dark .se-setpop-row input[type=number]{background:var(--panel);border-color:var(--line);color:var(--fg)}' +
         // 본체 3분할
         '.sed-dark .sed-wrap{flex:1;min-height:0;display:flex;align-items:stretch;padding:0;position:relative}' +
-        '.sed-dark .sed-binder{width:274px;flex:none;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding:14px 13px 26px}' +
-        '.sed-dark .sed-binder .af-field label{color:var(--fg2);font-weight:600}' +
-        '.sed-dark .sed-binder .af-field input,.sed-dark .sed-binder .af-field select,.sed-dark .sed-binder .af-field textarea{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:8px}' +
+        '.sed-dark .sed-binder{width:274px;flex:none;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding:12px 13px 26px}' +
+        '.sed-dark .sed-binder .af-field label{color:var(--fg2);font-weight:600;font-size:12px}' +
+        '.sed-dark .sed-binder .af-field input,.sed-dark .sed-binder .af-field select,.sed-dark .sed-binder .af-field textarea{background:#fff;border:1px solid #c8c8c8;color:var(--fg);border-radius:3px}' +
         '.sed-dark .sed-binder .af-field input:focus,.sed-dark .sed-binder .af-field select:focus,.sed-dark .sed-binder .af-field textarea:focus{border-color:var(--accent);outline:none;box-shadow:none}' +
         '.sed-dark .sed-binder .af-field input::placeholder,.sed-dark .sed-binder .af-field textarea::placeholder{color:var(--fg3)}' +
-        '.sed-dark .sed-binder .btn{background:var(--panel2);border:1px solid var(--line);color:var(--fg2);border-radius:8px;font-weight:600;box-shadow:none}' +
-        '.sed-dark .sed-binder .btn:hover{border-color:var(--accent);color:var(--accent)}' +
-        '.sed-dark .sed-qt{background:var(--panel2);border-color:var(--line);color:var(--fg2)}' +   // 주변 입력칸과 같은 색
+        '.sed-dark .sed-binder .btn,.sed-dark .sed-aside .btn{background:#fff;border:1px solid #c8c8c8;color:#444;border-radius:4px;font-weight:500;box-shadow:none}' +
+        '.sed-dark .sed-binder .btn:hover,.sed-dark .sed-aside .btn:hover{background:#f0f0f0;border-color:#b0b0b0;color:var(--fg)}' +
+        '.sed-dark .sed-qt{background:#fff;border-color:#c8c8c8;color:var(--fg2);border-radius:3px}' +   // 주변 입력칸과 같은 색
         '.sed-dark .sed-qt input{accent-color:var(--accent)}' +
-        '.sed-dark .bd-tabs{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}' +
-        '.sed-dark .bd-tabs button{background:transparent;border:1px solid transparent;color:var(--fg2);border-radius:999px;padding:6px 3px}' +
-        '.sed-dark .bd-tabs button:hover{color:var(--accent)}' +
-        '.sed-dark .bd-tabs button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
-        '.sed-dark .bd-chip{background:var(--sel);border-color:var(--line);color:var(--fg)}' +
+        '.sed-dark .bd-tabs{background:transparent;border:none;border-bottom:1px solid var(--line);border-radius:0;padding:0;gap:0;margin-bottom:12px}' +
+        '.sed-dark .bd-tabs button{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--fg2);border-radius:0;padding:7px 3px 6px;font-weight:600;font-size:12.5px;margin-bottom:-1px}' +
+        '.sed-dark .bd-tabs button:hover{color:var(--fg);background:#f7f7f7}' +
+        '.sed-dark .bd-tabs button.on{background:transparent;border-bottom-color:var(--accent);color:var(--accent)}' +
+        '.sed-dark .bd-chip{background:var(--sel);border-color:#b9cbe6;color:var(--fg)}' +
         '.sed-dark .bd-chip button{color:var(--fg3)}.sed-dark .bd-chip button:hover{color:var(--accent)}' +
-        '.sed-dark .bd-doc{background:var(--panel2);border-color:var(--line);border-radius:8px}' +
-        '.sed-dark .bd-doc:hover{border-color:var(--accent)}' +
+        '.sed-dark .bd-doc{background:#fff;border-color:var(--line);border-radius:4px}' +
+        '.sed-dark .bd-doc:hover{border-color:#b9cbe6;background:#f7f9fc}' +
         '.sed-dark .bd-doc b{color:var(--fg)}.sed-dark .bd-doc span{color:var(--fg3)}' +
         '.sed-dark .bd-doc.cur{border-color:var(--accent);box-shadow:none;background:var(--sel)}' +
-        '.sed-dark .sed-main{flex:1;min-width:0;overflow-y:auto;overflow-x:auto;padding:26px 30px 70px;background:var(--bg)}' +
+        '.sed-dark .sed-main{flex:1;min-width:0;overflow-y:auto;overflow-x:auto;padding:26px 30px 70px;background:radial-gradient(ellipse at 50% 20%,#3d4b5c 0%,#2f3b4a 100%)}' +
         // 설교 매니저: 흰 카드 제거 — 문서(용지)가 캔버스 위에 바로 놓임. 폭은 상단 툴바와 같은 기준으로 가득
         '.sed-dark .sed-form{max-width:none;background:transparent;border:none;box-shadow:none;padding:0 0 30px;border-radius:0}' +
         '.sed-dark .sed-form textarea{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:8px}' +
         '.sed-dark .sed-form .af-field label,.sed-dark .sed-form label{color:var(--fg2)}' +
         '.sed-dark .se-count{color:var(--fg3)}' +
         '.sed-dark .sed-aside-r{position:static;right:auto;top:auto;width:392px;flex:none;overflow-y:auto;background:var(--panel);border-left:1px solid var(--line);padding:12px 12px 26px}' +
-        '.sed-dark .rp-tabs{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}' +
-        '.sed-dark .rp-tabs button{background:transparent;border:1px solid transparent;color:var(--fg2);border-radius:999px}' +
-        '.sed-dark .rp-tabs button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
-        '.sed-dark .qtc-card{background:var(--panel2);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);padding:0}' +
-        '.sed-dark .qtc-h{color:var(--fg);padding:11px 18px;border-bottom:1px solid var(--line);font-size:.95rem;font-weight:700}' +
+        '.sed-dark .rp-tabs{background:transparent;border:none;border-bottom:1px solid var(--line);border-radius:0;padding:0;gap:0}' +
+        '.sed-dark .rp-tabs button{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--fg2);border-radius:0;font-weight:600;font-size:12.5px;margin-bottom:-1px}' +
+        '.sed-dark .rp-tabs button:hover{color:var(--fg);background:#f7f7f7}' +
+        '.sed-dark .rp-tabs button.on{background:transparent;border-bottom-color:var(--accent);color:var(--accent)}' +
+        '.sed-dark .qtc-card{background:#fff;border:1px solid var(--line);border-radius:4px;box-shadow:none;padding:0}' +
+        '.sed-dark .qtc-h{color:var(--fg2);padding:9px 14px;border-bottom:1px solid var(--line);font-size:12px;font-weight:600;letter-spacing:.02em}' +
         '.sed-dark .qtc-card>*:not(.qtc-h){margin-left:14px;margin-right:14px}' +
         '.sed-dark .qtc-card>.qtc-sub,.sed-dark .qtc-card>.wp-state{margin-top:10px}' +
         '.sed-dark .qtc-card>*:last-child{margin-bottom:14px}' +
         '.sed-dark .qtc-sub{color:var(--fg3)}.sed-dark .qtc-sub b{color:var(--fg2)}' +
-        '.sed-dark .qtc-paste{background:var(--panel);border-color:var(--line);color:var(--fg);border-radius:8px}.sed-dark .qtc-paste:focus{border-color:var(--accent)}.sed-dark .qtc-paste::placeholder{color:var(--fg3)}' +
-        '.sed-dark .qtc-rrow{background:var(--sel);color:var(--fg2)}.sed-dark .qtc-rrow b{color:var(--fg)}' +
-        '.sed-dark .qtc-card .btn{background:var(--panel);border:1px solid var(--line);color:var(--fg2);border-radius:8px;box-shadow:none}.sed-dark .qtc-card .btn:hover{border-color:var(--accent);color:var(--accent)}' +
-        '.sed-dark .qtc-card .btn-solid{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
+        '.sed-dark .qtc-paste{background:#fff;border-color:#c8c8c8;color:var(--fg);border-radius:3px}.sed-dark .qtc-paste:focus{border-color:var(--accent)}.sed-dark .qtc-paste::placeholder{color:var(--fg3)}' +
+        '.sed-dark .qtc-rrow{background:var(--panel2);color:var(--fg2)}.sed-dark .qtc-rrow b{color:var(--fg)}' +
+        '.sed-dark .qtc-card .btn{background:#fff;border:1px solid #c8c8c8;color:#444;border-radius:4px;box-shadow:none}.sed-dark .qtc-card .btn:hover{background:#f0f0f0;border-color:#b0b0b0;color:var(--fg)}' +
+        '.sed-dark .qtc-card .btn-solid{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}.sed-dark .qtc-card .btn-solid:hover{background:#1450a8;border-color:#1450a8;color:var(--accent-fg)}' +
         '.sed-dark .qtc-foot{border-top:1px solid var(--line)!important}' +
         '.sed-dark #qtc_msg{color:var(--fg2)}' +
-        // 상태바
-        '.sed-dark .sed-sb{background:var(--panel);border-top:1px solid var(--line);color:var(--fg3)}' +
-        '.sed-dark .sed-sb b{color:var(--fg2)}.sed-dark .sed-sb input[type=range]{accent-color:var(--accent)}' +
+        // 상태바 — Word처럼 제목 표시줄 파랑, 흰 글씨
+        '.sed-dark .sed-sb{background:var(--title);border-top:none;color:#fff;font-size:12px;height:25px;padding:0 14px;box-sizing:border-box}' +
+        '.sed-dark .sed-sb b{color:#fff;font-weight:500}.sed-dark .sed-sb input[type=range]{accent-color:#fff;height:14px}' +
         // 스크롤바
-        '.sed-dark ::-webkit-scrollbar{width:10px;height:10px}.sed-dark ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;border:2px solid transparent;background-clip:padding-box}.sed-dark ::-webkit-scrollbar-thumb:hover{background:var(--fg3);background-clip:padding-box}.sed-dark ::-webkit-scrollbar-track{background:transparent}' +
+        '.sed-dark ::-webkit-scrollbar{width:12px;height:12px}.sed-dark ::-webkit-scrollbar-thumb{background:#c1c1c1;border-radius:6px;border:2px solid #f3f3f3;background-clip:padding-box}.sed-dark ::-webkit-scrollbar-thumb:hover{background:#a8a8a8;background-clip:padding-box}.sed-dark ::-webkit-scrollbar-track{background:#f3f3f3}' +
         '.sed-dark .sed-aside-l{left:286px;top:118px}' +   // 성경 보기: 바인더 옆·리본 아래에서 열림(openPop이 리본 높이에 맞춰 재계산)
         '@media(max-width:1120px){.sed-dark .sed-aside-l{left:8px;right:8px;width:auto;top:64px}}' +
         // ── 성경 보기: 보기 설정(배경·글씨·줄간격) + 배경 테마 ──
@@ -3735,8 +3745,8 @@ console.log('[affairs.js] v20260923lic');
         '.mb-text[data-bg=cream]{background:#fdfcf8;color:#22303f}' +
         '.mb-text[data-bg=sepia]{background:#f2e7ce;color:#463823}.mb-text[data-bg=sepia] .mb-vn{color:#8a6d35}' +
         // 성경 보기 카드 자체를 다크 스튜디오와 어울리게
-        '.sed-dark .mb-card{background:var(--panel);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow2)}' +
-        '.sed-dark .mb-head{background:var(--panel);color:var(--fg);border-bottom:1px solid var(--line);padding:11px 18px;box-shadow:var(--shadow)}' +
+        '.sed-dark .mb-card{background:var(--panel);border:1px solid #c8c8c8;border-radius:4px;box-shadow:var(--shadow2)}' +
+        '.sed-dark .mb-head{background:var(--panel2);color:var(--fg);border-bottom:1px solid var(--line);padding:9px 14px;box-shadow:none;font-family:inherit;font-size:13px;font-weight:600}' +
         '.sed-dark .mb-close{color:var(--fg3);border-radius:8px}.sed-dark .mb-close:hover{background:var(--accent-bg);color:var(--accent)}' +
         '.sed-dark .mb-close .ic{margin:0}' +
         '.sed-dark .mb-trans button{background:transparent;border-color:var(--line);color:var(--fg2)}' +
@@ -3750,12 +3760,14 @@ console.log('[affairs.js] v20260923lic');
         '.sed-dark #mb_fs_v{color:var(--fg)}' +
         '.sed-dark #mb_lh{background:var(--panel2);border-color:var(--line);color:var(--fg)}' +
         '.sed-dark .mb-text{border-color:var(--line)}' +
-        '.sed-dark .mb-text[data-bg=dark]{background:var(--bg);color:var(--fg2)}.sed-dark .mb-text[data-bg=dark] .mb-thead{color:var(--fg);border-color:var(--line)}.sed-dark .mb-text[data-bg=dark] .mb-thead span:last-child{color:var(--fg3)}.sed-dark .mb-text[data-bg=dark] .mb-vn{color:var(--accent)}' +
+        '.sed-dark .mb-text[data-bg=dark]{background:#1f2937;color:#d5dde8}.sed-dark .mb-text[data-bg=dark] .mb-thead{color:#f3f6fa;border-color:#374151}.sed-dark .mb-text[data-bg=dark] .mb-thead span:last-child{color:#9aa5b1}.sed-dark .mb-text[data-bg=dark] .mb-vn{color:#8ab4f8}' +
         '.sed-dark .mb-ins{background:var(--panel2);border-color:var(--line);color:var(--accent)}.sed-dark .mb-ins:hover{background:var(--accent-bg)}' +
         '.sed-dark .mb-hint{color:var(--fg3)}' +
         // ── 예배 매니저(라이트) 배치: 바인더는 상단 카드, 시리즈·첨부 탭 숨김 ──
         '.sed-mode-worship .sed-main{display:contents}' +
-        '.sed-mode-worship .sed-binder{position:static;width:auto;max-width:780px;margin:0 auto 14px;background:#fff;border:1px solid #e7ebf2;border-radius:14px;padding:16px 18px 8px;order:0}' +
+        '.sed-dark .sed-wrap.sed-mode-worship{display:flex;flex-direction:column;padding:22px 24px 70px}' +
+        '.sed-mode-worship .sed-binder{position:static;width:auto;max-width:780px;margin:0 auto 14px;background:#fff;border:1px solid var(--line,#e0e0e0);border-radius:4px;box-shadow:var(--shadow2);padding:16px 18px 8px;order:0;overflow:visible}' +
+        '.sed-mode-worship .sed-aside>.af-field{background:#fff;border:1px solid var(--line,#e0e0e0);border-radius:4px;box-shadow:var(--shadow2);padding:16px 18px 12px}' +
         '.sed-mode-worship .bd-tabs,.sed-mode-worship .bd-pane-series,.sed-mode-worship .bd-pane-attach{display:none!important}' +
         '.sed-mode-worship .bd-pane-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}' +
         // ── 반응형: 좁은 화면에서는 세로 스택 ──
@@ -3773,8 +3785,8 @@ console.log('[affairs.js] v20260923lic');
         '<select id="se_status" class="sed-status" title="작성 상태">' + ['작성중', '수정중', '완료'].map(function (s) { return '<option' + (s === (rec.status || '작성중') ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>' +
         '<button class="btn btn-line sed-hbtn" id="se_save">' + ic('save') + '저장</button>' +
         (worshipMode ? '' : '<button class="btn btn-line sed-hbtn ic-only" id="se_settings" title="자동 임시저장 설정" aria-label="자동 임시저장 설정" style="padding-left:10px;padding-right:10px">' + ic('settings') + '</button>') +
-        '<button class="btn btn-line sed-hbtn btn-kakao" id="se_kakao" style="background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">' + ic('chat') + '카카오톡 복사</button>' +
-        '<button class="btn btn-line sed-hbtn btn-kakao" id="se_kakao_at" title="이 QT를 정해진 시각에 카카오톡 단톡방으로 자동 발송합니다 (집/교회 PC 워커가 보냅니다)" style="background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">' + ic('clock') + '예약 발송</button>' +
+        '<button class="btn btn-line sed-hbtn btn-kakao" id="se_kakao" style="background:#fee500;border-color:#fee500;color:#191919;font-weight:600;display:none">' + ic('chat') + '카카오톡 복사</button>' +
+        '<button class="btn btn-line sed-hbtn btn-kakao" id="se_kakao_at" title="이 QT를 정해진 시각에 카카오톡 단톡방으로 자동 발송합니다 (집/교회 PC 워커가 보냅니다)" style="background:#fee500;border-color:#fee500;color:#191919;font-weight:600;display:none">' + ic('clock') + '예약 발송</button>' +
         '<button class="btn btn-line sed-hbtn" id="se_preview">' + ic('eye') + '미리보기</button>' +
         (worshipMode ? '' : '<button class="btn btn-line sed-hbtn" id="se_present">' + ic('monitor') + '발표자 모드</button>') +
         (worshipMode ? '' : '<button class="btn btn-line sed-hbtn" id="se_pdf">' + ic('filedown') + '내보내기</button>') +
@@ -3787,17 +3799,17 @@ console.log('[affairs.js] v20260923lic');
         // ── 전역 리본 툴바 (설교 매니저 전용 — 예배 매니저는 숨김) ──
         '<div class="sed-ribbon"' + (worshipMode ? ' style="display:none"' : '') + '>' +
         '<div class="se-toolbar" id="se_tb">' +
-        '<span class="se-grp">' +
+        '<span class="se-grp" data-lbl="실행취소">' +
         '<button type="button" data-cmd="undo" title="실행취소" aria-label="실행취소">' + ic('undo') + '</button><button type="button" data-cmd="redo" title="다시실행" aria-label="다시실행">' + ic('redo') + '</button>' +
         '</span><span class="se-sep"></span>' +
-        '<span class="se-grp">' +
+        '<span class="se-grp" data-lbl="글꼴">' +
         '<select id="se_block" class="se-selflat" title="문단 스타일"><option value="p">본문</option><option value="h1">큰제목</option><option value="h2">제목</option><option value="h3">소제목</option><option value="blockquote">인용</option></select>' +
         '<select id="se_font" class="se-selflat se-selfont" title="글꼴 · 모두 저작권 없는 오픈폰트">' + fontOptsHtml + '</select>' +
         '<span class="se-size" title="글자 크기(px)"><button type="button" id="se_size_dn" title="작게">−</button><select id="se_size">' + sizeOptsHtml + '</select><button type="button" id="se_size_up" title="크게">+</button></span>' +
         '<select id="se_lh" class="se-selflat" title="줄간격"><option value="" disabled selected>줄간격</option><option value="1.5">1.5</option><option value="1.75">1.75</option><option value="2">2.0</option><option value="2.4">2.4</option><option value="2.8">2.8</option></select>' +
         '<select id="se_ls" class="se-selflat" title="자간(px)"><option value="" disabled selected>자간</option><option value="0">0px</option><option value="0.5">0.5px</option><option value="1">1px</option><option value="2">2px</option></select>' +
         '</span><span class="se-sep"></span>' +
-        '<span class="se-grp">' +
+        '<span class="se-grp" data-lbl="글자">' +
         '<button type="button" data-cmd="bold" title="굵게" style="font-weight:800">B</button>' +
         '<button type="button" data-cmd="italic" title="기울임" style="font-style:italic">I</button>' +
         '<button type="button" data-cmd="underline" title="밑줄" style="text-decoration:underline">U</button>' +
@@ -3808,11 +3820,11 @@ console.log('[affairs.js] v20260923lic');
         '<button type="button" data-cmd="removeFormat" title="선택 부분 서식 지우기">' + ic('eraser') + '<span>서식</span></button>' +
         '<button type="button" id="se_fontreset" title="원고 전체의 글꼴·크기·색을 기본값으로 되돌립니다">폰트 초기화</button>' +
         '</span><span class="se-sep"></span>' +
-        '<span class="se-grp">' +
+        '<span class="se-grp" data-lbl="스타일">' +
         '<button type="button" data-blk="h1" title="큰제목">H₁</button><button type="button" data-blk="h2" title="제목">H₂</button><button type="button" data-blk="h3" title="소제목">H₃</button>' +
         '<button type="button" data-blk="blockquote" title="인용구">' + ic('quote') + '<span>인용</span></button>' +
         '</span><span class="se-sep"></span>' +
-        '<span class="se-grp">' +
+        '<span class="se-grp" data-lbl="단락">' +
         '<button type="button" data-cmd="insertUnorderedList" title="글머리 목록">' + ic('list') + '<span>목록</span></button>' +
         '<button type="button" data-cmd="insertOrderedList" title="번호 목록">' + ic('listOl') + '<span>번호</span></button>' +
         '<button type="button" id="se_chk" title="체크 기호 삽입" aria-label="체크 기호 삽입">' + ic('check') + '</button>' +
@@ -3821,7 +3833,7 @@ console.log('[affairs.js] v20260923lic');
         '<button type="button" data-cmd="justifyRight" title="오른쪽 정렬" aria-label="오른쪽 정렬">' + ic('alignR') + '</button>' +
         '<button type="button" data-cmd="justifyFull" title="양쪽 정렬" aria-label="양쪽 정렬">' + ic('alignJ') + '</button>' +
         '</span><span class="se-sep"></span>' +
-        '<span class="se-grp">' +
+        '<span class="se-grp" data-lbl="삽입">' +
         '<button type="button" id="se_ins_bible" title="본문 칸의 성경 구절을 굵게 삽입">' + ic('book') + '<span>구절</span></button>' +
         '<button type="button" data-cmd="insertHorizontalRule" title="구분선">' + ic('minus') + '<span>구분선</span></button>' +
         '<button type="button" id="se_bible_open" class="se-bible-btn" title="성경을 왼쪽에서 열기">' + ic('book') + '<span>성경</span></button>' +
@@ -3831,7 +3843,7 @@ console.log('[affairs.js] v20260923lic');
         '<button type="button" id="se_ill_ins" title="예화 검색·삽입">' + ic('bulb') + '<span>예화</span></button>' +
         '<button type="button" id="se_ill_save" title="선택한 문단을 예화 보관함에 저장">' + ic('save') + '<span>예화 저장</span></button>' +
         '</span><span class="se-sep"></span>' +
-        '<span class="se-grp"><button type="button" id="se_tb_reset" title="도구 배치 초기화 — 도구는 꾹 눌러 끌면 위치를 바꿀 수 있습니다" aria-label="도구 배치 초기화">' + ic('reset') + '</button></span>' +
+        '<span class="se-grp" data-lbl="도구"><button type="button" id="se_tb_reset" title="도구 배치 초기화 — 도구는 꾹 눌러 끌면 위치를 바꿀 수 있습니다" aria-label="도구 배치 초기화">' + ic('reset') + '</button></span>' +
         '</div></div>' +
         // ── 리본 2줄째: 제목·본문(성경)·불러오기 + 용지·여백·배율 (예배 매니저에서는 제목·본문만) ──
         '<div class="sed-ribbon sed-ribbon2"><div class="sed-r2">' +
@@ -3851,8 +3863,8 @@ console.log('[affairs.js] v20260923lic');
         // ── 접이식 패널: 출력되는 성경 본문 / 기도 (리본 버튼으로 열고 닫음 — 원고 영역과 분리) ──
         '<div class="sed-panel" id="pn_bible" style="display:none"><div class="sed-panel-in">' +
         '<div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">' +
-        '<span class="pn-h" style="font-size:.82rem;font-weight:700;color:#8fa0b5">' + ic('book') + '성경 본문 <span style="font-weight:400;color:#6d7c92">(PDF·아이패드에 출력되는 본문)</span></span>' +
-        '<label class="pn-chk" style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#4fae95"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488;margin:0"> 우리말성경</label>' +
+        '<span class="pn-h" style="font-size:12px;font-weight:600;color:#616161">' + ic('book') + '성경 본문 <span style="font-weight:400;color:#8a8a8a">(PDF·아이패드에 출력되는 본문)</span></span>' +
+        '<label class="pn-chk" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;cursor:pointer;color:#242424"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#185abd;margin:0"> 우리말성경</label>' +
         '<span id="se_bible_loading" style="font-size:.75rem;color:#9aa5b1;margin-left:4px"></span>' +
         '</div>' +
         // 우리말성경 체크는 항상 꺼진 상태가 기본값 — 매일 QT/새벽기도(qtOn)일 때만 처음부터 2단으로 보임(체크와 무관하게), 아래 syncQt()가 실제 표시를 정함
@@ -3863,7 +3875,7 @@ console.log('[affairs.js] v20260923lic');
         '<textarea id="se_qt_bible" placeholder="우리말성경 본문을 붙여넣으세요." style="min-height:150px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
         '</div></div></div>' +
         '<div class="sed-panel" id="pn_prayer" style="display:none"><div class="sed-panel-in">' +
-        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span class="pn-h" style="font-size:.82rem;font-weight:700;color:#8fa0b5">' + ic('hand') + '기도</span><span class="pn-sub" style="font-weight:400;font-size:.74rem;color:#6d7c92">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#b79df1;border-color:#4a3d73;background:#1b2431">' + ic('sparkles') + 'AI 생성</button></div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span class="pn-h" style="font-size:12px;font-weight:600;color:#616161">' + ic('hand') + '기도</span><span class="pn-sub" style="font-weight:400;font-size:11.5px;color:#8a8a8a">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:12px;font-weight:600;color:#185abd;border:1px solid #c8c8c8;background:#fff;border-radius:4px">' + ic('sparkles') + 'AI 생성</button></div>' +
         '<textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:130px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.prayer || '') + '</textarea>' +
         '</div></div>' +
         '<div class="sed-wrap ' + (worshipMode ? 'sed-mode-worship' : 'sed-mode-sermon') + '">' +
@@ -3912,7 +3924,7 @@ console.log('[affairs.js] v20260923lic');
         '<div id="se_hymn_chips" style="min-height:20px;margin-bottom:6px"></div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button type="button" class="btn btn-line" id="se_hymn_pick2" style="padding:7px 4px;font-size:.78rem">' + ic('search') + '번호·제목 검색</button><button type="button" class="btn btn-line" id="se_hymn_reco_btn" style="padding:7px 4px;font-size:.78rem">' + ic('sparkles') + '주제 추천</button></div>' +
         '<div id="se_hymn_reco" style="display:none;margin-top:8px"></div></div>' +
-        '<div class="af-field se-hide-worship"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e;margin:0;flex:none">함께 만들기</label></div>' +
+        '<div class="af-field se-hide-worship"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#185abd;margin:0;flex:none">함께 만들기</label></div>' +
         '<div class="af-field se-hide-worship"><label>' + ic('tag') + '키워드 <span style="font-weight:400">(최대 3개)</span></label><input type="text" id="se_keywords" value="' + esc(rec.keywords || '') + '" placeholder="쉼표로 구분"></div>' +
         '<div class="af-field se-hide-worship"><label>' + ic('pencil') + '미리보기 요약</label><textarea id="se_summary" maxlength="500" placeholder="목록·카드 하단에 노출 (최대 500자, 2줄까지 표시)" style="min-height:74px">' + esc(rec.summary || '') + '</textarea></div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
@@ -4291,8 +4303,9 @@ console.log('[affairs.js] v20260923lic');
         var showW = wmOn();
         if (qtWrap) qtWrap.style.display = showW ? '' : 'none';
         if (bibleColsEl) bibleColsEl.style.gridTemplateColumns = showW ? '1fr 1fr' : '1fr';
-        if (kakaoBtn) kakaoBtn.style.display = qtOn() ? '' : 'none';
-        if (kakaoAtBtn) kakaoAtBtn.style.display = qtOn() ? '' : 'none';
+        /* 카카오톡 복사·예약 발송은 설교 매니저에서 늘 보인다 (주일 설교도 단톡방에 보내므로 — 예전엔 QT 를 켠 때만 보여 주일 설교에서 사라졌다) */
+        if (kakaoBtn) kakaoBtn.style.display = worshipMode ? 'none' : '';
+        if (kakaoAtBtn) kakaoAtBtn.style.display = worshipMode ? 'none' : '';
       }
       var isQtSvc = (rec.service === '매일 QT' || rec.service === '새벽기도');
       if (qtToggle) {
