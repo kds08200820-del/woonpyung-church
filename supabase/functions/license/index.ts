@@ -86,7 +86,6 @@ Deno.serve(async (req) => {
   const now = new Date();
   const patch: Record<string, unknown> = {
     last_verified_at: now.toISOString(),
-    verify_count: (row.verify_count ?? 0) + 1,
     app_version: cut(b.app, 20),
   };
   // 사용자 등록(이름·교회, 이메일) — 설치 마법사나 앱의 등록 창이 보낸다. 업그레이드 안내에 쓴다.

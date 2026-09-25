@@ -989,7 +989,7 @@ console.log('[affairs.js] v20260923lic');
                   '<input class="al-uemail" type="email" value="' + esc(r.user_email || '') + '" placeholder="등록 이메일" title="프로그램에서 등록한 이메일 — 직접 고칠 수 있음' + (r.registered_at ? ' (등록 ' + esc(fmtT(r.registered_at)) + ')' : '') + '" style="' + ist + ';margin-top:3px;font-size:.76rem">' +
                   (r.user_email ? '<a href="mailto:' + esc(r.user_email) + '" style="font-size:.7rem;color:#2563eb">메일 보내기</a>' : '') + '</td>' +
                 '<td>' + st + '</td><td>' + pc + '</td>' +
-                '<td>' + fmtT(r.activated_at) + '</td><td>' + fmtT(r.last_verified_at) + (r.verify_count ? '<div style="color:#9aa5b1;font-size:.7rem">' + r.verify_count + '회</div>' : '') + '</td>' +
+                '<td>' + fmtT(r.activated_at) + '</td><td>' + fmtT(r.last_verified_at) + '</td>' +
                 '<td>' + esc(r.app_version || '') + '</td>' +
                 '<td style="white-space:nowrap">' +
                 (r.pc_id ? '<button class="btn btn-line al-clear" style="padding:3px 8px;font-size:.76rem">PC 정보 지우기</button> ' : '') +
