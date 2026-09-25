@@ -184,6 +184,36 @@
   if($('reader')) new MutationObserver(labelCols).observe($('reader'), { childList:true });
   labelCols();
 
+  /* ── 학습·지도 창: 목록 칸과 글 칸 사이 손잡이 — 잡고 끌면 칸 높이가 바뀌고, 톡 누르면 접었다 편다 ── */
+  function splitHandle(side, o){
+    if(!side || side._grip) return;
+    var grip = document.createElement('div'); grip.className = 'mo-grip'; grip.innerHTML = '<i></i>'; side._grip = grip;
+    if(o.after) side.parentNode.insertBefore(grip, side.nextSibling); else side.parentNode.insertBefore(grip, side);
+    function minH(){ var k = o.keep ? side.querySelector(o.keep) : null; return k ? Math.ceil(k.getBoundingClientRect().bottom - side.getBoundingClientRect().top + 8) : 40; }
+    function maxH(){ return Math.round(side.parentNode.getBoundingClientRect().height * .85); }
+    function setH(h){ side.style.setProperty('--sd', Math.max(minH(), Math.min(maxH(), h)) + 'px'); }
+    var d = null;
+    grip.addEventListener('touchstart', function(e){ var t = e.touches[0]; d = { y:t.clientY, h:side.getBoundingClientRect().height, moved:false }; }, { passive:true });
+    grip.addEventListener('touchmove', function(e){ if(!d) return; var dy = e.touches[0].clientY - d.y; if(Math.abs(dy) > 4) d.moved = true; setH(o.after ? d.h + dy : d.h - dy); e.preventDefault(); }, { passive:false });
+    grip.addEventListener('touchend', function(){ if(d && !d.moved) toggle(); d = null; });
+    grip.addEventListener('click', function(e){ if(!('ontouchstart' in window)) toggle(); });
+    function toggle(){ var h = side.getBoundingClientRect().height; setH(h <= minH() + 4 ? Math.round(window.innerHeight * .38) : minH()); side.scrollTop = 0; }
+    side._collapse = function(){ setH(minH()); side.scrollTop = 0; };
+  }
+  function armSplits(){
+    if(!narrow.matches) return;
+    var st = $('stSide'); if(st && st.parentNode) splitHandle(st, { after:true, keep:'.st-parts' });
+    var at = document.querySelector('#atlasModal .at-side'); if(at) splitHandle(at, { after:false });
+  }
+  var stm = $('studyModal');
+  if(stm){
+    new MutationObserver(function(){ if(!stm.hidden) setTimeout(function(){ armSplits(); var sd = $('stSide'), b = $('stBody'); if(narrow.matches && sd && sd._collapse && b && b.children.length) sd._collapse(); }, 50); }).observe(stm, { attributes:true, attributeFilter:['hidden'] });
+    var stBody = $('stBody');
+    if(stBody) new MutationObserver(function(){ var sd = $('stSide'); if(narrow.matches && sd && sd._collapse && !stm.hidden) sd._collapse(); }).observe(stBody, { childList:true });   /* 글을 열면 목록을 접어 읽는 칸을 넓힌다 */
+  }
+  var atm = $('atlasModal');
+  if(atm) new MutationObserver(function(){ if(!atm.hidden) setTimeout(armSplits, 50); }).observe(atm, { attributes:true, attributeFilter:['hidden'] });
+
   /* ── 좌우로 밀어 앞·뒤 장 ── */
   var sw = null, reader = $('reader');
   if(reader){

@@ -119,7 +119,10 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 .m-foot{padding:10px 14px calc(12px + var(--sab))}
 /* 지도·학습: 옆 글 칸을 아래로 */
 .at-body,.st-wrap{flex-direction:column}
-.at-side,.st-side{flex:0 0 38dvh;border-left:none;border-right:none;border-top:1px solid var(--line);max-height:38dvh}
+.at-side,.st-side{flex:0 0 auto;height:var(--sd,38dvh);max-height:none;border-left:none;border-right:none;border-top:1px solid var(--line)}
+.st-side{border-top:none;border-bottom:none}
+.mo-grip{flex:0 0 20px;display:flex;align-items:center;justify-content:center;background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);touch-action:none;cursor:row-resize}
+.mo-grip i{width:46px;height:5px;border-radius:3px;background:var(--fg3);opacity:.6}
 .st-body{padding:14px 16px 60px}
 .at-head{flex-wrap:wrap}
 .at-pick{max-width:100%}
