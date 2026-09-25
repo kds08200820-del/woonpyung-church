@@ -420,10 +420,12 @@
   }
 
   /* ── 뒤로 단추: 창이 열려 있으면 닫고, 아니면 앞 화면으로 ── */
-  function trap(){ try{ history.pushState({ modu:1 }, ''); }catch(e){} }
-  trap();
-  window.addEventListener('popstate', function(){
-    trap();
+  /* 가짜 기록을 두 칸 쌓아 둔다 — 아이패드·아이폰 Safari 는 뒤로 이동 중 넣는 pushState 를 가끔 버리므로, 한 칸만 두면
+     다음 뒤로에서 앱 밖(홈페이지)으로 나가 버린다. 바닥(state 없음)까지 내려왔으면 두 칸을 다시 쌓는다 */
+  function trap(n){ try{ for(var i = 0; i < (n || 1); i++) history.pushState({ modu:1 }, ''); }catch(e){} }
+  trap(2);
+  window.addEventListener('popstate', function(e){
+    trap(e.state && e.state.modu ? 1 : 2);
     if(pick && !pick.hidden){ closePick(); return; }
     if(more && !more.hidden){ closeMore(); return; }
     if(S.showNav && narrow.matches){ toggleNav(); return; }
