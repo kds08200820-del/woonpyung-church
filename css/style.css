@@ -1861,3 +1861,15 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 .hdr-bible-btn { padding: 6px 10px; }
 .hdr-bible-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; display: block; }
 @media (max-width: 480px) { .hdr-bible-btn { padding: 5px 9px; } .hdr-bible-btn svg { width: 18px; height: 18px; } }
+
+/* 머리글 '성경' 단추: 모두의 성경 앱 아이콘 */
+.hdr-bible-btn { padding: 3px 4px; background: transparent; border-color: transparent; }
+.hdr-bible-btn img { width: 30px; height: 30px; border-radius: 8px; display: block; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+#header.scrolled .hdr-bible-btn { background: transparent; border-color: transparent; }
+@media (max-width: 480px) { .hdr-bible-btn img { width: 28px; height: 28px; } }
+
+/* 머리글 '성경' 단추: 펼친 책 아이콘 (앱 아이콘 대신) */
+.hdr-bible-btn { padding: 6px 11px; background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.34); }
+.hdr-bible-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; display: block; box-shadow: none; }
+#header.scrolled .hdr-bible-btn { background: rgba(3,34,87,.07); border-color: rgba(3,34,87,.22); }
+@media (max-width: 480px) { .hdr-bible-btn { padding: 5px 10px; } .hdr-bible-btn svg { width: 20px; height: 20px; } }

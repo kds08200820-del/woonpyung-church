@@ -69,7 +69,7 @@
           <img src="images/icon-192.png?v=20260625e" alt="" class="logo-mark" />
           <span class="logo-kr">운평장로교회</span>
         </a>
-        <a href="modu/" class="hdr-dash-btn hdr-bible-btn" id="hdrBible" style="display:none" title="2026 모두의 성경 — 정회원 전용" aria-label="모두의 성경"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h10.5A2.5 2.5 0 0 1 18 6v13.5H6.5A1.5 1.5 0 0 0 5 21z"/><path d="M5 21a1.5 1.5 0 0 1 1.5-1.5H18"/><path d="M11.5 7.5v6M9 10h5"/></svg></a>
+        <a href="modu/" class="hdr-dash-btn hdr-bible-btn" id="hdrBible" style="display:none" title="2026 모두의 성경 — 정회원 전용" aria-label="모두의 성경"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.2C10.6 5 8.6 4.4 6.4 4.4c-1.3 0-2.5.2-3.4.6v13.2c.9-.4 2.1-.6 3.4-.6 2.2 0 4.2.6 5.6 1.8 1.4-1.2 3.4-1.8 5.6-1.8 1.3 0 2.5.2 3.4.6V5c-.9-.4-2.1-.6-3.4-.6-2.2 0-4.2.6-5.6 1.8z"/><path d="M12 6.2v13.2"/><path d="M6 8.6c1 0 2 .2 3 .6M6 11.4c1 0 2 .2 3 .6M15 9.2c1-.4 2-.6 3-.6M15 12c1-.4 2-.6 3-.6"/></svg></a>
         <a href="dashboard.html" class="hdr-dash-btn" id="hdrDash" style="display:none">대시보드</a>
         <nav class="nav-menu" id="navMenu">${navLinks}</nav>
         <div class="auth-slot" id="authSlot"></div>
