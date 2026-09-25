@@ -3290,7 +3290,7 @@ console.log('[affairs.js] v20260923lic');
       ov.className = worshipMode ? 'sed-lightov' : 'sed-dark';   // 설교 매니저 = 다크 스튜디오, 예배 매니저 = 기존 라이트
       ov.style.cssText = worshipMode
         ? 'position:fixed;inset:0;background:#f5f7fa;z-index:9000;overflow:auto'
-        : 'position:fixed;inset:0;background:#141922;z-index:9000;overflow:hidden;display:flex;flex-direction:column';
+        : 'position:fixed;inset:0;background:#0d1526;z-index:9000;overflow:hidden;display:flex;flex-direction:column';
       var svcList = SVC_OPTS.slice();
       (smRows || []).forEach(function (r) { if (r.service && svcList.indexOf(r.service) < 0) svcList.push(r.service); });   // 사용자 정의 분류(기타→새 이름)도 목록에
       if (rec.service && svcList.indexOf(rec.service) < 0) svcList.unshift(rec.service);   // 옛 명칭(예: 수요예배) 보존
@@ -3314,6 +3314,53 @@ console.log('[affairs.js] v20260923lic');
       var sizeOptsHtml = SED_SIZES.map(function (s) { return '<option value="' + s + '"' + (s === 18 ? ' selected' : '') + '>' + s + '</option>'; }).join('');
       var FORE_COLORS = ['#1a1a1a', '#0a2c5c', '#1d6fb8', '#0d7a4f', '#0e8a74', '#b8860b', '#d97706', '#c0392b', '#d81b60', '#8e44ad', '#5b6b7d', '#ffffff'];
       var HI_COLORS = ['#fff59d', '#ffe0a3', '#c8f7d4', '#bfe3ff', '#f8c9d4', '#e6d6ff', '#e2e8f0', 'transparent'];
+      // ── 아이콘 헬퍼: 이모지 대신 Lucide 스타일 인라인 SVG(선 아이콘, currentColor) — 출력물에 작은따옴표를 쓰지 않음(문자열 연결 안전)
+      function sv(d) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>'; }
+      var IC = {
+        save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+        settings: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+        chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+        eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+        monitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
+        filedown: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/>',
+        film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',
+        pkg: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+        upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+        download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+        undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
+        redo: '<path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>',
+        alignL: '<line x1="21" x2="3" y1="6" y2="6"/><line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="18" y2="18"/>',
+        alignC: '<line x1="21" x2="3" y1="6" y2="6"/><line x1="17" x2="7" y1="12" y2="12"/><line x1="19" x2="5" y1="18" y2="18"/>',
+        alignR: '<line x1="21" x2="3" y1="6" y2="6"/><line x1="21" x2="9" y1="12" y2="12"/><line x1="21" x2="7" y1="18" y2="18"/>',
+        alignJ: '<line x1="3" x2="21" y1="6" y2="6"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="21" y1="18" y2="18"/>',
+        book: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+        image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+        play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+        bulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+        reset: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+        hand: '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+        clip: '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+        paperclip: '<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+        search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+        quote: '<path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/>',
+        list: '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
+        listOl: '<line x1="10" x2="21" y1="6" y2="6"/><line x1="10" x2="21" y1="12" y2="12"/><line x1="10" x2="21" y1="18" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>',
+        check: '<polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+        minus: '<path d="M5 12h14"/>',
+        plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+        x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+        eraser: '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
+        sparkles: '<path d="m12 3 1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3Z"/>',
+        tag: '<path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/>',
+        pencil: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+        library: '<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>',
+        music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+        scroll: '<path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/>',
+        chevL: '<path d="m15 18-6-6 6-6"/>',
+        chevD: '<path d="m6 9 6 6 6-6"/>'
+      };
+      function ic(n) { return sv(IC[n] || ''); }
       ov.innerHTML =
         '<style>' +
         '.sed-wrap{position:relative;padding:22px 24px 70px}' +
@@ -3406,6 +3453,7 @@ console.log('[affairs.js] v20260923lic');
         '.sed-brand{font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.18rem;letter-spacing:-.01em;color:var(--accent,#032257)}' +
         '.sed-sub{font-size:.7rem;color:#9aa5b1;margin-top:1px;letter-spacing:.02em}' +
         '.sed-status{font:inherit;font-size:.84rem;border:1px solid #dde3ec;border-radius:9px;padding:8px 10px;background:#fff;cursor:pointer;color:#33415c;font-weight:700}' +
+        '.sed-hbtn{padding:8px 13px;border-radius:9px}' +
         '.sed-ribbon{display:flex;justify-content:center;padding:7px 12px;overflow-x:auto;flex:none}' +
         '.sed-ribbon .se-toolbar{position:static;top:auto;flex-wrap:nowrap;white-space:nowrap;border-bottom:1px solid #e3e8f0;border-radius:11px}' +
         '.se-editor{border-radius:11px;border-top:1px solid #e3e8f0}' +
@@ -3443,9 +3491,12 @@ console.log('[affairs.js] v20260923lic');
         '.wp-row.bad .wp-box{background:#c0392b;border-color:#c0392b}' +
         '.wp-row.bad{color:#c0392b}' +
         '.wp-note{font-size:.75rem;color:#8b97a6;margin-top:9px;line-height:1.55}' +
-        '.sed-dark .wp-state,.sed-dark .wp-row{color:#8394ab}' +
-        '.sed-dark .wp-box{background:#161d29;border-color:#2a3547}' +
-        '.sed-dark .wp-row.on{color:#d7e2f0}' +
+        '.sed-dark .wp-state,.sed-dark .wp-row{color:var(--fg2)}' +
+        '.sed-dark .wp-box{background:var(--panel2);border-color:var(--line)}' +
+        '.sed-dark .wp-row.on{color:var(--fg)}' +
+        '.sed-dark .wp-row.on .wp-box{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
+        '.sed-dark .wp-row.doing .wp-box{border-color:var(--accent)}.sed-dark .wp-row.doing{color:var(--accent)}' +
+        '.sed-dark .wp-note{color:var(--fg3)}' +
         '.rp-tabs{display:flex;gap:4px;margin-bottom:10px}' +
         '.rp-tabs button{flex:1;font:inherit;font-size:.8rem;font-weight:700;padding:8px 3px;border:1px solid #dde3ec;background:#fff;color:#5b6b7d;border-radius:9px;cursor:pointer}' +
         '.rp-tabs button.on{background:var(--accent,#032257);color:#fff;border-color:var(--accent,#032257)}' +
@@ -3478,11 +3529,12 @@ console.log('[affairs.js] v20260923lic');
         '.rp-nav{display:flex;align-items:center;justify-content:center;gap:12px;padding:9px 0 0}' +
         '.rp-nav button{font:inherit;font-size:.82rem;padding:4px 14px;border:1px solid #dde3ec;background:#fff;border-radius:8px;cursor:pointer;color:#33415c}' +
         '.rp-nav button:disabled{opacity:.35;cursor:default}' +
-        '.sed-dark .rp-nav button{background:#161d29;border-color:#2a3547;color:#c3cede}' +
+        '.sed-dark .rp-nav button{background:var(--panel);border-color:var(--line);color:var(--fg2)}.sed-dark .rp-nav button:hover{border-color:var(--accent);color:var(--accent)}.sed-dark .rp-nav b,.sed-dark .rp-pageinfo{color:var(--fg3)}' +
         '.rp-nav b{font-size:.8rem;color:#8b96a5;min-width:52px;text-align:center;font-weight:600}' +
         // ── 설교 원고: 구글 문서처럼 캔버스 위 흰 용지만 — 줄자 없음, 꺾쇠 여백 가이드 ──
         '.wd-area{width:-webkit-max-content;width:max-content;margin:8px auto 0;transform-origin:top center}' +
         '.wd-page{background:#fff;box-shadow:0 6px 26px rgba(0,0,0,.5);box-sizing:border-box;position:relative;background-origin:border-box}' +
+        '.sed-dark .wd-page{box-shadow:var(--shadow2)}' +
         '.wd-page .se-editor{border:none;border-radius:0;background:transparent;min-height:0;box-shadow:none}' +
         '.wd-page .se-editor:focus{border:none;box-shadow:none;outline:none}' +
         // 워드식 꺾쇠 여백 가이드(본문 영역 네 귀퉁이) — 페이지마다 반복 생성되는 오버레이 레이어
@@ -3503,7 +3555,7 @@ console.log('[affairs.js] v20260923lic');
         // 페이지 번호 레이어(편집 불가 오버레이, 페이지마다 하단 중앙에 표시)
         '.wd-pagenum-layer{position:absolute;left:0;right:0;top:0;pointer-events:none}' +
         '.wd-pagenum-item{position:absolute;left:0;right:0;text-align:center;font:12px/1 \'Noto Serif KR\',serif;color:#9aa5b1}' +
-        '.sed-dark .wd-pagenum-item{color:#6d7c92}' +
+        '.sed-dark .wd-pagenum-item{color:#8b96a5}' +
         // ── 리본 2줄째(제목·본문·불러오기·용지·여백·배율) ──
         '.sed-ribbon2{padding-top:0}' +
         '.sed-r2{display:flex;align-items:center;gap:7px;flex-wrap:wrap;width:100%;max-width:1400px;background:linear-gradient(180deg,#ffffff 0%,#f5f8fc 100%);border:1px solid #e3e8f0;border-radius:11px;padding:7px 10px}' +
@@ -3512,10 +3564,15 @@ console.log('[affairs.js] v20260923lic');
         '.r2-scrip{flex:1;min-width:150px}' +
         '.r2-btn{font:inherit;font-size:.82rem;border:1px solid #dde3ec;background:#fff;border-radius:8px;padding:7px 11px;cursor:pointer;color:#33415c;white-space:nowrap}' +
         '.r2-lbl{font-size:.76rem;color:#8a93a0;white-space:nowrap}' +
-        '.sed-dark .sed-r2{background:linear-gradient(180deg,#1d2634,#171f2b);border-color:#2a3547}' +
-        '.sed-dark .sed-r2 input[type=text]{background:#131a25;border-color:#2a3547;color:#dde5f0}' +
-        '.sed-dark .r2-btn{background:#1a2330;border-color:#2a3547;color:#c3cede}' +
-        '.sed-dark .r2-lbl{color:#8394ab}' +
+        '.sed-dark .sed-r2{background:var(--panel);border-color:var(--line);border-radius:13px;box-shadow:var(--shadow)}' +
+        '.sed-dark .sed-r2 input[type=text]{background:var(--panel2);border-color:var(--line);color:var(--fg);border-radius:8px}' +
+        '.sed-dark .sed-r2 input[type=text]:focus{border-color:var(--accent);outline:none}' +
+        '.sed-dark .sed-r2 input[type=text]::placeholder{color:var(--fg3)}' +
+        '.sed-dark .r2-btn{background:var(--panel);border-color:var(--line);color:var(--fg2);border-radius:8px}' +
+        '.sed-dark .r2-btn:hover{border-color:var(--accent);color:var(--accent)}' +
+        '.sed-dark .r2-btn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
+        '.sed-dark .r2-lbl{color:var(--fg3)}' +
+        '.sed-dark .sed-r2 input[type=range]{accent-color:var(--accent)}' +
         '.sed-lightov .wd-ctl{display:none}' +   // 예배 매니저에서는 용지·여백·배율 숨김
         '.sed-lightov .r2-sm{display:none}' +    // 예배 매니저에서는 본문 텍스트·기도 패널 버튼 숨김
         '.r2-btn.on{background:#2c4a86;border-color:#2c4a86;color:#fff}' +
@@ -3524,9 +3581,18 @@ console.log('[affairs.js] v20260923lic');
         '.sed-panel-in{max-width:1100px;margin:0 auto}' +
         '.sed-panel textarea{background:#161d29;border:1px solid #2a3547;color:#dde5f0;border-radius:9px;padding:9px 11px;font:inherit;resize:vertical}' +
         '.sed-panel textarea:focus{border-color:#3f5578;outline:none}' +
+        '.sed-dark .sed-panel{background:var(--panel);border-bottom:1px solid var(--line)}' +
+        '.sed-dark .sed-panel textarea{background:var(--panel2);border-color:var(--line);color:var(--fg);border-radius:8px}' +
+        '.sed-dark .sed-panel textarea:focus{border-color:var(--accent)}' +
+        '.sed-dark .sed-panel textarea::placeholder{color:var(--fg3)}' +
+        '.sed-dark .pn-h{color:var(--fg2)}.sed-dark .pn-h span{color:var(--fg3)}' +
+        '.sed-dark .pn-sub{color:var(--fg3)}' +
+        '.sed-dark #se_woorimal_chk{accent-color:var(--accent)}.sed-dark .pn-chk{color:var(--fg2)}' +
+        '.sed-dark #se_prayer_ai{color:var(--accent);border-color:var(--line);background:var(--panel2)}.sed-dark #se_prayer_ai:hover{border-color:var(--accent)}' +
         // ── 시리즈 목록 머리글 + PDF 시리즈 줄 ──
         '.bd-serhead{font-size:.74rem;font-weight:700;color:#8fa0b5;margin:9px 0 5px}' +
         '.bd-serhead span{font-weight:400;color:#6d7c92}' +
+        '.sed-dark .bd-serhead{color:var(--fg2)}.sed-dark .bd-serhead span,.sed-dark .bd-boxhead{color:var(--fg3)}' +
         '.rp-paper .pdf-series{font-size:9px;font-weight:700;color:#1f3a63;margin:0 0 6px;text-align:left}' +
         // ── 시리즈 선택 목록 ──
         // 시리즈 선택 드롭다운 — 입력칸을 누르면 나타나는 팝업(스크롤), 평소엔 숨김 → 선택된 시리즈가 쌓여도 화면이 끝없이 안 늘어남
@@ -3535,28 +3601,28 @@ console.log('[affairs.js] v20260923lic');
         '.bd-serlist.open{display:block}' +
         // ── 🎵 찬송가 필드(새벽·수요·금요 기도회) — 선택 칩 + 라이브러리 주제 추천 목록 ──
         '.se-hymnchip{display:inline-flex;align-items:center;gap:5px;background:#e7f0ff;color:#1f3a5f;border-radius:999px;padding:3px 10px;margin:0 4px 4px 0;font-size:.8rem;font-weight:700}' +
-        '.sed-dark .se-hymnchip{background:#243450;color:#cfe0f5}' +
+        '.sed-dark .se-hymnchip{background:var(--sel);color:var(--fg);border:1px solid var(--line)}' +
         '.se-hymnchip b{cursor:pointer;color:#c0392b}' +
         '.se-hymnitem{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid #dfe5ee;border-radius:8px;margin-bottom:4px;background:#fff;font-size:.82rem;color:#33415c}' +
-        '.sed-dark .se-hymnitem{background:#161d29;border-color:#2a3547;color:#c3cede}' +
+        '.sed-dark .se-hymnitem{background:var(--panel2);border-color:var(--line);color:var(--fg2)}' +
         '.se-hymnitem .hy-no{flex:none;font-weight:700;color:#1f3a5f;min-width:42px}' +
-        '.sed-dark .se-hymnitem .hy-no{color:#9fc0ea}' +
+        '.sed-dark .se-hymnitem .hy-no{color:var(--accent)}' +
         '.se-hymnitem .hy-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
         '.se-hymnitem .hy-rot{flex:none;font-size:.68rem;white-space:nowrap}' +
         '.bd-seritem{display:block;width:100%;text-align:left;border:0;background:none;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:.8rem;color:#3a4a63}' +
         '.bd-seritem span{color:#9aa5b1;font-size:.7rem}' +
         '.bd-seritem:hover{background:#f2f6fc}' +
         '.bd-seritem.on{background:#e8f0fc;color:#1d4ed8;font-weight:700}' +
-        '.sed-dark .bd-serlist{background:#141b27;border-color:#2a3547}' +
-        '.sed-dark .bd-seritem{color:#aab8cc}.sed-dark .bd-seritem:hover{background:#1b2536}' +
-        '.sed-dark .bd-seritem.on{background:#1a2c4d;color:#9ec1f7}' +
-        '.sed-dark .bd-seritem span{color:#6d7c92}' +
+        '.sed-dark .bd-serlist{background:var(--panel2);border-color:var(--line);box-shadow:var(--shadow2)}' +
+        '.sed-dark .bd-seritem{color:var(--fg2)}.sed-dark .bd-seritem:hover{background:var(--sel)}' +
+        '.sed-dark .bd-seritem.on{background:var(--sel);color:var(--accent)}' +
+        '.sed-dark .bd-seritem span{color:var(--fg3)}' +
         // 시리즈 섹션 소제목 + 박스(추가된 시리즈 · 같은 시리즈의 설교) — 둘 다 이 박스 안에서만 스크롤(끝없이 안 늘어남)
         '.bd-boxhead{font-size:.72rem;font-weight:700;color:#75839a;margin:10px 0 4px}' +
         '.bd-serchipsbox{min-height:34px;max-height:110px;overflow-y:auto;border:1px solid #e3e8f0;border-radius:9px;padding:6px 7px;background:#fff}' +
-        '.sed-dark .bd-serchipsbox{background:#141b27;border-color:#2a3547}' +
+        '.sed-dark .bd-serchipsbox{background:var(--panel2);border-color:var(--line)}' +
         '.bd-serdocs{max-height:230px;overflow-y:auto;padding-right:3px;border:1px solid #e3e8f0;border-radius:9px;padding:7px}' +
-        '.sed-dark .bd-serdocs{border-color:#2a3547}' +
+        '.sed-dark .bd-serdocs{border-color:var(--line)}' +
         // ── QT 체크박스 정렬(.af-field label의 display:block이 이기던 문제) ──
         '.af-field label.sed-qt{display:flex;align-items:center;gap:8px;margin-bottom:0;font-weight:600}' +
         // ── 예배 매니저: 제목·본문은 리본 2줄째로 이동했으므로 빈 폼 카드 숨김 ──
@@ -3564,48 +3630,97 @@ console.log('[affairs.js] v20260923lic');
         '.rp-paper img{max-width:100%}' +
         '.rp-pageinfo{text-align:center;font-size:.74rem;color:#8b96a5;padding:8px 0 2px}' +
         '.sed-sb{display:flex;align-items:center;gap:18px;padding:7px 18px;font-size:.76rem;flex:none}' +
-        // ── 다크 테마 ──
-        '.sed-dark .sed-hd{background:linear-gradient(180deg,#161d28,#111722);border-bottom:1px solid #242e3e;box-shadow:0 2px 14px rgba(0,0,0,.4)}' +
-        '.sed-dark .sed-brand{color:#e7edf6}.sed-dark .sed-sub{color:#6d7c92}' +
-        '.sed-dark .sed-hd .btn{background:#1b2431;border-color:#2e3b52;color:#c9d4e4}' +
-        '.sed-dark .sed-status{background:#1b2431;border-color:#2e3b52;color:#e3bb63}' +
-        '.sed-dark .sed-ribbon{background:#10151d;border-bottom:1px solid #242e3e}' +
-        '.sed-dark .se-toolbar{background:linear-gradient(180deg,#1d2634,#171f2b);border-color:#2a3547;box-shadow:none}' +
-        '.sed-dark .se-toolbar button{color:#c3cede}' +
-        '.sed-dark .se-toolbar button:hover{background:#26334a;box-shadow:inset 0 0 0 1px #35455f}' +
-        '.sed-dark .se-toolbar select,.sed-dark .se-selflat{background:#131a25;border-color:#2a3547;color:#c3cede}' +
-        '.sed-dark .se-size{background:#131a25;border-color:#2a3547}' +
-        '.sed-dark .se-size button{background:#1a2330;color:#c3cede}' +
-        '.sed-dark .se-size select{background:#131a25;border-left-color:#242e3e;border-right-color:#242e3e;color:#c3cede}' +
-        '.sed-dark .se-sep{background:#2a3547}' +
-        '.sed-dark .se-swbtn b{color:#c3cede}' +
+        // ── 다크 테마(설교 매니저 스튜디오) — 「설교자의 성경」 네이비 테마 토큰: 단일 금색 강조, 평면·조용한 표면 ──
+        '.sed-dark{--bg:#0d1526;--panel:#141e36;--panel2:#1b2947;--line:#2a3a5c;--line2:#1e2c4a;--fg:#e8edf7;--fg2:#aab7d2;--fg3:#7d8cab;--accent:#e2b76b;--accent-fg:#0e1729;--accent-bg:#33301f;--sel:#1d2b4a;--shadow:0 1px 3px rgba(0,0,0,.45);--shadow2:0 10px 30px rgba(0,0,0,.55);background:var(--bg);color:var(--fg)}' +
+        // 아이콘(인라인 SVG) 공통
+        '.ic{width:16px;height:16px;vertical-align:-3px;margin-right:5px;flex:none}' +
+        '.ic-only .ic,.se-toolbar .ic{margin-right:0}' +
+        '.se-toolbar button .ic + span{margin-left:5px}' +
+        '.se-caret .ic{width:9px;height:9px;margin:0;vertical-align:0}' +
+        // 헤더
+        '.sed-dark .sed-hd{background:var(--panel);border-bottom:1px solid var(--line);box-shadow:var(--shadow)}' +
+        '.sed-dark .sed-brand{color:var(--fg)}.sed-dark .sed-sub{color:var(--fg3)}' +
+        '.sed-dark .sed-hd .btn{background:var(--panel);border:1px solid var(--line);color:var(--fg2);border-radius:8px;height:36px;padding:0 13px;display:inline-flex;align-items:center;font-weight:600;font-size:.84rem;box-shadow:none;transition:border-color .12s,color .12s,background .12s}' +
+        '.sed-dark .sed-hd .btn:hover{border-color:var(--accent);color:var(--accent);background:var(--panel)}' +
+        '.sed-dark .sed-hd .btn:focus-visible,.sed-dark .se-toolbar button:focus-visible,.sed-dark .r2-btn:focus-visible,.sed-dark .bd-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}' +
+        '.sed-dark .sed-hd .btn-solid,.sed-dark .btn-solid{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
+        '.sed-dark .sed-hd .btn-solid:hover,.sed-dark .btn-solid:hover{background:#ecc67f;border-color:#ecc67f;color:var(--accent-fg)}' +
+        '.sed-dark .sed-hd .btn-kakao{background:#fbe94d;border-color:#e6d23f;color:#3a2e00}.sed-dark .sed-hd .btn-kakao:hover{background:#fff27a;border-color:#e6d23f;color:#3a2e00}' +
+        '.sed-dark .sed-status{background:var(--panel2);border:1px solid var(--line);color:var(--accent);border-radius:8px;height:36px;padding:0 10px;font-weight:700}' +
+        '.sed-dark .sed-status:focus-visible{outline:2px solid var(--accent);outline-offset:1px}' +
+        '.sed-dark #se_msg{color:var(--fg2)}' +
+        // 리본
+        '.sed-dark .sed-ribbon{background:var(--bg);border-bottom:none;padding:8px 12px 0}' +
+        '.sed-dark .sed-ribbon2{padding:6px 12px 8px}' +
+        '.sed-dark .se-toolbar{background:var(--panel);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);padding:5px 9px;gap:2px}' +
+        '.sed-dark .se-toolbar button{color:var(--accent);background:transparent;border:1px solid transparent;border-radius:9px;min-width:34px;height:34px;padding:0 8px;display:inline-flex;align-items:center;justify-content:center;font-size:.84rem;font-weight:600;transition:background .12s}' +
+        '.sed-dark .se-toolbar button:hover{background:var(--accent-bg);box-shadow:none}' +
+        '.sed-dark .se-toolbar button:active{background:var(--sel)}' +
+        '.sed-dark .se-toolbar button.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}' +   /* 선택 글자가 굵게·기울임 등일 때 켜진 표시 */
+        '.se-toolbar button.on{background:#dbe6f5;box-shadow:inset 0 0 0 1px #b9cbe6}' +
+        '.sed-dark .se-toolbar select,.sed-dark .se-selflat{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:8px;height:34px;padding:0 8px}' +
+        '.sed-dark .se-toolbar select:focus,.sed-dark .se-selflat:focus{border-color:var(--accent);outline:none}' +
+        '.sed-dark .se-size{background:var(--panel2);border:1px solid var(--line);border-radius:8px;height:34px}' +
+        '.sed-dark .se-size button{background:transparent;color:var(--accent);border-radius:0;min-width:26px;height:32px;padding:0}' +
+        '.sed-dark .se-size button:hover{background:var(--accent-bg)}' +
+        '.sed-dark .se-size select{background:var(--panel2);border:none;border-left:1px solid var(--line);border-right:1px solid var(--line);border-radius:0;color:var(--fg);height:32px;padding:0 4px}' +
+        '.sed-dark .se-sep{background:var(--line);height:20px;margin:0 6px}' +
+        '.sed-dark .se-swbtn b{color:var(--fg)}' +
+        '.sed-dark .se-hiico{color:#3a2e00}' +
+        '.sed-dark .se-caret{color:var(--fg3)}' +
+        '.sed-dark .se-bible-btn{color:var(--accent)!important}.sed-dark .se-bible-btn:hover{background:var(--accent-bg)!important}' +
+        '.sed-dark .se-pop{background:var(--panel2);border-color:var(--line);box-shadow:var(--shadow2)}' +
+        '.sed-dark .se-setpop{background:var(--panel2);border-color:var(--line);box-shadow:var(--shadow2);color:var(--fg2);border-radius:13px}' +
+        '.sed-dark .se-setpop-h{color:var(--fg)}.sed-dark .se-setpop-note{color:var(--fg3)}' +
+        '.sed-dark .se-setpop-row input[type=number]{background:var(--panel);border-color:var(--line);color:var(--fg)}' +
+        // 본체 3분할
         '.sed-dark .sed-wrap{flex:1;min-height:0;display:flex;align-items:stretch;padding:0;position:relative}' +
-        '.sed-dark .sed-binder{width:274px;flex:none;overflow-y:auto;background:#10151d;border-right:1px solid #242e3e;padding:14px 13px 26px}' +
-        '.sed-dark .sed-binder .af-field label{color:#8394ab}' +
-        '.sed-dark .sed-binder .af-field input,.sed-dark .sed-binder .af-field select,.sed-dark .sed-binder .af-field textarea{background:#161d29;border:1px solid #2a3547;color:#dde5f0}' +
-        '.sed-dark .sed-qt{background:#161d29;border-color:#2a3547;color:#c9d4e4}' +   // 주변 입력칸과 같은 색
-        '.sed-dark .bd-tabs button{background:#161d29;border-color:#2a3547;color:#8394ab}' +
-        '.sed-dark .bd-tabs button.on{background:#2c4a86;border-color:#2c4a86;color:#fff}' +
-        '.sed-dark .bd-chip{background:#1a2740;border-color:#2f4570;color:#a9c3ec}' +
-        '.sed-dark .bd-chip button{color:#6d84ad}' +
-        '.sed-dark .bd-doc{background:#141b27;border-color:#242e3e}' +
-        '.sed-dark .bd-doc b{color:#cdd8e8}.sed-dark .bd-doc span{color:#75839a}' +
-        '.sed-dark .bd-doc.cur{border-color:#3f639f;box-shadow:0 0 0 2px rgba(70,120,200,.25)}' +
-        '.sed-dark .sed-main{flex:1;min-width:0;overflow-y:auto;overflow-x:auto;padding:26px 30px 70px;background:radial-gradient(900px 420px at 50% -8%,#1c2431 0%,#141922 62%)}' +
+        '.sed-dark .sed-binder{width:274px;flex:none;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding:14px 13px 26px}' +
+        '.sed-dark .sed-binder .af-field label{color:var(--fg2);font-weight:600}' +
+        '.sed-dark .sed-binder .af-field input,.sed-dark .sed-binder .af-field select,.sed-dark .sed-binder .af-field textarea{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:8px}' +
+        '.sed-dark .sed-binder .af-field input:focus,.sed-dark .sed-binder .af-field select:focus,.sed-dark .sed-binder .af-field textarea:focus{border-color:var(--accent);outline:none;box-shadow:none}' +
+        '.sed-dark .sed-binder .af-field input::placeholder,.sed-dark .sed-binder .af-field textarea::placeholder{color:var(--fg3)}' +
+        '.sed-dark .sed-binder .btn{background:var(--panel2);border:1px solid var(--line);color:var(--fg2);border-radius:8px;font-weight:600;box-shadow:none}' +
+        '.sed-dark .sed-binder .btn:hover{border-color:var(--accent);color:var(--accent)}' +
+        '.sed-dark .sed-qt{background:var(--panel2);border-color:var(--line);color:var(--fg2)}' +   // 주변 입력칸과 같은 색
+        '.sed-dark .sed-qt input{accent-color:var(--accent)}' +
+        '.sed-dark .bd-tabs{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}' +
+        '.sed-dark .bd-tabs button{background:transparent;border:1px solid transparent;color:var(--fg2);border-radius:999px;padding:6px 3px}' +
+        '.sed-dark .bd-tabs button:hover{color:var(--accent)}' +
+        '.sed-dark .bd-tabs button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
+        '.sed-dark .bd-chip{background:var(--sel);border-color:var(--line);color:var(--fg)}' +
+        '.sed-dark .bd-chip button{color:var(--fg3)}.sed-dark .bd-chip button:hover{color:var(--accent)}' +
+        '.sed-dark .bd-doc{background:var(--panel2);border-color:var(--line);border-radius:8px}' +
+        '.sed-dark .bd-doc:hover{border-color:var(--accent)}' +
+        '.sed-dark .bd-doc b{color:var(--fg)}.sed-dark .bd-doc span{color:var(--fg3)}' +
+        '.sed-dark .bd-doc.cur{border-color:var(--accent);box-shadow:none;background:var(--sel)}' +
+        '.sed-dark .sed-main{flex:1;min-width:0;overflow-y:auto;overflow-x:auto;padding:26px 30px 70px;background:var(--bg)}' +
         // 설교 매니저: 흰 카드 제거 — 문서(용지)가 캔버스 위에 바로 놓임. 폭은 상단 툴바와 같은 기준으로 가득
         '.sed-dark .sed-form{max-width:none;background:transparent;border:none;box-shadow:none;padding:0 0 30px;border-radius:0}' +
-        '.sed-dark .sed-form textarea{background:#161d29;border:1px solid #2a3547;color:#dde5f0;border-radius:9px}' +
-        '.sed-dark .sed-form .af-field label,.sed-dark .sed-form label{color:#8394ab}' +
-        '.sed-dark .se-count{color:#6d7c92}' +
-        '.sed-dark .sed-aside-r{position:static;right:auto;top:auto;width:392px;flex:none;overflow-y:auto;background:#10151d;border-left:1px solid #242e3e;padding:12px 12px 26px}' +
-        '.sed-dark .rp-tabs button{background:#161d29;border-color:#2a3547;color:#8394ab}' +
-        '.sed-dark .rp-tabs button.on{background:#2c4a86;border-color:#2c4a86;color:#fff}' +
-        '.sed-dark .qtc-card{background:#141b27;border-color:#242e3e;box-shadow:none}' +
-        '.sed-dark .qtc-h{color:#cdd8e8}.sed-dark .qtc-sub{color:#75839a}' +
-        '.sed-dark .qtc-paste{background:#0f141d;border-color:#2a3547;color:#dde5f0}' +
-        '.sed-dark .qtc-rrow{background:#18202e;color:#9db1cd}.sed-dark .qtc-rrow b{color:#cdd8e8}' +
-        '.sed-dark .sed-sb{background:#10151d;border-top:1px solid #242e3e;color:#8394ab}' +
-        '.sed-dark ::-webkit-scrollbar{width:10px;height:10px}.sed-dark ::-webkit-scrollbar-thumb{background:#2a3547;border-radius:5px}.sed-dark ::-webkit-scrollbar-track{background:transparent}' +
+        '.sed-dark .sed-form textarea{background:var(--panel2);border:1px solid var(--line);color:var(--fg);border-radius:8px}' +
+        '.sed-dark .sed-form .af-field label,.sed-dark .sed-form label{color:var(--fg2)}' +
+        '.sed-dark .se-count{color:var(--fg3)}' +
+        '.sed-dark .sed-aside-r{position:static;right:auto;top:auto;width:392px;flex:none;overflow-y:auto;background:var(--panel);border-left:1px solid var(--line);padding:12px 12px 26px}' +
+        '.sed-dark .rp-tabs{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}' +
+        '.sed-dark .rp-tabs button{background:transparent;border:1px solid transparent;color:var(--fg2);border-radius:999px}' +
+        '.sed-dark .rp-tabs button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
+        '.sed-dark .qtc-card{background:var(--panel2);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow);padding:0}' +
+        '.sed-dark .qtc-h{color:var(--fg);padding:11px 18px;border-bottom:1px solid var(--line);font-size:.95rem;font-weight:700}' +
+        '.sed-dark .qtc-card>*:not(.qtc-h){margin-left:14px;margin-right:14px}' +
+        '.sed-dark .qtc-card>.qtc-sub,.sed-dark .qtc-card>.wp-state{margin-top:10px}' +
+        '.sed-dark .qtc-card>*:last-child{margin-bottom:14px}' +
+        '.sed-dark .qtc-sub{color:var(--fg3)}.sed-dark .qtc-sub b{color:var(--fg2)}' +
+        '.sed-dark .qtc-paste{background:var(--panel);border-color:var(--line);color:var(--fg);border-radius:8px}.sed-dark .qtc-paste:focus{border-color:var(--accent)}.sed-dark .qtc-paste::placeholder{color:var(--fg3)}' +
+        '.sed-dark .qtc-rrow{background:var(--sel);color:var(--fg2)}.sed-dark .qtc-rrow b{color:var(--fg)}' +
+        '.sed-dark .qtc-card .btn{background:var(--panel);border:1px solid var(--line);color:var(--fg2);border-radius:8px;box-shadow:none}.sed-dark .qtc-card .btn:hover{border-color:var(--accent);color:var(--accent)}' +
+        '.sed-dark .qtc-card .btn-solid{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
+        '.sed-dark .qtc-foot{border-top:1px solid var(--line)!important}' +
+        '.sed-dark #qtc_msg{color:var(--fg2)}' +
+        // 상태바
+        '.sed-dark .sed-sb{background:var(--panel);border-top:1px solid var(--line);color:var(--fg3)}' +
+        '.sed-dark .sed-sb b{color:var(--fg2)}.sed-dark .sed-sb input[type=range]{accent-color:var(--accent)}' +
+        // 스크롤바
+        '.sed-dark ::-webkit-scrollbar{width:10px;height:10px}.sed-dark ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;border:2px solid transparent;background-clip:padding-box}.sed-dark ::-webkit-scrollbar-thumb:hover{background:var(--fg3);background-clip:padding-box}.sed-dark ::-webkit-scrollbar-track{background:transparent}' +
         '.sed-dark .sed-aside-l{left:286px;top:118px}' +   // 성경 보기: 바인더 옆·리본 아래에서 열림(openPop이 리본 높이에 맞춰 재계산)
         '@media(max-width:1120px){.sed-dark .sed-aside-l{left:8px;right:8px;width:auto;top:64px}}' +
         // ── 성경 보기: 보기 설정(배경·글씨·줄간격) + 배경 테마 ──
@@ -3620,20 +3735,24 @@ console.log('[affairs.js] v20260923lic');
         '.mb-text[data-bg=cream]{background:#fdfcf8;color:#22303f}' +
         '.mb-text[data-bg=sepia]{background:#f2e7ce;color:#463823}.mb-text[data-bg=sepia] .mb-vn{color:#8a6d35}' +
         // 성경 보기 카드 자체를 다크 스튜디오와 어울리게
-        '.sed-dark .mb-card{background:#141b27;border-color:#2a3547;box-shadow:0 18px 50px rgba(0,0,0,.65)}' +
-        '.sed-dark .mb-head{background:linear-gradient(180deg,#1a2230,#151c28);color:#cdd8e8;border-color:#242e3e}' +
-        '.sed-dark .mb-close{color:#7c8ba0}.sed-dark .mb-close:hover{background:#26334a;color:#cdd8e8}' +
-        '.sed-dark .mb-trans button{background:#161d29;border-color:#2a3547;color:#8fa0b5}' +
-        '.sed-dark .mb-trans button.on{background:#2c4a86;border-color:#2c4a86;color:#fff}' +
-        '.sed-dark .mb-selrow select{background:#161d29;border-color:#2a3547;color:#dde5f0}' +
-        '.sed-dark #mb_set{border-color:#242e3e}' +
-        '.sed-dark .mb-setrow{color:#7c8ba0}' +
-        '.sed-dark .mb-fsbtn{background:#161d29;border-color:#2a3547;color:#c3cede}' +
-        '.sed-dark #mb_fs_v{color:#cdd8e8}' +
-        '.sed-dark #mb_lh{background:#161d29;border-color:#2a3547;color:#dde5f0}' +
-        '.sed-dark .mb-text{border-color:#242e3e}' +
-        '.sed-dark .mb-ins{background:#152233;border-color:#242e3e;color:#5fb891}.sed-dark .mb-ins:hover{background:#1a2b42}' +
-        '.sed-dark .mb-hint{color:#6d7c92}' +
+        '.sed-dark .mb-card{background:var(--panel);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow2)}' +
+        '.sed-dark .mb-head{background:var(--panel);color:var(--fg);border-bottom:1px solid var(--line);padding:11px 18px;box-shadow:var(--shadow)}' +
+        '.sed-dark .mb-close{color:var(--fg3);border-radius:8px}.sed-dark .mb-close:hover{background:var(--accent-bg);color:var(--accent)}' +
+        '.sed-dark .mb-close .ic{margin:0}' +
+        '.sed-dark .mb-trans button{background:transparent;border-color:var(--line);color:var(--fg2)}' +
+        '.sed-dark .mb-trans button:hover{border-color:var(--accent);color:var(--accent)}' +
+        '.sed-dark .mb-trans button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}' +
+        '.sed-dark .mb-selrow select{background:var(--panel2);border-color:var(--line);color:var(--fg)}' +
+        '.sed-dark #mb_set{border-color:var(--line)}' +
+        '.sed-dark .mb-setrow{color:var(--fg3)}' +
+        '.sed-dark .mb-sw.on{outline-color:var(--accent)}' +
+        '.sed-dark .mb-fsbtn{background:var(--panel2);border-color:var(--line);color:var(--fg2)}' +
+        '.sed-dark #mb_fs_v{color:var(--fg)}' +
+        '.sed-dark #mb_lh{background:var(--panel2);border-color:var(--line);color:var(--fg)}' +
+        '.sed-dark .mb-text{border-color:var(--line)}' +
+        '.sed-dark .mb-text[data-bg=dark]{background:var(--bg);color:var(--fg2)}.sed-dark .mb-text[data-bg=dark] .mb-thead{color:var(--fg);border-color:var(--line)}.sed-dark .mb-text[data-bg=dark] .mb-thead span:last-child{color:var(--fg3)}.sed-dark .mb-text[data-bg=dark] .mb-vn{color:var(--accent)}' +
+        '.sed-dark .mb-ins{background:var(--panel2);border-color:var(--line);color:var(--accent)}.sed-dark .mb-ins:hover{background:var(--accent-bg)}' +
+        '.sed-dark .mb-hint{color:var(--fg3)}' +
         // ── 예배 매니저(라이트) 배치: 바인더는 상단 카드, 시리즈·첨부 탭 숨김 ──
         '.sed-mode-worship .sed-main{display:contents}' +
         '.sed-mode-worship .sed-binder{position:static;width:auto;max-width:780px;margin:0 auto 14px;background:#fff;border:1px solid #e7ebf2;border-radius:14px;padding:16px 18px 8px;order:0}' +
@@ -3641,27 +3760,27 @@ console.log('[affairs.js] v20260923lic');
         '.sed-mode-worship .bd-pane-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}' +
         // ── 반응형: 좁은 화면에서는 세로 스택 ──
         '@media(max-width:1500px){.sed-dark .sed-aside-r{width:330px}}' +
-        '@media(max-width:1120px){.sed-dark{overflow:auto!important;display:block!important}.sed-dark .sed-wrap{flex-direction:column;overflow:visible}.sed-dark .sed-binder{width:auto;border-right:none;border-bottom:1px solid #242e3e}.sed-dark .sed-main{overflow:visible;padding:16px 10px 30px}.sed-dark .sed-aside-r{width:auto;border-left:none}.sed-dark .sed-sb{position:sticky;bottom:0}}' +
+        '@media(max-width:1120px){.sed-dark{overflow:auto!important;display:block!important}.sed-dark .sed-wrap{flex-direction:column;overflow:visible}.sed-dark .sed-binder{width:auto;border-right:none;border-bottom:1px solid var(--line)}.sed-dark .sed-main{overflow:visible;padding:16px 10px 30px}.sed-dark .sed-aside-r{width:auto;border-left:none}.sed-dark .sed-sb{position:sticky;bottom:0}}' +
         '</style>' +
         '<header class="sed-hd">' +
         '<div style="margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
-        '<button class="btn btn-line" id="se_close" style="padding:8px 14px;border-radius:9px">‹ 닫기</button>' +
+        '<button class="btn btn-line sed-hbtn" id="se_close">' + ic('chevL') + '닫기</button>' +
         '<div style="flex:1;min-width:150px;text-align:center;line-height:1.25">' +
         '<div class="sed-brand">' + (worshipMode ? '예배 매니저' : '설교 매니저') + '</div>' +
         '<div class="sed-sub">' + (worshipMode ? '예배 순서를 짜고 아이패드로 발표·내보냅니다 (주일 낮 예배 중심)' : '설교문을 쓰고 · QT를 함께 준비해 아이패드로 내보냅니다') + '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">' +
         '<select id="se_status" class="sed-status" title="작성 상태">' + ['작성중', '수정중', '완료'].map(function (s) { return '<option' + (s === (rec.status || '작성중') ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>' +
-        '<button class="btn btn-line" id="se_save" style="padding:8px 13px;border-radius:9px">💾 저장</button>' +
-        (worshipMode ? '' : '<button class="btn btn-line" id="se_settings" title="자동 임시저장 설정" style="padding:8px 11px;border-radius:9px">⚙</button>') +
-        '<button class="btn btn-line" id="se_kakao" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">💬 카카오톡 복사</button>' +
-        '<button class="btn btn-line" id="se_kakao_at" title="이 QT를 정해진 시각에 카카오톡 단톡방으로 자동 발송합니다 (집/교회 PC 워커가 보냅니다)" style="padding:8px 12px;border-radius:9px;background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">⏰ 예약 발송</button>' +
-        '<button class="btn btn-line" id="se_preview" style="padding:8px 13px;border-radius:9px">👁 미리보기</button>' +
-        (worshipMode ? '' : '<button class="btn btn-line" id="se_present" style="padding:8px 13px;border-radius:9px">🖥 발표자 모드</button>') +
-        (worshipMode ? '' : '<button class="btn btn-line" id="se_pdf" style="padding:8px 13px;border-radius:9px">📄 내보내기</button>') +
-        (worshipMode ? '' : '<button class="btn btn-line" id="se_video" title="이 날짜의 QT로 이미지·영상을 자동 생성합니다 (집/교회 PC 워커가 처리)" style="padding:8px 13px;border-radius:9px">🎬 영상 제작</button>') +
-        (worshipMode ? '' : '<button class="btn btn-line" id="se_worship" title="이 설교로 방송 PPT·큐시트·중등부 교재·교사용·주보·설교요약을 한 번에 만듭니다 (집/교회 PC 워커가 Claude Code로 처리)" style="padding:8px 13px;border-radius:9px">📦 주일 자료 일괄 생성</button>') +
-        (worshipMode ? '<button class="btn btn-solid" id="se_export" style="padding:8px 18px;border-radius:9px;font-weight:700">📤 저장 후 내보내기</button>' : '') +
+        '<button class="btn btn-line sed-hbtn" id="se_save">' + ic('save') + '저장</button>' +
+        (worshipMode ? '' : '<button class="btn btn-line sed-hbtn ic-only" id="se_settings" title="자동 임시저장 설정" aria-label="자동 임시저장 설정" style="padding-left:10px;padding-right:10px">' + ic('settings') + '</button>') +
+        '<button class="btn btn-line sed-hbtn btn-kakao" id="se_kakao" style="background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">' + ic('chat') + '카카오톡 복사</button>' +
+        '<button class="btn btn-line sed-hbtn btn-kakao" id="se_kakao_at" title="이 QT를 정해진 시각에 카카오톡 단톡방으로 자동 발송합니다 (집/교회 PC 워커가 보냅니다)" style="background:#fbe94d;border-color:#e6d23f;color:#3a2e00;font-weight:600;display:none">' + ic('clock') + '예약 발송</button>' +
+        '<button class="btn btn-line sed-hbtn" id="se_preview">' + ic('eye') + '미리보기</button>' +
+        (worshipMode ? '' : '<button class="btn btn-line sed-hbtn" id="se_present">' + ic('monitor') + '발표자 모드</button>') +
+        (worshipMode ? '' : '<button class="btn btn-line sed-hbtn" id="se_pdf">' + ic('filedown') + '내보내기</button>') +
+        (worshipMode ? '' : '<button class="btn btn-line sed-hbtn" id="se_video" title="이 날짜의 QT로 이미지·영상을 자동 생성합니다 (집/교회 PC 워커가 처리)">' + ic('film') + '영상 제작</button>') +
+        (worshipMode ? '' : '<button class="btn btn-line sed-hbtn" id="se_worship" title="이 설교로 방송 PPT·큐시트·중등부 교재·교사용·주보·설교요약을 한 번에 만듭니다 (집/교회 PC 워커가 Claude Code로 처리)">' + ic('pkg') + '주일 자료 일괄 생성</button>') +
+        (worshipMode ? '<button class="btn btn-solid sed-hbtn" id="se_export" style="padding-left:18px;padding-right:18px;font-weight:700">' + ic('upload') + '저장 후 내보내기</button>' : '') +
         '</div>' +
         '<div id="se_msg" class="fin-msg" style="flex-basis:100%;text-align:right;min-height:0;margin-top:-2px"></div>' +
         '</div></header>' +
@@ -3669,7 +3788,7 @@ console.log('[affairs.js] v20260923lic');
         '<div class="sed-ribbon"' + (worshipMode ? ' style="display:none"' : '') + '>' +
         '<div class="se-toolbar" id="se_tb">' +
         '<span class="se-grp">' +
-        '<button type="button" data-cmd="undo" title="실행취소">↶</button><button type="button" data-cmd="redo" title="다시실행">↷</button>' +
+        '<button type="button" data-cmd="undo" title="실행취소" aria-label="실행취소">' + ic('undo') + '</button><button type="button" data-cmd="redo" title="다시실행" aria-label="다시실행">' + ic('redo') + '</button>' +
         '</span><span class="se-sep"></span>' +
         '<span class="se-grp">' +
         '<select id="se_block" class="se-selflat" title="문단 스타일"><option value="p">본문</option><option value="h1">큰제목</option><option value="h2">제목</option><option value="h3">소제목</option><option value="blockquote">인용</option></select>' +
@@ -3684,43 +3803,43 @@ console.log('[affairs.js] v20260923lic');
         '<button type="button" data-cmd="underline" title="밑줄" style="text-decoration:underline">U</button>' +
         '<button type="button" data-cmd="strikeThrough" title="취소선" style="text-decoration:line-through">S</button>' +
         '<button type="button" data-cmd="superscript" title="위첨자">x²</button>' +
-        '<span class="se-pop-wrap"><button type="button" class="se-swbtn" id="se_fore_btn" title="글자색"><b>가</b><i class="se-swbar" id="se_fore_bar" style="background:#c0392b"></i><span class="se-caret">▾</span></button><div class="se-pop" id="se_fore_pop"></div></span>' +
-        '<span class="se-pop-wrap"><button type="button" class="se-swbtn" id="se_hi_btn" title="형광펜"><b class="se-hiico" id="se_hi_ico" style="background:#fff59d">가</b><span class="se-caret">▾</span></button><div class="se-pop" id="se_hi_pop"></div></span>' +
-        '<button type="button" data-cmd="removeFormat" title="선택 부분 서식 지우기">✕ 서식</button>' +
+        '<span class="se-pop-wrap"><button type="button" class="se-swbtn" id="se_fore_btn" title="글자색"><b>가</b><i class="se-swbar" id="se_fore_bar" style="background:#c0392b"></i><span class="se-caret">' + ic('chevD') + '</span></button><div class="se-pop" id="se_fore_pop"></div></span>' +
+        '<span class="se-pop-wrap"><button type="button" class="se-swbtn" id="se_hi_btn" title="형광펜"><b class="se-hiico" id="se_hi_ico" style="background:#fff59d">가</b><span class="se-caret">' + ic('chevD') + '</span></button><div class="se-pop" id="se_hi_pop"></div></span>' +
+        '<button type="button" data-cmd="removeFormat" title="선택 부분 서식 지우기">' + ic('eraser') + '<span>서식</span></button>' +
         '<button type="button" id="se_fontreset" title="원고 전체의 글꼴·크기·색을 기본값으로 되돌립니다">폰트 초기화</button>' +
         '</span><span class="se-sep"></span>' +
         '<span class="se-grp">' +
         '<button type="button" data-blk="h1" title="큰제목">H₁</button><button type="button" data-blk="h2" title="제목">H₂</button><button type="button" data-blk="h3" title="소제목">H₃</button>' +
-        '<button type="button" data-blk="blockquote" title="인용구">❝ 인용</button>' +
+        '<button type="button" data-blk="blockquote" title="인용구">' + ic('quote') + '<span>인용</span></button>' +
         '</span><span class="se-sep"></span>' +
         '<span class="se-grp">' +
-        '<button type="button" data-cmd="insertUnorderedList" title="글머리 목록">• 목록</button>' +
-        '<button type="button" data-cmd="insertOrderedList" title="번호 목록">1. 목록</button>' +
-        '<button type="button" id="se_chk" title="체크 기호 삽입">☑</button>' +
-        '<button type="button" data-cmd="justifyLeft" title="왼쪽 정렬">⯇</button>' +
-        '<button type="button" data-cmd="justifyCenter" title="가운데 정렬">≡</button>' +
-        '<button type="button" data-cmd="justifyRight" title="오른쪽 정렬">⯈</button>' +
-        '<button type="button" data-cmd="justifyFull" title="양쪽 정렬">☰</button>' +
+        '<button type="button" data-cmd="insertUnorderedList" title="글머리 목록">' + ic('list') + '<span>목록</span></button>' +
+        '<button type="button" data-cmd="insertOrderedList" title="번호 목록">' + ic('listOl') + '<span>번호</span></button>' +
+        '<button type="button" id="se_chk" title="체크 기호 삽입" aria-label="체크 기호 삽입">' + ic('check') + '</button>' +
+        '<button type="button" data-cmd="justifyLeft" title="왼쪽 정렬" aria-label="왼쪽 정렬">' + ic('alignL') + '</button>' +
+        '<button type="button" data-cmd="justifyCenter" title="가운데 정렬" aria-label="가운데 정렬">' + ic('alignC') + '</button>' +
+        '<button type="button" data-cmd="justifyRight" title="오른쪽 정렬" aria-label="오른쪽 정렬">' + ic('alignR') + '</button>' +
+        '<button type="button" data-cmd="justifyFull" title="양쪽 정렬" aria-label="양쪽 정렬">' + ic('alignJ') + '</button>' +
         '</span><span class="se-sep"></span>' +
         '<span class="se-grp">' +
-        '<button type="button" id="se_ins_bible" title="본문 칸의 성경 구절을 굵게 삽입">📖 구절</button>' +
-        '<button type="button" data-cmd="insertHorizontalRule" title="구분선">— 구분선</button>' +
-        '<button type="button" id="se_bible_open" class="se-bible-btn" title="성경을 왼쪽에서 열기">📖 성경</button>' +
-        '<button type="button" id="se_note" title="선택 부분에 메모(주석) 달기 — 마우스를 올리면 표시">💬 메모</button>' +
-        '<button type="button" id="se_img" title="이미지 삽입">🖼</button>' +
-        '<button type="button" id="se_vid" title="유튜브·영상 삽입">▶</button>' +
-        '<button type="button" id="se_ill_ins" title="예화 검색·삽입">💡 예화</button>' +
-        '<button type="button" id="se_ill_save" title="선택한 문단을 예화 보관함에 저장">💾 예화 저장</button>' +
+        '<button type="button" id="se_ins_bible" title="본문 칸의 성경 구절을 굵게 삽입">' + ic('book') + '<span>구절</span></button>' +
+        '<button type="button" data-cmd="insertHorizontalRule" title="구분선">' + ic('minus') + '<span>구분선</span></button>' +
+        '<button type="button" id="se_bible_open" class="se-bible-btn" title="성경을 왼쪽에서 열기">' + ic('book') + '<span>성경</span></button>' +
+        '<button type="button" id="se_note" title="선택 부분에 메모(주석) 달기 — 마우스를 올리면 표시">' + ic('chat') + '<span>메모</span></button>' +
+        '<button type="button" id="se_img" title="이미지 삽입" aria-label="이미지 삽입">' + ic('image') + '</button>' +
+        '<button type="button" id="se_vid" title="유튜브·영상 삽입" aria-label="유튜브·영상 삽입">' + ic('play') + '</button>' +
+        '<button type="button" id="se_ill_ins" title="예화 검색·삽입">' + ic('bulb') + '<span>예화</span></button>' +
+        '<button type="button" id="se_ill_save" title="선택한 문단을 예화 보관함에 저장">' + ic('save') + '<span>예화 저장</span></button>' +
         '</span><span class="se-sep"></span>' +
-        '<span class="se-grp"><button type="button" id="se_tb_reset" title="도구 배치 초기화 — 도구는 꾹 눌러 끌면 위치를 바꿀 수 있습니다">↺</button></span>' +
+        '<span class="se-grp"><button type="button" id="se_tb_reset" title="도구 배치 초기화 — 도구는 꾹 눌러 끌면 위치를 바꿀 수 있습니다" aria-label="도구 배치 초기화">' + ic('reset') + '</button></span>' +
         '</div></div>' +
         // ── 리본 2줄째: 제목·본문(성경)·불러오기 + 용지·여백·배율 (예배 매니저에서는 제목·본문만) ──
         '<div class="sed-ribbon sed-ribbon2"><div class="sed-r2">' +
         '<input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" class="r2-title">' +
         '<input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="본문(성경) — 예: 창1:1-5" class="r2-scrip">' +
-        '<button type="button" id="se_fetch_btn" class="r2-btn" title="입력한 구절의 개역개정 본문을 자동으로 불러옵니다">📥 불러오기</button>' +
-        '<button type="button" id="se_pn_bible" class="r2-btn r2-sm" title="출력되는 성경 본문(개역개정·우리말) 열기/닫기">📖 본문 텍스트</button>' +
-        '<button type="button" id="se_pn_prayer" class="r2-btn r2-sm" title="설교 후 기도문 열기/닫기">🙏 기도</button>' +
+        '<button type="button" id="se_fetch_btn" class="r2-btn" title="입력한 구절의 개역개정 본문을 자동으로 불러옵니다">' + ic('download') + '불러오기</button>' +
+        '<button type="button" id="se_pn_bible" class="r2-btn r2-sm" title="출력되는 성경 본문(개역개정·우리말) 열기/닫기">' + ic('book') + '본문 텍스트</button>' +
+        '<button type="button" id="se_pn_prayer" class="r2-btn r2-sm" title="설교 후 기도문 열기/닫기">' + ic('hand') + '기도</button>' +
         '<span class="se-sep wd-ctl"></span>' +
         '<span class="r2-lbl wd-ctl">용지</span><select id="wd_paper" class="se-selflat wd-ctl"><option value="A4">A4 (210×297㎜)</option><option value="iPad">아이패드 (180×240㎜)</option><option value="Letter">레터 (216×279㎜)</option><option value="B5">B5 (176×250㎜)</option></select>' +
         '<span class="r2-lbl wd-ctl">여백</span><select id="wd_margin" class="se-selflat wd-ctl"><option value="15">좁게 (15㎜)</option><option value="20" selected>보통 (20㎜)</option><option value="25">넓게 (25㎜)</option></select>' +
@@ -3732,24 +3851,24 @@ console.log('[affairs.js] v20260923lic');
         // ── 접이식 패널: 출력되는 성경 본문 / 기도 (리본 버튼으로 열고 닫음 — 원고 영역과 분리) ──
         '<div class="sed-panel" id="pn_bible" style="display:none"><div class="sed-panel-in">' +
         '<div style="display:flex;align-items:center;gap:14px;margin-bottom:6px">' +
-        '<span style="font-size:.82rem;font-weight:700;color:#8fa0b5">📖 성경 본문 <span style="font-weight:400;color:#6d7c92">(PDF·아이패드에 출력되는 본문)</span></span>' +
-        '<label style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#4fae95"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488;margin:0"> 우리말성경</label>' +
+        '<span class="pn-h" style="font-size:.82rem;font-weight:700;color:#8fa0b5">' + ic('book') + '성경 본문 <span style="font-weight:400;color:#6d7c92">(PDF·아이패드에 출력되는 본문)</span></span>' +
+        '<label class="pn-chk" style="display:flex;align-items:center;gap:5px;font-size:.82rem;font-weight:600;cursor:pointer;color:#4fae95"><input type="checkbox" id="se_woorimal_chk" style="width:14px;height:14px;cursor:pointer;accent-color:#0d9488;margin:0"> 우리말성경</label>' +
         '<span id="se_bible_loading" style="font-size:.75rem;color:#9aa5b1;margin-left:4px"></span>' +
         '</div>' +
         // 우리말성경 체크는 항상 꺼진 상태가 기본값 — 매일 QT/새벽기도(qtOn)일 때만 처음부터 2단으로 보임(체크와 무관하게), 아래 syncQt()가 실제 표시를 정함
         '<div id="se_bible_cols" style="display:grid;grid-template-columns:' + ((rec.service === '매일 QT' || rec.service === '새벽기도') ? '1fr 1fr' : '1fr') + ';gap:12px">' +
         '<div><div style="font-size:.73rem;color:#75839a;font-weight:600;margin-bottom:3px">개역개정</div>' +
-        '<textarea id="se_bible" placeholder="[📥 불러오기]를 누르거나 직접 붙여넣으세요." style="min-height:150px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.bible_text || '') + '</textarea></div>' +
+        '<textarea id="se_bible" placeholder="[불러오기]를 누르거나 직접 붙여넣으세요." style="min-height:150px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.bible_text || '') + '</textarea></div>' +
         '<div id="se_qt_bible_wrap" style="' + ((rec.service === '매일 QT' || rec.service === '새벽기도') ? '' : 'display:none') + '"><div style="font-size:.73rem;color:#75839a;font-weight:600;margin-bottom:3px">우리말성경 <span style="font-weight:400">(직접 입력)</span></div>' +
         '<textarea id="se_qt_bible" placeholder="우리말성경 본문을 붙여넣으세요." style="min-height:150px;line-height:1.8;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.qt_bible_text || '') + '</textarea></div>' +
         '</div></div></div>' +
         '<div class="sed-panel" id="pn_prayer" style="display:none"><div class="sed-panel-in">' +
-        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span style="font-size:.82rem;font-weight:700;color:#8fa0b5">🙏 기도</span><span style="font-weight:400;font-size:.74rem;color:#6d7c92">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#b79df1;border-color:#4a3d73;background:#1b2431">✨ AI 생성</button></div>' +
-        '<textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘✨ AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:130px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.prayer || '') + '</textarea>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><span class="pn-h" style="font-size:.82rem;font-weight:700;color:#8fa0b5">' + ic('hand') + '기도</span><span class="pn-sub" style="font-weight:400;font-size:.74rem;color:#6d7c92">설교 원고 뒤에 함께 출력됩니다</span><button type="button" id="se_prayer_ai" class="btn btn-line" style="margin-left:auto;padding:4px 12px;font-size:.76rem;font-weight:600;color:#b79df1;border-color:#4a3d73;background:#1b2431">' + ic('sparkles') + 'AI 생성</button></div>' +
+        '<textarea id="se_prayer" placeholder="설교 후 드릴 기도를 적으세요. (마침기도·결단기도 등) — ‘AI 생성’으로 설교 원고 기반 300자 미만 기도문을 만들 수 있습니다." style="min-height:130px;line-height:1.85;font-size:1rem;font-family:\'Noto Serif KR\',serif;width:100%;box-sizing:border-box">' + esc(rec.prayer || '') + '</textarea>' +
         '</div></div>' +
         '<div class="sed-wrap ' + (worshipMode ? 'sed-mode-worship' : 'sed-mode-sermon') + '">' +
         (worshipMode ? '' : '<div class="sed-aside-l" id="se_bible_pop"><div class="mb-card">' +
-          '<div class="mb-head">📖 성경 보기<button type="button" class="mb-close" id="mb_set_btn" title="보기 설정(배경·글씨 크기·줄간격)">⚙</button><button type="button" class="mb-close" id="mb_close" title="닫기" style="margin-left:0">✕</button></div>' +
+          '<div class="mb-head">' + ic('book') + '성경 보기<button type="button" class="mb-close" id="mb_set_btn" title="보기 설정(배경·글씨 크기·줄간격)" aria-label="보기 설정">' + ic('settings') + '</button><button type="button" class="mb-close" id="mb_close" title="닫기" aria-label="닫기" style="margin-left:0">' + ic('x') + '</button></div>' +
           '<div class="mb-trans"><button data-v="gyr" class="on">개역개정</button><button data-v="urm">우리말성경</button></div>' +
           '<div class="mb-selrow"><select id="mb_book"></select><select id="mb_chap"></select></div>' +
           // 보기 설정: 배경 색상 · 글씨 크기 · 줄간격 (localStorage에 저장)
@@ -3758,28 +3877,28 @@ console.log('[affairs.js] v20260923lic');
           '<div class="mb-setrow">글씨 <button type="button" class="mb-fsbtn" id="mb_fs_dn">−</button><b id="mb_fs_v" style="min-width:38px;text-align:center">15px</b><button type="button" class="mb-fsbtn" id="mb_fs_up">＋</button><span style="margin-left:8px">줄간격</span> <select id="mb_lh"><option value="1.6">1.6</option><option value="1.85">1.85</option><option value="2.1">2.1</option><option value="2.4">2.4</option></select></div>' +
           '</div>' +
           '<div class="mb-text" id="mb_text"><p class="mb-hint">성경책과 장을 고르면 본문이 표시됩니다.</p></div>' +
-          '<button type="button" class="mb-ins" id="mb_insert" title="현재 보고 있는 장을 위 본문(성경) 칸에 넣습니다">＋ 이 장을 본문칸에 넣기</button>' +
+          '<button type="button" class="mb-ins" id="mb_insert" title="현재 보고 있는 장을 위 본문(성경) 칸에 넣습니다">' + ic('plus') + '이 장을 본문칸에 넣기</button>' +
           '</div></div>') +
         '<div class="sed-aside"><div class="af-field" style="margin:0">' +
-        '<label style="font-size:1.18rem;font-weight:700;color:var(--accent,#032257);margin-bottom:2px">📋 예배 순서</label>' +
-        '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·CCM·항목을 추가하고 드래그로 정렬 · 항목에 📎 파일 첨부</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px"><button type="button" class="btn btn-line" id="se_tpl_load" style="padding:6px 8px;font-size:.78rem">📋 양식 불러오기</button><button type="button" class="btn btn-line" id="se_tpl_save" style="padding:6px 8px;font-size:.78rem">💾 양식 저장</button></div>' +
+        '<label style="font-size:1.18rem;font-weight:700;color:var(--accent,#032257);margin-bottom:2px">' + ic('clip') + '예배 순서</label>' +
+        '<div style="font-size:.74rem;color:#9aa5b1;margin-bottom:9px">교독문·찬송가·CCM·항목을 추가하고 드래그로 정렬 · 항목에 파일 첨부</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px"><button type="button" class="btn btn-line" id="se_tpl_load" style="padding:6px 8px;font-size:.78rem">' + ic('clip') + '양식 불러오기</button><button type="button" class="btn btn-line" id="se_tpl_save" style="padding:6px 8px;font-size:.78rem">' + ic('save') + '양식 저장</button></div>' +
         '<div id="se_tpl_msg" style="font-size:.74rem;color:#7b8794;min-height:0;margin-bottom:6px"></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px"><button type="button" class="btn btn-line" id="se_gyodok" style="padding:7px 4px;font-size:.8rem">📜 교독문</button><button type="button" class="btn btn-line" id="se_hymn" style="padding:7px 4px;font-size:.8rem">🎵 찬송가</button><button type="button" class="btn btn-line" id="se_ccm" style="padding:7px 4px;font-size:.8rem">🎶 CCM</button></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px"><button type="button" class="btn btn-line" id="se_gyodok" style="padding:7px 4px;font-size:.8rem">' + ic('scroll') + '교독문</button><button type="button" class="btn btn-line" id="se_hymn" style="padding:7px 4px;font-size:.8rem">' + ic('music') + '찬송가</button><button type="button" class="btn btn-line" id="se_ccm" style="padding:7px 4px;font-size:.8rem">' + ic('music') + 'CCM</button></div>' +
         '<div id="se_order"></div>' +
         '</div></div>' +
         // ── 좌측 바인더: 정보(분류·키워드·요약) / 시리즈(분류·탐색) / 첨부 ──
         '<aside class="sed-binder">' +
-        '<div class="bd-tabs"><button type="button" class="bd-tab on" data-p="info">📋 정보</button><button type="button" class="bd-tab" data-p="attach">📎 첨부</button></div>' +
+        '<div class="bd-tabs"><button type="button" class="bd-tab on" data-p="info">' + ic('clip') + '정보</button><button type="button" class="bd-tab" data-p="attach">' + ic('paperclip') + '첨부</button></div>' +
         '<div class="bd-pane bd-pane-info" id="bd_info">' +
         '<div class="af-field"><label>일자</label><input type="date" id="se_date" value="' + esc(fmtD(rec.sermon_date) || today()) + '"></div>' +
         '<div class="af-field"><label>설교 분류(예배)</label><select id="se_service"><option value="">선택</option>' + svcOpts + '</select>' +
         '<input type="text" id="se_svc_custom" placeholder="새 분류 이름 (예: 청년예배)" style="display:none;margin-top:6px" title="기타를 고른 뒤 새 분류 이름을 적으면 그 이름으로 저장되고, 다음부터 분류 목록에 나타납니다"></div>' +
         // 시리즈: 분류 바로 다음 — 입력하면 기존 시리즈가 자동완성으로 뜸
         // 순서: ①입력+추가(클릭하면 기존 시리즈 목록 드롭다운) ②추가된 시리즈 목록 박스 ③같은 시리즈의 설교(스크롤) 박스
-        '<div class="af-field se-hide-worship"><label>📚 시리즈 <span style="font-weight:400">(여러 개 선택 가능)</span></label>' +
+        '<div class="af-field se-hide-worship"><label>' + ic('library') + '시리즈 <span style="font-weight:400">(여러 개 선택 가능)</span></label>' +
         '<div class="bd-serwrap">' +
-        '<div style="display:flex;gap:5px"><input type="text" id="se_series_in" placeholder="시리즈 추가 · 클릭하면 목록에서 선택" autocomplete="off" style="flex:1"><button type="button" class="btn btn-line" id="se_series_add" style="padding:6px 11px;font-size:.8rem;flex:none">＋ 추가</button></div>' +
+        '<div style="display:flex;gap:5px"><input type="text" id="se_series_in" placeholder="시리즈 추가 · 클릭하면 목록에서 선택" autocomplete="off" style="flex:1"><button type="button" class="btn btn-line" id="se_series_add" style="padding:6px 11px;font-size:.8rem;flex:none">' + ic('plus') + '추가</button></div>' +
         '<div id="se_series_list" class="bd-serlist"></div>' +
         '</div>' +
         '<div class="bd-boxhead">추가된 시리즈</div>' +
@@ -3789,18 +3908,18 @@ console.log('[affairs.js] v20260923lic');
         '</div>' +
         '<div class="af-field"><label>설교자</label><input type="text" id="se_preacher" value="' + esc(rec.preacher || '김동석 목사') + '"></div>' +
         // 🎵 찬송가(새벽·수요·금요 기도회 전용) — 선택하면 PDF 제목 아래 '찬송가 N장'으로 표기
-        '<div class="af-field se-hide-worship" id="se_hymn_field" style="display:none"><label>🎵 찬송가 <span style="font-weight:400">(PDF 제목 아래 표기)</span></label>' +
+        '<div class="af-field se-hide-worship" id="se_hymn_field" style="display:none"><label>' + ic('music') + '찬송가 <span style="font-weight:400">(PDF 제목 아래 표기)</span></label>' +
         '<div id="se_hymn_chips" style="min-height:20px;margin-bottom:6px"></div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button type="button" class="btn btn-line" id="se_hymn_pick2" style="padding:7px 4px;font-size:.78rem">🔍 번호·제목 검색</button><button type="button" class="btn btn-line" id="se_hymn_reco_btn" style="padding:7px 4px;font-size:.78rem">✨ 주제 추천</button></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button type="button" class="btn btn-line" id="se_hymn_pick2" style="padding:7px 4px;font-size:.78rem">' + ic('search') + '번호·제목 검색</button><button type="button" class="btn btn-line" id="se_hymn_reco_btn" style="padding:7px 4px;font-size:.78rem">' + ic('sparkles') + '주제 추천</button></div>' +
         '<div id="se_hymn_reco" style="display:none;margin-top:8px"></div></div>' +
         '<div class="af-field se-hide-worship"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#c79a2e;margin:0;flex:none">함께 만들기</label></div>' +
-        '<div class="af-field se-hide-worship"><label>🏷 키워드 <span style="font-weight:400">(최대 3개)</span></label><input type="text" id="se_keywords" value="' + esc(rec.keywords || '') + '" placeholder="쉼표로 구분"></div>' +
-        '<div class="af-field se-hide-worship"><label>📝 미리보기 요약</label><textarea id="se_summary" maxlength="500" placeholder="목록·카드 하단에 노출 (최대 500자, 2줄까지 표시)" style="min-height:74px">' + esc(rec.summary || '') + '</textarea></div>' +
+        '<div class="af-field se-hide-worship"><label>' + ic('tag') + '키워드 <span style="font-weight:400">(최대 3개)</span></label><input type="text" id="se_keywords" value="' + esc(rec.keywords || '') + '" placeholder="쉼표로 구분"></div>' +
+        '<div class="af-field se-hide-worship"><label>' + ic('pencil') + '미리보기 요약</label><textarea id="se_summary" maxlength="500" placeholder="목록·카드 하단에 노출 (최대 500자, 2줄까지 표시)" style="min-height:74px">' + esc(rec.summary || '') + '</textarea></div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
         '</div>' +
         '<div class="bd-pane bd-pane-attach" id="bd_attach" style="display:none">' +
-        '<div class="af-field"><label>🎬 영상 URL</label><input type="text" id="se_media" value="' + esc(rec.media_url || '') + '" placeholder="유튜브 등 영상 주소"></div>' +
-        '<div class="af-field"><label>📎 파일 URL</label><input type="text" id="se_file" value="' + esc(rec.file_url || '') + '" placeholder="자료 파일 주소"><button type="button" class="btn btn-line" id="se_file_up" style="margin-top:6px;width:100%;padding:7px;font-size:.8rem">⬆ 파일 업로드</button></div>' +
+        '<div class="af-field"><label>' + ic('film') + '영상 URL</label><input type="text" id="se_media" value="' + esc(rec.media_url || '') + '" placeholder="유튜브 등 영상 주소"></div>' +
+        '<div class="af-field"><label>' + ic('paperclip') + '파일 URL</label><input type="text" id="se_file" value="' + esc(rec.file_url || '') + '" placeholder="자료 파일 주소"><button type="button" class="btn btn-line" id="se_file_up" style="margin-top:6px;width:100%;padding:7px;font-size:.8rem">' + ic('upload') + '파일 업로드</button></div>' +
         '</div>' +
         '</aside>' +
         '<main class="sed-main">' +
@@ -3819,17 +3938,17 @@ console.log('[affairs.js] v20260923lic');
         // ── 우측 패널: 생명의삶 자동분류 ──
         '<aside class="sed-aside-r">' +
         '<div class="rp-pane" id="rp_qtc"><div class="qtc-card">' +
-        '<div class="qtc-h">📥 생명의삶 자동분류</div>' +
+        '<div class="qtc-h">' + ic('download') + '생명의삶 자동분류</div>' +
         '<div class="qtc-sub">생명의삶(목회자판) 자료 전체를 붙여넣고 <b>분류</b>를 누르면 — 매일 QT로 설정되고 <b>날짜·본문·개역개정·우리말성경·제목·설교 원고·예화 클립</b>이 자동 입력됩니다.</div>' +
         '<textarea id="qtc_paste" class="qtc-paste" placeholder="여기에 생명의삶 자료 전체를 붙여넣으세요"></textarea>' +
-        '<div style="display:flex;gap:6px;margin-top:7px"><button type="button" class="btn btn-solid" id="qtc_run" style="flex:1;padding:9px;font-weight:700">🔎 분류</button><button type="button" class="btn btn-line" id="qtc_clear" style="padding:9px 12px">지우기</button></div>' +
+        '<div style="display:flex;gap:6px;margin-top:7px"><button type="button" class="btn btn-solid" id="qtc_run" style="flex:1;padding:9px;font-weight:700">' + ic('search') + '분류</button><button type="button" class="btn btn-line" id="qtc_clear" style="padding:9px 12px">지우기</button></div>' +
         '<div id="qtc_msg" style="font-size:.76rem;margin-top:7px;min-height:0;line-height:1.5"></div>' +
         '<div id="qtc_result"></div>' +
-        '<div style="border-top:1px solid #eef1f5;margin:13px 0 0;padding-top:11px"><button type="button" class="btn btn-line" id="qtc_illus" style="width:100%;padding:9px">🔍 예화 검색·삽입</button></div>' +
+        '<div class="qtc-foot" style="border-top:1px solid #eef1f5;margin:13px 0 0;padding-top:11px"><button type="button" class="btn btn-line" id="qtc_illus" style="width:100%;padding:9px">' + ic('search') + '예화 검색·삽입</button></div>' +
         '</div></div>' +
         // 주일 자료 일괄 생성 진행 상황 — 작업이 있을 때만 나타난다
         '<div class="qtc-card wp-card" id="wp_panel" style="display:none;margin-top:10px">' +
-        '<div class="qtc-h">📦 주일 자료 생성</div>' +
+        '<div class="qtc-h">' + ic('pkg') + '주일 자료 생성</div>' +
         '<div class="wp-state" id="wp_state">대기 중</div>' +
         '<div id="wp_list"></div>' +
         '<div class="wp-note" id="wp_note"></div>' +
@@ -3840,7 +3959,7 @@ console.log('[affairs.js] v20260923lic');
         '<footer class="sed-sb"' + (worshipMode ? ' style="display:none"' : '') + '>' +
         '<span id="sb_count">1 페이지 · 0 단어 · 0 글자</span>' +
         '<span id="sb_saved" style="margin-left:auto">' + (rec.id ? '불러옴' : '새 문서') + '</span>' +
-        '<span style="display:inline-flex;align-items:center;gap:7px">맞춤 <input type="range" id="sb_zoom" min="40" max="130" value="66" style="width:110px"> <b id="sb_zoom_v" style="min-width:36px">66%</b></span>' +
+        '<span style="display:inline-flex;align-items:center;gap:7px">맞춤 <input type="range" id="sb_zoom" min="50" max="160" value="100" style="width:110px"> <b id="sb_zoom_v" style="min-width:36px">66%</b></span>' +
         '</footer>';
       document.body.appendChild(ov);
       document.body.style.overflow = 'hidden';
@@ -3999,7 +4118,8 @@ console.log('[affairs.js] v20260923lic');
       // '기타' 선택 시 새 분류 이름 입력칸 표시 — 저장하면 그 이름이 분류가 되어 다음부터 목록에 나타남
       var svcCustomInp = ov.querySelector('#se_svc_custom');
       function syncSvcCustom() { if (svcCustomInp) svcCustomInp.style.display = (ov.querySelector('#se_service').value === '기타') ? '' : 'none'; }
-      ov.querySelector('#se_service').addEventListener('change', function () {
+      var svcSelEl = ov.querySelector('#se_service');   // 화면 구성에 따라 없을 수 있어 요소가 있을 때만 배선
+      if (svcSelEl) svcSelEl.addEventListener('change', function () {
         autoFillOrder(this.value);
         syncSvcCustom();
         // 매일 QT·새벽기도 선택 시 → 'QT 함께 만들기'·'우리말성경' 자동 켜짐 (다른 종류로 바꾸면 우리말성경 꺼짐)
@@ -4137,7 +4257,7 @@ console.log('[affairs.js] v20260923lic');
           recoEl.innerHTML = '<div style="font-size:.76rem;color:#c0392b">추천을 불러오지 못했습니다: ' + esc((e && e.message) || '') + '</div>';
         });
       };
-      ov.querySelector('#se_service').addEventListener('change', hymnFieldSync);
+      if (svcSelEl) svcSelEl.addEventListener('change', hymnFieldSync);
       hymnFieldSync(); hymnFieldChips();
       // 저장 시 선택한 찬송가를 배정 기록(sermon_songs·slot=hymn)에도 남겨 라이브러리 사용횟수·3주 순환에 반영
       // (라이브러리에 같은 장 번호의 찬송가가 등록돼 있을 때만 — 테이블 미설치 등 실패는 조용히 무시)
@@ -4375,7 +4495,8 @@ console.log('[affairs.js] v20260923lic');
           preacher: ov.querySelector('#se_preacher').value.trim() || null,
           // 저장은 페이지 나눔 흔적(자동 간격 .pg-break-spacer, 페이지 넘김용 조각 .pg-cont)을 모두 원상복구한 깨끗한 HTML로
           // — 용지·여백·배율마다 달라지는 임시 레이아웃은 저장하지 않음. (Ctrl+Enter 수동 나눔 .pg-manual-break은 사용자 의도라 보존)
-          content: (wdCleanHtml ? wdCleanHtml() : (function () { var c = ed.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.pg-break-spacer'), function (n) { n.remove(); }); return c.innerHTML; })()) || null,
+          // 줄간격·자간이 설정돼 있으면 cleanContent() 가 <div data-se-root> 래퍼로 함께 실어 준다(다시 열 때 복원)
+          content: (wdCleanHtml ? cleanContent() : wrapStyleRoot((function () { var c = ed.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.pg-break-spacer'), function (n) { n.remove(); }); return c.innerHTML; })())) || null,
           prayer: (ov.querySelector('#se_prayer') ? ov.querySelector('#se_prayer').value : '') || null,
           bible_text: (ov.querySelector('#se_bible') ? ov.querySelector('#se_bible').value : '') || null,
           // 체크박스는 화면에 보이고 안 보이고만 결정 — 저장은 칸에 실제로 있는 값 그대로(체크 꺼졌다고 기존 우리말 데이터가 지워지면 안 됨)
@@ -4410,14 +4531,43 @@ console.log('[affairs.js] v20260923lic');
           .then(function () { if (done) done(true); })
           .catch(function () { if (done) done(false); });
       }
+      // ── 저장 경쟁 방지 ──
+      // 수동 저장(save)과 자동 저장(quietSave)이 동시에 나가면 새 설교가 두 번 POST 되어 중복 레코드가 생겼다.
+      // → 모든 저장 요청은 persist() 하나를 거쳐 직렬로 나간다(앞 요청이 끝나 rec.id 가 정해진 뒤 다음 요청은 PATCH).
+      // dirty: 마지막 저장 이후 수정 여부(자동저장·닫기 확인용). editSeq: 요청 도중 또 고쳤는지 판별용 일련번호.
+      var dirty = false, editSeq = 0, persistP = null;
+      ov.addEventListener('input', function () { dirty = true; editSeq++; });
+      function persist(data) {
+        var seq0 = editSeq;
+        function run() {
+          var p = rec.id ? api('PATCH', 'sermons?id=eq.' + rec.id, data, 'return=representation') : api('POST', 'sermons', data, 'return=representation');
+          return p.then(function (rows) {
+            if (rows && rows[0]) rec.id = rows[0].id;
+            if (editSeq === seq0) dirty = false;   // 요청 중에 또 고쳤으면 아직 미저장 상태로 둔다
+            return rows;
+          });
+        }
+        var chain = persistP ? persistP.then(run, run) : run();
+        persistP = chain;
+        function done() { if (persistP === chain) persistP = null; }
+        chain.then(done, done);
+        return chain;
+      }
+      // 편집기가 닫힐 때(✕·뒤로가기 모두) 문서 전역에 걸어 둔 리스너를 걷어내는 정리 목록 — ov 가 DOM 에서 빠지면 실행
+      var seTeardown = [];
+      function runTeardown() { var fs = seTeardown; seTeardown = []; fs.forEach(function (f) { try { f(); } catch (e) { } }); }
+      try {
+        var seMo = new MutationObserver(function () { if (!document.body.contains(ov)) { seMo.disconnect(); runTeardown(); } });
+        seMo.observe(document.body, { childList: true });
+      } catch (e) { }
       function save(then, onErr) {
         var data = gather();
         var msg = ov.querySelector('#se_msg');
         if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = '일자와 제목은 필수입니다.'; if (onErr) onErr(new Error('일자·제목 필수')); return; }
         msg.style.color = '#7b8794'; msg.textContent = '저장 중…';
-        var p = rec.id ? api('PATCH', 'sermons?id=eq.' + rec.id, data, 'return=representation') : api('POST', 'sermons', data, 'return=representation');
+        var p = persist(data);
         p.then(function (rows) {
-          var saved = (rows && rows[0]) || data; if (rows && rows[0]) rec.id = rows[0].id;
+          var saved = (rows && rows[0]) || data;
           markSaved();
           syncHymnUsage(rec.id);   // 찬송가 선택 → 라이브러리 사용횟수·순환 집계에 반영(실패 무시)
           if (shouldPairQt()) {
@@ -4435,9 +4585,9 @@ console.log('[affairs.js] v20260923lic');
             // 시리즈·키워드·요약·상태 컬럼이 아직 없으면(sermons_manager.sql 미실행) 해당 필드만 빼고 재시도
             if (/series|keywords|summary|status/i.test(e.message || '') && ('series' in data)) {
               var d2 = {}; Object.keys(data).forEach(function (k) { if (['series', 'keywords', 'summary', 'status'].indexOf(k) < 0) d2[k] = data[k]; });
-              var p2 = rec.id ? api('PATCH', 'sermons?id=eq.' + rec.id, d2, 'return=representation') : api('POST', 'sermons', d2, 'return=representation');
+              var p2 = persist(d2);
               p2.then(function (rows) {
-                var saved = (rows && rows[0]) || d2; if (rows && rows[0]) rec.id = rows[0].id;
+                var saved = (rows && rows[0]) || d2;
                 markSaved();
                 msg.style.color = '#a8742a'; msg.textContent = '✓ 저장됨 — 시리즈·키워드·요약·상태 저장은 Supabase에서 supabase/sermons_manager.sql 1회 실행 후 가능합니다.';
                 loadList(); if (then) then(saved);
@@ -4454,6 +4604,28 @@ console.log('[affairs.js] v20260923lic');
           });
       }
       ov.querySelector('#se_save').onclick = function () { save(null); };
+      // ── 닫기(✕): 저장 안 된 변경이 있으면 잃지 않게 — 일자·제목이 있으면 조용히 저장한 뒤 닫고, 없으면 확인을 묻는다 ──
+      (function () {
+        var closeBtn = ov.querySelector('#se_close'); if (!closeBtn) return;
+        var rawClose = closeBtn.onclick;   // pushBackClose 가 돌려준 원래 닫기(history.back → teardown)
+        function doClose() { if (typeof rawClose === 'function') rawClose(); else close(); }   // onclick 배선이 바뀌어도 위에서 만든 close 로 닫힘
+        closeBtn.onclick = function () {
+          if (!dirty) { doClose(); return; }
+          var data = gather();
+          if (data.sermon_date && data.title) {
+            var msg = ov.querySelector('#se_msg'); if (msg) { msg.style.color = '#7b8794'; msg.textContent = '저장 중…'; }
+            persist(data).then(function () { doClose(); }, function (e) {
+              if (confirm('저장에 실패했습니다(' + (e && e.message || e) + ').\n저장하지 않은 변경이 있습니다. 그래도 닫을까요?')) doClose();
+            });
+            return;
+          }
+          if (confirm('저장하지 않은 변경이 있습니다. 닫을까요?')) doClose();
+        };
+        // 브라우저 탭 닫기·새로고침 때도 미저장 변경이 있으면 경고 — 편집기가 닫히면 리스너 제거
+        function onBeforeUnload(e) { if (dirty && document.body.contains(ov)) { e.preventDefault(); e.returnValue = ''; return ''; } }
+        window.addEventListener('beforeunload', onBeforeUnload);
+        seTeardown.push(function () { window.removeEventListener('beforeunload', onBeforeUnload); });
+      })();
       // ── 🎬 영상 제작 스튜디오 (전역 모듈 window.VideoStudio — 파일 하단 정의) ──
       (function () {
         var vbtn = ov.querySelector('#se_video'); if (!vbtn) return;
@@ -4481,7 +4653,7 @@ console.log('[affairs.js] v20260923lic');
           var m = ov.querySelector('#se_msg'); if (!m) return;
           m.style.color = color || '#7b8794'; m.innerHTML = html;
         }
-        function done(label) { wbtn.disabled = false; wbtn.textContent = label || '📦 주일 자료 일괄 생성'; }
+        function done(label) { wbtn.disabled = false; if (label) wbtn.textContent = label; else wbtn.innerHTML = (typeof ic === 'function' ? ic('pkg') : '') + '주일 자료 일괄 생성'; }
 
         // 오른쪽 패널(자동분류 아래)에 항목별 진행 상황을 그린다.
         //   wait 아직 · working 만드는 중 · done 파일 완성 · up 올림 완료 · fail 실패
@@ -4650,7 +4822,7 @@ console.log('[affairs.js] v20260923lic');
         var data = gather();
         if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = 'PDF 내보내기 전에 일자와 제목을 입력해 주세요.'; return; }
         if (!(window.WPF && window.FINANCE_API_URL)) { msg.style.color = '#c0392b'; msg.textContent = 'PDF 내보내기는 재정 API 설정 후 이용할 수 있습니다.'; return; }
-        var old = pdfBtn.textContent; pdfBtn.disabled = true; pdfBtn.textContent = '저장 중…';
+        var old = pdfBtn.innerHTML; pdfBtn.disabled = true; pdfBtn.textContent = '저장 중…';
         save(function (saved) {
           pdfBtn.textContent = 'PDF 생성 중…';
           // 편집기 화면과 같은 결과가 나오게: 용지·여백(리본 설정) + 문서 전체 글꼴·크기·줄간격·자간을 함께 보낸다
@@ -4675,43 +4847,91 @@ console.log('[affairs.js] v20260923lic');
               letterSpacing: parseFloat(ed.style.letterSpacing) || 0
             }
           }).then(function (r) {
-            pdfBtn.disabled = false; pdfBtn.textContent = old;
+            pdfBtn.disabled = false; pdfBtn.innerHTML = old;
             msg.style.color = 'green';
             msg.innerHTML = '✓ PDF 저장됨 — "' + esc(r.folder) + '" 폴더 · <a href="' + esc(r.url) + '" target="_blank" rel="noopener">열어보기 →</a>';
           }).catch(function (e) {
-            pdfBtn.disabled = false; pdfBtn.textContent = old;
+            pdfBtn.disabled = false; pdfBtn.innerHTML = old;
             msg.style.color = '#c0392b';
             var m = (e && e.message) || '';
             msg.textContent = /unknown action/i.test(m) ? 'PDF 내보내기는 Apps Script 재배포 후 이용할 수 있습니다.' : ('PDF 내보내기 실패: ' + m);
           });
         }, function (e) {
-          pdfBtn.disabled = false; pdfBtn.textContent = old;
+          pdfBtn.disabled = false; pdfBtn.innerHTML = old;
           msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + (e && e.message ? e.message : e);
         });
       };
 
       // ── 설교 원고 리치 에디터(contenteditable) ──
       var ed = ov.querySelector('#se_editor'), hid = ov.querySelector('#se_content'), cntEl = ov.querySelector('#se_count');
+      // 문단 서식·목록 명령 전에 페이지 조각(.pg-cont)·간격을 원래 문단으로 되돌리는 훅 — wdPageView 에서 cleanForEdit 가 대입됨
+      var wdCleanForEdit = null;
+      // ── 줄간격·자간 보존 ──
+      // 리본의 줄간격·자간은 편집기(ed) 인라인 스타일이라 저장 HTML(innerHTML)에 실리지 않아 다시 열면 사라졌다.
+      // → 저장할 땐 원고 전체를 <div data-se-root data-se-lh data-se-ls style="line-height;letter-spacing"> 하나로 감싸고,
+      //   편집기에 넣을 땐(불러오기·undo) 그 래퍼를 풀어 ed 스타일·리본 셀렉트로 옮긴다(페이지 나눔은 최상위 블록 단위라 래퍼가 남으면 안 됨).
+      function wrapStyleRoot(html) {
+        var lh = ed.style.lineHeight || '', ls = ed.style.letterSpacing || '';
+        if (!lh && !ls) return html;
+        return '<div data-se-root="1"' + (lh ? ' data-se-lh="' + esc(lh) + '"' : '') + (ls ? ' data-se-ls="' + esc(ls) + '"' : '') +
+          ' style="' + (lh ? 'line-height:' + esc(lh) + ';' : '') + (ls ? 'letter-spacing:' + esc(ls) : '') + '">' + html + '</div>';
+      }
+      function absorbStyleRoot() {
+        var r = ed.firstElementChild;
+        if (!r || r.tagName !== 'DIV' || !r.hasAttribute('data-se-root') || ed.children.length !== 1) return;
+        var lh = r.getAttribute('data-se-lh') || '', ls = r.getAttribute('data-se-ls') || '';
+        ed.style.lineHeight = lh; ed.style.letterSpacing = ls;
+        var lhS = ov.querySelector('#se_lh'), lsS = ov.querySelector('#se_ls');
+        if (lhS && lh) lhS.value = lh;
+        if (lsS && ls) lsS.value = String(parseFloat(ls) || 0);
+        while (r.firstChild) ed.insertBefore(r.firstChild, r);
+        r.remove();
+      }
       (function initEditor() {
         var raw = rec.content || '';
         if (/<(p|div|h[1-6]|ul|ol|li|blockquote|br|span|mark|b|i|strong|em|u|s|font)\b/i.test(raw)) ed.innerHTML = raw;        // 이미 서식 있는 원고
         else if (raw.trim()) ed.innerHTML = raw.split(/\n{2,}/).map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join('');  // 기존 평문 → 문단
         else ed.innerHTML = '';
+        absorbStyleRoot();   // 저장된 줄간격·자간 복원
         syncContent();
       })();
       // 저장·미리보기·AI용 깨끗한 HTML — 예전엔 키 입력마다 원고 전체를 복제·정리해 숨은칸(hid)에 넣어
       // 긴 원고에서 타이핑이 무거웠음 → 필요할 때만 계산하는 함수로 전환(입력 성능).
-      function cleanContent() { return wdCleanHtml ? wdCleanHtml() : ed.innerHTML; }
+      function cleanContent() { return wrapStyleRoot(wdCleanHtml ? wdCleanHtml() : ed.innerHTML); }
       var cntT = null;
+      var wdTotalPages = 1;   // 실제 페이지 수 — wdPageView 의 repaginate() 가 갱신
+      // 하단 상태바 '<n> 페이지 · <w> 단어 · <c> 글자' — 단어·글자 수를 이미 셌으면 넘겨받고, 아니면 여기서 센다
+      function updateStatus(words, chars) {
+        var sb = ov.querySelector('#sb_count'); if (!sb) return;
+        if (words == null) {
+          var t = (ed.innerText || '').replace(/ /g, ' ').trim();
+          words = t ? t.split(/\s+/).length : 0; chars = t.replace(/\s/g, '').length;
+        }
+        sb.textContent = wdTotalPages + ' 페이지 · ' + words + ' 단어 · ' + chars + ' 글자';
+      }
       function updateCounts() {
         var t = (ed.innerText || '').replace(/ /g, ' ').trim();
         var words = t ? t.split(/\s+/).length : 0, chars = t.replace(/\s/g, '').length;
         cntEl.textContent = words + '단어 · ' + chars + '자';
+        updateStatus(words, chars);
       }
       function syncContent() { clearTimeout(cntT); cntT = setTimeout(updateCounts, 300); }   // 카운트만 디바운스 갱신
       ed.addEventListener('input', syncContent);
       try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
-      function exec(cmd, val) { pushUndo(); ed.focus(); try { document.execCommand(cmd, false, val == null ? null : val); } catch (e) {} syncContent(); }
+      var BLOCK_CMD_RE = /^(formatBlock|insertOrderedList|insertUnorderedList|indent|outdent|justify)/i;   // 문단 구조를 바꾸는 명령
+      function exec(cmd, val) {
+        pushUndo(); ed.focus();
+        var s0 = window.getSelection();
+        if (!s0 || !s0.rangeCount || !ed.contains(s0.anchorNode)) restoreSel();   // 셀렉트·팝업 등으로 선택이 빠졌으면 저장해 둔 선택으로
+        var isBlock = BLOCK_CMD_RE.test(cmd);
+        if (isBlock && typeof wdCleanForEdit === 'function') {
+          // 페이지 경계에서 둘로 쪼개진 문단(.pg-cont)에 제목·목록을 먹이면 반쪽만 바뀌므로, 먼저 조각을 합친 뒤 명령 실행
+          saveSel(); try { wdCleanForEdit(); } catch (e) { } restoreSel();
+        }
+        try { document.execCommand(cmd, false, val == null ? null : val); } catch (e) {}
+        saveSel(); syncContent();
+        if (isBlock && typeof wdRepaginate === 'function') wdRepaginate();   // 제목·목록·정렬은 블록 높이가 바뀌므로 전체 재계산(인라인 서식은 input 이벤트의 빠른 검증으로 충분)
+      }
       Array.prototype.forEach.call(ov.querySelectorAll('#se_tb [data-cmd]'), function (b) {
         b.onmousedown = function (e) { e.preventDefault(); };   // 선택영역 유지
         b.onclick = function () {
@@ -4733,6 +4953,56 @@ console.log('[affairs.js] v20260923lic');
         var k = e.key || '';
         if (k.indexOf('Arrow') === 0 || k === 'Home' || k === 'End' || k === 'PageUp' || k === 'PageDown' || e.shiftKey) saveSel();
       });
+      // ── 리본 상태 동기화: 커서가 있는 곳의 문단 종류·글꼴·크기·굵게 등을 리본에 반영(워드처럼) ──
+      // selectionchange 는 문서 전역 이벤트라 편집기 안에 선택이 있을 때만 처리하고, 프레임당 한 번으로 묶는다. 편집기가 닫히면 제거.
+      (function ribbonSync() {
+        var tb = ov.querySelector('#se_tb'); if (!tb) return;
+        var stateBtns = {};
+        ['bold', 'italic', 'underline', 'strikeThrough', 'superscript'].forEach(function (c) { var b = tb.querySelector('[data-cmd="' + c + '"]'); if (b) stateBtns[c] = b; });
+        var blockS = ov.querySelector('#se_block'), sizeS = ov.querySelector('#se_size'), fontS = ov.querySelector('#se_font');
+        var BLK_RE = /^(P|H1|H2|H3|H4|H5|H6|BLOCKQUOTE|LI|DIV)$/;
+        function firstFamily(ff) { return String(ff || '').split(',')[0].replace(/["']/g, '').trim().toLowerCase(); }
+        function sync() {
+          var s = window.getSelection();
+          if (!s || !s.rangeCount || !ed.contains(s.anchorNode)) return;
+          saveSel();
+          var node = s.anchorNode.nodeType === 3 ? s.anchorNode.parentNode : s.anchorNode;
+          if (!node || node === ed) return;
+          // 문단 종류(조각 .pg-cont 는 원래 문단과 같은 태그라 그대로 읽으면 됨)
+          if (blockS) {
+            var blk = node; while (blk && blk !== ed && !BLK_RE.test(blk.tagName)) blk = blk.parentNode;
+            var tg = (blk && blk !== ed) ? blk.tagName.toLowerCase() : 'p';
+            if (tg === 'li' || tg === 'div') tg = 'p';   // 목록 항목·div 는 셀렉트 옵션에 없음 → 본문으로 표시
+            else if (/^h[4-6]$/.test(tg)) tg = 'h3';
+            var hasOpt = false; Array.prototype.forEach.call(blockS.options, function (o) { if (o.value === tg) hasOpt = true; });
+            if (hasOpt && blockS.value !== tg) blockS.value = tg;
+          }
+          var cs = null; try { cs = window.getComputedStyle(node); } catch (e) { }
+          // 글자 크기: 계산된 px 에 가장 가까운 옵션
+          if (sizeS && cs) {
+            var px = parseFloat(cs.fontSize) || 0, best = -1, bestD = 1e9;
+            Array.prototype.forEach.call(sizeS.options, function (o, i) { var d = Math.abs(Number(o.value) - px); if (d < bestD) { bestD = d; best = i; } });
+            if (best >= 0 && sizeS.selectedIndex !== best) sizeS.selectedIndex = best;
+          }
+          // 글꼴: 계산된 font-family 의 첫 글꼴이 옵션 목록에 있으면 그것을, 없으면 그대로 둔다
+          if (fontS && cs) {
+            var fam = firstFamily(cs.fontFamily), idx = -1;
+            Array.prototype.forEach.call(fontS.options, function (o, i) { if (idx < 0 && o.value && firstFamily(o.value) === fam) idx = i; });
+            if (idx >= 0 && fontS.selectedIndex !== idx) fontS.selectedIndex = idx;
+          }
+          Object.keys(stateBtns).forEach(function (c) {
+            var on = false; try { on = document.queryCommandState(c); } catch (e) { }
+            stateBtns[c].classList.toggle('on', !!on);
+          });
+        }
+        var pend = false;
+        function onSelChange() {
+          if (pend) return; pend = true;
+          (window.requestAnimationFrame || window.setTimeout)(function () { pend = false; try { sync(); } catch (e) { } });
+        }
+        document.addEventListener('selectionchange', onSelChange);
+        seTeardown.push(function () { document.removeEventListener('selectionchange', onSelChange); });
+      })();
 
       // ── 실행취소/다시실행: 자체 스냅샷 스택 ──────────────────────────────
       // 페이지 나눔(repaginate)이 execCommand 밖에서 DOM을 재구성(간격 삽입·문단 분할/병합)하기 때문에
@@ -4745,8 +5015,9 @@ console.log('[affairs.js] v20260923lic');
         return null;
       }
       function takeSnap() { return { html: cleanContent(), sel: caretSnap() }; }
+      var undoBurst = false;   // 타이핑 묶음이 진행 중인지 — 묶음의 첫 입력 직전 상태를 먼저 쌓아 두기 위함
       function pushUndo() {
-        clearTimeout(undoT); undoT = null;
+        clearTimeout(undoT); undoT = null; undoBurst = false;
         var snap = takeSnap();
         var top = undoStack[undoStack.length - 1];
         if (top && top.html === snap.html) { if (snap.sel) top.sel = snap.sel; return; }   // 내용 그대로면 스택·redo 유지
@@ -4757,6 +5028,7 @@ console.log('[affairs.js] v20260923lic');
       function schedPushUndo() { clearTimeout(undoT); undoT = setTimeout(pushUndo, 600); }
       function applySnap(snap) {
         ed.innerHTML = snap.html;
+        absorbStyleRoot();   // 스냅샷 HTML 의 줄간격·자간 래퍼를 풀어 ed 스타일로
         if (typeof wdRepaginate === 'function') wdRepaginate();
         if (snap.sel && snap.sel.s >= 0) {   // 분할/병합은 텍스트 순서를 안 바꾸므로 전역 오프셋으로 정확히 복원됨
           var a = globalToPos(snap.sel.s), b = globalToPos(snap.sel.e);
@@ -4770,6 +5042,9 @@ console.log('[affairs.js] v20260923lic');
       function doRedo() { if (!redoStack.length) return; var s = redoStack.pop(); undoStack.push(s); applySnap(s); }
       ed.addEventListener('compositionstart', function () { edComposing = true; });
       ed.addEventListener('compositionend', function () { edComposing = false; schedPushUndo(); });
+      // 타이핑 묶음의 첫 입력 '직전' 상태를 스냅샷으로(디바운스만 있으면 첫 묶음의 시작 상태가 스택에 없어 되돌릴 곳이 없었음)
+      // — 디바운스(schedPushUndo)는 묶음의 끝을 확정하는 역할로 그대로 둔다
+      ed.addEventListener('beforeinput', function () { if (!undoBurst) { pushUndo(); undoBurst = true; } });
       ed.addEventListener('input', function () { if (!edComposing) schedPushUndo(); });   // 한글 조합 중엔 스냅샷 보류
       ed.addEventListener('keydown', function (e) {
         if (!(e.ctrlKey || e.metaKey)) return;
@@ -4843,18 +5118,28 @@ console.log('[affairs.js] v20260923lic');
         if (!t.trim()) return '';
         return t.split(/\n{2,}/).map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join('');
       }
+      // Ctrl+Shift+V = 서식 없이(평문) 붙여넣기 — paste 이벤트엔 Shift 정보가 없어 keydown 에서 표시해 둔다
+      var pastePlain = false;
+      ed.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'v') pastePlain = !!e.shiftKey; });
+      var PASTE_HTML_MAX = 300 * 1024;   // 이보다 큰 HTML(웹페이지 통째 등)은 정리 비용이 커서 평문으로 넣는다
       ed.addEventListener('paste', function (e) {
         var cd = e.clipboardData || window.clipboardData;
         if (!cd) return;   // 아주 옛 브라우저 → 기본 동작
-        var html = '', text = '';
+        var html = '', text = '', plain = pastePlain; pastePlain = false;
         try { html = cd.getData('text/html') || ''; } catch (err) { }
         try { text = cd.getData('text/plain') || ''; } catch (err) { }
+        if (html && html.length > PASTE_HTML_MAX && text) {
+          var bigKb = Math.round(html.length / 1024); html = '';
+          var mBig = ov.querySelector('#se_msg'); if (mBig) { mBig.style.color = '#a8742a'; mBig.textContent = '붙여넣은 서식이 너무 커서(' + bigKb + 'KB) 서식 없이 평문으로 넣었습니다.'; }
+        }
+        if (plain) html = '';
         var ins = html ? sanitizePastedHtml(html) : plainToParas(text);
         if (!ins) return;
         e.preventDefault();
         pushUndo();   // 붙여넣기 전 상태를 undo 한 단계로
         try { document.execCommand('insertHTML', false, ins); } catch (err) { }
-        syncContent();
+        saveSel(); syncContent();
+        if (typeof wdRepaginate === 'function') wdRepaginate();   // 여러 문단이 한 번에 들어오므로 전체 페이지 나눔 재계산
       });
 
       // 툴바의 select(문단·글꼴·크기·줄간격·자간)를 누르면 편집기 포커스를 가져가 선택영역이 사라진다.
@@ -4880,11 +5165,13 @@ console.log('[affairs.js] v20260923lic');
         saveSel(); syncContent();
       }
 
-      ov.querySelector('#se_block').onchange = function () { ed.focus(); restoreSel(); exec('formatBlock', this.value === 'p' ? 'P' : this.value.toUpperCase()); this.selectedIndex = 0; };
+      // 셀렉트는 명령 후 '본문'으로 되돌리지 않는다 — 커서 위치의 실제 문단 종류는 selectionchange 동기화가 보여 준다
+      var blockSel = ov.querySelector('#se_block');
+      if (blockSel) blockSel.onchange = function () { ed.focus(); restoreSel(); exec('formatBlock', this.value === 'p' ? 'P' : this.value.toUpperCase()); };
 
       // 글꼴 (모두 오픈폰트 라이선스)
       var fontSel = ov.querySelector('#se_font');
-      if (fontSel) fontSel.onchange = function () { var v = this.value; if (!v) return; applyFontFamily(v); this.selectedIndex = 0; };
+      if (fontSel) fontSel.onchange = function () { var v = this.value; if (!v) return; applyFontFamily(v); };
 
       // 글자 크기(px) — execCommand fontSize(7) 후 실제 px로 치환
       // styleWithCSS 를 반드시 false 로 되돌린다. 글꼴 적용(applyFontFamily)이 이를 true 로
@@ -4901,6 +5188,8 @@ console.log('[affairs.js] v20260923lic');
         Array.prototype.forEach.call(ed.querySelectorAll('font[size="7"]'), function (f) { f.removeAttribute('size'); f.style.fontSize = px + 'px'; });
         // 위 문제로 이미 커져 버린 부분이 원고에 남아 있으면 이번 크기로 함께 바로잡는다.
         Array.prototype.forEach.call(ed.querySelectorAll('[style*="xxx-large"]'), function (el) { el.style.fontSize = px + 'px'; });
+        // 위에서 잠깐 껐던 styleWithCSS 를 다시 켠다 — 그대로 두면 이후 굵게·색상 등이 <b>/<font> 태그로 들어가 서식 정리·저장 형식이 뒤섞임
+        try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
         saveSel(); syncContent();
       }
       if (sizeSel) sizeSel.onchange = function () { applySize(Number(this.value)); };
@@ -4959,22 +5248,24 @@ console.log('[affairs.js] v20260923lic');
         var title = ov.querySelector('#se_title').value.trim(), scripture = ov.querySelector('#se_scripture').value.trim();
         if (!manuscript && !scripture) { msg.style.color = '#c0392b'; msg.textContent = '설교 원고(또는 본문)를 먼저 입력하면 기도문을 생성합니다.'; return; }
         var content = '설교 제목: ' + (title || '(없음)') + '\n본문: ' + (scripture || '(없음)') + '\n\n[설교 원고]\n' + (manuscript.slice(0, 6000) || '(없음)');
-        var btn = this, old = btn.textContent; btn.disabled = true; btn.textContent = '✨ 생성 중…';
+        var btn = this, old = btn.innerHTML; btn.disabled = true; btn.textContent = '생성 중…';
         msg.style.color = '#7b8794'; msg.textContent = '교회 컴퓨터에 요청을 보내는 중입니다…';
         aiJob('prayer', content, function () { msg.textContent = 'AI가 기도문을 작성하는 중입니다… (30초 내외)'; })
           .then(function (txt) {
-            btn.disabled = false; btn.textContent = old;
+            btn.disabled = false; btn.innerHTML = old;
             txt = (txt || '').trim();
             if (txt) { ov.querySelector('#se_prayer').value = txt; msg.style.color = 'green'; msg.textContent = '✓ 기도문을 생성했습니다 (' + txt.replace(/\s/g, '').length + '자) — 확인 후 다듬어 주세요.'; }
             else { msg.style.color = '#c0392b'; msg.textContent = '생성 결과가 비어 있습니다. 다시 시도해 주세요.'; }
           })
-          .catch(function (e) { btn.disabled = false; btn.textContent = old; msg.style.color = '#c0392b'; msg.textContent = '기도문 생성 실패: ' + e.message; });
+          .catch(function (e) { btn.disabled = false; btn.innerHTML = old; msg.style.color = '#c0392b'; msg.textContent = '기도문 생성 실패: ' + e.message; });
       };
 
       // ── 생명의삶 자동분류 패널 ──
-      ov.querySelector('#qtc_clear').onclick = function () { ov.querySelector('#qtc_paste').value = ''; ov.querySelector('#qtc_msg').textContent = ''; ov.querySelector('#qtc_result').innerHTML = ''; };
-      ov.querySelector('#qtc_illus').onclick = function () { illustrationsModal({ pickLabel: '⬇ 원고에 삽입', onPick: function (r) { exec('insertHTML', '<blockquote>' + esc(r.content || '').replace(/\n/g, '<br>') + (r.source ? '<br><span style="font-size:.85em;color:#7a5d27">— ' + esc(r.source) + '</span>' : '') + '</blockquote><p><br></p>'); } }); };
-      ov.querySelector('#qtc_run').onclick = function () {
+      // 예배 매니저(worshipMode) 화면엔 자동분류 패널이 없을 수 있으므로 요소가 있을 때만 배선(없으면 여기서 멈춰 아래 초기화까지 죽던 문제)
+      var qtcClearBtn = ov.querySelector('#qtc_clear'), qtcIllusBtn = ov.querySelector('#qtc_illus'), qtcRun = ov.querySelector('#qtc_run');
+      if (qtcClearBtn) qtcClearBtn.onclick = function () { ov.querySelector('#qtc_paste').value = ''; ov.querySelector('#qtc_msg').textContent = ''; ov.querySelector('#qtc_result').innerHTML = ''; };
+      if (qtcIllusBtn) qtcIllusBtn.onclick = function () { illustrationsModal({ pickLabel: '⬇ 원고에 삽입', onPick: function (r) { exec('insertHTML', '<blockquote>' + esc(r.content || '').replace(/\n/g, '<br>') + (r.source ? '<br><span style="font-size:.85em;color:#7a5d27">— ' + esc(r.source) + '</span>' : '') + '</blockquote><p><br></p>'); } }); };
+      if (qtcRun) qtcRun.onclick = function () {
         var raw = ov.querySelector('#qtc_paste').value || '';
         var msg = ov.querySelector('#qtc_msg'), result = ov.querySelector('#qtc_result');
         var p = parseSaengmyeong(raw);
@@ -5159,7 +5450,7 @@ console.log('[affairs.js] v20260923lic');
           var fi = document.createElement('input'); fi.type = 'file';
           fi.onchange = function () {
             var f = fi.files && fi.files[0]; if (!f) return;
-            fupBtn.disabled = true; fupBtn.textContent = '⏳ 업로드 중…';
+            fupBtn.disabled = true; fupBtn.textContent = '업로드 중…';
             ChurchUpload.upload(f, { folder: 'sermons/files', compress: false }).then(function (res) { ov.querySelector('#se_file').value = res.url; fupBtn.disabled = false; fupBtn.textContent = '⬆ 파일 업로드'; }).catch(function (e) { fupBtn.disabled = false; fupBtn.textContent = '⬆ 파일 업로드'; alert('업로드 실패: ' + e.message); });
           };
           fi.click();
@@ -5171,10 +5462,22 @@ console.log('[affairs.js] v20260923lic');
           b.onclick = function () { exec('formatBlock', b.dataset.blk.toUpperCase()); };
         });
         var chkBtn = ov.querySelector('#se_chk');
-        if (chkBtn) { chkBtn.onmousedown = function (e) { e.preventDefault(); }; chkBtn.onclick = function () { exec('insertText', '☐ '); }; }
+        // 체크 항목: 클릭으로 ☐/☑ 를 오가는 인라인 요소(편집 불가 span) — 예전에 넣은 평문 '☐ ' 는 그대로 남아 있어도 무방
+        if (chkBtn) { chkBtn.onmousedown = function (e) { e.preventDefault(); }; chkBtn.onclick = function () { exec('insertHTML', '<span class="se-chk" contenteditable="false" data-on="0">☐</span>&nbsp;'); }; }
+        ed.addEventListener('click', function (e) {
+          var t = e.target && e.target.closest ? e.target.closest('.se-chk') : null;
+          if (!t || !ed.contains(t)) return;
+          e.preventDefault();
+          pushUndo();
+          var on = t.getAttribute('data-on') === '1';
+          t.setAttribute('data-on', on ? '0' : '1'); t.textContent = on ? '☐' : '☑';
+          syncContent();
+          try { ed.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) { }   // dirty·자동저장 반영
+        });
         var lhSel = ov.querySelector('#se_lh');
         if (lhSel) lhSel.onchange = function () {
           if (!this.value) return;
+          pushUndo();   // 줄간격 변경 전 상태를 undo 한 단계로(저장 HTML 래퍼에 실리므로 스냅샷으로 되돌릴 수 있음)
           ed.style.lineHeight = this.value;
           // 문단마다 붙어 있던 개별 줄간격(붙여넣기 등)을 걷어내야 문서 전체 줄간격이 실제로 바뀐다
           Array.prototype.forEach.call(ed.querySelectorAll('[style*="line-height"]'), function (el) { if (el !== ed) el.style.lineHeight = ''; });
@@ -5184,6 +5487,7 @@ console.log('[affairs.js] v20260923lic');
         var lsSel = ov.querySelector('#se_ls');
         if (lsSel) lsSel.onchange = function () {
           if (this.value === '') return;
+          pushUndo();
           ed.style.letterSpacing = this.value + 'px';
           syncContent();
           if (typeof wdRepaginate === 'function') wdRepaginate();
@@ -5224,9 +5528,14 @@ console.log('[affairs.js] v20260923lic');
         var frBtn = ov.querySelector('#se_fontreset');
         if (frBtn) frBtn.onclick = function () {
           if (!confirm('원고 전체의 글꼴·크기·색상을 기본값으로 되돌릴까요?\n(굵게·제목·목록 등 구조는 유지됩니다)')) return;
+          pushUndo();   // 초기화 전 상태를 undo 한 단계로
           Array.prototype.forEach.call(ed.querySelectorAll('font'), function (f) { var sp = document.createElement('span'); sp.innerHTML = f.innerHTML; f.parentNode.replaceChild(sp, f); });
-          Array.prototype.forEach.call(ed.querySelectorAll('*'), function (el) { el.style.fontFamily = ''; el.style.fontSize = ''; el.style.color = ''; el.style.backgroundColor = ''; });
+          Array.prototype.forEach.call(ed.querySelectorAll('*'), function (el) {
+            el.style.fontFamily = ''; el.style.color = ''; el.style.backgroundColor = '';
+            if (!/^(H1|H2|H3|BLOCKQUOTE)$/.test(el.tagName)) el.style.fontSize = '';   // 제목·인용의 크기는 구조의 일부라 유지
+          });
           ed.style.lineHeight = ''; ed.style.letterSpacing = '';
+          if (lhSel) lhSel.selectedIndex = 0; if (lsSel) lsSel.selectedIndex = 0;
           syncContent(); renderPreview();
           if (typeof wdRepaginate === 'function') wdRepaginate();   // 글자 크기가 바뀌면 문단 높이도 바뀌므로 페이지 나눔 재계산
         };
@@ -5327,13 +5636,29 @@ console.log('[affairs.js] v20260923lic');
             // 꺾쇠 가이드·페이지 번호는 실제 페이지 수를 알아야 하므로 repaginate()에서 그림
             // 배율 = 용지 전체를 transform으로 확대/축소(내용은 건드리지 않음 — 잘림·미스매치 없음)
             wdSheet.style.transform = 'scale(' + z + ')';
-            if (zoomLbl) zoomLbl.textContent = prefs.zoom + '%';
+            syncZoomUi();
             if (paperSel) paperSel.value = prefs.paper;
             if (marginSel) marginSel.value = String(prefs.margin);
-            if (zoomR) zoomR.value = prefs.zoom;
             if (pgnumSel) pgnumSel.value = prefs.pgnum;
             try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { }
             repaginate(true);   // 용지·여백이 바뀌면 모든 경계가 달라지므로 전체 재계산
+          }
+          // ── 배율은 모델 하나(prefs.zoom) — 리본의 #wd_zoom 과 상태바의 #sb_zoom 두 슬라이더가 같은 값을 보고 움직인다 ──
+          var ZOOM_MIN = Number(zoomR && zoomR.min) || 50, ZOOM_MAX = Number(zoomR && zoomR.max) || 160;
+          function syncZoomUi() {
+            var sbz = ov.querySelector('#sb_zoom'), sbzV = ov.querySelector('#sb_zoom_v');
+            if (zoomLbl) zoomLbl.textContent = prefs.zoom + '%';
+            if (zoomR) zoomR.value = prefs.zoom;
+            if (sbz) { sbz.min = ZOOM_MIN; sbz.max = ZOOM_MAX; sbz.value = prefs.zoom; }   // 마크업의 40~130 범위를 리본 슬라이더와 맞춤
+            if (sbzV) sbzV.textContent = prefs.zoom + '%';
+          }
+          // 배율만 바뀔 땐 transform 만 바꾸면 되고(offsetTop 은 transform 영향 없음) 페이지 나눔 재계산은 불필요
+          function setZoom(v) {
+            v = Math.round(Number(v) || 100);
+            prefs.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, v));
+            wdSheet.style.transform = 'scale(' + (prefs.zoom / 100) + ')';
+            syncZoomUi();
+            try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { }
           }
           // 실제 페이지 나눔: 원고 안의 문단(최상위 블록)을 훑어 한 쪽 분량을 넘기면 그 앞에 '빈 칸(간격)'을 끼워 다음 장으로 밀어냄
           // — 배경의 흰 용지/간격 줄무늬와 정확히 맞물려 진짜 워드처럼 페이지가 눈에 보이게 나뉜다.
@@ -5604,6 +5929,7 @@ console.log('[affairs.js] v20260923lic');
                 wdPage.style.minHeight = (scan.totalPages * ph + (scan.totalPages - 1) * GAP) + 'px';
                 renderCropMarks(scan.totalPages, ph, mg);
                 renderPageNums(scan.totalPages, ph);
+                if (wdTotalPages !== scan.totalPages) { wdTotalPages = scan.totalPages; updateStatus(); }   // 쪽수가 바뀐 때만(단어 세기는 입력 카운트가 맡음)
                 dirtySet.clear();
                 return false;
               }
@@ -5665,6 +5991,7 @@ console.log('[affairs.js] v20260923lic');
             renderCropMarks(totalPages, ph, mg);
             renderPageNums(totalPages, ph);
             if (hadFocus) restoreCaretMarker(caretMk);
+            wdTotalPages = totalPages; updateStatus();   // 상태바 '<n> 페이지 · 단어 · 글자' 갱신
             dirtySet.clear();
             return true;
           }
@@ -5795,10 +6122,15 @@ console.log('[affairs.js] v20260923lic');
           }
           if (paperSel) paperSel.onchange = function () { prefs.paper = this.value; applyPage(); };
           if (marginSel) marginSel.onchange = function () { prefs.margin = Number(this.value) || 20; applyPage(); };
-          if (zoomR) zoomR.oninput = function () { prefs.zoom = Number(this.value) || 100; applyPage(); };
+          if (zoomR) zoomR.oninput = function () { setZoom(this.value); };
+          var sbZoomR = ov.querySelector('#sb_zoom');
+          if (sbZoomR) sbZoomR.oninput = function () { setZoom(this.value); };
           if (pgnumSel) pgnumSel.onchange = function () { prefs.pgnum = this.value; try { localStorage.setItem(LSK, JSON.stringify(prefs)); } catch (e) { } repaginate(); };
           wdRepaginate = function () { return repaginate(true); };   // 외부(자동분류·undo·서식 등)에서 원고를 통째로 바꾼 뒤엔 전체 재계산
+          wdCleanForEdit = cleanForEdit;   // 문단 서식·목록 명령 전에 페이지 조각(.pg-cont)을 원래 문단으로 되돌리는 훅(exec 에서 사용)
           applyPage();
+          // 첫 페이지 나눔(normalize·조각 정리)까지 끝난 상태를 실행취소의 기준점으로 — 그 전 스냅샷은 정규화 전 HTML 이라 Ctrl+Z 한 번에 '변화 없음'처럼 보였음
+          undoStack = [takeSnap()]; redoStack = [];
           // 웹폰트(본명조 등)가 늦게 로드되면 줄 높이가 바뀌므로, 로드 완료 후 페이지 나눔을 한 번 더 정확히 다시 계산
           try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { repaginate(true); }); } catch (e) { }
           // 원고를 입력할 때마다(디바운스) 페이지 나눔·페이지 번호를 다시 계산
@@ -5834,7 +6166,8 @@ console.log('[affairs.js] v20260923lic');
         // ── 우측 원고지 미리보기 + 하단 상태바(페이지·단어·글자·맞춤) ──
         var rpPaper = ov.querySelector('#rp_paper'), rpWrap = ov.querySelector('#rp_paperwrap'), rpInfo = ov.querySelector('#rp_pageinfo');
         var rpFlow = ov.querySelector('#rp_flow'), pgEl = ov.querySelector('#rp_pg'), pgPrev = ov.querySelector('#rp_pg_prev'), pgNext = ov.querySelector('#rp_pg_next');
-        var sbCount = ov.querySelector('#sb_count'), zoomIn = ov.querySelector('#sb_zoom'), zoomV = ov.querySelector('#sb_zoom_v');
+        // 상태바의 페이지·단어·글자 수는 updateStatus()(편집기 카운트·repaginate 에서 호출)가, 하단 '맞춤' 배율은 wdPageView 의 setZoom 이 담당
+        // — 예전 rp_paper 미리보기 전용 applyZoom 배선은 제거(해당 요소가 없어 아무 일도 하지 않았음)
         // 한 페이지 본문 폭 + 여백×2 = 페이지 넘김 간격 — 용지·여백 설정에 따라 renderPreview에서 갱신됨
         var PG_INW = 434, PG_GAP = 86, PG_STRIDE = PG_INW + PG_GAP;
         var pgIdx = 0, pgTotal = 1;
@@ -5850,13 +6183,6 @@ console.log('[affairs.js] v20260923lic');
         }
         if (pgPrev) pgPrev.onclick = function () { pgIdx--; updatePg(); };
         if (pgNext) pgNext.onclick = function () { pgIdx++; updatePg(); };
-        function applyZoom() {
-          if (!rpPaper) return;
-          var z = Number((zoomIn && zoomIn.value) || 66) / 100;
-          rpPaper.style.transform = 'scale(' + z + ')';
-          if (zoomV) zoomV.textContent = Math.round(z * 100) + '%';
-          if (rpWrap) rpWrap.style.height = Math.ceil(rpPaper.offsetHeight * z) + 'px';
-        }
         // "2026-07-02" → "2026년 7월 2일 (목)" — Apps Script fmtDateK_와 동일
         function fmtDateK(ymd) {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd || '')) return ymd || '';
@@ -5872,7 +6198,7 @@ console.log('[affairs.js] v20260923lic');
           return { key: pk, w: PV_PAPmm[pk][0], h: PV_PAPmm[pk][1], m: Number(mSel && mSel.value) || 20 };
         }
         function renderPreview() {
-          if (!rpPaper) return;
+          if (!rpPaper || !rpFlow) return;   // 현재 화면엔 원고지 미리보기(#rp_paper)가 없음 — 아래는 남겨 둔 미리보기 코드(요소가 생기면 다시 동작)
           // 미리보기 종이를 실제 용지 비율·여백에 맞춤 (폭 520px 고정, 높이·패딩은 비율 환산)
           var pp = pvPaperInfo(), PXMM = 96 / 25.4;
           var factor = 520 / (pp.w * PXMM);                    // 편집기 화면 px → 미리보기 px 축척
@@ -5914,28 +6240,22 @@ console.log('[affairs.js] v20260923lic');
           if (rpFlow) rpFlow.innerHTML = html;
           updatePg();
           if (rpInfo) rpInfo.textContent = pp.key + ' (' + pp.w + '×' + pp.h + '㎜) · 실제 PDF 내보내기와 동일한 양식';
-          var txt = (ed.innerText || '').trim();
-          var words = txt ? txt.split(/\s+/).length : 0, chars = txt.replace(/\s/g, '').length;
-          if (sbCount) sbCount.textContent = pgTotal + ' 페이지 · ' + words + ' 단어 · ' + chars + ' 글자';
-          applyZoom();
         }
-        if (zoomIn) zoomIn.oninput = applyZoom;
         var pvTimer = null;
         function schedPreview() { clearTimeout(pvTimer); pvTimer = setTimeout(function () { (window.requestIdleCallback || window.requestAnimationFrame || window.setTimeout)(renderPreview); }, 650); }
         ed.addEventListener('input', schedPreview);
         ['#se_title', '#se_scripture', '#se_preacher', '#se_bible', '#se_svc_custom'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('input', schedPreview); });
-        ov.querySelector('#se_service').addEventListener('change', schedPreview);
-        ov.querySelector('#se_date').addEventListener('change', schedPreview);
+        ['#se_service', '#se_date'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('change', schedPreview); });
         // 용지·여백·줄간격·자간이 바뀌면 미리보기 종이·서식도 다시 계산
         ['#wd_paper', '#wd_margin', '#se_lh', '#se_ls'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('change', schedPreview); });
         ov.addEventListener('wp:hymns', schedPreview);   // 찬송가 선택이 바뀌면 머리글의 '찬송가 N장' 갱신
-        ov.querySelector('#qtc_run').addEventListener('click', function () { setTimeout(renderPreview, 350); });   // 자동분류 후 미리보기 갱신
+        var qtcRunBtn = ov.querySelector('#qtc_run');
+        if (qtcRunBtn) qtcRunBtn.addEventListener('click', function () { setTimeout(renderPreview, 350); });   // 자동분류 후 미리보기 갱신
         renderPreview();
 
         // ── Ctrl+S 저장 + 자동 임시저장(기본 10초, ⚙ 설정에서 조정) ──
         ov.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 's') { e.preventDefault(); save(null); } });
-        var dirty = false;
-        ov.addEventListener('input', function () { dirty = true; });
+        // dirty 플래그·input 감시는 save() 위(persist 옆)로 올렸음 — 여기서 다시 선언하면 지역 변수로 가려져 닫기 확인이 안 됨
         var AS_LSK = 'wpSermonAutosave';
         var asCfg = { on: true, sec: 10 };
         try { var asv = JSON.parse(localStorage.getItem(AS_LSK) || 'null'); if (asv) { asCfg.on = asv.on !== false; asCfg.sec = Math.max(5, Math.min(600, Number(asv.sec) || 10)); } } catch (e) { }
@@ -5946,14 +6266,12 @@ console.log('[affairs.js] v20260923lic');
           if (asSaving) return;
           var data = gather();
           if (!data.sermon_date || !data.title) return;   // 일자·제목이 없으면 조용히 건너뜀
-          asSaving = true; dirty = false;
-          var p = rec.id ? api('PATCH', 'sermons?id=eq.' + rec.id, data, 'return=representation') : api('POST', 'sermons', data, 'return=representation');
-          p.then(function (rows) {
-            if (rows && rows[0]) rec.id = rows[0].id;
+          asSaving = true;
+          persist(data).then(function () {   // 수동 저장과 같은 직렬 저장 통로 — 새 문서 중복 POST 방지, 성공 시 dirty 해제는 persist 가 담당
             asSaving = false;
             var d = new Date(), h = d.getHours(), ap = h < 12 ? '오전' : '오후'; h = h % 12 || 12;
             asStamp('자동저장됨 ' + ap + ' ' + String(h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'));
-          }).catch(function () { asSaving = false; dirty = true; asStamp('자동저장 대기 중…'); });
+          }).catch(function () { asSaving = false; asStamp('자동저장 대기 중…'); });
         }
         function startAutosave() {
           if (asTimer) { clearInterval(asTimer); asTimer = null; }
@@ -5985,7 +6303,10 @@ console.log('[affairs.js] v20260923lic');
             box.style.display = 'none';
             asStamp(asCfg.on ? ('자동저장 켜짐 · ' + asCfg.sec + '초 간격') : '자동저장 꺼짐');
           };
-          document.addEventListener('mousedown', function (e) { if (box.style.display !== 'none' && !box.contains(e.target) && e.target !== btn) box.style.display = 'none'; });
+          // 바깥 클릭으로 닫기 — 편집기가 닫히면 함께 제거(문서 전역 리스너가 편집기마다 쌓이지 않게)
+          function onDocDown(e) { if (box.style.display !== 'none' && !box.contains(e.target) && e.target !== btn) box.style.display = 'none'; }
+          document.addEventListener('mousedown', onDocDown);
+          seTeardown.push(function () { document.removeEventListener('mousedown', onDocDown); });
         })();
       })();
     }
