@@ -1183,6 +1183,11 @@ body{flex-direction:column}
 .at-idx.on{border-color:var(--accent);background:var(--accent-bg)}
 .at-idx b{font-weight:600}
 .at-idxtext{margin:8px 0 4px;padding:10px 12px;border-radius:10px;background:var(--accent-bg);font-size:13px}
+.at-star{width:34px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:#fff;text-shadow:0 0 1px #777,0 0 2px #777;font-size:20px;line-height:1;cursor:pointer;padding:0}
+.at-star:hover{border-color:#e0b000}
+.at-star.on{color:#f5b800;border-color:#f5b800;background:#fff8dc;text-shadow:0 0 2px rgba(200,150,0,.5)}
+#atFavListBtn.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.at-favempty{padding:10px 4px;font-size:13px;line-height:1.6}
 .at-seenh{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .at-seenclear{margin-left:auto;border:1px solid var(--line);background:var(--bg);color:var(--fg3);border-radius:7px;padding:2px 8px;font-size:11px;cursor:pointer}
 .at-seenclear:hover{color:var(--fg);border-color:var(--fg3)}

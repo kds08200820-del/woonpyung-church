@@ -53,6 +53,31 @@ var ATLAS = (function(){
       (seen.length ? '<button type="button" class="at-seenclear" title="나의 지도 목록을 모두 지웁니다">모두 지우기</button>' : '') + '</div>' +
       (seen.length ? '<div class="at-others at-seen">' + seen.map(function(x){ var m = byId(x.id); return '<div class="at-other at-idx at-seenrow' + (m === cur ? ' on' : '') + '" data-id="' + esc(m.id) + '" role="button" tabindex="0"><span><b>' + esc(m.title) + '</b><br><span class="dim">' + esc(m.ref || '') + '</span></span><span class="dim">' + seenDate(x.t) + '</span><button type="button" class="at-seenx" data-id="' + esc(m.id) + '" title="목록에서 지우기" aria-label="목록에서 지우기">✕</button></div>'; }).join('') + '</div>' : '');
   }
+  /* ── 즐겨찾기: 별(☆/★)로 넣고 빼며, '즐겨찾기' 단추로 목록을 옆 칸에 본다 ── */
+  var FAVKEY = 'bibleApp.atlasFav', favMode = false;
+  function favList(){ try{ var a = JSON.parse(localStorage.getItem(FAVKEY) || '[]'); return Array.isArray(a) ? a.filter(function(id){ return byId(id); }) : []; }catch(e){ return []; } }
+  function favSave(a){ try{ localStorage.setItem(FAVKEY, JSON.stringify(a)); }catch(e){} }
+  function isFav(id){ return favList().indexOf(id) >= 0; }
+  function toggleFav(){
+    if(!cur) return; var a = favList(), i = a.indexOf(cur.id);
+    if(i >= 0){ a.splice(i, 1); APP.toast('즐겨찾기에서 뺐습니다'); } else { a.unshift(cur.id); APP.toast('즐겨찾기에 넣었습니다 ★'); }
+    favSave(a); paintStar(); if(favMode) paintFav(); else if(indexMode) paintIndex();
+  }
+  function paintStar(){ var b = $('atFavBtn'); if(!b || !cur) return; var on = isFav(cur.id); b.textContent = '★'; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.title = on ? '즐겨찾기에서 빼기' : '즐겨찾기에 넣기'; $('atFavListBtn').classList.toggle('on', favMode); }
+  function favRows(cls){
+    var a = favList();
+    return a.length ? '<div class="at-others at-seen">' + a.map(function(id){ var m = byId(id); return '<div class="at-other ' + cls + ' at-seenrow' + (m === cur ? ' on' : '') + '" data-id="' + esc(m.id) + '" role="button" tabindex="0"><span><b>' + esc(m.title) + '</b><br><span class="dim">' + esc(m.ref || '') + '</span></span><span class="dim">' + esc(m.era || '') + '</span><button type="button" class="at-seenx at-favx" data-id="' + esc(m.id) + '" title="즐겨찾기에서 빼기" aria-label="즐겨찾기에서 빼기">✕</button></div>'; }).join('') + '</div>'
+      : '<div class="dim at-favempty">아직 즐겨찾기한 지도가 없습니다. 지도 위 별(★)을 누르면 여기에 모입니다.</div>';
+  }
+  function wireFav(side, repaint){
+    [].forEach.call(side.querySelectorAll('.at-favx'), function(x){ x.onclick = function(e){ e.stopPropagation(); favSave(favList().filter(function(id){ return id !== x.dataset.id; })); paintStar(); var top = side.scrollTop; repaint(); side.scrollTop = top; }; });
+  }
+  function paintFav(){
+    var side = $('atSide'), a = favList();
+    side.innerHTML = '<div class="at-idxhead"><b>즐겨찾기 지도</b> <span class="dim">' + (a.length ? a.length + '장' : '') + '</span></div>' + favRows('at-favrow');
+    [].forEach.call(side.querySelectorAll('.at-favrow'), function(b){ b.onclick = function(e){ if(e.target.closest && e.target.closest('.at-favx')) return; var m = byId(b.dataset.id); if(m){ open(m, null); } }; b.onkeydown = function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); b.onclick(e); } }; });
+    wireFav(side, paintFav);
+  }
   function openIndex(){
     list = allMaps(); indexMode = true;
     open(list[0], null); paintIndex();
@@ -62,6 +87,7 @@ var ATLAS = (function(){
     list.forEach(function(m){ var gname = groupOf(m); if(!byG[gname]){ byG[gname] = []; groups.push(gname); } byG[gname].push(m); });
     side.innerHTML = '<div class="at-idxhead"><b>성경 지도 목록</b> <span class="dim">' + list.length + '장 · 성경 순서</span></div>' +
       '<input class="at-idxq" id="atIdxQ" placeholder="지도 이름·구절 찾기…" autocomplete="off">' +
+      '<div class="at-h at-seenh">즐겨찾기 <span class="dim">' + (favList().length ? favList().length + '장' : '') + '</span></div>' + favRows('at-idx') +
       paintSeen() +
       '<div class="at-h">모든 지도 <span class="dim">성경 순서</span></div>' +
       groups.map(function(gname){ return '<div class="at-h">' + esc(gname) + ' <span class="dim">' + byG[gname].length + '</span></div><div class="at-others">' +
@@ -69,6 +95,7 @@ var ATLAS = (function(){
     [].forEach.call(side.querySelectorAll('.at-idx'), function(b){ b.onclick = function(e){ if(e.target.closest && e.target.closest('.at-seenx')) return; var m = byId(b.dataset.id); if(m){ open(m, null); paintIndex(); side.scrollTop = 0; } }; b.onkeydown = function(e){ if(b.tagName !== 'BUTTON' && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); b.onclick(e); } }; });
     /* 나의 지도: ✕ 는 한 장만, '모두 지우기'는 전부 — 목록만 다시 그리고 지도는 그대로 둔다 */
     [].forEach.call(side.querySelectorAll('.at-seenx'), function(x){ x.onclick = function(e){ e.stopPropagation(); seenRemove(x.dataset.id); var top = side.scrollTop; paintIndex(); side.scrollTop = top; }; });
+    wireFav(side, paintIndex);
     var clr = side.querySelector('.at-seenclear');
     if(clr) clr.onclick = function(e){ e.stopPropagation(); if(!confirm('나의 지도 목록을 모두 지울까요?')) return; seenSave([]); paintIndex(); side.scrollTop = 0; };
     $('atIdxQ').oninput = function(){
@@ -93,7 +120,8 @@ var ATLAS = (function(){
     cv = $('atCanvas'); g = cv.getContext('2d');
     $('atlasModal').hidden = false; fit();
     if(!ro){ ro = new ResizeObserver(function(){ fit(); draw(); }); ro.observe(cv.parentElement); }
-    paintHead(); if(indexMode) paintIndex(); else paintSide();
+    paintHead(); if(favMode) paintFav(); else if(indexMode) paintIndex(); else paintSide();
+    paintStar();
     setView3d(view3dPref, m);
     $('atIndexBtn').classList.toggle('on', indexMode);
     var cr = document.querySelector('#atlasModal .at-credit');
@@ -636,7 +664,9 @@ var ATLAS = (function(){
     cv.addEventListener('wheel', onWheel, { passive:false });
     $('atClose').onclick = close;
     $('atViewSeg').onclick = function(e){ var b = e.target.closest('button'); if(!b || !cur) return; view3dPref = b.dataset.v === '3d'; setView3d(view3dPref, cur); if(!view3dPref) draw(); };
-    $('atIndexBtn').onclick = function(){ if(indexMode){ indexMode = false; paintSide(); this.classList.remove('on'); } else { indexMode = true; list = allMaps(); paintHead(); paintIndex(); this.classList.add('on'); } };
+    $('atFavBtn').onclick = toggleFav;
+    $('atFavListBtn').onclick = function(){ favMode = !favMode; if(favMode){ indexMode = false; $('atIndexBtn').classList.remove('on'); paintFav(); } else paintSide(); paintStar(); };
+    $('atIndexBtn').onclick = function(){ favMode = false; paintStar(); if(indexMode){ indexMode = false; paintSide(); this.classList.remove('on'); } else { indexMode = true; list = allMaps(); paintHead(); paintIndex(); this.classList.add('on'); } };
     $('atFit').onclick = function(){ fitBounds(cur.bounds); draw(); };
     $('atIn').onclick = function(){ view.k = Math.min(6000, view.k * 1.4); draw(); };
     $('atOut').onclick = function(){ view.k = Math.max(8, view.k / 1.4); draw(); };
