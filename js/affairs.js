@@ -972,13 +972,26 @@ console.log('[affairs.js] v20260923lic');
       };
       // ── 모바일판(2026 모두의 성경) 배포 판 목록 ──
       var mobList = ov.querySelector('#al_mob_list'), mobMsg = ov.querySelector('#al_mob_msg');
+      var mobSiteVer = '';
       function loadMob() {
-        api('GET', 'modu_release?select=*&order=updated_at.desc').then(function (rows) {
+        /* 사이트에 실제로 올라간 판(modu/config.js)을 읽어 표에 없으면 자동으로 넣고 배포 켠다 — 앱은 이 판을 보고 새 판 안내를 낸다 */
+        fetch('modu/config.js?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
+          var m = t.match(/"version":\s*"([^"]+)"/); mobSiteVer = m ? m[1] : '';
+          return api('GET', 'modu_release?select=*&order=updated_at.desc');
+        }).then(function (rows) {
           rows = rows || [];
-          if (!rows.length) { mobList.innerHTML = '<span style="color:#9aa5b1">아직 적은 판이 없습니다.</span>'; return; }
-          mobList.innerHTML = '<table class="fin-table" style="width:100%;font-size:.78rem"><thead><tr><th style="width:70px">판</th><th style="width:70px">배포</th><th>공지문</th><th style="width:120px">고친 때</th><th style="width:150px"></th></tr></thead><tbody>' +
+          if (mobSiteVer && !rows.some(function (r) { return r.version === mobSiteVer; })) {
+            return api('POST', 'modu_release?on_conflict=version', { version: mobSiteVer, notes: '', enabled: true, updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal')
+              .then(function () { return api('GET', 'modu_release?select=*&order=updated_at.desc'); });
+          }
+          return rows;
+        }).then(function (rows) {
+          rows = rows || [];
+          var head = mobSiteVer ? '<p style="margin:0 0 8px;font-size:.82rem"><b>지금 사이트에 올라간 판: ' + esc(mobSiteVer) + '</b> <span style="color:#7b8794">— git push 로 올라가면 여기와 휴대폰에 자동 반영됩니다. 아래 표는 공지문을 적는 곳입니다.</span></p>' : '';
+          if (!rows.length) { mobList.innerHTML = head + '<span style="color:#9aa5b1">아직 적은 판이 없습니다.</span>'; return; }
+          mobList.innerHTML = head + '<table class="fin-table" style="width:100%;font-size:.78rem"><thead><tr><th style="width:70px">판</th><th style="width:70px">배포</th><th>공지문</th><th style="width:120px">고친 때</th><th style="width:150px"></th></tr></thead><tbody>' +
             rows.map(function (r) {
-              return '<tr data-id="' + r.id + '"><td style="font-weight:700">' + esc(r.version) + '</td><td>' + (r.enabled ? '<span style="color:#1e874b;font-weight:700">켜짐</span>' : '<span style="color:#9aa5b1">꺼짐</span>') + '</td>' +
+              return '<tr data-id="' + r.id + '"><td style="font-weight:700">' + esc(r.version) + (r.version === mobSiteVer ? ' <span style="font-size:.7rem;color:#1e874b">(사이트)</span>' : '') + '</td><td>' + (r.enabled ? '<span style="color:#1e874b;font-weight:700">켜짐</span>' : '<span style="color:#9aa5b1">꺼짐</span>') + '</td>' +
                 '<td><textarea class="al-mob-notes" rows="2" style="width:100%;box-sizing:border-box;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.76rem;padding:4px 6px">' + esc(r.notes || '') + '</textarea></td>' +
                 '<td>' + String(r.updated_at || '').replace('T', ' ').slice(0, 16) + '</td>' +
                 '<td style="white-space:nowrap"><button class="btn btn-line al-mob-on" style="padding:3px 8px;font-size:.74rem;color:' + (r.enabled ? '#c0392b' : '#1e874b') + '">' + (r.enabled ? '배포 끄기' : '배포 켜기') + '</button> ' +
