@@ -1,7 +1,7 @@
 // ============================================================
 //  설교자의 성경 — 설치 등록·월 인증 Edge Function
 //  설치 마법사와 앱이 부른다. 로그인 없이 부르되, 식별 코드 해시로만 찾는다.
-//    POST { op: "activate" | "verify", code, pc_id, pc_info:{name,board,os}, app }
+//    POST { op: "activate" | "verify" | "release", code, pc_id, pc_info:{name,board,os}, app, user?:{name,email} }
 //    → { ok:true, token, sig, dk }  (token = base64url JSON, sig = Ed25519 서명, dk = 주석 암호화 열쇠)
 //    → { ok:false, why: "no-code" | "in-use" | "revoked" | "mismatch" }
 //  배포: supabase functions deploy license --no-verify-jwt --project-ref cetacttsdwzxjzkyozgd
@@ -43,9 +43,10 @@ async function findRow(hash: string) {
   return Array.isArray(j) && j.length ? j[0] : null;
 }
 async function patchRow(id: number, body: Record<string, unknown>) {
-  await fetch(`${SUPABASE_URL}/rest/v1/app_licenses?id=eq.${id}`, {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/app_licenses?id=eq.${id}`, {
     method: "PATCH", headers: { ...H, Prefer: "return=minimal" }, body: JSON.stringify(body),
   });
+  return r.ok;
 }
 
 Deno.serve(async (req) => {
@@ -66,12 +67,27 @@ Deno.serve(async (req) => {
   if (!row) return out({ ok: false, why: "no-code" });
   if (row.revoked) return out({ ok: false, why: "revoked" });
 
+  // 설치 영구 삭제 — 같은 PC 에서 온 요청일 때만 PC 정보를 지운다. 코드는 다른 컴퓨터에서 다시 쓸 수 있다.
+  if (b.op === "release") {
+    if (row.pc_id && row.pc_id !== pcId) return out({ ok: false, why: "mismatch" });
+    const ok = await patchRow(row.id, { pc_id: null, pc_name: null, pc_board: null, pc_os: null, activated_at: null,
+      note: cut(`${row.note ?? ""}\n${new Date().toISOString().slice(0, 16)} 사용자가 설치 영구 삭제`, 1000).trim() });
+    return out({ ok });
+  }
   const now = new Date();
   const patch: Record<string, unknown> = {
     last_verified_at: now.toISOString(),
     verify_count: (row.verify_count ?? 0) + 1,
     app_version: cut(b.app, 20),
   };
+  // 사용자 등록(이름·교회, 이메일) — 설치 마법사나 앱의 등록 창이 보낸다. 업그레이드 안내에 쓴다.
+  const u = b.user ?? null;
+  if (u && (u.name || u.email)) {
+    const email = cut(u.email, 120).trim();
+    if (!email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Object.assign(patch, { user_name: cut(u.name, 80).trim(), user_email: email, registered_at: now.toISOString() });
+    }
+  }
   if (!row.pc_id) {
     // 빈 코드 → 이 PC 에 묶는다 (관리자가 PC 정보를 지우면 다시 설치할 수 있다)
     Object.assign(patch, {
@@ -81,10 +97,15 @@ Deno.serve(async (req) => {
   } else if (row.pc_id !== pcId) {
     return out({ ok: false, why: op === "activate" ? "in-use" : "mismatch" });
   }
-  await patchRow(row.id, patch);
+  let userSaved = false;
+  if (!(await patchRow(row.id, patch))) {
+    // 등록 칸이 아직 없으면(마이그레이션 전) 등록 정보 없이 다시 저장
+    delete patch.user_name; delete patch.user_email; delete patch.registered_at;
+    await patchRow(row.id, patch);
+  } else userSaved = "user_name" in patch;
 
   const exp = Math.floor(now.getTime() / 1000) + VALID_DAYS * 86400;
   const token = b64url(JSON.stringify({ ch: hash, pid: pcId, iat: Math.floor(now.getTime() / 1000), exp, label: cut(row.label, 40), no: row.no }));
   const sig = await sign(token);
-  return out({ ok: true, token, sig, exp, dk: COMMENTARY_KEY || undefined });
+  return out({ ok: true, token, sig, exp, dk: COMMENTARY_KEY || undefined, user_saved: userSaved });
 });

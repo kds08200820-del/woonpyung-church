@@ -942,14 +942,17 @@ console.log('[affairs.js] v20260923lic');
           if (!rows.length) { out.innerHTML = '<p style="color:#c0392b;font-size:.85rem;margin:0">코드 표가 비어 있습니다. supabase/20260923_1930_app_licenses.sql 을 실행해 주세요.</p>'; return; }
           var ist = 'width:100%;padding:4px 6px;border:1px solid #dfe5ee;border-radius:6px;font:inherit;font-size:.8rem;box-sizing:border-box';
           out.innerHTML = '<div style="overflow:auto"><table class="fin-table" style="width:100%;min-width:960px;font-size:.82rem">' +
-            '<thead><tr><th style="width:36px">번호</th><th style="width:190px">인증 코드</th><th style="width:130px">누구에게</th><th style="width:70px">상태</th><th>설치된 PC</th><th style="width:96px">등록</th><th style="width:96px">마지막 인증</th><th style="width:52px">버전</th><th style="width:200px">처리</th></tr></thead><tbody>' +
+            '<thead><tr><th style="width:36px">번호</th><th style="width:190px">인증 코드</th><th style="width:170px">누구에게 · 등록 정보</th><th style="width:70px">상태</th><th>설치된 PC</th><th style="width:96px">등록</th><th style="width:96px">마지막 인증</th><th style="width:52px">버전</th><th style="width:200px">처리</th></tr></thead><tbody>' +
             rows.map(function (r) {
               var st = r.revoked ? '<span style="color:#c0392b;font-weight:700">중지</span>' : r.pc_id ? (stale(r.last_verified_at) ? '<span style="color:#b45309;font-weight:700">인증 지남</span>' : '<span style="color:#1e874b;font-weight:700">사용 중</span>') : '<span style="color:#9aa5b1">비어 있음</span>';
               var pc = r.pc_id ? '<b>' + esc(r.pc_name || '') + '</b><div style="color:#7b8794;font-size:.74rem">' + esc(r.pc_board || '') + (r.pc_os ? ' · ' + esc(r.pc_os) : '') + '</div><div style="color:#b0b8c4;font-size:.68rem;font-family:monospace">' + esc(String(r.pc_id).slice(0, 16)) + '…</div>' : '<span style="color:#b0b8c4">–</span>';
               var codeCell = r.code ? '<span style="font-family:monospace;font-weight:700;letter-spacing:.3px;user-select:all">' + esc(r.code) + '</span> <button class="btn btn-line al-copy" data-code="' + esc(r.code) + '" style="padding:1px 7px;font-size:.7rem" title="복사">복사</button>' : '<span style="color:#b0b8c4;font-size:.76rem">— (코드 목록 넣기)</span>';
               return '<tr data-id="' + r.id + '"><td style="text-align:center;font-weight:700">' + r.no + '</td>' +
                 '<td>' + codeCell + '</td>' +
-                '<td><input class="al-label" value="' + esc(r.label || '') + '" placeholder="이름·교회" style="' + ist + '"></td>' +
+                '<td><input class="al-label" value="' + esc(r.label || '') + '" placeholder="이름·교회" style="' + ist + '"></td' +
+                  '<input class="al-uname" value="' + esc(r.user_name || '') + '" placeholder="등록 이름(교회)" title="프로그램에서 등록한 이름 — 직접 고칠 수 있음" style="' + ist + ';margin-top:4px;font-size:.76rem">' +
+                  '<input class="al-uemail" type="email" value="' + esc(r.user_email || '') + '" placeholder="등록 이메일" title="프로그램에서 등록한 이메일 — 직접 고칠 수 있음' + (r.registered_at ? ' (등록 ' + esc(fmtT(r.registered_at)) + ')' : '') + '" style="' + ist + ';margin-top:3px;font-size:.76rem">' +
+                  (r.user_email ? '<a href="mailto:' + esc(r.user_email) + '" style="font-size:.7rem;color:#2563eb">메일 보내기</a>' : '') + '</td>' +
                 '<td>' + st + '</td><td>' + pc + '</td>' +
                 '<td>' + fmtT(r.activated_at) + '</td><td>' + fmtT(r.last_verified_at) + (r.verify_count ? '<div style="color:#9aa5b1;font-size:.7rem">' + r.verify_count + '회</div>' : '') + '</td>' +
                 '<td>' + esc(r.app_version || '') + '</td>' +
@@ -957,7 +960,7 @@ console.log('[affairs.js] v20260923lic');
                 (r.pc_id ? '<button class="btn btn-line al-clear" style="padding:3px 8px;font-size:.76rem">PC 정보 지우기</button> ' : '') +
                 '<button class="btn btn-line al-rev" style="padding:3px 8px;font-size:.76rem;color:' + (r.revoked ? '#1e874b' : '#c0392b') + '">' + (r.revoked ? '다시 허용' : '사용 중지') + '</button></td></tr>';
             }).join('') + '</tbody></table></div>' +
-            '<p style="margin:10px 0 0;font-size:.74rem;color:#9aa5b1">"누구에게" 칸은 적으면 바로 저장됩니다.</p>';
+            '<p style="margin:10px 0 0;font-size:.74rem;color:#9aa5b1">"누구에게"·등록 이름·등록 이메일 칸은 적으면 바로 저장됩니다. 등록 이름·이메일은 프로그램이나 설치 마법사에서 사용자가 적은 값이 자동으로 들어옵니다.</p>';
           Array.prototype.forEach.call(out.querySelectorAll('.al-copy'), function (b) {
             b.onclick = function () { (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.code) : Promise.reject()).then(function () { b.textContent = '복사됨'; setTimeout(function () { b.textContent = '복사'; }, 1500); }, function () { alert('드래그해서 직접 복사해 주세요'); }); };
           });
@@ -965,6 +968,9 @@ console.log('[affairs.js] v20260923lic');
             var id = tr.dataset.id, lab = tr.querySelector('.al-label');
             var t = null;
             lab.oninput = function () { clearTimeout(t); t = setTimeout(function () { api('PATCH', 'app_licenses?id=eq.' + id, { label: lab.value.trim() }, 'return=minimal').catch(function () { }); }, 500); };
+            var un = tr.querySelector('.al-uname'), ue = tr.querySelector('.al-uemail'), t2 = null;
+            function saveUser() { clearTimeout(t2); t2 = setTimeout(function () { api('PATCH', 'app_licenses?id=eq.' + id, { user_name: un.value.trim() || null, user_email: ue.value.trim() || null }, 'return=minimal').catch(function (e) { alert('저장 실패: ' + e.message); }); }, 600); }
+            un.oninput = saveUser; ue.oninput = saveUser;
             var cl = tr.querySelector('.al-clear');
             if (cl) cl.onclick = function () {
               if (!confirm('이 코드의 PC 정보를 지울까요?\n예전 컴퓨터는 다음 인증부터 쓸 수 없고, 같은 코드로 다른 컴퓨터에 설치할 수 있게 됩니다.')) return;
