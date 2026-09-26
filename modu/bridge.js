@@ -146,22 +146,28 @@
   function allHl(force){
     if(hlCache && !force) return Promise.resolve(hlCache);
     var c = client(); if(!c) return Promise.resolve([]);
-    return c.from('modu_highlights').select('bi,ci,vi,color,ref,created_at').order('created_at', { ascending:false }).then(function(r){ hlCache = r.data || []; return hlCache; });
+    /* 읽기 오류(토큰 갱신 전 401, 잠깐 끊김 등)는 캐시에 담지 않는다 — 담으면 다시 읽을 때까지 형광펜이 모두 사라진 것처럼 보인다 */
+    return c.from('modu_highlights').select('bi,ci,vi,color,ref,created_at').order('created_at', { ascending:false }).then(function(r){
+      if(r.error){ console.warn('[modu] 형광펜 읽기 실패', r.error.message || r.error); return hlCache || []; }
+      hlCache = r.data || []; return hlCache;
+    });
   }
   window.HLDB = {
     chapter: function(bi, ci){ return allHl().then(function(all){ return all.filter(function(h){ return h.bi === bi && h.ci === ci; }).map(function(h){ return { vi:h.vi, color:h.color }; }); }); },
     all: function(){ return allHl().then(function(all){ return all.slice(); }); },
     set: function(list){
-      var c = client();
+      var c = client(); if(!c) return Promise.reject(new Error('no-client'));
       return session().then(function(s){
+        if(!s) throw new Error('login');                                   /* 로그인 전이면 저장할 수 없다 — 조용히 넘기지 않는다 */
         var rows = (list || []).map(function(h){ return { user_id:s.user.id, bi:h.bi, ci:h.ci, vi:h.vi, color:h.color, ref:h.ref || '' }; });
-        return c.from('modu_highlights').upsert(rows, { onConflict:'user_id,bi,ci,vi' }).then(function(){ return allHl(true); }).then(function(){ return true; });
+        return c.from('modu_highlights').upsert(rows, { onConflict:'user_id,bi,ci,vi' }).then(function(r){ if(r.error) throw r.error; return allHl(true); }).then(function(){ return true; });
       });
     },
     remove: function(list){
-      var c = client();
-      return Promise.all((list || []).map(function(h){ return c.from('modu_highlights').delete().match({ bi:h.bi, ci:h.ci, vi:h.vi }); })).then(function(){ return allHl(true); }).then(function(){ return true; });
+      var c = client(); if(!c) return Promise.reject(new Error('no-client'));
+      return Promise.all((list || []).map(function(h){ return c.from('modu_highlights').delete().match({ bi:h.bi, ci:h.ci, vi:h.vi }).then(function(r){ if(r.error) throw r.error; }); })).then(function(){ return allHl(true); }).then(function(){ return true; });
     },
+    refresh: function(){ hlCache = null; return allHl(true); },
     counts: function(){ return allHl().then(function(all){ var o = {}; all.forEach(function(h){ o[h.color] = (o[h.color] || 0) + 1; }); return o; }); }
   };
 
@@ -280,6 +286,7 @@
   function logout(){ var c = client(); (c ? c.auth.signOut() : Promise.resolve()).then(function(){ me = null; dk = null; notesCache = null; hlCache = null; commCache = null; start(); }); }
   function opened(){
     gateHide();
+    notesCache = null; hlCache = null;                                     /* 문이 열리기 전에 읽은(비어 있을 수 있는) 메모·형광펜은 버리고 다시 읽는다 */
     if(window.APP && APP.setComm) window.COMMDATA.load().then(function(r){
       if(r.ok){ var d = null; try{ d = JSON.parse(r.json); }catch(e){} window.COMMSTATE = d ? '' : '주석을 풀지 못했습니다'; APP.setComm(d); }
       else { window.COMMSTATE = r.why === 'no-key' ? '주석 열쇠를 받지 못했습니다' : '주석을 풀지 못했습니다 (' + r.why + ')'; APP.setComm(null); }

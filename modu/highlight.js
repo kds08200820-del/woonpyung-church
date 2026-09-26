@@ -42,10 +42,17 @@ var HL = (function(){
     var list = [];
     for(var v = g.from; v <= g.to; v++) list.push({ bi:g.bi, ci:g.ci, vi:v, color:color, ref:refOf(g.bi, g.ci, v) });
     var m = cache[key(g.bi, g.ci)] || (cache[key(g.bi, g.ci)] = {});
+    var before = {}; list.forEach(function(h){ before[h.vi] = m[h.vi]; });
     var p = color ? HLDB.set(list) : HLDB.remove(list);
     list.forEach(function(h){ if(color) m[h.vi] = color; else delete m[h.vi]; });
     apply();
-    return p.then(function(){ toast(color ? '형광펜 · ' + nameOf(color) : '형광펜 지움'); });
+    return p.then(function(){ toast(color ? '형광펜 · ' + nameOf(color) : '형광펜 지움'); }).catch(function(e){
+      /* 저장에 실패하면 칠한 것을 되돌리고 알린다 — 그래야 "칠했는데 다음에 켜니 없다"가 안 생긴다 */
+      list.forEach(function(h){ if(before[h.vi]) m[h.vi] = before[h.vi]; else delete m[h.vi]; });
+      apply();
+      var w = String(e && e.message || e);
+      toast(/login/.test(w) ? '형광펜은 로그인한 뒤에 저장됩니다' : '형광펜을 저장하지 못했습니다 — ' + w);
+    });
   }
 
   /* ── 오른쪽 단추 메뉴에 들어가는 색 고르기 줄 ── */
@@ -120,6 +127,8 @@ var HL = (function(){
     });
   }
   paintSettings();
+  /* 로그인 문이 열리면(정회원 확인 끝) 서버의 형광펜을 다시 읽어 칠한다 */
+  window.addEventListener('modu-opened', function(){ cache = {}; if(window.HLDB && HLDB.refresh) HLDB.refresh().then(paint); else paint(); });
 
   function setFilter(c){ filter = c || ''; paintPane(); }
   return { setColor: setColor, currentColor: currentColor, paint: paint, menuRow: menuRow, paintPane: paintPane, nameOf: nameOf, COLORS: COLORS, setFilter: setFilter };
