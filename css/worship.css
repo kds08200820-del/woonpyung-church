@@ -1,0 +1,75 @@
+/* ============================================================
+   오늘의 예배 — 히어로 슬라이드 + 전체 화면 보기 (js/worship.js)
+   ============================================================ */
+/* 히어로 슬라이드 */
+.hero-worship .hw-eyebrow { font-size: .78rem; letter-spacing: .3em; color: var(--gold, #c9a961); margin: 0 0 14px; }
+.hero-worship .hw-date { margin-top: 10px !important; font-size: 1rem; opacity: .92; }
+.hw-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 26px; }
+.hero-cta.hw-btn { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; min-width: 200px; padding: 14px 26px; font: inherit; cursor: pointer; line-height: 1.35; background: rgba(255,255,255,.12); margin-top: 0; }
+.hero-cta.hw-btn:hover { background: #fff; color: var(--accent, #032257); }
+.hero-cta.hw-btn b { font-size: 1.05rem; font-weight: 700; }
+.hero-cta.hw-btn small { font-size: .8rem; opacity: .85; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hw-note { margin-top: 16px; font-size: .8rem; color: rgba(255,255,255,.7); }
+@media (max-width: 560px) { .hero-cta.hw-btn { width: 100%; min-width: 0; } }
+
+/* 전체 화면 */
+body.ws-open { overflow: hidden; }
+#wsOverlay { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+#wsOverlay[hidden] { display: none; }
+.ws-card { width: min(920px, 100%); height: min(900px, 96vh); background: #fffdf8; color: #1d1d1d; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.ws-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #032257; color: #fff; }
+.ws-top b { font-size: 1.05rem; }
+.ws-step { font-size: .85rem; opacity: .8; }
+.ws-sp { flex: 1; }
+.ws-ib { border: 0; background: rgba(255,255,255,.14); color: #fff; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
+.ws-ib.ws-x { font-size: 1.3rem; line-height: 1; padding: 4px 10px; }
+.ws-strip { display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px; border-bottom: 1px solid #ebe5d8; scrollbar-width: none; background: #f7f3ea; }
+.ws-strip::-webkit-scrollbar { display: none; }
+.ws-chip { flex: 0 0 auto; border: 1px solid #ddd3bf; background: #fff; color: #5a5346; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .8rem; white-space: nowrap; cursor: pointer; }
+.ws-chip.on { background: #032257; color: #fff; border-color: #032257; font-weight: 700; }
+.ws-body { flex: 1; min-height: 0; overflow: auto; padding: 18px 20px 30px; line-height: 1.75; font-size: 100%; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
+.ws-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #ebe5d8; background: #fff; }
+.ws-btn { flex: 1; padding: 13px 10px; border-radius: 10px; border: 1px solid #cfc6b3; background: #fff; color: #032257; font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.ws-btn.primary { background: #032257; color: #fff; border-color: #032257; }
+.ws-btn:disabled { opacity: .35; cursor: default; }
+
+.ws-head { font-size: .82em; letter-spacing: .08em; color: #8a7d5c; font-weight: 700; margin-bottom: 8px; }
+.ws-title { font-size: 1.35em; font-weight: 700; color: #032257; margin-bottom: 14px; }
+.ws-item-t { font-size: 1.15em; margin-bottom: 10px; }
+.ws-item-t b { color: #032257; margin-right: 6px; }
+.ws-lines p { margin: 0 0 .5em; font-size: 1.15em; word-break: keep-all; }
+.ws-lines.ws-big p { font-size: 1.4em; text-align: center; }
+.ws-lines.ws-creed p { font-size: 1.22em; }
+.ws-verses p { display: flex; gap: 10px; margin: 0 0 .55em; font-size: 1.18em; word-break: keep-all; }
+.ws-vn { flex: 0 0 auto; color: #a08a4a; font-size: .8em; padding-top: .3em; min-width: 1.6em; }
+.ws-tip { font-size: .78em; color: #9a9a9a; text-align: center; margin-top: 12px; }
+.ws-none { padding: 40px 12px; text-align: center; color: #777; }
+.ws-cover { text-align: center; padding: 30px 8px; }
+.ws-cover-k { font-size: .9em; letter-spacing: .25em; color: #a08a4a; font-weight: 700; }
+.ws-cover-date { font-size: .95em; color: #777; margin: 8px 0 18px; }
+.ws-cover-t { font-family: "Noto Serif KR", serif; font-size: 1.7em; font-weight: 700; color: #032257; line-height: 1.35; margin-bottom: 10px; }
+.ws-cover-s { font-size: 1.05em; color: #555; }
+.ws-cover-q { margin: 22px auto 0; max-width: 560px; font-family: "Noto Serif KR", serif; font-size: 1.05em; line-height: 1.7; color: #3a3a3a; background: #f5f1e6; border: 1px solid #e3d9bd; border-radius: 10px; padding: 14px 18px; }
+.ws-img { overflow: auto; background: #fff; border: 1px solid #e6e0d0; border-radius: 8px; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
+.ws-img img { display: block; width: 100%; max-width: none; height: auto; }
+/* 교독문 */
+.ws-gd .gd-line { display: flex; gap: 12px; margin: 0; padding: 8px 0; border-bottom: 1px solid #efece2; font-size: 1.12em; word-break: keep-all; }
+.ws-gd .gd-who { flex: 0 0 50px; font-size: .75em; color: #9a9a9a; padding-top: .35em; text-align: right; }
+.ws-gd .gd-txt { flex: 1; min-width: 0; }
+.ws-gd .gd-leader .gd-txt { color: #444; }
+.ws-gd .gd-people .gd-txt { color: #111; font-weight: 700; }
+.ws-gd .gd-people .gd-who { color: #032257; }
+.ws-gd .gd-all { background: #f5f1e6; border-radius: 8px; padding: 10px; margin-top: 6px; border-bottom: none; }
+.ws-gd .gd-all .gd-txt, .ws-gd .gd-all .gd-who { color: #032257; font-weight: 700; }
+.ws-gd .gd-ref { display: inline-block; margin-left: 6px; font-size: .75em; color: #9a9a9a; font-weight: 400; }
+/* 문 */
+.ws-lock { text-align: center; padding: 50px 14px; }
+.ws-lock-t { font-size: 1.3em; font-weight: 700; color: #032257; margin-bottom: 10px; }
+.ws-lock p { color: #666; margin-bottom: 20px; }
+.ws-lock .ws-btn { flex: none; padding: 12px 28px; }
+@media (max-width: 640px) {
+  #wsOverlay { padding: 0; }
+  .ws-card { width: 100%; height: 100%; border-radius: 0; }
+  .ws-body { padding: 14px 14px 30px; }
+  .ws-gd .gd-who { flex-basis: 40px; }
+}
