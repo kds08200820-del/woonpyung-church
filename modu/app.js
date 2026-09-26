@@ -590,7 +590,7 @@ function buildVerMenu(){
   t.className = 'mtitle'; t.textContent = '기본 성경';
   m.appendChild(t);
   var fixed = document.createElement('label');
-  fixed.className = 'fixed';
+  fixed.className = 'basever';
   fixed.innerHTML = '<input type="checkbox" checked disabled><span>' + esc(base.name) + '</span>';
   m.appendChild(fixed);
   var t2 = document.createElement('div');

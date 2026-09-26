@@ -204,8 +204,10 @@ body.spop-drag .view.on:not(#v-read){box-shadow:var(--shadow2),0 0 0 2px var(--a
 }
 .dropmenu label:hover,.dropmenu button:hover{background:var(--accent-bg);color:var(--accent)}
 .dropmenu input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);margin:0}
-.dropmenu .fixed{color:var(--fg3);cursor:default}
-.dropmenu .fixed:hover{background:none;color:var(--fg3)}
+.dropmenu .basever{color:var(--fg3);cursor:default}
+/* 대조 성경 메뉴의 줄은 늘 흐름 안에 — 브라우저 확장 등이 흔한 이름(.fixed)에 씌우던 규칙 때문에 기본 성경 줄이 "함께 볼 성경" 제목과 겹치던 문제 */
+.dropmenu label,.dropmenu button,.dropmenu .mtitle{position:static!important;float:none!important;height:auto!important;min-height:0!important;margin:0!important;transform:none!important}
+.dropmenu .basever:hover{background:none;color:var(--fg3)}
 .dropmenu .divider{height:1px;background:var(--line);margin:6px 4px}
 .dropmenu .mtitle{padding:6px 11px 4px;font-size:11.5px;color:var(--fg3);letter-spacing:.04em}
 
