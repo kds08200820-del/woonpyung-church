@@ -1047,9 +1047,35 @@ function lemmaHit(bi,ci,vi,terms){
   }
   return true;
 }
+/* 본문 창에서 검색을 요청하면 따로 뜬 검색 창에 조건을 넘겨 그 창에서 찾는다 (본문 창의 검색 칸은 숨겨져 있다) */
+function searchViaPop(spec){
+  if(!(window.POP && !POP.isPop)) return false;
+  POP.open('search', spec);
+  return true;
+}
+function searchSpec(){
+  return { q:$('q').value.trim(), sver:$('sver').value, scope:$('scope').value, book:$('scopeBook').value,
+           lemma:$('lemmaSearch').checked ? 1 : 0, re:$('re').checked ? 1 : 0, ci:$('ci').checked ? 1 : 0, go:1 };
+}
+/* 검색 창이 넘겨받은 조건을 칸에 채우고 바로 찾는다 */
+function applySearchSpec(a){
+  if(!a) return;
+  if(a.strong){ searchStrong(String(a.strong)); return; }
+  if(a.gstrong){ searchStrongGrk(String(a.gstrong)); return; }
+  if(a.q === undefined) return;
+  $('q').value = a.q; $('qclear').hidden = !a.q;
+  if(a.sver && [].some.call($('sver').options, function(o){ return o.value === a.sver; })) $('sver').value = a.sver;
+  if(a.scope) $('scope').value = a.scope;
+  if(a.book !== undefined) $('scopeBook').value = a.book;
+  if(a.lemma !== undefined) $('lemmaSearch').checked = String(a.lemma) === '1';
+  if(a.re !== undefined) $('re').checked = String(a.re) === '1';
+  if(a.ci !== undefined) $('ci').checked = String(a.ci) === '1';
+  if(String(a.go) === '1' && a.q) doSearch();
+}
 function doSearch(){
   var q = $('q').value.trim();
   if(!q){ $('status').textContent = '찾을 낱말이나 구절을 적고 Enter.'; $('hits').innerHTML = ''; if(window.OMNI) OMNI.clear(); return; }
+  if(searchViaPop(searchSpec())) return;
   showView('search');
   if(window.OMNI) OMNI.run(q);            /* 종합 검색: 지명·지도·학습·사전·개관·주석·노트 */
 
@@ -1477,6 +1503,7 @@ function findWord(info){
     if(no) searchStrong(no);
     return;
   }
+  if(info.kind === 'grk' && info.no && window.STEPH){ searchStrongGrk(String(info.no)); return; }   /* 번호가 있으면 번호로 (원형 글자 표기 차이에 흔들리지 않는다) */
   if(info.kind === 'grk'){
     $('lemmaSearch').checked = true;
     $('sver').value = 'grk';
@@ -1530,6 +1557,7 @@ $('reader').addEventListener('mouseleave', function(){ lastWord = ''; });
 /* 두 번 누르기는 한글과 똑같이 낱말을 고르는 데만 쓴다. 자세히 보기는 오른쪽 단추 메뉴에서. */
 
 function searchStrong(no){
+  if(searchViaPop({ strong:no })) return;
   if(!HEB) return;
   var hits = [], t0 = performance.now();
   outer:
@@ -1581,6 +1609,47 @@ function searchStrong(no){
   showView('search');
 }
 
+
+/* 헬라어 스트롱 번호로 신약 전체에서 찾기 — 스테판 원어 자료(낱말마다 번호가 달림)를 이어서 쓴다 */
+function searchStrongGrk(no){
+  if(searchViaPop({ gstrong:no })) return;
+  if(!window.STEPH || !STEPH.ensure){ return; }
+  var t0 = performance.now(), d = GRKD && GRKD[no], label = 'G' + no + (d && d[0] ? ' ' + d[0] : '');
+  $('status').textContent = label + ' — 신약 자료를 읽는 중…'; $('hits').innerHTML = '';
+  showView('search');
+  var left = 27, hits = [];
+  function done(){
+    hits.sort(function(a, b){ return a.bi - b.bi || a.ci - b.ci || a.vi - b.vi; });
+    st.hits = hits; st.sel = -1;
+    $('status').textContent = hits.length ? label + ' — ' + hits.length + '개 구절 · ' + Math.round(performance.now() - t0) + 'ms' : label + ' — 찾지 못했습니다';
+    addHist('G' + no, '원형', label + ' ' + hits.length + '곳');
+    var box = $('hits');
+    box.innerHTML = hits.map(function(x, i){
+      var toks = x.w.map(function(w, wi){ var ww = esc(w[3] || w[2] || ''); return x.idx.indexOf(wi) >= 0 ? '<mark>' + ww + '</mark>' : ww; }).join(' ');
+      var kor = korText(x.bi, x.ci, x.vi);
+      return '<div class="hit" data-i="' + i + '"><div class="ref">' + ref(x.bi, x.ci, x.vi) + ' <span class="dim" style="font-weight:400">· 헬라어</span></div>' +
+             '<div class="txt grk">' + toks + '</div>' + (kor ? '<div class="kor">' + esc(kor) + '</div>' : '') + '</div>';
+    }).join('');
+    box.querySelectorAll('.hit').forEach(function(el){
+      el.onclick = function(){
+        box.querySelectorAll('.hit').forEach(function(e2){ e2.classList.remove('on'); });
+        el.classList.add('on'); var x = st.hits[+el.dataset.i]; st.sel = +el.dataset.i; openChapter(x.bi, x.ci, x.vi);
+      };
+    });
+  }
+  for(var bi = 39; bi < 66; bi++) (function(bi){
+    STEPH.ensure(bi, function(ok){
+      var B = ok && window.STEPHAN && STEPHAN[bi];
+      if(B) B.w.forEach(function(ch, ci){ (ch || []).forEach(function(v, vi){
+        if(!v || hits.length >= LIMIT) return; var idx = [];
+        v.forEach(function(w, wi){ if(w && String(w[0]).replace(/[^\d]/g, '') === no) idx.push(wi); });
+        if(idx.length) hits.push({ bi:bi, ci:ci, vi:vi, vid:'grk', w:v, idx:idx });
+      }); });
+      if(--left === 0) done();
+      else $('status').textContent = label + ' — 신약 자료를 읽는 중… ' + (27 - left) + '/27권 (처음 한 번만 걸립니다)';
+    });
+  })(bi);
+}
 
 /* ─────────────── 헬라어 낱말 ─────────────── */
 function grkWordAt(el){
@@ -3436,6 +3505,7 @@ if(isPopWin()){
     } else if(n === 'kgraph'){ if(window.KG) KG.open(); }
     else if(VIEWS[n]){
       showView(n);
+      if(n === 'search') applySearchSpec(a);
       if(n === 'vocab' && a.ls){
         setLsMode(a.ls);
         if(a.tab){ vbTab = a.tab; $('vbTabs').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.k === a.tab); }); stopQuiz(); paintVocab(); }
