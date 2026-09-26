@@ -1490,22 +1490,37 @@ body.popwin .atlascard,body.popwin .kgcard{width:100%;height:100%;max-width:none
 /* ── 찬송가 악보 보기 ── */
 .hy-modal{padding:16px}
 .hycard{width:min(1100px,100%);height:min(900px,94vh);max-height:94vh;overflow:hidden}
-.hy-head{gap:8px;padding:10px 14px;flex-wrap:wrap}
-.hy-titles{flex:0 0 auto;min-width:80px}
-.hy-titles b{white-space:nowrap}
-.hy-find{position:relative;flex:1 1 220px;min-width:160px}
-.hy-find input{width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--fg);font-size:14px}
-.hy-list{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:320px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow2);z-index:5;padding:4px}
-.hy-it{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--fg);border-radius:7px;font-size:14px}
-.hy-it b{flex:0 0 48px;color:var(--accent)}
-.hy-it:hover,.hy-it:focus{background:var(--panel2)}
-.hy-none{padding:10px 12px;color:var(--fg3);font-size:13.5px}
+.hy-top{background:var(--accent);color:#fff;padding:10px 14px 12px;display:flex;flex-direction:column;gap:10px;border-radius:15px 15px 0 0}
+.hy-toprow{display:flex;align-items:center;gap:8px}
+.hy-toprow b{flex:1;text-align:center;font-size:19px;letter-spacing:.02em}
+.hy-ib{width:38px;height:38px;border:none;background:transparent;color:#fff;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:26px;line-height:1}
+.hy-ib:hover,.hy-ib:active{background:rgba(255,255,255,.18)}
+.hy-top input{width:100%;padding:11px 16px;border:none;border-radius:22px;background:#fff;color:#222;font-size:15px}
+.hy-top input::placeholder{color:#9a9a9a}
+.hy-tools{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line2);flex-wrap:wrap}
+.hy-titles{display:flex;flex-direction:column;min-width:0}
+.hy-titles b{font-size:16px;color:var(--fg);white-space:nowrap}
+.hy-titles span{font-size:12.5px;color:var(--fg3)}
 .hy-zoom button.on{background:var(--accent);color:#fff}
-.hy-body{flex:1;min-height:0;overflow:auto;background:#fff;padding:8px;text-align:center;-webkit-overflow-scrolling:touch}
-.hy-body img{display:block;width:100%;height:auto;margin:0 auto;max-width:none}
-.hy-wait{padding:60px 20px;color:#777;font-size:14px}
+.hy-body{flex:1;min-height:0;overflow:auto;background:var(--panel);-webkit-overflow-scrolling:touch}
+.hy-body img{display:block;width:100%;height:auto;margin:0 auto;max-width:none;background:#fff}
+.hy-index{padding-bottom:24px}
+.hy-band{position:sticky;top:0;background:var(--panel2);color:var(--accent);font-size:13px;font-weight:700;padding:5px 16px;z-index:1}
+.hy-row{display:flex;gap:16px;align-items:center;width:100%;text-align:left;padding:13px 18px;border:none;border-bottom:1px solid var(--line2);background:none;color:var(--fg);font-size:16.5px}
+.hy-row b{flex:0 0 40px;font-weight:400;color:var(--fg2)}
+.hy-row span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hy-row:hover,.hy-row:focus{background:var(--panel2)}
+.hy-empty,.hy-none{padding:24px 16px;color:var(--fg3);font-size:14px;text-align:center}
+.hy-wait{padding:60px 20px;color:#777;font-size:14px;text-align:center}
+.hy-wrap{flex:1;min-height:0;position:relative;display:flex;flex-direction:column}
+/* 빨리 내리기 띠 — 평소엔 흐리게, 손을 대면 또렷하게. 끌면 구간으로 건너뛴다 */
+.hy-rail{position:absolute;top:6px;bottom:6px;right:2px;width:34px;display:flex;flex-direction:column;justify-content:space-around;align-items:center;padding:2px 0;opacity:0;pointer-events:none;transition:opacity .25s;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;border-radius:10px}
+.hy-rail.show,.hy-rail.on{opacity:1;pointer-events:auto;background:var(--panel2);box-shadow:var(--shadow2)}
+.hy-rail.on{background:var(--panel2)}
+.hy-rail i{font-style:normal;font-size:12px;line-height:1;color:var(--accent);font-weight:700}
+.hy-rail .bub{position:absolute;right:38px;width:56px;height:44px;border-radius:10px;background:var(--accent);color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow2);pointer-events:none}
+.hy-rail[hidden]{display:none}
 body.popwin .modal.hy-modal{padding:0}
-
 /* ── 교독문 보기 ── */
 .gdcard{width:min(860px,100%)}
 .gd-body{flex:1;min-height:0;overflow:auto;padding:14px 22px 30px;font-size:100%;line-height:1.7}
