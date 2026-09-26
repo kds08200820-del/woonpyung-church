@@ -4449,6 +4449,20 @@ console.log('[affairs.js] v20260923lic');
         fillChaps(); show();
         // ── 성경 팝업 열기/닫기 (툴바 📖 성경 버튼) ──
         var pop = ov.querySelector('#se_bible_pop'), openBtn = ov.querySelector('#se_bible_open'), closeBtn = ov.querySelector('#mb_close');
+        /* 성경 보기에서 복사·끌어 놓기 할 때는 글자만 담는다 — 브라우저가 어두운 배경·흰 글자·글꼴을 함께 실어 보내 본문에 음영이 들어가던 문제 */
+        if (pop) {
+          pop.addEventListener('copy', function (e) {
+            var sel = window.getSelection(); var t = sel ? String(sel) : '';
+            if (!t || !e.clipboardData) return;
+            e.preventDefault();
+            e.clipboardData.setData('text/plain', t.replace(/ /g, ' '));
+          });
+          pop.addEventListener('dragstart', function (e) {
+            var sel = window.getSelection(); var t = sel ? String(sel) : '';
+            if (!t || !e.dataTransfer) return;
+            e.dataTransfer.clearData(); e.dataTransfer.setData('text/plain', t.replace(/ /g, ' '));
+          });
+        }
         function openPop() {
           // 본문칸에 적힌 구절이 있으면 그 책·장으로 맞춰서 연다
           var pref = parseRef(scInp ? scInp.value : '');
@@ -5074,8 +5088,17 @@ console.log('[affairs.js] v20260923lic');
       var PASTE_INLINEMAP = { B: 'b', STRONG: 'b', I: 'i', EM: 'i', U: 'u', S: 's', STRIKE: 's', DEL: 's', SUB: 'sub', SUP: 'sup', MARK: 'mark', A: 'a', SPAN: 'span', FONT: 'span', CODE: 'span', LABEL: 'span' };
       var PASTE_DROP = { SCRIPT: 1, STYLE: 1, META: 1, LINK: 1, TITLE: 1, HEAD: 1, IMG: 1, VIDEO: 1, AUDIO: 1, IFRAME: 1, BUTTON: 1, INPUT: 1, TEXTAREA: 1, SELECT: 1, FORM: 1, OBJECT: 1, EMBED: 1, SVG: 1, CANVAS: 1, NOSCRIPT: 1 };
       var PASTE_STYLES = ['color', 'background-color', 'font-size', 'font-family', 'font-weight', 'font-style', 'text-decoration-line', 'text-align'];
+      /* 어두운 배경(화면 테마에서 딸려 온 음영)인지 — rgb 밝기가 낮으면 true */
+      function isDarkBg(v) {
+        var m = String(v || '').match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i), r, g, b;
+        if (m) { r = +m[1]; g = +m[2]; b = +m[3]; }
+        else { var h = String(v || '').match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i); if (!h) return false; var x = h[1].length === 3 ? h[1].replace(/./g, '$&$&') : h[1]; r = parseInt(x.slice(0, 2), 16); g = parseInt(x.slice(2, 4), 16); b = parseInt(x.slice(4, 6), 16); }
+        return (0.299 * r + 0.587 * g + 0.114 * b) < 110;
+      }
       function copyAllowedStyles(src, dst, isBlock) {
         if (!src.style) return;
+        /* 어두운 배경을 달고 온 글(다른 화면의 음영 글)은 배경·글자색을 버리고 글만 받는다 */
+        if (isDarkBg(src.style.getPropertyValue('background-color')) || isDarkBg(src.style.getPropertyValue('background'))) return;
         PASTE_STYLES.forEach(function (pr) {
           if (isBlock !== (pr === 'text-align')) return;   // 블록엔 정렬만, 인라인엔 글자 서식만
           var v = src.style.getPropertyValue(pr);
