@@ -335,7 +335,7 @@
   }
   function openKind(kind, ctx) {
     ctx = ctx || {}; curKind = kind; slides = []; idx = 0;
-    var date = ctx.date || todayStr;
+    var date = ctx.date || todayStr; curDate = date; editing = false;
     if (kind === 'sunday') {
       var b = ctx.bulletin || sundayBulletin();
       if (!b) return setBody('<div class="ws-none">이번 주 주보 자료가 아직 없습니다.</div>');
@@ -363,10 +363,109 @@
       });
     }
   }
-  function start() { strip(); render(); }
+  /* ── 담임목사(관리자) 편집: 그날 예배의 슬라이드를 통째로 worship_edits(date, kind, slides)에 저장하고, 있으면 그것을 보여 준다 ── */
+  var curDate = todayStr, editing = false, adminCache = null, hasEdit = false;
+  function sbHeaders() { var s = session(); return { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (s ? s.token : window.SUPABASE_ANON_KEY), 'Content-Type': 'application/json' }; }
+  function isAdmin() {
+    var s = session(); if (!s || !window.SUPABASE_URL) return Promise.resolve(false);
+    if (adminCache !== null) return Promise.resolve(adminCache);
+    return fetch(window.SUPABASE_URL + '/rest/v1/admins?uid=eq.' + s.uid + '&select=uid', { headers: sbHeaders() })
+      .then(function (r) { return r.ok ? r.json() : []; }).then(function (rows) { adminCache = !!(rows && rows.length); return adminCache; }).catch(function () { return false; });
+  }
+  function loadEdit(kind, date) {
+    if (!session() || !window.SUPABASE_URL) return Promise.resolve(null);
+    return fetch(window.SUPABASE_URL + '/rest/v1/worship_edits?date=eq.' + date + '&kind=eq.' + kind + '&select=slides', { headers: sbHeaders() })
+      .then(function (r) { return r.ok ? r.json() : []; }).then(function (rows) { return rows && rows[0] && Array.isArray(rows[0].slides) && rows[0].slides.length ? rows[0].slides : null; }).catch(function () { return null; });
+  }
+  function saveEdit() {
+    var s = session();
+    return fetch(window.SUPABASE_URL + '/rest/v1/worship_edits?on_conflict=date,kind', { method: 'POST', headers: Object.assign(sbHeaders(), { Prefer: 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify({ date: curDate, kind: curKind, slides: slides, updated_by: s ? s.uid : null, updated_at: new Date().toISOString() }) })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); hasEdit = true; });
+  }
+  function deleteEdit() {
+    return fetch(window.SUPABASE_URL + '/rest/v1/worship_edits?date=eq.' + curDate + '&kind=eq.' + curKind, { method: 'DELETE', headers: sbHeaders() })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); hasEdit = false; });
+  }
+  function start() {
+    var base = slides.slice();
+    loadEdit(curKind, curDate).then(function (ov) {
+      if (ov) { slides = ov; hasEdit = true; } else hasEdit = false;
+      idx = 0; strip(); render();
+      isAdmin().then(function (ok) { var b = $('wsEdit'); if (b) b.hidden = !ok; });
+      window.__wsBase = base;                                  /* '원래대로'에 쓸 자동 생성 순서 */
+    });
+  }
+  /* 편집 화면 */
+  var FIELDS = {
+    cover:    [['k', '예배 이름'], ['date', '날짜 줄'], ['title', '제목'], ['ref', '본문'], ['who', '설교자'], ['quote', '요절', 'area']],
+    hymn:     [['no', '장 번호(숫자)'], ['title', '제목']],
+    gyodok:   [['no', '교독문 번호(숫자)'], ['sub', '부제']],
+    bible:    [['ref', '본문(예: 역대상 16:1-6)']],
+    sermon:   [['title', '제목'], ['ref', '본문'], ['who', '설교자'], ['quote', '요절', 'area']],
+    offering: [['sub', '한 줄']],
+    creed: [], lord: [],
+    text:     [['lines', '내용(줄마다 한 문단)', 'lines'], ['big', '큰 글씨로 가운데 (예/아니오)']]
+  };
+  var TYPE_NAME = { cover: '표지', hymn: '찬송', gyodok: '교독문', bible: '성경 본문', sermon: '말씀', offering: '헌금', creed: '사도신경', lord: '주기도문', text: '글' };
+  function slideLabel(sl) { var lb = sl.type === 'cover' ? '표지' : (sl.head || TYPE_NAME[sl.type] || '순서'); if (sl.type === 'hymn') lb += ' ' + sl.no + '장'; if (sl.type === 'gyodok') lb += ' ' + sl.no + '번'; return lb; }
+  function slideSub(sl) { return sl.title || sl.ref || sl.sub || (sl.lines ? sl.lines.join(' ') : '') || ''; }
+  function toggleEdit() { editing = !editing; if (editing) renderEditor(); else { strip(); render(); } var b = $('wsEdit'); if (b) b.textContent = editing ? '보기' : '편집'; }
+  function renderEditor(openIdx) {
+    var h = '<div class="ws-edit"><div class="ws-edit-h">오늘의 예배 편집 <small>' + esc(curDate) + ' · 저장하면 정회원 모두에게 이 순서로 보입니다' + (hasEdit ? ' · <b>편집본 적용 중</b>' : '') + '</small></div><ol class="ws-edit-list">';
+    slides.forEach(function (sl, i) {
+      h += '<li data-i="' + i + '"><div class="ws-edit-row"><span class="ws-edit-n">' + (i + 1) + '</span><span class="ws-edit-lbl">' + esc(slideLabel(sl)) + '<small>' + esc(slideSub(sl)).slice(0, 60) + '</small></span>' +
+        '<span class="ws-edit-ops"><button type="button" data-op="up" title="위로">▲</button><button type="button" data-op="down" title="아래로">▼</button><button type="button" data-op="edit" title="고치기">✎</button><button type="button" data-op="add" title="이 뒤에 추가">＋</button><button type="button" data-op="del" title="지우기">🗑</button></span></div>';
+      if (openIdx === i) h += formHtml(sl);
+      h += '</li>';
+    });
+    h += '</ol><div class="ws-edit-btns"><button type="button" class="ws-btn primary" id="wsSave">저장</button><button type="button" class="ws-btn" id="wsRevert">원래대로 (편집본 지우기)</button></div>' +
+      '<p class="ws-tip">✎ 로 내용을 고치고, ＋ 로 그 뒤에 새 글(예: 오늘 함께 나눌 내용)을 넣습니다. 모든 순서에 「덧붙이는 글」을 달 수 있습니다.</p></div>';
+    setBody(h);
+    var list = $('wsBody').querySelector('.ws-edit-list');
+    list.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-op]'); if (!b) return;
+      var li = b.closest('li[data-i]'), i = +li.dataset.i, op = b.dataset.op;
+      if (op === 'up' && i > 0) { var t = slides[i - 1]; slides[i - 1] = slides[i]; slides[i] = t; renderEditor(); }
+      else if (op === 'down' && i < slides.length - 1) { var t2 = slides[i + 1]; slides[i + 1] = slides[i]; slides[i] = t2; renderEditor(); }
+      else if (op === 'del') { if (confirm('「' + slideLabel(slides[i]) + '」 순서를 지울까요?')) { slides.splice(i, 1); renderEditor(); } }
+      else if (op === 'add') { slides.splice(i + 1, 0, { type: 'text', head: '나눔', lines: [''] }); renderEditor(i + 1); }
+      else if (op === 'edit') renderEditor(i);
+      else if (op === 'ok') { applyForm(li, i); renderEditor(); }
+      else if (op === 'cancel') renderEditor();
+    });
+    $('wsSave').onclick = function () { $('wsSave').disabled = true; saveEdit().then(function () { editing = false; $('wsEdit').textContent = '편집'; strip(); render(); toastWs('저장했습니다 — 정회원 모두에게 이 순서로 보입니다'); }, function () { $('wsSave').disabled = false; alert('저장하지 못했습니다. 로그인 상태와 인터넷을 확인해 주세요.'); }); };
+    $('wsRevert').onclick = function () { if (!confirm('편집본을 지우고 주보 순서대로 되돌릴까요?')) return; deleteEdit().then(function () { slides = (window.__wsBase || []).slice(); editing = false; $('wsEdit').textContent = '편집'; idx = 0; strip(); render(); toastWs('주보 순서로 되돌렸습니다'); }, function () { alert('되돌리지 못했습니다.'); }); };
+  }
+  function formHtml(sl) {
+    var f = FIELDS[sl.type] || [], h = '<div class="ws-edit-form"><label>순서 이름<input data-k="head" value="' + esc(sl.head || '') + '"></label>';
+    f.forEach(function (d) {
+      var k = d[0], lb = d[1], kind = d[2], v = sl[k];
+      if (kind === 'lines') h += '<label>' + lb + '<textarea data-k="lines" rows="5">' + esc((v || []).join('\n')) + '</textarea></label>';
+      else if (kind === 'area') h += '<label>' + lb + '<textarea data-k="' + k + '" rows="3">' + esc(v || '') + '</textarea></label>';
+      else if (k === 'big') h += '<label class="ws-edit-chk"><input type="checkbox" data-k="big"' + (v ? ' checked' : '') + '> ' + lb + '</label>';
+      else h += '<label>' + lb + '<input data-k="' + k + '" value="' + esc(v == null ? '' : v) + '"></label>';
+    });
+    h += '<label>덧붙이는 글 <small>(이 순서 아래에 함께 보입니다 · 줄마다 한 문단)</small><textarea data-k="note" rows="4">' + esc(sl.note || '') + '</textarea></label>' +
+      '<div class="ws-edit-fbtns"><button type="button" data-op="ok" class="ws-btn primary">확인</button><button type="button" data-op="cancel" class="ws-btn">취소</button></div></div>';
+    return h;
+  }
+  function applyForm(li, i) {
+    var sl = slides[i];
+    [].forEach.call(li.querySelectorAll('[data-k]'), function (el) {
+      var k = el.dataset.k, v = el.type === 'checkbox' ? el.checked : el.value;
+      if (k === 'lines') sl.lines = String(v).split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+      else if (k === 'no') sl.no = parseInt(v, 10) || sl.no;
+      else if (k === 'note') { if (String(v).trim()) sl.note = String(v).trim(); else delete sl.note; }
+      else sl[k] = v;
+    });
+    if (sl.type === 'hymn' && !sl.title) sl.title = hymnTitle(sl.no);
+  }
+  function toastWs(msg) { var t = document.createElement('div'); t.className = 'ws-toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 2600); }
+  function noteHtml(sl) { return sl.note ? '<div class="ws-note">' + linesHtml(String(sl.note).split('\n').filter(Boolean)) + '</div>' : ''; }
   function strip() {
     $('wsStrip').innerHTML = slides.map(function (s, i) {
-      var lb = s.type === 'cover' ? '표지' : (s.head || '').replace(/\s*·.*$/, '');
+      var lb = s.type === 'cover' ? '표지' : (s.head || TYPE_NAME[s.type] || '순서').replace(/\s*·.*$/, '');
       if (s.type === 'hymn') lb += ' ' + s.no + '장';
       return '<button type="button" class="ws-chip" data-i="' + i + '">' + esc(lb) + '</button>';
     }).join('');
@@ -390,7 +489,8 @@
       (sm.apply ? '<div class="ws-sum-apply"><div class="ws-sum-lead">삶에 적용</div><p>' + esc(sm.apply) + '</p></div>' : '') + '</div>';
   }
   function render() {
-    var s = slides[idx]; if (!s) return;
+    if (editing) { renderEditor(); return; }
+    var s = slides[idx]; if (!s) { setBody('<div class="ws-none">순서가 비어 있습니다.</div>'); return; }
     $('wsStep').textContent = (idx + 1) + ' / ' + slides.length;
     $('wsPrev').disabled = idx <= 0; $('wsNext').disabled = idx >= slides.length - 1;
     [].forEach.call($('wsStrip').children, function (c, i) { c.classList.toggle('on', i === idx); if (i === idx) try { c.scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) {} });
@@ -412,11 +512,12 @@
       h = head + '<div class="ws-cover"><div class="ws-cover-t">' + esc(s.title || '') + '</div><div class="ws-cover-s">' + esc(s.ref || '') + (s.who ? ' · ' + esc(s.who) : '') + '</div>' + (s.quote ? '<div class="ws-cover-q">' + esc(s.quote) + '</div>' : '') + '</div>' + summaryHtml(s.summary);
     } else if (s.type === 'offering') {
       h = head + '<div class="ws-title">' + esc(s.sub || '신령과 진정으로') + '</div>' +
-        '<div class="ws-give"><div class="ws-give-t">온라인 헌금하기</div><p class="ws-give-p">예배당에 함께하지 못하는 분은 아래 계좌로 헌금하실 수 있습니다. 정성을 다해 드리는 헌금에 감사드립니다.</p>' +
+        '<div class="ws-give"><div class="ws-give-t">온라인 헌금하기</div>' +
         '<div class="ws-give-acct"><span class="ws-give-bank">' + GIVE.bank + '</span><span class="ws-give-no">' + GIVE.pretty + '</span><span class="ws-give-holder">예금주 · ' + GIVE.holder + '</span></div>' +
         '<div class="ws-give-btns"><a class="ws-btn primary ws-give-toss" href="' + GIVE.toss + '">토스로 이체하기</a><button type="button" class="ws-btn" id="wsGiveCopy">계좌번호 복사</button></div>' +
         '<p class="ws-tip">‘토스로 이체하기’는 토스 앱이 있는 휴대폰에서 이체 화면으로 바로 연결됩니다. 그 밖에는 계좌번호를 복사해 이용해 주세요.</p></div>';
     } else { h = head + linesHtml(s.lines || [], s.big ? 'ws-big' : ''); }
+    h += noteHtml(s);
     setBody(h);
     if (s.type === 'offering') { var cb = $('wsGiveCopy'); if (cb) cb.onclick = function () {
       var done = function () { cb.textContent = '✓ 복사되었습니다'; setTimeout(function () { cb.textContent = '계좌번호 복사'; }, 1800); };
@@ -481,6 +582,7 @@
     overlay.innerHTML =
       '<div class="ws-card">' +
         '<div class="ws-top"><b>오늘의 예배</b><span class="ws-step" id="wsStep"></span><span class="ws-sp"></span>' +
+          '<button type="button" class="ws-ib ws-edit-btn" id="wsEdit" hidden>편집</button>' +
           '<button type="button" class="ws-ib" id="wsSmall" title="글자 작게">A−</button><button type="button" class="ws-ib" id="wsLarge" title="글자 크게">A+</button>' +
           '<button type="button" class="ws-ib ws-x" id="wsClose" aria-label="닫기">×</button></div>' +
         '<div class="ws-strip" id="wsStrip"></div>' +
@@ -490,6 +592,7 @@
     document.body.appendChild(overlay);
     $('wsClose').onclick = function () { if (window.ModalNav) ModalNav.close(); else closeViewer(); };
     $('wsPrev').onclick = function () { go(idx - 1); };
+    $('wsEdit').onclick = toggleEdit;
     $('wsNext').onclick = function () { go(idx + 1); };
     $('wsStrip').addEventListener('click', function (e) { var c = e.target.closest('.ws-chip'); if (c) go(+c.dataset.i); });
     $('wsSmall').onclick = function () { setSize(-0.1); }; $('wsLarge').onclick = function () { setSize(0.1); };

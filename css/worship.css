@@ -130,3 +130,29 @@ body.ws-open { overflow: hidden; }
 .ws-sum-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: #032257; color: #fff; font-size: .78em; display: inline-flex; align-items: center; justify-content: center; }
 .ws-sum p { margin: 0; font-size: 1.05em; line-height: 1.75; word-break: keep-all; color: #2b2721; }
 .ws-sum-apply { margin-top: 16px; padding: 14px 16px; background: #fbf8f1; border-left: 4px solid #c9a961; border-radius: 0 10px 10px 0; }
+
+/* 관리자 편집 */
+.ws-ib.ws-edit-btn { font-size: .9rem; padding: 6px 12px; background: #c9a961; color: #1b1608; border-radius: 8px; }
+.ws-edit-h { font-size: 1.15em; font-weight: 700; color: #032257; margin-bottom: 12px; }
+.ws-edit-h small { display: block; font-weight: 400; font-size: .8rem; color: #6b675f; margin-top: 4px; }
+.ws-edit-list { list-style: none; margin: 0; padding: 0; }
+.ws-edit-list li { border: 1px solid #e2d9c4; border-radius: 12px; background: #fff; margin-bottom: 8px; }
+.ws-edit-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.ws-edit-n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: #032257; color: #fff; font-size: .8rem; display: inline-flex; align-items: center; justify-content: center; }
+.ws-edit-lbl { flex: 1; min-width: 0; font-weight: 700; color: #032257; }
+.ws-edit-lbl small { display: block; font-weight: 400; color: #6b675f; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-edit-ops { display: flex; gap: 4px; flex: none; }
+.ws-edit-ops button { border: 1px solid #cfc6b3; background: #fbf8f1; border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .9rem; cursor: pointer; }
+.ws-edit-ops button:hover { background: #032257; color: #fff; }
+.ws-edit-form { padding: 6px 12px 12px; border-top: 1px dashed #e2d9c4; display: grid; gap: 10px; }
+.ws-edit-form label { display: block; font-size: .85rem; color: #4b4740; font-weight: 600; }
+.ws-edit-form label small { font-weight: 400; color: #8a8478; }
+.ws-edit-form input:not([type=checkbox]), .ws-edit-form textarea { display: block; width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid #cfc6b3; border-radius: 8px; font: inherit; font-size: 1rem; box-sizing: border-box; }
+.ws-edit-chk { display: flex !important; align-items: center; gap: 8px; }
+.ws-edit-fbtns { display: flex; gap: 8px; }
+.ws-edit-fbtns .ws-btn { flex: 0 1 140px; padding: 9px 10px; }
+.ws-edit-btns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.ws-edit-btns .ws-btn { flex: 1 1 200px; }
+.ws-note { margin-top: 18px; padding: 14px 16px; background: #fbf8f1; border-left: 4px solid #032257; border-radius: 0 10px 10px 0; }
+.ws-note .ws-lines p { font-size: 1.1em; }
+.ws-toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #032257; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: .95rem; z-index: 10000; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
