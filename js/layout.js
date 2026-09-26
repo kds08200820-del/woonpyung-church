@@ -12,8 +12,8 @@
       { href: "welcome.html#newfamily", label: "새가족 등록" },
     ] },
     { href: "word.html", label: "온전한 예배", sub: [
-      { href: "worship.html", label: "예배순서" },
       { href: "word.html#sermon", label: "이번 주 말씀" },
+      { href: "worship.html", label: "예배순서" },
       { href: "word.html#qt", label: "매일 말씀 묵상" },
       { href: "word.html#archive", label: "주보" },
       { href: "word.html#believe", label: "우리가 믿는 것" },
