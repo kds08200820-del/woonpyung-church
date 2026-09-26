@@ -145,9 +145,19 @@ var ATLAS = (function(){
       baseImg:imgCache[bid] || null, baseBox:ATLAS_BASES[bid],
       paint:function(canvas, win){ paintTexture(canvas, win); } };
   }
+  /* 바탕 지형 그림: 저장소(data/maps, GitHub Pages — 빠름)에서 먼저, 없으면 자료 서버(dataBase)에서.
+     자료 서버는 한 장(1.4MB)에 30초씩 걸려 그동안 선만 보였다 (2026-09-26) */
+  function loadImg(id, ok, fail){
+    var tried = false;
+    var im = Object.assign(new Image(), { crossOrigin:'anonymous' });
+    im.onload = function(){ imgCache[id] = im; ok(im); };
+    im.onerror = function(){ if(tried){ fail(); return; } tried = true; im.src = MODU.dataBase + 'maps/' + id + '.jpg'; };
+    im.src = 'data/maps/' + id + '.jpg';
+    return im;
+  }
   function ensureImg(id, cb){
     if(imgCache[id]) return cb();
-    var im = Object.assign(new Image(), { crossOrigin:'anonymous' }); im.onload = function(){ imgCache[id] = im; cb(); }; im.onerror = function(){ cb(); }; im.src = MODU.dataBase + 'maps/' + id + '.jpg';
+    loadImg(id, function(){ cb(); }, function(){ cb(); });
   }
   var texLabels = [];
   function paintTexture(canvas, win){
@@ -197,16 +207,13 @@ var ATLAS = (function(){
   var wideLoading = {};
   function loadWide(id){
     if(wideLoading[id]) return; wideLoading[id] = true;
-    var im = Object.assign(new Image(), { crossOrigin:'anonymous' }); im.onload = function(){ imgCache[id] = im; draw(); }; im.src = MODU.dataBase + 'maps/' + id + '.jpg';
+    loadImg(id, function(){ draw(); }, function(){});
   }
   function loadBase(id, cb){
     base = ATLAS_BASES[id]; img = null;
     if(base && base.vector){ cb(); return; }
     if(imgCache[id]){ img = imgCache[id]; cb(); return; }
-    var im = Object.assign(new Image(), { crossOrigin:'anonymous' });
-    im.onload = function(){ imgCache[id] = im; img = im; cb(); };
-    im.onerror = function(){ APP.toast('지형 그림(data/maps/' + id + '.jpg)을 읽지 못했습니다'); cb(); };
-    im.src = MODU.dataBase + 'maps/' + id + '.jpg';
+    loadImg(id, function(im){ img = im; cb(); }, function(){ APP.toast('지형 그림(data/maps/' + id + '.jpg)을 읽지 못했습니다'); cb(); });
   }
   function fit(){
     var r = cv.parentElement.getBoundingClientRect();
