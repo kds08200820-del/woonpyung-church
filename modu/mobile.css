@@ -227,6 +227,8 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 .mo-foot{margin:18px 0 0;padding-top:12px;border-top:1px solid #efeae2;font-size:11.5px;color:#9a9086}
 #licGate,#regModal,#relModal{display:none!important}
 
+/* ── 찬송가·교독문 (휴대폰에서만 — 데스크탑 웹은 style.css 그대로) ── */
+@media (max-width: 900px){
 /* 찬송가: 머리띠에 음표 단추만, 화면 전체로 */
 #hymnBtn{order:2;background:rgba(255,255,255,.16);color:var(--accent-fg);border-color:rgba(255,255,255,.35);padding:5px 8px;font-size:15px}
 #hymnBtn .hb-tx{display:none}
@@ -248,3 +250,4 @@ body.hy-open #moTabs{z-index:85}
 
 /* 휴대폰: 찬송가·교독문은 아래 막대에 있으니 머리띠에서는 감춘다 */
 #hymnBtn,#gyodokBtn{display:none!important}
+}

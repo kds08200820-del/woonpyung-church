@@ -20,3 +20,13 @@ create view public.worship_published as
 
 revoke all on public.worship_published from anon;
 grant select on public.worship_published to authenticated;
+
+-- 히어로가 로그인 전에 "오늘 새벽기도회가 있는가"만 확인하는 공개 뷰 — 날짜와 예배 종류 외에는 아무것도 내보내지 않는다
+--   되돌리기: drop view if exists public.worship_schedule;
+drop view if exists public.worship_schedule;
+create view public.worship_schedule as
+  select sermon_date, service
+  from public.sermons
+  where service in ('매일 QT', '새벽기도', '수요기도회', '금요기도회', '주일 낮 예배', '주일 밤 예배', '특별집회')
+    and sermon_date is not null;
+grant select on public.worship_schedule to anon, authenticated;

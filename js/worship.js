@@ -158,11 +158,32 @@
     return out;
   }
 
+  /* 설교작성관리 달력에 그날 예배가 있는지 — 공개 뷰 worship_schedule(날짜·예배 종류만) */
+  function hasSermon(date, service) {
+    if (!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve(false);
+    var u = window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/worship_schedule?select=sermon_date&sermon_date=eq.' + date + '&service=eq.' + encodeURIComponent(service) + '&limit=1';
+    return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + window.SUPABASE_ANON_KEY } })
+      .then(function (r) { return r.ok ? r.json() : []; }).then(function (rows) { return !!(rows && rows.length); }).catch(function () { return false; });
+  }
+
   /* ── 히어로 슬라이드 (main.js 보다 먼저 끼워 넣는다) ── */
   function heroSlide() {
     var rot = $('heroRotator'); if (!rot) return;
     var fm = location.search.match(/[?&]worship=(sunday|wed|dawn|1)/), force = fm ? (fm[1] === '1' ? true : fm[1]) : false;   /* ?worship=1|sunday|wed|dawn : 시간과 상관없이 띄움(미리 보기용) */
     var list = services(force); if (!list.length) return;
+    /* 새벽기도회는 설교작성관리 달력에 그날 '새벽기도'가 있을 때만 — 확인이 끝난 뒤 끼워 넣는다 */
+    var dawn = list.filter(function (s) { return s.kind === 'dawn'; })[0];
+    if (dawn && !force) {
+      hasSermon(todayStr, '새벽기도').then(function (ok) {
+        var rest = list.filter(function (s) { return s.kind !== 'dawn'; });
+        if (ok) rest.unshift(dawn);
+        if (rest.length) mount(rot, rest);
+      });
+      return;
+    }
+    mount(rot, list);
+  }
+  function mount(rot, list) {
     var d = document.createElement('div'); d.className = 'hero-slide is-active hero-worship'; d.id = 'heroWorship';
     d.innerHTML = '<p class="hw-eyebrow">TODAY’S WORSHIP</p><h1 class="hero-title">오늘의 예배</h1>' +
       '<p class="hero-sub hw-date">' + esc(today.getUTCMonth() + 1) + '월 ' + esc(today.getUTCDate()) + '일 (' + DOWK[dow] + ') · ' + esc(list.map(function (s) { return s.time; }).join(' / ')) + '</p>' +

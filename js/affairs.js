@@ -625,18 +625,47 @@ console.log('[affairs.js] v20260923lic');
     var sel = {}; (initial || []).forEach(function (n) { n = Number(n); if (n) sel[n] = 1; });
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9500;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
-    ov.innerHTML = '<div class="fin-card" style="max-width:560px;width:100%;background:#fff">' +
+    // 왼쪽: 번호·제목 검색 + 목록 / 오른쪽: 실제 악보 그림(modu/data/hymn/NNN.webp, 모두의 성경과 같은 자료) — 보면서 고른다
+    var narrow = window.innerWidth < 760;
+    ov.innerHTML = '<div class="fin-card" style="max-width:980px;width:100%;background:#fff">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:var(--accent,#032257)">🎵 찬송가 선택 (복수 선택)</h3><button class="btn btn-line" id="hp_close" style="padding:3px 11px">닫기</button></div>' +
-      '<input type="text" id="hp_q" placeholder="🔍 번호·제목·주제 검색 (예: 384, 갈 길, 감사 — 숫자만 입력해도 바로 검색)" style="width:100%;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:8px">' +
+      '<input type="text" id="hp_q" placeholder="🔍 번호·제목 검색 (예: 384, 갈 길 — 숫자만 입력해도 바로 검색)" style="width:100%;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:8px">' +
       '<div id="hp_sel" style="margin-bottom:8px;min-height:26px"></div>' +
-      '<div id="hp_list" style="max-height:340px;overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
+      '<div style="display:grid;grid-template-columns:' + (narrow ? '1fr' : '300px 1fr') + ';gap:10px">' +
+        '<div id="hp_list" style="max-height:' + (narrow ? '220px' : '460px') + ';overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
+        '<div id="hp_view" style="border:1px solid #eef1f5;border-radius:8px;background:#fafafa;display:flex;flex-direction:column;min-height:' + (narrow ? '300px' : '460px') + ';max-height:460px">' +
+          '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #eef1f5;background:#fff;border-radius:8px 8px 0 0">' +
+            '<button type="button" class="btn btn-line" id="hp_prev" style="padding:3px 9px" title="이전 장">◀</button>' +
+            '<b id="hp_vt" style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--accent,#032257)">악보를 보려면 왼쪽 목록에서 곡을 누르세요</b>' +
+            '<button type="button" class="btn btn-line" id="hp_next" style="padding:3px 9px" title="다음 장">▶</button>' +
+            '<button type="button" class="btn btn-solid" id="hp_pick" style="padding:4px 12px;display:none">✓ 이 곡 선택</button></div>' +
+          '<div id="hp_img" style="flex:1;min-height:0;overflow:auto;padding:6px;text-align:center"><p style="color:#9aa5b1;margin:40px 0;font-size:.85rem">오늘의 예배·아이패드 화면에 그대로 나오는 새찬송가 악보입니다.</p></div>' +
+        '</div></div>' +
       '<div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:flex-end"><button class="btn btn-solid" id="hp_done" style="padding:8px 18px">선택 완료</button></div></div>';
     document.body.appendChild(ov);
     var close = pushBackClose(function () { ov.remove(); });
     ov.querySelector('#hp_close').onclick = close;
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var selBox = ov.querySelector('#hp_sel'), listEl = ov.querySelector('#hp_list'), qEl = ov.querySelector('#hp_q');
+    var viewNo = 0, imgBox = ov.querySelector('#hp_img'), vt = ov.querySelector('#hp_vt'), pickBtn = ov.querySelector('#hp_pick');
     function nums() { return Object.keys(sel).map(Number).sort(function (a, b) { return a - b; }); }
+    // 악보 그림 보기 — 모두의 성경과 같은 자료(modu/data/hymn/NNN.webp, 645장)
+    function showSheet(n) {
+      n = Number(n); if (!(n >= 1 && n <= 645)) return;
+      viewNo = n;
+      vt.textContent = n + '장 ' + hymnTitle(n);
+      imgBox.innerHTML = '';
+      var im = document.createElement('img');
+      im.src = 'modu/data/hymn/' + ('00' + n).slice(-3) + '.webp'; im.alt = '새찬송가 ' + n + '장';
+      im.style.cssText = 'width:100%;max-width:900px;height:auto;display:block;margin:0 auto;background:#fff;border-radius:4px';
+      im.onerror = function () { imgBox.innerHTML = '<p style="color:#9aa5b1;margin:40px 0">이 장의 악보 그림이 없습니다</p>'; };
+      imgBox.appendChild(im); imgBox.scrollTop = 0;
+      pickBtn.style.display = ''; pickBtn.textContent = sel[n] ? '✓ 선택됨 (누르면 해제)' : '✓ 이 곡 선택';
+      var row = listEl.querySelector('.hp-item[data-n="' + n + '"]'); if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+    }
+    ov.querySelector('#hp_prev').onclick = function () { if (viewNo > 1) showSheet(viewNo - 1); };
+    ov.querySelector('#hp_next').onclick = function () { if (viewNo && viewNo < 645) showSheet(viewNo + 1); };
+    pickBtn.onclick = function () { if (!viewNo) return; if (sel[viewNo]) delete sel[viewNo]; else sel[viewNo] = 1; drawSel(); drawList(qEl.value); showSheet(viewNo); };
     function drawSel() {
       var ns = nums();
       selBox.innerHTML = ns.length ? ns.map(function (n) { return '<span class="hp-chip" data-n="' + n + '" style="display:inline-flex;align-items:center;gap:5px;background:#e7f0ff;color:#1f3a5f;border-radius:999px;padding:3px 10px;margin:0 5px 5px 0;font-size:.84rem;font-weight:700">' + n + '장' + (hymnTitle(n) ? ' <span style="font-weight:400">' + esc(hymnTitle(n)) + '</span>' : '') + ' <b style="cursor:pointer;color:#c0392b">✕</b></span>'; }).join('') : '<span style="font-size:.84rem;color:#9aa5b1">아직 선택한 찬송가가 없습니다. 위에서 검색해 고르세요.</span>';
@@ -644,13 +673,16 @@ console.log('[affairs.js] v20260923lic');
     }
     function drawList(q) {
       q = (q || '').trim().toLowerCase();
-      // 번호·제목에 더해 주제(구간 매핑+제목 키워드)로도 검색 — 예: '감사' → 감사 주제 찬송 전부
-      var rows = HY.filter(function (h) { return !q || String(h.no).indexOf(q) >= 0 || (h.title || '').toLowerCase().indexOf(q) >= 0 || hymnThemes(h.no, h.title).some(function (t) { return t.indexOf(q) >= 0; }); });   // 645장 전곡 표시
-      listEl.innerHTML = rows.length ? rows.map(function (h) { var th = hymnThemes(h.no, h.title); return '<div class="hp-item" data-n="' + h.no + '" style="padding:8px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;gap:8px;background:' + (sel[h.no] ? '#eef4ff' : '#fff') + '"><span style="flex:0 0 48px;font-weight:700;color:' + (sel[h.no] ? '#1f3a5f' : '#7b8794') + '">' + h.no + '장</span><span style="flex:1;min-width:0">' + esc(h.title || '') + '</span><span style="flex:none;font-size:.7rem;color:#a9b3c2;white-space:nowrap">' + esc(th.slice(0, 2).join('·')) + '</span>' + (sel[h.no] ? '<span style="flex:none;color:#1e874b">✓</span>' : '') + '</div>'; }).join('') : '<p style="padding:10px;color:#9aa5b1">결과 없음</p>';
-      Array.prototype.forEach.call(listEl.querySelectorAll('.hp-item'), function (d) { d.onclick = function () { var n = Number(d.dataset.n); if (sel[n]) delete sel[n]; else sel[n] = 1; drawSel(); drawList(qEl.value); }; });
+      // 번호·제목으로 찾는다 (주제 태그 자료는 쓰지 않는다 — 악보 그림을 보고 고른다)
+      var qq = q.replace(/\s+/g, '');
+      var rows = HY.filter(function (h) { return !q || String(h.no).indexOf(q) >= 0 || (h.title || '').replace(/\s+/g, '').toLowerCase().indexOf(qq) >= 0; });   // 645장 전곡 표시
+      listEl.innerHTML = rows.length ? rows.map(function (h) { return '<div class="hp-item" data-n="' + h.no + '" style="padding:8px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;gap:8px;background:' + (sel[h.no] ? '#eef4ff' : (viewNo === h.no ? '#fff7e6' : '#fff')) + '"><span style="flex:0 0 48px;font-weight:700;color:' + (sel[h.no] ? '#1f3a5f' : '#7b8794') + '">' + h.no + '장</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(h.title || '') + '</span>' + (sel[h.no] ? '<span style="flex:none;color:#1e874b">✓</span>' : '') + '</div>'; }).join('') : '<p style="padding:10px;color:#9aa5b1">결과 없음</p>';
+      // 한 번 누르면 악보를 보여 주고, 같은 곡을 다시 누르거나 오른쪽 [✓ 이 곡 선택]으로 고른다
+      Array.prototype.forEach.call(listEl.querySelectorAll('.hp-item'), function (d) { d.onclick = function () { var n = Number(d.dataset.n); if (viewNo === n) { if (sel[n]) delete sel[n]; else sel[n] = 1; drawSel(); } showSheet(n); drawList(qEl.value); }; });
+      if (rows.length === 1 && q && viewNo !== rows[0].no) showSheet(rows[0].no);
     }
     qEl.oninput = function () { drawList(this.value); };
-    qEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var q = qEl.value.trim(); if (/^\d+$/.test(q)) { var n = Number(q); if (n >= 1 && n <= 645) { sel[n] = 1; qEl.value = ''; drawSel(); drawList(''); } } } });
+    qEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var q = qEl.value.trim(); if (/^\d+$/.test(q)) { var n = Number(q); if (n >= 1 && n <= 645) { sel[n] = 1; qEl.value = ''; drawSel(); drawList(''); showSheet(n); } } } });
     ov.querySelector('#hp_done').onclick = function () { if (onDone) onDone(nums()); close(); };
     drawSel(); drawList('');
     setTimeout(function () { qEl.focus(); }, 40);
