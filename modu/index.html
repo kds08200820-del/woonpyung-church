@@ -557,10 +557,11 @@
     </div>
     <div class="hy-tools" id="hyTools" hidden>
       <button class="btn icon" id="hyPrev" title="이전 장 (←)">◀</button>
-      <div class="hy-titles"><b id="hyNo">—</b><span id="hySub"></span></div>
+      <button type="button" class="hy-titles" id="hyCur" title="누르면 다른 장을 고르는 목록이 뜹니다"><b id="hyNo">—</b><span id="hySub"></span></button>
       <button class="btn icon" id="hyNext" title="다음 장 (→)">▶</button>
+      <button type="button" class="btn" id="hyListBtn" title="이 자리에서 다른 장 고르기">목록</button>
       <span class="spacer"></span>
-      <span class="seg hy-zoom" id="hyZoom"><button type="button" data-z="1" class="on" title="화면 폭에 맞춤">맞춤</button><button type="button" data-z="1.5">1.5×</button><button type="button" data-z="2">2×</button><button type="button" data-z="3">3×</button></span>
+      <button type="button" class="btn hy-lock" id="hyLock" title="누르면 손가락으로 크기를 바꿀 수 없게 잠급니다" aria-pressed="false">고정</button>
     </div>
     <div class="hy-wrap">
     <div class="hy-body" id="hyBody">
@@ -570,22 +571,36 @@
       <img id="hyImg" alt="" hidden>
     </div>
     <div class="hy-rail" id="hyRail" aria-hidden="true"></div>
+    <div class="hy-pop" id="hyPop" hidden><div class="hy-pop-in" id="hyPopList"></div></div>
     </div>
   </div>
 </div>
 <!-- 교독문 — 새찬송가 교독문 137편 -->
 <div class="modal hy-modal" id="gdModal" role="dialog" aria-modal="true" aria-label="교독문" hidden>
   <div class="modal-card hycard gdcard">
-    <div class="m-head hy-head">
-      <button class="btn icon" id="gdPrev" title="이전 교독문 (←)">◀</button>
-      <div class="at-titles hy-titles"><b id="gdTitle">교독문</b><span class="at-meta" id="gdSub">번호나 제목으로 찾으세요</span></div>
-      <button class="btn icon" id="gdNext" title="다음 교독문 (→)">▶</button>
-      <div class="hy-find"><input id="gdIn" placeholder="번호 · 제목 (예: 46, 시편 104)" autocomplete="off" inputmode="search"><div class="hy-list" id="gdList" hidden></div></div>
-      <button class="btn" id="gdIndexBtn" title="교독문 전체 목록">목록</button>
-      <span class="seg hy-zoom" id="gdSize"><button type="button" data-s="0.85">A−</button><button type="button" data-s="1" class="on">보통</button><button type="button" data-s="1.2">A+</button><button type="button" data-s="1.45">A++</button></span>
-      <button class="wb-x" id="gdClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    <div class="hy-top">
+      <div class="hy-toprow">
+        <button type="button" class="hy-ib" id="gdIndexBtn" title="전체 목록" aria-label="전체 목록"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="4" height="4" rx="1"/><rect x="10" y="3" width="4" height="4" rx="1"/><rect x="17" y="3" width="4" height="4" rx="1"/><rect x="3" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="17" y="10" width="4" height="4" rx="1"/><rect x="3" y="17" width="4" height="4" rx="1"/><rect x="10" y="17" width="4" height="4" rx="1"/><rect x="17" y="17" width="4" height="4" rx="1"/></svg></button>
+        <b id="gdTitle">교독문</b>
+        <button type="button" class="hy-ib" id="gdClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+      </div>
+      <input id="gdIn" placeholder="번호, 제목을 입력해주세요" autocomplete="off" inputmode="search">
     </div>
-    <div class="gd-body" id="gdBody"></div>
+    <div class="hy-tools" id="gdTools" hidden>
+      <button class="btn icon" id="gdPrev" title="이전 교독문 (←)">◀</button>
+      <button type="button" class="hy-titles" id="gdCur" title="누르면 다른 교독문을 고르는 목록이 뜹니다"><b id="gdNo">—</b><span id="gdSub"></span></button>
+      <button class="btn icon" id="gdNext" title="다음 교독문 (→)">▶</button>
+      <button type="button" class="btn" id="gdListBtn" title="이 자리에서 다른 교독문 고르기">목록</button>
+      <span class="spacer"></span>
+      <span class="seg hy-zoom" id="gdSize"><button type="button" data-s="0.85">A−</button><button type="button" data-s="1" class="on">보통</button><button type="button" data-s="1.2">A+</button><button type="button" data-s="1.45">A++</button></span>
+    </div>
+    <div class="hy-wrap">
+    <div class="hy-body" id="gdBody">
+      <div class="hy-index" id="gdIndex"></div>
+      <div class="gd-body" id="gdText" hidden></div>
+    </div>
+    <div class="hy-pop" id="gdPop" hidden><div class="hy-pop-in" id="gdPopList"></div></div>
+    </div>
   </div>
 </div>
 <div class="modal" id="ciModal" role="dialog" aria-modal="true" aria-label="주석 목록" hidden>

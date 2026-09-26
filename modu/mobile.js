@@ -254,13 +254,16 @@
     var t = b.dataset.t;
     if(t === 'more') return openMore();
     if(t === 'atlas'){ if(window.ATLAS) ATLAS.openIndex(); return; }
-    if(t === 'hymn'){ if(window.HYMN) HYMN.open(0); return; }
-    if(t === 'gyodok'){ if(window.GYODOK_VIEW) GYODOK_VIEW.open(0); return; }
+    if(t === 'hymn'){ if(window.HYMN){ if(HYMN.isOpen()) HYMN.back(); else HYMN.open(0); } return; }
+    if(t === 'gyodok'){ if(window.GYODOK_VIEW){ if(GYODOK_VIEW.isOpen()) GYODOK_VIEW.back(); else GYODOK_VIEW.open(0); } return; }
+    if(window.HYMN && HYMN.isOpen()) HYMN.close();                            /* 다른 탭으로 가면 찬송가·교독문 창은 닫는다 */
+    if(window.GYODOK_VIEW && GYODOK_VIEW.isOpen()) GYODOK_VIEW.close();
     APP.showView(t);
   });
-  function syncTabs(){ var v = (APP.st && APP.st.view) || 'read'; [].forEach.call(tabs.querySelectorAll('.mo-tab'), function(b){ b.classList.toggle('on', b.dataset.t === v); }); fab.hidden = v !== 'read'; }
+  function syncTabs(){ var v = (APP.st && APP.st.view) || 'read'; if(window.HYMN && HYMN.isOpen()) v = 'hymn'; else if(window.GYODOK_VIEW && GYODOK_VIEW.isOpen()) v = 'gyodok'; [].forEach.call(tabs.querySelectorAll('.mo-tab'), function(b){ b.classList.toggle('on', b.dataset.t === v); }); fab.hidden = v !== 'read'; }
   new MutationObserver(syncTabs).observe($('v-read'), { attributes:true, attributeFilter:['class'] });
   ['v-search', 'v-notes', 'v-vocab', 'v-settings'].forEach(function(id){ var el = $(id); if(el) new MutationObserver(syncTabs).observe(el, { attributes:true, attributeFilter:['class'] }); });
+  ['hymnModal', 'gdModal'].forEach(function(id){ var el = $(id); if(el) new MutationObserver(syncTabs).observe(el, { attributes:true, attributeFilter:['hidden'] }); });
   syncTabs();
 
   /* ── 대조 성경: 절마다 쌓인 줄에 성경 이름을 붙인다 ── */
@@ -433,6 +436,8 @@
   function trap(e){ if(armed() || (e && e.isTrusted === false)) return; try{ history.pushState({ modu:1 }, ''); }catch(err){} }   /* 프로그램이 만든 사건(가짜 Escape 등)은 조작이 아니다 */
   ['pointerdown', 'touchend', 'keydown'].forEach(function(t){ document.addEventListener(t, trap, { capture:true, passive:true }); });
   window.addEventListener('popstate', function(){
+    if(window.HYMN && HYMN.isOpen()){ HYMN.back(); return; }                 /* 찬송가·교독문: 한 단계씩 뒤로 */
+    if(window.GYODOK_VIEW && GYODOK_VIEW.isOpen()){ GYODOK_VIEW.back(); return; }
     if(pick && !pick.hidden){ closePick(); return; }
     if(more && !more.hidden){ closeMore(); return; }
     if(S.showNav && narrow.matches){ toggleNav(); return; }

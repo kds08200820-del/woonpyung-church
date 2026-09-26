@@ -2,10 +2,41 @@
    한 곡을 누르면 악보 그림(data/hymn/NNN.webp)을 보여 준다.
    · 본문 화면 [🎵 찬송가] 단추, 모바일 아래 막대, 주소의 #hymn=570 으로 연다
    · 다른 화면(오늘의 예배 등)에서는 HYMN.open(장번호) 로 부른다 */
+/* 좌우로 미는 손짓 — 가로 스크롤이 있는 상자(확대한 악보)는 끝에 닿았을 때만 넘긴다. fn(-1)=다음, fn(1)=이전 */
+APP.swipe = function(el, fn){
+  var sx = 0, sy = 0, sl = 0, on = false;
+  el.addEventListener('touchstart', function(e){ if(e.touches.length !== 1){ on = false; return; } on = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY; sl = el.scrollLeft; }, { passive:true });
+  el.addEventListener('touchend', function(e){
+    if(!on) return; on = false;
+    var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if(Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    var maxL = el.scrollWidth - el.clientWidth;
+    if(maxL > 2){ if(sl !== el.scrollLeft) return; if(dx < 0 && el.scrollLeft < maxL - 2) return; if(dx > 0 && el.scrollLeft > 2) return; }
+    fn(dx < 0 ? -1 : 1);
+  }, { passive:true });
+};
+/* 그 자리에서 고르는 목록 팝업 — pop: 덮개, list: 목록 칸. open(html, curNo) 로 띄우고 행을 누르면 onPick(no) */
+APP.listPop = function(pop, list, onPick){
+  pop.addEventListener('click', function(e){
+    var b = e.target.closest('.hy-row');
+    if(b){ pop.hidden = true; onPick(+b.dataset.no); return; }
+    if(e.target === pop) pop.hidden = true;
+  });
+  return {
+    open:function(html, curNo){
+      if(!list.childNodes.length) list.innerHTML = html;
+      [].forEach.call(list.querySelectorAll('.hy-row'), function(r){ r.classList.toggle('on', +r.dataset.no === curNo); });
+      pop.hidden = false;
+      var on = list.querySelector('.hy-row.on'); if(on) list.scrollTop = on.offsetTop - list.clientHeight / 2 + 20;
+    },
+    close:function(){ pop.hidden = true; },
+    isOpen:function(){ return !pop.hidden; }
+  };
+};
 var HYMN = (function(){
   var $ = APP.$, esc = APP.esc, toast = APP.toast;
   var LIST = window.HYMNS || [], MAX = LIST.length ? LIST[LIST.length - 1].no : 645;
-  var cur = 0, zoom = 1, ZOOMS = [1, 1.5, 2, 3], indexHtml = '';
+  var cur = 0, zoom = 1, locked = false, indexHtml = '', POPREF = null;
   var byNo = {}; LIST.forEach(function(h){ byNo[h.no] = h; });
   function isOpen(){ var m = $('hymnModal'); return !!(m && !m.hidden); }
   function title(no){ var h = byNo[no]; return h ? h.title : ''; }
@@ -59,7 +90,7 @@ var HYMN = (function(){
     }, { passive:true });
   }
   function showIndex(){
-    cur = 0;
+    cur = 0; $('hyPop').hidden = true;
     $('hyTitle').textContent = '새찬송가';
     $('hyTools').hidden = true;
     $('hyImg').hidden = true; $('hyWait').hidden = true; $('hyNone').hidden = true;
@@ -83,10 +114,11 @@ var HYMN = (function(){
     $('hyTitle').textContent = '새찬송가';
     $('hyNo').textContent = no + '장';
     $('hySub').textContent = title(no);
-    $('hyTools').hidden = false; $('hyIn').value = '';
+    $('hyTools').hidden = false; $('hyIn').value = ''; $('hyPop').hidden = true;
     $('hyIndex').hidden = true; $('hyRail').hidden = true;
     var img = $('hyImg'), box = $('hyBody');
     img.hidden = true; $('hyWait').hidden = false; $('hyNone').hidden = true;
+    setZoom(1);                                              /* 새 장은 늘 화면 폭에 맞춤 */
     img.onload = function(){ img.hidden = false; $('hyWait').hidden = true; box.scrollTop = 0; box.scrollLeft = 0; };
     img.onerror = function(){ $('hyWait').hidden = true; $('hyNone').hidden = false; };
     img.src = src(no);
@@ -97,20 +129,36 @@ var HYMN = (function(){
   }
   function open(no){
     var m = $('hymnModal'); if(!m) return;
-    m.hidden = false; document.body.classList.add('modal-open');
+    if(window.GYODOK_VIEW && GYODOK_VIEW.isOpen()) GYODOK_VIEW.close();
+    m.hidden = false; document.body.classList.add('modal-open'); document.body.classList.add('hy-open');
     $('hyIn').value = '';
     if(no) show(no); else showIndex();
   }
   function close(){
     var m = $('hymnModal'); if(!m || m.hidden) return;
-    m.hidden = true; document.body.classList.remove('modal-open');
+    m.hidden = true; document.body.classList.remove('modal-open'); document.body.classList.remove('hy-open');
     try{ if(location.hash.indexOf('#hymn=') === 0) history.replaceState(null, '', location.pathname + location.search); }catch(e){}
   }
-  function setZoom(z){
-    zoom = z; var img = $('hyImg');
-    img.style.width = (z * 100) + '%';
-    [].forEach.call(document.querySelectorAll('#hyZoom button'), function(b){ b.classList.toggle('on', +b.dataset.z === z); });
-    try{ localStorage.setItem('modu.hymn.zoom', String(z)); }catch(e){}
+  function setZoom(z){ zoom = Math.max(1, Math.min(4, z)); $('hyImg').style.width = (zoom * 100) + '%'; }
+  function setLock(v){
+    locked = !!v; var b = $('hyLock');
+    b.setAttribute('aria-pressed', locked ? 'true' : 'false'); b.textContent = locked ? '고정됨' : '고정';
+    try{ localStorage.setItem('modu.hymn.lock', locked ? '1' : ''); }catch(e){}
+  }
+  /* 두 손가락으로 벌리면 커지고 오므리면 작아진다 — 손가락 사이 지점이 제자리에 있도록 스크롤을 맞춘다 */
+  function pinch(box){
+    var d0 = 0, z0 = 1, on = false;
+    function dist(t){ var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
+    box.addEventListener('touchstart', function(e){ if(e.touches.length === 2 && cur && !locked){ on = true; d0 = dist(e.touches); z0 = zoom; } else on = false; }, { passive:true });
+    box.addEventListener('touchmove', function(e){
+      if(!on || e.touches.length !== 2) return;
+      e.preventDefault();
+      var r = box.getBoundingClientRect(), mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      var old = zoom, px = (box.scrollLeft + mx) / old, py = (box.scrollTop + my) / old;
+      setZoom(z0 * dist(e.touches) / d0);
+      box.scrollLeft = px * zoom - mx; box.scrollTop = py * zoom - my;
+    }, { passive:false });
+    box.addEventListener('touchend', function(e){ if(e.touches.length < 2) on = false; }, { passive:true });
   }
   function init(){
     if(!$('hymnModal')) return;
@@ -126,8 +174,13 @@ var HYMN = (function(){
       if(e.key === 'Enter'){ var r = search(input.value) || []; if(r.length){ show(r[0].no); input.blur(); } else toast('장 번호나 제목을 적어 주세요 (예: 570 · 목자)'); e.preventDefault(); }
     });
     $('hyIndex').addEventListener('click', function(e){ var b = e.target.closest('.hy-row'); if(b){ show(+b.dataset.no); input.blur(); } });
-    $('hyZoom').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b) setZoom(+b.dataset.z); });
-    $('hyBody').addEventListener('dblclick', function(e){ if(cur && e.target.id === 'hyImg') setZoom(zoom === 1 ? 2 : 1); });
+    var pop = APP.listPop($('hyPop'), $('hyPopList'), function(no){ show(no); });
+    POPREF = pop;
+    function openPop(){ if(cur) pop.open(buildIndex(), cur); }
+    $('hyCur').onclick = openPop; $('hyListBtn').onclick = openPop;
+    $('hyLock').onclick = function(){ setLock(!locked); toast(locked ? '크기를 고정했습니다 — 손가락으로 벌려도 바뀌지 않습니다' : '고정을 풀었습니다 — 두 손가락으로 크기를 바꿀 수 있습니다'); };
+    pinch($('hyBody'));
+    $('hyBody').addEventListener('dblclick', function(e){ if(cur && !locked && e.target.id === 'hyImg') setZoom(zoom === 1 ? 2 : 1); });
     var m = $('hymnModal'), down = false;
     m.addEventListener('mousedown', function(e){ down = (e.target === m); });
     m.addEventListener('click', function(e){ if(down && e.target === m) close(); down = false; });
@@ -137,13 +190,15 @@ var HYMN = (function(){
       if(e.key === 'ArrowLeft' && !typing && cur){ if(cur > 1) show(cur - 1); e.preventDefault(); }
       else if(e.key === 'ArrowRight' && !typing && cur){ if(cur < MAX) show(cur + 1); e.preventDefault(); }
     }, true);
-    var z = 0; try{ z = +localStorage.getItem('modu.hymn.zoom') || 0; }catch(e){}
-    if(!z) z = window.innerWidth < 600 ? 1.5 : 1;                 /* 휴대폰은 처음에 1.5× — 가사가 읽히는 크기 */
-    setZoom(ZOOMS.indexOf(z) >= 0 ? z : 1);
+    APP.swipe($('hyBody'), function(dir){ if(!cur) return; if(dir < 0 && cur < MAX) show(cur + 1); else if(dir > 0 && cur > 1) show(cur - 1); });
+    var lk = ''; try{ lk = localStorage.getItem('modu.hymn.lock') || ''; }catch(e){}
+    setLock(!!lk);
     var h = location.hash.match(/^#hymn=(\d{1,3})$/);
     if(h) open(+h[1]);
     window.addEventListener('hashchange', function(){ var h = location.hash.match(/^#hymn=(\d{1,3})$/); if(h) open(+h[1]); });
   }
+  /* 뒤로 단추: 한 단계씩 — 고르기 팝업 → 악보 → 목록 → 닫기 */
+  function back(){ if(POPREF && POPREF.isOpen()) POPREF.close(); else if(cur){ $('hyIn').value = ''; showIndex(); } else close(); }
   init();
-  return { open:open, close:close, isOpen:isOpen, show:show, title:title, src:src, max:MAX };
+  return { open:open, close:close, back:back, isOpen:isOpen, show:show, title:title, src:src, max:MAX };
 })();
