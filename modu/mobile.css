@@ -232,8 +232,8 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 #hymnBtn .hb-tx{display:none}
 .hy-modal{padding:0}
 .hycard{width:100%;height:100%;max-height:none;border:0;border-radius:0}
-.hy-head{padding:8px 10px;gap:6px}
-.hy-find{flex:1 1 100%;order:9}
+.hy-top{border-radius:0}
+.hy-tools{padding:6px 8px;gap:6px}
 .hy-zoom button{padding:6px 9px;font-size:12.5px}
 
 #gyodokBtn{order:2;background:rgba(255,255,255,.16);color:var(--accent-fg);border-color:rgba(255,255,255,.35);padding:5px 8px;font-size:15px}
