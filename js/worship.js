@@ -60,9 +60,9 @@
 
   /* ── 주보 ── */
   function bulletins() { try { return (typeof BULLETINS !== 'undefined' && BULLETINS) || window.BULLETINS || []; } catch (e) { return []; } }
-  function sundayBulletin() {                      /* 오늘 이하 가장 최근 주보(주일이면 오늘 것) */
-    var L = bulletins();
-    for (var i = 0; i < L.length; i++) if (L[i].date <= todayStr) return L[i];
+  function sundayBulletin() {                      /* 내일까지의 가장 최근 주보 — 토요일에 올린 내일 주보가 바로 보이고, 주일이면 오늘 것 */
+    var L = bulletins(), lim = ymd(new Date(today.getTime() + 864e5));
+    for (var i = 0; i < L.length; i++) if (L[i].date <= lim) return L[i];
     return L[0] || null;
   }
   function wedInfo(bul) {                          /* 주보의 수요기도회 줄 → 제목·본문 (bul 없으면 이번 주) */
@@ -150,7 +150,7 @@
         if (!force && !(n >= sc.from - PAD && n <= sc.to + PAD)) return;
       }
       var sub = '';
-      if (sc.kind === 'sunday') sub = b ? (b.date === todayStr ? b.title : '지난 주보 · ' + b.title) : '';
+      if (sc.kind === 'sunday') sub = b ? (b.date >= todayStr ? b.title : '지난 주보 · ' + b.title) : '';
       else if (sc.kind === 'wed') { var w = wedInfo(); sub = w ? (w.title ? '«' + w.title + '» · ' : '') + w.ref : ''; }
       else sub = '오늘의 QT 본문';
       out.push({ kind: sc.kind, label: sc.label, sub: sub, time: sc.time });
