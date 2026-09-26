@@ -1003,6 +1003,8 @@ function expand(p){
 
 /* ─────────────── 검색 ─────────────── */
 var LIMIT = 3000;
+var HEB_RE = /[א-ת]/;
+function hnorm(t){ return String(t || '').replace(/[֑-ׇ׳״]/g, '').replace(/־/g, ' '); }   /* 모음·억양·게레쉬 빼고, 마케프(־)는 띄어쓰기로 */
 function buildMatcher(q){
   var ci = $('ci').checked, flags = 'g' + (ci ? 'i' : '');
   if($('re').checked){
@@ -1015,6 +1017,12 @@ function buildMatcher(q){
   var phrase = t.length > 1 && /^["'“].*["'”]$/.test(t);
   var terms = (phrase ? [t.slice(1,-1)] : t.split(/\s+/)).filter(function(x){ return x.length > 0; });
   if(!terms.length) return { err:'찾을 낱말을 적어 주세요.' };
+  /* 히브리어: 모음 부호·억양 부호를 빼고 자음만으로 비교 (입력에 모음이 있어도 없어도 찾는다) */
+  if(terms.some(function(x){ return HEB_RE.test(x); })){
+    var hterms = terms.map(hnorm).filter(Boolean);
+    var hre = new RegExp(hterms.map(function(x){ return x.split('').map(function(c){ return c === ' ' ? '[\\s\u05BE]+' : c + '[\u0591-\u05C7]*'; }).join(''); }).join('|'), 'g');   /* 표시용: 글자 사이 모음 부호를 건너뛰며 칠한다 */
+    return { re:hre, heb:true, terms:hterms, test:function(s){ var x = hnorm(s); for(var i=0;i<hterms.length;i++) if(x.indexOf(hterms[i]) < 0) return false; return true; } };
+  }
   if(terms.some(function(x){ return GREEK_RE.test(x); })){
     var gterms = terms.map(gnorm);
     var gre = new RegExp(terms.map(greekPattern).join('|'), 'gi');
@@ -1104,11 +1112,21 @@ function doSearch(){
     }
   }
 
+  /* H430 · G2316 처럼 스트롱 번호를 적으면 그 원어 낱말이 나오는 곳 */
+  var sm = q.match(/^([HhGg])\s*(\d{1,4})$/);
+  if(sm){ if(sm[1].toUpperCase() === 'H') searchStrong(String(+sm[2])); else searchStrongGrk(String(+sm[2])); return; }
+
   var M = buildMatcher(q);
   if(M.err){ $('status').textContent = M.err; $('hits').innerHTML = ''; return; }
 
   var only = $('scopeBook').value, scope = $('scope').value;
   var vids = $('sver').value === '*' ? VERS.map(function(v){ return v.id; }) : [$('sver').value];
+  /* 히브리어 한 낱말 + '원어 원형까지' → 원형 검색 (활용형이 달라도 원형이 같으면 찾는다) */
+  if(M.heb && $('lemmaSearch').checked && M.terms.length === 1 && hebLemmaSearch(M.terms[0], q)) return;
+  if(M.heb){                                   /* 히브리어 낱말은 역본 선택과 상관없이 히브리어 성경(WLC)에서 찾는다 */
+    if(!TEXT.wlc){ $('status').textContent = '히브리어 성경 자료가 없습니다.'; $('hits').innerHTML = ''; return; }
+    vids = ['wlc']; if(scope === 'nt') scope = 'all';
+  }
   var hits = [], truncated = false, t0 = performance.now();
 
   outer:
@@ -1609,6 +1627,105 @@ function searchStrong(no){
   showView('search');
 }
 
+
+/* 히브리어 원형 검색 — 입력한 낱말(활용형이어도 됨)을 WLC 본문에서 찾아 그 낱말의 스트롱 번호(원형)를 알아낸 뒤,
+   같은 원형이 쓰인 모든 절을 찾는다. 결과에는 원형을 굵게 보이고, 절마다 실제 쓰인 형태와 그 문법 설명을 붙인다.
+   WLC 본문(띄어쓰기 단위)과 HEB.w(같은 순서의 '번호:형태코드')가 낱말마다 맞물려 있어 관계형으로 잇는다. */
+var HPREFIX = /^[והבלכמש]{1,3}/;   /* 접두어 ו ה ב ל כ מ ש */
+function hebWordParts(w){ return hnorm(w).replace(/[׃׀]/g, '').split(/\s+/).filter(Boolean); }
+function hebLemmaSearch(qn, q){
+  if(!HEB || !TEXT.wlc) return false;
+  qn = qn.replace(/\s+/g, '');
+  var qStrip = qn.replace(HPREFIX, '');
+  var nos = {}, only = $('scopeBook').value;
+  /* 1) 입력한 형태가 쓰인 자리에서 원형 번호 모으기 (그대로 같거나, 접두어를 떼면 같은 것) */
+  for(var bi = 0; bi < 39; bi++){
+    var bw = HEB.w[bi], bt = TEXT.wlc[bi]; if(!bw || !bt) continue;
+    for(var ci = 0; ci < bw.length; ci++){
+      var cw = bw[ci], ct = bt[ci]; if(!cw || !ct) continue;
+      for(var vi = 0; vi < cw.length; vi++){
+        var line = cw[vi], txt = ct[vi]; if(!line || !txt) continue;
+        if(hnorm(txt).indexOf(qStrip) < 0) continue;
+        var words = txt.split(' '), toks = line.split('|');
+        for(var k = 0; k < words.length && k < toks.length; k++){
+          var parts = hebWordParts(words[k]), hit = false;
+          for(var p = 0; p < parts.length; p++){ var c = parts[p]; if(c === qn || c.replace(HPREFIX, '') === qn || c === qStrip) { hit = true; break; } }
+          if(hit) toks[k].split(':')[0].split('+').forEach(function(n){ if(n) nos[n] = (nos[n] || 0) + 1; });
+        }
+      }
+    }
+  }
+  var list = Object.keys(nos).sort(function(a, b){ return nos[b] - nos[a]; });
+  if(!list.length) return false;                                   /* 원형을 못 찾으면 보통 글자 검색으로 */
+  /* 입력 형태에서 나온 번호 가운데 대부분을 차지하는 것만 (전치사·관사가 섞여 들어온 번호는 뺀다) */
+  var top = nos[list[0]]; list = list.filter(function(n){ return nos[n] >= top * 0.15; }).slice(0, 4);
+  /* 2) 그 원형이 쓰인 모든 절 */
+  var hits = [], forms = {}, t0 = performance.now();
+  outer:
+  for(bi = 0; bi < 39; bi++){
+    if(only !== '' && bi !== +only) continue;
+    var bw2 = HEB.w[bi]; if(!bw2) continue;
+    for(ci = 0; ci < bw2.length; ci++){
+      var cw2 = bw2[ci]; if(!cw2) continue;
+      for(vi = 0; vi < cw2.length; vi++){
+        var line2 = cw2[vi]; if(!line2) continue;
+        if(!list.some(function(n){ return line2.indexOf(n) >= 0; })) continue;
+        var toks2 = line2.split('|'), idx = [], info = [];
+        var words2 = (verses('wlc', bi, ci)[vi] || '').split(' ');
+        for(var k2 = 0; k2 < toks2.length; k2++){
+          var pr = toks2[k2].split(':'), ns = pr[0].split('+');
+          var n0 = list.filter(function(n){ return ns.indexOf(n) >= 0; })[0];
+          if(!n0) continue;
+          var codes = (pr[1] || '').split(',').map(function(x){ return HEB.m[+x] || ''; }).filter(Boolean);
+          var w = (words2[k2] || '').replace(/[׃]/g, ''), key = hnorm(w).replace(/\s+/g, '') + '|' + codes.join(',');
+          idx.push(k2); info.push({ w:w, no:n0, morph:codes.map(decodeHeb).join(' / ') });
+          if(!forms[key]) forms[key] = { w:heb(w), morph:codes.map(decodeHeb).join(' / '), n:0, no:n0, codes:codes.join(',') };
+          forms[key].n++;
+        }
+        if(!idx.length) continue;
+        if(hits.length >= LIMIT) break outer;
+        hits.push({ bi:bi, ci:ci, vi:vi, vid:'wlc', t:verses('wlc', bi, ci)[vi] || '', idx:idx, info:info });
+      }
+    }
+  }
+  st.hits = hits; st.sel = -1;
+  /* 원형(사전형) 글자: 명사·형용사는 단수 절대형, 동사는 칼 완료 3인칭 남성 단수 형태를 원형으로 보인다. 없으면 가장 많이 쓰인 형태 */
+  function lemmaForm(no){
+    var fs = Object.keys(forms).map(function(k){ return forms[k]; }).filter(function(f){ return f.no === no; });
+    var pick = fs.filter(function(f){ return /(^|\/)(N[cpg][mfbc]sa|Aa[mfbc]sa)$/.test(f.codes) || /(^|\/)Vqp3ms$/.test(f.codes); })
+                 .filter(function(f){ return f.codes.indexOf('/') < 0; }).sort(function(a, b){ return b.n - a.n; })[0];
+    return (pick || fs.sort(function(a, b){ return b.n - a.n; })[0] || {}).w || '';
+  }
+  var lemmaHtml = list.map(function(no){
+    var d = HEB.d[no] || [];
+    return '<span class="lm-one"><b class="lm-heb" dir="rtl">' + esc(lemmaForm(no)) + '</b> <span class="lm-no">H' + no + '</span> <i>' + esc(d[0] || '') + '</i>' +
+           (d[2] ? ' <span class="dim">— ' + esc(String(d[2]).slice(0, 60)) + (String(d[2]).length > 60 ? '…' : '') + '</span>' : '') + '</span>';
+  }).join('');
+  var formList = Object.keys(forms).map(function(k){ return forms[k]; }).sort(function(a, b){ return b.n - a.n; });
+  var formsHtml = formList.slice(0, 40).map(function(f){
+    return '<span class="lm-form" title="' + esc(f.morph) + '"><b dir="rtl">' + esc(f.w) + '</b> <span class="dim">' + esc(f.morph) + ' · ' + f.n + '회</span></span>';
+  }).join('') + (formList.length > 40 ? '<span class="dim"> 외 ' + (formList.length - 40) + '가지</span>' : '');
+  var ms = Math.round(performance.now() - t0);
+  $('status').textContent = '원형 검색 ‘' + q + '’ — ' + hits.length + '개 구절 · 형태 ' + formList.length + '가지 · ' + ms + 'ms';
+  addHist(q, '원형', hits.length + '개 구절');
+  var box = $('hits');
+  box.innerHTML = '<div class="lm-head"><div class="lm-row"><span class="lm-lab">원형</span>' + lemmaHtml + '</div>' +
+                  '<div class="lm-row lm-forms"><span class="lm-lab">쓰인 형태</span><div>' + formsHtml + '</div></div></div>' +
+    hits.map(function(x, i){
+      var toks = x.t.split(' ').map(function(w, wi){ var ww = esc(heb(w)); return x.idx.indexOf(wi) >= 0 ? '<mark><b>' + ww + '</b></mark>' : ww; }).join(' ');
+      var kor = korText(x.bi, x.ci, x.vi);
+      var how = x.info.map(function(f){ return '<b dir="rtl">' + esc(heb(f.w)) + '</b> ' + esc(f.morph); }).join(' · ');
+      return '<div class="hit" data-i="' + i + '"><div class="ref">' + ref(x.bi, x.ci, x.vi) + ' <span class="dim" style="font-weight:400">· WLC</span></div>' +
+             '<div class="txt heb">' + toks + '</div><div class="lm-how">형태: ' + how + '</div>' + (kor ? '<div class="kor">' + esc(kor) + '</div>' : '') + '</div>';
+    }).join('');
+  box.querySelectorAll('.hit').forEach(function(el){
+    el.onclick = function(){
+      box.querySelectorAll('.hit').forEach(function(e2){ e2.classList.remove('on'); });
+      el.classList.add('on'); var x = st.hits[+el.dataset.i]; st.sel = +el.dataset.i; openChapter(x.bi, x.ci, x.vi);
+    };
+  });
+  return true;
+}
 
 /* 헬라어 스트롱 번호로 신약 전체에서 찾기 — 스테판 원어 자료(낱말마다 번호가 달림)를 이어서 쓴다 */
 function searchStrongGrk(no){

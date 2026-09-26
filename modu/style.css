@@ -1468,3 +1468,18 @@ body.popwin .atlascard,body.popwin .kgcard{width:100%;height:100%;max-width:none
 .at-rulebar .tot{font-weight:700;color:#d9480f;white-space:nowrap}
 .at-rulebar .tot b{padding:1px 8px;border-radius:6px;background:#d9480f;color:#fff;margin-left:4px}
 .at-rulebar .hint{flex-basis:100%;font-size:11.5px;color:var(--fg2)}
+
+/* 히브리어 원형 검색 결과 머리 — 원형(굵게)·번호·음역·뜻, 쓰인 형태 목록 */
+.lm-head{margin:6px 12px 10px;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:var(--panel)}
+.lm-row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.lm-row + .lm-row{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+.lm-lab{flex:0 0 auto;font-size:11.5px;font-weight:700;color:var(--fg3);min-width:56px}
+.lm-one{margin-right:14px}
+.lm-heb{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.6em;font-weight:800;color:var(--accent)}
+.lm-no{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--accent-bg);color:var(--accent);font-weight:700}
+.lm-forms > div{display:flex;flex-wrap:wrap;gap:6px 8px;max-height:112px;overflow:auto;padding-right:4px}   /* 형태가 많으면 이 칸 안에서 스크롤 */
+.lm-form{display:inline-flex;gap:6px;align-items:baseline;padding:3px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:12.5px}
+.lm-form b{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.25em}
+.lm-how{font-size:12.5px;color:var(--fg2);margin:2px 0 4px}
+.lm-how b{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.15em;color:var(--accent)}
+.hit .txt.heb mark b{font-weight:800}
