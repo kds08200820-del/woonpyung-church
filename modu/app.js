@@ -57,7 +57,7 @@ var MLEMMAS = MORPH ? MORPH.lemmas : [];
 var MWORDS  = MORPH ? MORPH.words  : [];
 
 var APP_TITLE = (window.APPINFO && APPINFO.title) || '설교자의 성경';
-var APP_VERSION = window.MODU && MODU.version || '3.6.5';        /* package.json 의 version 과 같이 올린다 (설치 프로그램은 아래에서 실제 설치된 판으로 바꿔 쓴다) */
+var APP_VERSION = window.MODU && MODU.version || '3.6.8';        /* package.json 의 version 과 같이 올린다 (설치 프로그램은 아래에서 실제 설치된 판으로 바꿔 쓴다) */
 if(window.APPINFO && APPINFO.version) APP_VERSION = APPINFO.version;
 
 var DICT = window.DICT || { lem:{}, ko:{} };     /* 영어 낱말 뜻·원형 */

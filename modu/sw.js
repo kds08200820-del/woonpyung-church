@@ -2,7 +2,7 @@
    · 앱 껍데기(html·css·js·글꼴)는 판(version)마다 새 저장소에 담고 옛것은 지운다
    · 큰 자료(R2 의 성경·사전·지도·주석)는 한 번 받으면 오래 둔다 (자료 판이 바뀌면 주소가 바뀐다)
    · Supabase(로그인·메모)는 늘 네트워크 */
-var VERSION = '1.0.25';
+var VERSION = '1.0.26';
 var SHELL = 'modu-shell-' + VERSION, DATA = 'modu-data-v2';   /* v2: crossOrigin 없이 받아 둔 불투명 응답을 버린다 */
 var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'icon.png', 'manifest.webmanifest'];
 
@@ -20,7 +20,7 @@ self.addEventListener('fetch', function(e){
   var req = e.request, url = new URL(req.url);
   if(req.method !== 'GET') return;
   if(/supabase\.co|googleapis|gstatic|kakao/.test(url.host)) return;                 /* 로그인·메모·API 는 그대로 */
-  var isData = url.host.indexOf('r2.dev') >= 0 || /\/data\//.test(url.pathname);
+  var isData = url.host.indexOf('r2.dev') >= 0 || url.host.indexOf('workers.dev') >= 0 || /\/data\//.test(url.pathname);   /* workers.dev: 2026-09-26 부터 자료 주소 */
   if(isData){
     e.respondWith(caches.open(DATA).then(function(c){
       return c.match(req).then(function(hit){
