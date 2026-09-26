@@ -179,7 +179,8 @@
       if(!me) return Promise.resolve({ ok:false, why:'license' });
       if(commCache) return Promise.resolve({ ok:true, json:commCache });
       if(!dk) return Promise.resolve({ ok:false, why:'no-key' });
-      return fetch(M.dataBase + 'commentary.enc').then(function(r){ if(!r.ok) throw new Error('no-file'); return r.arrayBuffer(); }).then(function(buf){
+      /* 암호화 주석: 저장소(data/d1, 빠름)에서 먼저, 없으면 자료 서버에서 */
+      return fetch('data/d1/commentary.enc?v=20260926').then(function(r){ return r.ok ? r : fetch(M.dataBase + 'commentary.enc'); }).then(function(r){ if(!r.ok) throw new Error('no-file'); return r.arrayBuffer(); }).then(function(buf){
         var u = new Uint8Array(buf);
         if(String.fromCharCode(u[0], u[1], u[2], u[3]) !== 'SBC1') throw new Error('bad-file');
         var iv = u.slice(4, 16), tag = u.slice(16, 32), body = u.slice(32);

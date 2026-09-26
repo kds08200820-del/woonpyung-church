@@ -20,9 +20,13 @@ window.STEPH = (function(){
     if(window.STEPHAN && STEPHAN[bi]) return cb(true);
     if(loading[bi]){ loading[bi].push(cb); return; }
     loading[bi] = [cb];
-    var s = document.createElement('script'); s.src = MODU.dataBase + 'stephan/b' + bi + '.js';
+    /* 저장소(data/d1/stephan, 빠름)에서 먼저, 없으면 자료 서버에서 한 번 더 */
+    var s = document.createElement('script'), tried = false; s.src = 'data/d1/stephan/b' + bi + '.js?v=20260926';
     s.onload = function(){ var q = loading[bi]; delete loading[bi]; q.forEach(function(f){ f(!!(window.STEPHAN && STEPHAN[bi])); }); };
-    s.onerror = function(){ var q = loading[bi]; delete loading[bi]; q.forEach(function(f){ f(false); }); };
+    s.onerror = function(){
+      if(!tried){ tried = true; var s2 = document.createElement('script'); s2.src = MODU.dataBase + 'stephan/b' + bi + '.js'; s2.onload = s.onload; s2.onerror = s.onerror; document.head.appendChild(s2); return; }
+      var q = loading[bi]; delete loading[bi]; q.forEach(function(f){ f(false); });
+    };
     document.head.appendChild(s);
   }
 

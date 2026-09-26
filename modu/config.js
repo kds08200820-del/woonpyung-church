@@ -1,5 +1,5 @@
 window.MODU = {
- "version": "1.0.33",
+ "version": "1.0.34",
  "title": "2026 모두의 성경",
  "dataBase": "https://bible-updates.kds08200820.workers.dev/modu/d1/",
  "supabaseUrl": "https://cetacttsdwzxjzkyozgd.supabase.co",

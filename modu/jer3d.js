@@ -56,7 +56,7 @@ var JER3DV = (function(){
     }
     geo.setAttribute('color', new T.Float32BufferAttribute(cols, 3));
     geo.computeVertexNormals();
-    var mat = new T.MeshStandardMaterial({ map:tex(MODU.dataBase + 'maps/tex/ground.jpg', 110), vertexColors:true, roughness:.95, metalness:0 });
+    var mat = new T.MeshStandardMaterial({ map:tex('data/d1/maps/tex/ground.jpg', 110), vertexColors:true, roughness:.95, metalness:0 });
     var mesh = ground = new T.Mesh(geo, mat); mesh.receiveShadow = true; mesh.castShadow = true; scene.add(mesh);
   }
 
@@ -64,8 +64,8 @@ var JER3DV = (function(){
   var stoneMat, roofMat, wallGroup;
   function mats(){
     if(stoneMat) return;
-    stoneMat = new T.MeshStandardMaterial({ map:tex(MODU.dataBase + 'maps/tex/stone.jpg', 1), color:0xf1e6cf, roughness:.85 });
-    roofMat = new T.MeshStandardMaterial({ map:tex(MODU.dataBase + 'maps/tex/roof.jpg', 1), color:0xffffff, roughness:.95 });
+    stoneMat = new T.MeshStandardMaterial({ map:tex('data/d1/maps/tex/stone.jpg', 1), color:0xf1e6cf, roughness:.85 });
+    roofMat = new T.MeshStandardMaterial({ map:tex('data/d1/maps/tex/roof.jpg', 1), color:0xffffff, roughness:.95 });
   }
   function boxAt(lat, lon, w, dpt, h, mat, rotY, baseY){
     var m = new T.Mesh(new T.BoxGeometry(w, h, dpt), mat), p = xz(lat, lon), y = baseY != null ? baseY : hAt(lat, lon);

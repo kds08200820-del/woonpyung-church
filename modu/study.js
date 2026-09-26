@@ -228,13 +228,13 @@ window.STUDY = (function(){
   function figHtml(f, a, i){
     var ref = f.ref || '', file = FILE_FIG[ref], cap = f.cap || FIG_TITLE[ref] || '';
     var t3 = has3d(ref), btn = t3 ? '<button type="button" class="st-3dbtn" title="실제 고도 자료 위에서 마우스로 돌리고 확대해 봅니다">🧭 3D로 돌려 보기</button>' : '';
-    if(file) return '<figure class="st-fig' + (t3 ? ' st-3d' : '') + '" tabindex="0" title="크게 보기" data-ref="' + esc(ref) + '"><div class="st-preview"><img src=MODU.dataBase + "study/fig/' + file + '.jpg" alt="' + esc(FIG_TITLE[ref] || '') + '" loading="lazy">' + btn + '</div><figcaption><b>' + esc(FIG_TITLE[ref] || '') + '</b> ' + esc(cap) + '</figcaption></figure>';
+    if(file) return '<figure class="st-fig' + (t3 ? ' st-3d' : '') + '" tabindex="0" title="크게 보기" data-ref="' + esc(ref) + '"><div class="st-preview"><img src="data/d1/study/fig/' + file + '.jpg" alt="' + esc(FIG_TITLE[ref] || '') + '" loading="lazy">' + btn + '</div><figcaption><b>' + esc(FIG_TITLE[ref] || '') + '</b> ' + esc(cap) + '</figcaption></figure>';
     if(DRAW[ref]){ var tall = /^regions:(natural|roads|rain)$/.test(ref); return '<figure class="st-fig' + (tall ? ' st-fig-map' : '') + (t3 ? ' st-3d' : '') + '" tabindex="0" title="크게 보기" data-ref="' + esc(ref) + '"><div class="st-preview"><canvas data-fig="' + esc(ref) + '" width="' + (tall ? 1000 : 1400) + '" height="' + (tall ? 1300 : 900) + '"></canvas>' + btn + '</div><figcaption><b>' + esc(FIG_TITLE[ref] || '') + '</b> ' + esc(cap) + '</figcaption></figure>'; }
     return '';
   }
   function imgHtml(im, a, i){
     var file = im.file || (a.id + '-' + i);
-    return '<figure class="st-fig st-ai" tabindex="0" title="크게 보기"><img src=MODU.dataBase + "study/img/' + esc(file) + '.jpg" alt="" loading="lazy" onerror="this.parentNode.classList.add(\'st-noimg\')"><figcaption>' + esc(im.cap || '') + ' <span class="dim">(AI 재현 그림)</span></figcaption></figure>';
+    return '<figure class="st-fig st-ai" tabindex="0" title="크게 보기"><img src="data/d1/study/img/' + esc(file) + '.jpg" alt="" loading="lazy" onerror="this.parentNode.classList.add(\'st-noimg\')"><figcaption>' + esc(im.cap || '') + ' <span class="dim">(AI 재현 그림)</span></figcaption></figure>';
   }
   /* ── 크게 보기 ── */
   function openLight(f){
@@ -260,7 +260,7 @@ window.STUDY = (function(){
   function withBase(id, cb){
     if(base3d){ cb(null); return; }
     if(baseCache[id]){ cb(baseCache[id]); return; }
-    var im = Object.assign(new Image(), { crossOrigin:'anonymous' }); im.onload = function(){ baseCache[id] = im; cb(im); }; im.onerror = function(){ cb(null); }; im.src = MODU.dataBase + 'maps/' + id + '.jpg';
+    var im = Object.assign(new Image(), { crossOrigin:'anonymous' }); im.onload = function(){ baseCache[id] = im; cb(im); }; im.onerror = function(){ cb(null); }; im.src = 'data/maps/' + id + '.jpg';
   }
   /* 레반트 바탕(등장방형): ATLAS_BASES.levant 범위 안의 창을 잘라 그린다 */
   function mapCtx(c, win){
