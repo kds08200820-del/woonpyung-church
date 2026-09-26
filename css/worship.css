@@ -10,6 +10,11 @@
 .hero-cta.hw-btn:hover { background: #fff; color: var(--accent, #032257); }
 .hero-cta.hw-btn b { font-size: 1.05rem; font-weight: 700; }
 .hero-cta.hw-btn small { font-size: .8rem; opacity: .85; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hw-sermon { margin-top: 12px; font-size: 1rem; color: var(--gold, #c9a961); }
+.hw-count { display: flex; justify-content: center; gap: 22px; margin-top: 26px; font-variant-numeric: tabular-nums; }
+.hw-count span { font-size: .85rem; color: rgba(255,255,255,.75); text-align: center; }
+.hw-count b { display: block; font-size: 2.8rem; font-weight: 700; color: #fff; line-height: 1.1; }
+@media (max-width: 560px) { .hw-count { gap: 14px; } .hw-count b { font-size: 2.1rem; } }
 .hw-note { margin-top: 16px; font-size: .8rem; color: rgba(255,255,255,.7); }
 @media (max-width: 560px) { .hero-cta.hw-btn { width: 100%; min-width: 0; } }
 
