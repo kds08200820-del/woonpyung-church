@@ -1,0 +1,122 @@
+/* 성경 지명 좌표 — 설교자의 성경 지도용 가제티어
+   [위도, 경도, 한글(개역개정 표기), 영어, 종류]  종류: c 도시 · m 산 · w 물 · x 위치 불확실 · p 지역 이름표
+   좌표는 통용되는 고고학 동정지 기준 (±2km 안팎). 위치가 논쟁 중인 곳은 x 로 표시했다. */
+var ATLAS_PLACES = {
+  /* ── 메소포타미아·페르시아 ── */
+  ur:[30.96,46.10,'우르','Ur','c'], babylon:[32.54,44.42,'바벨론','Babylon','c'], erech:[31.32,45.64,'에렉','Uruk','c'],
+  nippur:[32.13,45.23,'닙부르','Nippur','c'], mari:[34.55,40.89,'마리','Mari','c'], haran:[36.87,39.03,'하란','Haran','c'],
+  carchemish:[36.83,38.02,'갈그미스','Carchemish','c'], nineveh:[36.36,43.15,'니느웨','Nineveh','c'], asshur:[35.46,43.26,'앗수르','Asshur','c'],
+  calah:[36.10,43.33,'갈라','Calah','c'], gozan:[36.83,40.04,'고산','Gozan','c'], susa:[32.19,48.25,'수산','Susa','c'],
+  ecbatana:[34.80,48.52,'악메다','Ecbatana','c'], persepolis:[29.93,52.89,'페르세폴리스','Persepolis','c'], pasargadae:[30.20,53.18,'파사르가대','Pasargadae','c'],
+  tadmor:[34.55,38.28,'다드몰','Tadmor','c'], dura:[34.75,40.73,'두라','Dura-Europos','c'],
+  /* ── 시리아·페니키아 ── */
+  damascus:[33.51,36.29,'다메섹','Damascus','c'], hamath:[35.13,36.75,'하맛','Hamath','c'], riblah:[34.46,36.55,'립나','Riblah','c'],
+  kadesh_or:[34.56,36.52,'가데스(오론테스)','Kadesh','c'], aleppo:[36.20,37.16,'알레포','Aleppo','c'], antioch:[36.20,36.16,'안디옥','Antioch','c'],
+  seleucia:[36.12,35.93,'실루기아','Seleucia','c'], ugarit:[35.60,35.78,'우가릿','Ugarit','c'], arvad:[34.86,35.86,'아르왓','Arvad','c'],
+  byblos:[34.12,35.65,'그발','Byblos','c'], sidon:[33.56,35.37,'시돈','Sidon','c'], tyre:[33.27,35.20,'두로','Tyre','c'],
+  zarephath:[33.46,35.30,'사르밧','Zarephath','c'], tarsus:[36.92,34.89,'다소','Tarsus','c'],
+  /* ── 갈릴리·북부 ── */
+  dan:[33.25,35.65,'단','Dan','c'], caesarea_philippi:[33.25,35.69,'가이사랴 빌립보','Caesarea Philippi','c'], hazor:[33.02,35.57,'하솔','Hazor','c'],
+  kedesh:[33.11,35.53,'게데스','Kedesh','c'], abel_bm:[33.26,35.58,'아벨벧마아가','Abel-beth-maacah','c'], ijon:[33.32,35.55,'이욘','Ijon','c'],
+  capernaum:[32.88,35.575,'가버나움','Capernaum','c'], bethsaida:[32.91,35.63,'벳새다','Bethsaida','c'], chorazin:[32.91,35.56,'고라신','Chorazin','c'],
+  magdala:[32.825,35.516,'막달라','Magdala','c'], tiberias:[32.79,35.53,'디베랴','Tiberias','c'], gennesaret:[32.86,35.52,'게네사렛','Gennesaret','c'],
+  cana:[32.75,35.34,'가나','Cana','c'], nazareth:[32.70,35.30,'나사렛','Nazareth','c'], sepphoris:[32.75,35.28,'세포리스','Sepphoris','c'],
+  nain:[32.63,35.35,'나인','Nain','c'], shunem:[32.61,35.33,'수넴','Shunem','c'], endor:[32.63,35.39,'엔돌','Endor','c'],
+  tabor:[32.69,35.39,'다볼 산','Mt. Tabor','m'], hermon:[33.42,35.86,'헤르몬 산','Mt. Hermon','m'], carmel:[32.73,35.05,'갈멜 산','Mt. Carmel','m'],
+  gilboa:[32.50,35.42,'길보아 산','Mt. Gilboa','m'], acco:[32.92,35.08,'악고(돌레마이)','Acco / Ptolemais','c'], achzib:[33.05,35.10,'악십','Achzib','c'],
+  jokneam:[32.66,35.11,'욕느암','Jokneam','c'], megiddo:[32.585,35.18,'므깃도','Megiddo','c'], taanach:[32.52,35.22,'다아낙','Taanach','c'],
+  jezreel:[32.56,35.33,'이스르엘','Jezreel','c'], bethshean:[32.50,35.50,'벧스안(스키토폴리스)','Beth-shean','c'], ibleam:[32.45,35.29,'이블르암','Ibleam','c'],
+  dothan:[32.42,35.24,'도단','Dothan','c'], gergesa:[32.83,35.65,'거라사(쿠르시)','Gergesa','c'], hippos:[32.78,35.66,'힙포스','Hippos','c'],
+  gadara:[32.65,35.68,'가다라','Gadara','c'], gerasa:[32.28,35.89,'거라사','Gerasa','c'], pella:[32.45,35.61,'펠라','Pella','c'],
+  /* ── 사마리아·중부 ── */
+  samaria:[32.28,35.19,'사마리아','Samaria','c'], shechem:[32.21,35.28,'세겜','Shechem','c'], sychar:[32.22,35.29,'수가','Sychar','c'],
+  gerizim:[32.20,35.27,'그리심 산','Mt. Gerizim','m'], ebal:[32.23,35.27,'에발 산','Mt. Ebal','m'], tirzah:[32.29,35.37,'디르사','Tirzah','c'],
+  shiloh:[32.06,35.29,'실로','Shiloh','c'], bethel:[31.93,35.22,'벧엘','Bethel','c'], ai:[31.92,35.26,'아이','Ai','c'],
+  gilgal:[31.86,35.49,'길갈','Gilgal','c'], jericho:[31.87,35.44,'여리고','Jericho','c'], mizpah:[31.88,35.18,'미스바','Mizpah','c'],
+  ramah:[31.84,35.23,'라마','Ramah','c'], gibeah:[31.82,35.23,'기브아','Gibeah','c'], gibeon:[31.85,35.18,'기브온','Gibeon','c'],
+  michmash:[31.87,35.28,'믹마스','Michmash','c'], geba:[31.86,35.26,'게바','Geba','c'], anathoth:[31.81,35.27,'아나돗','Anathoth','c'],
+  aphek:[32.10,34.93,'아벡(안디바드리)','Aphek / Antipatris','c'], joppa:[32.05,34.75,'욥바','Joppa','c'], lydda:[31.95,34.89,'룻다','Lydda','c'],
+  caesarea:[32.50,34.89,'가이사랴','Caesarea Maritima','c'], gezer:[31.86,34.92,'게셀','Gezer','c'], aijalon:[31.84,35.02,'아얄론','Aijalon','c'],
+  emmaus:[31.84,34.99,'엠마오','Emmaus','x'], kiriath_jearim:[31.80,35.10,'기럇여아림','Kiriath-jearim','c'],
+  /* ── 예루살렘·유다 ── */
+  jerusalem:[31.778,35.235,'예루살렘','Jerusalem','c'], olives:[31.778,35.245,'감람 산','Mt. of Olives','m'], bethany:[31.77,35.26,'베다니','Bethany','c'],
+  bethlehem:[31.705,35.207,'베들레헴','Bethlehem','c'], tekoa:[31.64,35.22,'드고아','Tekoa','c'], hebron:[31.53,35.10,'헤브론','Hebron','c'],
+  mamre:[31.55,35.10,'마므레','Mamre','c'], adullam:[31.65,34.99,'아둘람','Adullam','c'], keilah:[31.61,35.00,'그일라','Keilah','c'],
+  ziph:[31.49,35.14,'십','Ziph','c'], maon:[31.42,35.13,'마온','Maon','c'], carmel_j:[31.43,35.12,'갈멜(유다)','Carmel','c'],
+  engedi:[31.46,35.39,'엔게디','En-gedi','c'], masada:[31.32,35.35,'마사다','Masada','c'], qumran:[31.74,35.46,'쿰란','Qumran','c'],
+  beersheba:[31.24,34.84,'브엘세바','Beersheba','c'], arad:[31.28,35.13,'아랏','Arad','c'], gerar:[31.38,34.60,'그랄','Gerar','c'],
+  ziklag:[31.35,34.90,'시글락','Ziklag','x'], lachish:[31.56,34.85,'라기스','Lachish','c'], azekah:[31.70,34.94,'아세가','Azekah','c'],
+  socoh:[31.68,34.97,'소고','Socoh','c'], elah:[31.69,34.96,'엘라 골짜기','Valley of Elah','w'], libnah:[31.63,34.87,'립나','Libnah','x'],
+  eglon:[31.55,34.80,'에글론','Eglon','x'], debir:[31.45,34.98,'드빌','Debir','x'], beth_shemesh:[31.75,34.97,'벧세메스','Beth-shemesh','c'],
+  timnah:[31.79,34.92,'딤나','Timnah','c'], zorah:[31.77,34.98,'소라','Zorah','c'], mareshah:[31.59,34.90,'마레사','Mareshah','c'],
+  /* ── 블레셋·해안 ── */
+  gaza:[31.50,34.47,'가사','Gaza','c'], ashkelon:[31.67,34.55,'아스글론','Ashkelon','c'], ashdod:[31.76,34.65,'아스돗','Ashdod','c'],
+  ekron:[31.78,34.85,'에그론','Ekron','c'], gath:[31.70,34.85,'가드','Gath','c'], jabneh:[31.87,34.74,'야브네','Jabneh','c'],
+  /* ── 요단 동편 ── */
+  rabbah:[31.95,35.93,'랍바(빌라델비아)','Rabbah / Philadelphia','c'], heshbon:[31.80,35.81,'헤스본','Heshbon','c'], nebo:[31.77,35.72,'느보 산','Mt. Nebo','m'],
+  medeba:[31.72,35.79,'메드바','Medeba','c'], dibon:[31.50,35.78,'디본','Dibon','c'], aroer:[31.47,35.83,'아로엘','Aroer','c'],
+  kir_hareseth:[31.18,35.70,'길하레셋','Kir-hareseth','c'], bozrah:[30.73,35.60,'보스라','Bozrah','c'], petra:[30.33,35.44,'셀라(페트라)','Sela / Petra','c'],
+  machaerus:[31.57,35.63,'마케루스','Machaerus','c'], jabbok:[32.19,35.63,'얍복 강','Jabbok River','w'], penuel:[32.18,35.70,'브니엘','Penuel','c'],
+  succoth_j:[32.19,35.61,'숙곳','Succoth','c'], mahanaim:[32.40,35.70,'마하나임','Mahanaim','x'], jabesh:[32.42,35.60,'야베스길르앗','Jabesh-gilead','c'],
+  ramoth:[32.55,36.00,'라못길르앗','Ramoth-gilead','c'], ashtaroth:[32.80,36.05,'아스다롯','Ashtaroth','c'], edrei:[32.62,36.10,'에드레이','Edrei','c'],
+  arnon:[31.48,35.60,'아르논 강','Arnon River','w'], zered:[30.95,35.60,'세렛 시내','Zered Brook','w'], elath:[29.55,34.95,'엘랏','Elath','c'],
+  ezion_geber:[29.53,35.00,'에시온게벨','Ezion-geber','c'], hor:[30.32,35.41,'호르 산','Mt. Hor','m'], punon:[30.62,35.45,'부논','Punon','c'],
+  /* ── 시내·이집트 ── */
+  kadesh_barnea:[30.69,34.49,'가데스 바네아','Kadesh-barnea','c'], sinai:[28.54,33.98,'시내 산(호렙)','Mt. Sinai','m'], rephidim:[28.72,33.75,'르비딤','Rephidim','x'],
+  elim:[29.15,32.90,'엘림','Elim','x'], marah:[29.40,32.80,'마라','Marah','x'], succoth_e:[30.55,32.10,'숙곳','Succoth','x'],
+  pithom:[30.55,32.10,'비돔','Pithom','c'], rameses:[30.80,31.83,'라암셋','Rameses','c'], goshen:[30.65,31.75,'고센','Goshen','p'],
+  on:[30.13,31.31,'온(헬리오폴리스)','On / Heliopolis','c'], memphis:[29.85,31.25,'멤피스(놉)','Memphis','c'], tahpanhes:[30.86,32.17,'다바네스','Tahpanhes','c'],
+  migdol:[30.95,32.40,'믹돌','Migdol','x'], baal_zephon:[30.90,32.35,'바알스본','Baal-zephon','x'], thebes:[25.72,32.61,'데베(노)','Thebes','c'],
+  alexandria:[31.20,29.92,'알렉산드리아','Alexandria','c'], elephantine:[24.09,32.89,'엘레판티네','Elephantine','c'], pelusium:[31.04,32.55,'펠루시움','Pelusium','c'],
+  shur:[30.60,33.40,'수르 광야','Wilderness of Shur','p'], paran:[30.20,34.50,'바란 광야','Wilderness of Paran','p'], zin:[30.75,34.90,'신 광야','Wilderness of Zin','p'],
+  /* ── 소아시아·그리스·로마 ── */
+  ephesus:[37.94,27.34,'에베소','Ephesus','c'], smyrna:[38.42,27.14,'서머나','Smyrna','c'], pergamum:[39.12,27.18,'버가모','Pergamum','c'],
+  thyatira:[38.92,27.84,'두아디라','Thyatira','c'], sardis:[38.49,28.04,'사데','Sardis','c'], philadelphia_a:[38.35,28.52,'빌라델비아','Philadelphia','c'],
+  laodicea:[37.84,29.11,'라오디게아','Laodicea','c'], colossae:[37.79,29.26,'골로새','Colossae','c'], hierapolis:[37.93,29.13,'히에라볼리','Hierapolis','c'],
+  miletus:[37.53,27.28,'밀레도','Miletus','c'], troas:[39.75,26.16,'드로아','Troas','c'], assos:[39.49,26.34,'앗소','Assos','c'],
+  mitylene:[39.11,26.56,'미둘레네','Mitylene','c'], philippi:[41.01,24.29,'빌립보','Philippi','c'], neapolis:[40.94,24.41,'네압볼리','Neapolis','c'],
+  thessalonica:[40.64,22.94,'데살로니가','Thessalonica','c'], berea:[40.52,22.20,'베뢰아','Berea','c'], athens:[37.98,23.73,'아덴','Athens','c'],
+  corinth:[37.91,22.88,'고린도','Corinth','c'], cenchreae:[37.88,22.99,'겐그레아','Cenchreae','c'], iconium:[37.87,32.49,'이고니온','Iconium','c'],
+  lystra:[37.58,32.45,'루스드라','Lystra','c'], derbe:[37.35,33.26,'더베','Derbe','c'], antioch_p:[38.31,31.19,'비시디아 안디옥','Pisidian Antioch','c'],
+  perga:[36.96,30.85,'버가','Perga','c'], attalia:[36.89,30.70,'앗달리아','Attalia','c'], salamis:[35.18,33.90,'살라미','Salamis','c'],
+  paphos:[34.76,32.41,'바보','Paphos','c'], rhodes:[36.43,28.22,'로도','Rhodes','c'], cnidus:[36.69,27.37,'니도','Cnidus','c'],
+  patara:[36.26,29.31,'바다라','Patara','c'], myra:[36.24,29.98,'무라','Myra','c'], cos:[36.89,27.29,'고스','Cos','c'],
+  patmos:[37.31,26.55,'밧모','Patmos','c'], fair_havens:[34.93,24.75,'미항','Fair Havens','c'], phoenix:[35.20,24.08,'뵈닉스','Phoenix','x'],
+  malta:[35.90,14.40,'멜리데','Malta','c'], syracuse:[37.07,15.29,'수라구사','Syracuse','c'], rhegium:[38.11,15.65,'레기온','Rhegium','c'],
+  puteoli:[40.83,14.12,'보디올','Puteoli','c'], rome:[41.90,12.49,'로마','Rome','c'], appii:[41.43,12.99,'압비오 광장','Forum of Appius','c'],
+  cyrene:[32.82,21.86,'구레네','Cyrene','c'], amphipolis:[40.82,23.85,'암비볼리','Amphipolis','c'], apollonia:[40.63,23.47,'아볼로니아','Apollonia','c'],
+  /* ── 바다·강 이름표 ── */
+  medsea:[33.3,33.6,'대해(지중해)','Mediterranean Sea','w'], galilee_sea:[32.82,35.59,'갈릴리 바다','Sea of Galilee','w'], dead_sea:[31.45,35.48,'염해(사해)','Dead Sea','w'],
+  jordan_r:[32.1,35.55,'요단 강','Jordan River','w'], red_sea:[27.5,34.3,'홍해','Red Sea','w'], nile:[29.2,31.0,'나일 강','Nile','w'],
+  euphrates:[35.0,39.5,'유브라데 강','Euphrates','w'], tigris:[34.3,44.2,'힛데겔(티그리스) 강','Tigris','w'], persian_gulf:[27.5,51.0,'페르시아 만','Persian Gulf','w'],
+  aegean:[38.5,25.2,'에게 해','Aegean Sea','w'], adriatic:[42.5,16.0,'아드리아 해','Adriatic Sea','w'], kishon:[32.70,35.10,'기손 강','Kishon River','w'],
+  /* ── 위치가 불확실하거나 추정에 기댄 곳 ── */
+  makkedah_x:[31.71,34.91,'막게다','Makkedah','x'], shittim_x:[31.86,35.63,'싯딤','Shittim','x'], golan_x:[32.90,35.75,'골란','Golan','x'],
+  bezer_x:[31.75,35.95,'베셀','Bezer','x'], ophrah_x:[32.53,35.28,'오브라','Ophrah','x'], harod_x:[32.55,35.36,'하롯 샘','Spring of Harod','w'],
+  nob_x:[31.80,35.24,'놉','Nob','x'], abel_meholah_x:[32.37,35.52,'아벨므홀라','Abel-meholah','x'], cherith_x:[32.30,35.60,'그릿 시내','Brook Cherith','x'],
+  chebar_x:[32.10,45.20,'그발 강','Chebar Canal','w'], moresheth_x:[31.62,34.92,'모레셋','Moresheth-gath','x'], gath_hepher_x:[32.74,35.32,'가드헤벨','Gath-hepher','c'],
+  tarsus_dir_x:[33.9,31.0,'다시스 방향 →','toward Tarshish','p'], pella_mac_x:[40.76,22.52,'펠라','Pella (Macedonia)','c'], memphis_dir_x:[30.75,34.0,'이집트로 →','to Egypt','p'],
+  ain_karem_x:[31.77,35.16,'아인 카렘','Ein Karem','x'], bethany_beyond_x:[31.84,35.55,'요단 건너편 베다니','Bethany beyond Jordan','x'], aenon_x:[32.40,35.45,'애논','Aenon','x'],
+  arbel_x:[32.82,35.49,'아르벨','Arbel','m'], hattin_x:[32.80,35.45,'핫틴 봉우리','Horns of Hattin','m'], ephraim_x:[31.95,35.30,'에브라임','Ephraim','x'],
+  bethphage_x:[31.775,35.255,'벳바게','Bethphage','x'], gethsemane_x:[31.779,35.240,'겟세마네','Gethsemane','x'], golgotha_x:[31.7785,35.2295,'골고다','Golgotha','x'],
+  carthage_x:[36.85,10.32,'카르타고','Carthage','c'], massilia_x:[43.30,5.37,'마실리아','Massilia','c'], tarraco_x:[41.12,1.25,'다라고나','Tarraco','c']
+};
+
+/* 강줄기 (위도,경도 꺾은선) — 모든 지도에 지형 위로 그린다. 요단 강은 굽이를 살렸다 */
+var ATLAS_RIVERS = {
+  jordan_upper:[[33.25,35.65],[33.15,35.63],[33.05,35.61],[32.97,35.62],[32.89,35.63]],
+  jordan:[[32.70,35.575],[32.63,35.58],[32.55,35.57],[32.48,35.585],[32.40,35.57],[32.33,35.575],[32.25,35.56],[32.18,35.575],[32.10,35.56],[32.02,35.55],[31.95,35.555],[31.88,35.545],[31.80,35.55],[31.76,35.55]],
+  yarmuk:[[32.72,36.05],[32.68,35.85],[32.66,35.70],[32.65,35.60]],
+  jabbok:[[32.05,36.05],[32.15,35.90],[32.22,35.75],[32.19,35.62],[32.18,35.56]],
+  arnon:[[31.42,35.95],[31.46,35.75],[31.48,35.62],[31.48,35.55]],
+  zered:[[30.92,35.95],[30.98,35.70],[31.03,35.55],[31.06,35.48]],
+  kishon:[[32.52,35.28],[32.62,35.15],[32.72,35.08],[32.82,35.03]],
+  jabbok_kishon_dummy:null,
+  litani:[[33.65,35.85],[33.45,35.65],[33.33,35.35],[33.32,35.22]],
+  orontes:[[34.0,36.3],[34.6,36.5],[35.1,36.6],[35.8,36.4],[36.2,36.1]],
+  nile:[[22.0,31.7],[24.0,32.9],[25.7,32.6],[26.5,31.7],[27.5,30.9],[28.5,30.8],[29.5,31.2],[30.1,31.25],[31.0,31.1],[31.5,30.4]],
+  nile2:[[30.1,31.25],[30.8,31.5],[31.5,31.85]],
+  euphrates:[[38.5,38.3],[37.6,38.6],[36.8,38.1],[36.1,38.2],[35.5,39.4],[34.7,40.6],[34.0,41.7],[33.3,43.0],[32.5,44.2],[31.5,45.3],[30.8,46.6],[30.4,47.8]],
+  tigris:[[38.4,40.5],[37.2,42.0],[36.6,42.7],[36.3,43.1],[35.4,43.4],[34.6,43.8],[33.9,44.2],[33.2,44.5],[32.4,45.5],[31.5,46.7],[30.9,47.5]]
+};
+delete ATLAS_RIVERS.jabbok_kishon_dummy;
