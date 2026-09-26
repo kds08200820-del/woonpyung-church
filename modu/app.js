@@ -57,7 +57,8 @@ var MLEMMAS = MORPH ? MORPH.lemmas : [];
 var MWORDS  = MORPH ? MORPH.words  : [];
 
 var APP_TITLE = (window.APPINFO && APPINFO.title) || '설교자의 성경';
-var APP_VERSION = window.MODU && MODU.version || '3.6.2';        /* package.json 의 version 과 같이 올린다 */
+var APP_VERSION = window.MODU && MODU.version || '3.6.5';        /* package.json 의 version 과 같이 올린다 (설치 프로그램은 아래에서 실제 설치된 판으로 바꿔 쓴다) */
+if(window.APPINFO && APPINFO.version) APP_VERSION = APPINFO.version;
 
 var DICT = window.DICT || { lem:{}, ko:{} };     /* 영어 낱말 뜻·원형 */
 var HEB  = window.HEB  || null;                  /* 히브리어 낱말별 스트롱 번호·형태 */
@@ -185,14 +186,33 @@ var st = { view:'read', mode:'chapter', bi:S.bi, ci:S.ci, vi:-1, passages:[], hi
 /* ─────────────── 화면 전환 ─────────────── */
 var VIEWS = { read:'v-read', search:'v-search', vocab:'v-vocab', notes:'v-notes', settings:'v-settings' };
 var viewHist = [];                      /* 화면 이동 내력 — 뒤로 가기 (검색 결과 → 본문 → 뒤로 → 검색 결과) */
+/* ── 검색·원어 학습·메모장·설정은 화면을 바꾸지 않고 본문 위에 떠 있는 창(팝업)으로 연다.
+   본문(read)은 늘 뒤에 남아 있고, 창을 닫으면 그대로 본문으로 돌아간다 ── */
+var SP = { opener:null, name:null };
+function searchPopOpen(){ return !!SP.name; }
+function popOpen(){ return !!SP.name; }
+function openViewPop(name){
+  if(SP.name && SP.name !== name){ $(VIEWS[SP.name]).classList.remove('on'); }
+  if(!SP.name) SP.opener = document.activeElement;
+  SP.name = name; st.view = name;
+  document.body.classList.add('spop'); document.body.setAttribute('data-pop', name);
+  $(VIEWS[name]).classList.add('on');
+  document.querySelectorAll('.rnav[data-view]').forEach(function(b){ b.classList.toggle('on', b.dataset.view === name); });
+}
+function closeSearchPop(){ closeViewPop(); }
+function closeViewPop(){
+  if(!SP.name) return;
+  $(VIEWS[SP.name]).classList.remove('on');
+  SP.name = null; st.view = 'read';
+  document.body.classList.remove('spop'); document.body.removeAttribute('data-pop');
+  document.querySelectorAll('.rnav[data-view]').forEach(function(b){ b.classList.toggle('on', b.dataset.view === 'read'); });
+  if(SP.opener && SP.opener.focus && document.body.contains(SP.opener)) try{ SP.opener.focus(); }catch(e){}
+  SP.opener = null;
+}
 function showView(name, isBack){
   if(!VIEWS[name]) name = 'read';
-  if(!isBack && st.view && st.view !== name){ viewHist.push(st.view); if(viewHist.length > 30) viewHist.shift(); }
-  st.view = name;
-  for(var k in VIEWS) $(VIEWS[k]).classList.toggle('on', k === name);
-  document.querySelectorAll('.rnav[data-view]').forEach(function(b){
-    b.classList.toggle('on', b.dataset.view === name);
-  });
+  if(name === 'read'){ closeViewPop(); $('v-read').classList.add('on'); closeMorph(); closeDrops(); return; }
+  openViewPop(name);
   if(name === 'search') setTimeout(function(){ $('q').focus(); $('q').select(); }, 0);
   if(name === 'vocab'){ if(lsMode === 'word') paintVocab(); else paintLessons(); }
   if(name === 'settings') refreshAudioInfo();
@@ -2259,6 +2279,7 @@ function goBackToRead(){
   return true;
 }
 function anyPopupOpen(){
+  if(searchPopOpen()) return true;
   return ['ciModal','trModal','atlasModal','findModal','kgModal','commModal','introModal','askModal','wordModal','readModal','studyModal'].some(function(id){ var m = $(id); return m && !m.hidden; }) || !$('recPop').hidden;
 }
 document.addEventListener('mouseup', function(e){
@@ -2623,6 +2644,7 @@ document.addEventListener('keydown', function(e){
   if(mod && (e.key === '-' || e.key === '_')){ e.preventDefault(); bumpFont(-1); return; }
   if(mod && e.code === 'Space'){ if(PL.list.length){ e.preventDefault(); togglePlay(); } return; }
   if(e.key === 'Escape'){
+    if(searchPopOpen()){ closeSearchPop(); return; }
     if(window.KG && KG.isOpen()){ KG.close(); return; }
     if(window.ATLAS && ATLAS.isOpen()){ ATLAS.close(); return; }
     if(!$('ciModal').hidden){ closeCommIndex(); return; }
@@ -3282,6 +3304,8 @@ showView('read');
 document.title = APP_TITLE + ' ' + APP_VERSION + ' · ' + vinfo(S.base).name;
 $('boot').remove();
 
+[].forEach.call(document.querySelectorAll('.vpClose'), function(b){ b.onclick = closeViewPop; });
+document.addEventListener('mousedown', function(e){ if(popOpen() && e.target === $('spopBack')) closeViewPop(); });
 /* notes.js·license.js 가 쓰는 것들 (app.js 는 닫힌 함수 안이라 밖으로 내보낸다) */
 window.MODU_X = { S:S, toggleNav:toggleNav, saveSettings:saveSettings, applySettings:applySettings, infoFromEvent:infoFromEvent, fillWordBox:fillWordBox, anyPopupOpen:anyPopupOpen, goBackToRead:goBackToRead, step:step, verses:verses, parseRefList:parseRefList, bumpFont:bumpFont, cycleTheme:cycleTheme, openComm:openComm };
 window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:showView, openChapter:openChapter,

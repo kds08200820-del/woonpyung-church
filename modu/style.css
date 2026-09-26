@@ -149,6 +149,15 @@ code{font-family:Consolas,"D2Coding",monospace;font-size:.92em;background:var(--
 #stage{flex:1;min-width:0;display:flex;flex-direction:column}
 .view{flex:1;min-height:0;display:none;flex-direction:column}
 .view.on{display:flex}
+/* 검색 창: 본문 위에 뜨는 팝업 (body.spop 일 때) */
+#spopBack{display:none;position:fixed;inset:0;background:rgba(20,14,8,.38);z-index:149}
+body.spop #spopBack{display:block}
+body.spop .view.on:not(#v-read){position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1180px,94vw);height:min(860px,88vh);z-index:150;background:var(--panel);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow2);overflow:hidden}
+body.spop .view.on:not(#v-read) .vhead{border-radius:15px 15px 0 0}
+.vpClose{margin-left:auto;font-size:22px;padding:2px 9px}
+#v-search .vpClose{margin-left:4px}
+@media (max-width:900px){ body.spop .view.on:not(#v-read){left:0;top:0;transform:none;width:100vw;height:100%;border-radius:0;border:0} }
+
 .vhead{
   flex:0 0 auto;display:flex;align-items:center;gap:10px;
   padding:11px 18px;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:var(--shadow);z-index:4;

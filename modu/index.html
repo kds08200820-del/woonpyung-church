@@ -92,7 +92,8 @@
   </section>
 
   <!-- ─────────── 검색 ─────────── -->
-  <section class="view" id="v-search">
+  <div id="spopBack" aria-hidden="true"></div>
+  <section class="view" id="v-search" role="dialog" aria-label="검색">
     <header class="vhead">
       <h1>검색</h1>
       <div class="searchwrap">
@@ -100,6 +101,7 @@
         <button class="qclear" id="qclear" title="지우기" hidden>×</button>
       </div>
       <button class="btn primary" id="go">찾기</button>
+      <button class="wb-x vpClose" id="qpClose" title="닫기 (Esc)" aria-label="닫기">×</button>
     </header>
     <div class="searchopts">
       <span class="lab">범위</span>
@@ -144,6 +146,7 @@
       <button class="btn primary" id="vbQuiz">학습 시작</button>
       <button class="btn" id="vbExport" title="단어장을 TXT 파일로 내보내기">내보내기</button>
       <button class="btn" id="vbClear">비우기</button>
+          <button class="wb-x vpClose" title="닫기 (Esc)" aria-label="닫기">×</button>
     </header>
     <div class="vbody">
       <div id="lsPane">
@@ -181,6 +184,7 @@
       <input id="ntSearch" class="nt-search" placeholder="찾기 — 제목·좌표·주제·내용·#태그" autocomplete="off" spellcheck="false">
       <span class="spacer"></span>
       <button class="btn primary" id="ntNew">＋ 새 메모</button>
+          <button class="wb-x vpClose" title="닫기 (Esc)" aria-label="닫기">×</button>
     </header>
     <div class="vbody" id="ntBody">
       <div id="ntListPane" class="nt-split">
@@ -242,7 +246,8 @@
 
   <!-- ─────────── 설정 ─────────── -->
   <section class="view" id="v-settings">
-    <header class="vhead"><h1>설정</h1></header>
+    <header class="vhead"><h1>설정</h1>      <button class="wb-x vpClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </header>
     <div class="vbody">
       <div class="setwrap">
 
