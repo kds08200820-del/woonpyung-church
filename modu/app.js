@@ -2824,9 +2824,14 @@ $('reader').addEventListener('click', function(e){
   if(e.detail > 1) return;                                                        /* 두 번·세 번 눌러 낱말·줄 고르기 */
   if(e.target.closest('a, button, .wpop, .morph, input, select')) return;
   var sel = window.getSelection(); if(sel && String(sel).trim()) return;
-  var row = e.target.closest ? e.target.closest('.vpara,.vrow') : null;
+  /* .sv 는 스테판 원어 성경의 절 줄 — 낱말(.stw)을 누르면 뜻 창이 뜨고, 그 밖의 자리를 누르면 절이 골라진다 */
+  var row = e.target.closest ? e.target.closest('.vpara,.vrow,.sv') : null;
   if(!row || row.dataset.b === undefined) return;
   if(st.mode !== 'chapter' || st.bi < 0) return;
+  if(row.classList.contains('sv')){
+    $('reader').querySelectorAll('.sv.vpick').forEach(function(x){ x.classList.remove('vpick'); });
+    row.classList.add('vpick'); st.vi = +row.dataset.v;
+  }
   recordRead(+row.dataset.b, +row.dataset.c, +row.dataset.v);
 });
 loadRdHist(); paintRdHist();

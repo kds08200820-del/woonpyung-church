@@ -1339,6 +1339,9 @@ body.modal-open{overflow:hidden}
 .sb-min{padding:3px 9px;font-size:12px}
 .steph .sv{padding:10px 0 12px;border-bottom:1px solid var(--line2)}
 .steph .sv.vhit{background:var(--sel);border-radius:10px}
+.steph .sv{cursor:pointer}
+.steph .sv:hover{background:color-mix(in srgb,var(--sel) 45%,transparent);border-radius:10px}
+.steph .sv.vpick{background:var(--sel);border-radius:10px;box-shadow:inset 3px 0 0 var(--accent)}   /* 누른 절 */
 .sv-no{font-size:12.5px;color:var(--accent);font-weight:700;margin:0 4px 4px}
 .sv-kor{font-family:var(--bodyfont);font-size:calc(var(--fs) - 2px);color:var(--fg2);margin:0 4px 8px;line-height:1.6}
 .sv-none{color:var(--fg3);font-size:13px;margin:0 4px}
