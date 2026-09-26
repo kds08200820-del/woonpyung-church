@@ -18,7 +18,7 @@
   var HYMN_IMG = 'modu/data/hymn/';
 
   /* ── 오늘(한국 시각) ── */
-  function kst() { var d = new Date(Date.now() + (9 * 60 + new Date().getTimezoneOffset()) * 60000); return d; }
+  function kst() { return new Date(Date.now() + 9 * 3600000); }   /* UTC 값(getUTC*)이 한국 시각이 되도록 9시간을 더한다 — 예전 식은 한국 시간대 PC 에서 보정이 0이 되어 UTC 를 썼다 */
   function ymd(d) { return d.toISOString().slice(0, 10); }
   var today = kst(), todayStr = ymd(today), dow = today.getUTCDay();   /* kst() 는 UTC 값을 한국 시각으로 옮겨 둔 것 */
   var DOWK = ['일', '월', '화', '수', '목', '금', '토'];

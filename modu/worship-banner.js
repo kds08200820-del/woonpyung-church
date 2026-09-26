@@ -13,7 +13,7 @@
     { kind:'sunday', part:1, label:'주일 1부 예배', time:'오전 9:20',  days:[0], from:9*60+20, to:10*60+40, lead:200, cal:'' },   /* 주일은 6:00 부터(=200분 전) */
     { kind:'sunday', part:2, label:'주일 2부 예배', time:'오전 11:00', days:[0], from:11*60,   to:12*60+30, lead:30,  cal:'' }    /* 1부에 들어간 사람에겐 2부 카운트 없음 */
   ];
-  function kst(){ return new Date(Date.now() + (9*60 + new Date().getTimezoneOffset())*60000); }
+  function kst(){ return new Date(Date.now() + 9*3600000); }   /* getUTC* 가 한국 시각이 되도록 9시간을 더한다 */
   function ymd(d){ return d.toISOString().slice(0,10); }
   function pad(n){ return (n < 10 ? '0' : '') + n; }
   function hasSermon(date, service){
