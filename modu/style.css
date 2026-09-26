@@ -1486,3 +1486,42 @@ body.popwin .atlascard,body.popwin .kgcard{width:100%;height:100%;max-width:none
 .lm-how{font-size:12.5px;color:var(--fg2);margin:2px 0 4px}
 .lm-how b{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.15em;color:var(--accent)}
 .hit .txt.heb mark b{font-weight:800}
+
+/* ── 찬송가 악보 보기 ── */
+.hy-modal{padding:16px}
+.hycard{width:min(1100px,100%);height:min(900px,94vh);max-height:94vh;overflow:hidden}
+.hy-head{gap:8px;padding:10px 14px;flex-wrap:wrap}
+.hy-titles{flex:0 0 auto;min-width:80px}
+.hy-titles b{white-space:nowrap}
+.hy-find{position:relative;flex:1 1 220px;min-width:160px}
+.hy-find input{width:100%;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--fg);font-size:14px}
+.hy-list{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:320px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow2);z-index:5;padding:4px}
+.hy-it{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--fg);border-radius:7px;font-size:14px}
+.hy-it b{flex:0 0 48px;color:var(--accent)}
+.hy-it:hover,.hy-it:focus{background:var(--panel2)}
+.hy-none{padding:10px 12px;color:var(--fg3);font-size:13.5px}
+.hy-zoom button.on{background:var(--accent);color:#fff}
+.hy-body{flex:1;min-height:0;overflow:auto;background:#fff;padding:8px;text-align:center;-webkit-overflow-scrolling:touch}
+.hy-body img{display:block;width:100%;height:auto;margin:0 auto;max-width:none}
+.hy-wait{padding:60px 20px;color:#777;font-size:14px}
+body.popwin .modal.hy-modal{padding:0}
+
+/* ── 교독문 보기 ── */
+.gdcard{width:min(860px,100%)}
+.gd-body{flex:1;min-height:0;overflow:auto;padding:14px 22px 30px;font-size:100%;line-height:1.7}
+.gd-line{display:flex;gap:12px;margin:0;padding:7px 0;border-bottom:1px solid var(--line2);font-size:1.08em;word-break:keep-all}
+.gd-who{flex:0 0 52px;font-size:.78em;color:var(--fg3);padding-top:.35em;text-align:right}
+.gd-txt{flex:1;min-width:0}
+.gd-leader .gd-txt{color:var(--fg2)}
+.gd-people .gd-txt{color:var(--fg);font-weight:700}
+.gd-people .gd-who{color:var(--accent)}
+.gd-all{background:var(--panel2);border-radius:8px;padding:9px 10px;margin-top:6px;border-bottom:none}
+.gd-all .gd-txt{font-weight:700;color:var(--accent)}
+.gd-all .gd-who{color:var(--accent);font-weight:700}
+.gd-ref{display:inline-block;margin-left:6px;font-size:.75em;color:var(--fg3);font-weight:400}
+.gd-index{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:4px}
+.gd-it{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;padding:8px 10px;border:none;background:none;color:var(--fg);border-radius:7px;font-size:14px}
+.gd-it b{flex:0 0 44px;color:var(--accent)}
+.gd-it span{flex:1;min-width:0;display:flex;flex-direction:column}
+.gd-it small{color:var(--fg3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gd-it:hover,.gd-it:focus{background:var(--panel2)}

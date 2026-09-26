@@ -124,6 +124,9 @@
       var grid = $('mmGrid'), rows = [
         ['📖', '책 개관', function(){ var b = $('introBtn'); if(b) b.click(); }],
         ['🌍', '지도·고고학 표시', function(){ var b = $('geoBtn'); if(b) b.click(); }],
+        ['🗺', '지도 목록', function(){ if(window.ATLAS) ATLAS.openIndex(); }],
+        ['🎵', '찬송가 악보', function(){ if(window.HYMN) HYMN.open(0); }],
+        ['📜', '교독문', function(){ if(window.GYODOK_VIEW) GYODOK_VIEW.open(0); }],
         ['📋', '본문 복사', function(){ var b = $('copyBtn'); if(b) b.click(); }],
         ['🔤', '스테판 원어 성경', function(){ if(!window.STEPH) return toast('원어 자료를 읽지 못했습니다'); STEPH.setOn(!STEPH.active()); toast(STEPH.active() ? '스테판 원어 성경으로 봅니다 — 본문 위 줄에서 보일 항목을 고르세요' : '일반 본문으로 돌아왔습니다'); }],
         ['🎓', '원어 학습', function(){ APP.showView('vocab'); }],
@@ -243,7 +246,7 @@
   });
 
   var tabs = document.createElement('nav'); tabs.id = 'moTabs';
-  tabs.innerHTML = [['read', '📖', '성경'], ['search', '🔍', '찾기'], ['notes', '📝', '메모'], ['atlas', '🗺', '지도'], ['more', '☰', '더보기']]
+  tabs.innerHTML = [['read', '📖', '성경'], ['hymn', '🎵', '찬송가'], ['gyodok', '📜', '교독문'], ['search', '🔍', '찾기'], ['notes', '📝', '메모'], ['more', '☰', '더보기']]
     .map(function(t){ return '<button type="button" class="mo-tab" data-t="' + t[0] + '"><span class="ic">' + t[1] + '</span><span class="lb">' + t[2] + '</span></button>'; }).join('');
   document.body.appendChild(tabs);
   tabs.addEventListener('click', function(e){
@@ -251,6 +254,8 @@
     var t = b.dataset.t;
     if(t === 'more') return openMore();
     if(t === 'atlas'){ if(window.ATLAS) ATLAS.openIndex(); return; }
+    if(t === 'hymn'){ if(window.HYMN) HYMN.open(0); return; }
+    if(t === 'gyodok'){ if(window.GYODOK_VIEW) GYODOK_VIEW.open(0); return; }
     APP.showView(t);
   });
   function syncTabs(){ var v = (APP.st && APP.st.view) || 'read'; [].forEach.call(tabs.querySelectorAll('.mo-tab'), function(b){ b.classList.toggle('on', b.dataset.t === v); }); fab.hidden = v !== 'read'; }

@@ -2543,7 +2543,7 @@ function goBackToRead(){
 }
 function anyPopupOpen(){
   if(searchPopOpen()) return true;
-  return ['ciModal','trModal','atlasModal','findModal','kgModal','commModal','introModal','askModal','wordModal','readModal','studyModal'].some(function(id){ var m = $(id); return m && !m.hidden; }) || !$('recPop').hidden;
+  return ['ciModal','trModal','atlasModal','findModal','kgModal','commModal','introModal','askModal','wordModal','readModal','studyModal','hymnModal','gdModal'].some(function(id){ var m = $(id); return m && !m.hidden; }) || !$('recPop').hidden;
 }
 document.addEventListener('mouseup', function(e){
   if(e.button === 3){ e.preventDefault(); if(!anyPopupOpen()) goBackToRead(); }      /* 마우스 옆 단추(뒤로) */
@@ -2923,6 +2923,8 @@ document.addEventListener('keydown', function(e){
     if(!$('readModal').hidden){ closeRead(); return; }
     if(!$('commModal').hidden){ closeComm(); return; }
     if(!$('introModal').hidden){ closeIntro(); return; }
+    if(window.HYMN && HYMN.isOpen()){ HYMN.close(); return; }
+    if(window.GYODOK_VIEW && GYODOK_VIEW.isOpen()){ GYODOK_VIEW.close(); return; }
     if(!$('askModal').hidden){ closeAsk(); return; }
     if(!$('wordModal').hidden){ closeWordModal(); return; }
     if(pw){ if(CMENU){ closeCMenu(); return; } closeDrops(); closeMorph(); POP.close(); return; }

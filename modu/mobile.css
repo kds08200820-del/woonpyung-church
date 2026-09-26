@@ -226,3 +226,24 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 .mo-hint{margin-top:12px;font-size:12px;line-height:1.6;color:#9a9086;word-break:keep-all}
 .mo-foot{margin:18px 0 0;padding-top:12px;border-top:1px solid #efeae2;font-size:11.5px;color:#9a9086}
 #licGate,#regModal,#relModal{display:none!important}
+
+/* 찬송가: 머리띠에 음표 단추만, 화면 전체로 */
+#hymnBtn{order:2;background:rgba(255,255,255,.16);color:var(--accent-fg);border-color:rgba(255,255,255,.35);padding:5px 8px;font-size:15px}
+#hymnBtn .hb-tx{display:none}
+.hy-modal{padding:0}
+.hycard{width:100%;height:100%;max-height:none;border:0;border-radius:0}
+.hy-head{padding:8px 10px;gap:6px}
+.hy-find{flex:1 1 100%;order:9}
+.hy-zoom button{padding:6px 9px;font-size:12.5px}
+
+#gyodokBtn{order:2;background:rgba(255,255,255,.16);color:var(--accent-fg);border-color:rgba(255,255,255,.35);padding:5px 8px;font-size:15px}
+#gyodokBtn .hb-tx{display:none}
+.gd-body{padding:12px 12px 40px}
+.gd-who{flex:0 0 40px}
+.gd-index{grid-template-columns:1fr}
+/* 아래 막대: 성경·찬송가·교독문·찾기·메모·더보기 (지도는 더보기 안으로) */
+.mo-tab{font-size:10.5px;padding:5px 0 3px}
+.mo-tab .ic{font-size:19px}
+
+/* 휴대폰: 찬송가·교독문은 아래 막대에 있으니 머리띠에서는 감춘다 */
+#hymnBtn,#gyodokBtn{display:none!important}

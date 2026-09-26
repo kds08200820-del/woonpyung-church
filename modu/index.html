@@ -66,6 +66,8 @@
       <span class="spacer"></span>
       <button class="btn sb-btn" id="stephBtn" hidden title="스테판 원어 성경 — 원문·스트롱 번호·문법·뜻을 행간으로 봅니다" aria-pressed="false">원어</button>
       <button class="btn icon" id="geoBtn" title="지도·고고학 연동 — 지도나 해설이 있는 절 번호를 진하게 표시합니다" aria-pressed="false">🌍</button>
+      <button class="btn" id="hymnBtn" title="새찬송가 악보 보기 — 장 번호나 제목으로 찾습니다"><span class="hb-ic">🎵</span><span class="hb-tx"> 찬송가</span></button>
+      <button class="btn" id="gyodokBtn" title="새찬송가 교독문 보기 — 번호나 제목으로 찾습니다"><span class="hb-ic">📜</span><span class="hb-tx"> 교독문</span></button>
       <button class="btn" id="introBtn" title="이 책의 저자·연대·목적·구조">개관</button>
       <button class="btn" id="listenBtn" title="이 장을 원어로 듣기">🔊 원어로 듣기</button>
       <div class="drop" id="verDrop">
@@ -542,6 +544,39 @@
     </div>
   </div>
 </div>
+<!-- 찬송가 — 새찬송가 악보 보기 -->
+<div class="modal hy-modal" id="hymnModal" role="dialog" aria-modal="true" aria-label="찬송가" hidden>
+  <div class="modal-card hycard">
+    <div class="m-head hy-head">
+      <button class="btn icon" id="hyPrev" title="이전 장 (←)">◀</button>
+      <div class="at-titles hy-titles"><b id="hyTitle">찬송가</b><span class="at-meta" id="hySub">장 번호나 제목으로 찾으세요</span></div>
+      <button class="btn icon" id="hyNext" title="다음 장 (→)">▶</button>
+      <div class="hy-find"><input id="hyIn" placeholder="장 번호 · 제목 (예: 570, 목자)" autocomplete="off" inputmode="search"><div class="hy-list" id="hyList" hidden></div></div>
+      <span class="seg hy-zoom" id="hyZoom"><button type="button" data-z="1" class="on" title="화면 폭에 맞춤">맞춤</button><button type="button" data-z="1.5">1.5×</button><button type="button" data-z="2">2×</button><button type="button" data-z="3">3×</button></span>
+      <button class="wb-x" id="hyClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </div>
+    <div class="hy-body" id="hyBody">
+      <div class="hy-wait" id="hyWait" hidden>악보를 불러오는 중…</div>
+      <div class="hy-wait" id="hyNone" hidden>이 장의 악보 그림이 없습니다</div>
+      <img id="hyImg" alt="" hidden>
+    </div>
+  </div>
+</div>
+<!-- 교독문 — 새찬송가 교독문 137편 -->
+<div class="modal hy-modal" id="gdModal" role="dialog" aria-modal="true" aria-label="교독문" hidden>
+  <div class="modal-card hycard gdcard">
+    <div class="m-head hy-head">
+      <button class="btn icon" id="gdPrev" title="이전 교독문 (←)">◀</button>
+      <div class="at-titles hy-titles"><b id="gdTitle">교독문</b><span class="at-meta" id="gdSub">번호나 제목으로 찾으세요</span></div>
+      <button class="btn icon" id="gdNext" title="다음 교독문 (→)">▶</button>
+      <div class="hy-find"><input id="gdIn" placeholder="번호 · 제목 (예: 46, 시편 104)" autocomplete="off" inputmode="search"><div class="hy-list" id="gdList" hidden></div></div>
+      <button class="btn" id="gdIndexBtn" title="교독문 전체 목록">목록</button>
+      <span class="seg hy-zoom" id="gdSize"><button type="button" data-s="0.85">A−</button><button type="button" data-s="1" class="on">보통</button><button type="button" data-s="1.2">A+</button><button type="button" data-s="1.45">A++</button></span>
+      <button class="wb-x" id="gdClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </div>
+    <div class="gd-body" id="gdBody"></div>
+  </div>
+</div>
 <div class="modal" id="ciModal" role="dialog" aria-modal="true" aria-label="주석 목록" hidden>
   <div class="modal-card cicard">
     <div class="m-head">
@@ -728,6 +763,10 @@
 <script src="https://bible-updates.kds08200820.workers.dev/modu/d1/study/dem-ane.js" crossorigin="anonymous"></script>
 <script src="terrain3d.js"></script>
 <script src="study.js"></script>
+<script src="hymn-data.js"></script>
+<script src="hymn.js"></script>
+<script src="gyodok-data.js"></script>
+<script src="gyodok.js"></script>
 <script src="omni.js"></script>
 <script src="update.js"></script>
 <script src="mobile.js"></script>
