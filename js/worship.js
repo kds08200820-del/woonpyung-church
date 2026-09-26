@@ -13,6 +13,8 @@
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   var BIBLE_VER = '20260729';
+  /* 온라인 헌금 계좌 (js/layout.js 의 온라인 헌금 모달과 같은 계좌) */
+  var GIVE = { bank: '농협', no: '3511344798723', pretty: '351-1344-7987-23', holder: '운평장로교회', toss: 'supertoss://send?bank=농협&accountNo=3511344798723' };
   var HYMN_IMG = 'modu/data/hymn/';
 
   /* ── 오늘(한국 시각) ── */
@@ -146,7 +148,21 @@
   function joinedKey() { return 'ws_joined_' + todayStr; }
   function joined() { try { return localStorage.getItem(joinedKey()); } catch (e) { return null; } }
   function markJoined(part) { try { localStorage.setItem(joinedKey(), String(part)); } catch (e) {} }
-  function refreshClock() { today = kst(); todayStr = ymd(today); dow = today.getUTCDay(); }
+  function refreshClock() { today = kst(); todayStr = ymd(today); dow = today.getUTCDay(); applySunday(); }
+  /* 이번 주일에 1부가 있는가 — 주보로 판단: combined: true/false 가 있으면 그대로, 없으면 소식에 '통합 예배'가 있으면 1부 없음(11시 한 번) */
+  function combinedSunday() {
+    var b = sundayBulletin(); if (!b) return false;
+    if (b.combined === true || b.combined === false) return b.combined;
+    var txt = (b.news || []).map(function (n) { return (n.title || '') + ' ' + (n.detail || ''); }).join(' ') + ' ' + (b.note || '') + ' ' + (b.notice || '');
+    return /통합\s*예배/.test(txt);
+  }
+  function partName(sc) { return sc && sc.kind === 'sunday' && !sc.single && sc.part ? sc.part + '부 ' : ''; }
+  function applySunday() {
+    var comb = combinedSunday(), p1 = byPart(1), p2 = byPart(2);
+    p1.days = comb ? [] : [0];
+    p2.single = comb; p2.label = comb ? '주일 예배' : '주일 2부 예배'; p2.lead = comb ? 200 : 30;   /* 통합이면 11시 예배 하나를 6시부터 안내 */
+  }
+  applySunday();
   function nowMin() { return today.getUTCHours() * 60 + today.getUTCMinutes(); }
   function services(force) {                      /* force: true = 오늘 요일의 예배를 시간 무시하고, 'sunday'|'wed'|'dawn' = 그 예배만 */
     var out = [], b = sundayBulletin(), n = nowMin();
@@ -188,7 +204,7 @@
         if (sc.days.indexOf(dow) < 0) return;
         var lead = sc.lead || 30;
         if (!(n >= sc.from - lead && n < sc.from - PAD)) return;
-        if (sc.kind === 'sunday' && sc.part === 2 && joined()) return;   /* 1부에 들어간 사람에겐 2부 카운트를 띄우지 않는다 */
+        if (sc.kind === 'sunday' && sc.part === 2 && !sc.single && joined()) return;   /* 1부에 들어간 사람에겐 2부 카운트를 띄우지 않는다 */
         var chk = sc.kind === 'dawn' ? hasSermon(todayStr, '새벽기도') : sc.kind === 'wed' ? (wedInfo() ? Promise.resolve(true) : hasSermon(todayStr, '수요기도회')) : Promise.resolve(true);
         chk.then(function (ok) { if (ok && !$('heroWorship')) mountCountdown(rot, sc, false); });
       });
@@ -228,10 +244,10 @@
   }
   function mount(rot, list) {
     var d = document.createElement('div'); d.className = 'hero-slide is-active hero-worship'; d.id = 'heroWorship';
-    var sp = list.length === 1 && list[0].kind === 'sunday' ? list[0] : null;   /* 주일: 'N부 예배가 진행 중입니다' + 'N부 예배 참여하기' */
-    d.innerHTML = '<p class="hw-eyebrow">' + (sp ? 'THE LORD’S DAY' : 'TODAY’S WORSHIP') + '</p><h1 class="hero-title">' + (sp ? sp.part + '부 예배가 진행 중입니다' : '오늘의 예배') + '</h1>' +
+    var sp = list.length === 1 && list[0].kind === 'sunday' ? list[0] : null;   /* 주일: 'N부 예배가 진행 중입니다' + 'N부 예배 참여하기' (통합이면 '예배가 진행 중입니다') */
+    d.innerHTML = '<p class="hw-eyebrow">' + (sp ? 'THE LORD’S DAY' : 'TODAY’S WORSHIP') + '</p><h1 class="hero-title">' + (sp ? partName(byPart(sp.part)) + '예배가 진행 중입니다' : '오늘의 예배') + '</h1>' +
       '<p class="hero-sub hw-date">' + esc(today.getUTCMonth() + 1) + '월 ' + esc(today.getUTCDate()) + '일 (' + DOWK[dow] + ') · ' + esc(list.map(function (s) { return (s.kind === 'sunday' ? s.label + ' ' : '') + s.time; }).join(' / ')) + '</p>' +
-      '<div class="hw-btns">' + list.map(function (s) { return '<button type="button" class="hero-cta hw-btn" data-kind="' + s.kind + '" data-part="' + (s.part || '') + '"><b>' + esc(s.kind === 'sunday' ? s.part + '부 예배 참여하기' : s.label) + '</b><small>' + esc(s.sub || s.time) + '</small></button>'; }).join('') + '</div>' +
+      '<div class="hw-btns">' + list.map(function (s) { return '<button type="button" class="hero-cta hw-btn" data-kind="' + s.kind + '" data-part="' + (s.part || '') + '"><b>' + esc(s.kind === 'sunday' ? partName(byPart(s.part)) + '예배 참여하기' : s.label) + '</b><small>' + esc(s.sub || s.time) + '</small></button>'; }).join('') + '</div>' +
       '<p class="hw-note">정회원 로그인 후 순서대로 볼 수 있습니다</p>';
     /* 예배가 있을 때는 히어로에 예배만 — 다른 슬라이드·말씀 구절·점 표시를 뺀다 (슬라이드가 하나면 main.js 회전기는 돌지 않는다) */
     [].forEach.call(rot.querySelectorAll('.hero-slide'), function (el) { el.remove(); });
@@ -248,7 +264,7 @@
        · 수요·새벽: 30분 전부터 '곧 예배가 시작됩니다' + 남은 시간 ── */
   function byKind(k) { for (var i = 0; i < SCHED.length; i++) if (SCHED[i].kind === k) return SCHED[i]; return SCHED[2]; }
   function mountCountdown(rot, sc, preview) {
-    var b = sundayBulletin(), w = sc.kind === 'wed' ? wedInfo() : null, soonSec = sc.kind === 'sunday' && sc.part === 1 ? 3600 : 1800;   /* 주일 1부는 1시간 전, 그 밖은 30분 전부터 카운트 */
+    var b = sundayBulletin(), w = sc.kind === 'wed' ? wedInfo() : null, soonSec = sc.kind === 'sunday' && (sc.part === 1 || sc.single) ? 3600 : 1800;   /* 주일 1부(통합이면 그 예배)는 1시간 전, 그 밖은 30분 전부터 카운트 */
     function pad(n) { return (n < 10 ? '0' : '') + n; }
     var info = sc.kind === 'sunday' ? (b && b.date >= todayStr && b.title ? '«' + esc(b.title) + '»' + (b.scripture ? ' · ' + esc(b.scripture) : '') : '')
              : sc.kind === 'wed' ? (w ? (w.title ? '«' + esc(w.title) + '»' : '') + (w.ref ? (w.title ? ' · ' : '') + esc(w.ref) : '') : '')
@@ -273,7 +289,7 @@
       }
       if (left < 0) left = 0;
       var soon = preview || left <= soonSec, box = $('hwCount'), t = $('hwTitle'), note = $('hwNote');
-      if (t) t.textContent = soon ? '곧 ' + (sc.kind === 'sunday' ? sc.part + '부 ' : '') + '예배가 시작됩니다' : '오늘은 주일입니다';
+      if (t) t.textContent = soon ? '곧 ' + partName(sc) + '예배가 시작됩니다' : '오늘은 주일입니다';
       if (note) note.textContent = soon ? '예배 시작까지 남은 시간 · 예배 10분 전부터 오늘의 예배가 열립니다' : '예배 1시간 전부터 남은 시간을 알려 드립니다';
       if (box) { box.hidden = !soon; if (soon) { var h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; box.innerHTML = (h ? '<span><b>' + h + '</b>시간</span>' : '') + '<span><b>' + pad(m) + '</b>분</span><span><b>' + pad(s) + '</b>초</span>'; } }
     }
@@ -312,7 +328,8 @@
     if (/신앙고백/.test(head) || /사도신경/.test(rest)) return { type: 'creed', head: head };
     if (/주기도문/.test(head) || /주기도문/.test(rest)) return { type: 'lord', head: head };
     if (/성경봉독|본문/.test(head)) return { type: 'bible', head: head, ref: rest };
-    if (/말씀강해|설교|말씀/.test(head)) return { type: 'sermon', head: head, title: songs(rest)[0] || rest, ref: b.scripture || '', who: b.preacher || '', quote: b.quote || '' };
+    if (/헌금/.test(head)) return { type: 'offering', head: head, sub: rest };
+    if (/말씀강해|설교|말씀/.test(head)) return { type: 'sermon', head: head, title: songs(rest)[0] || rest, ref: b.scripture || '', who: b.preacher || '', quote: b.quote || '', summary: b.summary || null };
     if (/경배와 찬양|성가대/.test(head)) return { type: 'text', head: head, lines: songs(rest).length ? songs(rest) : [rest], big: true };
     return { type: 'text', head: head, lines: [rest] };
   }
@@ -324,7 +341,7 @@
       if (!b) return setBody('<div class="ws-none">이번 주 주보 자료가 아직 없습니다.</div>');
       slides.push({ type: 'cover', k: '주일 예배', date: (b.dateLabel || b.date) + ' · ' + (b.week || ''), title: b.title, ref: b.scripture, who: b.preacher, quote: b.quote });
       /* 화면에 띄우지 않는 순서: 경배와 찬양·목회 기도·신앙고백·기도·성가대 찬양·헌금봉헌·교회소식·축도 (2026-09-26 목사님 지시) */
-      var SKIP = /^(경배와\s*찬양|목회\s*기도|신앙\s*고백|기도|성가대\s*찬양|헌금\s*봉헌|교회\s*소식|축도)$/;
+      var SKIP = /^(경배와\s*찬양|목회\s*기도|신앙\s*고백|기도|성가대\s*찬양|교회\s*소식|축도)$/;   /* 헌금봉헌은 온라인 헌금 화면으로 띄운다 (2026-09-27) */
       (b.order || []).forEach(function (l) { var head = String(l).split(/\s*·\s*/)[0].trim(); if (SKIP.test(head)) return; slides.push(parseItem(l, b)); });
       start();
     } else if (kind === 'wed') {
@@ -365,6 +382,13 @@
     });
     return '<div class="ws-gd">' + h + '</div>';
   }
+  /* 홈페이지 '이번 주 말씀'의 설교 요약(주보 summary: heading·sectionTitle·points[{lead,text}]·apply) */
+  function summaryHtml(sm) {
+    if (!sm || !(sm.points || []).length) return '';
+    return '<div class="ws-sum"><div class="ws-sum-t">' + esc(sm.sectionTitle || '말씀 요약') + '</div>' +
+      (sm.points || []).map(function (p, i) { return '<div class="ws-sum-p"><div class="ws-sum-lead"><span class="ws-sum-n">' + (i + 1) + '</span>' + esc(p.lead || '') + '</div><p>' + esc(p.text || '') + '</p></div>'; }).join('') +
+      (sm.apply ? '<div class="ws-sum-apply"><div class="ws-sum-lead">삶에 적용</div><p>' + esc(sm.apply) + '</p></div>' : '') + '</div>';
+  }
   function render() {
     var s = slides[idx]; if (!s) return;
     $('wsStep').textContent = (idx + 1) + ' / ' + slides.length;
@@ -385,9 +409,20 @@
     else if (s.type === 'bible') {
       h = head + '<div class="ws-title">' + esc(s.ref) + '</div><div class="ws-verses" id="wsVerses"><p class="ws-tip">본문을 불러오는 중…</p></div>';
     } else if (s.type === 'sermon') {
-      h = head + '<div class="ws-cover"><div class="ws-cover-t">' + esc(s.title || '') + '</div><div class="ws-cover-s">' + esc(s.ref || '') + (s.who ? ' · ' + esc(s.who) : '') + '</div>' + (s.quote ? '<div class="ws-cover-q">' + esc(s.quote) + '</div>' : '') + '</div>';
+      h = head + '<div class="ws-cover"><div class="ws-cover-t">' + esc(s.title || '') + '</div><div class="ws-cover-s">' + esc(s.ref || '') + (s.who ? ' · ' + esc(s.who) : '') + '</div>' + (s.quote ? '<div class="ws-cover-q">' + esc(s.quote) + '</div>' : '') + '</div>' + summaryHtml(s.summary);
+    } else if (s.type === 'offering') {
+      h = head + '<div class="ws-title">' + esc(s.sub || '신령과 진정으로') + '</div>' +
+        '<div class="ws-give"><div class="ws-give-t">온라인 헌금하기</div><p class="ws-give-p">예배당에 함께하지 못하는 분은 아래 계좌로 헌금하실 수 있습니다. 정성을 다해 드리는 헌금에 감사드립니다.</p>' +
+        '<div class="ws-give-acct"><span class="ws-give-bank">' + GIVE.bank + '</span><span class="ws-give-no">' + GIVE.pretty + '</span><span class="ws-give-holder">예금주 · ' + GIVE.holder + '</span></div>' +
+        '<div class="ws-give-btns"><a class="ws-btn primary ws-give-toss" href="' + GIVE.toss + '">토스로 이체하기</a><button type="button" class="ws-btn" id="wsGiveCopy">계좌번호 복사</button></div>' +
+        '<p class="ws-tip">‘토스로 이체하기’는 토스 앱이 있는 휴대폰에서 이체 화면으로 바로 연결됩니다. 그 밖에는 계좌번호를 복사해 이용해 주세요.</p></div>';
     } else { h = head + linesHtml(s.lines || [], s.big ? 'ws-big' : ''); }
     setBody(h);
+    if (s.type === 'offering') { var cb = $('wsGiveCopy'); if (cb) cb.onclick = function () {
+      var done = function () { cb.textContent = '✓ 복사되었습니다'; setTimeout(function () { cb.textContent = '계좌번호 복사'; }, 1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(GIVE.no).then(done, function () { window.prompt('계좌번호를 복사하세요', GIVE.no); });
+      else window.prompt('계좌번호를 복사하세요', GIVE.no);
+    }; }
     if (s.type === 'hymn') pinch($('wsImgBox'), $('wsImg'));
     if (s.type === 'bible') fillBible(s);
   }

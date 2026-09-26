@@ -109,3 +109,24 @@ body.ws-open { overflow: hidden; }
   .wa-text { grid-column: 2; grid-row: 1 / span 2; }
   .wa-go { grid-column: 3; grid-row: 1 / span 2; }
 }
+
+/* 헌금봉헌 — 온라인 헌금(토스 이체) */
+.ws-give { margin-top: 18px; padding: 22px 20px; border: 1px solid #e2d9c4; border-radius: 16px; background: #fbf8f1; text-align: center; }
+.ws-give-t { font-size: 1.25em; font-weight: 700; color: #032257; margin-bottom: 8px; }
+.ws-give-p { font-size: .98em; color: #4b4740; margin: 0 0 16px; word-break: keep-all; }
+.ws-give-acct { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 14px; border-radius: 12px; background: #fff; border: 1px solid #e6dfcd; margin-bottom: 14px; }
+.ws-give-bank { font-size: .9em; color: #6b675f; letter-spacing: .08em; }
+.ws-give-no { font-size: 1.45em; font-weight: 800; color: #032257; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.ws-give-holder { font-size: .9em; color: #6b675f; }
+.ws-give-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.ws-give-btns .ws-btn { flex: 0 1 220px; text-decoration: none; text-align: center; display: inline-block; }
+.ws-give-toss { background: #0064ff !important; border-color: #0064ff !important; color: #fff !important; }
+
+/* 말씀 순서 — 이번 주 설교 요약 */
+.ws-sum { margin-top: 22px; text-align: left; }
+.ws-sum-t { font-size: 1.05em; font-weight: 700; color: #8a5a2b; letter-spacing: .02em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2d9c4; }
+.ws-sum-p { margin-bottom: 14px; }
+.ws-sum-lead { font-weight: 700; color: #032257; font-size: 1.08em; margin-bottom: 4px; display: flex; gap: 8px; align-items: baseline; }
+.ws-sum-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: #032257; color: #fff; font-size: .78em; display: inline-flex; align-items: center; justify-content: center; }
+.ws-sum p { margin: 0; font-size: 1.05em; line-height: 1.75; word-break: keep-all; color: #2b2721; }
+.ws-sum-apply { margin-top: 16px; padding: 14px 16px; background: #fbf8f1; border-left: 4px solid #c9a961; border-radius: 0 10px 10px 0; }

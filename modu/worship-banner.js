@@ -26,7 +26,25 @@
   var fm = location.search.match(/[?&]worship=(countdown(?:-wed|-dawn|-2)?)/);
   var preview = fm ? (fm[1] === 'countdown-wed' ? 'wed' : fm[1] === 'countdown-dawn' ? 'dawn' : fm[1] === 'countdown-2' ? 'sunday2' : 'sunday1') : '';
   function joined(date){ try { return localStorage.getItem('ws_joined_' + date); } catch(e){ return null; } }   /* 홈페이지와 같은 열쇠(같은 도메인) */
-  var okCache = {};                                            /* '날짜|예배' → true/false (달력 확인은 하루 한 번) */
+  var okCache = {};
+  var comb = null;                                             /* 이번 주일 통합예배(1부 없음)? null = 아직 모름 — 주일에만 주보(../js/bulletins.js)를 읽어 판단 */
+  function loadCombined(date){
+    if(comb !== null) return;
+    comb = false;                                              /* 읽는 동안 기본값 */
+    fetch('../js/bulletins.js?d=' + date).then(function(r){ return r.ok ? r.text() : ''; }).then(function(t){
+      var i = t.indexOf('date: "' + date + '"'); if(i < 0) return;
+      var j = t.indexOf('\n    date: "', i + 10); var blk = t.slice(i, j > 0 ? j : i + 20000);
+      var m = blk.match(/combined:\s*(true|false)/);
+      comb = m ? m[1] === 'true' : /통합\s*예배/.test(blk);
+      apply(); tick();
+    }).catch(function(){});
+  }
+  function apply(){
+    var p1 = SCHED[2], p2 = SCHED[3];
+    p1.days = comb ? [] : [0];
+    p2.single = !!comb; p2.label = comb ? '주일 예배' : '주일 2부 예배'; p2.lead = comb ? 200 : 30;
+  }
+  function pname(sc){ return sc.kind === 'sunday' && !sc.single && sc.part ? sc.part + '부 ' : ''; }                                            /* '날짜|예배' → true/false (달력 확인은 하루 한 번) */
 
   var bar = null;
   function ensure(){
@@ -52,6 +70,7 @@
   function tick(){
     var n = kst(), dow = n.getUTCDay(), date = ymd(n), sec = n.getUTCHours()*3600 + n.getUTCMinutes()*60 + n.getUTCSeconds();
     var pick = null, sc, i;
+    if(dow === 0 && !preview) loadCombined(date);
     var jn = joined(date);
     for(i = 0; i < SCHED.length; i++){
       sc = SCHED[i];
@@ -59,9 +78,9 @@
       if(sc.days.indexOf(dow) < 0) continue;
       var left = sc.from*60 - sec;
       /* 주일 2부 카운트(10:30~10:50)는 1부 진행 중과 겹친다 — 1부에 들어가지 않은 사람에겐 2부 카운트가 먼저 */
-      if(sc.kind === 'sunday' && sc.part === 1 && !jn){ var p2 = SCHED[i+1]; var l2 = p2.from*60 - sec; if(l2 > PAD*60 && l2 <= p2.lead*60){ pick = { sc:p2, left:l2, live:false }; break; } }
+      if(sc.kind === 'sunday' && sc.part === 1 && !jn && sc.days.length){ var p2 = SCHED[i+1]; var l2 = p2.from*60 - sec; if(l2 > PAD*60 && l2 <= p2.lead*60){ pick = { sc:p2, left:l2, live:false }; break; } }
       if(sec >= (sc.from - PAD)*60 && sec <= (sc.to + PAD)*60){ pick = { sc:sc, left:left, live:true }; break; }
-      if(sc.kind === 'sunday' && sc.part === 2 && jn) continue;
+      if(sc.kind === 'sunday' && sc.part === 2 && !sc.single && jn) continue;
       if(left > PAD*60 && left <= sc.lead*60){ pick = { sc:sc, left:left, live:false }; break; }
     }
     if(!pick){ hide(); return; }
@@ -72,11 +91,11 @@
       if(!okCache[key]){ hide(); return; }
     }
     var href = '../index.html?worship=' + sc.kind;
-    if(pick.live){ show(sc.kind === 'sunday' ? sc.part + '부 예배가 진행 중입니다' : '오늘의 예배 · ' + sc.label, sc.kind === 'sunday' ? sc.part + '부 참여하기' : '열기', href, 'live'); return; }
-    var l = pick.left, soon = !(sc.kind === 'sunday' && sc.part === 1) || l <= 3600;
+    if(pick.live){ show(sc.kind === 'sunday' ? pname(sc) + '예배가 진행 중입니다' : '오늘의 예배 · ' + sc.label, sc.kind === 'sunday' ? pname(sc) + '예배 참여하기' : '열기', href, 'live'); return; }
+    var l = pick.left, soon = !(sc.kind === 'sunday' && (sc.part === 1 || sc.single)) || l <= 3600;
     if(!soon){ show('오늘은 주일입니다', sc.label + ' ' + sc.time, href, 'day'); return; }
     var h = Math.floor(l/3600), m = Math.floor(l%3600/60), s = l%60;
-    show('곧 ' + (sc.kind === 'sunday' ? sc.part + '부 예배' : sc.label) + '가 시작됩니다', (h ? h + ':' : '') + pad(m) + ':' + pad(s), href, 'soon');
+    show('곧 ' + (sc.kind === 'sunday' ? pname(sc) + '예배' : sc.label) + '가 시작됩니다', (h ? h + ':' : '') + pad(m) + ':' + pad(s), href, 'soon');
   }
   function start(){ if(!ensure()){ setTimeout(start, 500); return; } tick(); setInterval(tick, 1000); }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
