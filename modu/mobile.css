@@ -251,3 +251,13 @@ body.hy-open #moTabs{z-index:85}
 /* 휴대폰: 찬송가·교독문은 아래 막대에 있으니 머리띠에서는 감춘다 */
 #hymnBtn,#gyodokBtn{display:none!important}
 }
+
+/* ── 예배 안내 띠 (worship-banner.js) — 본문 위 막대 바로 아래 ── */
+.mo-worship{display:flex;align-items:center;gap:10px;padding:9px 14px;background:#c9a961;color:#1b1608;text-decoration:none;font-size:14px;font-weight:600;position:sticky;top:0;z-index:59}
+.mo-worship[hidden]{display:none}
+.mo-worship .mw-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mo-worship .mw-c{font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:.02em}
+.mo-worship[data-state=day]{background:#e8dcc0}
+.mo-worship[data-state=live]{background:#1f6f4a;color:#fff}
+.mo-worship .mw-go{opacity:.7;font-size:18px;line-height:1}
+@media (max-width: 900px){ .mo-worship{top:58px} }   /* 위 막대(.vhead) 높이 아래에 붙는다 */
