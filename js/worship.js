@@ -191,7 +191,9 @@
       var b = sundayBulletin();
       if (!b) return setBody('<div class="ws-none">이번 주 주보 자료가 아직 없습니다.</div>');
       slides.push({ type: 'cover', k: '주일 예배', date: (b.dateLabel || b.date) + ' · ' + (b.week || ''), title: b.title, ref: b.scripture, who: b.preacher, quote: b.quote });
-      (b.order || []).forEach(function (l) { slides.push(parseItem(l, b)); });
+      /* 화면에 띄우지 않는 순서: 경배와 찬양·목회 기도·신앙고백·기도·성가대 찬양·헌금봉헌·교회소식·축도 (2026-09-26 목사님 지시) */
+      var SKIP = /^(경배와\s*찬양|목회\s*기도|신앙\s*고백|기도|성가대\s*찬양|헌금\s*봉헌|교회\s*소식|축도)$/;
+      (b.order || []).forEach(function (l) { var head = String(l).split(/\s*·\s*/)[0].trim(); if (SKIP.test(head)) return; slides.push(parseItem(l, b)); });
       start();
     } else if (kind === 'wed') {
       var w = wedInfo();
