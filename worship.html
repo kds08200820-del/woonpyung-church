@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>예배순서 | 운평장로교회</title>
+  <meta name="description" content="운평장로교회 예배순서 — 달마다 주차별로 주일 예배, 새벽기도회, 수요기도회의 순서와 본문을 모아 봅니다." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="운평장로교회" />
+  <meta property="og:title" content="예배순서 | 운평장로교회" />
+  <meta property="og:description" content="주일 예배·새벽기도회·수요기도회의 순서와 본문을 주차별로 모아 봅니다." />
+  <meta property="og:image" content="https://k-logos.com/images/icon-512.png" />
+  <meta property="og:url" content="https://k-logos.com/worship.html" />
+  <link rel="manifest" href="manifest.json?v=20260906lib13" />
+  <meta name="theme-color" content="#032257" />
+  <link rel="icon" href="images/favicon-32.png?v=20260906lib13" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260906lib13" />
+  <meta name="apple-mobile-web-app-title" content="운평장로교회" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260925mi" />
+  <link rel="stylesheet" href="css/worship.css?v=20260926ws4" />
+</head>
+<body>
+
+  <section class="page-hero">
+    <p class="ph-eyebrow">ORDER OF WORSHIP</p>
+    <h1>예배순서</h1>
+    <p>달마다 주차별로 주일 예배·새벽기도회·수요기도회의 순서와 본문을 모아 둡니다. 정회원은 눌러서 순서대로 볼 수 있습니다.</p>
+  </section>
+
+  <section class="block" id="archive">
+    <div class="container">
+      <div class="wa-bar">
+        <button type="button" class="wa-nav" id="waPrev" aria-label="지난 달">‹</button>
+        <h2 id="waMonthLabel">—</h2>
+        <button type="button" class="wa-nav" id="waNext" aria-label="다음 달">›</button>
+        <button type="button" class="wa-today" id="waToday">이번 달</button>
+      </div>
+      <p class="wa-help">주일 예배는 주보에서, 새벽기도회(화~금)는 그날 QT 본문에서, 수요기도회는 주보의 수요기도회 줄에서 자동으로 만들어집니다. 주보와 QT만 올리시면 됩니다.</p>
+      <div id="waMonths"></div>
+    </div>
+  </section>
+
+  <script src="js/config.js?v=20260908lib"></script>
+  <script src="js/bulletins.js?v=20260920jb"></script>
+  <script src="js/gyodok-data.js?v=20260926ws"></script>
+  <script src="js/hymn-data.js?v=20260926ws"></script>
+  <script src="js/worship.js?v=20260926ws4"></script>
+  <script src="js/layout.js?v=20260926ws"></script>
+  <script src="js/worship-archive.js?v=20260926ws4"></script>
+</body>
+</html>

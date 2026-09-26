@@ -74,3 +74,33 @@ body.ws-open { overflow: hidden; }
   .ws-body { padding: 14px 14px 30px; }
   .ws-gd .gd-who { flex-basis: 40px; }
 }
+
+/* ── 예배순서 보관함 (worship.html) ── */
+.wa-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.wa-bar h2 { margin: 0; font-size: 1.4rem; min-width: 150px; text-align: center; }
+.wa-nav { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #cfc6b3; background: #fff; font-size: 1.3rem; cursor: pointer; color: #032257; }
+.wa-today { margin-left: auto; padding: 8px 14px; border-radius: 8px; border: 1px solid #cfc6b3; background: #fff; font: inherit; font-size: .85rem; cursor: pointer; color: #032257; }
+.wa-help { font-size: .85rem; color: #777; margin: 0 0 22px; }
+.wa-loading { color: #999; padding: 30px 0; text-align: center; }
+.wa-week { margin-bottom: 26px; border: 1px solid #e6e0d0; border-radius: 12px; overflow: hidden; background: #fff; }
+.wa-week h3 { margin: 0; padding: 12px 16px; background: #f5f1e6; color: #032257; font-size: 1.02rem; display: flex; align-items: baseline; gap: 10px; }
+.wa-week h3 small { font-weight: 400; color: #8a7d5c; font-size: .82rem; }
+.wa-row { display: grid; grid-template-columns: 86px 82px 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 11px 16px; border: 0; border-top: 1px solid #efece2; background: #fff; text-align: left; font: inherit; cursor: pointer; color: #222; }
+.wa-row:hover { background: #fbf8f1; }
+.wa-row.off { cursor: default; color: #aaa; }
+.wa-row.today { background: #eef3fb; }
+.wa-date { font-size: .85rem; color: #666; white-space: nowrap; }
+.wa-row.today .wa-date { color: #032257; font-weight: 700; }
+.wa-kind { font-size: .8rem; font-weight: 700; color: #a08a4a; white-space: nowrap; }
+.wa-text { min-width: 0; display: flex; flex-direction: column; }
+.wa-text b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wa-text small { color: #888; font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wa-row.off .wa-text b, .wa-row.off .wa-text small { color: #bbb; }
+.wa-go { font-size: .82rem; color: #032257; white-space: nowrap; }
+@media (max-width: 640px) {
+  .wa-row { grid-template-columns: 70px 1fr auto; }
+  .wa-kind { grid-column: 1; grid-row: 2; }
+  .wa-date { grid-column: 1; grid-row: 1; }
+  .wa-text { grid-column: 2; grid-row: 1 / span 2; }
+  .wa-go { grid-column: 3; grid-row: 1 / span 2; }
+}

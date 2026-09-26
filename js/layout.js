@@ -11,7 +11,8 @@
       { href: "welcome.html#about", label: "우리 교회는 어떤 곳" },
       { href: "welcome.html#newfamily", label: "새가족 등록" },
     ] },
-    { href: "word.html", label: "말씀으로", sub: [
+    { href: "word.html", label: "온전한 예배", sub: [
+      { href: "worship.html", label: "예배순서" },
       { href: "word.html#sermon", label: "이번 주 말씀" },
       { href: "word.html#qt", label: "매일 말씀 묵상" },
       { href: "word.html#archive", label: "주보" },

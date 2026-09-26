@@ -65,23 +65,50 @@
     for (var i = 0; i < L.length; i++) if (L[i].date <= todayStr) return L[i];
     return L[0] || null;
   }
-  function wedInfo() {                             /* 이번 주 주보의 수요기도회 줄 → 제목·본문 */
-    var b = sundayBulletin(); if (!b || !b.wed) return null;
+  function wedInfo(bul) {                          /* 주보의 수요기도회 줄 → 제목·본문 (bul 없으면 이번 주) */
+    var b = bul || sundayBulletin(); if (!b || !b.wed) return null;
     var s = String(b.wed), t = (s.match(/«([^»]+)»/) || [])[1] || '', ser = (s.match(/·\s*([^«—]+?)\s*(?:«|—)/) || [])[1] || '';
     var ref = (s.match(/—\s*([가-힣]+\s*\d+:\d+(?:\s*[-–~]\s*\d+(?::\d+)?)?)/) || [])[1] || '';
     return { title: t, series: ser.trim(), ref: ref.trim(), who: (s.match(/\/\s*([^/]+)$/) || [])[1] || '', raw: s };
   }
 
   /* ── 오늘 QT(새벽기도회 본문) ── */
-  var qtCache;
-  function loadQt() {
-    if (qtCache !== undefined) return Promise.resolve(qtCache);
-    if (!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve((qtCache = null));
-    var u = window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/qt_published?select=sermon_date,title,scripture,qt_bible_text&sermon_date=eq.' + todayStr + '&limit=1';
+  var qtCache = {};
+  function loadQt(date) {
+    date = date || todayStr;
+    if (qtCache[date] !== undefined) return Promise.resolve(qtCache[date]);
+    if (!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve((qtCache[date] = null));
+    var u = window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/qt_published?select=sermon_date,title,scripture,qt_bible_text&sermon_date=eq.' + date + '&limit=1';
     return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + window.SUPABASE_ANON_KEY } })
-      .then(function (r) { return r.ok ? r.json() : null; }).then(function (rows) { qtCache = rows && rows[0] ? rows[0] : null; return qtCache; })
-      .catch(function () { qtCache = null; return null; });
+      .then(function (r) { return r.ok ? r.json() : null; }).then(function (rows) { qtCache[date] = rows && rows[0] ? rows[0] : null; return qtCache[date]; })
+      .catch(function () { qtCache[date] = null; return null; });
   }
+  /* 설교 매니저(sermons)에 적어 둔 찬송가·교독문·제목·구절 — 정회원용 뷰 worship_published (로그인 토큰으로 읽음) */
+  var svcCache = {};
+  function loadService(date, services) {
+    var key = date + '|' + services.join(',');
+    if (svcCache[key] !== undefined) return Promise.resolve(svcCache[key]);
+    var s = session();
+    if (!s || !(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve((svcCache[key] = null));
+    var u = window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/worship_published?select=sermon_date,service,title,scripture,hymns,gyodok,preacher&sermon_date=eq.' + date + '&service=in.(' + services.map(encodeURIComponent).join(',') + ')&limit=5';
+    return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + s.token } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (rows) { var pick = null; if (rows && rows.length) { services.some(function (sv) { pick = rows.filter(function (r) { return r.service === sv; })[0] || null; return !!pick; }); } svcCache[key] = pick; return pick; })
+      .catch(function () { svcCache[key] = null; return null; });
+  }
+  function hymnNos(str) { return String(str || '').split(/[,\s·]+/).map(function (x) { return parseInt(x, 10); }).filter(function (n) { return n >= 1 && n <= 645; }); }
+  function gyodokNo(str) { var m = String(str || '').match(/(\d{1,3})/); return m ? +m[1] : 0; }
+  /* 새벽·수요기도회 순서: 찬송 → 교독문 → 본문 → 말씀 */
+  function midweekSlides(k, date, title, ref, who, rec) {
+    slides.push({ type: 'cover', k: k, date: dateLabel(date), title: title || '', ref: ref || '', who: who || '', quote: '' });
+    if (rec) {
+      hymnNos(rec.hymns).forEach(function (n) { slides.push({ type: 'hymn', head: '찬송', no: n, title: hymnTitle(n) }); });
+      var g = gyodokNo(rec.gyodok); if (g) slides.push({ type: 'gyodok', head: '성시교독', no: g, sub: String(rec.gyodok).replace(/^\d+\.?\s*/, '') });
+    }
+    if (ref) slides.push({ type: 'bible', head: '성경 본문', ref: ref });
+    slides.push({ type: 'sermon', head: '말씀', title: title || '', ref: ref || '', who: who || '', quote: '' });
+  }
+  function dateLabel(d) { var m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return String(d); var dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return (+m[2]) + '월 ' + (+m[3]) + '일 (' + DOWK[dt.getUTCDay()] + ')'; }
 
   /* ── 로그인·정회원 확인 (layout.js 와 같은 방식: 저장된 세션 → member_links) ── */
   function session() {
@@ -151,17 +178,18 @@
   }
 
   /* ── 문: 로그인·정회원 확인 뒤 열기 ── */
-  function openGate(kind) {
+  function openGate(kind, ctx) {                 /* ctx: { date, bulletin } — 예배순서 보관함에서 지난 날짜를 열 때 */
+    ctx = ctx || {};
     var ov = ensureOverlay();
     ov.hidden = false; document.body.classList.add('ws-open');
     if (window.ModalNav) ModalNav.open(closeViewer);
     setBody('<div class="ws-lock"><div class="ws-lock-t">확인 중…</div></div>');
     $('wsStrip').innerHTML = ''; $('wsStep').textContent = '';
     checkMember().then(function (st) {
-      if (st === 'ok') return openKind(kind);
+      if (st === 'ok') return openKind(kind, ctx);
       if (st === 'login') return lock('로그인이 필요합니다', '오늘의 예배는 교적 인증을 마친 정회원이 볼 수 있습니다. 먼저 로그인해 주세요.', '로그인', function () { closeViewer(); var b = $('loginBtn'); if (b) b.click(); else location.href = 'account.html'; });
       if (st === 'not-member') return lock('정회원 전용입니다', '내 정보에서 교적 연결을 마치시면 바로 보실 수 있습니다.', '내 정보 열기', function () { location.href = 'account.html'; });
-      lock('확인하지 못했습니다', '인터넷 연결을 확인한 뒤 다시 시도해 주세요.', '다시 시도', function () { openGate(kind); });
+      lock('확인하지 못했습니다', '인터넷 연결을 확인한 뒤 다시 시도해 주세요.', '다시 시도', function () { openGate(kind, ctx); });
     });
   }
   function lock(t, m, btn, fn) {
@@ -185,10 +213,11 @@
     if (/경배와 찬양|성가대/.test(head)) return { type: 'text', head: head, lines: songs(rest).length ? songs(rest) : [rest], big: true };
     return { type: 'text', head: head, lines: [rest] };
   }
-  function openKind(kind) {
-    curKind = kind; slides = []; idx = 0;
+  function openKind(kind, ctx) {
+    ctx = ctx || {}; curKind = kind; slides = []; idx = 0;
+    var date = ctx.date || todayStr;
     if (kind === 'sunday') {
-      var b = sundayBulletin();
+      var b = ctx.bulletin || sundayBulletin();
       if (!b) return setBody('<div class="ws-none">이번 주 주보 자료가 아직 없습니다.</div>');
       slides.push({ type: 'cover', k: '주일 예배', date: (b.dateLabel || b.date) + ' · ' + (b.week || ''), title: b.title, ref: b.scripture, who: b.preacher, quote: b.quote });
       /* 화면에 띄우지 않는 순서: 경배와 찬양·목회 기도·신앙고백·기도·성가대 찬양·헌금봉헌·교회소식·축도 (2026-09-26 목사님 지시) */
@@ -196,18 +225,20 @@
       (b.order || []).forEach(function (l) { var head = String(l).split(/\s*·\s*/)[0].trim(); if (SKIP.test(head)) return; slides.push(parseItem(l, b)); });
       start();
     } else if (kind === 'wed') {
-      var w = wedInfo();
-      if (!w) return setBody('<div class="ws-none">이번 주 수요기도회 자료가 없습니다.</div>');
-      slides.push({ type: 'cover', k: '수요기도회', date: today.getUTCMonth() + 1 + '월 ' + today.getUTCDate() + '일 (수)', title: w.title, ref: (w.series ? w.series + ' · ' : '') + w.ref, who: w.who, quote: '' });
-      if (w.ref) slides.push({ type: 'bible', head: '성경 본문', ref: w.ref });
-      slides.push({ type: 'sermon', head: '말씀', title: w.title, ref: w.ref, who: w.who, quote: '' });
-      start();
+      var w = wedInfo(ctx.bulletin);
+      setBody('<div class="ws-lock"><div class="ws-lock-t">수요기도회 자료를 불러오는 중…</div></div>');
+      loadService(date, ['수요기도회']).then(function (rec) {
+        if (!rec && !w) return setBody('<div class="ws-none">이 주 수요기도회 자료가 없습니다.<br>설교 매니저에 수요기도회 설교를 저장하거나 주보를 올려 주세요.</div>');
+        midweekSlides('수요기도회', date, (rec && rec.title) || (w && w.title), (rec && rec.scripture) || (w && w.ref), (rec && rec.preacher) || (w && w.who), rec);
+        start();
+      });
     } else {
-      setBody('<div class="ws-lock"><div class="ws-lock-t">오늘 QT 본문을 불러오는 중…</div></div>');
-      loadQt().then(function (q) {
-        if (!q) return setBody('<div class="ws-none">오늘 새벽기도회 본문(QT)이 아직 올라오지 않았습니다.</div>');
-        slides.push({ type: 'cover', k: '새벽기도회', date: today.getUTCMonth() + 1 + '월 ' + today.getUTCDate() + '일 (' + DOWK[dow] + ')', title: q.title || '', ref: q.scripture || '', who: '', quote: '' });
-        slides.push({ type: 'bible', head: '오늘의 본문', ref: q.scripture || '', text: q.qt_bible_text || '' });
+      setBody('<div class="ws-lock"><div class="ws-lock-t">QT 본문을 불러오는 중…</div></div>');
+      Promise.all([loadQt(date), loadService(date, ['매일 QT', '새벽기도'])]).then(function (rs) {
+        var q = rs[0], rec = rs[1];
+        if (!q && !rec) return setBody('<div class="ws-none">이 날 새벽기도회 본문(QT)이 없습니다.</div>');
+        midweekSlides('새벽기도회', date, (q && q.title) || (rec && rec.title), (q && q.scripture) || (rec && rec.scripture), rec && rec.preacher, rec);
+        var bs = slides.filter(function (x) { return x.type === 'bible'; })[0]; if (bs && q) bs.text = q.qt_bible_text || '';
         start();
       });
     }
@@ -336,6 +367,6 @@
   function setSize(d) { textSize = Math.max(0.8, Math.min(1.8, +(textSize + d).toFixed(2))); var b = $('wsBody'); if (b) b.style.fontSize = (textSize * 100) + '%'; try { localStorage.setItem('wpc.worship.size', String(textSize)); } catch (e) {} }
   function closeViewer() { if (!overlay) return; overlay.hidden = true; document.body.classList.remove('ws-open'); }
 
-  window.WPCWorship = { open: openGate, close: closeViewer, services: services };
+  window.WPCWorship = { open: openGate, close: closeViewer, services: services, wedInfo: wedInfo, bulletins: bulletins, today: todayStr };
   heroSlide();
 })();
