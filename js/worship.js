@@ -133,13 +133,20 @@
   /* ── 오늘의 예배 목록 — 예배 시간 앞뒤 10분 안에서만 뜬다 (한국 시각)
        · 새벽기도회 04:30~06:00 → 04:20~06:10 (달력에 '새벽기도'가 있는 날만, 주일 제외)
        · 수요기도회 수 11:00 (약 한 시간) → 10:50~12:10
-       · 주일 낮 예배 09:20~12:30 → 09:10~12:40 ── */
+       · 주일 1부 09:20~10:40 → 09:10~10:50, 2부 11:00~12:30 → 10:50~12:40 (둘 다 같은 주보 순서) ── */
   var PAD = 10;
   var SCHED = [
     { kind: 'dawn',   label: '새벽기도회', time: '새벽 4:30 ~ 6:00',   days: [1, 2, 3, 4, 5, 6], from: 4 * 60 + 30,  to: 6 * 60 },   /* 보통 화~금 — 실제로는 설교작성관리 달력에 '새벽기도'가 있는 날만 뜬다(주일 제외) */
     { kind: 'wed',    label: '수요기도회', time: '오전 11:00',          days: [3],          from: 11 * 60,       to: 12 * 60 },
-    { kind: 'sunday', label: '주일 예배',  time: '오전 9:20 ~ 12:30',   days: [0],          from: 9 * 60 + 20,   to: 12 * 60 + 30 }
+    { kind: 'sunday', part: 1, label: '주일 1부 예배', time: '오전 9:20',  days: [0], from: 9 * 60 + 20, to: 10 * 60 + 40, lead: 200 },   /* 안내는 오전 6시(200분 전)부터 */
+    { kind: 'sunday', part: 2, label: '주일 2부 예배', time: '오전 11:00', days: [0], from: 11 * 60,     to: 12 * 60 + 30, lead: 30 }
   ];
+  function byPart(p) { for (var i = 0; i < SCHED.length; i++) if (SCHED[i].kind === 'sunday' && SCHED[i].part === p) return SCHED[i]; return null; }
+  /* 오늘 1부 예배에 들어간 사람(같은 기기) — 2부 안내·카운트를 띄우지 않는다 */
+  function joinedKey() { return 'ws_joined_' + todayStr; }
+  function joined() { try { return localStorage.getItem(joinedKey()); } catch (e) { return null; } }
+  function markJoined(part) { try { localStorage.setItem(joinedKey(), String(part)); } catch (e) {} }
+  function refreshClock() { today = kst(); todayStr = ymd(today); dow = today.getUTCDay(); }
   function nowMin() { return today.getUTCHours() * 60 + today.getUTCMinutes(); }
   function services(force) {                      /* force: true = 오늘 요일의 예배를 시간 무시하고, 'sunday'|'wed'|'dawn' = 그 예배만 */
     var out = [], b = sundayBulletin(), n = nowMin();
@@ -153,7 +160,7 @@
       if (sc.kind === 'sunday') sub = b ? (b.date >= todayStr ? b.title : '지난 주보 · ' + b.title) : '';
       else if (sc.kind === 'wed') { var w = wedInfo(); sub = w ? (w.title ? '«' + w.title + '» · ' : '') + w.ref : ''; }
       else sub = '오늘의 QT 본문';
-      out.push({ kind: sc.kind, label: sc.label, sub: sub, time: sc.time });
+      out.push({ kind: sc.kind, part: sc.part || 0, label: sc.label, sub: sub, time: sc.time });
     });
     return out;
   }
@@ -169,18 +176,19 @@
   /* ── 히어로 슬라이드 (main.js 보다 먼저 끼워 넣는다) ── */
   function heroSlide() {
     var rot = $('heroRotator'); if (!rot) return;
-    var fm = location.search.match(/[?&]worship=(sunday|wed|dawn|countdown(?:-wed|-dawn)?|1)/), force = fm ? (fm[1] === '1' ? true : fm[1]) : false;   /* ?worship=1|sunday|wed|dawn|countdown|countdown-wed|countdown-dawn : 시간과 상관없이 띄움(미리 보기용) */
+    var fm = location.search.match(/[?&]worship=(sunday|wed|dawn|countdown(?:-wed|-dawn|-2)?|1)/), force = fm ? (fm[1] === '1' ? true : fm[1]) : false;   /* ?worship=1|sunday|wed|dawn|countdown|countdown-wed|countdown-dawn : 시간과 상관없이 띄움(미리 보기용) */
     var list = services(force);
     if (!list.length) {
       /* 예배 전 안내: 주일은 오전 6시부터 '오늘은 주일입니다'(1시간 전부터 카운트), 수요·새벽은 30분 전부터 '곧 예배가 시작됩니다' + 카운트
          — 그날 예배가 있을 때만(새벽: 달력의 '새벽기도', 수요: 주보의 수요기도회 줄 또는 달력의 '수요기도회') */
-      if (typeof force === 'string' && force.indexOf('countdown') === 0) { var pk = force === 'countdown-wed' ? 'wed' : force === 'countdown-dawn' ? 'dawn' : 'sunday'; return mountCountdown(rot, byKind(pk), true); }
+      if (typeof force === 'string' && force.indexOf('countdown') === 0) { var pk = force === 'countdown-wed' ? byKind('wed') : force === 'countdown-dawn' ? byKind('dawn') : force === 'countdown-2' ? byPart(2) : byPart(1); return mountCountdown(rot, pk, true); }
       if (force) return;
       var n = nowMin();
       SCHED.forEach(function (sc) {
         if (sc.days.indexOf(dow) < 0) return;
-        var lead = sc.kind === 'sunday' ? sc.from - 6 * 60 : 30;
+        var lead = sc.lead || 30;
         if (!(n >= sc.from - lead && n < sc.from - PAD)) return;
+        if (sc.kind === 'sunday' && sc.part === 2 && joined()) return;   /* 1부에 들어간 사람에겐 2부 카운트를 띄우지 않는다 */
         var chk = sc.kind === 'dawn' ? hasSermon(todayStr, '새벽기도') : sc.kind === 'wed' ? (wedInfo() ? Promise.resolve(true) : hasSermon(todayStr, '수요기도회')) : Promise.resolve(true);
         chk.then(function (ok) { if (ok && !$('heroWorship')) mountCountdown(rot, sc, false); });
       });
@@ -196,13 +204,34 @@
       });
       return;
     }
+    /* 주일 1부 진행 중(10:30~10:50)에 2부 카운트가 겹치는 때: 1부에 들어가지 않은 사람에게는 2부 카운트를 */
+    if (!force && dow === 0) {
+      var p2 = byPart(2), live1 = list.filter(function (s) { return s.kind === 'sunday' && s.part === 1; })[0];
+      if (live1 && p2 && nowMin() >= p2.from - p2.lead && nowMin() < p2.from - PAD && !joined()) { mountCountdown(rot, p2, false); watch(rot); return; }
+      if (live1) list = list.filter(function (s) { return !(s.kind === 'sunday' && s.part === 2); });   /* 1부 진행 중에는 2부 안내를 빼고 */
+    }
     mount(rot, list);
+    watch(rot);
+  }
+  /* 시간이 흐르며 예배 칸이 바뀌면(1부 끝 → 2부, 예배 끝) 30초마다 다시 셈한다 */
+  var watchTm = 0;
+  function watch(rot) {
+    if (watchTm) return;
+    function sig() { refreshClock(); var p2 = byPart(2); return services(false).map(function (s) { return s.kind + s.part; }).join(',') + '|' + (dow === 0 && nowMin() >= p2.from - p2.lead && nowMin() < p2.from - PAD && !joined() ? 'c2' : ''); }
+    var last = sig();
+    watchTm = setInterval(function () {
+      if (document.body.classList.contains('ws-open')) return;           /* 예배 보기 창이 열려 있으면 건드리지 않는다 */
+      var now = sig(); if (now === last) return; last = now;
+      if (now === '|') { location.reload(); return; }                    /* 예배가 다 끝났으면 원래 첫 화면으로 */
+      clearInterval(watchTm); watchTm = 0; var el = $('heroWorship'); if (el) el.remove(); heroSlide();
+    }, 30000);
   }
   function mount(rot, list) {
     var d = document.createElement('div'); d.className = 'hero-slide is-active hero-worship'; d.id = 'heroWorship';
-    d.innerHTML = '<p class="hw-eyebrow">TODAY’S WORSHIP</p><h1 class="hero-title">오늘의 예배</h1>' +
-      '<p class="hero-sub hw-date">' + esc(today.getUTCMonth() + 1) + '월 ' + esc(today.getUTCDate()) + '일 (' + DOWK[dow] + ') · ' + esc(list.map(function (s) { return s.time; }).join(' / ')) + '</p>' +
-      '<div class="hw-btns">' + list.map(function (s) { return '<button type="button" class="hero-cta hw-btn" data-kind="' + s.kind + '"><b>' + esc(s.label) + '</b><small>' + esc(s.sub || s.time) + '</small></button>'; }).join('') + '</div>' +
+    var sp = list.length === 1 && list[0].kind === 'sunday' ? list[0] : null;   /* 주일: 'N부 예배가 진행 중입니다' + 'N부 예배 참여하기' */
+    d.innerHTML = '<p class="hw-eyebrow">' + (sp ? 'THE LORD’S DAY' : 'TODAY’S WORSHIP') + '</p><h1 class="hero-title">' + (sp ? sp.part + '부 예배가 진행 중입니다' : '오늘의 예배') + '</h1>' +
+      '<p class="hero-sub hw-date">' + esc(today.getUTCMonth() + 1) + '월 ' + esc(today.getUTCDate()) + '일 (' + DOWK[dow] + ') · ' + esc(list.map(function (s) { return (s.kind === 'sunday' ? s.label + ' ' : '') + s.time; }).join(' / ')) + '</p>' +
+      '<div class="hw-btns">' + list.map(function (s) { return '<button type="button" class="hero-cta hw-btn" data-kind="' + s.kind + '" data-part="' + (s.part || '') + '"><b>' + esc(s.kind === 'sunday' ? s.part + '부 예배 참여하기' : s.label) + '</b><small>' + esc(s.sub || s.time) + '</small></button>'; }).join('') + '</div>' +
       '<p class="hw-note">정회원 로그인 후 순서대로 볼 수 있습니다</p>';
     /* 예배가 있을 때는 히어로에 예배만 — 다른 슬라이드·말씀 구절·점 표시를 뺀다 (슬라이드가 하나면 main.js 회전기는 돌지 않는다) */
     [].forEach.call(rot.querySelectorAll('.hero-slide'), function (el) { el.remove(); });
@@ -210,15 +239,16 @@
     var hero = rot.closest('.hero') || document.body;
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
-    d.addEventListener('click', function (e) { var b = e.target.closest('.hw-btn'); if (b) openGate(b.dataset.kind); });
+    d.addEventListener('click', function (e) { var b = e.target.closest('.hw-btn'); if (!b) return; if (b.dataset.kind === 'sunday' && b.dataset.part) markJoined(b.dataset.part); openGate(b.dataset.kind); });
   }
 
   /* ── 예배 전 안내 슬라이드 — 시간이 되면(예배 10분 전) 스스로 '오늘의 예배'로 바뀐다
-       · 주일: 오전 6시부터 '오늘은 주일입니다', 1시간 전부터 '곧 예배가 시작됩니다' + 남은 시간
+       · 주일 1부: 오전 6시부터 '오늘은 주일입니다', 1시간 전부터 '곧 1부 예배가 시작됩니다' + 남은 시간
+       · 주일 2부: 10:30부터 '곧 2부 예배가 시작됩니다' + 남은 시간 (1부에 들어간 사람 제외)
        · 수요·새벽: 30분 전부터 '곧 예배가 시작됩니다' + 남은 시간 ── */
   function byKind(k) { for (var i = 0; i < SCHED.length; i++) if (SCHED[i].kind === k) return SCHED[i]; return SCHED[2]; }
   function mountCountdown(rot, sc, preview) {
-    var b = sundayBulletin(), w = sc.kind === 'wed' ? wedInfo() : null, soonSec = sc.kind === 'sunday' ? 3600 : 1800;
+    var b = sundayBulletin(), w = sc.kind === 'wed' ? wedInfo() : null, soonSec = sc.kind === 'sunday' && sc.part === 1 ? 3600 : 1800;   /* 주일 1부는 1시간 전, 그 밖은 30분 전부터 카운트 */
     function pad(n) { return (n < 10 ? '0' : '') + n; }
     var info = sc.kind === 'sunday' ? (b && b.date >= todayStr && b.title ? '«' + esc(b.title) + '»' + (b.scripture ? ' · ' + esc(b.scripture) : '') : '')
              : sc.kind === 'wed' ? (w ? (w.title ? '«' + esc(w.title) + '»' : '') + (w.ref ? (w.title ? ' · ' : '') + esc(w.ref) : '') : '')
@@ -238,12 +268,12 @@
     function tick() {
       var n = kst(), left = sc.from * 60 - (n.getUTCHours() * 3600 + n.getUTCMinutes() * 60 + n.getUTCSeconds());
       if (!preview && (n.getUTCDay() !== startDow || left <= PAD * 60)) {   /* 예배 10분 전 → 오늘의 예배 슬라이드로 */
-        clearInterval(tm); today = kst(); todayStr = ymd(today); dow = today.getUTCDay();
+        clearInterval(tm); refreshClock();
         d.remove(); heroSlide(); return;
       }
       if (left < 0) left = 0;
       var soon = preview || left <= soonSec, box = $('hwCount'), t = $('hwTitle'), note = $('hwNote');
-      if (t) t.textContent = soon ? '곧 예배가 시작됩니다' : '오늘은 주일입니다';
+      if (t) t.textContent = soon ? '곧 ' + (sc.kind === 'sunday' ? sc.part + '부 ' : '') + '예배가 시작됩니다' : '오늘은 주일입니다';
       if (note) note.textContent = soon ? '예배 시작까지 남은 시간 · 예배 10분 전부터 오늘의 예배가 열립니다' : '예배 1시간 전부터 남은 시간을 알려 드립니다';
       if (box) { box.hidden = !soon; if (soon) { var h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; box.innerHTML = (h ? '<span><b>' + h + '</b>시간</span>' : '') + '<span><b>' + pad(m) + '</b>분</span><span><b>' + pad(s) + '</b>초</span>'; } }
     }
