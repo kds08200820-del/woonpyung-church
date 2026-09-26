@@ -60,12 +60,12 @@ var NT = (function(){
   function save(){
     var n = collect();
     if(!n.title){ toast('제목을 적어 주세요'); $('ntTitle').focus(); return Promise.resolve(); }
-    return NOTES.save(n).then(function(saved){ cur = saved; return reload(); }).then(function(){ edit(cur); toast('메모 저장됨'); graphData = null; });
+    return NOTES.save(n).then(function(saved){ cur = saved; return reload(); }).then(function(){ edit(cur); toast('메모 저장됨'); graphData = null; if(window.POP) try{ POP.notify('notes'); }catch(e){} });
   }
   function remove(){
     if(!cur || !cur.id) return;
     if(!confirm('"' + cur.title + '" 메모를 지울까요?')) return;
-    NOTES.remove(cur.id).then(function(){ cur = null; $('ntForm').hidden = true; $('ntEmpty').hidden = false; graphData = null; return reload(); });
+    NOTES.remove(cur.id).then(function(){ cur = null; $('ntForm').hidden = true; $('ntEmpty').hidden = false; graphData = null; if(window.POP) try{ POP.notify('notes'); }catch(e){} return reload(); });
   }
   function newNote(pre){
     pre = pre || {};

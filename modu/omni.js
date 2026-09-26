@@ -145,7 +145,7 @@ var OMNI = (function(){
     NOTES.list(q).then(function(r){
       cb((r || []).slice(0, 40).map(function(n){
         return { t:mark(n.title || '(제목 없음)', q), s:esc(n.ref || '') + (n.theme ? ' · ' + esc(n.theme) : ''), b:snip(n.body || n.text || '', q),
-          go:function(){ APP.showView('notes'); if(window.NT && NT.openNote) NT.openNote(n.id, n.title); } };
+          go:function(){ if(APP.openNotes) APP.openNotes({ nid:n.id, title:n.title }); else { APP.showView('notes'); if(window.NT && NT.openNote) NT.openNote(n.id, n.title); } } };
       }));
     }, function(){ cb([]); });
   }

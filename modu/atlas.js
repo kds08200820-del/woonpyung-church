@@ -112,6 +112,7 @@ var ATLAS = (function(){
     open(list[0], { bi:bi, ci:ci, vi:vi });
   }
   function open(m, from){
+    if(ruler) rulerOff(false);                    /* 다른 지도를 열면 거리재기는 끈다 (보기는 새 지도에 맞추므로 되돌리지 않음) */
     meas = { a:null, b:null }; var _me = $('atMeas'); if(_me) _me.hidden = true;
     opener = document.activeElement;
     cur = m; cur.from = from || null; focusId = null; hover = null;
@@ -188,6 +189,7 @@ var ATLAS = (function(){
   }
   function close(){
     if($('atlasModal').hidden) return; showDist(null);
+    if(ruler) rulerOff(false);
     if(window.JER3DV) JER3DV.hide(); if(window.TERRAIN3D && atlas3dOn){ TERRAIN3D.hide(); atlas3dOn = false; }
     $('atlasModal').hidden = true;
     if(opener && opener.focus) try{ opener.focus(); }catch(e){}
@@ -239,7 +241,7 @@ var ATLAS = (function(){
       g.drawImage(img, tl.x, tl.y, br.x - tl.x, br.y - tl.y);
     }
     labelBoxes = [];
-    drawRivers(); drawRegions(); drawWaters(); drawRoutes(); drawPlaces(); drawMarks(); drawMeasure(); drawScale();
+    drawRivers(); drawRegions(); drawWaters(); drawRoutes(); drawPlaces(); drawMarks(); drawMeasure(); drawRuler(); drawScale();
   }
   /* ── 예루살렘 시가지 도면: 언덕·골짜기·물·성벽·길 ── */
   function pathOf(pts){ g.beginPath(); pts.forEach(function(p, i){ var s = toXY(p[0], p[1]); i ? g.lineTo(s.x, s.y) : g.moveTo(s.x, s.y); }); }
@@ -472,7 +474,11 @@ var ATLAS = (function(){
     (cur.places || []).forEach(function(id){ var p = P(id); if(!p || p[4] === 'p') return; var s = pj(p[0], p[1]); if(!s) return; var d = (s.x - cx) * (s.x - cx) + (s.y - cy + 14) * (s.y - cy + 14); if(d < bd){ bd = d; best = id; } });
     return best;
   }
-  function onDown(e){ if(e.button !== 0) return; var m = pos(e); drag = { x:m.x, y:m.y, lat:view.lat, lon:view.lon, moved:false }; cv.style.cursor = 'grabbing'; }
+  function onDown(e){
+    if(e.button !== 0) return; var m = pos(e);
+    if(ruler && ruler.mode === 'free'){ var ll0 = fromXY(m.x, m.y); ruler.drawing = { pts:[[ll0.lat, ll0.lon]], sx:m.x, sy:m.y, lx:m.x, ly:m.y, moved:false }; return; }   /* 자유선: 끌면 판을 옮기지 않고 선을 그린다 */
+    drag = { x:m.x, y:m.y, lat:view.lat, lon:view.lon, moved:false }; cv.style.cursor = 'grabbing';
+  }
   /* ── 선 거리: 경로·성벽·물길에 마우스를 대면 실제 위경도로 잰 거리(대원거리)를 보인다 ── */
   function km(a, b){ var r = Math.PI / 180, dl = (b[0] - a[0]) * r, dn = (b[1] - a[1]) * r, s = Math.pow(Math.sin(dl / 2), 2) + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.pow(Math.sin(dn / 2), 2); return 2 * 6371.0088 * Math.asin(Math.min(1, Math.sqrt(s))); }
   var WALLN = { david:'다윗 성 성벽', solomon:'솔로몬 시대 성벽', hezekiah:'히스기야 성벽', first:'첫째 성벽', herod_temple:'헤롯 성전 기단', square:'성전 기단(정방형)', second:'둘째 성벽', third:'셋째 성벽(아그립바)' };
@@ -545,17 +551,21 @@ var ATLAS = (function(){
   }
   function onMove(e){
     var m = pos(e);
-    if(!drag){ var ll = fromXY(m.x, m.y); showDist(pick(m.x, m.y) ? null : lineHit(ll.lat, ll.lon, 8 / view.k * 111.32), e.clientX, e.clientY); } else showDist(null);
+    if(ruler && ruler.drawing){ rulerFreeMove(m); return; }
+    if(!drag && !ruler){ var ll = fromXY(m.x, m.y); showDist(pick(m.x, m.y) ? null : lineHit(ll.lat, ll.lon, 8 / view.k * 111.32), e.clientX, e.clientY); } else showDist(null);
     if(drag){
       var dx = m.x - drag.x, dy = m.y - drag.y; if(Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
       view.lon = drag.lon - dx / (view.k * cosf()); view.lat = drag.lat + dy / view.k; draw(); return;
     }
-    var h = pick(m.x, m.y); if(h !== hover){ hover = h; cv.style.cursor = h ? 'pointer' : 'grab'; draw(); }
+    var h = pick(m.x, m.y); if(h !== hover){ hover = h; cv.style.cursor = ruler ? 'crosshair' : (h ? 'pointer' : 'grab'); draw(); }
   }
   function onUp(e){
-    if(!drag) return; var was = drag; drag = null; cv.style.cursor = hover ? 'pointer' : 'grab';
+    if(ruler && ruler.drawing){ rulerFreeUp(pos(e)); return; }
+    if(!drag) return; var was = drag; drag = null; cv.style.cursor = ruler ? 'crosshair' : (hover ? 'pointer' : 'grab');
     if(was.moved) return;
-    var m = pos(e), id = pick(m.x, m.y);
+    var m = pos(e);
+    if(ruler){ rulerClick(m); return; }                /* 직선 모드: 움직이지 않고 뗀 것이 '누름' */
+    var id = pick(m.x, m.y);
     if(id){ focusId = id; paintSide(); draw(); notePlace(id); }
   }
   function onWheel(e){
@@ -623,6 +633,146 @@ var ATLAS = (function(){
     paintSide();
   }
 
+  /* ── 거리재기(자): 머리의 [거리재기] 단추로 켜고 끈다. 직선(점을 이어 감)·자유선(끌어서 그림) 두 모드,
+     점은 위경도로 두고 그릴 때마다 toXY 로 투영한다. 켤 때 보기·3D 를 기억해 두고 끌 때 되돌린다 ── */
+  var ruler = null;   /* { mode:'line'|'free', paths:[[ [lat,lon,이름?], … ], …], open:열린 직선이 있나, drawing:자유선 그리는 중, saved:{lat,lon,k,v3d} } */
+  var RCOL = '#d9480f', RHALO = 'rgba(255,255,255,.9)';
+  function rulerBar(){
+    var el = $('atRulebar');
+    if(!el){
+      el = document.createElement('div'); el.id = 'atRulebar'; el.className = 'at-rulebar'; el.hidden = true;
+      el.innerHTML = '<span class="seg"><button type="button" data-mode="line" title="점을 눌러 이어 갑니다">직선</button><button type="button" data-mode="free" title="끌어서 자유롭게 그립니다">자유선</button></span>' +
+        '<span class="tot">전체<b id="atRulerTot">0 m</b></span><span class="hint" id="atRulerHint"></span>';
+      el.onclick = function(e){ var b = e.target.closest('button[data-mode]'); if(b && ruler){ rulerFinish(); ruler.mode = b.dataset.mode; rulerPaint(); } };
+      el.addEventListener('mousedown', function(e){ e.stopPropagation(); });   /* 막대 누름이 지도까지 가지 않게 */
+      cv.parentElement.appendChild(el);
+    }
+    return el;
+  }
+  function rulerOn(){
+    if(ruler || !cur) return;
+    ruler = { mode:'line', paths:[], open:false, drawing:null, saved:{ lat:view.lat, lon:view.lon, k:view.k, v3d:view3dPref } };
+    meas = { a:null, b:null }; var me = $('atMeas'); if(me) me.hidden = true; mark3d(); showDist(null);
+    if(view3dPref){ view3dPref = false; setView3d(false, cur); }     /* 재는 동안만 평면도 — 사용자의 3D 선호는 saved 에 두었다가 되돌린다 */
+    hover = null; cv.style.cursor = 'crosshair';
+    var b = $('atRulerBtn'); b.classList.add('on'); b.setAttribute('aria-pressed', 'true');
+    rulerBar().hidden = false; rulerPaint(); draw();
+  }
+  function rulerOff(restore){
+    if(!ruler) return;
+    var sv = ruler.saved; ruler = null;
+    var bar = $('atRulebar'); if(bar) bar.hidden = true;
+    var b = $('atRulerBtn'); b.classList.remove('on'); b.setAttribute('aria-pressed', 'false');
+    cv.style.cursor = 'grab';
+    view3dPref = sv.v3d;
+    if(restore && cur){ view.lat = sv.lat; view.lon = sv.lon; view.k = sv.k; setView3d(view3dPref, cur); draw(); }
+  }
+  function rulerLen(pts){ var s = 0; for(var i = 1; i < pts.length; i++) s += km(pts[i - 1], pts[i]); return s; }
+  function rulerTotal(){ var s = 0; ruler.paths.forEach(function(p){ s += rulerLen(p); }); if(ruler.drawing) s += rulerLen(ruler.drawing.pts); return s; }
+  function rulerPaint(){
+    if(!ruler) return;
+    var bar = rulerBar();
+    [].forEach.call(bar.querySelectorAll('button[data-mode]'), function(b){ b.classList.toggle('on', b.dataset.mode === ruler.mode); });
+    $('atRulerTot').textContent = fmtKm(rulerTotal());
+    var h = ruler.mode === 'free'
+      ? '끌어서 선을 그립니다 · 선을 누르면 그 선을 지움 · 빈 곳을 누르면 모두 지움 · Esc 로 끔'
+      : ruler.open ? '누를 때마다 점을 더합니다 (지명 위는 그 자리에 붙음) · 같은 자리 두 번 누름·Enter·오른쪽 단추로 마침'
+      : ruler.paths.length ? '선을 누르면 그 구간을 지움 · 점을 누르면 그 점을 지움 · 빈 곳을 누르면 모두 지움' : '지도를 눌러 첫 점을 찍으세요 · 끌면 지도가 움직입니다';
+    $('atRulerHint').textContent = h;
+  }
+  /* 화면 좌표로 점·구간 맞히기 */
+  function rulerPtHit(x, y){
+    var best = null, bd = 8 * 8;
+    ruler.paths.forEach(function(pts, pi){ if(pts.free) return; pts.forEach(function(p, i){ var s = toXY(p[0], p[1]), d = (s.x - x) * (s.x - x) + (s.y - y) * (s.y - y); if(d < bd){ bd = d; best = { pi:pi, i:i }; } }); });
+    return best;
+  }
+  function rulerSegHit(x, y){
+    var best = null, bd = 6;
+    ruler.paths.forEach(function(pts, pi){
+      for(var i = 1; i < pts.length; i++){
+        var a = toXY(pts[i - 1][0], pts[i - 1][1]), b = toXY(pts[i][0], pts[i][1]), dx = b.x - a.x, dy = b.y - a.y, ll = dx * dx + dy * dy;
+        var t = ll ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / ll)) : 0;
+        var d = Math.hypot(x - a.x - t * dx, y - a.y - t * dy);
+        if(d <= bd){ bd = d; best = { pi:pi, si:i - 1 }; }
+      }
+    });
+    return best;
+  }
+  function rulerFinish(){
+    if(!ruler) return;
+    if(ruler.drawing) rulerFreeUp(null);
+    if(ruler.open){ ruler.open = false; var last = ruler.paths[ruler.paths.length - 1]; if(last && last.length < 2) ruler.paths.pop(); }
+    rulerPaint(); draw();
+  }
+  /* 직선 모드의 '누름' */
+  function rulerClick(m){
+    var ll = fromXY(m.x, m.y), pt = [ll.lat, ll.lon], id = pick(m.x, m.y), p = id && P(id);
+    if(p) pt = [p[0], p[1], p[2]];
+    if(ruler.open){
+      var cur0 = ruler.paths[ruler.paths.length - 1], lp = cur0[cur0.length - 1], ls = toXY(lp[0], lp[1]);
+      if(Math.hypot(ls.x - m.x, ls.y - m.y) < 4){ rulerFinish(); return; }   /* 같은 자리 다시 누름(두 번 누르기) = 마침 */
+      cur0.push(pt);
+    } else {
+      var ph = rulerPtHit(m.x, m.y);
+      if(ph){ var pts = ruler.paths[ph.pi]; pts.splice(ph.i, 1); if(pts.length < 2) ruler.paths.splice(ph.pi, 1); }
+      else {
+        var sh = rulerSegHit(m.x, m.y);
+        if(sh){                                        /* 구간 하나를 빼면 그 자리에서 두 선으로 갈라진다 */
+          var src = ruler.paths[sh.pi], a = src.slice(0, sh.si + 1), b = src.slice(sh.si + 1), rep = [];
+          if(a.length > 1) rep.push(a); if(b.length > 1) rep.push(b);
+          ruler.paths.splice.apply(ruler.paths, [sh.pi, 1].concat(rep));
+        }
+        else if(ruler.paths.length){ ruler.paths = []; }   /* 빈 곳 = 모두 지움 */
+        else { ruler.paths.push([pt]); ruler.open = true; }
+      }
+    }
+    rulerPaint(); draw();
+  }
+  /* 자유선 모드: 끄는 동안 4px 마다 점을 더한다 */
+  function rulerFreeMove(m){
+    var d = ruler.drawing;
+    if(Math.hypot(m.x - d.lx, m.y - d.ly) < 4) return;
+    if(Math.hypot(m.x - d.sx, m.y - d.sy) > 4) d.moved = true;
+    var ll = fromXY(m.x, m.y); d.pts.push([ll.lat, ll.lon]); d.lx = m.x; d.ly = m.y;
+    $('atRulerTot').textContent = fmtKm(rulerTotal()); draw();
+  }
+  function rulerFreeUp(m){
+    var d = ruler.drawing; ruler.drawing = null;
+    if(d.moved && d.pts.length > 1){ d.pts.free = true; ruler.paths.push(d.pts); }
+    else if(m){                                        /* 움직이지 않고 뗌 = 누름: 선 위면 그 선만, 빈 곳이면 모두 지움 */
+      var sh = rulerSegHit(m.x, m.y);
+      if(sh) ruler.paths.splice(sh.pi, 1); else if(ruler.paths.length) ruler.paths = [];
+    }
+    rulerPaint(); draw();
+  }
+  function drawRuler(){
+    if(!ruler) return;
+    var all = ruler.paths.slice(); if(ruler.drawing) all.push(ruler.drawing.pts);
+    g.lineCap = 'round'; g.lineJoin = 'round'; g.setLineDash([]);
+    all.forEach(function(pts){
+      var sp = pts.map(function(p){ return toXY(p[0], p[1]); }), free = !!pts.free || pts === (ruler.drawing && ruler.drawing.pts);   /* 자유선은 pts.free 표시로 구분 — 모드를 바꿔도 제 모양대로 그린다 */
+      if(sp.length > 1){
+        [[5.5, RHALO], [2.5, RCOL]].forEach(function(st){ g.lineWidth = st[0]; g.strokeStyle = st[1]; g.beginPath(); sp.forEach(function(s, i){ i ? g.lineTo(s.x, s.y) : g.moveTo(s.x, s.y); }); g.stroke(); });
+      }
+      if(free){
+        /* 자유선: 처음·끝 점과 끝에 길이 */
+        [sp[0], sp[sp.length - 1]].forEach(function(s){ g.beginPath(); g.arc(s.x, s.y, 3.5, 0, 6.283); g.fillStyle = RCOL; g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.fill(); g.stroke(); });
+        if(sp.length > 1) haloText(fmtKm(rulerLen(pts)), sp[sp.length - 1].x + 8, sp[sp.length - 1].y - 8, RCOL, 12, 700, 'left');
+      } else {
+        for(var i = 1; i < sp.length; i++){
+          var a = sp[i - 1], b = sp[i], mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, ang = Math.atan2(b.y - a.y, b.x - a.x);
+          var ox = -Math.sin(ang) * 9, oy = Math.cos(ang) * 9; if(oy > 0){ ox = -ox; oy = -oy; }   /* 표지는 늘 구간 위쪽에 */
+          haloText(fmtKm(km(pts[i - 1], pts[i])), mx + ox, my + oy, RCOL, 12, 700, 'center');
+        }
+        sp.forEach(function(s, i){
+          g.beginPath(); g.arc(s.x, s.y, 4, 0, 6.283); g.fillStyle = '#fff'; g.fill(); g.strokeStyle = RCOL; g.lineWidth = 2; g.stroke();
+          if(pts[i][2]) haloText(pts[i][2], s.x + 7, s.y + 9, RCOL, 11, 600, 'left');
+        });
+        if(pts.length > 2 && ruler.paths.indexOf(pts) >= 0) haloText('합계 ' + fmtKm(rulerLen(pts)), sp[sp.length - 1].x + 8, sp[sp.length - 1].y - 10, RCOL, 12, 700, 'left');
+      }
+    });
+    g.textAlign = 'left';
+  }
   /* ── 머리·옆 칸 ── */
   function refLabel(from){ return from ? APP.ref(from.bi, from.ci, from.vi >= 0 ? from.vi : 0).replace(/:\d+$/, from.vi >= 0 ? '' : '') : ''; }
   function paintHead(){
@@ -657,13 +807,22 @@ var ATLAS = (function(){
   function init(){
     cv = $('atCanvas');
     cv.addEventListener('mousedown', onDown); cv.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
-    cv.addEventListener('contextmenu', function(e){ e.preventDefault(); var m = pos(e); measTap(pick(m.x, m.y)); });
+    cv.addEventListener('contextmenu', function(e){ e.preventDefault(); if(ruler){ rulerFinish(); return; } var m = pos(e); measTap(pick(m.x, m.y)); });   /* 거리재기 중엔 오른쪽 단추가 '마침' */
+    $('atRulerBtn').onclick = function(){ if(!cur) return; if(ruler) rulerOff(true); else rulerOn(); };
+    /* Esc: 거리재기만 끈다 (지도 위에 다른 모달이 없을 때) — app.js 의 Esc(지도 닫기)보다 먼저 받는다. Enter: 열린 직선을 마친다 */
+    document.addEventListener('keydown', function(e){
+      if(!ruler || $('atlasModal').hidden) return;
+      var others = [].filter.call(document.querySelectorAll('.modal'), function(x){ return x.id !== 'atlasModal' && !x.hidden && getComputedStyle(x).display !== 'none'; });   /* hidden 속성 없이 CSS 로만 감춘 모달은 뺀다 */
+      if(others.length) return;
+      if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); rulerOff(true); }
+      else if(e.key === 'Enter' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)){ e.preventDefault(); rulerFinish(); }
+    }, true);
     $('atJ3').addEventListener('contextmenu', function(e){ e.preventDefault(); measTap(pick3d(e.clientX, e.clientY)); });
     $('atJ3').addEventListener('mousemove', on3dMove); $('atJ3').addEventListener('mouseleave', function(){ showDist(null); });
     cv.addEventListener('mouseleave', function(){ showDist(null);  if(!drag && hover){ hover = null; draw(); } });
     cv.addEventListener('wheel', onWheel, { passive:false });
-    $('atClose').onclick = close;
-    $('atViewSeg').onclick = function(e){ var b = e.target.closest('button'); if(!b || !cur) return; view3dPref = b.dataset.v === '3d'; setView3d(view3dPref, cur); if(!view3dPref) draw(); };
+    $('atClose').onclick = function(){ if(window.POP && POP.isPop) POP.close(); else close(); };   /* 따로 뜬 창이면 창을 숨긴다 */
+    $('atViewSeg').onclick = function(e){ var b = e.target.closest('button'); if(!b || !cur) return; if(ruler) rulerOff(false); view3dPref = b.dataset.v === '3d'; setView3d(view3dPref, cur); if(!view3dPref) draw(); };
     $('atFavBtn').onclick = toggleFav;
     $('atFavListBtn').onclick = function(){ favMode = !favMode; if(favMode){ indexMode = false; $('atIndexBtn').classList.remove('on'); paintFav(); } else paintSide(); paintStar(); };
     $('atIndexBtn').onclick = function(){ favMode = false; paintStar(); if(indexMode){ indexMode = false; paintSide(); this.classList.remove('on'); } else { indexMode = true; list = allMaps(); paintHead(); paintIndex(); this.classList.add('on'); } };
@@ -671,10 +830,10 @@ var ATLAS = (function(){
     $('atIn').onclick = function(){ view.k = Math.min(6000, view.k * 1.4); draw(); };
     $('atOut').onclick = function(){ view.k = Math.max(8, view.k / 1.4); draw(); };
     $('atPick').onchange = function(){ var m = byId(this.value); if(m) open(m, cur.from); };
-    $('atGoVerse').onclick = function(){ if(cur && cur.from){ close(); APP.openChapter(cur.from.bi, cur.from.ci, cur.from.vi); } };
+    $('atGoVerse').onclick = function(){ if(cur && cur.from){ if(!(window.POP && POP.isPop)) close(); APP.openChapter(cur.from.bi, cur.from.ci, cur.from.vi); } };   /* 팝 창: 지도는 두고 본문 창만 움직인다 */
     var down = false, m = $('atlasModal');
     m.addEventListener('mousedown', function(e){ down = (e.target === m); });
-    m.addEventListener('click', function(e){ if(down && e.target === m) close(); down = false; });
+    m.addEventListener('click', function(e){ if(down && e.target === m && !(window.POP && POP.isPop)) close(); down = false; });
   }
   /* 지도를 열고 그 지점을 반짝인다 (본문의 지명 단어에서) */
   function openAt(m, from, placeId, h){

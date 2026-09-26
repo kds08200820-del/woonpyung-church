@@ -179,11 +179,12 @@ var KG = (function(){
   function onWheel(e){ e.preventDefault(); zoom = Math.max(.35, Math.min(4, zoom * (e.deltaY < 0 ? 1.1 : .91))); }
   function onDbl(e){ var m = pos(e), p = pick(m.x, m.y); if(p) act(p); }
   function act(p){
-    close();
-    if(p.kind === 'note' || p.kind === 'ghost'){ APP.showView('notes'); NT.openNote(p.nid, p.label); }
+    var pw = !!(window.POP && POP.isPop);            /* 따로 뜬 창이면 그래프는 그대로 두고 메모장 창·본문 창을 움직인다 */
+    if(!pw) close();
+    if(p.kind === 'note' || p.kind === 'ghost'){ if(APP.openNotes) APP.openNotes({ nid:p.nid, title:p.label }); else { APP.showView('notes'); NT.openNote(p.nid, p.label); } }
     else if(p.kind === 'hl'){ APP.openChapter(p.bi, p.ci, p.vi); }
-    else if(p.kind === 'tag'){ APP.showView('notes'); NT.searchTag(p.tag); }
-    else if(p.kind === 'cat'){ APP.showView('notes'); NT.setMode('hl'); HL.setFilter(p.hcolor); }
+    else if(p.kind === 'tag'){ if(APP.openNotes) APP.openNotes({ tag:p.tag }); else { APP.showView('notes'); NT.searchTag(p.tag); } }
+    else if(p.kind === 'cat'){ if(APP.openNotes) APP.openNotes({ hl:p.hcolor }); else { APP.showView('notes'); NT.setMode('hl'); HL.setFilter(p.hcolor); } }
   }
 
   /* ── 고르기 → 이웃 켜기 + 오른쪽에 관련 메모 펼치기 ── */
@@ -274,7 +275,7 @@ var KG = (function(){
     cv.addEventListener('mousemove', onMove); cv.addEventListener('mousedown', onDown);
     window.addEventListener('mouseup', onUp); cv.addEventListener('mouseleave', function(){ if(!dragging) hover = null; });
     cv.addEventListener('wheel', onWheel, { passive:false }); cv.addEventListener('dblclick', onDbl);
-    $('kgClose').onclick = close;
+    $('kgClose').onclick = function(){ if(window.POP && POP.isPop) POP.close(); else close(); };   /* 따로 뜬 창이면 창을 숨긴다 */
     $('kgReset').onclick = function(){ rotY = 0; rotX = 0; zoom = baseZoom(); select(null); };
     $('kgShuffle').onclick = function(){ N.forEach(function(p){ p.x += (Math.random() - .5) * 160; p.y += (Math.random() - .5) * 160; }); settled = 0; };
     $('kgReload').onclick = function(){ $('kgStats').textContent = '읽는 중…'; build().then(function(){ paintStats(); select(null); }); };
@@ -284,7 +285,7 @@ var KG = (function(){
       return '<span><i style="background:' + d[0] + '"></i>' + d[1] + '</span>'; }).join('');
     var down = false, m = $('kgModal');
     m.addEventListener('mousedown', function(e){ down = (e.target === m); });
-    m.addEventListener('click', function(e){ if(down && e.target === m) close(); down = false; });
+    m.addEventListener('click', function(e){ if(down && e.target === m && !(window.POP && POP.isPop)) close(); down = false; });
   }
   return { open:open, close:close, init:init, isOpen:function(){ return !$('kgModal').hidden; } };
 })();

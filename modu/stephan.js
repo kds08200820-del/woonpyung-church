@@ -204,6 +204,7 @@ window.STEPH = (function(){
     ensure(bi, function(ok){
       if(APP.st.bi !== bi || APP.st.ci !== ci) return;
       var B = ok && STEPHAN[bi], ch = B && B.w[ci];
+      if(!ok){ APP.toast('스테판 원어 성경 자료를 읽지 못해 일반 본문으로 돌아갑니다'); setOn(false); return; }   /* 자료가 없으면 켜진 채로 두지 않는다 — 체크와 화면이 어긋나지 않게 */
       if(!ch || !ch.length){ r.innerHTML = '<div class="empty">이 장은 스테판 원어 성경 자료에 없습니다.</div>'; return; }
       var ot = bi < 39;   /* 한글 본문은 위의 sv-base(개역개정 등) 줄로만 보인다 — 예전 kor 줄은 같은 글이 두 번 찍혔다 */
       var h = '<div class="readwrap steph' + (ot ? ' ot' : ' nt') + '">';
@@ -249,7 +250,11 @@ window.STEPH = (function(){
     }
     APP.openWord(info);
   }
-  function setOn(v){ on = !!v; save(); $('stephBtn').classList.toggle('on', on); $('stephBtn').setAttribute('aria-pressed', on ? 'true' : 'false'); $('stephBar').hidden = !on; APP.render(); }
+  function setOn(v){
+    on = !!v; save(); $('stephBtn').classList.toggle('on', on); $('stephBtn').setAttribute('aria-pressed', on ? 'true' : 'false'); $('stephBar').hidden = !on;
+    if(typeof syncVersionUI === 'function') syncVersionUI();   /* 함께 볼 성경 목록의 체크도 같이 맞춘다 */
+    APP.render();
+  }
   function init(){
     $('stephBtn').onclick = function(){ setOn(!on); APP.toast(on ? '스테판 원어 성경으로 봅니다 — 위 줄에서 보일 항목을 고르세요' : '일반 본문으로 돌아왔습니다'); };
     $('stephBtn').classList.toggle('on', on);

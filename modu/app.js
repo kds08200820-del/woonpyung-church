@@ -89,7 +89,7 @@ var FONTS = {
 };
 var WIDTHS = { narrow:'860px', normal:'1180px', wide:'1600px' };
 var THEMES = ['light','sepia','dark','navy'];
-var S = (function(){
+function loadSettingsObj(){
   var out = {};
   for(var k in DEFAULTS) out[k] = DEFAULTS[k];
   try{
@@ -104,9 +104,19 @@ var S = (function(){
   if(!(out.bi >= 0 && out.bi < BOOKS.length)) out.bi = 0;
   if(!(out.ci >= 0 && out.ci < BOOKS[out.bi].c)) out.ci = 0;
   return out;
-})();
+}
+var S = loadSettingsObj();
+/* 다른 창(설정 팝 창)이 바꿔 저장한 설정을 다시 읽는다 — 읽던 자리(bi·ci)는 이 창의 것을 지킨다 */
+function reloadSettings(){
+  var n = loadSettingsObj();
+  for(var k in n) if(k !== 'bi' && k !== 'ci') S[k] = n[k];
+}
+function isPopWin(){ return !!(window.POP && POP.isPop); }
 function saveSettings(){
+  /* 팝 창은 본문 창이 읽던 자리를 모르므로 저장된 자리를 그대로 둔다 */
+  if(isPopWin()){ try{ var cur = JSON.parse(localStorage.getItem(SKEY) || '{}'); if(cur.bi !== undefined){ S.bi = cur.bi; S.ci = cur.ci; } }catch(e){} }
   try{ localStorage.setItem(SKEY, JSON.stringify(S)); }catch(e){}
+  if(window.POP) try{ POP.notify('settings'); }catch(e2){}
 }
 function applySettings(){
   var d = document.documentElement;
@@ -209,10 +219,48 @@ function closeViewPop(){
   if(SP.opener && SP.opener.focus && document.body.contains(SP.opener)) try{ SP.opener.focus(); }catch(e){}
   SP.opener = null;
 }
+/* 팝업 창 끌어 옮기기·크기 바꾸기: 머리글(.vhead)의 빈 곳을 잡고 끈다. 위치·크기는 창마다 기억한다(이 실행 동안) */
+var POPBOX = {};
+function popDragInit(){
+  document.querySelectorAll('.view:not(#v-read) > .vhead').forEach(function(h){
+    h.addEventListener('mousedown', function(e){
+      if(e.button !== 0 || !popOpen() || narrowScreen() || isPopWin()) return;
+      if(e.target.closest('button, input, select, textarea, a, label, [contenteditable]')) return;
+      var sec = h.parentElement, r = sec.getBoundingClientRect();
+      sec.style.transform = 'none'; sec.style.left = r.left + 'px'; sec.style.top = r.top + 'px'; sec.style.width = r.width + 'px'; sec.style.height = r.height + 'px';
+      var sx = e.clientX - r.left, sy = e.clientY - r.top;
+      function mv(ev){
+        var x = ev.clientX - sx, y = ev.clientY - sy;
+        x = Math.max(-r.width + 120, Math.min(window.innerWidth - 120, x));         /* 머리글 한 조각은 늘 화면 안에 남긴다 */
+        y = Math.max(0, Math.min(window.innerHeight - 40, y));
+        sec.style.left = x + 'px'; sec.style.top = y + 'px';
+      }
+      function up(){ document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.classList.remove('spop-drag'); POPBOX[sec.id] = { left:sec.style.left, top:sec.style.top, width:sec.style.width, height:sec.style.height }; }
+      document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+      document.body.classList.add('spop-drag'); e.preventDefault();
+    });
+    h.title = h.title || '';
+  });
+  /* 모서리 크기 조절(CSS resize)로 바뀐 크기도 기억한다 */
+  if(window.ResizeObserver){
+    var ro = new ResizeObserver(function(es){ es.forEach(function(en){ var sec = en.target; if(sec.classList.contains('on') && popOpen() && sec.style.width) POPBOX[sec.id] = { left:sec.style.left, top:sec.style.top, width:sec.style.width, height:sec.style.height }; }); });
+    document.querySelectorAll('.view:not(#v-read)').forEach(function(v){ ro.observe(v); });
+  }
+}
+function narrowScreen(){ return window.matchMedia('(max-width: 900px)').matches; }
+function popApplyBox(name){
+  var sec = $(VIEWS[name]), b = POPBOX[sec.id];
+  if(b && !narrowScreen()){ sec.style.transform = 'none'; sec.style.left = b.left; sec.style.top = b.top; sec.style.width = b.width; sec.style.height = b.height; }
+  else { sec.style.transform = ''; sec.style.left = ''; sec.style.top = ''; sec.style.width = ''; sec.style.height = ''; }
+}
 function showView(name, isBack){
   if(!VIEWS[name]) name = 'read';
+  /* 데스크탑(POP 다리가 있을 때): 검색·원어 학습·메모장·설정은 따로 뜨는 OS 창으로 연다.
+     팝 창 안에서는 제 이름의 부분만 이 안에서 열고, 다른 이름은 또 다른 팝 창으로 넘긴다. 웹판(POP 없음)은 예전대로 본문 위 팝업 */
+  if(name !== 'read' && window.POP && (!POP.isPop || name !== POP.name)){ POP.open(name, {}); closeMorph(); closeDrops(); return; }
+  if(name === 'read' && isPopWin() && SP.name) return;          /* 팝 창에는 본문이 없다 — 제 부분을 닫지 않는다 */
   if(name === 'read'){ closeViewPop(); $('v-read').classList.add('on'); closeMorph(); closeDrops(); return; }
-  openViewPop(name);
+  openViewPop(name); popApplyBox(name);
   if(name === 'search') setTimeout(function(){ $('q').focus(); $('q').select(); }, 0);
   if(name === 'vocab'){ if(lsMode === 'word') paintVocab(); else paintLessons(); }
   if(name === 'settings') refreshAudioInfo();
@@ -222,6 +270,29 @@ function showView(name, isBack){
 document.querySelectorAll('.rnav[data-view]').forEach(function(b){
   b.onclick = function(){ showView(b.dataset.view); };
 });
+/* 성경 지도·지식 그래프·메모장 열기 — 본문 창(데스크탑)에서는 따로 뜨는 창으로, 그 밖에는 이 화면의 모달로 */
+function popRoute(){ return !!(window.POP && !POP.isPop); }
+function openAtlasFor(bi, ci, vi){ if(popRoute()) POP.open('atlas', { bi:bi, ci:ci, vi:(vi === undefined ? -1 : vi) }); else if(window.ATLAS) ATLAS.openFor(bi, ci, vi); }
+function openAtlasIndex(){ if(popRoute()) POP.open('atlas', { mode:'index' }); else if(window.ATLAS) ATLAS.openIndex(); }
+function openAtlasAt(m, from, placeId, h){
+  if(popRoute()){
+    var a = { map:m.id, place:placeId || '' };
+    if(from){ a.bi = from.bi; a.ci = from.ci; a.vi = (from.vi === undefined ? -1 : from.vi); }
+    if(h){ a.lat = h.lat; a.lon = h.lon; a.pname = h.name || ''; }
+    POP.open('atlas', a);
+  } else if(window.ATLAS) ATLAS.openAt(m, from, placeId, h);
+}
+function openKG(){ if(popRoute()) POP.open('kgraph', {}); else if(window.KG) KG.open(); }
+/* 메모장을 특정 메모·태그·형광펜 분류로 연다 (지식 그래프·명령창에서) — args: { nid, title, tag, hl } */
+function openNotesWith(a){
+  a = a || {};
+  if(window.POP && (!POP.isPop || POP.name !== 'notes')){ POP.open('notes', a); return; }
+  showView('notes');
+  if(!window.NT) return;
+  if(a.nid || a.title) NT.openNote(+a.nid || 0, a.title || '');
+  else if(a.tag) NT.searchTag(a.tag);
+  else if(a.hl){ NT.setMode('hl'); if(window.HL && HL.setFilter) HL.setFilter(a.hl); }
+}
 $('navToggle').onclick = function(){ toggleNav(); };
 function toggleNav(){
   S.showNav = !S.showNav;
@@ -283,6 +354,8 @@ function scrollNavIntoView(){
 
 /* ─────────────── 본문 읽기 ─────────────── */
 function openChapter(bi,ci,vi){
+  /* 팝 창(검색·메모장·지도…)에서 절을 고르면 본문 창이 그 장으로 간다 */
+  if(isPopWin()){ POP.goto(bi, ci, vi); return; }
   st.mode = 'chapter'; st.bi = bi; st.ci = ci; st.vi = (vi === undefined ? -1 : vi);
   S.bi = bi; S.ci = ci; saveSettings();
   render();
@@ -412,7 +485,7 @@ function geoMark(r){
           sp.title = '🗺 지도 보기 — ' + h.name + '\n' + maps.map(function(x){ return '· ' + x.title; }).join('\n') + (arts.length ? '\n📚 해설: ' + arts.map(function(a){ return a.title; }).join(' · ') : '') + '\n(누르면 엽니다)';
           sp.onclick = function(e){
             e.stopPropagation();
-            var go = function(m){ ATLAS.openAt(m, { bi:bi, ci:ci, vi:vi }, h.id, h); };
+            var go = function(m){ openAtlasAt(m, { bi:bi, ci:ci, vi:vi }, h.id, h); };
             if(maps.length === 1 && !arts.length){ go(maps[0]); return; }
             openCMenu(e.clientX, e.clientY, maps.map(function(m){ return ['🗺 ' + m.title, function(){ go(m); }]; }).concat(arts.map(function(a){ return ['📚 ' + a.title, function(){ STUDY.open(a.id); }]; })));
           };
@@ -537,6 +610,7 @@ function buildVerMenu(){
   });
   if(window.STEPH){
     var sl = document.createElement('label');
+    sl.id = 'stephChk';
     sl.innerHTML = '<input type="checkbox"' + (STEPH.active() ? ' checked' : '') + '><span>스테판 원어 성경</span>';
     sl.querySelector('input').onchange = function(){ STEPH.setOn(this.checked); };
     m.appendChild(sl);
@@ -559,6 +633,8 @@ function syncVersionUI(){
     if(cb) cb.checked = on;
     lab.classList.toggle('on', on);
   });
+  /* 스테판 원어 성경 체크는 실제로 켜져 있는지(STEPH.active)와 늘 같게 — 도구 막대 단추로 껐다 켜도 여기 체크가 따라간다 */
+  var sc = $('stephChk'); if(sc && window.STEPH){ var si = sc.querySelector('input'); if(si) si.checked = STEPH.active(); sc.classList.toggle('on', STEPH.active()); }
 }
 
 /* ─────────────── 드롭다운 ─────────────── */
@@ -1092,7 +1168,7 @@ $('q').oninput = function(){ $('qclear').hidden = !$('q').value; };
 $('q').onkeydown = function(e){
   if(e.key === 'Enter') doSearch();
   else if(e.key === 'ArrowDown'){ e.preventDefault(); moveSel(1); }
-  else if(e.key === 'Escape'){ $('q').value = ''; $('qclear').hidden = true; }
+  else if(e.key === 'Escape'){ if(isPopWin() && $('q').value) e.stopPropagation(); $('q').value = ''; $('qclear').hidden = true; }   /* 팝 창: 글이 있으면 지우기만, 비었으면 창 숨기기 */
 };
 ['scope','scopeBook','sver','ci','re','lemmaSearch'].forEach(function(id){
   $(id).onchange = function(){ if($('q').value.trim()) doSearch(); };
@@ -1906,9 +1982,10 @@ function loadVocab(){
 }
 function saveVocab(){
   try{ localStorage.setItem(VKEY, JSON.stringify(vocab)); }catch(e){}
+  if(window.POP) try{ POP.notify('vocab'); }catch(e2){}
   paintVocabCount();
 }
-function saveStudy(){ try{ localStorage.setItem(SKEY2, JSON.stringify(study)); }catch(e){} }
+function saveStudy(){ try{ localStorage.setItem(SKEY2, JSON.stringify(study)); }catch(e){} if(window.POP) try{ POP.notify('vocab'); }catch(e2){} }
 function today(){
   var d = new Date();
   return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
@@ -2594,7 +2671,7 @@ $('reader').addEventListener('contextmenu', function(e){
   var hits = commHits(bi, ci, vi);
   if(hits.length) items.push(['📖 주석 보기' + (hits.length > 1 ? ' (' + hits.length + '종)' : ' — ' + hits[0].work.name), function(){ openComm(bi, ci, vi); }]);
   /* 2 지도 */
-  if(window.ATLAS) items.push(['🗺 지도 보기 — ' + ref(bi,ci,vi), function(){ ATLAS.openFor(bi, ci, vi); }]);
+  if(window.ATLAS) items.push(['🗺 지도 보기 — ' + ref(bi,ci,vi), function(){ openAtlasFor(bi, ci, vi); }]);
   /* 2-1 성경지도 학습 — 이 절·장을 다루는 해설 */
   if(window.STUDY) STUDY.forVerse(bi, ci, vi).slice(0, 3).forEach(function(a){ items.push(['📚 성경지도 학습 — ' + a.title, function(){ STUDY.open(a.id); }]); });
   /* 3 검색 (고른 낱말·번역) */
@@ -2644,9 +2721,10 @@ document.addEventListener('keydown', function(e){
   if(mod && (e.key === '-' || e.key === '_')){ e.preventDefault(); bumpFont(-1); return; }
   if(mod && e.code === 'Space'){ if(PL.list.length){ e.preventDefault(); togglePlay(); } return; }
   if(e.key === 'Escape'){
-    if(searchPopOpen()){ closeSearchPop(); return; }
-    if(window.KG && KG.isOpen()){ KG.close(); return; }
-    if(window.ATLAS && ATLAS.isOpen()){ ATLAS.close(); return; }
+    var pw = isPopWin();                       /* 팝 창: 제 부분(검색·지도·그래프…)은 닫지 않고 안쪽 모달만 닫고, 아무것도 없으면 창을 숨긴다 */
+    if(!pw && searchPopOpen()){ closeSearchPop(); return; }
+    if(!pw && window.KG && KG.isOpen()){ KG.close(); return; }
+    if(!pw && window.ATLAS && ATLAS.isOpen()){ ATLAS.close(); return; }
     if(!$('ciModal').hidden){ closeCommIndex(); return; }
     if(!$('trModal').hidden){ closeTranslate(); return; }
     if(!$('findModal').hidden){ closeFindPop(); return; }
@@ -2656,10 +2734,11 @@ document.addEventListener('keydown', function(e){
     if(!$('introModal').hidden){ closeIntro(); return; }
     if(!$('askModal').hidden){ closeAsk(); return; }
     if(!$('wordModal').hidden){ closeWordModal(); return; }
+    if(pw){ if(CMENU){ closeCMenu(); return; } closeDrops(); closeMorph(); POP.close(); return; }
     closeCMenu(); closeDrops(); closeMorph(); hideWordPop(); return;
   }
   if(typing) return;
-  if(st.view === 'read'){
+  if(st.view === 'read' && !isPopWin()){          /* 팝 창(지도·그래프)에는 본문이 없다 — 화살표로 본문 창을 움직이지 않는다 */
     if(e.key === 'ArrowLeft')  step(-1);
     else if(e.key === 'ArrowRight') step(1);
   }
@@ -3143,7 +3222,7 @@ function openReading(groups, i){
 /* ── 원어 학습 — 듣고 따라 읽을 구절 모음 ── */
 var lessons = [], lsMode = 'passage';
 function loadLessons(){ try{ lessons = JSON.parse(localStorage.getItem(LKEY) || '[]'); }catch(e){ lessons = []; } if(!Array.isArray(lessons)) lessons = []; }
-function saveLessons(){ try{ localStorage.setItem(LKEY, JSON.stringify(lessons)); }catch(e){} }
+function saveLessons(){ try{ localStorage.setItem(LKEY, JSON.stringify(lessons)); }catch(e){} if(window.POP) try{ POP.notify('vocab'); }catch(e2){} }
 function lessonId(list){ var a = list[0], b = list[list.length-1]; return a.vid + ':' + a.bi + ':' + a.ci + ':' + a.vi + '-' + b.bi + ':' + b.ci + ':' + b.vi; }
 function addLessonList(list){
   if(!list || !list.length) return;
@@ -3304,8 +3383,79 @@ showView('read');
 document.title = APP_TITLE + ' ' + APP_VERSION + ' · ' + vinfo(S.base).name;
 $('boot').remove();
 
-[].forEach.call(document.querySelectorAll('.vpClose'), function(b){ b.onclick = closeViewPop; });
+[].forEach.call(document.querySelectorAll('.vpClose'), function(b){ b.onclick = function(){ if(isPopWin()) POP.close(); else closeViewPop(); }; });
+popDragInit();
 document.addEventListener('mousedown', function(e){ if(popOpen() && e.target === $('spopBack')) closeViewPop(); });
+
+/* ═══════════ 따로 뜨는 창(데스크탑) ═══════════
+   본문 창: 팝 창이 고른 절로 가고(nav:goto), 다른 창이 바꾼 설정·메모·단어장을 받아 들인다.
+   팝 창(?pop=이름): 요청받은 부분만 창 가득 보여 준다 (body.popwin). */
+if(window.POP){
+  if(!POP.isPop){
+    POP.onGoto(function(a){
+      if(!a || !(a.bi >= 0)) return;
+      var vi = (a.vi === undefined || a.vi === null || a.vi === '' || +a.vi < 0) ? undefined : +a.vi;
+      openChapter(+a.bi, +a.ci || 0, vi);
+    });
+  }
+  var popNotifyT = 0;
+  POP.onNotify(function(kind){
+    try{
+      if(kind === 'settings'){                    /* 글자 크기 슬라이더처럼 잇달아 오면 한 번만 */
+        clearTimeout(popNotifyT);
+        popNotifyT = setTimeout(function(){
+          reloadSettings(); applySettings(); syncSettingsUI(); syncVersionUI();
+          if(typeof buildExtraChecks === 'function') buildExtraChecks();
+          if(!POP.isPop) render();
+        }, 150);
+      }
+      if(kind === 'notes'){
+        if(window.NT && st.view === 'notes') NT.show();
+        if(window.KG && KG.isOpen()){ var kr = $('kgReload'); if(kr) kr.click(); }
+      }
+      if(kind === 'vocab'){
+        loadVocab(); loadLessons();
+        if(st.view === 'vocab'){ if(lsMode === 'word') paintVocab(); else paintLessons(); }
+      }
+    }catch(e){}
+  });
+}
+if(isPopWin()){
+  document.body.classList.add('popwin'); document.body.setAttribute('data-popwin', POP.name);
+  var POP_LABEL = { search:'검색', notes:'메모장', vocab:'원어 학습', settings:'설정', atlas:'성경 지도', kgraph:'지식 그래프' };
+  var popShow = function(a){
+    a = a || {}; var n = POP.name;
+    var bi = a.bi === undefined || a.bi === '' ? -1 : +a.bi, ci = +a.ci || 0, vi = (a.vi === undefined || a.vi === '' ? -1 : +a.vi);
+    var from = bi >= 0 ? { bi:bi, ci:ci, vi:vi } : null;
+    if(n === 'atlas'){
+      if(!window.ATLAS) return;
+      if(a.mode === 'index') ATLAS.openIndex();
+      else if(a.map && ATLAS.byId(a.map)) ATLAS.openAt(ATLAS.byId(a.map), from, a.place || null, (a.lat !== undefined && a.lat !== '') ? { lat:+a.lat, lon:+a.lon, name:a.pname || '' } : null);
+      else if(from) ATLAS.openFor(bi, ci, vi);
+      else ATLAS.openIndex();
+    } else if(n === 'kgraph'){ if(window.KG) KG.open(); }
+    else if(VIEWS[n]){
+      showView(n);
+      if(n === 'vocab' && a.ls){
+        setLsMode(a.ls);
+        if(a.tab){ vbTab = a.tab; $('vbTabs').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.k === a.tab); }); stopQuiz(); paintVocab(); }
+      }
+      if(n === 'notes' && window.NT){
+        if(a.nid || a.title) NT.openNote(+a.nid || 0, a.title || '');
+        else if(a.tag) NT.searchTag(a.tag);
+        else if(a.hl){ NT.setMode('hl'); if(window.HL && HL.setFilter) HL.setFilter(a.hl); }
+      }
+      if(n === 'settings' && a.about) setTimeout(function(){ var el = $('aboutList'); if(el) el.scrollIntoView({ block:'center' }); }, 30);
+    }
+    document.title = (POP_LABEL[n] || n) + ' — ' + APP_TITLE;
+    try{ POP.setTitle(document.title); }catch(e){}
+  };
+  /* atlas.js·kgraph.js·notes.js 는 app.js 뒤에 읽히므로 모두 읽힌 뒤에 연다 */
+  /* setTimeout(0) 은 뒤따르는 <script>(atlas.js 등)가 읽히기 전에 돌 수 있어 창이 비어 있었다 — 모든 스크립트가 끝난 load 뒤에 연다 */
+  function popFirst(){ try{ popShow(POP.args); }catch(e){ console.error('팝 창 열기 실패', e); } }
+  if(document.readyState === 'complete') setTimeout(popFirst, 0); else window.addEventListener('load', function(){ setTimeout(popFirst, 0); });
+  POP.onArgs(function(a){ try{ popShow(a); }catch(e){ console.error('팝 창 다시 열기 실패', e); } });
+}
 /* notes.js·license.js 가 쓰는 것들 (app.js 는 닫힌 함수 안이라 밖으로 내보낸다) */
 window.MODU_X = { S:S, toggleNav:toggleNav, saveSettings:saveSettings, applySettings:applySettings, infoFromEvent:infoFromEvent, fillWordBox:fillWordBox, anyPopupOpen:anyPopupOpen, goBackToRead:goBackToRead, step:step, verses:verses, parseRefList:parseRefList, bumpFont:bumpFont, cycleTheme:cycleTheme, openComm:openComm };
 window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:showView, openChapter:openChapter,
@@ -3317,6 +3467,7 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
                /* 기본 성경 + 함께 볼 성경의 이 절 본문 [[이름, 글, 원어?]] — 스테판 원어 보기의 대역 줄 */
                verseTexts:function(bi, ci, vi){ return [S.base].concat(S.extra.filter(function(x){ return x !== S.base; })).map(function(id){ var v = vinfo(id); if(!v || !versionsFor(bi).some(function(x){ return x.id === id; })) return null; var t = verses(id, bi, ci)[vi]; if(!t) return null; return [v.name, id === 'wlc' || id === 'grk' ? t : flat(split(t).text), id]; }).filter(Boolean); },
                verseText:function(bi, ci, vi){ var t = verses(S.base, bi, ci)[vi]; return t ? flat(split(t).text) : ''; } };
+window.APP.openNotes = openNotesWith;   /* 지식 그래프·명령창에서 메모장을 특정 메모·태그로 연다 (팝 창이면 따로 뜨는 창으로) */
 
 /* ═══════════════ 위쪽 메뉴 · 아이콘 줄 (MyBible 식 구성) ═══════════════ */
 (function(){
@@ -3338,12 +3489,13 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
     saveSettings(); syncVersionUI(); render();
   }
   function openWordStudy(tab){
+    if(window.POP && !POP.isPop){ POP.open('vocab', { ls:'word', tab:tab }); return; }
     showView('vocab'); setLsMode('word');
     vbTab = tab; $('vbTabs').querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.dataset.k === tab); });
     stopQuiz(); paintVocab();
   }
   function openDrop(btnId){ inRead(); setTimeout(function(){ $(btnId).click(); }, 0); }
-  function aboutPage(){ showView('settings'); setTimeout(function(){ var a = $('aboutList'); if(a) a.scrollIntoView({ block:'center' }); }, 30); }
+  function aboutPage(){ if(window.POP && !POP.isPop){ POP.open('settings', { about:1 }); return; } showView('settings'); setTimeout(function(){ var a = $('aboutList'); if(a) a.scrollIntoView({ block:'center' }); }, 30); }
 
   /* 메뉴 구성: [이름, 단축키 글자, 항목들] · 항목 = { t, k, fn, on, off } 또는 '-' */
   var MENUS = [
@@ -3390,7 +3542,7 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
       '-',
       { t:'오늘 복습 시작 (퀴즈)', fn:function(){ openWordStudy(vbTab); setTimeout(function(){ $('vbQuiz').click(); }, 50); } },
       '-',
-      { t:'지식 그래프', fn:function(){ KG.open(); } }
+      { t:'지식 그래프', fn:function(){ openKG(); } }
     ]; }],
     ['성경연구', 'R', function(){
       var here = st.mode === 'chapter' && st.bi >= 0, v = here && st.vi >= 0 ? st.vi : 0;
@@ -3399,8 +3551,8 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
       { t:'이 절의 주석 보기' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!hits.length, fn:function(){ openComm(st.bi, st.ci, v); } },
       { t:'주석 목록 — 책별 단락 훑어보기', fn:function(){ openCommIndex(here ? st.bi : 0); } },
       '-',
-      { t:'이 장의 지도 보기', off:!here, fn:function(){ ATLAS.openFor(st.bi, st.ci, v); } },
-      { t:'성경 지도 목록 (개관)', fn:function(){ ATLAS.openIndex(); } },
+      { t:'이 장의 지도 보기', off:!here, fn:function(){ openAtlasFor(st.bi, st.ci, v); } },
+      { t:'성경 지도 목록 (개관)', fn:function(){ openAtlasIndex(); } },
       { t:'성경지도 학습 — 성서 지리·고고학·시대사', fn:function(){ STUDY.open(); } },
       { t:'이 절과 관련된 성경지도 학습' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!(here && window.STUDY && STUDY.forVerse(st.bi, st.ci, v).length), fn:function(){ var a = STUDY.forVerse(st.bi, st.ci, v)[0]; if(a) STUDY.open(a.id); } },
       '-',
@@ -3408,7 +3560,7 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
       { t:'원어 낱말 자세히 보기 안내', fn:function(){ toast('본문의 히브리어·헬라어 낱말에서 오른쪽 단추 → 자세히 보기'); } },
       '-',
       { t:'메모장', fn:function(){ showView('notes'); } },
-      { t:'지식 그래프', fn:function(){ KG.open(); } }
+      { t:'지식 그래프', fn:function(){ openKG(); } }
     ]; }],
     ['보기', 'V', function(){ return [
       { t:'본문', on:st.view === 'read', fn:function(){ showView('read'); } },
@@ -3417,8 +3569,8 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
       { t:'메모장', on:st.view === 'notes', fn:function(){ showView('notes'); } },
       '-',
       { t:'이 책 개관', off:st.bi < 0, fn:function(){ inRead(); $('introBtn').click(); } },
-      { t:'지도 보기 (이 장)', off:st.bi < 0, fn:function(){ ATLAS.openFor(st.bi, st.ci, st.vi >= 0 ? st.vi : 0); } },
-      { t:'성경 지도 목록 (개관)', fn:function(){ ATLAS.openIndex(); } }
+      { t:'지도 보기 (이 장)', off:st.bi < 0, fn:function(){ openAtlasFor(st.bi, st.ci, st.vi >= 0 ? st.vi : 0); } },
+      { t:'성경 지도 목록 (개관)', fn:function(){ openAtlasIndex(); } }
     ]; }],
     ['본문성경', 'B', function(){
       var list = [{ t:'기본 성경: ' + vinfo(S.base).name, off:true }, '-'];
@@ -3545,8 +3697,8 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
     ['search','','문구 찾기','낱말이나 구절(요 3:16)을 성경 전체에서 찾습니다','Ctrl+F',function(){ showView('search'); }],
     ['vocab','','원어 학습','담아 둔 원어 낱말·구절을 복습하고 퀴즈를 풉니다','',function(){ showView('vocab'); }],
     ['notes','','메모장','주석·구절·생각을 적고 [[연결]]과 #태그로 엮습니다','',function(){ showView('notes'); }],
-    ['graph','','지식 그래프','메모·연결·태그·형광펜을 3차원 별자리로 봅니다','',function(){ KG.open(); }],
-    ['map','','성경 지도','모든 지도를 성경 순서로 훑어보며 개관합니다','',function(){ ATLAS.openIndex(); }],
+    ['graph','','지식 그래프','메모·연결·태그·형광펜을 3차원 별자리로 봅니다','',function(){ openKG(); }],
+    ['map','','성경 지도','모든 지도를 성경 순서로 훑어보며 개관합니다','',function(){ openAtlasIndex(); }],
     '|',
     ['intro','','책 개관','이 책의 저자·연대·목적·구조를 봅니다','',function(){ if(st.bi < 0) return toast('먼저 책을 고르세요'); inRead(); $('introBtn').click(); }],
     ['listen','','원어로 듣기','이 장을 히브리어·헬라어 음성으로 들려줍니다','',function(){ if(st.bi < 0) return toast('먼저 책을 고르세요'); inRead(); $('listenBtn').click(); }],

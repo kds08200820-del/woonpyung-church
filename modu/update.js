@@ -64,7 +64,7 @@ var UPD = (function(){
   }
   /* 자동 확인(인증 뒤, 조용히) */
   function autoCheck(){
-    if(!U) return;
+    if(!U || (window.POP && POP.isPop)) return;   /* 따로 뜬 창은 새 판 확인을 하지 않는다 (본문 창이 한다) */
     U.applied().then(function(a){
       if(a && a.version && a.version === a.cur) APP.toast('업데이트를 마쳤습니다 — 지금 ' + a.cur + ' 판입니다');
       else if(a && a.error) APP.toast('업데이트 설치에 실패했습니다: ' + a.error.slice(0, 80));
