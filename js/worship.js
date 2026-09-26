@@ -141,8 +141,12 @@
       '<p class="hero-sub hw-date">' + esc(today.getUTCMonth() + 1) + '월 ' + esc(today.getUTCDate()) + '일 (' + DOWK[dow] + ') · ' + esc(list.map(function (s) { return s.time; }).join(' / ')) + '</p>' +
       '<div class="hw-btns">' + list.map(function (s) { return '<button type="button" class="hero-cta hw-btn" data-kind="' + s.kind + '"><b>' + esc(s.label) + '</b><small>' + esc(s.sub || s.time) + '</small></button>'; }).join('') + '</div>' +
       '<p class="hw-note">정회원 로그인 후 순서대로 볼 수 있습니다</p>';
-    [].forEach.call(rot.querySelectorAll('.hero-slide.is-active'), function (el) { el.classList.remove('is-active'); });
-    rot.insertBefore(d, rot.firstChild);
+    /* 예배가 있을 때는 히어로에 예배만 — 다른 슬라이드·말씀 구절·점 표시를 뺀다 (슬라이드가 하나면 main.js 회전기는 돌지 않는다) */
+    [].forEach.call(rot.querySelectorAll('.hero-slide'), function (el) { el.remove(); });
+    rot.appendChild(d);
+    var hero = rot.closest('.hero') || document.body;
+    ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
+    hero.classList.add('hero-worship-only');
     d.addEventListener('click', function (e) { var b = e.target.closest('.hw-btn'); if (b) openGate(b.dataset.kind); });
   }
 

@@ -2,6 +2,7 @@
    오늘의 예배 — 히어로 슬라이드 + 전체 화면 보기 (js/worship.js)
    ============================================================ */
 /* 히어로 슬라이드 */
+.hero-worship-only .hero-verse, .hero-worship-only .hero-dots, .hero-worship-only .hero-since { display: none !important; }
 .hero-worship .hw-eyebrow { font-size: .78rem; letter-spacing: .3em; color: var(--gold, #c9a961); margin: 0 0 14px; }
 .hero-worship .hw-date { margin-top: 10px !important; font-size: 1rem; opacity: .92; }
 .hw-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 26px; }
