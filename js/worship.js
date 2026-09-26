@@ -290,7 +290,7 @@
       if (left < 0) left = 0;
       var soon = preview || left <= soonSec, box = $('hwCount'), t = $('hwTitle'), note = $('hwNote');
       if (t) t.textContent = soon ? '곧 ' + partName(sc) + '예배가 시작됩니다' : '오늘은 주일입니다';
-      if (note) note.textContent = soon ? '예배 시작까지 남은 시간 · 예배 10분 전부터 오늘의 예배가 열립니다' : '예배 1시간 전부터 남은 시간을 알려 드립니다';
+      if (note) note.textContent = soon ? '예배 시작까지 남은 시간 · 예배 10분 전부터 오늘의 예배가 열립니다' : '';
       if (box) { box.hidden = !soon; if (soon) { var h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; box.innerHTML = (h ? '<span><b>' + h + '</b>시간</span>' : '') + '<span><b>' + pad(m) + '</b>분</span><span><b>' + pad(s) + '</b>초</span>'; } }
     }
     tick(); tm = setInterval(tick, 1000);
