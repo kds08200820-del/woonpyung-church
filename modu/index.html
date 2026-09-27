@@ -553,7 +553,9 @@
         <b id="hyTitle">새찬송가</b>
         <button type="button" class="hy-ib" id="hyClose" title="닫기 (Esc)" aria-label="닫기">×</button>
       </div>
+      <div class="hy-books" id="hyBooks" role="group" aria-label="찬송 책"><button type="button" data-bk="hymn" class="on">새찬송가</button><button type="button" data-bk="joy">기쁨으로 찬양</button></div>
       <input id="hyIn" placeholder="장, 제목을 입력해주세요" autocomplete="off" inputmode="search">
+      <div class="hy-filt" id="hyFilt" hidden><select id="hyKey" aria-label="조"></select><select id="hyTag" aria-label="주제"></select><button type="button" id="hySort" title="번호순 ↔ 가나다순">번호순</button></div>
     </div>
     <div class="hy-tools" id="hyTools" hidden>
       <button class="btn icon" id="hyPrev" title="이전 장 (←)">◀</button>
@@ -793,6 +795,7 @@
 <script src="study.js"></script>
 <script src="compare.js"></script>
 <script src="hymn-data.js"></script>
+<script src="joy-data.js"></script>
 <script src="hymn.js"></script>
 <script src="gyodok-data.js"></script>
 <script src="gyodok.js"></script>
