@@ -1588,6 +1588,7 @@ html:has(body.hy-open),body.hy-open{overflow:hidden;overscroll-behavior:none}
   .hy-body.hy-fitm{overflow-x:hidden;overflow-y:auto;touch-action:pan-y;display:block}
   .hy-body.hy-fitm img.fit{width:100% !important;height:auto;object-fit:initial}
   .hy-viewing #hyIn{display:none}
+  .hy-viewing .hy-filt{display:none}
   .hy-viewing .hy-top{padding-top:4px;padding-bottom:4px}
   .hy-viewing .hy-tools{padding:3px 8px}
   body.hy-open #moTabs{display:none !important}

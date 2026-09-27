@@ -169,7 +169,7 @@ var HYMN = (function(){
     var hx = byNo[no] || {};
     $('hySub').textContent = title(no) + (hx.key ? ' · ' + hx.key + '조' : '') + (hx.tags && hx.tags.length ? ' · ' + hx.tags.join(' ') : '');
     $('hymnModal').classList.add('hy-viewing');
-    $('hyTools').hidden = false; $('hyIn').value = ''; if($('hyBooks')) $('hyBooks').hidden = true; if($('hyFilt')) $('hyFilt').hidden = true;   /* 악보를 볼 때는 악보 자리를 넓게 */ $('hyPop').hidden = true;
+    $('hyTools').hidden = false; $('hyIn').value = ''; if($('hyBooks')) $('hyBooks').hidden = true; if($('hyFilt')) $('hyFilt').hidden = !hasMeta();   /* 악보를 볼 때도 조·주제 거르기는 남긴다 — 고르면 그 목록으로 (2026-09-28) */ $('hyPop').hidden = true;
     $('hyIndex').hidden = true; $('hyRail').hidden = true;
     var img = $('hyImg'), box = $('hyBody');
     img.hidden = true; $('hyWait').hidden = false; $('hyNone').hidden = true;
