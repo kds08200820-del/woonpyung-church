@@ -407,6 +407,22 @@
     }, { passive:true });
   }
 
+  /* ── 성경 본문에서 두 손가락 벌리기·오므리기 = 글자 크기만 (페이지 전체가 커지지 않게) (2026-09-27) ── */
+  if(reader){
+    var fz = null;
+    function fd(ts){ var dx = ts[0].clientX - ts[1].clientX, dy = ts[0].clientY - ts[1].clientY; return Math.sqrt(dx * dx + dy * dy) || 1; }
+    reader.addEventListener('touchstart', function(e){ if(e.touches.length === 2){ fz = { d:fd(e.touches) }; clearLP(); } }, { passive:true });
+    reader.addEventListener('touchmove', function(e){
+      if(!fz || e.touches.length !== 2) return;
+      e.preventDefault();
+      var r = fd(e.touches) / fz.d;
+      if(r > 1.18 && X.bumpFont){ X.bumpFont(1); fz.d = fd(e.touches); }
+      else if(r < 0.85 && X.bumpFont){ X.bumpFont(-1); fz.d = fd(e.touches); }
+    }, { passive:false });
+    reader.addEventListener('touchend', function(e){ if(e.touches.length < 2) fz = null; }, { passive:true });
+    ['gesturestart', 'gesturechange'].forEach(function(n){ reader.addEventListener(n, function(e){ e.preventDefault(); }, { passive:false }); });
+  }
+
   /* ── 길게 누르기 → 오른쪽 단추 메뉴 (iOS 는 contextmenu 를 내지 않는다) ── */
   var lp = null, lpFired = false;
   function clearLP(){ if(lp){ clearTimeout(lp); lp = null; } }

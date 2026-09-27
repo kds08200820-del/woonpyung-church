@@ -129,7 +129,7 @@ var GYODOK_VIEW = (function(){
     if(h) open(+h[1]);
     window.addEventListener('hashchange', function(){ var h = location.hash.match(/^#gyodok=(\d{1,3})$/); if(h) open(+h[1]); });
   }
-  function back(){ if(POPREF && POPREF.isOpen()) POPREF.close(); else if(cur){ $('gdIn').value = ''; showIndex(); } else close(); }
+  function back(){ if(POPREF && POPREF.isOpen()) POPREF.close(); else close(); }
   init();
   return { open:open, close:close, back:back, isOpen:isOpen, show:show, title:title, max:MAX };
 })();

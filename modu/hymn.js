@@ -5,7 +5,7 @@
 /* 좌우로 미는 손짓 — 가로 스크롤이 있는 상자(확대한 악보)는 끝에 닿았을 때만 넘긴다. fn(-1)=다음, fn(1)=이전 */
 APP.swipe = function(el, fn){
   var sx = 0, sy = 0, sl = 0, on = false;
-  el.addEventListener('touchstart', function(e){ if(e.touches.length !== 1){ on = false; return; } on = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY; sl = el.scrollLeft; }, { passive:true });
+  el.addEventListener('touchstart', function(e){ if(e.touches.length !== 1 || e.touches[0].clientX < 28){ on = false; return; } on = true;   /* 왼쪽 가장자리에서 민 것은 '뒤로'(성경으로) — 장 넘기기로 세지 않는다 */ sx = e.touches[0].clientX; sy = e.touches[0].clientY; sl = el.scrollLeft; }, { passive:true });
   el.addEventListener('touchend', function(e){
     if(!on) return; on = false;
     var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
@@ -198,7 +198,7 @@ var HYMN = (function(){
     window.addEventListener('hashchange', function(){ var h = location.hash.match(/^#hymn=(\d{1,3})$/); if(h) open(+h[1]); });
   }
   /* 뒤로 단추: 한 단계씩 — 고르기 팝업 → 악보 → 목록 → 닫기 */
-  function back(){ if(POPREF && POPREF.isOpen()) POPREF.close(); else if(cur){ $('hyIn').value = ''; showIndex(); } else close(); }
+  function back(){ if(POPREF && POPREF.isOpen()) POPREF.close(); else close(); }   /* 한 번에 성경으로 (2026-09-27) */
   init();
   return { open:open, close:close, back:back, isOpen:isOpen, show:show, title:title, src:src, max:MAX };
 })();
