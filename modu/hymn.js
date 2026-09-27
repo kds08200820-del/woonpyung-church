@@ -219,6 +219,18 @@ var HYMN = (function(){
     $('hyCur').onclick = openPop; $('hyListBtn').onclick = openPop;
     $('hyLock').onclick = function(){ setLock(!locked); toast(locked ? '크기를 고정했습니다 — 손가락으로 벌려도 바뀌지 않습니다' : '고정을 풀었습니다 — 두 손가락으로 크기를 바꿀 수 있습니다'); };
     pinch($('hyBody'));
+    /* 웹: Ctrl + 마우스 휠(노트북 터치패드 벌리기도 같은 신호)로 악보만 확대·축소 — 가리키는 곳이 제자리에 (2026-09-27) */
+    $('hyBody').addEventListener('wheel', function(e){
+      if(!e.ctrlKey || !cur) return;
+      e.preventDefault();
+      if(locked) return;
+      var box = $('hyBody'), r = box.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+      var old = zoom, img = $('hyImg'), ir = img.getBoundingClientRect();
+      var px = (box.scrollLeft + mx) / (ir.width || 1), py = (box.scrollTop + my) / (ir.height || 1);
+      setZoom(old * (e.deltaY < 0 ? 1.12 : 1 / 1.12));
+      var nr = img.getBoundingClientRect();
+      box.scrollLeft = px * nr.width - mx; box.scrollTop = py * nr.height - my;
+    }, { passive:false });
     $('hyBody').addEventListener('dblclick', function(e){ if(cur && !locked && e.target.id === 'hyImg') setZoom(zoom === 1 ? 2 : 1); });
     var m = $('hymnModal'), down = false;
     m.addEventListener('mousedown', function(e){ down = (e.target === m); });

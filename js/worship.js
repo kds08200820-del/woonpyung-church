@@ -702,6 +702,15 @@
       box.scrollLeft = px * z - mx; box.scrollTop = py * z - my;
     }, { passive: false });
     box.addEventListener('touchend', function (e) { if (e.touches.length < 2) on = false; }, { passive: true });
+    /* 웹: Ctrl + 마우스 휠로 악보만 확대·축소 (2026-09-27) */
+    box.addEventListener('wheel', function (e) {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      var r = box.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, ir = img.getBoundingClientRect();
+      var px = (box.scrollLeft + mx) / (ir.width || 1), py = (box.scrollTop + my) / (ir.height || 1);
+      z = Math.max(1, Math.min(4, z * (e.deltaY < 0 ? 1.12 : 1 / 1.12))); img.style.width = (z * 100) + '%'; img.classList.toggle('fit', z === 1);
+      var nr = img.getBoundingClientRect(); box.scrollLeft = px * nr.width - mx; box.scrollTop = py * nr.height - my;
+    }, { passive: false });
     box.addEventListener('dblclick', function () { z = z === 1 ? 2 : 1; img.style.width = (z * 100) + '%'; img.classList.toggle('fit', z === 1); });
   }
 
