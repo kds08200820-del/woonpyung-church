@@ -2906,17 +2906,14 @@ $('reader').addEventListener('contextmenu', function(e){
   /* 2-1 성경지도 학습 — 이 절·장을 다루는 해설 */
   if(window.STUDY) STUDY.forVerse(bi, ci, vi).slice(0, 3).forEach(function(a){ items.push(['📚 성경지도 학습 — ' + a.title, function(){ STUDY.open(a.id); }]); });
   /* 3 검색 (고른 낱말·번역) */
-  var fw = wordForFind(e);
-  if(fw) items.push(['🔍 “' + (fw.length > 24 ? fw.slice(0, 23) + '…' : fw) + '” 성경 전체에서 찾기', function(){ openFindPop(fw); }]);
-  translateItems().forEach(function(it){ items.push(it); });
-  var winfo = infoFromEvent(e);
+  /* 원어 낱말 위에서는 '자세히 보기' 하나만 — 찾기·인터넷·뜻 적기·단어장·발음은 그 창 안의 단추로 (2026-09-27 사용자 지시: 메뉴가 복잡함) */
+  var winfo = infoFromEvent(e), fw = wordForFind(e);
   if(winfo){
-    var wshort = cut(winfo.word, 14);
-    items.push(['‘' + wshort + '’ 자세히 보기', function(){ openWordModal(winfo); }]);
-    items.push(['‘' + wshort + '’ 인터넷에서 찾기', function(){ webSearch(winfo); }]);
-    items.push(['‘' + wshort + '’ 뜻 적어 넣기', function(){ askMeaning(winfo); }]);
-    if(!vocabFind(vocabId(winfo))) items.push(['‘' + wshort + '’ 단어장에 담기', function(){ addVocab(winfo); }]);
+    items.push(['🔤 ‘' + cut(winfo.word, 14) + '’ 자세히 보기', function(){ openWordModal(winfo); }]);
+  } else if(fw){
+    items.push(['🔍 “' + (fw.length > 24 ? fw.slice(0, 23) + '…' : fw) + '” 성경 전체에서 찾기', function(){ openFindPop(fw); }]);
   }
+  translateItems().forEach(function(it){ items.push(it); });
   items.push('-');
   /* 4 메모 */
   items.push(['📝 메모에 담기 — ' + label, function(){ if(window.NT) NT.fromVerses(vs, rng || one); }]);
