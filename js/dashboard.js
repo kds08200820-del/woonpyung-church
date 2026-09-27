@@ -164,8 +164,8 @@ console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 
     var wed = rows.filter(function (r) { return r.service === '수요기도회' && r.att_date.slice(0, 4) === yr; }).length;
     var dawn = rows.filter(function (r) { return r.service === '새벽기도회' && r.att_date.slice(0, 4) === yr; }).length;
     var dots = sundays.slice(-12).map(function (d) {
-      var r = byDay[d], tip = d + (r ? (r.late ? ' 지각' : ' 정시') : ' 결석');
-      var st = r ? (r.late ? 'background:#e6b85c' : 'background:#2e7d5b') : 'border:1.5px solid #c9c2b3';
+      var r = byDay[d], tip = d + (r ? ' 출석' : ' 결석');
+      var st = r ? 'background:#2e7d5b' : 'border:1.5px solid #c9c2b3';
       return '<span title="' + tip + '" style="display:inline-block;width:14px;height:14px;border-radius:50%;margin:0 2px;' + st + '"></span>';
     }).join('');
     var late = came.length - onTime.length;
@@ -173,10 +173,26 @@ console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 
       '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b>' + esc(name) + '</b>' +
       (isChild ? '<span style="font-size:.78rem;color:#8a8478">주일학교</span>' : '') +
       '<span style="margin-left:auto;font-size:1.3rem;font-weight:800;color:var(--accent,#032257)">' + rate + '%</span></div>' +
-      '<div style="font-size:.85rem;color:#5a564d;margin:4px 0 6px">' + (isChild ? '올해 주일학교 ' : '주일 ') + came.length + '/' + sundays.length + '번 출석 · 정시 ' + onTime.length + '번' +
-      (late ? ' · 지각 ' + late + '번' : '') + (!isChild && (wed || dawn) ? ' · 올해 수요 ' + wed + '번 · 새벽 ' + dawn + '번' : '') + '</div>' +
-      (sundays.length ? '<div title="최근 주일 (초록 정시 · 노랑 지각 · 빈 원 결석)">' + dots + '</div>' : '<div style="font-size:.82rem;color:#8a8478">아직 기록된 주일이 없습니다</div>') +
-      '</div>';
+      '<div style="font-size:.85rem;color:#5a564d;margin:4px 0 6px">' + (isChild ? '올해 주일학교 ' : '주일 ') + came.length + '/' + sundays.length + '번 출석' +
+      (!isChild && (wed || dawn) ? ' · 올해 수요 ' + wed + '번 · 새벽 ' + dawn + '번' : '') + '</div>' +
+      (sundays.length ? '<div title="최근 주일 (초록 출석 · 빈 원 결석)">' + dots + '</div>' : '<div style="font-size:.82rem;color:#8a8478">아직 기록된 주일이 없습니다</div>') +
+      attDetail(rows) + '</div>';
+  }
+  /* 상세 보기 — 예배 종류별 출석 횟수와 날짜 (최근 것부터) */
+  var ATT_KINDS = ['주일 1부', '주일 2부', '주일 예배', '수요기도회', '새벽기도회', '주일학교'];
+  function attDetail(rows) {
+    if (!rows.length) return '';
+    var by = {}; rows.forEach(function (r) { (by[r.service] = by[r.service] || []).push(r.att_date); });
+    var kinds = ATT_KINDS.filter(function (k) { return by[k]; }).concat(Object.keys(by).filter(function (k) { return ATT_KINDS.indexOf(k) < 0; }));
+    var trs = kinds.map(function (k) {
+      var ds = by[k].slice().sort().reverse();
+      var chips = ds.map(function (d) { return '<span style="display:inline-block;margin:0 4px 4px 0;padding:1px 7px;border-radius:999px;background:#f3efe6;font-size:.78rem">' + esc(d.slice(5).replace('-', '/')) + '</span>'; }).join('');
+      return '<tr><td style="padding:6px 8px;white-space:nowrap;vertical-align:top;font-weight:600">' + esc(k) + '</td>' +
+        '<td style="padding:6px 8px;white-space:nowrap;vertical-align:top;text-align:right"><b>' + ds.length + '</b>번</td>' +
+        '<td style="padding:6px 8px">' + chips + '</td></tr>';
+    }).join('');
+    return '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:.85rem;color:var(--accent,#032257);font-weight:600">상세 보기 — 예배별 출석</summary>' +
+      '<table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:.88rem">' + trs + '</table></details>';
   }
   function loadAttendance(me) {
     var box = document.getElementById('myAttend'); if (!box) return;
@@ -213,7 +229,7 @@ console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 
       if (!rows) return;
       var byDate = {}; rows.forEach(function (r) { (byDate[r.att_date] = byDate[r.att_date] || []).push(r); });
       var html = Object.keys(byDate).sort().reverse().map(function (d) {
-        var cells = byDate[d].map(function (r) { var l = r.total - r.on_time; return esc(r.service) + ' <b>' + r.total + '</b>명' + (l ? ' <span style="color:#b07a1d">(지각 ' + l + ')</span>' : ''); }).join(' · ');
+        var cells = byDate[d].map(function (r) { return esc(r.service) + ' <b>' + r.total + '</b>명'; }).join(' · ');
         return '<tr><td style="padding:4px 8px;white-space:nowrap">' + esc(d.slice(5).replace('-', '/')) + '</td><td style="padding:4px 8px">' + cells + '</td></tr>';
       }).join('');
       var div = document.createElement('div'); div.className = 'form-card'; div.style.cssText = 'padding:16px 18px;margin-top:12px';
@@ -240,7 +256,7 @@ console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 
         var pct = Math.round(k.n / held * 100);
         return '<tr><td style="padding:4px 8px">' + esc(k.name) + '</td><td style="padding:4px 8px;text-align:right">' + k.n + '/' + held + '</td>' +
           '<td style="padding:4px 8px;width:45%"><div style="background:#eee7da;border-radius:6px;height:10px"><div style="width:' + pct + '%;height:10px;border-radius:6px;background:#2e7d5b"></div></div></td>' +
-          '<td style="padding:4px 8px;text-align:right;font-weight:700">' + pct + '%</td><td style="padding:4px 8px;color:#b07a1d;font-size:.82rem">' + (k.late ? '지각 ' + k.late : '') + '</td></tr>';
+          '<td style="padding:4px 8px;text-align:right;font-weight:700">' + pct + '%</td></tr>';
       }).join('');
       var div = document.createElement('div'); div.className = 'form-card'; div.style.cssText = 'padding:16px 18px;margin-top:12px';
       div.innerHTML = '<h3 style="margin:0 0 6px;font-size:1rem;color:var(--accent,#032257);">🧒 ' + yr + '년 주일학교 출석 <span style="font-size:.78rem;color:#8a8478;font-weight:400">관리자</span></h3>' +
