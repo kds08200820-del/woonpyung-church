@@ -12,7 +12,7 @@ begin
   if p is null or p !~ '^\s*\[' then return null; end if;
   begin j := p::jsonb; exception when others then return null; end;
   -- 이름이 조금 달라도(경배와찬양·예배 전 찬양·성가곡 …) 세 자리로 맞춘다
-  return (select jsonb_agg(jsonb_build_object('label', k, 'detail', e->>'detail', 'jnos', coalesce(e->'jnos', '[]'::jsonb)) order by n)
+  return (select jsonb_agg(jsonb_build_object('label', k, 'detail', e->>'detail', 'jnos', coalesce(e->'jnos', '[]'::jsonb), 'items', coalesce(e->'items', '[]'::jsonb)) order by n)
           from (select e, n, case
                   when replace(e->>'label', ' ', '') ~ '^(경배와찬양|예배전찬양)' then '경배와 찬양'
                   when replace(e->>'label', ' ', '') ~ '^입례' then '입례송'

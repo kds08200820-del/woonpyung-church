@@ -626,11 +626,38 @@ console.log('[affairs.js] v20260923lic');
   function joyByNo(n) { var L = window.JOYS || []; n = Number(n); for (var i = 0; i < L.length; i++) if (L[i].no === n) return L[i]; return null; }
   function joyTitle(n) { var j = joyByNo(n); return j ? j.title : ''; }
   function joyDetail(ns) { return ns.map(function (n) { return '«' + joyTitle(n) + '»'; }).join(', '); }
+  /* 고르기 창 악보 확대: 처음엔 칸 폭에 맞춤, − / + 단추·Ctrl+휠로 1~4배 (2026-09-27) */
+  function sheetZoom(box, img, bar) {
+    var z = 1;
+    function apply() { img.style.width = (z * 100) + '%'; img.style.maxWidth = 'none'; if (lb) lb.textContent = Math.round(z * 100) + '%'; }
+    var lb = null;
+    if (bar && !bar.querySelector('.sz-ctl')) {
+      var c = document.createElement('span'); c.className = 'sz-ctl'; c.style.cssText = 'display:inline-flex;align-items:center;gap:3px';
+      c.innerHTML = '<button type="button" class="btn btn-line" data-z="-1" style="padding:2px 9px" title="작게 (Ctrl+휠)">−</button><span class="sz-lb" style="min-width:42px;text-align:center;font-size:.78rem;color:#5a6b82">100%</span><button type="button" class="btn btn-line" data-z="1" style="padding:2px 9px" title="크게 (Ctrl+휠)">＋</button>';
+      bar.appendChild(c);
+    }
+    lb = bar ? bar.querySelector('.sz-lb') : null;
+    if (bar) Array.prototype.forEach.call(bar.querySelectorAll('.sz-ctl button'), function (b) { b.onclick = function () { z = Math.max(1, Math.min(4, z * (b.dataset.z > 0 ? 1.25 : 0.8))); if (z < 1.05) z = 1; apply(); }; });
+    box.onwheel = function (e) {
+      if (!e.ctrlKey) return; e.preventDefault();
+      var r = box.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, ir = img.getBoundingClientRect();
+      var px = (box.scrollLeft + mx) / (ir.width || 1), py = (box.scrollTop + my) / (ir.height || 1);
+      z = Math.max(1, Math.min(4, z * (e.deltaY < 0 ? 1.12 : 1 / 1.12))); apply();
+      var nr = img.getBoundingClientRect(); box.scrollLeft = px * nr.width - mx; box.scrollTop = py * nr.height - my;
+    };
+    img.ondblclick = function () { z = z > 1 ? 1 : 2; apply(); };
+    apply();
+  }
   function joyPicker(initial, max, heading, onDone) {
-    var JY = window.JOYS || [];
-    if (!JY.length) { alert('기쁨으로 찬양 자료(modu/joy-data.js)를 읽지 못했습니다. 새로고침해 주세요.'); return; }
-    var sel = (initial || []).map(Number).filter(function (n) { return joyByNo(n); });
-    var F = { key: '', tag: '' };
+    /* 두 책에서 고른다 — 기쁨으로 찬양(j) · 새찬송가(h). 고른 순서대로 [{b:'j'|'h', no, title}] (2026-09-27) */
+    var JY = window.JOYS || [], HY = window.HYMNS || [];
+    var BOOK = { j: { name: '기쁨으로 찬양', list: JY, unit: '번', img: function (n) { return 'modu/data/joy/' + ('00' + n).slice(-3) + '.webp'; } },
+                 h: { name: '새찬송가', list: HY, unit: '장', img: function (n) { return 'modu/data/hymn/' + ('00' + n).slice(-3) + '.webp'; } } };
+    function byNo(b, n) { var L = BOOK[b].list; n = Number(n); for (var i = 0; i < L.length; i++) if (L[i].no === n) return L[i]; return null; }
+    function titleOf(b, n) { var x = byNo(b, n); return x ? x.title : ''; }
+    function key(b, n) { return b + Number(n); }
+    var sel = (initial || []).map(function (x) { return typeof x === 'object' ? key(x.b || 'j', x.n || x.no) : key('j', x); }).filter(function (k) { return byNo(k[0], k.slice(1)); });
+    var bk = JY.length ? 'j' : 'h', F = { key: '', tag: '' };
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9500;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
     var narrow = window.innerWidth < 760;
@@ -638,21 +665,23 @@ console.log('[affairs.js] v20260923lic');
     var KORD = ['C', 'Cm', 'D', 'Dm', 'Eb', 'E', 'Em', 'F', 'F#m', 'G', 'Gm', 'Ab', 'A', 'Am', 'Bb', 'Bm', 'B'];
     var kl = Object.keys(keys).sort(function (a, b) { return (KORD.indexOf(a) + 1 || 99) - (KORD.indexOf(b) + 1 || 99); });
     var tl = (window.JOY_TAGS || Object.keys(tags)).filter(function (t) { return tags[t]; });
+    var tabCss = 'flex:1;padding:8px 10px;border:1px solid #d7dde6;font:inherit;font-weight:700;cursor:pointer;';
     ov.innerHTML = '<div class="fin-card" style="max-width:980px;width:100%;background:#fff">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:var(--accent,#032257)">🎶 ' + esc(heading) + ' — 기쁨으로 찬양' + (max > 1 ? ' (' + max + '곡까지)' : '') + '</h3><button class="btn btn-line" id="jp_close" style="padding:3px 11px">닫기</button></div>' +
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><input type="text" id="jp_q" placeholder="🔍 번호·곡명·조(D, Em)·주제(감사, 은혜)" style="flex:1;min-width:200px;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:var(--accent,#032257)">🎶 ' + esc(heading) + (max > 1 ? ' (' + max + '곡까지)' : '') + '</h3><button class="btn btn-line" id="jp_close" style="padding:3px 11px">닫기</button></div>' +
+      '<div id="jp_books" style="display:flex;margin-bottom:8px;max-width:420px"><button type="button" data-b="j" style="' + tabCss + 'border-radius:9px 0 0 9px">🎶 기쁨으로 찬양</button><button type="button" data-b="h" style="' + tabCss + 'border-left:0;border-radius:0 9px 9px 0">🎵 새찬송가</button></div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><input type="text" id="jp_q" style="flex:1;min-width:200px;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
       '<select id="jp_key" style="padding:8px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="">모든 조</option>' + kl.map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + '조 (' + keys[k] + ')</option>'; }).join('') + '</select>' +
       '<select id="jp_tag" style="padding:8px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="">모든 주제</option>' + tl.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + ' (' + tags[t] + ')</option>'; }).join('') + '</select></div>' +
       '<div id="jp_sel" style="margin-bottom:8px;min-height:26px"></div>' +
       '<div style="display:grid;grid-template-columns:' + (narrow ? '1fr' : '320px 1fr') + ';gap:10px">' +
         '<div id="jp_list" style="max-height:' + (narrow ? '220px' : '460px') + ';overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
-        '<div style="border:1px solid #eef1f5;border-radius:8px;background:#fafafa;display:flex;flex-direction:column;min-height:' + (narrow ? '300px' : '460px') + ';max-height:460px">' +
+        '<div style="border:1px solid #eef1f5;border-radius:8px;background:#fafafa;display:flex;flex-direction:column;min-height:' + (narrow ? '300px' : '460px') + ';max-height:' + (narrow ? '70vh' : 'calc(100vh - 260px)') + '">' +
           '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #eef1f5;background:#fff;border-radius:8px 8px 0 0">' +
             '<button type="button" class="btn btn-line" id="jp_prev" style="padding:3px 9px" title="이전 곡">◀</button>' +
             '<b id="jp_vt" style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--accent,#032257)">악보를 보려면 왼쪽 목록에서 곡을 누르세요</b>' +
             '<button type="button" class="btn btn-line" id="jp_next" style="padding:3px 9px" title="다음 곡">▶</button>' +
             '<button type="button" class="btn btn-solid" id="jp_pick" style="padding:4px 12px;display:none">✓ 이 곡 선택</button></div>' +
-          '<div id="jp_img" style="flex:1;min-height:0;overflow:auto;padding:6px;text-align:center"><p style="color:#9aa5b1;margin:40px 0;font-size:.85rem">오늘의 예배·모두의 성경에 그대로 나오는 기쁨으로 찬양 악보입니다.</p></div>' +
+          '<div id="jp_img" style="flex:1;min-height:0;overflow:auto;padding:6px;text-align:center"><p style="color:#9aa5b1;margin:40px 0;font-size:.85rem">오늘의 예배·모두의 성경에 그대로 나오는 악보입니다.</p></div>' +
         '</div></div>' +
       '<div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:flex-end"><span id="jp_msg" style="flex:1;font-size:.8rem;color:#b0413e"></span><button class="btn btn-solid" id="jp_done" style="padding:8px 18px">선택 완료</button></div></div>';
     document.body.appendChild(ov);
@@ -660,53 +689,63 @@ console.log('[affairs.js] v20260923lic');
     ov.querySelector('#jp_close').onclick = close;
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var selBox = ov.querySelector('#jp_sel'), listEl = ov.querySelector('#jp_list'), qEl = ov.querySelector('#jp_q'), msg = ov.querySelector('#jp_msg');
-    var viewNo = 0, imgBox = ov.querySelector('#jp_img'), vt = ov.querySelector('#jp_vt'), pickBtn = ov.querySelector('#jp_pick');
-    function toggle(n) {
-      var i = sel.indexOf(n);
+    var view = null, imgBox = ov.querySelector('#jp_img'), vt = ov.querySelector('#jp_vt'), pickBtn = ov.querySelector('#jp_pick');
+    function setBook(b) {
+      bk = b;
+      Array.prototype.forEach.call(ov.querySelectorAll('#jp_books button'), function (x) { var on = x.dataset.b === b; x.style.background = on ? 'var(--accent,#032257)' : '#fff'; x.style.color = on ? '#fff' : '#48576b'; });
+      ov.querySelector('#jp_key').style.display = ov.querySelector('#jp_tag').style.display = (b === 'j') ? '' : 'none';
+      qEl.placeholder = b === 'j' ? '🔍 번호·곡명·조(D, Em)·주제(감사, 은혜)' : '🔍 장 번호·제목 (예: 384, 갈 길)';
+      drawList();
+    }
+    ov.querySelector('#jp_books').onclick = function (e) { var x = e.target.closest('button[data-b]'); if (x && x.dataset.b !== bk && BOOK[x.dataset.b].list.length) { setBook(x.dataset.b); qEl.focus(); } };
+    function toggle(k) {
+      var i = sel.indexOf(k);
       if (i >= 0) sel.splice(i, 1);
-      else { if (max === 1) sel = [n]; else if (sel.length >= max) { msg.textContent = max + '곡까지 고를 수 있습니다. 먼저 하나를 빼 주세요.'; return; } else sel.push(n); }
+      else { if (max === 1) sel = [k]; else if (sel.length >= max) { msg.textContent = max + '곡까지 고를 수 있습니다. 먼저 하나를 빼 주세요.'; return; } else sel.push(k); }
       msg.textContent = '';
     }
-    function showSheet(n) {
-      var j = joyByNo(n); if (!j) return;
-      viewNo = j.no;
-      vt.textContent = j.no + '번 ' + j.title + (j.key ? ' · ' + j.key + '조' : '');
+    function showSheet(b, n) {
+      var x = byNo(b, n); if (!x) return;
+      view = key(b, x.no);
+      vt.textContent = BOOK[b].name + ' ' + x.no + BOOK[b].unit + ' ' + x.title + (x.key ? ' · ' + x.key + '조' : '');
       imgBox.innerHTML = '';
       var im = document.createElement('img');
-      im.src = 'modu/data/joy/' + ('00' + j.no).slice(-3) + '.webp'; im.alt = '기쁨으로 찬양 ' + j.no + '번';
-      im.style.cssText = 'max-width:100%;max-height:100%;height:auto;display:block;margin:0 auto;background:#fff;border-radius:4px';
+      im.src = BOOK[b].img(x.no); im.alt = BOOK[b].name + ' ' + x.no + BOOK[b].unit;
+      im.style.cssText = 'width:100%;height:auto;display:block;margin:0 auto;background:#fff;border-radius:4px';
       im.onerror = function () { imgBox.innerHTML = '<p style="color:#9aa5b1;margin:40px 0">이 곡의 악보 그림이 없습니다</p>'; };
-      imgBox.appendChild(im); imgBox.scrollTop = 0;
-      pickBtn.style.display = ''; pickBtn.textContent = sel.indexOf(j.no) >= 0 ? '✓ 선택됨 (누르면 해제)' : '✓ 이 곡 선택';
-      var row = listEl.querySelector('.jp-item[data-n="' + j.no + '"]'); if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+      imgBox.appendChild(im); imgBox.scrollTop = 0; sheetZoom(imgBox, im, vt.parentNode);
+      pickBtn.style.display = ''; pickBtn.textContent = sel.indexOf(view) >= 0 ? '✓ 선택됨 (누르면 해제)' : '✓ 이 곡 선택';
+      var row = listEl.querySelector('.jp-item[data-k="' + view + '"]'); if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
     }
-    ov.querySelector('#jp_prev').onclick = function () { if (viewNo > 1) showSheet(viewNo - 1); };
-    ov.querySelector('#jp_next').onclick = function () { if (viewNo && viewNo < JY.length) showSheet(viewNo + 1); };
-    pickBtn.onclick = function () { if (!viewNo) return; toggle(viewNo); drawSel(); drawList(); showSheet(viewNo); };
+    function step(d) { if (!view) return; var b = view[0], n = Number(view.slice(1)) + d; if (byNo(b, n)) showSheet(b, n); }
+    ov.querySelector('#jp_prev').onclick = function () { step(-1); };
+    ov.querySelector('#jp_next').onclick = function () { step(1); };
+    pickBtn.onclick = function () { if (!view) return; toggle(view); drawSel(); drawList(); showSheet(view[0], view.slice(1)); };
+    function label(k) { var b = k[0], n = Number(k.slice(1)); return (b === 'h' ? '찬송가 ' : '') + n + BOOK[b].unit + ' ' + titleOf(b, n); }
     function drawSel() {
-      selBox.innerHTML = sel.length ? sel.map(function (n, i) { return '<span class="jp-chip" data-n="' + n + '" style="display:inline-flex;align-items:center;gap:5px;background:#f3ecff;color:#3d2a6b;border-radius:999px;padding:3px 10px;margin:0 5px 5px 0;font-size:.84rem;font-weight:700">' + (max > 1 ? (i + 1) + '. ' : '') + n + '번 <span style="font-weight:400">' + esc(joyTitle(n)) + '</span> <b style="cursor:pointer;color:#b0413e" title="빼기">✕</b></span>'; }).join('') : '<span style="color:#9aa5b1;font-size:.84rem">아직 고른 곡이 없습니다 — 목록에서 곡을 누르고, 한 번 더 누르거나 [✓ 이 곡 선택]</span>';
-      Array.prototype.forEach.call(selBox.querySelectorAll('.jp-chip b'), function (x) { x.onclick = function () { toggle(Number(x.parentNode.dataset.n)); drawSel(); drawList(); }; });
+      selBox.innerHTML = sel.length ? sel.map(function (k, i) { return '<span class="jp-chip" data-k="' + k + '" style="display:inline-flex;align-items:center;gap:5px;background:' + (k[0] === 'h' ? '#e9f7ef;color:#1e5a36' : '#f3ecff;color:#3d2a6b') + ';border-radius:999px;padding:3px 10px;margin:0 5px 5px 0;font-size:.84rem;font-weight:700">' + (max > 1 ? (i + 1) + '. ' : '') + esc(label(k)) + ' <b style="cursor:pointer;color:#b0413e" title="빼기">✕</b></span>'; }).join('') : '<span style="color:#9aa5b1;font-size:.84rem">아직 고른 곡이 없습니다 — 목록에서 곡을 누르고, 한 번 더 누르거나 [✓ 이 곡 선택] · 두 책을 섞어 고를 수 있습니다</span>';
+      Array.prototype.forEach.call(selBox.querySelectorAll('.jp-chip b'), function (x) { x.onclick = function () { toggle(x.parentNode.dataset.k); drawSel(); drawList(); }; });
     }
     function norm(s) { return String(s || '').replace(/\s+/g, '').toLowerCase(); }
     function drawList() {
-      var q = qEl.value.trim(), qq = norm(q), kq = q.replace(/\s*조$/, '').toLowerCase();
-      var rows = JY.filter(function (h) {
-        if (F.key && h.key !== F.key) return false;
-        if (F.tag && (h.tags || []).indexOf(F.tag) < 0) return false;
+      var q = qEl.value.trim(), qq = norm(q), kq = q.replace(/\s*조$/, '').toLowerCase(), L = BOOK[bk].list;
+      var rows = L.filter(function (h) {
+        if (bk === 'j' && F.key && h.key !== F.key) return false;
+        if (bk === 'j' && F.tag && (h.tags || []).indexOf(F.tag) < 0) return false;
         if (!q) return true;
         if (/^\d+$/.test(q)) return String(h.no).indexOf(q) === 0;
         return norm(h.title).indexOf(qq) >= 0 || (h.alt || []).some(function (a) { return norm(a).indexOf(qq) >= 0; }) || (h.key || '').toLowerCase() === kq || (h.tags || []).some(function (t) { return norm(t).indexOf(qq) >= 0; });
       });
-      listEl.innerHTML = rows.length ? rows.map(function (h) { var on = sel.indexOf(h.no) >= 0; return '<div class="jp-item" data-n="' + h.no + '" style="padding:8px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;gap:8px;background:' + (on ? '#f3ecff' : (viewNo === h.no ? '#fff7e6' : '#fff')) + '"><span style="flex:0 0 34px;color:#7b8794;font-size:.82rem">' + h.no + '</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(h.title) + '</span><span style="flex:0 0 auto;font-size:.72rem;color:#7b8794;border:1px solid #e3e7ee;border-radius:5px;padding:0 5px">' + esc(h.key || '') + '</span>' + (on ? '<span style="color:#6b3fc4;font-weight:700">✓</span>' : '') + '</div>'; }).join('') : '<p style="color:#9aa5b1;padding:14px;margin:0">찾는 곡이 없습니다</p>';
-      Array.prototype.forEach.call(listEl.querySelectorAll('.jp-item'), function (d) { d.onclick = function () { var n = Number(d.dataset.n); if (viewNo === n) { toggle(n); drawSel(); } showSheet(n); drawList(); }; });
-      if (rows.length === 1 && q && viewNo !== rows[0].no) showSheet(rows[0].no);
+      listEl.innerHTML = rows.length ? rows.map(function (h) { var k = key(bk, h.no), on = sel.indexOf(k) >= 0; return '<div class="jp-item" data-k="' + k + '" style="padding:8px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;gap:8px;background:' + (on ? (bk === 'h' ? '#e9f7ef' : '#f3ecff') : (view === k ? '#fff7e6' : '#fff')) + '"><span style="flex:0 0 34px;color:#7b8794;font-size:.82rem">' + h.no + '</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(h.title) + '</span>' + (h.key ? '<span style="flex:0 0 auto;font-size:.72rem;color:#7b8794;border:1px solid #e3e7ee;border-radius:5px;padding:0 5px">' + esc(h.key) + '</span>' : '') + (on ? '<span style="color:#6b3fc4;font-weight:700">✓</span>' : '') + '</div>'; }).join('') : '<p style="color:#9aa5b1;padding:14px;margin:0">찾는 곡이 없습니다</p>';
+      Array.prototype.forEach.call(listEl.querySelectorAll('.jp-item'), function (d) { d.onclick = function () { var k = d.dataset.k; if (view === k) { toggle(k); drawSel(); } showSheet(k[0], k.slice(1)); drawList(); }; });
+      if (rows.length === 1 && q && view !== key(bk, rows[0].no)) showSheet(bk, rows[0].no);
     }
     qEl.oninput = drawList;
-    qEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var q = qEl.value.trim(); if (/^\d+$/.test(q) && joyByNo(q)) { var n = Number(q); if (sel.indexOf(n) < 0) toggle(n); qEl.value = ''; drawSel(); drawList(); showSheet(n); } } });
+    qEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var q = qEl.value.trim(); if (/^\d+$/.test(q) && byNo(bk, q)) { var k = key(bk, q); if (sel.indexOf(k) < 0) toggle(k); qEl.value = ''; drawSel(); drawList(); showSheet(bk, q); } } });
     ov.querySelector('#jp_key').onchange = function () { F.key = this.value; drawList(); };
     ov.querySelector('#jp_tag').onchange = function () { F.tag = this.value; drawList(); };
-    ov.querySelector('#jp_done').onclick = function () { close(); onDone(sel.map(function (n) { return { no: n, title: joyTitle(n) }; })); };
-    drawSel(); drawList(); if (sel.length) showSheet(sel[0]);
+    ov.querySelector('#jp_done').onclick = function () { close(); onDone(sel.map(function (k) { var b = k[0], n = Number(k.slice(1)); return { b: b, no: n, title: titleOf(b, n) }; })); };
+    setBook(sel.length ? sel[0][0] : bk); drawSel(); if (sel.length) showSheet(sel[0][0], sel[0].slice(1));
     setTimeout(function () { qEl.focus(); }, 30);
   }
   function hymnPicker(initial, onDone) {
@@ -746,7 +785,8 @@ console.log('[affairs.js] v20260923lic');
       imgBox.innerHTML = '';
       var im = document.createElement('img');
       im.src = 'modu/data/hymn/' + ('00' + n).slice(-3) + '.webp'; im.alt = '새찬송가 ' + n + '장';
-      im.style.cssText = 'width:100%;max-width:900px;height:auto;display:block;margin:0 auto;background:#fff;border-radius:4px';
+      im.style.cssText = 'width:100%;height:auto;display:block;margin:0 auto;background:#fff;border-radius:4px';
+      setTimeout(function () { sheetZoom(imgBox, im, vt.parentNode); }, 0);
       im.onerror = function () { imgBox.innerHTML = '<p style="color:#9aa5b1;margin:40px 0">이 장의 악보 그림이 없습니다</p>'; };
       imgBox.appendChild(im); imgBox.scrollTop = 0;
       pickBtn.style.display = ''; pickBtn.textContent = sel[n] ? '✓ 선택됨 (누르면 해제)' : '✓ 이 곡 선택';
@@ -4446,13 +4486,15 @@ console.log('[affairs.js] v20260923lic');
         var i = joySlotIndex(label);
         if (!picks.length) { if (i >= 0) order.splice(i, 1); renderOrder(); return; }
         var it = i >= 0 ? order[i] : { label: label, detail: '', url: '' };
-        it.label = label; it.jnos = picks.map(function (p) { return p.no; }); it.detail = joyDetail(it.jnos);
+        it.label = label; it.items = picks.map(function (p) { return { b: p.b || 'j', n: p.no }; });
+        it.jnos = picks.filter(function (p) { return (p.b || 'j') === 'j'; }).map(function (p) { return p.no; });
+        it.detail = picks.map(function (p) { return '«' + p.title + '»'; }).join(', ');
         if (label === '입례송') { it.fixed = true; try { localStorage.setItem('wpc_entrance_' + String(ov.querySelector('#se_date').value || today()).slice(0, 4), JSON.stringify(it.jnos)); } catch (e) {} }
         if (i < 0) order.splice(joySlotInsertAt(label), 0, it);
         renderOrder();
       }
       function joyPick(label) {
-        var i = joySlotIndex(label), cur = i >= 0 ? (order[i].jnos || []) : [];
+        var i = joySlotIndex(label), cur = i >= 0 ? (order[i].items || order[i].jnos || []) : [];
         var S = JOY_SLOTS[label];
         joyPicker(cur, S.max, S.name, function (picks) { joySet(label, picks); });
       }
@@ -4466,8 +4508,9 @@ console.log('[affairs.js] v20260923lic');
         var box = ov.querySelector('#bd_songs'); if (!box) return;
         var rows = [];
         ['경배와 찬양', '입례송', '성가대 찬양'].forEach(function (k) {
-          var i = joySlotIndex(k); if (i < 0 || !(order[i].jnos && order[i].jnos.length)) return;
-          rows.push('<div><b style="color:#6b3fc4">' + esc(JOY_SLOTS[k].name) + '</b> ' + order[i].jnos.map(function (n) { return esc(n + '번 ' + joyTitle(n)); }).join(' · ') + '</div>');
+          var i = joySlotIndex(k); if (i < 0) return;
+          var its = order[i].items || (order[i].jnos || []).map(function (n) { return { b: 'j', n: n }; }); if (!its.length) return;
+          rows.push('<div><b style="color:#6b3fc4">' + esc(JOY_SLOTS[k].name) + '</b> ' + its.map(function (x) { return esc(x.b === 'h' ? '찬송가 ' + x.n + '장 ' + hymnTitle(x.n) : x.n + '번 ' + joyTitle(x.n)); }).join(' · ') + '</div>');
         });
         var hs = ov.querySelector('#se_hymns_v').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
         if (hs.length) rows.push('<div><b style="color:#1e874b">찬송가</b> ' + hs.map(function (n) { var t = hymnTitle(n); return esc(n + '장' + (t ? ' ' + t : '')); }).join(' · ') + '</div>');
@@ -4901,7 +4944,7 @@ console.log('[affairs.js] v20260923lic');
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
           hymns: ov.querySelector('#se_hymns_v').value || null,
-          worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, jnos: (o.jnos && o.jnos.length) ? o.jnos : undefined, body: o.body || '', fixed: !!o.fixed, noexport: !!o.noexport, images: o.images || undefined }; })) : null),
+          worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, jnos: (o.jnos && o.jnos.length) ? o.jnos : undefined, items: (o.items && o.items.length) ? o.items : undefined, body: o.body || '', fixed: !!o.fixed, noexport: !!o.noexport, images: o.images || undefined }; })) : null),
           // 설교 매니저 확장(supabase/sermons_manager.sql): 시리즈·키워드·요약·상태
           series: seriesArr.length ? seriesArr.join(', ') : null,
           keywords: (function () { var el = ov.querySelector('#se_keywords'); if (!el) return null; var a = el.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean).slice(0, 3); return a.join(', ') || null; })(),
@@ -8197,9 +8240,14 @@ console.log('[affairs.js] v20260923lic');
       var slots = {}, missing = [];
       order.forEach(function (o) {
         var k = joySlotKey(o.name); if (!k || o.spacer) return;
-        var titles = joyTitlesOf(o.detail), hit = [];
-        titles.forEach(function (t) { var j = joyFindTitle(t); if (j) hit.push(j.no); else missing.push(t); });
-        slots[k] = { item: o, jnos: hit, titles: titles };
+        var titles = joyTitlesOf(o.detail), hit = [], items = [];
+        titles.forEach(function (t) {
+          var j = joyFindTitle(t);
+          if (j) { hit.push(j.no); items.push({ b: 'j', n: j.no }); return; }
+          var hk = joyNorm(t), h = (window.HYMNS || []).filter(function (x) { return joyNorm(x.title) === hk; })[0];   /* 새찬송가 곡도 알아본다 */
+          if (h) items.push({ b: 'h', n: h.no }); else missing.push(t);
+        });
+        slots[k] = { item: o, jnos: hit, items: items, titles: titles };
       });
       api('GET', 'sermons?select=id,worship_order&service=eq.' + encodeURIComponent('주일 낮 예배') + '&sermon_date=eq.' + bd + '&limit=1').then(function (rows) {
         var srm = rows && rows[0], wo = [];
@@ -8207,15 +8255,15 @@ console.log('[affairs.js] v20260923lic');
         var added = [], filled = [], changed = false;
         function woIdx(k) { for (var i = 0; i < wo.length; i++) if (joySlotKey(wo[i].label) === k) return i; return -1; }
         Object.keys(JOY_SLOTS).forEach(function (k) {
-          var s = slots[k], wi = woIdx(k), has = wi >= 0 && wo[wi].jnos && wo[wi].jnos.length;
-          if (s && s.jnos.length && !has) {       // 주보 → 설교
+          var s = slots[k], wi = woIdx(k), has = wi >= 0 && ((wo[wi].items && wo[wi].items.length) || (wo[wi].jnos && wo[wi].jnos.length));
+          if (s && s.items.length && !has) {       // 주보 → 설교
             var it = wi >= 0 ? wo[wi] : { label: k, detail: '', url: '' };
-            it.label = k; it.jnos = s.jnos.slice(); it.detail = s.jnos.map(function (n) { return '«' + joyTitle(n) + '»'; }).join(', ');
+            it.label = k; it.jnos = s.jnos.slice(); it.items = s.items.slice(); it.detail = s.items.map(function (x) { return '«' + (x.b === 'h' ? hymnTitle(x.n) : joyTitle(x.n)) + '»'; }).join(', ');
             if (k === '입례송') it.fixed = true;
             if (wi < 0) { var at = k === '경배와 찬양' ? 0 : wo.length; if (k !== '경배와 찬양') { for (var i = 0; i < wo.length; i++) { if (k === '입례송' && /송영/.test(wo[i].label || '')) { at = i; break; } if (k === '성가대 찬양' && /말씀/.test(wo[i].label || '')) { at = i; break; } } } wo.splice(at, 0, it); }
-            added.push(JOY_SLOTS[k].name + ' ' + s.jnos.map(function (n) { return n + '번'; }).join('·')); changed = true;
+            added.push(JOY_SLOTS[k].name + ' ' + s.items.map(function (x) { return x.b === 'h' ? '찬송가 ' + x.n + '장' : x.n + '번'; }).join('·')); changed = true;
           } else if (s && !s.titles.length && has) {   // 설교 → 주보(빈 줄 채우기)
-            s.item.detail = wo[wi].jnos.map(function (n) { return '«' + joyTitle(n) + '»'; }).join(', ');
+            s.item.detail = (wo[wi].items || (wo[wi].jnos || []).map(function (n) { return { b: 'j', n: n }; })).map(function (x) { return '«' + (x.b === 'h' ? hymnTitle(x.n) : joyTitle(x.n)) + '»'; }).join(', ');
             filled.push(JOY_SLOTS[k].name);
           }
         });
@@ -8224,7 +8272,7 @@ console.log('[affairs.js] v20260923lic');
         if (added.length) note.push('설교(주일 낮 예배)에 자동으로 넣음: ' + added.join(', '));
         if (filled.length) note.push('주보에 채움: ' + filled.join(', '));
         if (missing.length) note.push('기쁨으로 찬양에 없는 곡: ' + missing.map(function (t) { return '«' + t + '»'; }).join(', ') + ' — 오늘의 예배에는 곡명만 나옵니다');
-        if (missing.length) alert('기쁨으로 찬양 목록에 없는 곡이 있습니다.\n\n' + missing.map(function (t) { return '· ' + t; }).join('\n') + '\n\n곡명이 책과 조금 다르면 설교 매니저에서 🎶 단추로 골라 주세요. 없는 곡은 오늘의 예배에 곡명만 나옵니다.');
+        if (missing.length) alert('기쁨으로 찬양·새찬송가 목록에 없는 곡이 있습니다.\n\n' + missing.map(function (t) { return '· ' + t; }).join('\n') + '\n\n곡명이 책과 조금 다르면 설교 매니저에서 🎶 단추로 골라 주세요. 없는 곡은 오늘의 예배에 곡명만 나옵니다.');
         if (!changed) return done(note.join(' · '));
         if (!srm) return done((note.length ? note.join(' · ') + ' · ' : '') + '이 날짜의 주일 낮 예배 설교가 없어 설교에는 넣지 못했습니다');
         api('PATCH', 'sermons?id=eq.' + srm.id, { worship_order: JSON.stringify(wo) }, 'return=minimal')

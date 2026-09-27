@@ -104,14 +104,14 @@
   function midweekSlides(k, date, title, ref, who, rec) {
     slides.push({ type: 'cover', k: k, date: dateLabel(date), title: title || '', ref: ref || '', who: who || '', quote: '' });
     var SGm = {}; ((rec && rec.songs) || []).forEach(function (x) { if (x && x.label) SGm[x.label] = x; });   /* 기쁨으로 찬양 (2026-09-27) */
-    if (SGm['경배와 찬양']) [].push.apply(slides, joySlides('경배와 찬양', [], SGm['경배와 찬양'].jnos));
-    if (SGm['입례송']) [].push.apply(slides, joySlides('입례송', [], SGm['입례송'].jnos));
+    if (SGm['경배와 찬양']) [].push.apply(slides, joySlides('경배와 찬양', [], SGm['경배와 찬양'].jnos, SGm['경배와 찬양'].items));
+    if (SGm['입례송']) [].push.apply(slides, joySlides('입례송', [], SGm['입례송'].jnos, SGm['입례송'].items));
     if (rec) {
       hymnNos(rec.hymns).forEach(function (n) { slides.push({ type: 'hymn', head: '찬송', no: n, title: hymnTitle(n) }); });
       var g = gyodokNo(rec.gyodok); if (g) slides.push({ type: 'gyodok', head: '성시교독', no: g, sub: String(rec.gyodok).replace(/^\d+\.?\s*/, '') });
     }
     if (ref) slides.push({ type: 'bible', head: '성경 본문', ref: ref });
-    if (SGm['성가대 찬양']) [].push.apply(slides, joySlides('성가대 찬양', [], SGm['성가대 찬양'].jnos));
+    if (SGm['성가대 찬양']) [].push.apply(slides, joySlides('성가대 찬양', [], SGm['성가대 찬양'].jnos, SGm['성가대 찬양'].items));
     slides.push({ type: 'sermon', head: '말씀', title: title || '', ref: ref || '', who: who || '', quote: '' });
   }
   function dateLabel(d) { var m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return String(d); var dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return (+m[2]) + '월 ' + (+m[3]) + '일 (' + DOWK[dt.getUTCDay()] + ')'; }
@@ -421,10 +421,19 @@
     return null;
   }
   function joySlotKey(l) { l = String(l || '').replace(/\s+/g, ''); if (/^(경배와찬양|예배전찬양)/.test(l)) return '경배와 찬양'; if (/^입례/.test(l)) return '입례송'; if (/^성가(대찬양|곡|대)?$/.test(l)) return '성가대 찬양'; return ''; }
-  function joySlides(head, titles, jnos) {
+  function hymnFind(t) { var L = window.HYMNS || [], k = jnorm(t); for (var i = 0; i < L.length; i++) if (jnorm(L[i].title) === k) return L[i]; return null; }
+  /* sg: 설교 매니저 자료 { items:[{b:'j'|'h', n}], jnos } — 두 책(기쁨으로 찬양·새찬송가)을 섞어 쓸 수 있다 */
+  function joySlides(head, titles, jnos, items) {
     var out = [];
-    if (jnos && jnos.length) jnos.forEach(function (n) { var j = joyByNo(n); if (j) out.push({ type: 'joy', head: head, no: j.no, title: j.title }); });
-    else titles.forEach(function (t) { var j = joyFind(t); out.push(j ? { type: 'joy', head: head, no: j.no, title: j.title } : { type: 'text', head: head, lines: [t], big: true }); });
+    if (items && items.length) items.forEach(function (x) {
+      if (x.b === 'h') { var t = hymnTitle(+x.n); out.push({ type: 'hymn', head: head, no: +x.n, title: t }); }
+      else { var j = joyByNo(x.n); if (j) out.push({ type: 'joy', head: head, no: j.no, title: j.title }); }
+    });
+    else if (jnos && jnos.length) jnos.forEach(function (n) { var j = joyByNo(n); if (j) out.push({ type: 'joy', head: head, no: j.no, title: j.title }); });
+    else titles.forEach(function (t) {
+      var j = joyFind(t), h = j ? null : hymnFind(t);
+      out.push(j ? { type: 'joy', head: head, no: j.no, title: j.title } : h ? { type: 'hymn', head: head, no: h.no, title: h.title } : { type: 'text', head: head, lines: [t], big: true });
+    });
     return out;
   }
   function parseItem(line, b) {
@@ -462,16 +471,16 @@
           if (slot) {
             used[slot] = 1;
             var sg = SG[slot], titles = songs(p.slice(1).join(' · '));
-            [].push.apply(slides, joySlides(head, titles, sg && sg.jnos));
+            [].push.apply(slides, joySlides(head, titles, sg && sg.jnos, sg && sg.items));
             return;
           }
-          if (/^송영/.test(head) && SG['입례송'] && !used['입례송']) { used['입례송'] = 1; [].push.apply(slides, joySlides('입례송', [], SG['입례송'].jnos)); }
+          if (/^송영/.test(head) && SG['입례송'] && !used['입례송']) { used['입례송'] = 1; [].push.apply(slides, joySlides('입례송', [], SG['입례송'].jnos, SG['입례송'].items)); }
           slides.push(parseItem(l, b));
         });
         /* 주보에 줄이 없어도 설교 매니저에 넣은 곡은 들어간다 — 예배 전 찬양은 맨 앞, 성가대 찬양은 말씀 앞 */
-        if (SG['경배와 찬양'] && !used['경배와 찬양']) [].splice.apply(slides, [1, 0].concat(joySlides('경배와 찬양', [], SG['경배와 찬양'].jnos)));
-        if (SG['입례송'] && !used['입례송']) { var at = 1; while (at < slides.length && slides[at].type === 'joy' && slides[at].head === '경배와 찬양') at++; [].splice.apply(slides, [at, 0].concat(joySlides('입례송', [], SG['입례송'].jnos))); }
-        if (SG['성가대 찬양'] && !used['성가대 찬양']) { var sm = -1; slides.forEach(function (x, i) { if (sm < 0 && x.type === 'sermon') sm = i; }); [].splice.apply(slides, [sm < 0 ? slides.length : sm, 0].concat(joySlides('성가대 찬양', [], SG['성가대 찬양'].jnos))); }
+        if (SG['경배와 찬양'] && !used['경배와 찬양']) [].splice.apply(slides, [1, 0].concat(joySlides('경배와 찬양', [], SG['경배와 찬양'].jnos, SG['경배와 찬양'].items)));
+        if (SG['입례송'] && !used['입례송']) { var at = 1; while (at < slides.length && slides[at].type === 'joy' && slides[at].head === '경배와 찬양') at++; [].splice.apply(slides, [at, 0].concat(joySlides('입례송', [], SG['입례송'].jnos, SG['입례송'].items))); }
+        if (SG['성가대 찬양'] && !used['성가대 찬양']) { var sm = -1; slides.forEach(function (x, i) { if (sm < 0 && x.type === 'sermon') sm = i; }); [].splice.apply(slides, [sm < 0 ? slides.length : sm, 0].concat(joySlides('성가대 찬양', [], SG['성가대 찬양'].jnos, SG['성가대 찬양'].items))); }
         start();
       });
     } else if (kind === 'wed') {
