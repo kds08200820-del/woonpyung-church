@@ -4562,7 +4562,7 @@ console.log('[affairs.js] v20260923lic');
         it.label = label; it.items = picks.map(function (p) { return { b: p.b === 'h' ? 'h' : 'c', n: p.no }; });
         delete it.jnos;   /* 옛 기쁨으로 찬양 번호는 더 쓰지 않는다 */
         it.detail = picks.map(function (p) { return '«' + p.title + '»'; }).join(', ');
-        if (label === '입례송') { it.fixed = true; try { localStorage.setItem('wpc_entrance_' + String(ov.querySelector('#se_date').value || today()).slice(0, 4), JSON.stringify(it.items)); } catch (e) {} }
+        if (label === '입례송') { it.fixed = true; try { localStorage.setItem('wpc_entrance', JSON.stringify(it.items)); } catch (e) {} }   /* 바꾸기 전까지 계속 쓰는 곡 — 해가 바뀌어도 이어진다 (2026-09-28) */
         if (i < 0) order.splice(joySlotInsertAt(label), 0, it);
         renderOrder();
       }
@@ -4594,20 +4594,25 @@ console.log('[affairs.js] v20260923lic');
       paintSongs();
       ov.querySelector('#se_joy_in').onclick = function () { joyPick('입례송'); };
       ov.querySelector('#se_joy_ch').onclick = function () { joyPick('성가대 찬양'); };
-      // 입례송은 한 해 동안 고정 — 주일 낮 예배를 새로 쓸 때 올해 입례송이 비어 있으면 올해 가장 최근 주일 것(없으면 이 PC에 기억한 것)으로 채운다
-      (function autoEntrance() {
+      // 입례송은 바꾸기 전까지 계속 같은 곡(보통 한 해에 한 번 바꿈) — 주일 낮 예배에 입례송이 비어 있으면 가장 최근 주일의 것(없으면 이 PC에 기억한 것)으로 채운다.
+      // 열 때와 예배 종류를 주일 낮 예배로 바꿀 때 모두 (2026-09-28: 해 경계·연도 제한 없앰)
+      function autoEntrance() {
         if ((ov.querySelector('#se_service') || {}).value !== '주일 낮 예배' || joySlotIndex('입례송') >= 0 || !window.CCMS) return;
-        var yr = String(ov.querySelector('#se_date').value || today()).slice(0, 4);
         function put(ns) { var its = normItems(ns); if (!its.length || joySlotIndex('입례송') >= 0) return; joySet('입례송', its.map(function (x) { return { b: x.b, no: x.n, title: songTitle(x) }; })); }
-        api('GET', 'sermons?select=worship_order,sermon_date&service=eq.' + encodeURIComponent('주일 낮 예배') + '&sermon_date=gte.' + yr + '-01-01&sermon_date=lte.' + yr + '-12-31&worship_order=like.*' + encodeURIComponent('입례송') + '*&order=sermon_date.desc&limit=1')
+        api('GET', 'sermons?select=worship_order,sermon_date&service=eq.' + encodeURIComponent('주일 낮 예배') + '&worship_order=like.*' + encodeURIComponent('입례송') + '*&order=sermon_date.desc&limit=3')
           .then(function (rows) {
-            var wo = []; try { wo = JSON.parse((rows && rows[0] && rows[0].worship_order) || '[]') || []; } catch (e) { wo = []; }
-            var e = wo.filter(function (x) { return x.label === '입례송' && ((x.items && x.items.length) || (x.jnos && x.jnos.length)); })[0];
+            var e = null;
+            (rows || []).some(function (r) {
+              var wo = []; try { wo = JSON.parse(r.worship_order || '[]') || []; } catch (x) { wo = []; }
+              e = wo.filter(function (x) { return x.label === '입례송' && ((x.items && x.items.length) || (x.jnos && x.jnos.length)); })[0]; return !!e;
+            });
             if (e) return put(e.items || e.jnos);
-            var ls = null; try { ls = JSON.parse(localStorage.getItem('wpc_entrance_' + yr) || 'null'); } catch (x) {}
+            var ls = null; try { ls = JSON.parse(localStorage.getItem('wpc_entrance') || localStorage.getItem('wpc_entrance_' + String(today()).slice(0, 4)) || 'null'); } catch (x) {}
             put(ls);
           }).catch(function () {});
-      })();
+      }
+      autoEntrance();
+      if (ov.querySelector('#se_service')) ov.querySelector('#se_service').addEventListener('change', autoEntrance);
       // CCM: 예배 순서에 빈 CCM 항목 추가(✎로 곡명 입력, 📎로 파일 첨부)
       ov.querySelector('#se_ccm').onclick = function () {
         var v = prompt('CCM 곡명을 입력하세요', '');
