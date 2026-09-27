@@ -132,6 +132,7 @@
         ['✅', '나의 출석', function(){ location.href = '../dashboard.html#myAttend'; }],
         ['🎵', '찬송가 악보', function(){ if(window.HYMN) HYMN.open(0, 'hymn'); }],
         ['🎶', '기쁨으로 찬양', function(){ if(window.HYMN) HYMN.open(0, 'joy'); }],
+        ['🎶', '우리들 찬양', function(){ if(window.HYMN) HYMN.open(0, 'wr'); }],
         ['📜', '교독문', function(){ if(window.GYODOK_VIEW) GYODOK_VIEW.open(0); }],
         ['📋', '본문 복사', function(){ var b = $('copyBtn'); if(b) b.click(); }],
         ['🔤', '스테판 원어 성경', function(){ if(!window.STEPH) return toast('원어 자료를 읽지 못했습니다'); STEPH.setOn(!STEPH.active()); toast(STEPH.active() ? '스테판 원어 성경으로 봅니다 — 본문 위 줄에서 보일 항목을 고르세요' : '일반 본문으로 돌아왔습니다'); }],
