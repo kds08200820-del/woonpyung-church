@@ -3479,9 +3479,13 @@ console.log('[affairs.js] v20260923lic');
       var html = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
         '<div style="display:flex;align-items:center;gap:8px"><button class="btn btn-line" id="cal_prev" style="padding:3px 11px">‹</button><b style="font-size:1.05rem;min-width:110px;text-align:center">' + y + '년 ' + (m + 1) + '월</b><button class="btn btn-line" id="cal_next" style="padding:3px 11px">›</button><button class="btn btn-line" id="cal_today" style="padding:3px 10px;font-size:.8rem">오늘</button></div>' +
         '<div style="display:flex;flex-wrap:wrap;align-items:center"><span style="font-size:.72rem;color:#9aa5b1;margin-right:10px">날짜 클릭 → ' + (worshipMode ? '예배 순서 작성' : '설교 작성') + '</span>' + legend + '</div></div>' +
-        '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' +
-        wd.map(function (w, i) { return '<div style="text-align:center;font-size:.78rem;font-weight:700;color:' + (i === 0 ? '#c0392b' : (i === 6 ? '#2563eb' : '#7b8794')) + ';padding:4px 0">' + w + '</div>'; }).join('');
-      for (var b = 0; b < startDow; b++) html += '<div></div>';
+        '<div class="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' +
+        wd.map(function (w, i) { return '<div class="cal-wd" style="text-align:center;font-size:.78rem;font-weight:700;color:' + (i === 0 ? '#c0392b' : (i === 6 ? '#2563eb' : '#7b8794')) + ';padding:4px 0">' + w + '</div>'; }).join('');
+      for (var b = 0; b < startDow; b++) html += '<div class="cal-pad"></div>';
+      /* 휴대폰(좁은 화면): 7칸 달력은 화면 밖으로 잘리므로 날짜별 목록으로 — 설교가 있는 날과 오늘만 (2026-09-27) */
+      if (!document.getElementById('calNarrowCss')) { var cs = document.createElement('style'); cs.id = 'calNarrowCss';
+        cs.textContent = '.cal-dw{display:none}@media (max-width:700px){.cal-grid{grid-template-columns:1fr!important;gap:6px!important}.cal-grid .cal-wd,.cal-grid .cal-pad,.cal-grid .cal-empty{display:none!important}.cal-grid .cal-day{min-height:0!important;padding:8px 10px!important}.cal-grid .cal-day>span:first-child{display:none}.cal-dw{display:inline;margin-left:0;font-size:.8rem;font-weight:700;color:#48576b}.cal-grid .cal-item{font-size:.86rem!important}}';
+        document.head.appendChild(cs); }
       for (var dd = 1; dd <= days; dd++) {
         var ds = y + '-' + pad2(m + 1) + '-' + pad2(dd), dow = new Date(y, m, dd).getDay(), isToday = (ds === todayStr);
         var dayRows = byDate[ds] || [];
@@ -3497,7 +3501,8 @@ console.log('[affairs.js] v20260923lic');
         var dnum = isToday
           ? '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:50%;background:#2f5d50;color:#fff;font-size:.74rem;font-weight:700">' + dd + '</span>'
           : '<span style="font-size:.78rem;color:' + dnumColor + '">' + dd + '</span>';
-        html += '<div class="cal-day" data-date="' + ds + '" title="' + ds + ' — 이 날짜로 설교 작성" style="min-height:86px;border:1px solid ' + (isToday ? '#2f5d50' : '#eef1f5') + ';border-radius:8px;padding:4px 5px;background:' + (isToday ? '#f1f7f5' : '#fff') + ';cursor:pointer;transition:background .12s">' + dnum + items + '</div>';
+        dnum += '<span class="cal-dw">' + (m + 1) + '월 ' + dd + '일 (' + wd[dow] + ')</span>';
+        html += '<div class="cal-day' + (!dayRows.length && !isToday && !kkHtml ? ' cal-empty' : '') + '" data-date="' + ds + '" title="' + ds + ' — 이 날짜로 설교 작성" style="min-height:86px;border:1px solid ' + (isToday ? '#2f5d50' : '#eef1f5') + ';border-radius:8px;padding:4px 5px;background:' + (isToday ? '#f1f7f5' : '#fff') + ';cursor:pointer;transition:background .12s">' + dnum + items + '</div>';
       }
       html += '</div><div style="font-size:.72rem;color:#9aa5b1;margin-top:8px">' + (worshipMode ? '＋ 빈 날짜를 클릭하면 그 날짜로 새 예배 순서를, 예배 칸을 클릭하면 해당 예배를 엽니다.' : '＋ 빈 날짜를 클릭하면 그 날짜로 새 설교를, 설교 칸을 클릭하면 해당 설교를 엽니다.') + '</div></div>';
       calBox.innerHTML = html;
