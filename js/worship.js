@@ -409,33 +409,32 @@
   function songs(s) { var out = []; String(s).replace(/«([^»]+)»/g, function (_, t) { out.push(t.trim()); }); return out; }
   function hymnTitle(no) { var L = window.HYMNS || []; for (var i = 0; i < L.length; i++) if (L[i].no === no) return L[i].title; return ''; }
   /* ── 기쁨으로 찬양(CCM) — 예배 전 찬양(경배와 찬양)·입례송·성가대 찬양을 악보로 (2026-09-27)
-       곡 자료 modu/joy-data.js(window.JOYS), 악보 modu/data/joy/NNN.webp
+       곡 자료 modu/ccm-data.js(window.CCMS), 악보 modu/data/ccm/NNN.webp
        설교 매니저에 저장한 곡(worship_published.songs: label·jnos)이 있으면 그것을, 없으면 주보 줄의 «곡명»을 목록에서 찾아 쓴다 */
-  var JOY_IMG = 'modu/data/joy/';
+  var JOY_IMG = 'modu/data/ccm/';
   function jnorm(s) { return String(s || '').replace(/[\s,.·!?~\-()]/g, '').toLowerCase(); }
-  function joyByNo(n) { var L = window.JOYS || []; n = +n; for (var i = 0; i < L.length; i++) if (L[i].no === n) return L[i]; return null; }
+  function joyByNo(n) { var L = window.CCMS || []; n = +n; for (var i = 0; i < L.length; i++) if (L[i].no === n) return L[i]; return null; }
   function joyFind(t) {
-    var L = window.JOYS || [], k = jnorm(t); if (!k) return null;
+    var L = window.CCMS || [], k = jnorm(t); if (!k) return null;
     for (var i = 0; i < L.length; i++) if (jnorm(L[i].title) === k) return L[i];
     for (i = 0; i < L.length; i++) if ((L[i].alt || []).some(function (a) { return jnorm(a) === k; })) return L[i];
     return null;
   }
   function joySlotKey(l) { l = String(l || '').replace(/\s+/g, ''); if (/^(경배와찬양|예배전찬양)/.test(l)) return '경배와 찬양'; if (/^입례/.test(l)) return '입례송'; if (/^성가(대찬양|곡|대)?$/.test(l)) return '성가대 찬양'; return ''; }
-  function wrByNo(n) { var L = window.WRS || []; n = +n; for (var i = 0; i < L.length; i++) if (L[i].no === n) return L[i]; return null; }
-  function wrFind(t) { var L = window.WRS || [], k = jnorm(t); for (var i = 0; i < L.length; i++) if (jnorm(L[i].title) === k || (L[i].alt || []).some(function (a) { return jnorm(a) === k; })) return L[i]; return null; }
+  /* 옛 기쁨으로 찬양(j)·우리들 찬양(w) 번호 → 모두의 찬양 번호 */
+  function legacyCc(b, n) { var L = window.CCMS || [], k = b === 'w' ? 'w' : 'j'; n = +n; for (var i = 0; i < L.length; i++) if (L[i][k] === n) return L[i]; return null; }
   function hymnFind(t) { var L = window.HYMNS || [], k = jnorm(t); for (var i = 0; i < L.length; i++) if (jnorm(L[i].title) === k) return L[i]; return null; }
   /* sg: 설교 매니저 자료 { items:[{b:'j'|'h', n}], jnos } — 두 책(기쁨으로 찬양·새찬송가)을 섞어 쓸 수 있다 */
   function joySlides(head, titles, jnos, items) {
     var out = [];
     if (items && items.length) items.forEach(function (x) {
       if (x.b === 'h') { var t = hymnTitle(+x.n); out.push({ type: 'hymn', head: head, no: +x.n, title: t }); }
-      else if (x.b === 'w') { var w = wrByNo(x.n); if (w) out.push({ type: 'joy', book: 'wr', head: head, no: w.no, title: w.title }); }
-      else { var j = joyByNo(x.n); if (j) out.push({ type: 'joy', head: head, no: j.no, title: j.title }); }
+      else { var j = (x.b === 'j' || x.b === 'w') ? legacyCc(x.b, x.n) : joyByNo(x.n); if (j) out.push({ type: 'joy', head: head, no: j.no, title: j.title }); }
     });
-    else if (jnos && jnos.length) jnos.forEach(function (n) { var j = joyByNo(n); if (j) out.push({ type: 'joy', head: head, no: j.no, title: j.title }); });
+    else if (jnos && jnos.length) jnos.forEach(function (n) { var j = legacyCc('j', n); if (j) out.push({ type: 'joy', head: head, no: j.no, title: j.title }); });
     else titles.forEach(function (t) {
-      var j = joyFind(t), w = j ? null : wrFind(t), h = (j || w) ? null : hymnFind(t);
-      out.push(j ? { type: 'joy', head: head, no: j.no, title: j.title } : w ? { type: 'joy', book: 'wr', head: head, no: w.no, title: w.title } : h ? { type: 'hymn', head: head, no: h.no, title: h.title } : { type: 'text', head: head, lines: [t], big: true });
+      var j = joyFind(t), h = j ? null : hymnFind(t);
+      out.push(j ? { type: 'joy', head: head, no: j.no, title: j.title } : h ? { type: 'hymn', head: head, no: h.no, title: h.title } : { type: 'text', head: head, lines: [t], big: true });
     });
     return out;
   }
@@ -542,7 +541,7 @@
   var FIELDS = {
     cover:    [['k', '예배 이름'], ['date', '날짜 줄'], ['title', '제목'], ['ref', '본문'], ['who', '설교자'], ['quote', '요절', 'area']],
     hymn:     [['no', '장 번호(숫자)'], ['title', '제목']],
-    joy:      [['no', '기쁨으로 찬양 번호(숫자)'], ['title', '제목']],
+    joy:      [['no', '모두의 찬양 번호(숫자)'], ['title', '제목']],
     gyodok:   [['no', '교독문 번호(숫자)'], ['sub', '부제']],
     bible:    [['ref', '본문(예: 역대상 16:1-6)']],
     sermon:   [['title', '제목'], ['ref', '본문'], ['who', '설교자'], ['quote', '요절', 'area']],
@@ -550,7 +549,7 @@
     creed: [], lord: [],
     text:     [['lines', '내용(줄마다 한 문단)', 'lines'], ['big', '큰 글씨로 가운데 (예/아니오)']]
   };
-  var TYPE_NAME = { cover: '표지', joy: '찬양(기쁨으로 찬양)', hymn: '찬송', gyodok: '교독문', bible: '성경 본문', sermon: '말씀', offering: '헌금', creed: '사도신경', lord: '주기도문', text: '글' };
+  var TYPE_NAME = { cover: '표지', joy: '찬양(모두의 찬양)', hymn: '찬송', gyodok: '교독문', bible: '성경 본문', sermon: '말씀', offering: '헌금', creed: '사도신경', lord: '주기도문', text: '글' };
   function slideLabel(sl) { var lb = sl.type === 'cover' ? '표지' : (sl.head || TYPE_NAME[sl.type] || '순서'); if (sl.type === 'hymn') lb += ' ' + sl.no + '장'; if (sl.type === 'joy') lb += ' ' + sl.no + '번'; if (sl.type === 'gyodok') lb += ' ' + sl.no + '번'; return lb; }
   function slideSub(sl) { return sl.title || sl.ref || sl.sub || (sl.lines ? sl.lines.join(' ') : '') || ''; }
   function toggleEdit() { editing = !editing; if (editing) renderEditor(); else { strip(); render(); } var b = $('wsEdit'); if (b) b.textContent = editing ? '보기' : '편집'; }
@@ -644,7 +643,7 @@
         '<div class="ws-cover-s">' + esc(s.ref || '') + (s.who ? ' · ' + esc(s.who) : '') + '</div>' + (s.quote ? '<div class="ws-cover-q">' + esc(s.quote) + '</div>' : '') +
         '<div class="ws-tip">옆으로 밀거나 [다음]을 누르면 순서대로 이어집니다</div></div>';
     } else if (s.type === 'joy') {
-      h = head + '<div class="ws-item-t"><b>' + s.no + '번</b> ' + esc(s.title || '') + ' <span style="font-size:.78em;color:#9a9a9a">' + (s.book === 'wr' ? '우리들 찬양' : '기쁨으로 찬양') + '</span></div><div class="ws-img" id="wsImgBox"><img id="wsImg" src="' + (s.book === 'wr' ? 'modu/data/wr/' : JOY_IMG) + ('00' + s.no).slice(-3) + '.webp" alt="' + (s.book === 'wr' ? '우리들 찬양 ' : '기쁨으로 찬양 ') + s.no + '번"></div><div class="ws-tip">두 손가락으로 벌리면 커집니다</div>';
+      h = head + '<div class="ws-item-t"><b>' + s.no + '번</b> ' + esc(s.title || '') + ' <span style="font-size:.78em;color:#9a9a9a">모두의 찬양</span></div><div class="ws-img" id="wsImgBox"><img id="wsImg" src="' + JOY_IMG + ('00' + s.no).slice(-3) + '.webp" alt="모두의 찬양 ' + s.no + '번"></div><div class="ws-tip">두 손가락으로 벌리면 커집니다</div>';
     } else if (s.type === 'hymn') {
       h = head + '<div class="ws-item-t"><b>' + s.no + '장</b> ' + esc(s.title || '') + '</div><div class="ws-img" id="wsImgBox"><img id="wsImg" src="' + HYMN_IMG + ('00' + s.no).slice(-3) + '.webp" alt="새찬송가 ' + s.no + '장"></div><div class="ws-tip">두 손가락으로 벌리면 커집니다</div>';
     } else if (s.type === 'gyodok') {

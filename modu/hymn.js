@@ -38,24 +38,24 @@ var HYMN = (function(){
   /* 두 권: 새찬송가(장) · 기쁨으로 찬양(번, CCM — 조·주제로 나눠 찾기) (2026-09-27) */
   var BOOKS = {
     hymn: { name:'새찬송가', list:window.HYMNS || [], dir:'data/hymn/', unit:'장', hash:'hymn' },
-    joy:  { name:'기쁨으로 찬양', list:window.JOYS || [], dir:'data/joy/', unit:'번', hash:'joy', gospel:true },
-    wr:   { name:'우리들 찬양', list:window.WRS || [], dir:'data/wr/', unit:'번', hash:'wr', gospel:true }
+    ccm:  { name:'모두의 찬양', list:window.CCMS || [], dir:'data/ccm/', unit:'번', hash:'ccm', gospel:true }   /* 운평장로교회 찬양집 (옛 기쁨으로 찬양·우리들 찬양을 하나로, 2026-09-28) */
   };
   var BK = 'hymn', B = BOOKS.hymn, LIST = B.list, MAX = 0, byNo = {};
   var cur = 0, zoom = 1, locked = false, indexHtml = '', POPREF = null;
   var F = { key:'', tag:'', sort:'no' };                    /* 기쁨으로 찬양 거르기 */
+  function oldToCcm(b, n){ var key = b === 'joy' ? 'j' : 'w', L = BOOKS.ccm.list; for(var i = 0; i < L.length; i++) if(L[i][key] === n) return L[i].no; return 0; }
   function setBook(k){
+    if(k === 'joy' || k === 'wr') k = 'ccm';
     if(!BOOKS[k] || !BOOKS[k].list.length) k = 'hymn';
     BK = k; B = BOOKS[k]; LIST = B.list; MAX = LIST.length ? LIST[LIST.length - 1].no : 0;
     byNo = {}; LIST.forEach(function(h){ byNo[h.no] = h; });
     indexHtml = ''; var pl = $('hyPopList'); if(pl) pl.innerHTML = '';
     var gospel = !!B.gospel;
     [].forEach.call(document.querySelectorAll('#hyBooks button[data-bk]'), function(b){ var on = b.dataset.bk === 'gospel' ? gospel : b.dataset.bk === k; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
-    var sub = $('hyBooks2'); if(sub){ sub.hidden = !gospel; [].forEach.call(sub.querySelectorAll('button[data-bk]'), function(b){ var on = b.dataset.bk === k; b.classList.toggle('on', on); b.hidden = !BOOKS[b.dataset.bk].list.length; }); }
-    if(gospel) try{ localStorage.setItem('modu.hymn.gospel', k); }catch(e){}
+
     F.key = ''; F.tag = ''; buildFilters();
     var fl = $('hyFilt'); if(fl) fl.hidden = !hasMeta();
-    var inp = $('hyIn'); if(inp) inp.placeholder = k === 'wr' ? '번호, 제목·첫 줄, 조(D·Em)' : k === 'joy' ? '번호, 제목, 조(D·Em), 주제(감사·은혜)' : '장, 제목, 조(G·F), 주제(성탄·감사)';
+    var inp = $('hyIn'); if(inp) inp.placeholder = k === 'ccm' ? '번호, 제목·첫 줄, 조(D·Em), 주제(감사·은혜)' : '장, 제목, 조(G·F), 주제(성탄·감사)';
     try{ localStorage.setItem('modu.hymn.book', k); }catch(e){}
   }
   /* 조·주제 거르기 — 두 책 모두 (찬송가 주제는 새찬송가 목차 분류, 조는 악보에서 읽음 2026-09-27) */
@@ -67,7 +67,7 @@ var HYMN = (function(){
     LIST.forEach(function(h){ if(h.key) keys[h.key] = (keys[h.key] || 0) + 1; (h.tags || []).forEach(function(t){ tags[t] = (tags[t] || 0) + 1; }); });
     var kl = Object.keys(keys).sort(function(a, b){ var i = KORD.indexOf(a), j = KORD.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || a.localeCompare(b); });
     ks.innerHTML = '<option value="">모든 조</option>' + kl.map(function(k){ return '<option value="' + esc(k) + '">' + esc(k) + '조 (' + keys[k] + ')</option>'; }).join('');
-    var order = (BK === 'joy' ? window.JOY_TAGS : BK === 'hymn' ? window.HYMN_TAGS : window.WR_TAGS) || Object.keys(tags);
+    var order = (BK === 'hymn' ? window.HYMN_TAGS : window.CCM_TAGS) || Object.keys(tags);
     ts.innerHTML = '<option value="">모든 주제</option>' + order.filter(function(t){ return tags[t]; }).map(function(t){ return '<option value="' + esc(t) + '">' + esc(t) + ' (' + tags[t] + ')</option>'; }).join('');
     ts.hidden = !Object.keys(tags).length;   /* 주제 색인이 없는 책(우리들 찬양)은 숨김 */
   }
@@ -144,12 +144,12 @@ var HYMN = (function(){
     $('hymnModal').classList.remove('hy-viewing');
     $('hyBody').classList.remove('hy-fitm'); $('hyImg').classList.remove('fit');   /* 악보용 스크롤 잠금을 풀어 목록이 움직이게 (2026-09-27: 뒤로 온 목록이 멈추던 문제) */
     $('hyTools').hidden = true;
-    if($('hyBooks')) $('hyBooks').hidden = !(BOOKS.joy.list.length || BOOKS.wr.list.length); if($('hyBooks2')) $('hyBooks2').hidden = !B.gospel; if($('hyFilt')) $('hyFilt').hidden = !hasMeta();
+    if($('hyBooks')) $('hyBooks').hidden = !BOOKS.ccm.list.length; if($('hyFilt')) $('hyFilt').hidden = !hasMeta();
     $('hyImg').hidden = true; $('hyWait').hidden = true; $('hyNone').hidden = true;
     $('hyIndex').hidden = false;
     paintIndex($('hyIn').value);
     $('hyBody').scrollTop = 0;
-    try{ if(/^#(hymn|joy|wr)=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+    try{ if(/^#(hymn|ccm|joy|wr)=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); }catch(e){}
   }
   function paintIndex(q){
     var r = search(q), box = $('hyIndex');
@@ -169,7 +169,7 @@ var HYMN = (function(){
     var hx = byNo[no] || {};
     $('hySub').textContent = title(no) + (hx.key ? ' · ' + hx.key + '조' : '') + (hx.tags && hx.tags.length ? ' · ' + hx.tags.join(' ') : '');
     $('hymnModal').classList.add('hy-viewing');
-    $('hyTools').hidden = false; $('hyIn').value = ''; if($('hyBooks')) $('hyBooks').hidden = true; if($('hyBooks2')) $('hyBooks2').hidden = true; if($('hyFilt')) $('hyFilt').hidden = true;   /* 악보를 볼 때는 악보 자리를 넓게 */ $('hyPop').hidden = true;
+    $('hyTools').hidden = false; $('hyIn').value = ''; if($('hyBooks')) $('hyBooks').hidden = true; if($('hyFilt')) $('hyFilt').hidden = true;   /* 악보를 볼 때는 악보 자리를 넓게 */ $('hyPop').hidden = true;
     $('hyIndex').hidden = true; $('hyRail').hidden = true;
     var img = $('hyImg'), box = $('hyBody');
     img.hidden = true; $('hyWait').hidden = false; $('hyNone').hidden = true;
@@ -180,7 +180,7 @@ var HYMN = (function(){
     img.alt = B.name + ' ' + no + B.unit + ' ' + title(no);
     $('hyPrev').disabled = no <= 1; $('hyNext').disabled = no >= MAX;
     try{ localStorage.setItem('modu.' + B.hash + '.last', String(no)); }catch(e){}
-    try{ if(/^#(hymn|joy|wr)=/.test(location.hash) || location.hash === '') history.replaceState(null, '', location.pathname + location.search + '#' + B.hash + '=' + no); }catch(e){}
+    try{ if(/^#(hymn|ccm|joy|wr)=/.test(location.hash) || location.hash === '') history.replaceState(null, '', location.pathname + location.search + '#' + B.hash + '=' + no); }catch(e){}
   }
   function open(no, bk){
     var m = $('hymnModal'); if(!m) return;
@@ -194,7 +194,7 @@ var HYMN = (function(){
   function close(){
     var m = $('hymnModal'); if(!m || m.hidden) return;
     m.hidden = true; document.body.classList.remove('modal-open'); document.body.classList.remove('hy-open');
-    try{ if(/^#(hymn|joy|wr)=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+    try{ if(/^#(hymn|ccm|joy|wr)=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); }catch(e){}
   }
   function setZoom(z){ zoom = Math.max(1, Math.min(4, z)); $('hyImg').style.width = (zoom * 100) + '%'; $('hyImg').classList.toggle('fit', zoom === 1); $('hyBody').classList.toggle('hy-fitm', zoom === 1); }
   function setLock(v){
@@ -265,17 +265,17 @@ var HYMN = (function(){
     /* 두 권 고르기 · 조 · 주제 · 정렬 */
     var bks = $('hyBooks');
     if(bks){
-      if(!BOOKS.joy.list.length && !BOOKS.wr.list.length) bks.hidden = true;
+      if(!BOOKS.ccm.list.length) bks.hidden = true;
       /* 찬송가 / 복음성가(→ 기쁨으로 찬양·우리들 찬양) */
       function pick(e){
         var b = e.target.closest('button[data-bk]'); if(!b) return;
         var k = b.dataset.bk;
-        if(k === 'gospel'){ if(B.gospel) return; var g = 'joy'; try{ g = localStorage.getItem('modu.hymn.gospel') || 'joy'; }catch(x){} if(!BOOKS[g] || !BOOKS[g].list.length) g = BOOKS.joy.list.length ? 'joy' : 'wr'; k = g; }
+
         if(k === BK) return;
         setBook(k); $('hyIn').value = ''; showIndex();
       }
       bks.addEventListener('click', pick);
-      if($('hyBooks2')) $('hyBooks2').addEventListener('click', pick);
+
     }
     if($('hyKey')){
       buildFilters(); if($('hyFilt')) $('hyFilt').hidden = !hasMeta();
@@ -283,7 +283,11 @@ var HYMN = (function(){
       $('hyTag').onchange = function(){ F.tag = this.value; if(cur) showIndex(); else paintIndex($('hyIn').value); };
       $('hySort').onclick = function(){ F.sort = F.sort === 'no' ? 'title' : 'no'; this.textContent = F.sort === 'no' ? '번호순' : '가나다순'; indexHtml = ''; if(cur) showIndex(); else paintIndex($('hyIn').value); };
     }
-    function fromHash(){ var h = location.hash.match(/^#(hymn|joy|wr)=(\d{1,3})$/); if(h) open(+h[2], h[1]); }
+    function fromHash(){
+      var h = location.hash.match(/^#(hymn|ccm|joy|wr)=(\d{1,3})$/); if(!h) return;
+      if(h[1] === 'joy' || h[1] === 'wr'){ var o = oldToCcm(h[1], +h[2]); if(o) open(o, 'ccm'); return; }   /* 옛 주소도 새 번호로 */
+      open(+h[2], h[1]);
+    }
     fromHash();
     window.addEventListener('hashchange', fromHash);
   }
