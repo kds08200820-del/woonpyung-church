@@ -151,12 +151,12 @@ var MAPCMP = (function(){
       if(!R || !R.modern) return; e.preventDefault();
       var p = pt(e), before = mll(p.x, p.y, p.W, p.H);
       mv.k = Math.max(mMinK(p.W, p.H), Math.min(3000, mv.k * (e.deltaY < 0 ? 1.18 : 1 / 1.18)));
-      var after = mll(p.x, p.y, p.W, p.H); mv.lon += before.lon - after.lon; mv.lat += before.lat - after.lat; mRedraw();
+      var after = mll(p.x, p.y, p.W, p.H); mv.lon += before.lon - after.lon; mv.lat += before.lat - after.lat; if(same){ same = false; $('mcSame').classList.remove('on'); } mRedraw();
     }, { passive:false });
     cv.addEventListener('pointerdown', function(e){ if(!R || !R.modern || e.button !== 0) return; var p = pt(e); mDrag = { x:p.x, y:p.y, lat:mv.lat, lon:mv.lon, moved:false }; cv.setPointerCapture(e.pointerId); tip.hidden = true; });
     cv.addEventListener('pointermove', function(e){
       if(!R || !R.modern) return; var p = pt(e);
-      if(mDrag){ var dx = p.x - mDrag.x, dy = p.y - mDrag.y; if(Math.abs(dx) + Math.abs(dy) > 3) mDrag.moved = true; mv.lon = mDrag.lon - dx / (mv.k * mcos()); mv.lat = mDrag.lat + dy / mv.k; mRedraw(); return; }
+      if(mDrag){ var dx = p.x - mDrag.x, dy = p.y - mDrag.y; if(Math.abs(dx) + Math.abs(dy) > 3){ mDrag.moved = true; if(same){ same = false; $('mcSame').classList.remove('on'); } } mv.lon = mDrag.lon - dx / (mv.k * mcos()); mv.lat = mDrag.lat + dy / mv.k; mRedraw(); return; }
       var ll = mll(p.x, p.y, p.W, p.H), c = countryAt(ll.lat, ll.lon);
       if(!c){ tip.hidden = true; return; }
       var olds = L ? Object.keys(placesOf(L)).map(function(id){ return ATLAS_PLACES[id]; }).filter(function(q){ return q && countryAt(q[0], q[1]) === c; }).map(function(q){ return q[2]; }) : [];
@@ -172,7 +172,9 @@ var MAPCMP = (function(){
   function paint(){
     if(!L || !R) return;
     var b = same && !R.modern ? union(L.bounds, R.bounds) : null;
-    $('mcSwap').disabled = !!R.modern; $('mcModern').classList.toggle('on', !!R.modern);
+    $('mcSwap').disabled = !!R.modern; $('mcSwap').title = R.modern ? '현대지도와는 자리를 바꿀 수 없습니다' : '왼쪽·오른쪽 바꾸기';
+    $('mcModern').classList.toggle('on', !!R.modern); $('mcModern').title = R.modern ? '성경 지도로 돌아가기' : '오른쪽을 오늘의 세계 지도로';
+    $('mcSame').classList.toggle('on', same); $('mcSame').title = R.modern ? (same ? '현대지도를 왼쪽 지도 범위에 맞춰 둡니다 (휠·끌기로 풀림)' : '현대지도를 왼쪽 지도 범위에 맞춥니다') : '두 지도를 같은 범위로 맞춰 그립니다';
     [['L', L], ['R', R]].forEach(function(p){
       if(p[1].modern){
         $('mcRT').textContent = MOD.title; $('mcRRef').textContent = '오늘';
@@ -180,6 +182,7 @@ var MAPCMP = (function(){
         $('mcOverlay').onchange = function(){ overlay = this.checked; mRedraw(); };
         $('mcRTxt').textContent = '■ 수도 · (옛 ○○) 그 자리의 성경 지명 · 갈색 동그라미 왼쪽 지도의 성경 지명. 휠 확대·축소, 끌어 옮기기, 두 번 누르면 왼쪽 범위로.';
         $('mcRCv').classList.add('mc-loading');
+        if(same){ var rr0 = $('mcRCv').parentElement.getBoundingClientRect(); mFit(L.bounds, rr0.width || 600, rr0.height || 400); }   /* 같은 범위: 왼쪽 지도 범위로 */
         loadWorld().then(function(){ $('mcRCv').classList.remove('mc-loading'); drawModern($('mcRCv')); modernDiff(); }, function(){ $('mcRTxt').textContent = '현대 지도 자료를 읽지 못했습니다.'; });
         return;
       }
@@ -206,7 +209,8 @@ var MAPCMP = (function(){
   function setL(m, keepR){ L = m; $('mcLSel').value = m.id; var rec = suggest(m); options($('mcRSel'), null, rec);
     if(R && R.modern && keepR){ $('mcRSel').value = MOD.id; var rr = $('mcRCv').getBoundingClientRect(); mFit(m.bounds, rr.width || 600, rr.height || 400); paint(); return; }
     if(!keepR || !R || R === L || R.modern || overlap(R.bounds, m.bounds) < .25) R = rec[0] || maps().filter(function(x){ return x !== m; })[0];   /* 오른쪽은 같은 지역일 때만 그대로 */ $('mcRSel').value = R.id; paint(); }
-  function toModern(){ R = MOD; $('mcRSel').value = MOD.id; var rr = $('mcRCv').getBoundingClientRect(); mFit(L.bounds, rr.width || 600, rr.height || 400); paint(); }
+  var prevR = null;
+  function toModern(){ if(R && !R.modern) prevR = R; R = MOD; $('mcRSel').value = MOD.id; var rr = $('mcRCv').getBoundingClientRect(); mFit(L.bounds, rr.width || 600, rr.height || 400); paint(); }
   function build(){
     box = document.createElement('div'); box.className = 'modal mc-modal'; box.id = 'mcModal'; box.hidden = true;
     box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', '지도 비교');
@@ -235,7 +239,7 @@ var MAPCMP = (function(){
       '.mc-head{cursor:move;user-select:none;touch-action:none}.mc-head :is(button,select,input){cursor:pointer}.mc-dragging,.mc-dragging *{cursor:move!important;user-select:none!important}' +
       '@media (max-width:900px){.mc-card{min-width:0;resize:none}}' +
       '.mc-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}.mc-head b{font-size:17px}.mc-sub{color:var(--fg3);font-size:13px}.mc-sp{flex:1}' +
-      '.mc-head .btn.on{background:var(--accent);color:var(--accent-fg,#fff);border-color:var(--accent)}' +
+      '.mc-head .btn.on{background:var(--accent);color:var(--accent-fg,#fff);border-color:var(--accent)}.mc-head .btn:disabled{opacity:.38;cursor:default;pointer-events:none}' +
       '.mc-body{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}' +
       '.mc-pane{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg)}' +
       '.mc-pbar{display:flex;align-items:center;gap:6px;padding:0 0 0 8px}.mc-pbar .mc-sel{flex:1;margin:8px 8px 8px 0}.mc-grip{display:none;font-size:12.5px;color:var(--fg3);white-space:nowrap;cursor:move;user-select:none}' +
@@ -258,7 +262,7 @@ var MAPCMP = (function(){
       '.mc-chip{display:inline-block;margin:0 5px 5px 0;padding:1px 8px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;background:var(--panel)}.mc-dim{color:var(--fg3);font-size:12.5px}' +
       '@media (max-width:900px){.mc-body{grid-template-columns:1fr;overflow:auto}.mc-pane{min-height:420px}.mc-diffin{grid-template-columns:1fr}.mc-sub{display:none}#mcSplit{display:none}}';
     document.head.appendChild(st);
-    $('mcClose').onclick = close;
+    $('mcClose').onclick = function(){ if(window.POP && POP.isPop) POP.close(); else close(); };   /* 따로 뜬 창이면 창을 숨긴다 */
     /* ── 창 나누기: 각 창을 따로 끌어 옮기고(머리줄) 모서리로 크기를 바꾼다. 자리는 기억한다. 뒤의 본문도 그대로 쓸 수 있다 ── */
     var SPK = 'mc.split', split = false, zTop = 10;
     function spSaved(){ try { return JSON.parse(localStorage.getItem(SPK) || 'null'); } catch(e){ return null; } }
@@ -299,7 +303,7 @@ var MAPCMP = (function(){
     var rs = new ResizeObserver(function(){ if(!box.hidden && split){ clearTimeout(rs._t); rs._t = setTimeout(function(){ spSave(); paint(); }, 200); } });
     rs.observe($('mcLWin')); rs.observe($('mcRWin'));
     $('mcSplit').onclick = function(){ setSplit(!split); };
-    MAPCMP._split = function(){ var sv = spSaved(); setSplit(sv ? sv.on !== false : window.innerWidth > 900); };
+    MAPCMP._split = function(){ if(window.POP && POP.isPop){ setSplit(false); $('mcSplit').hidden = true; return; } var sv = spSaved(); setSplit(sv ? sv.on !== false : window.innerWidth > 900); };
 
     /* 창 옮기기: 머리줄을 끌면 창이 따라온다 (화면 밖으로는 못 나감), 두 번 누르면 가운데로. 끌다가 밖에서 놓아도 창은 닫히지 않는다 */
     (function(){
@@ -311,7 +315,7 @@ var MAPCMP = (function(){
         dy = Math.max(8 - r.top, Math.min(window.innerHeight - 56 - r.top, dy)); apply();   /* 머리줄은 늘 화면 안에 */
       }
       head.addEventListener('pointerdown', function(e){
-        if(e.button !== 0 || e.target.closest('button,select,input,a') || box.classList.contains('mc-split')) return;
+        if(e.button !== 0 || e.target.closest('button,select,input,a') || box.classList.contains('mc-split') || (window.POP && POP.isPop)) return;
         on = true; sx = e.clientX; sy = e.clientY; ox = dx; oy = dy; head.setPointerCapture(e.pointerId); document.body.classList.add('mc-dragging'); e.preventDefault();
       });
       head.addEventListener('pointermove', function(e){ if(!on) return; dx = ox + e.clientX - sx; dy = oy + e.clientY - sy; apply(); });
@@ -324,13 +328,13 @@ var MAPCMP = (function(){
     $('mcSwap').onclick = function(){ if(R && R.modern) return; var t = L; L = R; R = t; $('mcLSel').value = L.id; options($('mcRSel'), null, suggest(L)); $('mcRSel').value = R.id; paint(); };
     $('mcLSel').onchange = function(){ var m = ATLAS.byId(this.value); if(m) setL(m, true); };
     $('mcRSel').onchange = function(){ if(this.value === MOD.id){ toModern(); return; } var m = ATLAS.byId(this.value); if(m){ R = m; paint(); } };
-    $('mcModern').onclick = function(){ if(R && R.modern){ var rec = suggest(L); R = rec[0] || R; $('mcRSel').value = R.id; paint(); } else toModern(); };
+    $('mcModern').onclick = function(){ if(R && R.modern){ var back = (prevR && prevR !== L && ATLAS.byId(prevR.id)) ? prevR : (suggest(L)[0] || maps().filter(function(x){ return x !== L; })[0]); if(!back) return; R = back; options($('mcRSel'), null, suggest(L)); $('mcRSel').value = R.id; paint(); } else toModern(); };
     bindModern();
     /* 지도를 누르면 크게 본다 — 따로 뜬 비교지도 창이면 비교는 그대로 두고 성경 지도 창을 따로 띄운다 (평면도로) */
     ['L', 'R'].forEach(function(s){ $('mc' + s + 'Cv').onclick = function(){ var m = s === 'L' ? L : R; if(m.modern) return; if(window.POP && POP.isPop && POP.open){ POP.open('atlas', { map:m.id }); return; } close(); if(APP.openAtlasAt) APP.openAtlasAt(m, null); else ATLAS.open(m); }; });
     var down = false;
     box.addEventListener('mousedown', function(e){ down = e.target === box; });
-    box.addEventListener('click', function(e){ if(down && e.target === box && !box.classList.contains('mc-split')) close(); down = false; });
+    box.addEventListener('click', function(e){ if(down && e.target === box && !box.classList.contains('mc-split') && !(window.POP && POP.isPop)) close(); down = false; });
     box.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.stopPropagation(); close(); } });
     document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !box.hidden && box.classList.contains('mc-split') && !e.defaultPrevented && document.activeElement && box.contains(document.activeElement)) close(); });
     ro = new ResizeObserver(function(){ if(!box.hidden) { clearTimeout(ro._t); ro._t = setTimeout(function(){ if(R && R.modern){ drawModern($('mcRCv')); ATLAS.renderTo(L, $('mcLCv'), $('mcLCv').parentElement.getBoundingClientRect().width, $('mcLCv').parentElement.getBoundingClientRect().height, null, function(){}); } else paint(); }, 150); } });
@@ -339,7 +343,7 @@ var MAPCMP = (function(){
   /* 비교지도(데스크탑): 성경 지도 창 두 개를 화면 왼쪽·오른쪽 반에 나란히 띄운다 — 각 창은 지도 창의 모든 기능(3D 지형·거리재기·목록)을 그대로 쓴다.
      현대지도 비교와 웹(모두의 성경)은 아래 한 창 비교(open)로 */
   function twoWindows(left, right){
-    if(!(window.POP && !POP.isPop && POP.open)) return false;
+    return false;   /* 비교지도는 따로 뜨는 창 하나(?pop=compare)로 연다 — 지도 창 두 개 방식은 쓰지 않는다 */
     var st = APP.st || {}, l = left || (st.bi >= 0 ? ATLAS.mapsFor(st.bi, st.ci)[0] : null) || maps()[0], r = right || suggest(l)[0] || maps().filter(function(x){ return x !== l; })[0];
     if(!l || !r) return false;
     POP.open('atlas', { map:l.id }, 'left');
