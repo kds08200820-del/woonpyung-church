@@ -103,11 +103,15 @@
   /* 새벽·수요기도회 순서: 찬송 → 교독문 → 본문 → 말씀 */
   function midweekSlides(k, date, title, ref, who, rec) {
     slides.push({ type: 'cover', k: k, date: dateLabel(date), title: title || '', ref: ref || '', who: who || '', quote: '' });
+    var SGm = {}; ((rec && rec.songs) || []).forEach(function (x) { if (x && x.label) SGm[x.label] = x; });   /* 기쁨으로 찬양 (2026-09-27) */
+    if (SGm['경배와 찬양']) [].push.apply(slides, joySlides('경배와 찬양', [], SGm['경배와 찬양'].jnos));
+    if (SGm['입례송']) [].push.apply(slides, joySlides('입례송', [], SGm['입례송'].jnos));
     if (rec) {
       hymnNos(rec.hymns).forEach(function (n) { slides.push({ type: 'hymn', head: '찬송', no: n, title: hymnTitle(n) }); });
       var g = gyodokNo(rec.gyodok); if (g) slides.push({ type: 'gyodok', head: '성시교독', no: g, sub: String(rec.gyodok).replace(/^\d+\.?\s*/, '') });
     }
     if (ref) slides.push({ type: 'bible', head: '성경 본문', ref: ref });
+    if (SGm['성가대 찬양']) [].push.apply(slides, joySlides('성가대 찬양', [], SGm['성가대 찬양'].jnos));
     slides.push({ type: 'sermon', head: '말씀', title: title || '', ref: ref || '', who: who || '', quote: '' });
   }
   function dateLabel(d) { var m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return String(d); var dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return (+m[2]) + '월 ' + (+m[3]) + '일 (' + DOWK[dt.getUTCDay()] + ')'; }

@@ -4185,6 +4185,15 @@ console.log('[affairs.js] v20260923lic');
         '<div class="af-field se-hide-worship"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#185abd;margin:0;flex:none">함께 만들기</label></div>' +
         '<div class="af-field se-hide-worship"><label>' + ic('tag') + '키워드 <span style="font-weight:400">(최대 3개)</span></label><input type="text" id="se_keywords" value="' + esc(rec.keywords || '') + '" placeholder="쉼표로 구분"></div>' +
         '<div class="af-field se-hide-worship"><label>' + ic('pencil') + '미리보기 요약</label><textarea id="se_summary" maxlength="500" placeholder="목록·카드 하단에 노출 (최대 500자, 2줄까지 표시)" style="min-height:74px">' + esc(rec.summary || '') + '</textarea></div>' +
+        // ── 예배 찬양: 기쁨으로 찬양(예배 전 찬양·입례송·성가곡) + 새찬송가 — 오늘의 예배에 자동으로 들어간다 (2026-09-27)
+        '<div class="af-field"><label>🎶 예배 찬양</label>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">' +
+          '<button type="button" class="btn btn-line" id="bd_joy_pre" style="padding:6px 4px;font-size:.78rem" title="기쁨으로 찬양에서 예배 전 찬양(보통 2곡)">🎶 예배 전 찬양</button>' +
+          '<button type="button" class="btn btn-line" id="bd_joy_in" style="padding:6px 4px;font-size:.78rem" title="기쁨으로 찬양에서 입례송(한 해 고정)">🚪 입례송</button>' +
+          '<button type="button" class="btn btn-line" id="bd_joy_ch" style="padding:6px 4px;font-size:.78rem" title="기쁨으로 찬양에서 성가곡">🎼 성가곡</button>' +
+          '<button type="button" class="btn btn-line" id="bd_hymn" style="padding:6px 4px;font-size:.78rem" title="새찬송가 — 주일·수요기도회·새벽기도 모두">🎵 찬송가</button>' +
+        '</div><div id="bd_songs" style="font-size:.8rem;color:#48576b;line-height:1.6"></div>' +
+        '<div style="font-size:.72rem;color:#9aa5b1;margin-top:4px">저장하면 오늘의 예배에 악보로 나옵니다.</div></div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
         '</div>' +
         '<div class="bd-pane bd-pane-attach" id="bd_attach" style="display:none">' +
@@ -4448,6 +4457,25 @@ console.log('[affairs.js] v20260923lic');
         joyPicker(cur, S.max, S.name, function (picks) { joySet(label, picks); });
       }
       ov.querySelector('#se_joy_pre').onclick = function () { joyPick('경배와 찬양'); };
+      // 정보 칸의 '예배 찬양' — 같은 자료(예배 순서·sermons.hymns)를 쓴다
+      ov.querySelector('#bd_joy_pre').onclick = function () { joyPick('경배와 찬양'); };
+      ov.querySelector('#bd_joy_in').onclick = function () { joyPick('입례송'); };
+      ov.querySelector('#bd_joy_ch').onclick = function () { joyPick('성가대 찬양'); };
+      ov.querySelector('#bd_hymn').onclick = function () { ov.querySelector('#se_hymn').click(); };
+      function paintSongs() {
+        var box = ov.querySelector('#bd_songs'); if (!box) return;
+        var rows = [];
+        ['경배와 찬양', '입례송', '성가대 찬양'].forEach(function (k) {
+          var i = joySlotIndex(k); if (i < 0 || !(order[i].jnos && order[i].jnos.length)) return;
+          rows.push('<div><b style="color:#6b3fc4">' + esc(JOY_SLOTS[k].name) + '</b> ' + order[i].jnos.map(function (n) { return esc(n + '번 ' + joyTitle(n)); }).join(' · ') + '</div>');
+        });
+        var hs = ov.querySelector('#se_hymns_v').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+        if (hs.length) rows.push('<div><b style="color:#1e874b">찬송가</b> ' + hs.map(function (n) { var t = hymnTitle(n); return esc(n + '장' + (t ? ' ' + t : '')); }).join(' · ') + '</div>');
+        box.innerHTML = rows.length ? rows.join('') : '<span style="color:#9aa5b1">아직 고른 곡이 없습니다</span>';
+      }
+      var renderOrder0 = renderOrder;
+      renderOrder = function () { renderOrder0(); paintSongs(); };
+      paintSongs();
       ov.querySelector('#se_joy_in').onclick = function () { joyPick('입례송'); };
       ov.querySelector('#se_joy_ch').onclick = function () { joyPick('성가대 찬양'); };
       // 입례송은 한 해 동안 고정 — 주일 낮 예배를 새로 쓸 때 올해 입례송이 비어 있으면 올해 가장 최근 주일 것(없으면 이 PC에 기억한 것)으로 채운다
