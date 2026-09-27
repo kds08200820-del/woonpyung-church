@@ -648,6 +648,46 @@ console.log('[affairs.js] v20260923lic');
     img.ondblclick = function () { z = z > 1 ? 1 : 2; apply(); };
     apply();
   }
+  /* 고르기 창: 크기 조절(모서리 끌기)·⛶ 창 가득·↗ 새 브라우저 창(모두의 성경 악보 보기) (2026-09-27) */
+  function pickerWinCtl(card, closeBtn, getUrl) {
+    card.style.resize = 'both'; card.style.overflow = 'auto'; card.style.minWidth = '360px'; card.style.minHeight = '320px';
+    var bar = document.createElement('span'); bar.style.cssText = 'display:inline-flex;gap:5px;margin-right:6px';
+    bar.innerHTML = '<button type="button" class="btn btn-line pw-open" style="padding:3px 10px" title="이 악보를 새 브라우저 창으로 (크기·위치 자유, 확대·넘기기)">↗ 새 창</button><button type="button" class="btn btn-line pw-max" style="padding:3px 10px" title="창 가득 / 원래 크기">⛶ 크게</button>';
+    closeBtn.parentNode.insertBefore(bar, closeBtn);
+    var big = false, keep = card.style.cssText;
+    bar.querySelector('.pw-max').onclick = function () {
+      big = !big;
+      if (big) { keep = card.style.cssText; card.style.cssText = keep + ';position:fixed;inset:8px;max-width:none;max-height:none;width:auto;height:auto;resize:none;overflow:auto;z-index:1'; }
+      else card.style.cssText = keep;
+      setTimeout(fit, 0);
+      this.textContent = big ? '⧉ 원래대로' : '⛶ 크게';
+      fit();
+    };
+    /* 창 크기에 맞춰 목록·악보 칸 높이를 늘리고 줄인다 — 창 안에 남는(모자라는) 높이만큼 칸을 키운다(줄인다) */
+    var tall = card.querySelectorAll('[data-tall]'), grid = tall.length ? tall[0].parentNode : null;
+    function fit() {
+      if (!grid) return;
+      var cs = getComputedStyle(card), other = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      Array.prototype.forEach.call(card.children, function (c) { if (c !== grid && c.offsetParent !== null) { var m = getComputedStyle(c); other += c.getBoundingClientRect().height + parseFloat(m.marginTop) + parseFloat(m.marginBottom); } });
+      var avail = card.clientHeight - other - 4;
+      var narrowGrid = getComputedStyle(grid).gridTemplateColumns.split(' ').length < 2;   /* 좁은 화면: 목록·악보가 위아래 */
+      Array.prototype.forEach.call(tall, function (el, i) {
+        var h = narrowGrid ? (i === 0 ? Math.max(160, avail * 0.3) : Math.max(260, avail * 0.7 - 10)) : Math.max(260, avail);
+        el.style.height = h + 'px'; el.style.maxHeight = h + 'px'; el.style.minHeight = '0';
+      });
+    }
+    card.style.height = 'calc(100vh - 48px)';
+    setTimeout(fit, 0);
+    if (window.ResizeObserver) new ResizeObserver(function () { fit(); }).observe(card);
+    card.addEventListener('mouseup', function () { setTimeout(fit, 0); });   /* 모서리 끌기를 마쳤을 때 */
+    window.addEventListener('resize', function () { if (document.body.contains(card)) fit(); });
+    bar.querySelector('.pw-open').onclick = function () {
+      var u = getUrl(); if (!u) { alert('먼저 목록에서 곡을 눌러 악보를 여세요.'); return; }
+      var W = Math.max(640, Math.min(900, screen.availWidth || 900)), H = Math.max(700, Math.min(1100, screen.availHeight || 1000));
+      var w = window.open(u, 'k_score', 'width=' + W + ',height=' + H + ',resizable=yes,scrollbars=yes');
+      if (w) try { w.focus(); } catch (e) {}
+    };
+  }
   function joyPicker(initial, max, heading, onDone) {
     /* 두 책에서 고른다 — 기쁨으로 찬양(j) · 새찬송가(h). 고른 순서대로 [{b:'j'|'h', no, title}] (2026-09-27) */
     var JY = window.JOYS || [], HY = window.HYMNS || [];
@@ -674,8 +714,8 @@ console.log('[affairs.js] v20260923lic');
       '<select id="jp_tag" style="padding:8px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"><option value="">모든 주제</option>' + tl.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + ' (' + tags[t] + ')</option>'; }).join('') + '</select></div>' +
       '<div id="jp_sel" style="margin-bottom:8px;min-height:26px"></div>' +
       '<div style="display:grid;grid-template-columns:' + (narrow ? '1fr' : '320px 1fr') + ';gap:10px">' +
-        '<div id="jp_list" style="max-height:' + (narrow ? '220px' : '460px') + ';overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
-        '<div style="border:1px solid #eef1f5;border-radius:8px;background:#fafafa;display:flex;flex-direction:column;min-height:' + (narrow ? '300px' : '460px') + ';max-height:' + (narrow ? '70vh' : 'calc(100vh - 260px)') + '">' +
+        '<div id="jp_list" data-tall="1" style="max-height:' + (narrow ? '220px' : '460px') + ';overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
+        '<div data-tall="1" style="border:1px solid #eef1f5;border-radius:8px;background:#fafafa;display:flex;flex-direction:column;min-height:' + (narrow ? '300px' : '460px') + ';max-height:' + (narrow ? '70vh' : 'calc(100vh - 260px)') + '">' +
           '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #eef1f5;background:#fff;border-radius:8px 8px 0 0">' +
             '<button type="button" class="btn btn-line" id="jp_prev" style="padding:3px 9px" title="이전 곡">◀</button>' +
             '<b id="jp_vt" style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--accent,#032257)">악보를 보려면 왼쪽 목록에서 곡을 누르세요</b>' +
@@ -687,6 +727,7 @@ console.log('[affairs.js] v20260923lic');
     document.body.appendChild(ov);
     var close = pushBackClose(function () { ov.remove(); });
     ov.querySelector('#jp_close').onclick = close;
+    pickerWinCtl(ov.querySelector('.fin-card'), ov.querySelector('#jp_close'), function () { return view ? 'modu/index.html#' + (view[0] === 'h' ? 'hymn' : 'joy') + '=' + view.slice(1) : ''; });
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var selBox = ov.querySelector('#jp_sel'), listEl = ov.querySelector('#jp_list'), qEl = ov.querySelector('#jp_q'), msg = ov.querySelector('#jp_msg');
     var view = null, imgBox = ov.querySelector('#jp_img'), vt = ov.querySelector('#jp_vt'), pickBtn = ov.querySelector('#jp_pick');
@@ -760,8 +801,8 @@ console.log('[affairs.js] v20260923lic');
       '<input type="text" id="hp_q" placeholder="🔍 번호·제목 검색 (예: 384, 갈 길 — 숫자만 입력해도 바로 검색)" style="width:100%;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:8px">' +
       '<div id="hp_sel" style="margin-bottom:8px;min-height:26px"></div>' +
       '<div style="display:grid;grid-template-columns:' + (narrow ? '1fr' : '300px 1fr') + ';gap:10px">' +
-        '<div id="hp_list" style="max-height:' + (narrow ? '220px' : '460px') + ';overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
-        '<div id="hp_view" style="border:1px solid #eef1f5;border-radius:8px;background:#fafafa;display:flex;flex-direction:column;min-height:' + (narrow ? '300px' : '460px') + ';max-height:460px">' +
+        '<div id="hp_list" data-tall="1" style="max-height:' + (narrow ? '220px' : '460px') + ';overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
+        '<div id="hp_view" data-tall="1" style="border:1px solid #eef1f5;border-radius:8px;background:#fafafa;display:flex;flex-direction:column;min-height:' + (narrow ? '300px' : '460px') + ';max-height:460px">' +
           '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #eef1f5;background:#fff;border-radius:8px 8px 0 0">' +
             '<button type="button" class="btn btn-line" id="hp_prev" style="padding:3px 9px" title="이전 장">◀</button>' +
             '<b id="hp_vt" style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--accent,#032257)">악보를 보려면 왼쪽 목록에서 곡을 누르세요</b>' +
@@ -773,6 +814,7 @@ console.log('[affairs.js] v20260923lic');
     document.body.appendChild(ov);
     var close = pushBackClose(function () { ov.remove(); });
     ov.querySelector('#hp_close').onclick = close;
+    pickerWinCtl(ov.querySelector('.fin-card'), ov.querySelector('#hp_close'), function () { return viewNo ? 'modu/index.html#hymn=' + viewNo : ''; });
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var selBox = ov.querySelector('#hp_sel'), listEl = ov.querySelector('#hp_list'), qEl = ov.querySelector('#hp_q');
     var viewNo = 0, imgBox = ov.querySelector('#hp_img'), vt = ov.querySelector('#hp_vt'), pickBtn = ov.querySelector('#hp_pick');
