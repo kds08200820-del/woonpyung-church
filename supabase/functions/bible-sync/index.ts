@@ -49,7 +49,9 @@ Deno.serve(async (req) => {
   if (!ok) return out({ ok: false, why: "bad-sig" }, 401);
   let t: Record<string, any>; try { t = JSON.parse(b64urlText(token)); } catch { return out({ ok: false, why: "bad-token" }, 401); }
   if (!t.exp || t.exp * 1000 < Date.now()) return out({ ok: false, why: "expired" }, 401);
-  const owner = await rest(`sync_owners?code_hash=eq.${enc(String(t.ch))}&select=user_id,label`);
+  let owner: any[] = [];
+  try { owner = await rest(`sync_owners?code_hash=eq.${enc(String(t.ch))}&select=user_id,label`); }
+  catch (e) { return out({ ok: false, why: "setup", msg: "서버 표(sync_owners)가 아직 없습니다 — supabase/20260927_1100_bible_sync.sql 을 실행하세요" }, 503); }
   if (!owner?.length) return out({ ok: false, why: "not-owner" }, 403);
   const lic = await rest(`app_licenses?code_hash=eq.${enc(String(t.ch))}&select=revoked,pc_id`);
   if (!lic?.length || lic[0].revoked || (lic[0].pc_id && lic[0].pc_id !== t.pid)) return out({ ok: false, why: "revoked" }, 403);
