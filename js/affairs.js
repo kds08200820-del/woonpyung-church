@@ -5025,6 +5025,44 @@ console.log('[affairs.js] v20260923lic');
       ed.addEventListener('input', syncContent);
       try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
       var BLOCK_CMD_RE = /^(formatBlock|insertOrderedList|insertUnorderedList|indent|outdent|justify)/i;   // 문단 구조를 바꾸는 명령
+      // ── 굵게·기울임 확실히 켜고 끄기 ──
+      // execCommand('bold') 는 서식이 문단 자체(<p style>·제목)나 문단을 감싼 바깥 태그에서 오면 끄지 못하고 그대로 둔다
+      // ('굵은 글씨가 안 없어짐'). 명령 뒤 실제 모양을 확인해, 원하는 상태가 아니면 선택한 글자마다 span 으로 직접 덮어쓴다.
+      var INLINE_TOGGLE = {
+        bold: { prop: 'font-weight', on: 'bold', off: 'normal', is: function (cs) { return (parseInt(cs.fontWeight, 10) || (cs.fontWeight === 'bold' ? 700 : 400)) >= 600; } },
+        italic: { prop: 'font-style', on: 'italic', off: 'normal', is: function (cs) { return cs.fontStyle === 'italic' || cs.fontStyle === 'oblique'; } }
+      };
+      function selTextNodes() {   // 선택 안의 (빈칸 아닌) 글자 조각들 — [노드, 시작, 끝]
+        var s = window.getSelection(); if (!s || !s.rangeCount || s.isCollapsed) return [];
+        var r = s.getRangeAt(0); if (!ed.contains(r.commonAncestorContainer)) return [];
+        var out = [], w = document.createTreeWalker(ed, NodeFilter.SHOW_TEXT, null), n;
+        while ((n = w.nextNode())) {
+          if (!r.intersectsNode(n)) continue;
+          var a = n === r.startContainer ? r.startOffset : 0, b = n === r.endContainer ? r.endOffset : n.data.length;
+          if (b > a && n.data.slice(a, b).trim()) out.push([n, a, b]);
+        }
+        return out;
+      }
+      function selAll(is) {
+        var list = selTextNodes(); if (!list.length) return false;
+        return list.every(function (x) { try { return is(window.getComputedStyle(x[0].parentNode)); } catch (e) { return false; } });
+      }
+      function forceInline(prop, v) {
+        var list = selTextNodes(); if (!list.length) return;
+        var first = null, last = null;
+        list.forEach(function (x) {
+          var t = x[0];
+          if (x[2] < t.data.length) t.splitText(x[2]);
+          if (x[1] > 0) t = t.splitText(x[1]);
+          var par = t.parentNode, sp;
+          if (par.nodeName === 'SPAN' && par.childNodes.length === 1 && par !== ed) sp = par;
+          else { sp = document.createElement('span'); par.insertBefore(sp, t); sp.appendChild(t); }
+          sp.style.setProperty(prop, v);
+          if (!first) first = t; last = t;
+        });
+        try { var r = document.createRange(); r.setStart(first, 0); r.setEnd(last, last.data.length); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { }
+        try { ed.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
+      }
       function exec(cmd, val) {
         pushUndo(); ed.focus();
         var s0 = window.getSelection();
@@ -5034,7 +5072,9 @@ console.log('[affairs.js] v20260923lic');
           // 페이지 경계에서 둘로 쪼개진 문단(.pg-cont)에 제목·목록을 먹이면 반쪽만 바뀌므로, 먼저 조각을 합친 뒤 명령 실행
           saveSel(); try { wdCleanForEdit(); } catch (e) { } restoreSel();
         }
+        var tog = INLINE_TOGGLE[cmd], want = tog ? !selAll(tog.is) : null;   // 굵게·기울임: 선택이 전부 그 서식이면 끄고, 아니면 켠다(워드와 같음)
         try { document.execCommand(cmd, false, val == null ? null : val); } catch (e) {}
+        if (tog && selTextNodes().length && selAll(tog.is) !== want) forceInline(tog.prop, want ? tog.on : tog.off);   // 브라우저 명령이 못 바꾼 경우(문단·바깥 태그에 걸린 서식 등) 직접 덮어쓴다
         saveSel(); syncContent();
         if (isBlock && typeof wdRepaginate === 'function') wdRepaginate();   // 제목·목록·정렬은 블록 높이가 바뀌므로 전체 재계산(인라인 서식은 input 이벤트의 빠른 검증으로 충분)
       }
@@ -6176,13 +6216,46 @@ console.log('[affairs.js] v20260923lic');
             try { ed.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
             return true;
           }
+          // ── 문단 병합: 뒤 문단 글자가 앞 문단의 서식(제목 크기·문단에 걸린 굵기·색 등)을 물려받지 않게 ──
+          // 브라우저 기본 병합은 뒤 문단의 글을 앞 문단 안으로 옮기기만 해서, 앞 문단 자체에 걸린 서식이 뒤 글에도 입혀진다.
+          // 워드처럼 옮겨지는 글은 원래 모양 그대로 — 두 문단의 계산된 글자 서식이 다르면 옮기는 글을 span 으로 감싸 원래 값을 지킨다.
+          var MERGE_BLK = /^(P|H1|H2|H3|H4|H5|H6|BLOCKQUOTE|DIV)$/;
+          var MERGE_PROPS = ['font-weight', 'font-style', 'font-size', 'font-family', 'color', 'letter-spacing'];
+          function blockEmpty(b) { return !b.textContent.replace(/​/g, '').trim() && !b.querySelector('img,video,iframe'); }
+          function mergeBlocks(a, b) {   // b 를 a 뒤에 붙인다. 성공하면 true
+            if (!a || !b || a.nodeType !== 1 || b.nodeType !== 1 || !MERGE_BLK.test(a.tagName) || !MERGE_BLK.test(b.tagName)) return false;
+            if (isBreakEl(a) || isBreakEl(b) || a.querySelector('p,h1,h2,h3,ul,ol,table,blockquote') || b.querySelector('p,h1,h2,h3,ul,ol,table,blockquote')) return false;
+            var sel = window.getSelection(), rr = document.createRange();
+            if (blockEmpty(a)) { a.remove(); rr.setStart(b, 0); rr.collapse(true); sel.removeAllRanges(); sel.addRange(rr); return true; }   // 앞이 빈 줄이면 빈 줄만 지운다
+            while (a.lastChild && a.lastChild.nodeName === 'BR') a.removeChild(a.lastChild);   // 앞 문단 꼬리 <br> 은 병합 뒤 빈 줄을 만든다
+            if (blockEmpty(b)) { b.remove(); rr.selectNodeContents(a); rr.collapse(false); sel.removeAllRanges(); sel.addRange(rr); return true; }
+            var csA = window.getComputedStyle(a), csB = window.getComputedStyle(b), keep = {};
+            MERGE_PROPS.forEach(function (pr) { var vb = csB.getPropertyValue(pr); if (vb !== csA.getPropertyValue(pr)) keep[pr] = vb; });
+            var holder = a, first = b.firstChild;
+            if (Object.keys(keep).length) { holder = document.createElement('span'); Object.keys(keep).forEach(function (pr) { holder.style.setProperty(pr, keep[pr]); }); }
+            while (b.firstChild) holder.appendChild(b.firstChild);
+            if (holder !== a) { a.appendChild(holder); first = holder.firstChild; }
+            b.remove();
+            try {
+              if (first && first.nodeType === 3) rr.setStart(first, 0); else if (first) rr.setStartBefore(first); else { rr.selectNodeContents(a); rr.collapse(false); }
+              rr.collapse(true); sel.removeAllRanges(); sel.addRange(rr);
+            } catch (e) { }
+            return true;
+          }
+          function mergeAtCaret(kind) {   // 논리 문서에서 캐럿이 문단 맨 앞(Backspace)·맨 끝(Delete)이면 서식을 지키며 병합
+            var s = window.getSelection(); if (!s || !s.rangeCount || !s.isCollapsed) return false;
+            var r = s.getRangeAt(0), blk = topBlockOf(r.startContainer);
+            if (!blk || blk.nodeType !== 1) return false;
+            if (kind === 'backspace') return caretAtStartOf(blk, r) && mergeBlocks(blk.previousElementSibling, blk);
+            return caretAtEndOf(blk, r) && mergeBlocks(blk, blk.nextElementSibling);
+          }
           function structuralEdit(kind) {   // kind: 'enter' | 'backspace' | 'forward'
             pushUndo();               // 편집 전(깨끗한) 상태를 undo 한 단계로
             cleanForEdit();
             try {
               if (kind === 'enter') document.execCommand('insertParagraph');
-              else if (kind === 'backspace') document.execCommand('delete');        // Backspace = 앞 글자/문단 병합
-              else document.execCommand('forwardDelete');                            // Delete = 뒷 글자/문단 병합
+              else if (kind === 'backspace') { if (!mergeAtCaret('backspace')) document.execCommand('delete'); }   // Backspace = 앞 글자/문단 병합(서식 유지)
+              else if (!mergeAtCaret('forward')) document.execCommand('forwardDelete');                             // Delete = 뒷 글자/문단 병합(서식 유지)
             } catch (e) { }
             syncContent();
             safeRepaginate(true);     // 논리 편집 결과를 다시 페이지로 나눔(동기 — 깜빡임·경쟁 없음)
@@ -6212,13 +6285,17 @@ console.log('[affairs.js] v20260923lic');
               if (!block || block.nodeType !== 1 || isBreakEl(block)) return;
               try {   // 예기치 못한 원고 구조면 기본 동작으로 폴백(편집기가 죽지 않게)
                 if (e.key === 'Backspace') {
-                  if (!isBreakEl(block.previousElementSibling) || !caretAtStartOf(block, r)) return;   // 경계 아님 → 기본 동작 + 빠른 재계산
+                  if (!caretAtStartOf(block, r)) return;   // 문단 중간 → 기본 동작 + 빠른 재계산
+                  var pv = block.previousElementSibling;
+                  if (!isBreakEl(pv) && !(pv && MERGE_BLK.test(pv.tagName) && MERGE_BLK.test(block.tagName))) return;   // 목록·표 등은 기본 동작
                   e.preventDefault();
-                  if (!removeBreakBoundary(block, -1)) structuralEdit('backspace');   // 수동 나눔이면 나눔만 해제, 아니면 앞 문단과 병합
+                  if (!isBreakEl(pv) || !removeBreakBoundary(block, -1)) structuralEdit('backspace');   // 수동 나눔이면 나눔만 해제, 아니면 앞 문단과 병합(서식 유지)
                 } else {
-                  if (!isBreakEl(block.nextElementSibling) || !caretAtEndOf(block, r)) return;
+                  if (!caretAtEndOf(block, r)) return;
+                  var nx = block.nextElementSibling;
+                  if (!isBreakEl(nx) && !(nx && MERGE_BLK.test(nx.tagName) && MERGE_BLK.test(block.tagName))) return;
                   e.preventDefault();
-                  if (!removeBreakBoundary(block, 1)) structuralEdit('forward');
+                  if (!isBreakEl(nx) || !removeBreakBoundary(block, 1)) structuralEdit('forward');
                 }
               } catch (err) { }
             }
