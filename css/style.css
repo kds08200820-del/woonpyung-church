@@ -1891,3 +1891,7 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 /* 방송실 관리자 표기: 이름 아래 '(방송실 관리자)' (js/layout.js) */
 .auth-bc { display: block; font-size: .7rem; font-weight: 600; line-height: 1.2; opacity: .85; letter-spacing: 0; text-align: center; }
 a.auth-name .auth-bc { margin-top: 1px; }
+
+/* 아이패드 등 중간 폭: 머리글 이름 칸이 눌려 글자가 세로로 쌓이지 않게 (2026-09-27) */
+.auth-slot, .auth-wrap { flex-shrink: 0; }
+a.auth-name { white-space: nowrap; word-break: keep-all; }
