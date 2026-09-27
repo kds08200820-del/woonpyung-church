@@ -412,6 +412,34 @@ var KG = (function(){
     cv.addEventListener('mousemove', onMove); cv.addEventListener('mousedown', onDown);
     window.addEventListener('mouseup', onUp); cv.addEventListener('mouseleave', function(){ if(!dragging) hover = null; });
     cv.addEventListener('wheel', onWheel, { passive:false }); cv.addEventListener('dblclick', onDbl);
+    /* 손가락(아이패드·휴대폰): 한 손가락 = 돌리기·톡 눌러 고르기·두 번 톡 = 열기, 두 손가락 = 확대·축소.
+       화면 전체가 같이 커지거나 움직이지 않도록 그래프 위의 터치는 모두 여기서 받는다 (2026-09-27) */
+    var tp = null, pz = null, lastTap = 0;
+    function tpos(t){ var r = cv.getBoundingClientRect(); return { x:t.clientX - r.left, y:t.clientY - r.top }; }
+    function tdist(ts){ var dx = ts[0].clientX - ts[1].clientX, dy = ts[0].clientY - ts[1].clientY; return Math.sqrt(dx * dx + dy * dy) || 1; }
+    cv.addEventListener('touchstart', function(e){
+      e.preventDefault();
+      if(e.touches.length >= 2){ pz = { d:tdist(e.touches), z:zoom }; tp = null; return; }
+      var m = tpos(e.touches[0]); tp = { x:m.x, y:m.y, x0:m.x, y0:m.y, moved:false };
+    }, { passive:false });
+    cv.addEventListener('touchmove', function(e){
+      e.preventDefault();
+      if(pz && e.touches.length >= 2){ zoom = Math.max(.35, Math.min(4, pz.z * tdist(e.touches) / pz.d)); return; }
+      if(!tp) return;
+      var m = tpos(e.touches[0]), ddx = m.x - tp.x, ddy = m.y - tp.y;
+      if(Math.abs(m.x - tp.x0) + Math.abs(m.y - tp.y0) > 6) tp.moved = true;
+      rotY += ddx * .006; rotX = Math.max(-1.2, Math.min(1.2, rotX + ddy * .006)); tp.x = m.x; tp.y = m.y;
+    }, { passive:false });
+    cv.addEventListener('touchend', function(e){
+      e.preventDefault();
+      if(pz){ if(e.touches.length < 2) pz = null; tp = null; return; }
+      if(!tp) return; var t = tp; tp = null; if(t.moved) return;
+      var p = pick(t.x0, t.y0), now = Date.now();
+      if(p && now - lastTap < 350 && hover === p){ act(p); lastTap = 0; return; }
+      lastTap = now; hover = p; select(p || null);
+    }, { passive:false });
+    cv.addEventListener('touchcancel', function(){ tp = null; pz = null; }, { passive:true });
+    ['gesturestart', 'gesturechange'].forEach(function(n){ cv.addEventListener(n, function(e){ e.preventDefault(); }, { passive:false }); });
     $('kgClose').onclick = function(){ if(window.POP && POP.isPop) POP.close(); else close(); };   /* 따로 뜬 창이면 창을 숨긴다 */
     $('kgReset').onclick = function(){ rotY = 0; rotX = 0; zoom = baseZoom(); if(VIEW.local){ center = null; applyView(); paintStats(); } select(null); };
     $('kgShuffle').onclick = function(){ N.forEach(function(p){ p.x += (Math.random() - .5) * 160; p.y += (Math.random() - .5) * 160; }); settled = 0; };
