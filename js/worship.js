@@ -90,10 +90,10 @@
   function loadService(date, services) {
     var key = date + '|' + services.join(',');
     if (svcCache[key] !== undefined) return Promise.resolve(svcCache[key]);
-    var s = session();
-    if (!s || !(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve((svcCache[key] = null));
+    var s = session();                                          /* 로그인하지 않아도 공개 뷰로 읽는다 (2026-09-27) */
+    if (!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve((svcCache[key] = null));
     var u = window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/worship_published?select=sermon_date,service,title,scripture,hymns,gyodok,preacher&sermon_date=eq.' + date + '&service=in.(' + services.map(encodeURIComponent).join(',') + ')&limit=5';
-    return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + s.token } })
+    return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (s ? s.token : window.SUPABASE_ANON_KEY) } })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (rows) { var pick = null; if (rows && rows.length) { services.some(function (sv) { pick = rows.filter(function (r) { return r.service === sv; })[0] || null; return !!pick; }); } svcCache[key] = pick; return pick; })
       .catch(function () { svcCache[key] = null; return null; });
@@ -248,7 +248,7 @@
     d.innerHTML = '<p class="hw-eyebrow">' + (sp ? 'THE LORD’S DAY' : 'TODAY’S WORSHIP') + '</p><h1 class="hero-title">' + (sp ? partName(byPart(sp.part)) + '예배가 진행 중입니다' : '오늘의 예배') + '</h1>' +
       '<p class="hero-sub hw-date">' + esc(today.getUTCMonth() + 1) + '월 ' + esc(today.getUTCDate()) + '일 (' + DOWK[dow] + ') · ' + esc(list.map(function (s) { return (s.kind === 'sunday' ? s.label + ' ' : '') + s.time; }).join(' / ')) + '</p>' +
       '<div class="hw-btns">' + list.map(function (s) { return '<button type="button" class="hero-cta hw-btn" data-kind="' + s.kind + '" data-part="' + (s.part || '') + '"><b>' + esc(s.kind === 'sunday' ? partName(byPart(s.part)) + '예배 참여하기' : s.label) + '</b><small>' + esc(s.sub || s.time) + '</small></button>'; }).join('') + '</div>' +
-      '<p class="hw-note">정회원 로그인 후 순서대로 볼 수 있습니다</p>';
+      '';
     /* 예배가 있을 때는 히어로에 예배만 — 다른 슬라이드·말씀 구절·점 표시를 뺀다 (슬라이드가 하나면 main.js 회전기는 돌지 않는다) */
     [].forEach.call(rot.querySelectorAll('.hero-slide'), function (el) { el.remove(); });
     rot.appendChild(d);
@@ -304,6 +304,8 @@
     if (window.ModalNav) ModalNav.open(closeViewer);
     setBody('<div class="ws-lock"><div class="ws-lock-t">확인 중…</div></div>');
     $('wsStrip').innerHTML = ''; $('wsStep').textContent = '';
+    /* 오늘의 예배 순서는 로그인하지 않은 사람도 본다 (2026-09-27 지시) — 편집만 관리자 */
+    return openKind(kind, ctx);
     checkMember().then(function (st) {
       if (st === 'ok') return openKind(kind, ctx);
       if (st === 'login') return lock('로그인이 필요합니다', '오늘의 예배는 교적 인증을 마친 정회원이 볼 수 있습니다. 먼저 로그인해 주세요.', '로그인', function () { closeViewer(); var b = $('loginBtn'); if (b) b.click(); else location.href = 'account.html'; });
@@ -373,7 +375,7 @@
       .then(function (r) { return r.ok ? r.json() : []; }).then(function (rows) { adminCache = !!(rows && rows.length); return adminCache; }).catch(function () { return false; });
   }
   function loadEdit(kind, date) {
-    if (!session() || !window.SUPABASE_URL) return Promise.resolve(null);
+    if (!window.SUPABASE_URL) return Promise.resolve(null);
     return fetch(window.SUPABASE_URL + '/rest/v1/worship_edits?date=eq.' + date + '&kind=eq.' + kind + '&select=slides', { headers: sbHeaders() })
       .then(function (r) { return r.ok ? r.json() : []; }).then(function (rows) { return rows && rows[0] && Array.isArray(rows[0].slides) && rows[0].slides.length ? rows[0].slides : null; }).catch(function () { return null; });
   }

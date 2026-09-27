@@ -35,6 +35,27 @@ function renderSide(b) {
     </div>`;
 }
 
+/* 이번 주 예배순서 — 카드 덱에서 보고 있는 주의 주보 순서 (온전한 예배 페이지) */
+const sermonOrder = document.getElementById("sermonOrder");
+function renderOrder(b) {
+  if (!sermonOrder) return;
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const rows = (b.order || []).map((l) => {
+    const p = String(l).split(/\s*·\s*/), head = p[0] || "", rest = p.slice(1).join(" · ");
+    return `<li><span class="so-head">${esc(head)}</span><span class="so-rest">${esc(rest)}</span></li>`;
+  }).join("");
+  if (!rows) { sermonOrder.innerHTML = ""; return; }
+  const canOpen = !!(window.WPCWorship && WPCWorship.open);
+  sermonOrder.innerHTML = `
+    <div class="so-card">
+      <div class="so-top"><span class="side-tag">예배순서</span><span class="so-date">${esc(b.dateLabel || b.date)} · 주일 낮 예배</span></div>
+      <ol class="so-list">${rows}</ol>
+      ${canOpen ? `<button type="button" class="so-open" id="sermonOrderOpen">순서대로 보기 →</button>` : ""}
+    </div>`;
+  const btn = document.getElementById("sermonOrderOpen");
+  if (btn) btn.addEventListener("click", () => WPCWorship.open("sunday", { date: b.date, bulletin: b }));
+}
+
 function layoutDeck() {
   [...sermonDeck.children].forEach((card) => {
     const i = Number(card.dataset.i);
@@ -58,6 +79,7 @@ function layoutDeck() {
   sermonNewer.classList.toggle("disabled", active <= 0);
   sermonOlder.classList.toggle("disabled", active >= WEEKS.length - 1);
   renderSide(WEEKS[active]);
+  renderOrder(WEEKS[active]);
 }
 
 function buildDeck() {
