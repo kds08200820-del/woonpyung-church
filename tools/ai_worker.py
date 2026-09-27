@@ -50,6 +50,8 @@ import shutil
 import argparse
 import subprocess
 import tempfile
+
+import claude_auth          # 워커 전용 장기 토큰 + 공용 로그인 자동 전환 (tools/claude_auth.py)
 import urllib.request
 import urllib.error
 from datetime import datetime, date, timedelta
@@ -277,24 +279,23 @@ class LoginRequired(RuntimeError):
     """claude CLI 가 로그아웃 상태 — 사람이 다시 로그인하기 전에는 답할 수 없다."""
 
 
-LOGIN_RE = re.compile(
-    r"not logged in|please run /login|run `?/login|invalid api key|authentication_error|"
-    r"oauth token (has )?(expired|been revoked)", re.I)
+LOGIN_RE = claude_auth.LOGIN_RE
 
 LOGIN_MSG = {
     # 교인 화면(말씀지기) — 교인이 할 수 있는 일은 없으니 부드럽게
     "counsel": "지금은 말씀지기가 잠시 쉬고 있어요. (교회 컴퓨터의 AI 로그인이 풀렸습니다) "
                "목사님께 알려 주시면 곧 다시 열립니다.",
     # 관리자 화면(기도문·헤드라인·검수) — 바로 조치할 수 있게 방법까지
-    "admin": "교회 컴퓨터의 Claude 로그인이 풀렸습니다. 교회 PC에서 tools\\목회AI_로그인.bat 을 "
-             "더블클릭해 다시 로그인해 주세요. (워커를 다시 켤 필요는 없습니다)",
+    "admin": "교회 컴퓨터의 Claude 로그인이 풀렸습니다. 교회 PC에서 tools\\목회AI_토큰설정.bat 을 "
+             "더블클릭해 워커 전용 1년 토큰을 만들어 주세요 — 한 번 해 두면 다시 풀리지 않습니다. "
+             "(워커를 다시 켤 필요는 없습니다)",
 }
 
 LOGIN_HELP = (
     "\n" + "!" * 66 + "\n"
     "!!  claude CLI 로그인이 풀렸습니다 — 지금은 모든 AI 요청이 실패합니다.\n"
-    "!!  이 컴퓨터에서 tools\\목회AI_로그인.bat 을 더블클릭해 다시 로그인하세요.\n"
-    "!!  (명령창이라면:  claude auth login )\n"
+    "!!  이 컴퓨터에서 tools\\목회AI_토큰설정.bat 을 더블클릭해 워커 전용 장기 토큰을 만드세요.\n"
+    "!!  (1년짜리 토큰이라 다른 프로그램과 로그인이 엉키지 않아 다시 풀리지 않습니다)\n"
     "!!  로그인만 하면 됩니다. 이 워커 창은 끄지 말고 그대로 두세요.\n"
     + "!" * 66 + "\n"
 )
@@ -305,8 +306,10 @@ def claude_logged_in():
 
     True/False 를 돌려주고, 옛 버전 CLI 처럼 판단할 수 없으면 None.
     """
+    if claude_auth.token_usable():
+        return None                          # 장기 토큰은 auth status 로 검증되지 않는다 — 실제 요청에서 판단
     try:
-        p = subprocess.run([find_claude(), "auth", "status", "--json"],
+        p = subprocess.run([find_claude(), "auth", "status", "--json"], env=claude_auth.env_for("shared"),
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
         out = p.stdout.decode("utf-8", "replace")
         m = re.search(r'"loggedIn"\s*:\s*(true|false)', out)
@@ -517,13 +520,27 @@ def run_claude(system, prompt, model, timeout):
         "--disable-slash-commands",
         "--no-session-persistence",
     ]
+    # 로그인 자동 복구: 장기 토큰 → 공용 로그인 순서로, 로그인 오류면 즉시 다음 방법으로 다시 시도한다.
     try:
-        p = subprocess.run(args, input=prompt.encode("utf-8"),
-                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                           cwd=workdir, timeout=timeout)
+        last = None
+        for mode in claude_auth.modes():
+            try:
+                text = _run_claude_once(args, prompt, workdir, timeout, claude_auth.env_for(mode))
+                claude_auth.mark_ok(mode)
+                return text
+            except LoginRequired as e:
+                claude_auth.mark_failed(mode)
+                print(f"   · 로그인 실패({'장기 토큰' if mode == 'token' else '공용 로그인'}) → 다른 방법이 있으면 다시 시도", file=sys.stderr)
+                last = e
+        raise last
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
 
+
+def _run_claude_once(args, prompt, workdir, timeout, env):
+    p = subprocess.run(args, input=prompt.encode("utf-8"), env=env,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       cwd=workdir, timeout=timeout)
     out = p.stdout.decode("utf-8", "replace").strip()
     err = p.stderr.decode("utf-8", "replace").strip()
     if not out:
@@ -634,7 +651,8 @@ def main():
 
     print(f"워커 '{WORKER}' / 모델 교인={MODEL_COUNSEL} 관리={MODEL_ADMIN}")
     print(f"claude {find_claude()}")
-    print(f"큐 {SUPABASE_URL}/rest/v1/ai_jobs")
+    print(f"로그인 {claude_auth.describe()}")
+    print(f"큐{SUPABASE_URL}/rest/v1/ai_jobs")
     if claude_logged_in() is False:
         print(LOGIN_HELP, file=sys.stderr)
 

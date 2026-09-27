@@ -41,6 +41,8 @@ import shutil
 import argparse
 import subprocess
 import tempfile
+
+import claude_auth          # 워커 전용 장기 토큰 + 공용 로그인 자동 전환 (tools/claude_auth.py)
 import threading
 import urllib.request
 import urllib.error
@@ -532,20 +534,34 @@ def run_claude(prompt, workdir):
         "--permission-mode", "bypassPermissions",
         "--no-session-persistence",
     ]
-    p = subprocess.run(args, input=prompt.encode("utf-8"),
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                       cwd=workdir, timeout=CLAUDE_TIMEOUT)
-    out = p.stdout.decode("utf-8", "replace").strip()
-    err = p.stderr.decode("utf-8", "replace").strip()
-    if not out:
-        raise RuntimeError(f"claude 응답 없음 (exit={p.returncode}) {err[:400]}")
-    try:
-        obj = json.loads(out)
-    except Exception:
-        return out[:4000]
-    if obj.get("is_error"):
-        raise RuntimeError(f"claude 오류: {str(obj.get('result'))[:400]}")
-    return str(obj.get("result", ""))
+    # 로그인 자동 복구: 장기 토큰 → 공용 로그인 순서 (tools/claude_auth.py 참고)
+    last = None
+    for mode in claude_auth.modes():
+        p = subprocess.run(args, input=prompt.encode("utf-8"), env=claude_auth.env_for(mode),
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                           cwd=workdir, timeout=CLAUDE_TIMEOUT)
+        out = p.stdout.decode("utf-8", "replace").strip()
+        err = p.stderr.decode("utf-8", "replace").strip()
+        obj = None
+        if out:
+            try:
+                obj = json.loads(out)
+            except Exception:
+                claude_auth.mark_ok(mode)
+                return out[:4000]
+        msg = str(obj.get("result")) if obj and obj.get("is_error") else ("" if out else err)
+        if (obj and obj.get("is_error") or not out) and claude_auth.LOGIN_RE.search(msg):
+            claude_auth.mark_failed(mode)
+            print(f"   · 로그인 실패({'장기 토큰' if mode == 'token' else '공용 로그인'}) → 다른 방법이 있으면 다시 시도", file=sys.stderr)
+            last = RuntimeError("교회 PC 의 Claude 로그인이 풀렸습니다. tools\\목회AI_토큰설정.bat 으로 워커 전용 1년 토큰을 만들어 주세요.")
+            continue
+        if not out:
+            raise RuntimeError(f"claude 응답 없음 (exit={p.returncode}) {err[:400]}")
+        if obj.get("is_error"):
+            raise RuntimeError(f"claude 오류: {msg[:400]}")
+        claude_auth.mark_ok(mode)
+        return str(obj.get("result", ""))
+    raise last
 
 
 # ── 산출물 수집·업로드 ───────────────────────────────────────
