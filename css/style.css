@@ -1887,3 +1887,7 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 .so-open { margin-top: 18px; border: 1px solid #032257; background: #fff; color: #032257; border-radius: 999px; padding: 10px 20px; font: inherit; font-weight: 600; cursor: pointer; }
 .so-open:hover { background: #032257; color: #fff; }
 @media (max-width: 760px) { .so-list { grid-template-columns: 1fr; } .so-card { padding: 20px 18px; } }
+
+/* 방송실 관리자 표기: 이름 아래 '(방송실 관리자)' (js/layout.js) */
+.auth-bc { display: block; font-size: .7rem; font-weight: 600; line-height: 1.2; opacity: .85; letter-spacing: 0; text-align: center; }
+a.auth-name .auth-bc { margin-top: 1px; }

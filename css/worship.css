@@ -156,3 +156,26 @@ body.ws-open { overflow: hidden; }
 .ws-note { margin-top: 18px; padding: 14px 16px; background: #fbf8f1; border-left: 4px solid #032257; border-radius: 0 10px 10px 0; }
 .ws-note .ws-lines p { font-size: 1.1em; }
 .ws-toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #032257; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: .95rem; z-index: 10000; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+
+/* 방송실: 예배 전 카운트 전체 보기 (방송실 관리자·관리자) — Esc 로 끝 */
+.hw-fsbtn { position: absolute; right: 22px; bottom: 26px; z-index: 3; display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; background: rgba(255,255,255,.1); color: #fff; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
+.hw-fsbtn:hover { background: #fff; color: var(--accent, #032257); }
+.hw-fsbtn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 560px) { .hw-fsbtn { right: 12px; bottom: 76px; } }
+.hero.hw-fs { width: 100vw; height: 100vh; min-height: 0; cursor: none; }
+.hero.hw-fs-fake { position: fixed; inset: 0; z-index: 10000; }
+body.hw-fs-body { overflow: hidden; }
+.hero.hw-fs .hw-fsbtn, .hero.hw-fs .hero-scroll, .hero.hw-fs .hw-note, .hero.hw-fs .hw-btns { display: none !important; }
+.hero.hw-fs .hero-content { max-width: none; }
+.hero.hw-fs .hero-rotator { min-height: 0; margin: 0; }
+.hero.hw-fs .hero-slide { position: static; }
+.hero.hw-fs .hw-eyebrow { font-size: 1.5vw; margin-bottom: 2.2vh; }
+.hero.hw-fs .hero-title { font-size: 6.6vw; line-height: 1.25; }
+.hero.hw-fs .hw-date { font-size: 2.1vw; margin-top: 2.4vh !important; }
+.hero.hw-fs .hw-sermon { font-size: 2.3vw; margin-top: 1.8vh; }
+.hero.hw-fs .hw-count { gap: 4.5vw; margin-top: 5vh; }
+.hero.hw-fs .hw-count b { font-size: 9vw; }
+.hero.hw-fs .hw-count span { font-size: 1.7vw; }
+.hero.hw-fs .hero-content, .hero.hw-fs .hero-overlay { transition: opacity .9s ease; }
+.hero.hw-fs-out .hero-content, .hero.hw-fs-out .hero-overlay { opacity: 0; }
+.hero .hero-content { transition: opacity .6s ease; }

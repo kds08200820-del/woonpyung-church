@@ -280,6 +280,7 @@
     var hero = rot.closest('.hero') || document.body;
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
+    fsButton(hero);
     var tm = 0, startDow = dow;
     function tick() {
       var n = kst(), left = sc.from * 60 - (n.getUTCHours() * 3600 + n.getUTCMinutes() * 60 + n.getUTCSeconds());
@@ -294,6 +295,61 @@
       if (box) { box.hidden = !soon; if (soon) { var h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; box.innerHTML = (h ? '<span><b>' + h + '</b>시간</span>' : '') + '<span><b>' + pad(m) + '</b>분</span><span><b>' + pad(s) + '</b>초</span>'; } }
     }
     tick(); tm = setInterval(tick, 1000);
+  }
+
+  /* ── 방송실: 예배 전 카운트를 전체 화면으로 (방송실 관리자·관리자만 버튼이 보인다) ──
+       · 방송실 관리자 = member_links.can_broadcast (교적관리 > 권한 관리에서 지명), 판단은 rpc broadcast_access
+       · Esc 로 끝낸다 — 천천히 어두워지며 사라진다(페이드 아웃). 크롬·엣지는 키보드 잠금(navigator.keyboard.lock)으로
+         Esc 를 페이지가 먼저 받아 페이드 뒤에 전체 화면을 끈다. 잠금이 안 되는 브라우저는 Esc 에 바로 꺼진다 ── */
+  var bcCache = null;
+  function canBroadcast() {
+    var s = session(); if (!s || !window.SUPABASE_URL) return Promise.resolve(false);
+    if (bcCache !== null) return Promise.resolve(bcCache);
+    return fetch(window.SUPABASE_URL + '/rest/v1/rpc/broadcast_access', { method: 'POST', headers: sbHeaders(), body: '{}' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (a) { return a ? !!(a.isAdmin || a.canBroadcast) : isAdmin(); })   /* SQL 실행 전이면 관리자만 */
+      .then(function (ok) { bcCache = ok; return ok; }).catch(function () { return isAdmin(); });
+  }
+  function fsOn(hero) { return document.fullscreenElement === hero || document.webkitFullscreenElement === hero || hero.classList.contains('hw-fs-fake'); }
+  var FADE_MS = 900, fading = false;
+  function fsDone(hero) {
+    hero.classList.remove('hw-fs', 'hw-fs-fake'); document.body.classList.remove('hw-fs-body');
+    try { if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch (e) {}
+    requestAnimationFrame(function () { hero.classList.remove('hw-fs-out'); fading = false; });   /* 원래 화면은 다시 서서히 밝아진다 */
+  }
+  function fsExit(hero) {
+    if (fading) return; fading = true;
+    hero.classList.add('hw-fs-out');
+    setTimeout(function () {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        var p = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        if (p && p.then) p.then(function () { fsDone(hero); }, function () { fsDone(hero); }); else fsDone(hero);
+      } else fsDone(hero);
+    }, FADE_MS);
+  }
+  function fsEnter(hero) {
+    hero.classList.add('hw-fs');
+    var req = hero.requestFullscreen || hero.webkitRequestFullscreen;
+    var p = req ? req.call(hero) : null;
+    function fake() { hero.classList.add('hw-fs-fake'); document.body.classList.add('hw-fs-body'); }
+    function lockEsc() { try { if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(function () {}); } catch (e) {} }
+    if (!req) fake(); else if (p && p.then) p.then(lockEsc, fake); else lockEsc();
+    setTimeout(function () { if (hero.classList.contains('hw-fs') && !document.fullscreenElement && !document.webkitFullscreenElement) fake(); }, 1200);   /* 전체 화면이 끝내 안 열리면 화면 채우기로 */
+  }
+  var fsBound = false;
+  function fsButton(hero) {
+    if (hero === document.body || hero.querySelector('.hw-fsbtn')) return;
+    canBroadcast().then(function (ok) {
+      if (!ok || hero.querySelector('.hw-fsbtn')) return;
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'hw-fsbtn'; b.title = '예배 전 카운트를 전체 화면으로 (Esc: 끝내기)';
+      b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>전체 보기';
+      b.addEventListener('click', function () { fsEnter(hero); });
+      hero.appendChild(b);
+      if (fsBound) return; fsBound = true;
+      function sync() { if (!fading && !document.fullscreenElement && !document.webkitFullscreenElement && !hero.classList.contains('hw-fs-fake')) fsDone(hero); }
+      document.addEventListener('fullscreenchange', sync); document.addEventListener('webkitfullscreenchange', sync);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && fsOn(hero)) { e.preventDefault(); fsExit(hero); } });
+    });
   }
 
   /* ── 문: 로그인·정회원 확인 뒤 열기 ── */

@@ -232,6 +232,8 @@ window.WPF = (function () {
           p_is_admin: (typeof params.isAdmin === 'boolean') ? params.isAdmin : null,
           p_can_finance: (typeof params.canFinance === 'boolean') ? params.canFinance : null
         });
+      case 'setBroadcast':
+        return rpc('set_broadcast', { p_uid: params.targetUid, p_on: !!params.on });
       case 'getSettings':
         return rest('GET', 'app_settings?select=key,value&limit=2000').then(function (rows) {
           var s = {}; (rows || []).forEach(function (r) { s[r.key] = r.value; }); return { ok: true, settings: s };
