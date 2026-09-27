@@ -25,9 +25,9 @@ var MAPCMP = (function(){
   }
   function options(sel, list, rec){
     var all = maps().slice().sort(function(a, b){ return firstRef(a) - firstRef(b); });
-    var h = sel && sel.id === 'mcRSel' ? '<optgroup label="현대"><option value="__modern">🌍 현대 세계 지도 — 오늘의 나라·도시</option></optgroup>' : '';
-    if(rec && rec.length) h += '<optgroup label="같은 지역 · 다른 시대 (추천)">' + rec.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.title) + ' — ' + esc(refLabel(m)) + '</option>'; }).join('') + '</optgroup>';
-    h += '<optgroup label="모든 지도 (성경 순서)">' + all.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.title) + ' — ' + esc(refLabel(m)) + '</option>'; }).join('') + '</optgroup>';
+    var h = sel && sel.id === 'mcRSel' ? '<optgroup label="현대"><option value="__modern">현대지도</option></optgroup>' : '';
+    if(rec && rec.length) h += '<optgroup label="추천">' + rec.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.title) + ' — ' + esc(refLabel(m)) + '</option>'; }).join('') + '</optgroup>';
+    h += '<optgroup label="모든 지도">' + all.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.title) + ' — ' + esc(refLabel(m)) + '</option>'; }).join('') + '</optgroup>';
     sel.innerHTML = h;
   }
   function union(a, b){ return [Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2]), Math.max(a[3], b[3])]; }
@@ -37,7 +37,7 @@ var MAPCMP = (function(){
 
 
   /* ════ 현대 세계 지도 — 오늘의 나라·도시와 옛 성경 지명을 겹쳐 본다 (자료: data/world-countries.js · world-cities.js) ════ */
-  var MOD = { id:'__modern', title:'현대 세계 지도 — 오늘의 나라·도시', modern:true };
+  var MOD = { id:'__modern', title:'현대지도', modern:true };
   var mv = { lat:32, lon:35, k:60 }, overlay = true, worldP = null, mDrag = null, mRaf = 0;
   function loadWorld(){
     if(window.WORLD_COUNTRIES && window.WORLD_CITIES) return Promise.resolve();
@@ -142,7 +142,7 @@ var MAPCMP = (function(){
       (groups[key] = groups[key] || []).push('<span class="mc-chip" title="' + esc(p[3] || '') + '">' + esc(p[2]) + (nc ? ' <small>→ ' + esc(nc.c[2]) + (nc.d > 6 ? ' 곁' : '') + '</small>' : '') + '</span>');
     });
     Object.keys(groups).sort(function(a, b){ return groups[b].length - groups[a].length; }).forEach(function(k){ rows.push('<div class="mc-mrow"><b>' + esc(k) + '</b> <span class="mc-dim">' + groups[k].length + '곳</span><div>' + groups[k].join('') + '</div></div>'); });
-    $('mcDiff').innerHTML = '<div class="mc-dcol mc-mod"><div class="mc-dh">왼쪽 지도의 성경 지명은 <b>오늘 어느 나라</b>에 있나 — (→ 가까운 오늘의 도시) · 경계는 Natural Earth 기준이며 분쟁 지역은 한쪽으로만 표시될 수 있습니다</div>' + (rows.join('') || '<span class="mc-dim">지명이 없습니다</span>') + '</div>';
+    $('mcDiff').innerHTML = '<div class="mc-dcol mc-mod"><div class="mc-dh">성경 지명 → <b>오늘의 나라</b> · 가까운 도시</div>' + (rows.join('') || '<span class="mc-dim">지명이 없습니다</span>') + '</div>';
   }
   function bindModern(){
     var cv = $('mcRCv'), tip = document.createElement('div'); tip.className = 'mc-tip'; tip.hidden = true; cv.parentElement.appendChild(tip);
@@ -176,9 +176,9 @@ var MAPCMP = (function(){
     [['L', L], ['R', R]].forEach(function(p){
       if(p[1].modern){
         $('mcRT').textContent = MOD.title; $('mcRRef').textContent = '오늘';
-        $('mcRRt').innerHTML = '<label class="mc-ov"><input type="checkbox" id="mcOverlay"' + (overlay ? ' checked' : '') + '> 왼쪽 지도의 성경 지명 겹쳐 보기</label>';
+        $('mcRRt').innerHTML = '<label class="mc-ov"><input type="checkbox" id="mcOverlay"' + (overlay ? ' checked' : '') + '> 성경 지명 겹쳐 보기</label>';
         $('mcOverlay').onchange = function(){ overlay = this.checked; mRedraw(); };
-        $('mcRTxt').textContent = '오늘의 나라 경계(Natural Earth 1:50m)와 도시입니다. ■ 수도, (옛 ○○)는 그 자리나 가까이에 있던 성경 지명, 갈색 동그라미는 왼쪽 지도의 성경 지명입니다. 휠로 확대·축소(끝까지 줄이면 전 세계), 끌어서 옮기고, 두 번 누르면 왼쪽 지도 범위로 돌아옵니다. 나라 위에 마우스를 올리면 그 나라에 있던 성경 지명이 나옵니다.';
+        $('mcRTxt').textContent = '■ 수도 · (옛 ○○) 그 자리의 성경 지명 · 갈색 동그라미 왼쪽 지도의 성경 지명. 휠 확대·축소, 끌어 옮기기, 두 번 누르면 왼쪽 범위로.';
         $('mcRCv').classList.add('mc-loading');
         loadWorld().then(function(){ $('mcRCv').classList.remove('mc-loading'); drawModern($('mcRCv')); modernDiff(); }, function(){ $('mcRTxt').textContent = '현대 지도 자료를 읽지 못했습니다.'; });
         return;
@@ -212,11 +212,11 @@ var MAPCMP = (function(){
     box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', '지도 비교');
     box.innerHTML =
       '<div class="mc-card">' +
-        '<div class="mc-head"><b>지도 비교</b><span class="mc-sub">같은 지역, 다른 시대 — 나란히 놓고 봅니다</span><span class="mc-sp"></span>' +
-          '<button type="button" class="btn" id="mcModern" title="오른쪽을 오늘의 세계 지도로 — 옛 지명이 오늘 어느 나라·도시인지">🌍 현대 지도와 비교</button>' +
+        '<div class="mc-head"><b>비교지도</b><span class="mc-sp"></span>' +
+          '<button type="button" class="btn" id="mcModern" title="오른쪽을 오늘의 세계 지도로">현대지도</button>' +
           '<button type="button" class="btn" id="mcSplit" title="두 지도·지명 비교를 각각 따로 움직이는 창으로">창 나누기</button>' +
           '<button type="button" class="btn" id="mcSame" title="두 지도를 같은 범위로 맞춰 그립니다">같은 범위</button>' +
-          '<button type="button" class="btn" id="mcSwap" title="왼쪽·오른쪽 바꾸기">⇄ 바꾸기</button>' +
+          '<button type="button" class="btn" id="mcSwap" title="왼쪽·오른쪽 바꾸기">바꾸기</button>' +
           '<button type="button" class="wb-x" id="mcClose" aria-label="닫기">×</button></div>' +
         '<div class="mc-body">' +
           ['L', 'R'].map(function(s){
@@ -335,8 +335,24 @@ var MAPCMP = (function(){
     ro = new ResizeObserver(function(){ if(!box.hidden) { clearTimeout(ro._t); ro._t = setTimeout(function(){ if(R && R.modern){ drawModern($('mcRCv')); ATLAS.renderTo(L, $('mcLCv'), $('mcLCv').parentElement.getBoundingClientRect().width, $('mcLCv').parentElement.getBoundingClientRect().height, null, function(){}); } else paint(); }, 150); } });
     ro.observe($('mcLCv').parentElement); ro.observe($('mcRCv').parentElement);
   }
-  function open(left, right){
+  /* 비교지도(데스크탑): 성경 지도 창 두 개를 화면 왼쪽·오른쪽 반에 나란히 띄운다 — 각 창은 지도 창의 모든 기능(3D 지형·거리재기·목록)을 그대로 쓴다.
+     현대지도 비교와 웹(모두의 성경)은 아래 한 창 비교(open)로 */
+  function twoWindows(left, right){
+    if(!(window.POP && !POP.isPop && POP.open)) return false;
+    var st = APP.st || {}, l = left || (st.bi >= 0 ? ATLAS.mapsFor(st.bi, st.ci)[0] : null) || maps()[0], r = right || suggest(l)[0] || maps().filter(function(x){ return x !== l; })[0];
+    if(!l || !r) return false;
+    POP.open('atlas', { map:l.id }, 'left');
+    setTimeout(function(){ POP.open('atlas2', { map:r.id }, 'right'); }, 120);
+    if(window.ACT) ACT.log('map', { label:'비교지도 · ' + l.title + ' ↔ ' + r.title, data:{ id:l.id, cmp:r.id } });
+    return true;
+  }
+  function openModern(left){
     if(!window.ATLAS || !ATLAS.renderTo){ APP.toast('지도 자료를 읽지 못했습니다'); return; }
+    open(left, null, true);
+  }
+  function open(left, right, modern){
+    if(!window.ATLAS || !ATLAS.renderTo){ APP.toast('지도 자료를 읽지 못했습니다'); return; }
+    if(!modern && twoWindows(left, right)) return;
     if(!box) build();
     opener = document.activeElement;
     options($('mcLSel'), null, null);
@@ -345,8 +361,9 @@ var MAPCMP = (function(){
     var st = APP.st || {}, m = left || (st.bi >= 0 ? (ATLAS.mapsFor(st.bi, st.ci)[0]) : null) || maps()[0];
     setL(m, false);
     if(right){ R = right; $('mcRSel').value = R.id; paint(); }
+    if(modern) toModern();
     setTimeout(function(){ $('mcLSel').focus(); }, 0);
   }
   function close(){ if(!box || box.hidden) return; box.hidden = true; if(opener && opener.focus) try { opener.focus(); } catch(e){} }
-  return { open:open, close:close };
+  return { open:open, openModern:openModern, close:close };
 })();

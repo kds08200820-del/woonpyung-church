@@ -829,6 +829,8 @@ var ATLAS = (function(){
     $('atJ3').addEventListener('mousemove', on3dMove); $('atJ3').addEventListener('mouseleave', function(){ showDist(null); });
     cv.addEventListener('mouseleave', function(){ showDist(null);  if(!drag && hover){ hover = null; draw(); } });
     cv.addEventListener('wheel', onWheel, { passive:false });
+    /* 성경지도 학습(해설)은 지도 안에서 연다 — 메뉴의 '성경지도' 하나로 합침 (2026-09-27) */
+    (function(){ var ib = $('atIndexBtn'); if(!ib || $('atStudyBtn')) return; var b = document.createElement('button'); b.type = 'button'; b.className = ib.className.replace(/\bon\b/, '').trim(); b.id = 'atStudyBtn'; b.textContent = '학습'; b.title = '성경지도 학습 — 성서 지리·고고학·시대사 해설'; ib.parentNode.insertBefore(b, ib.nextSibling); b.onclick = function(){ if(window.STUDY) STUDY.open(); }; })();
     $('atClose').onclick = function(){ if(window.POP && POP.isPop) POP.close(); else close(); };   /* 따로 뜬 창이면 창을 숨긴다 */
     $('atViewSeg').onclick = function(e){ var b = e.target.closest('button'); if(!b || !cur) return; if(ruler) rulerOff(false); view3dPref = b.dataset.v === '3d'; setView3d(view3dPref, cur); if(!view3dPref) draw(); };
     $('atFavBtn').onclick = toggleFav;

@@ -3756,8 +3756,8 @@ window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메
       '-',
       { t:'이전 책', fn:function(){ stepBook(-1); } },
       { t:'다음 책', fn:function(){ stepBook(1); } },
-      { t:'처음으로 (창세기 1장)', fn:function(){ inRead(); openChapter(0, 0, -1); } },
-      { t:'신약 처음 (마태복음 1장)', fn:function(){ inRead(); openChapter(39, 0, -1); } },
+      { t:'처음으로', fn:function(){ inRead(); openChapter(0, 0, -1); } },
+      { t:'신약 처음', fn:function(){ inRead(); openChapter(39, 0, -1); } },
       '-',
       { t:'책·장 목록 보이기', k:'Ctrl+B', on:!!S.showNav, fn:toggleNav }
     ]; }],
@@ -3777,7 +3777,7 @@ window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메
       { t:'영단어 학습', fn:function(){ openWordStudy('eng'); } },
       { t:'낱말 전체 보기', fn:function(){ openWordStudy('all'); } },
       '-',
-      { t:'오늘 복습 시작 (퀴즈)', fn:function(){ openWordStudy(vbTab); setTimeout(function(){ $('vbQuiz').click(); }, 50); } },
+      { t:'오늘 복습', fn:function(){ openWordStudy(vbTab); setTimeout(function(){ $('vbQuiz').click(); }, 50); } },
       '-',
       { t:'지식 그래프', fn:function(){ openKG(); } }
     ]; }],
@@ -3786,16 +3786,16 @@ window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메
       var hits = here ? commHits(st.bi, st.ci, v) : [];
       return [
       { t:'이 절의 주석 보기' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!hits.length, fn:function(){ openComm(st.bi, st.ci, v); } },
-      { t:'주석 목록 — 책별 단락 훑어보기', fn:function(){ openCommIndex(here ? st.bi : 0); } },
+      { t:'주석 목록', fn:function(){ openCommIndex(here ? st.bi : 0); } },
       '-',
-      { t:'이 장의 지도 보기', off:!here, fn:function(){ openAtlasFor(st.bi, st.ci, v); } },
-      { t:'성경 지도 목록 (개관)', fn:function(){ openAtlasIndex(); } },
-      { t:'지도 비교 — 같은 지역, 다른 시대를 나란히', fn:function(){ if(window.MAPCMP) MAPCMP.open(); } },
-      { t:'성경지도 학습 — 성서 지리·고고학·시대사', fn:function(){ STUDY.open(); } },
-      { t:'이 절과 관련된 성경지도 학습' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!(here && window.STUDY && STUDY.forVerse(st.bi, st.ci, v).length), fn:function(){ var a = STUDY.forVerse(st.bi, st.ci, v)[0]; if(a) STUDY.open(a.id); } },
+      { t:'이 장의 지도', off:!here, fn:function(){ openAtlasFor(st.bi, st.ci, v); } },
+      { t:'성경지도', fn:function(){ openAtlasIndex(); } },
+      { t:'비교지도', fn:function(){ if(window.MAPCMP) MAPCMP.open(); } },
+      { t:'현대지도 비교', fn:function(){ if(window.MAPCMP) MAPCMP.openModern(); } },
+      { t:'이 절의 지도 학습' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!(here && window.STUDY && STUDY.forVerse(st.bi, st.ci, v).length), fn:function(){ var a = STUDY.forVerse(st.bi, st.ci, v)[0]; if(a) STUDY.open(a.id); } },
       '-',
       { t:'낱말·구절 찾기', k:'Ctrl+F', fn:function(){ showView('search'); } },
-      { t:'원어 낱말 자세히 보기 안내', fn:function(){ toast('본문의 히브리어·헬라어 낱말에서 오른쪽 단추 → 자세히 보기'); } },
+      { t:'원어 낱말 보기 안내', fn:function(){ toast('본문의 히브리어·헬라어 낱말에서 오른쪽 단추 → 자세히 보기'); } },
       '-',
       { t:'메모장', fn:function(){ showView('notes'); } },
       { t:'지식 그래프', fn:function(){ openKG(); } }
@@ -3807,8 +3807,8 @@ window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메
       { t:'메모장', on:st.view === 'notes', fn:function(){ showView('notes'); } },
       '-',
       { t:'이 책 개관', off:st.bi < 0, fn:function(){ inRead(); $('introBtn').click(); } },
-      { t:'지도 보기 (이 장)', off:st.bi < 0, fn:function(){ openAtlasFor(st.bi, st.ci, st.vi >= 0 ? st.vi : 0); } },
-      { t:'성경 지도 목록 (개관)', fn:function(){ openAtlasIndex(); } }
+      { t:'이 장의 지도', off:st.bi < 0, fn:function(){ openAtlasFor(st.bi, st.ci, st.vi >= 0 ? st.vi : 0); } },
+      { t:'성경지도', fn:function(){ openAtlasIndex(); } }
     ]; }],
     ['본문성경', 'B', function(){
       var list = [{ t:'기본 성경: ' + vinfo(S.base).name, off:true }, '-'];
