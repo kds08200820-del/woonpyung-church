@@ -282,7 +282,7 @@ function openAtlasAt(m, from, placeId, h){
     POP.open('atlas', a);
   } else if(window.ATLAS) ATLAS.openAt(m, from, placeId, h);
 }
-function openKG(){ if(popRoute()) POP.open('kgraph', {}); else if(window.KG) KG.open(); }
+function openKG(a){ if(popRoute()) POP.open('kgraph', a || {}); else if(window.KG) KG.open(a); }   /* a: { nid, title } 이면 그 메모 둘레(로컬 그래프) */
 /* 메모장을 특정 메모·태그·형광펜 분류로 연다 (지식 그래프·명령창에서) — args: { nid, title, tag, hl } */
 function openNotesWith(a){
   a = a || {};
@@ -3632,7 +3632,7 @@ if(isPopWin()){
       else if(a.map && ATLAS.byId(a.map)) ATLAS.openAt(ATLAS.byId(a.map), from, a.place || null, (a.lat !== undefined && a.lat !== '') ? { lat:+a.lat, lon:+a.lon, name:a.pname || '' } : null);
       else if(from) ATLAS.openFor(bi, ci, vi);
       else ATLAS.openIndex();
-    } else if(n === 'kgraph'){ if(window.KG) KG.open(); }
+    } else if(n === 'kgraph'){ if(window.KG) KG.open(a && (a.nid || a.title) ? { nid:+a.nid || 0, title:a.title || '' } : null); }
     else if(VIEWS[n]){
       showView(n);
       if(n === 'search') applySearchSpec(a);
@@ -3667,7 +3667,8 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
                /* 기본 성경 + 함께 볼 성경의 이 절 본문 [[이름, 글, 원어?]] — 스테판 원어 보기의 대역 줄 */
                verseTexts:function(bi, ci, vi){ return [S.base].concat(S.extra.filter(function(x){ return x !== S.base; })).map(function(id){ var v = vinfo(id); if(!v || !versionsFor(bi).some(function(x){ return x.id === id; })) return null; var t = verses(id, bi, ci)[vi]; if(!t) return null; return [v.name, id === 'wlc' || id === 'grk' ? t : flat(split(t).text), id]; }).filter(Boolean); },
                verseText:function(bi, ci, vi){ var t = verses(S.base, bi, ci)[vi]; return t ? flat(split(t).text) : ''; } };
-window.APP.openNotes = openNotesWith;   /* 지식 그래프·명령창에서 메모장을 특정 메모·태그로 연다 (팝 창이면 따로 뜨는 창으로) */
+window.APP.openNotes = openNotesWith;
+window.APP.openKG = openKG;   /* 지식 그래프·명령창에서 메모장을 특정 메모·태그로 연다 (팝 창이면 따로 뜨는 창으로) */
 
 /* ═══════════════ 위쪽 메뉴 · 아이콘 줄 (MyBible 식 구성) ═══════════════ */
 (function(){

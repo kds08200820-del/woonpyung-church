@@ -92,7 +92,81 @@ var KG = (function(){
       });
       for(var k = 0; k < 140; k++) step(1);
       settled = 0;
+      FULL = { N:N, E:E, byId:byId, adj:adj };
+      if(center && !FULL.byId[center.id]) center = null;
+      applyView();
     });
+  }
+
+
+  /* ── 보기: 거르기 · 로컬 그래프 (옵시디언 그래프 보기와 같은 뜻) ── */
+  var FULL = null, center = null;
+  var VDEF = { note:1, tag:1, ghost:1, hl:1, act:1, orphans:1, local:0, depth:1 };
+  var VIEW = (function(){ try { return Object.assign({}, VDEF, JSON.parse(localStorage.getItem('kg.view') || '{}')); } catch(e){ return Object.assign({}, VDEF); } })();
+  function saveView(){ try { localStorage.setItem('kg.view', JSON.stringify(VIEW)); } catch(e){} }
+  function kindOn(p){
+    var k = p.kind;
+    return k === 'note' ? VIEW.note : k === 'tag' ? VIEW.tag : k === 'ghost' ? VIEW.ghost : (k === 'hl' || k === 'cat') ? VIEW.hl : (k === 'act' || k === 'akind') ? VIEW.act : 1;
+  }
+  function applyView(){
+    if(!FULL) return;
+    var ok = {};
+    FULL.N.forEach(function(p){ if(kindOn(p)) ok[p.id] = 1; });
+    if(center && ok[center.id] === undefined) ok[center.id] = 1;         /* 가운데 마디는 늘 보인다 */
+    if(VIEW.local && center && FULL.byId[center.id]){
+      var keep = {}, q = [[center.id, 0]]; keep[center.id] = 1;
+      while(q.length){
+        var it = q.shift(); if(it[1] >= VIEW.depth) continue;
+        (FULL.adj[it[0]] || []).forEach(function(id){ if(!keep[id] && ok[id]){ keep[id] = 1; q.push([id, it[1] + 1]); } });
+      }
+      ok = keep;
+    }
+    var nb = {}, na = {}, nn = [], ne = [];
+    FULL.N.forEach(function(p){ if(ok[p.id]){ nb[p.id] = p; na[p.id] = []; nn.push(p); } });
+    FULL.E.forEach(function(e){ if(nb[e.a] && nb[e.b]){ ne.push(e); na[e.a].push(e.b); na[e.b].push(e.a); } });
+    if(!VIEW.orphans && !VIEW.local){
+      nn = nn.filter(function(p){ if(na[p.id].length) return true; delete nb[p.id]; delete na[p.id]; return false; });
+    }
+    N = nn; E = ne; byId = nb; adj = na; settled = 0;
+    if(focus && !byId[focus.id]) focus = null;
+    if(hover && !byId[hover.id]) hover = null;
+  }
+  function syncBar(){
+    var b = $('kgLocal'); if(!b) return;
+    b.classList.toggle('on', !!VIEW.local); b.setAttribute('aria-pressed', VIEW.local ? 'true' : 'false');
+    $('kgDepth').value = String(VIEW.depth); $('kgDepth').disabled = !VIEW.local;
+    [].forEach.call(document.querySelectorAll('#kgFilterBox input[data-k]'), function(i){ i.checked = !!VIEW[i.dataset.k]; });
+  }
+  function reView(){ saveView(); syncBar(); applyView(); paintStats(); if(focus) select(focus); else select(null); }
+  function makeBar(){
+    if($('kgLocal')) return;
+    var st = document.createElement('style');
+    st.textContent = '.kg-vbar{display:inline-flex;align-items:center;gap:6px;position:relative}' +
+      '.kg-vbar .btn.on{background:#8b7cf6;color:#fff;border-color:#8b7cf6}' +
+      '.kg-vbar select{height:30px;border-radius:8px;padding:0 6px}' +
+      '#kgFilterBox{position:absolute;top:calc(100% + 6px);right:0;z-index:5;background:#16161a;color:#e6e6ea;border:1px solid #2c2c33;border-radius:12px;padding:10px 12px;min-width:210px;box-shadow:0 12px 30px rgba(0,0,0,.45)}' +
+      '#kgFilterBox label{display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:13px;cursor:pointer}' +
+      '#kgFilterBox .kgf-h{font-size:11.5px;color:#8e8e95;margin:2px 0 4px}' +
+      '#kgFilterBox hr{border:0;border-top:1px solid #2c2c33;margin:6px 0}' +
+      '.modal.kg-modal{z-index:210}';   /* 메모장 등 떠 있는 창 위로 */
+    document.head.appendChild(st);
+    var bar = document.createElement('span'); bar.className = 'kg-vbar';
+    bar.innerHTML = '<button type="button" class="btn" id="kgLocal" title="고른 마디 둘레만 봅니다 (로컬 그래프)">로컬 그래프</button>' +
+      '<select id="kgDepth" title="몇 단계 이웃까지 볼지"><option value="1">1단계</option><option value="2">2단계</option><option value="3">3단계</option></select>' +
+      '<button type="button" class="btn" id="kgFilterBtn" aria-expanded="false">거르기 ▾</button>' +
+      '<div id="kgFilterBox" hidden><div class="kgf-h">보일 것</div>' +
+      '<label><input type="checkbox" data-k="note">메모</label><label><input type="checkbox" data-k="tag">태그</label>' +
+      '<label><input type="checkbox" data-k="ghost">아직 없는 메모</label><label><input type="checkbox" data-k="hl">형광펜</label>' +
+      '<label><input type="checkbox" data-k="act">성경 기록</label><hr><label><input type="checkbox" data-k="orphans">연결 없는 마디</label></div>';
+    var anchor = $('kgSearch'); anchor.parentNode.insertBefore(bar, anchor.nextSibling);
+    $('kgLocal').onclick = function(){ VIEW.local = VIEW.local ? 0 : 1; if(VIEW.local && !center) center = focus; reView(); };
+    $('kgDepth').onchange = function(){ VIEW.depth = +this.value || 1; reView(); };
+    var box = $('kgFilterBox');
+    $('kgFilterBtn').onclick = function(e){ e.stopPropagation(); box.hidden = !box.hidden; this.setAttribute('aria-expanded', box.hidden ? 'false' : 'true'); };
+    box.addEventListener('click', function(e){ e.stopPropagation(); });
+    box.addEventListener('change', function(e){ var i = e.target; if(i.dataset && i.dataset.k){ VIEW[i.dataset.k] = i.checked ? 1 : 0; reView(); } });
+    document.addEventListener('click', function(){ if(!box.hidden){ box.hidden = true; $('kgFilterBtn').setAttribute('aria-expanded', 'false'); } });
+    syncBar();
   }
 
   /* ── 힘 배치 — 자리가 잡히면 멈춘다 ── */
@@ -236,6 +310,7 @@ var KG = (function(){
   /* ── 고르기 → 이웃 켜기 + 오른쪽에 관련 메모 펼치기 ── */
   var sideReq = 0;
   function select(p){
+    if(VIEW.local && p && p !== center){ center = p; applyView(); paintStats(); }
     focus = p;
     var side = $('kgSide');
     if(!p){ side.hidden = true; side.innerHTML = ''; side.parentElement.classList.remove('with-side'); return; }
@@ -292,11 +367,13 @@ var KG = (function(){
   function paintStats(){
     var c = { note:0, ghost:0, tag:0, cat:0, hl:0, act:0, akind:0 }; N.forEach(function(p){ c[p.kind]++; });
     $('kgStats').innerHTML = '<b>' + c.note + '</b> 메모 · <b>' + E.length + '</b> 연결 · <b>' + c.tag + '</b> 태그 · <b>' + c.hl + '</b> 형광펜 절' + (c.act ? ' · <b>' + c.act + '</b> 성경 기록' : '') + (c.ghost ? ' · <span class="dim">아직 없는 메모 ' + c.ghost + '</span>' : '');
-    $('kgEmpty').hidden = N.length > 0;
+    $('kgEmpty').hidden = N.length > 0 || (FULL && FULL.N.length > 0);
+    if(VIEW.local) $('kgStats').innerHTML += center ? ' · <span class="dim">로컬: ' + esc(center.label) + ' 둘레 ' + VIEW.depth + '단계</span>' : ' · <span class="dim">로컬: 마디를 누르면 그 둘레만 봅니다</span>';
   }
   function search(q){
     q = (q || '').trim().toLowerCase(); if(!q){ select(null); return; }
-    var hit = N.filter(function(p){ return p.label.toLowerCase().indexOf(q) >= 0; }).sort(function(a, b){ return b.deg - a.deg; })[0];
+    var hit = (FULL ? FULL.N : N).filter(function(p){ return p.label.toLowerCase().indexOf(q) >= 0; }).sort(function(a, b){ return b.deg - a.deg; })[0];
+    if(hit && !byId[hit.id]){ if(VIEW.local) center = hit; else { VIEW[hit.kind === 'cat' ? 'hl' : hit.kind === 'akind' ? 'act' : hit.kind] = 1; saveView(); syncBar(); } applyView(); paintStats(); }
     if(hit) select(hit);
   }
 
@@ -307,15 +384,22 @@ var KG = (function(){
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); cv.style.width = W + 'px'; cv.style.height = H + 'px';
   }
   function baseZoom(){ return Math.max(.6, Math.min(1.4, Math.min(W, H) / 640)); }
-  function open(){
+  function open(o){
     opener = document.activeElement;
+    makeBar();
     cv = $('kgCanvas'); g = cv.getContext('2d');
     $('kgModal').hidden = false; fit();
     if(!ro){ ro = new ResizeObserver(fit); ro.observe(cv.parentElement); }
     hover = null; rotY = 0; rotX = 0; zoom = baseZoom(); running = true; last = 0;
     select(null); $('kgSearch').value = '';
     $('kgStats').textContent = '읽는 중…';
-    build().then(function(){ paintStats(); cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); });
+    build().then(function(){
+      if(o && (o.nid || o.title)){
+        var c = FULL.N.filter(function(p){ return (p.kind === 'note' || p.kind === 'ghost') && ((o.nid && p.nid === +o.nid) || (o.title && p.label === o.title)); })[0];
+        if(c){ VIEW.local = 1; syncBar(); center = c; applyView(); select(c); }
+      }
+      paintStats(); cancelAnimationFrame(raf); raf = requestAnimationFrame(draw);
+    });
     setTimeout(function(){ $('kgSearch').focus(); }, 0);
   }
   function close(){
@@ -329,7 +413,7 @@ var KG = (function(){
     window.addEventListener('mouseup', onUp); cv.addEventListener('mouseleave', function(){ if(!dragging) hover = null; });
     cv.addEventListener('wheel', onWheel, { passive:false }); cv.addEventListener('dblclick', onDbl);
     $('kgClose').onclick = function(){ if(window.POP && POP.isPop) POP.close(); else close(); };   /* 따로 뜬 창이면 창을 숨긴다 */
-    $('kgReset').onclick = function(){ rotY = 0; rotX = 0; zoom = baseZoom(); select(null); };
+    $('kgReset').onclick = function(){ rotY = 0; rotX = 0; zoom = baseZoom(); if(VIEW.local){ center = null; applyView(); paintStats(); } select(null); };
     $('kgShuffle').onclick = function(){ N.forEach(function(p){ p.x += (Math.random() - .5) * 160; p.y += (Math.random() - .5) * 160; }); settled = 0; };
     $('kgReload').onclick = function(){ $('kgStats').textContent = '읽는 중…'; build().then(function(){ paintStats(); select(null); }); };
     $('kgSearch').oninput = function(){ search(this.value); };

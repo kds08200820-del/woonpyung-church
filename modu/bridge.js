@@ -73,6 +73,26 @@
     return out.join(' ');
   }
   function refBook(ref){ var m = String(ref || '').match(/^[가-힣]+/); return m ? m[0] : ''; }
+  /* ── 옵시디언 방식 연결 (데스크탑 notes-main.js 와 같은 규칙) ── */
+  function norm(t){ return String(t || '').trim().toLowerCase(); }
+  function aliasesOf(c){
+    var m = String(c || '').match(/^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/); if(!m) return [];
+    var fm = m[1], r = fm.match(/^(?:aliases|alias|별칭)[ \t]*:[ \t]*(.*)$/m); if(!r) return [];
+    var out = [], clean = function(x){ return x.trim().replace(/^["']|["']$/g, '').trim(); }, v = r[1].trim();
+    if(v) v.replace(/^\[|\]$/g, '').split(',').forEach(function(x){ x = clean(x); if(x) out.push(x); });
+    else {
+      var rest = fm.slice(fm.indexOf(r[0]) + r[0].length).split(/\r?\n/);
+      for(var i = 0; i < rest.length; i++){ var mm = rest[i].match(/^\s*-\s*(.+)$/); if(mm){ var x = clean(mm[1]); if(x) out.push(x); } else if(rest[i].trim()) break; }
+    }
+    return out;
+  }
+  function nameIndex(all){
+    var idx = {};
+    all.forEach(function(n){ idx[norm(n.title)] = n; });
+    all.forEach(function(n){ aliasesOf(n.content).forEach(function(a){ if(!idx[norm(a)]) idx[norm(a)] = n; }); });
+    return idx;
+  }
+  function reEsc(t){ return String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   function rowOut(r){
     return { id:r.id, ref:r.ref, book:r.book, title:r.title, theme:r.theme, tags:r.tags, content:r.content, links:r.links || [],
              created_at:r.created_at, updated_at:r.updated_at, snip:String(r.content || '').slice(0, 160) };
@@ -85,7 +105,9 @@
     });
   }
   function withBacklinks(n, all){
-    n.backlinks = all.filter(function(o){ return o.id !== n.id && (o.links || []).indexOf(n.title) >= 0; }).map(function(o){ return { id:o.id, title:o.title, ref:o.ref }; });
+    n.aliases = aliasesOf(n.content);
+    var names = {}; [n.title].concat(n.aliases).forEach(function(x){ names[norm(x)] = 1; });
+    n.backlinks = all.filter(function(o){ return o.id !== n.id && (o.links || []).some(function(t){ return names[norm(t)]; }); }).map(function(o){ return { id:o.id, title:o.title, ref:o.ref }; });
     return n;
   }
   window.NOTES = {
@@ -103,21 +125,35 @@
         if(!s) throw new Error('login');
         var row = { user_id:s.user.id, ref:n.ref || '', book:n.book || refBook(n.ref), title:n.title, theme:n.theme || '', content:n.content || '',
                     tags:tagsOf(n), links:parseLinks((n.content || '') + ' ' + (n.links || '')), updated_at:new Date().toISOString() };
+        var before = n.id && notesCache ? notesCache.filter(function(x){ return x.id === (n.id | 0); })[0] : null, oldT = before ? before.title : '';
         var q = n.id ? c.from('modu_notes').update(row).eq('id', n.id).select() : c.from('modu_notes').insert(row).select();
-        return q.then(function(r){ if(r.error) throw r.error; return allNotes(true).then(function(){ return window.NOTES.get(r.data[0].id); }); });
+        var savedId = 0, renamed = 0;
+        return q.then(function(r){
+          if(r.error) throw r.error; savedId = r.data[0].id;
+          /* 제목을 바꾸면 다른 메모의 [[옛 제목…]] · ![[옛 제목…]] 도 새 제목으로 */
+          if(!oldT || norm(oldT) === norm(n.title) || !notesCache) return;
+          var re = new RegExp('(!?\\[\\[)\\s*' + reEsc(oldT) + '\\s*(?=[|#\\]])', 'gi'), reOne = new RegExp(re.source, 'i');
+          var jobs = notesCache.filter(function(o){ return o.id !== savedId && reOne.test(o.content || ''); }).map(function(o){
+            var c2 = String(o.content || '').replace(re, '$1' + n.title);
+            renamed++;
+            return c.from('modu_notes').update({ content:c2, links:parseLinks(c2), updated_at:new Date().toISOString() }).eq('id', o.id);
+          });
+          return Promise.all(jobs);
+        }).then(function(){ return allNotes(true); }).then(function(){ return window.NOTES.get(savedId); }).then(function(x){ if(x) x.renamed = renamed; return x; });
       });
     },
     remove: function(id){ var c = client(); return c.from('modu_notes').delete().eq('id', id | 0).then(function(){ return allNotes(true); }).then(function(){ return true; }); },
     graph: function(){
       return allNotes().then(function(all){
-        var byTitle = {}; all.forEach(function(n){ byTitle[n.title] = n; });
+        var byTitle = nameIndex(all), seenE = {};
         var nodes = all.map(function(n){ return { id:'n' + n.id, nid:n.id, label:n.title, ref:n.ref, book:n.book, tags:n.tags, deg:0, ghost:false }; });
         var idx = {}; nodes.forEach(function(x){ idx[x.id] = x; });
         var edges = [];
         all.forEach(function(n){ (n.links || []).forEach(function(t){
-          var from = 'n' + n.id, to = byTitle[t] ? 'n' + byTitle[t].id : 'g:' + t;
+          var hit = byTitle[norm(t)], from = 'n' + n.id, to = hit ? 'n' + hit.id : 'g:' + norm(t);
           if(!idx[to]){ idx[to] = { id:to, nid:0, label:t, ref:'', book:'', tags:'', deg:0, ghost:true }; nodes.push(idx[to]); }
-          if(from === to) return;
+          if(from === to || seenE[from + '>' + to]) return;
+          seenE[from + '>' + to] = 1;
           edges.push({ from:from, to:to }); idx[from].deg++; idx[to].deg++;
         }); });
         return { nodes:nodes, edges:edges };
@@ -138,7 +174,25 @@
       });
     },
     corpus: function(limit){ return allNotes().then(function(all){ return all.slice(0, limit || 200).map(function(n){ return { ref:n.ref, title:n.title, theme:n.theme, tags:n.tags, body:String(n.content || '').slice(0, 600) }; }); }); },
-    file: function(){ return Promise.resolve('supabase:modu_notes'); }
+    file: function(){ return Promise.resolve('supabase:modu_notes'); },
+    titles: function(){ return allNotes().then(function(all){ return all.map(function(n){ return { id:n.id, title:n.title, aliases:aliasesOf(n.content) }; }); }); },
+    /* 연결 안 된 언급: 다른 메모 본문에 이 메모의 제목·별칭이 [[ ]] 없이 적힌 곳 */
+    mentions: function(id){
+      return allNotes().then(function(all){
+        var me = all.filter(function(x){ return x.id === (id | 0); })[0]; if(!me) return [];
+        var names = [me.title].concat(aliasesOf(me.content)).filter(function(x){ return x && x.trim().length >= 2; });
+        var out = [];
+        all.forEach(function(r){
+          if(r.id === me.id) return;
+          var plain = String(r.content || '').replace(/!?\[\[[^\]]*\]\]/g, ' '), low = plain.toLowerCase();
+          for(var i = 0; i < names.length; i++){
+            var k = low.indexOf(names[i].toLowerCase());
+            if(k >= 0){ out.push({ id:r.id, title:r.title, ref:r.ref, name:names[i], snip:plain.slice(Math.max(0, k - 40), k + names[i].length + 40).replace(/\s+/g, ' ') }); break; }
+          }
+        });
+        return out;
+      });
+    }
   };
 
   /* ── 형광펜 (Supabase modu_highlights) ── */
