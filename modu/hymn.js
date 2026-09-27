@@ -49,9 +49,22 @@ var HYMN = (function(){
     byNo = {}; LIST.forEach(function(h){ byNo[h.no] = h; });
     indexHtml = ''; var pl = $('hyPopList'); if(pl) pl.innerHTML = '';
     [].forEach.call(document.querySelectorAll('#hyBooks button'), function(b){ b.classList.toggle('on', b.dataset.bk === k); b.setAttribute('aria-pressed', b.dataset.bk === k ? 'true' : 'false'); });
-    var fl = $('hyFilt'); if(fl) fl.hidden = k !== 'joy';
-    var inp = $('hyIn'); if(inp) inp.placeholder = k === 'joy' ? '번호, 제목, 조(D·Em), 주제(감사·은혜)' : '장, 제목을 입력해주세요';
+    F.key = ''; F.tag = ''; buildFilters();
+    var fl = $('hyFilt'); if(fl) fl.hidden = !hasMeta();
+    var inp = $('hyIn'); if(inp) inp.placeholder = k === 'joy' ? '번호, 제목, 조(D·Em), 주제(감사·은혜)' : '장, 제목, 조(G·F), 주제(성탄·감사)';
     try{ localStorage.setItem('modu.hymn.book', k); }catch(e){}
+  }
+  /* 조·주제 거르기 — 두 책 모두 (찬송가 주제는 새찬송가 목차 분류, 조는 악보에서 읽음 2026-09-27) */
+  function hasMeta(){ return LIST.some(function(h){ return h.key || (h.tags && h.tags.length); }); }
+  var KORD = ['C','Cm','D','Dm','Eb','E','Em','F','F#m','G','Gm','Ab','A','Am','Bb','Bm','B','Db','Fm','Bbm','C#m'];
+  function buildFilters(){
+    var ks = $('hyKey'), ts = $('hyTag'); if(!ks || !ts) return;
+    var keys = {}, tags = {};
+    LIST.forEach(function(h){ if(h.key) keys[h.key] = (keys[h.key] || 0) + 1; (h.tags || []).forEach(function(t){ tags[t] = (tags[t] || 0) + 1; }); });
+    var kl = Object.keys(keys).sort(function(a, b){ var i = KORD.indexOf(a), j = KORD.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || a.localeCompare(b); });
+    ks.innerHTML = '<option value="">모든 조</option>' + kl.map(function(k){ return '<option value="' + esc(k) + '">' + esc(k) + '조 (' + keys[k] + ')</option>'; }).join('');
+    var order = (BK === 'joy' ? window.JOY_TAGS : window.HYMN_TAGS) || Object.keys(tags);
+    ts.innerHTML = '<option value="">모든 주제</option>' + order.filter(function(t){ return tags[t]; }).map(function(t){ return '<option value="' + esc(t) + '">' + esc(t) + ' (' + tags[t] + ')</option>'; }).join('');
   }
   setBook('hymn');
   function isOpen(){ var m = $('hymnModal'); return !!(m && !m.hidden); }
@@ -74,7 +87,7 @@ var HYMN = (function(){
   function buildIndex(){ if(indexHtml) return indexHtml; return (indexHtml = bandHtml(sorted(LIST))); }
   function norm(s){ return String(s || '').replace(/\s+/g, '').toLowerCase(); }
   function filtered(){
-    if(BK !== 'joy' || (!F.key && !F.tag)) return null;
+    if(!F.key && !F.tag) return null;
     return LIST.filter(function(h){ return (!F.key || h.key === F.key) && (!F.tag || (h.tags || []).indexOf(F.tag) >= 0); });
   }
   function search(q){
@@ -126,7 +139,7 @@ var HYMN = (function(){
     $('hymnModal').classList.remove('hy-viewing');
     $('hyBody').classList.remove('hy-fitm'); $('hyImg').classList.remove('fit');   /* 악보용 스크롤 잠금을 풀어 목록이 움직이게 (2026-09-27: 뒤로 온 목록이 멈추던 문제) */
     $('hyTools').hidden = true;
-    if($('hyBooks')) $('hyBooks').hidden = !BOOKS.joy.list.length; if($('hyFilt')) $('hyFilt').hidden = BK !== 'joy';
+    if($('hyBooks')) $('hyBooks').hidden = !BOOKS.joy.list.length; if($('hyFilt')) $('hyFilt').hidden = !hasMeta();
     $('hyImg').hidden = true; $('hyWait').hidden = true; $('hyNone').hidden = true;
     $('hyIndex').hidden = false;
     paintIndex($('hyIn').value);
@@ -250,14 +263,8 @@ var HYMN = (function(){
       if(!BOOKS.joy.list.length) bks.hidden = true;
       bks.addEventListener('click', function(e){ var b = e.target.closest('button[data-bk]'); if(!b || b.dataset.bk === BK) return; setBook(b.dataset.bk); $('hyIn').value = ''; showIndex(); });
     }
-    if(BOOKS.joy.list.length && $('hyKey')){
-      var keys = {}, tags = {};
-      BOOKS.joy.list.forEach(function(h){ if(h.key) keys[h.key] = (keys[h.key] || 0) + 1; (h.tags || []).forEach(function(t){ tags[t] = (tags[t] || 0) + 1; }); });
-      var ORDER = ['C','Cm','D','Dm','Eb','E','Em','F','F#m','G','Gm','Ab','A','Am','Bb','Bm','B'];
-      var kl = Object.keys(keys).sort(function(a, b){ var i = ORDER.indexOf(a), j = ORDER.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j) || a.localeCompare(b); });
-      $('hyKey').innerHTML = '<option value="">모든 조</option>' + kl.map(function(k){ return '<option value="' + esc(k) + '">' + esc(k) + '조 (' + keys[k] + ')</option>'; }).join('');
-      var TAGORDER = window.JOY_TAGS || Object.keys(tags);
-      $('hyTag').innerHTML = '<option value="">모든 주제</option>' + TAGORDER.filter(function(t){ return tags[t]; }).map(function(t){ return '<option value="' + esc(t) + '">' + esc(t) + ' (' + tags[t] + ')</option>'; }).join('');
+    if($('hyKey')){
+      buildFilters(); if($('hyFilt')) $('hyFilt').hidden = !hasMeta();
       $('hyKey').onchange = function(){ F.key = this.value; if(cur) showIndex(); else paintIndex($('hyIn').value); };
       $('hyTag').onchange = function(){ F.tag = this.value; if(cur) showIndex(); else paintIndex($('hyIn').value); };
       $('hySort').onclick = function(){ F.sort = F.sort === 'no' ? 'title' : 'no'; this.textContent = F.sort === 'no' ? '번호순' : '가나다순'; indexHtml = ''; if(cur) showIndex(); else paintIndex($('hyIn').value); };

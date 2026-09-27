@@ -702,7 +702,7 @@ console.log('[affairs.js] v20260923lic');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9500;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
     var narrow = window.innerWidth < 760;
     var keys = {}, tags = {}; JY.forEach(function (h) { if (h.key) keys[h.key] = (keys[h.key] || 0) + 1; (h.tags || []).forEach(function (t) { tags[t] = (tags[t] || 0) + 1; }); });
-    var KORD = ['C', 'Cm', 'D', 'Dm', 'Eb', 'E', 'Em', 'F', 'F#m', 'G', 'Gm', 'Ab', 'A', 'Am', 'Bb', 'Bm', 'B'];
+    var KORD = ['C', 'Cm', 'D', 'Dm', 'Eb', 'E', 'Em', 'F', 'F#m', 'Fm', 'G', 'Gm', 'Ab', 'A', 'Am', 'Bb', 'Bm', 'B', 'Db'];
     var kl = Object.keys(keys).sort(function (a, b) { return (KORD.indexOf(a) + 1 || 99) - (KORD.indexOf(b) + 1 || 99); });
     var tl = (window.JOY_TAGS || Object.keys(tags)).filter(function (t) { return tags[t]; });
     var tabCss = 'flex:1;padding:8px 10px;border:1px solid #d7dde6;font:inherit;font-weight:700;cursor:pointer;';
@@ -734,8 +734,15 @@ console.log('[affairs.js] v20260923lic');
     function setBook(b) {
       bk = b;
       Array.prototype.forEach.call(ov.querySelectorAll('#jp_books button'), function (x) { var on = x.dataset.b === b; x.style.background = on ? 'var(--accent,#032257)' : '#fff'; x.style.color = on ? '#fff' : '#48576b'; });
-      ov.querySelector('#jp_key').style.display = ov.querySelector('#jp_tag').style.display = (b === 'j') ? '' : 'none';
-      qEl.placeholder = b === 'j' ? '🔍 번호·곡명·조(D, Em)·주제(감사, 은혜)' : '🔍 장 번호·제목 (예: 384, 갈 길)';
+      /* 조·주제 거르기를 책마다 다시 채운다 (찬송가도 조·주제 있음 2026-09-27) */
+      var kk = {}, tt = {}; BOOK[b].list.forEach(function (h) { if (h.key) kk[h.key] = (kk[h.key] || 0) + 1; (h.tags || []).forEach(function (t) { tt[t] = (tt[t] || 0) + 1; }); });
+      var kl2 = Object.keys(kk).sort(function (a, c) { return (KORD.indexOf(a) + 1 || 99) - (KORD.indexOf(c) + 1 || 99); });
+      var tl2 = ((b === 'j' ? window.JOY_TAGS : window.HYMN_TAGS) || Object.keys(tt)).filter(function (t) { return tt[t]; });
+      F.key = ''; F.tag = '';
+      ov.querySelector('#jp_key').innerHTML = '<option value="">모든 조</option>' + kl2.map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + '조 (' + kk[k] + ')</option>'; }).join('');
+      ov.querySelector('#jp_tag').innerHTML = '<option value="">모든 주제</option>' + tl2.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + ' (' + tt[t] + ')</option>'; }).join('');
+      ov.querySelector('#jp_key').style.display = kl2.length ? '' : 'none'; ov.querySelector('#jp_tag').style.display = tl2.length ? '' : 'none';
+      qEl.placeholder = b === 'j' ? '🔍 번호·곡명·조(D, Em)·주제(감사, 은혜)' : '🔍 장 번호·제목·조(G, F)·주제(성탄, 감사)';
       drawList();
     }
     ov.querySelector('#jp_books').onclick = function (e) { var x = e.target.closest('button[data-b]'); if (x && x.dataset.b !== bk && BOOK[x.dataset.b].list.length) { setBook(x.dataset.b); qEl.focus(); } };
@@ -771,8 +778,8 @@ console.log('[affairs.js] v20260923lic');
     function drawList() {
       var q = qEl.value.trim(), qq = norm(q), kq = q.replace(/\s*조$/, '').toLowerCase(), L = BOOK[bk].list;
       var rows = L.filter(function (h) {
-        if (bk === 'j' && F.key && h.key !== F.key) return false;
-        if (bk === 'j' && F.tag && (h.tags || []).indexOf(F.tag) < 0) return false;
+        if (F.key && h.key !== F.key) return false;
+        if (F.tag && (h.tags || []).indexOf(F.tag) < 0) return false;
         if (!q) return true;
         if (/^\d+$/.test(q)) return String(h.no).indexOf(q) === 0;
         return norm(h.title).indexOf(qq) >= 0 || (h.alt || []).some(function (a) { return norm(a).indexOf(qq) >= 0; }) || (h.key || '').toLowerCase() === kq || (h.tags || []).some(function (t) { return norm(t).indexOf(qq) >= 0; });
@@ -798,7 +805,8 @@ console.log('[affairs.js] v20260923lic');
     var narrow = window.innerWidth < 760;
     ov.innerHTML = '<div class="fin-card" style="max-width:980px;width:100%;background:#fff">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="margin:0;color:var(--accent,#032257)">🎵 찬송가 선택 (복수 선택)</h3><button class="btn btn-line" id="hp_close" style="padding:3px 11px">닫기</button></div>' +
-      '<input type="text" id="hp_q" placeholder="🔍 번호·제목 검색 (예: 384, 갈 길 — 숫자만 입력해도 바로 검색)" style="width:100%;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:8px">' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><input type="text" id="hp_q" placeholder="🔍 번호·제목·조(G, F)·주제(성탄, 감사)" style="flex:1;min-width:200px;padding:9px 11px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
+      '<select id="hp_key" style="padding:8px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"></select><select id="hp_tag" style="padding:8px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"></select></div>' +
       '<div id="hp_sel" style="margin-bottom:8px;min-height:26px"></div>' +
       '<div style="display:grid;grid-template-columns:' + (narrow ? '1fr' : '300px 1fr') + ';gap:10px">' +
         '<div id="hp_list" data-tall="1" style="max-height:' + (narrow ? '220px' : '460px') + ';overflow:auto;border:1px solid #eef1f5;border-radius:8px"></div>' +
@@ -845,14 +853,26 @@ console.log('[affairs.js] v20260923lic');
     function drawList(q) {
       q = (q || '').trim().toLowerCase();
       // 번호·제목으로 찾는다 (주제 태그 자료는 쓰지 않는다 — 악보 그림을 보고 고른다)
-      var qq = q.replace(/\s+/g, '');
-      var rows = HY.filter(function (h) { return !q || String(h.no).indexOf(q) >= 0 || (h.title || '').replace(/\s+/g, '').toLowerCase().indexOf(qq) >= 0; });   // 645장 전곡 표시
+      var qq = q.replace(/\s+/g, ''), kq = q.replace(/\s*조$/, '');
+      var fk = ov.querySelector('#hp_key').value, ft = ov.querySelector('#hp_tag').value;
+      var rows = HY.filter(function (h) {
+        if (fk && h.key !== fk) return false;
+        if (ft && (h.tags || []).indexOf(ft) < 0) return false;
+        return !q || String(h.no).indexOf(q) >= 0 || (h.title || '').replace(/\s+/g, '').toLowerCase().indexOf(qq) >= 0 || (h.key || '').toLowerCase() === kq || (h.tags || []).some(function (t) { return t.replace(/\s+/g, '').indexOf(qq) >= 0; });
+      });   // 645장 전곡 표시 · 조·주제로 거르기 (2026-09-27)
       listEl.innerHTML = rows.length ? rows.map(function (h) { return '<div class="hp-item" data-n="' + h.no + '" style="padding:8px 11px;border-bottom:1px solid #f0f0f0;cursor:pointer;display:flex;align-items:center;gap:8px;background:' + (sel[h.no] ? '#eef4ff' : (viewNo === h.no ? '#fff7e6' : '#fff')) + '"><span style="flex:0 0 48px;font-weight:700;color:' + (sel[h.no] ? '#1f3a5f' : '#7b8794') + '">' + h.no + '장</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(h.title || '') + '</span>' + (sel[h.no] ? '<span style="flex:none;color:#1e874b">✓</span>' : '') + '</div>'; }).join('') : '<p style="padding:10px;color:#9aa5b1">결과 없음</p>';
       // 한 번 누르면 악보를 보여 주고, 같은 곡을 다시 누르거나 오른쪽 [✓ 이 곡 선택]으로 고른다
       Array.prototype.forEach.call(listEl.querySelectorAll('.hp-item'), function (d) { d.onclick = function () { var n = Number(d.dataset.n); if (viewNo === n) { if (sel[n]) delete sel[n]; else sel[n] = 1; drawSel(); } showSheet(n); drawList(qEl.value); }; });
       if (rows.length === 1 && q && viewNo !== rows[0].no) showSheet(rows[0].no);
     }
     qEl.oninput = function () { drawList(this.value); };
+    (function () {
+      var kk = {}, tt = {}, KO = ['C', 'Cm', 'D', 'Dm', 'Eb', 'E', 'Em', 'F', 'Fm', 'G', 'Gm', 'Ab', 'A', 'Am', 'Bb', 'Bm', 'Db'];
+      HY.forEach(function (h) { if (h.key) kk[h.key] = (kk[h.key] || 0) + 1; (h.tags || []).forEach(function (t) { tt[t] = (tt[t] || 0) + 1; }); });
+      ov.querySelector('#hp_key').innerHTML = '<option value="">모든 조</option>' + Object.keys(kk).sort(function (a, b) { return (KO.indexOf(a) + 1 || 99) - (KO.indexOf(b) + 1 || 99); }).map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + '조 (' + kk[k] + ')</option>'; }).join('');
+      ov.querySelector('#hp_tag').innerHTML = '<option value="">모든 주제</option>' + (window.HYMN_TAGS || Object.keys(tt)).filter(function (t) { return tt[t]; }).map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + ' (' + tt[t] + ')</option>'; }).join('');
+      ov.querySelector('#hp_key').onchange = ov.querySelector('#hp_tag').onchange = function () { drawList(qEl.value); };
+    })();
     qEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var q = qEl.value.trim(); if (/^\d+$/.test(q)) { var n = Number(q); if (n >= 1 && n <= 645) { sel[n] = 1; qEl.value = ''; drawSel(); drawList(''); showSheet(n); } } } });
     ov.querySelector('#hp_done').onclick = function () { if (onDone) onDone(nums()); close(); };
     drawSel(); drawList('');
