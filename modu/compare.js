@@ -98,24 +98,32 @@ var MAPCMP = (function(){
       g.font = '600 ' + L2.size + 'px "Malgun Gothic","맑은 고딕",sans-serif'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.fillStyle = 'rgba(70,58,40,.78)';
       g.strokeText(L2.c.k, L2.p.x, L2.p.y); g.fillText(L2.c.k, L2.p.x, L2.p.y);
     });
+    /* 이름표가 겹치면 뒤의 것은 빼고 점만 (옛 성경 지명 → 수도 → 다른 도시 차례로 자리를 잡는다) */
+    var boxes = [];
+    function free(x, y, w, h){ for(var i = 0; i < boxes.length; i++){ var b = boxes[i]; if(x < b[0] + b[2] && x + w > b[0] && y < b[1] + b[3] && y + h > b[1]) return false; } boxes.push([x, y, w, h]); return true; }
+    var anc = [];
+    if(overlay && L) Object.keys(placesOf(L)).forEach(function(id){ var p = window.ATLAS_PLACES && ATLAS_PLACES[id]; if(!p) return; var q = mxy(p[0], p[1], W, H); if(q.x < -20 || q.y < -20 || q.x > W + 20 || q.y > H + 20) return; anc.push({ p:p, q:q }); });
+    g.font = 'italic 600 12px "Malgun Gothic","맑은 고딕",serif';
+    anc.forEach(function(a){ a.show = mv.k >= 18 && free(a.q.x + 5, a.q.y - 17, g.measureText(a.p[2]).width + 4, 15); boxes.push([a.q.x - 5, a.q.y - 5, 10, 10]); });
     /* 오늘의 도시 */
     g.textAlign = 'left'; g.textBaseline = 'middle';
-    (window.WORLD_CITIES || []).forEach(function(c){
+    var cities = (window.WORLD_CITIES || []).slice().sort(function(a, b){ return (b[4] ? 1 : 0) - (a[4] ? 1 : 0); });
+    cities.forEach(function(c){
       if(!(c[4] || mv.k >= 45)) return;
       var q = mxy(c[0], c[1], W, H); if(q.x < -20 || q.y < -20 || q.x > W + 20 || q.y > H + 20) return;
       g.fillStyle = c[4] ? '#1d3b58' : '#3f5d78'; g.beginPath(); if(c[4]){ g.rect(q.x - 3.2, q.y - 3.2, 6.4, 6.4); } else g.arc(q.x, q.y, 2.8, 0, 6.283); g.fill();
       if(mv.k < 9) return;                                  /* 세계를 볼 때는 점만 — 이름은 조금 확대하면 */
       var name = c[2] + (overlay && c[5] && mv.k >= 45 ? '  (옛 ' + c[5] + ')' : '');
       g.font = (c[4] ? '700 ' : '500 ') + (mv.k >= 45 ? 12.5 : 11) + 'px "Malgun Gothic","맑은 고딕",sans-serif';
+      if(!free(q.x + 5, q.y - 8, g.measureText(name).width + 4, 16)) return;
       g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(name, q.x + 6, q.y); g.fillStyle = '#1d3b58'; g.fillText(name, q.x + 6, q.y);
     });
     /* 옛 성경 지명 (왼쪽 지도) */
     if(overlay && L){
-      Object.keys(placesOf(L)).forEach(function(id){
-        var p = window.ATLAS_PLACES && ATLAS_PLACES[id]; if(!p) return;
-        var q = mxy(p[0], p[1], W, H); if(q.x < -20 || q.y < -20 || q.x > W + 20 || q.y > H + 20) return;
+      anc.forEach(function(a){
+        var p = a.p, q = a.q;
         g.strokeStyle = '#8a2e1a'; g.lineWidth = 2; g.fillStyle = 'rgba(255,248,236,.9)'; g.beginPath(); g.arc(q.x, q.y, 4.2, 0, 6.283); g.fill(); g.stroke();
-        if(mv.k >= 18){ g.font = 'italic 600 12px "Malgun Gothic","맑은 고딕",serif'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,248,236,.92)'; g.strokeText(p[2], q.x + 6, q.y - 9); g.fillStyle = '#8a2e1a'; g.fillText(p[2], q.x + 6, q.y - 9); }
+        if(a.show){ g.font = 'italic 600 12px "Malgun Gothic","맑은 고딕",serif'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,248,236,.92)'; g.strokeText(p[2], q.x + 6, q.y - 9); g.fillStyle = '#8a2e1a'; g.fillText(p[2], q.x + 6, q.y - 9); }
       });
     }
     /* 축척 */
@@ -206,17 +214,18 @@ var MAPCMP = (function(){
       '<div class="mc-card">' +
         '<div class="mc-head"><b>지도 비교</b><span class="mc-sub">같은 지역, 다른 시대 — 나란히 놓고 봅니다</span><span class="mc-sp"></span>' +
           '<button type="button" class="btn" id="mcModern" title="오른쪽을 오늘의 세계 지도로 — 옛 지명이 오늘 어느 나라·도시인지">🌍 현대 지도와 비교</button>' +
+          '<button type="button" class="btn" id="mcSplit" title="두 지도·지명 비교를 각각 따로 움직이는 창으로">창 나누기</button>' +
           '<button type="button" class="btn" id="mcSame" title="두 지도를 같은 범위로 맞춰 그립니다">같은 범위</button>' +
           '<button type="button" class="btn" id="mcSwap" title="왼쪽·오른쪽 바꾸기">⇄ 바꾸기</button>' +
           '<button type="button" class="wb-x" id="mcClose" aria-label="닫기">×</button></div>' +
         '<div class="mc-body">' +
           ['L', 'R'].map(function(s){
-            return '<section class="mc-pane"><select id="mc' + s + 'Sel" class="mc-sel"></select>' +
+            return '<section class="mc-pane mc-win" id="mc' + s + 'Win"><div class="mc-pbar"><span class="mc-grip" title="끌어서 옮기기">⠿ ' + (s === 'L' ? '왼쪽' : '오른쪽') + '</span><select id="mc' + s + 'Sel" class="mc-sel"></select></div>' +
               '<div class="mc-cvwrap"><canvas id="mc' + s + 'Cv" title="누르면 이 지도를 크게 엽니다"></canvas></div>' +
               '<div class="mc-info"><div class="mc-t"><span id="mc' + s + 'T"></span> <small id="mc' + s + 'Ref"></small></div><div class="mc-rts" id="mc' + s + 'Rt"></div><div class="mc-txt" id="mc' + s + 'Txt"></div></div></section>';
           }).join('') +
         '</div>' +
-        '<div class="mc-diff" id="mcDiff"></div>' +
+        '<div class="mc-diff mc-win" id="mcDiffWin"><div class="mc-pbar mc-dbar"><span class="mc-grip">⠿ 지명 비교</span></div><div class="mc-diffin" id="mcDiff"></div></div>' +
       '</div>';
     document.body.appendChild(box);
     var st = document.createElement('style');
@@ -229,19 +238,69 @@ var MAPCMP = (function(){
       '.mc-head .btn.on{background:var(--accent);color:var(--accent-fg,#fff);border-color:var(--accent)}' +
       '.mc-body{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}' +
       '.mc-pane{display:flex;flex-direction:column;min-height:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg)}' +
+      '.mc-pbar{display:flex;align-items:center;gap:6px;padding:0 0 0 8px}.mc-pbar .mc-sel{flex:1;margin:8px 8px 8px 0}.mc-grip{display:none;font-size:12.5px;color:var(--fg3);white-space:nowrap;cursor:move;user-select:none}' +
+      '.mc-diff{display:block}.mc-diffin{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.mc-dbar{display:none}' +
+      /* 나눈 창 */
+      '.mc-split.mc-modal{background:transparent;pointer-events:none;padding:0}.mc-split .mc-card{transform:none!important;background:none;border:0;box-shadow:none;resize:none;width:0;height:0;min-width:0;min-height:0;overflow:visible}' +
+      '.mc-split .mc-head{position:fixed;pointer-events:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow2);z-index:3}' +
+      '.mc-split .mc-body{display:contents}.mc-split .mc-win{position:fixed;pointer-events:auto;resize:both;overflow:hidden;min-width:280px;min-height:200px;box-shadow:0 14px 40px rgba(0,0,0,.28);border:1px solid var(--line);border-radius:12px;background:var(--bg);display:flex;flex-direction:column;padding:0;max-height:none}' +
+      '.mc-split .mc-grip{display:inline}.mc-split .mc-pbar{cursor:move;background:var(--panel);border-bottom:1px solid var(--line)}.mc-split .mc-dbar{display:flex;padding:7px 10px}' +
+      '.mc-split .mc-diffin{flex:1;overflow:auto;padding:8px}.mc-split .mc-win.mc-front{box-shadow:0 18px 50px rgba(0,0,0,.36)}' +
       '.mc-sel{margin:8px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font:inherit;font-size:14px;padding:0 8px}' +
       '.mc-cvwrap{flex:1;min-height:200px;position:relative;cursor:zoom-in}.mc-cvwrap canvas{position:absolute;inset:0;width:100%;height:100%}.mc-loading{opacity:.35}' +
       '.mc-info{max-height:34%;overflow:auto;padding:8px 12px;border-top:1px solid var(--line);font-size:13.5px;line-height:1.7}.mc-t{font-weight:700;margin-bottom:4px}.mc-t small{color:var(--fg3);font-weight:400}' +
       '.mc-txt{color:var(--fg2);white-space:pre-wrap}.mc-rts{display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:4px}.mc-rt{display:inline-flex;align-items:center;gap:6px;font-size:12.5px}.mc-rt i{display:inline-block;width:22px}' +
-      '.mc-diff{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:0 10px 10px;max-height:24%;overflow:auto}' +
+      '.mc-diff{padding:0 10px 10px;max-height:24%;overflow:auto}' +
       '.mc-dcol{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)}.mc-dcol.mid{background:var(--panel2)}.mc-dh{font-size:12.5px;color:var(--fg3);margin-bottom:6px}.mc-dh b{color:var(--fg)}' +
       '.mc-mod{grid-column:1/-1}.mc-mrow{margin:0 0 6px}.mc-mrow b{font-size:13px}.mc-mrow>div{margin-top:3px}.mc-chip small{color:var(--fg3)}' +
       '.mc-tip{position:absolute;z-index:3;max-width:230px;background:rgba(20,24,30,.9);color:#fff;border-radius:8px;padding:6px 9px;font-size:12.5px;line-height:1.5;pointer-events:none}.mc-tip small{opacity:.7}' +
       '.mc-ov{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer}' +
       '.mc-chip{display:inline-block;margin:0 5px 5px 0;padding:1px 8px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;background:var(--panel)}.mc-dim{color:var(--fg3);font-size:12.5px}' +
-      '@media (max-width:900px){.mc-body{grid-template-columns:1fr;overflow:auto}.mc-pane{min-height:420px}.mc-diff{grid-template-columns:1fr}.mc-sub{display:none}}';
+      '@media (max-width:900px){.mc-body{grid-template-columns:1fr;overflow:auto}.mc-pane{min-height:420px}.mc-diffin{grid-template-columns:1fr}.mc-sub{display:none}#mcSplit{display:none}}';
     document.head.appendChild(st);
     $('mcClose').onclick = close;
+    /* ── 창 나누기: 각 창을 따로 끌어 옮기고(머리줄) 모서리로 크기를 바꾼다. 자리는 기억한다. 뒤의 본문도 그대로 쓸 수 있다 ── */
+    var SPK = 'mc.split', split = false, zTop = 10;
+    function spSaved(){ try { return JSON.parse(localStorage.getItem(SPK) || 'null'); } catch(e){ return null; } }
+    function spSave(){
+      var o = { on:split };
+      ['mcLWin', 'mcRWin', 'mcDiffWin'].forEach(function(id){ var el = $(id), r = el.getBoundingClientRect(); if(split) o[id] = [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; });
+      var h = box.querySelector('.mc-head').getBoundingClientRect(); if(split) o.head = [Math.round(h.left), Math.round(h.top)];
+      var old = spSaved() || {}; try { localStorage.setItem(SPK, JSON.stringify(split ? o : Object.assign(old, { on:false }))); } catch(e){}
+    }
+    function place(el, r){ el.style.left = r[0] + 'px'; el.style.top = r[1] + 'px'; if(r[2]){ el.style.width = r[2] + 'px'; el.style.height = r[3] + 'px'; } }
+    function fitIn(r){ var W = window.innerWidth, H = window.innerHeight; r[2] = r[2] ? Math.min(r[2], W - 16) : r[2]; r[3] = r[3] ? Math.min(r[3], H - 16) : r[3]; r[0] = Math.max(8 - (r[2] || 200) + 160, Math.min(W - 160, r[0])); r[1] = Math.max(8, Math.min(H - 48, r[1])); return r; }
+    function setSplit(on){
+      split = !!on; box.classList.toggle('mc-split', split); $('mcSplit').classList.toggle('on', split); $('mcSplit').textContent = split ? '한 창으로' : '창 나누기';
+      var head = box.querySelector('.mc-head');
+      ['mcLWin', 'mcRWin', 'mcDiffWin'].forEach(function(id){ var el = $(id); if(!split){ el.style.left = el.style.top = el.style.width = el.style.height = el.style.zIndex = ''; } });
+      if(!split){ head.style.left = head.style.top = ''; spSave(); setTimeout(paint, 60); return; }
+      var W = window.innerWidth, H = window.innerHeight, sv = spSaved() || {}, half = Math.round((W - 36) / 2), mh = Math.max(300, H - 290);
+      place(head, fitIn(sv.head || [Math.round(W / 2 - 330), 10]));
+      place($('mcLWin'), fitIn(sv.mcLWin || [12, 70, half, mh]));
+      place($('mcRWin'), fitIn(sv.mcRWin || [24 + half, 70, half, mh]));
+      place($('mcDiffWin'), fitIn(sv.mcDiffWin || [12, 80 + mh, W - 24, Math.max(150, H - mh - 92)]));
+      spSave(); setTimeout(paint, 60);
+    }
+    function drag(el, handle){
+      var on = null;
+      handle.addEventListener('pointerdown', function(e){
+        if(!split || e.button !== 0 || e.target.closest('select,button,input,a')) return;
+        var r = el.getBoundingClientRect(); on = { x:e.clientX, y:e.clientY, l:r.left, t:r.top };
+        handle.setPointerCapture(e.pointerId); document.body.classList.add('mc-dragging'); e.preventDefault(); e.stopPropagation();
+      });
+      handle.addEventListener('pointermove', function(e){ if(!on) return; el.style.left = (on.l + e.clientX - on.x) + 'px'; el.style.top = Math.max(0, Math.min(window.innerHeight - 40, on.t + e.clientY - on.y)) + 'px'; });
+      function end(e){ if(!on) return; on = null; document.body.classList.remove('mc-dragging'); try { handle.releasePointerCapture(e.pointerId); } catch(x){} var r = el.getBoundingClientRect(); place(el, fitIn([r.left, r.top])); spSave(); }
+      handle.addEventListener('pointerup', end); handle.addEventListener('pointercancel', end);
+      el.addEventListener('pointerdown', function(){ if(split){ el.style.zIndex = ++zTop; box.querySelectorAll('.mc-front').forEach(function(x){ x.classList.remove('mc-front'); }); el.classList.add('mc-front'); } }, true);
+    }
+    drag($('mcLWin'), $('mcLWin').querySelector('.mc-pbar')); drag($('mcRWin'), $('mcRWin').querySelector('.mc-pbar')); drag($('mcDiffWin'), $('mcDiffWin').querySelector('.mc-pbar'));
+    drag(box.querySelector('.mc-head'), box.querySelector('.mc-head'));
+    var rs = new ResizeObserver(function(){ if(!box.hidden && split){ clearTimeout(rs._t); rs._t = setTimeout(function(){ spSave(); paint(); }, 200); } });
+    rs.observe($('mcLWin')); rs.observe($('mcRWin'));
+    $('mcSplit').onclick = function(){ setSplit(!split); };
+    MAPCMP._split = function(){ var sv = spSaved(); setSplit(sv ? sv.on !== false : window.innerWidth > 900); };
+
     /* 창 옮기기: 머리줄을 끌면 창이 따라온다 (화면 밖으로는 못 나감), 두 번 누르면 가운데로. 끌다가 밖에서 놓아도 창은 닫히지 않는다 */
     (function(){
       var card = box.querySelector('.mc-card'), head = box.querySelector('.mc-head'), dx = 0, dy = 0, sx = 0, sy = 0, ox = 0, oy = 0, on = false;
@@ -252,7 +311,7 @@ var MAPCMP = (function(){
         dy = Math.max(8 - r.top, Math.min(window.innerHeight - 56 - r.top, dy)); apply();   /* 머리줄은 늘 화면 안에 */
       }
       head.addEventListener('pointerdown', function(e){
-        if(e.button !== 0 || e.target.closest('button,select,input,a')) return;
+        if(e.button !== 0 || e.target.closest('button,select,input,a') || box.classList.contains('mc-split')) return;
         on = true; sx = e.clientX; sy = e.clientY; ox = dx; oy = dy; head.setPointerCapture(e.pointerId); document.body.classList.add('mc-dragging'); e.preventDefault();
       });
       head.addEventListener('pointermove', function(e){ if(!on) return; dx = ox + e.clientX - sx; dy = oy + e.clientY - sy; apply(); });
@@ -270,10 +329,11 @@ var MAPCMP = (function(){
     ['L', 'R'].forEach(function(s){ $('mc' + s + 'Cv').onclick = function(){ var m = s === 'L' ? L : R; if(m.modern) return; close(); if(APP.openAtlasAt) APP.openAtlasAt(m, null); else ATLAS.open(m); }; });
     var down = false;
     box.addEventListener('mousedown', function(e){ down = e.target === box; });
-    box.addEventListener('click', function(e){ if(down && e.target === box) close(); down = false; });
+    box.addEventListener('click', function(e){ if(down && e.target === box && !box.classList.contains('mc-split')) close(); down = false; });
     box.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.stopPropagation(); close(); } });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !box.hidden && box.classList.contains('mc-split') && !e.defaultPrevented && document.activeElement && box.contains(document.activeElement)) close(); });
     ro = new ResizeObserver(function(){ if(!box.hidden) { clearTimeout(ro._t); ro._t = setTimeout(function(){ if(R && R.modern){ drawModern($('mcRCv')); ATLAS.renderTo(L, $('mcLCv'), $('mcLCv').parentElement.getBoundingClientRect().width, $('mcLCv').parentElement.getBoundingClientRect().height, null, function(){}); } else paint(); }, 150); } });
-    ro.observe($('mcLCv').parentElement);
+    ro.observe($('mcLCv').parentElement); ro.observe($('mcRCv').parentElement);
   }
   function open(left, right){
     if(!window.ATLAS || !ATLAS.renderTo){ APP.toast('지도 자료를 읽지 못했습니다'); return; }
@@ -281,6 +341,7 @@ var MAPCMP = (function(){
     opener = document.activeElement;
     options($('mcLSel'), null, null);
     box.hidden = false;
+    if(MAPCMP._split) MAPCMP._split();
     var st = APP.st || {}, m = left || (st.bi >= 0 ? (ATLAS.mapsFor(st.bi, st.ci)[0]) : null) || maps()[0];
     setL(m, false);
     if(right){ R = right; $('mcRSel').value = R.id; paint(); }
