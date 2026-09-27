@@ -25,7 +25,7 @@ var MAPCMP = (function(){
   }
   function options(sel, list, rec){
     var all = maps().slice().sort(function(a, b){ return firstRef(a) - firstRef(b); });
-    var h = '';
+    var h = sel && sel.id === 'mcRSel' ? '<optgroup label="현대"><option value="__modern">🌍 현대 세계 지도 — 오늘의 나라·도시</option></optgroup>' : '';
     if(rec && rec.length) h += '<optgroup label="같은 지역 · 다른 시대 (추천)">' + rec.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.title) + ' — ' + esc(refLabel(m)) + '</option>'; }).join('') + '</optgroup>';
     h += '<optgroup label="모든 지도 (성경 순서)">' + all.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.title) + ' — ' + esc(refLabel(m)) + '</option>'; }).join('') + '</optgroup>';
     sel.innerHTML = h;
@@ -35,10 +35,146 @@ var MAPCMP = (function(){
   function placesOf(m){ var o = {}; (m.places || []).forEach(function(id){ var p = window.ATLAS_PLACES && ATLAS_PLACES[id]; if(p && p[4] !== 'p') o[id] = 1; }); (m.marks || []).forEach(function(k){ if(k && k[0]) o[k[0]] = 1; }); return o; }
   function chips(ids){ return ids.length ? ids.map(function(id){ return '<span class="mc-chip">' + esc(placeName(id)) + '</span>'; }).join('') : '<span class="mc-dim">없음</span>'; }
 
+
+  /* ════ 현대 세계 지도 — 오늘의 나라·도시와 옛 성경 지명을 겹쳐 본다 (자료: data/world-countries.js · world-cities.js) ════ */
+  var MOD = { id:'__modern', title:'현대 세계 지도 — 오늘의 나라·도시', modern:true };
+  var mv = { lat:32, lon:35, k:60 }, overlay = true, worldP = null, mDrag = null, mRaf = 0;
+  function loadWorld(){
+    if(window.WORLD_COUNTRIES && window.WORLD_CITIES) return Promise.resolve();
+    if(worldP) return worldP;
+    var base = /\/modu\//.test(location.pathname) ? 'data/d1/' : '../data/';
+    function one(f){ return new Promise(function(res, rej){ var sc = document.createElement('script'); sc.src = base + f + '?v=20260927'; sc.onload = res; sc.onerror = function(){ worldP = null; rej(new Error(f)); }; document.head.appendChild(sc); }); }
+    worldP = Promise.all([one('world-countries.js'), one('world-cities.js')]).then(function(){
+      WORLD_COUNTRIES.forEach(function(c){
+        var a = 180, b = 90, x = -180, y = -90;
+        c.p.forEach(function(poly){ poly.forEach(function(r){ for(var i = 0; i < r.length; i += 2){ if(r[i] < a) a = r[i]; if(r[i] > x) x = r[i]; if(r[i + 1] < b) b = r[i + 1]; if(r[i + 1] > y) y = r[i + 1]; } }); });
+        c.bb = [a, b, x, y];
+      });
+    });
+    return worldP;
+  }
+  function mcos(){ return Math.cos(Math.max(-70, Math.min(70, mv.lat)) * Math.PI / 180); }
+  function mxy(lat, lon, W, H){ return { x:W / 2 + (lon - mv.lon) * mv.k * mcos(), y:H / 2 - (lat - mv.lat) * mv.k }; }
+  function mll(x, y, W, H){ return { lon:mv.lon + (x - W / 2) / (mv.k * mcos()), lat:mv.lat - (y - H / 2) / mv.k }; }
+  function mFit(b, W, H){ mv.lat = (b[0] + b[2]) / 2; mv.lon = (b[1] + b[3]) / 2; mv.k = Math.min((W - 40) / ((b[3] - b[1]) * mcos()), (H - 40) / (b[0] - b[2])); }
+  function mMinK(W, H){ return Math.min(W / 360, H / 170) * .95; }        /* 이만큼 줄이면 전 세계가 다 보인다 */
+  function inRing(r, lon, lat){ var ins = false; for(var i = 0, j = r.length - 2; i < r.length; j = i, i += 2){ var xi = r[i], yi = r[i + 1], xj = r[j], yj = r[j + 1]; if(((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) ins = !ins; } return ins; }
+  function countryAt(lat, lon){
+    if(!window.WORLD_COUNTRIES) return null;
+    for(var i = 0; i < WORLD_COUNTRIES.length; i++){
+      var c = WORLD_COUNTRIES[i], b = c.bb; if(lon < b[0] || lon > b[2] || lat < b[1] || lat > b[3]) continue;
+      for(var p = 0; p < c.p.length; p++) if(inRing(c.p[p][0], lon, lat)){ var hole = false; for(var h = 1; h < c.p[p].length; h++) if(inRing(c.p[p][h], lon, lat)) hole = true; if(!hole) return c; }
+    }
+    return null;
+  }
+  function km(a, b, c, d){ var R = 6371, t = Math.PI / 180, x = Math.sin((c - a) * t / 2), y = Math.sin((d - b) * t / 2); return 2 * R * Math.asin(Math.sqrt(x * x + Math.cos(a * t) * Math.cos(c * t) * y * y)); }
+  function nearCity(lat, lon){ var best = null, bd = 1e9; (window.WORLD_CITIES || []).forEach(function(c){ var d = km(lat, lon, c[0], c[1]); if(d < bd){ bd = d; best = c; } }); return best && bd <= 30 ? { c:best, d:bd } : null; }
+  function drawModern(cv){
+    var r = cv.parentElement.getBoundingClientRect(), W = Math.max(240, r.width), H = Math.max(220, r.height), DPR = window.devicePixelRatio || 1;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    var g = cv.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    mv.k = Math.max(mMinK(W, H), Math.min(3000, mv.k)); mv.lat = Math.max(-80, Math.min(80, mv.lat)); mv.lon = Math.max(-180, Math.min(180, mv.lon));
+    g.fillStyle = '#cfe0ea'; g.fillRect(0, 0, W, H);
+    var tl = mll(0, 0, W, H), br = mll(W, H, W, H);
+    /* 경위선 */
+    var step = mv.k < 6 ? 30 : mv.k < 20 ? 10 : mv.k < 80 ? 5 : 1;
+    g.strokeStyle = 'rgba(40,80,110,.12)'; g.lineWidth = 1; g.beginPath();
+    for(var lo = Math.ceil(tl.lon / step) * step; lo <= br.lon; lo += step){ var p1 = mxy(0, lo, W, H); g.moveTo(p1.x, 0); g.lineTo(p1.x, H); }
+    for(var la = Math.ceil(br.lat / step) * step; la <= tl.lat; la += step){ var p2 = mxy(la, 0, W, H); g.moveTo(0, p2.y); g.lineTo(W, p2.y); }
+    g.stroke();
+    /* 나라 */
+    var labels = [];
+    WORLD_COUNTRIES.forEach(function(c, ix){
+      var b = c.bb; if(b[2] < tl.lon || b[0] > br.lon || b[3] < br.lat || b[1] > tl.lat) return;
+      g.beginPath();
+      c.p.forEach(function(poly){ poly.forEach(function(rr){ for(var i = 0; i < rr.length; i += 2){ var q = mxy(rr[i + 1], rr[i], W, H); if(i) g.lineTo(q.x, q.y); else g.moveTo(q.x, q.y); } g.closePath(); }); });
+      g.fillStyle = ['#f6f1e4', '#efe6d2', '#f2ead9', '#ebe3cf'][ix % 4]; g.fill('evenodd');
+      g.strokeStyle = '#8c806b'; g.lineWidth = mv.k > 40 ? 1.1 : .7; g.stroke();
+      var a = mxy(b[3], b[0], W, H), z = mxy(b[1], b[2], W, H);
+      if(b[2] - b[0] < 180 && z.x - a.x > 46 && z.y - a.y > 14) labels.push({ c:c, p:mxy(c.l[1], c.l[0], W, H), size:Math.min(22, 10 + Math.log2((z.x - a.x) / 46 + 1) * 3) });
+    });
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    labels.forEach(function(L2){
+      g.font = '600 ' + L2.size + 'px "Malgun Gothic","맑은 고딕",sans-serif'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; g.fillStyle = 'rgba(70,58,40,.78)';
+      g.strokeText(L2.c.k, L2.p.x, L2.p.y); g.fillText(L2.c.k, L2.p.x, L2.p.y);
+    });
+    /* 오늘의 도시 */
+    g.textAlign = 'left'; g.textBaseline = 'middle';
+    (window.WORLD_CITIES || []).forEach(function(c){
+      if(!(c[4] || mv.k >= 45)) return;
+      var q = mxy(c[0], c[1], W, H); if(q.x < -20 || q.y < -20 || q.x > W + 20 || q.y > H + 20) return;
+      g.fillStyle = c[4] ? '#1d3b58' : '#3f5d78'; g.beginPath(); if(c[4]){ g.rect(q.x - 3.2, q.y - 3.2, 6.4, 6.4); } else g.arc(q.x, q.y, 2.8, 0, 6.283); g.fill();
+      if(mv.k < 9) return;                                  /* 세계를 볼 때는 점만 — 이름은 조금 확대하면 */
+      var name = c[2] + (overlay && c[5] && mv.k >= 45 ? '  (옛 ' + c[5] + ')' : '');
+      g.font = (c[4] ? '700 ' : '500 ') + (mv.k >= 45 ? 12.5 : 11) + 'px "Malgun Gothic","맑은 고딕",sans-serif';
+      g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(name, q.x + 6, q.y); g.fillStyle = '#1d3b58'; g.fillText(name, q.x + 6, q.y);
+    });
+    /* 옛 성경 지명 (왼쪽 지도) */
+    if(overlay && L){
+      Object.keys(placesOf(L)).forEach(function(id){
+        var p = window.ATLAS_PLACES && ATLAS_PLACES[id]; if(!p) return;
+        var q = mxy(p[0], p[1], W, H); if(q.x < -20 || q.y < -20 || q.x > W + 20 || q.y > H + 20) return;
+        g.strokeStyle = '#8a2e1a'; g.lineWidth = 2; g.fillStyle = 'rgba(255,248,236,.9)'; g.beginPath(); g.arc(q.x, q.y, 4.2, 0, 6.283); g.fill(); g.stroke();
+        if(mv.k >= 18){ g.font = 'italic 600 12px "Malgun Gothic","맑은 고딕",serif'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,248,236,.92)'; g.strokeText(p[2], q.x + 6, q.y - 9); g.fillStyle = '#8a2e1a'; g.fillText(p[2], q.x + 6, q.y - 9); }
+      });
+    }
+    /* 축척 */
+    var kmPerPx = 111.32 / mv.k, nice = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000], len = nice.filter(function(n){ return n / kmPerPx <= 140; }).pop() || 1;
+    var px = len / kmPerPx; g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(12, H - 30, px + 16, 20); g.strokeStyle = '#333'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(20, H - 16); g.lineTo(20 + px, H - 16); g.moveTo(20, H - 20); g.lineTo(20, H - 12); g.moveTo(20 + px, H - 20); g.lineTo(20 + px, H - 12); g.stroke();
+    g.fillStyle = '#222'; g.font = '11px sans-serif'; g.textAlign = 'center'; g.fillText(len + ' km', 20 + px / 2, H - 23);
+  }
+  function mRedraw(){ cancelAnimationFrame(mRaf); mRaf = requestAnimationFrame(function(){ if(R && R.modern) drawModern($('mcRCv')); }); }
+  function modernDiff(){
+    var groups = {}, rows = [];
+    Object.keys(placesOf(L)).forEach(function(id){
+      var p = ATLAS_PLACES[id]; if(!p) return;
+      var c = countryAt(p[0], p[1]);
+      for(var d = 1; !c && d <= 3; d++) [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]].some(function(o){ c = countryAt(p[0] + o[0] * .04 * d, p[1] + o[1] * .04 * d); return c; });   /* 바닷가 지명은 경계선이 조금 안쪽이라 둘레(약 4~13km)를 본다 */
+      var key = c ? c.k : '바다·기타', nc = nearCity(p[0], p[1]);
+      (groups[key] = groups[key] || []).push('<span class="mc-chip" title="' + esc(p[3] || '') + '">' + esc(p[2]) + (nc ? ' <small>→ ' + esc(nc.c[2]) + (nc.d > 6 ? ' 곁' : '') + '</small>' : '') + '</span>');
+    });
+    Object.keys(groups).sort(function(a, b){ return groups[b].length - groups[a].length; }).forEach(function(k){ rows.push('<div class="mc-mrow"><b>' + esc(k) + '</b> <span class="mc-dim">' + groups[k].length + '곳</span><div>' + groups[k].join('') + '</div></div>'); });
+    $('mcDiff').innerHTML = '<div class="mc-dcol mc-mod"><div class="mc-dh">왼쪽 지도의 성경 지명은 <b>오늘 어느 나라</b>에 있나 — (→ 가까운 오늘의 도시) · 경계는 Natural Earth 기준이며 분쟁 지역은 한쪽으로만 표시될 수 있습니다</div>' + (rows.join('') || '<span class="mc-dim">지명이 없습니다</span>') + '</div>';
+  }
+  function bindModern(){
+    var cv = $('mcRCv'), tip = document.createElement('div'); tip.className = 'mc-tip'; tip.hidden = true; cv.parentElement.appendChild(tip);
+    function pt(e){ var r = cv.getBoundingClientRect(); return { x:e.clientX - r.left, y:e.clientY - r.top, W:r.width, H:r.height }; }
+    cv.addEventListener('wheel', function(e){
+      if(!R || !R.modern) return; e.preventDefault();
+      var p = pt(e), before = mll(p.x, p.y, p.W, p.H);
+      mv.k = Math.max(mMinK(p.W, p.H), Math.min(3000, mv.k * (e.deltaY < 0 ? 1.18 : 1 / 1.18)));
+      var after = mll(p.x, p.y, p.W, p.H); mv.lon += before.lon - after.lon; mv.lat += before.lat - after.lat; mRedraw();
+    }, { passive:false });
+    cv.addEventListener('pointerdown', function(e){ if(!R || !R.modern || e.button !== 0) return; var p = pt(e); mDrag = { x:p.x, y:p.y, lat:mv.lat, lon:mv.lon, moved:false }; cv.setPointerCapture(e.pointerId); tip.hidden = true; });
+    cv.addEventListener('pointermove', function(e){
+      if(!R || !R.modern) return; var p = pt(e);
+      if(mDrag){ var dx = p.x - mDrag.x, dy = p.y - mDrag.y; if(Math.abs(dx) + Math.abs(dy) > 3) mDrag.moved = true; mv.lon = mDrag.lon - dx / (mv.k * mcos()); mv.lat = mDrag.lat + dy / mv.k; mRedraw(); return; }
+      var ll = mll(p.x, p.y, p.W, p.H), c = countryAt(ll.lat, ll.lon);
+      if(!c){ tip.hidden = true; return; }
+      var olds = L ? Object.keys(placesOf(L)).map(function(id){ return ATLAS_PLACES[id]; }).filter(function(q){ return q && countryAt(q[0], q[1]) === c; }).map(function(q){ return q[2]; }) : [];
+      tip.innerHTML = '<b>' + esc(c.k) + '</b>' + (c.k !== c.n ? ' <small>' + esc(c.n) + '</small>' : '') + (olds.length ? '<div>여기 있던 성경 지명: ' + esc(olds.slice(0, 12).join(' · ')) + (olds.length > 12 ? ' …' : '') + '</div>' : '');
+      tip.style.left = Math.min(p.W - 230, p.x + 14) + 'px'; tip.style.top = Math.min(p.H - 60, p.y + 14) + 'px'; tip.hidden = false;
+    });
+    function end(e){ if(!mDrag) return; mDrag = null; try { cv.releasePointerCapture(e.pointerId); } catch(x){} }
+    cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+    cv.addEventListener('pointerleave', function(){ tip.hidden = true; });
+    cv.addEventListener('dblclick', function(){ if(!R || !R.modern || !L) return; var r = cv.getBoundingClientRect(); mFit(L.bounds, r.width, r.height); mRedraw(); });
+  }
+
   function paint(){
     if(!L || !R) return;
-    var b = same ? union(L.bounds, R.bounds) : null;
+    var b = same && !R.modern ? union(L.bounds, R.bounds) : null;
+    $('mcSwap').disabled = !!R.modern; $('mcModern').classList.toggle('on', !!R.modern);
     [['L', L], ['R', R]].forEach(function(p){
+      if(p[1].modern){
+        $('mcRT').textContent = MOD.title; $('mcRRef').textContent = '오늘';
+        $('mcRRt').innerHTML = '<label class="mc-ov"><input type="checkbox" id="mcOverlay"' + (overlay ? ' checked' : '') + '> 왼쪽 지도의 성경 지명 겹쳐 보기</label>';
+        $('mcOverlay').onchange = function(){ overlay = this.checked; mRedraw(); };
+        $('mcRTxt').textContent = '오늘의 나라 경계(Natural Earth 1:50m)와 도시입니다. ■ 수도, (옛 ○○)는 그 자리나 가까이에 있던 성경 지명, 갈색 동그라미는 왼쪽 지도의 성경 지명입니다. 휠로 확대·축소(끝까지 줄이면 전 세계), 끌어서 옮기고, 두 번 누르면 왼쪽 지도 범위로 돌아옵니다. 나라 위에 마우스를 올리면 그 나라에 있던 성경 지명이 나옵니다.';
+        $('mcRCv').classList.add('mc-loading');
+        loadWorld().then(function(){ $('mcRCv').classList.remove('mc-loading'); drawModern($('mcRCv')); modernDiff(); }, function(){ $('mcRTxt').textContent = '현대 지도 자료를 읽지 못했습니다.'; });
+        return;
+      }
       var side = p[0], m = p[1], cv = $('mc' + side + 'Cv'), wrap = cv.parentElement, r = wrap.getBoundingClientRect();
       $('mc' + side + 'T').textContent = m.title; $('mc' + side + 'Ref').textContent = refLabel(m);
       $('mc' + side + 'Txt').textContent = m.text || '';
@@ -46,6 +182,7 @@ var MAPCMP = (function(){
       cv.classList.add('mc-loading');
       ATLAS.renderTo(m, cv, Math.max(240, r.width), Math.max(220, r.height), b, function(){ cv.classList.remove('mc-loading'); });
     });
+    if(R.modern){ if(window.ACT) ACT.log('map', { label:'현대 지도와 비교 · ' + L.title, data:{ id:L.id, cmp:'modern' } }); return; }
     var a = placesOf(L), c = placesOf(R), onlyL = [], both = [], onlyR = [];
     Object.keys(a).forEach(function(id){ (c[id] ? both : onlyL).push(id); });
     Object.keys(c).forEach(function(id){ if(!a[id]) onlyR.push(id); });
@@ -58,13 +195,17 @@ var MAPCMP = (function(){
     $('mcSame').classList.toggle('on', same);
     if(window.ACT) ACT.log('map', { label:'지도 비교 · ' + L.title + ' ↔ ' + R.title, data:{ id:L.id, cmp:R.id } });
   }
-  function setL(m, keepR){ L = m; $('mcLSel').value = m.id; var rec = suggest(m); options($('mcRSel'), null, rec); if(!keepR || !R || R === L || overlap(R.bounds, m.bounds) < .25) R = rec[0] || maps().filter(function(x){ return x !== m; })[0];   /* 오른쪽은 같은 지역일 때만 그대로 */ $('mcRSel').value = R.id; paint(); }
+  function setL(m, keepR){ L = m; $('mcLSel').value = m.id; var rec = suggest(m); options($('mcRSel'), null, rec);
+    if(R && R.modern && keepR){ $('mcRSel').value = MOD.id; var rr = $('mcRCv').getBoundingClientRect(); mFit(m.bounds, rr.width || 600, rr.height || 400); paint(); return; }
+    if(!keepR || !R || R === L || R.modern || overlap(R.bounds, m.bounds) < .25) R = rec[0] || maps().filter(function(x){ return x !== m; })[0];   /* 오른쪽은 같은 지역일 때만 그대로 */ $('mcRSel').value = R.id; paint(); }
+  function toModern(){ R = MOD; $('mcRSel').value = MOD.id; var rr = $('mcRCv').getBoundingClientRect(); mFit(L.bounds, rr.width || 600, rr.height || 400); paint(); }
   function build(){
     box = document.createElement('div'); box.className = 'modal mc-modal'; box.id = 'mcModal'; box.hidden = true;
     box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', '지도 비교');
     box.innerHTML =
       '<div class="mc-card">' +
         '<div class="mc-head"><b>지도 비교</b><span class="mc-sub">같은 지역, 다른 시대 — 나란히 놓고 봅니다</span><span class="mc-sp"></span>' +
+          '<button type="button" class="btn" id="mcModern" title="오른쪽을 오늘의 세계 지도로 — 옛 지명이 오늘 어느 나라·도시인지">🌍 현대 지도와 비교</button>' +
           '<button type="button" class="btn" id="mcSame" title="두 지도를 같은 범위로 맞춰 그립니다">같은 범위</button>' +
           '<button type="button" class="btn" id="mcSwap" title="왼쪽·오른쪽 바꾸기">⇄ 바꾸기</button>' +
           '<button type="button" class="wb-x" id="mcClose" aria-label="닫기">×</button></div>' +
@@ -94,6 +235,9 @@ var MAPCMP = (function(){
       '.mc-txt{color:var(--fg2);white-space:pre-wrap}.mc-rts{display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:4px}.mc-rt{display:inline-flex;align-items:center;gap:6px;font-size:12.5px}.mc-rt i{display:inline-block;width:22px}' +
       '.mc-diff{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:0 10px 10px;max-height:24%;overflow:auto}' +
       '.mc-dcol{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg)}.mc-dcol.mid{background:var(--panel2)}.mc-dh{font-size:12.5px;color:var(--fg3);margin-bottom:6px}.mc-dh b{color:var(--fg)}' +
+      '.mc-mod{grid-column:1/-1}.mc-mrow{margin:0 0 6px}.mc-mrow b{font-size:13px}.mc-mrow>div{margin-top:3px}.mc-chip small{color:var(--fg3)}' +
+      '.mc-tip{position:absolute;z-index:3;max-width:230px;background:rgba(20,24,30,.9);color:#fff;border-radius:8px;padding:6px 9px;font-size:12.5px;line-height:1.5;pointer-events:none}.mc-tip small{opacity:.7}' +
+      '.mc-ov{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer}' +
       '.mc-chip{display:inline-block;margin:0 5px 5px 0;padding:1px 8px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;background:var(--panel)}.mc-dim{color:var(--fg3);font-size:12.5px}' +
       '@media (max-width:900px){.mc-body{grid-template-columns:1fr;overflow:auto}.mc-pane{min-height:420px}.mc-diff{grid-template-columns:1fr}.mc-sub{display:none}}';
     document.head.appendChild(st);
@@ -118,15 +262,17 @@ var MAPCMP = (function(){
       window.addEventListener('resize', function(){ if(!box.hidden) clamp(); });
     })();
     $('mcSame').onclick = function(){ same = !same; paint(); };
-    $('mcSwap').onclick = function(){ var t = L; L = R; R = t; $('mcLSel').value = L.id; options($('mcRSel'), null, suggest(L)); $('mcRSel').value = R.id; paint(); };
+    $('mcSwap').onclick = function(){ if(R && R.modern) return; var t = L; L = R; R = t; $('mcLSel').value = L.id; options($('mcRSel'), null, suggest(L)); $('mcRSel').value = R.id; paint(); };
     $('mcLSel').onchange = function(){ var m = ATLAS.byId(this.value); if(m) setL(m, true); };
-    $('mcRSel').onchange = function(){ var m = ATLAS.byId(this.value); if(m){ R = m; paint(); } };
-    ['L', 'R'].forEach(function(s){ $('mc' + s + 'Cv').onclick = function(){ var m = s === 'L' ? L : R; close(); if(APP.openAtlasAt) APP.openAtlasAt(m, null); else ATLAS.open(m); }; });
+    $('mcRSel').onchange = function(){ if(this.value === MOD.id){ toModern(); return; } var m = ATLAS.byId(this.value); if(m){ R = m; paint(); } };
+    $('mcModern').onclick = function(){ if(R && R.modern){ var rec = suggest(L); R = rec[0] || R; $('mcRSel').value = R.id; paint(); } else toModern(); };
+    bindModern();
+    ['L', 'R'].forEach(function(s){ $('mc' + s + 'Cv').onclick = function(){ var m = s === 'L' ? L : R; if(m.modern) return; close(); if(APP.openAtlasAt) APP.openAtlasAt(m, null); else ATLAS.open(m); }; });
     var down = false;
     box.addEventListener('mousedown', function(e){ down = e.target === box; });
     box.addEventListener('click', function(e){ if(down && e.target === box) close(); down = false; });
     box.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ e.stopPropagation(); close(); } });
-    ro = new ResizeObserver(function(){ if(!box.hidden) { clearTimeout(ro._t); ro._t = setTimeout(paint, 150); } });
+    ro = new ResizeObserver(function(){ if(!box.hidden) { clearTimeout(ro._t); ro._t = setTimeout(function(){ if(R && R.modern){ drawModern($('mcRCv')); ATLAS.renderTo(L, $('mcLCv'), $('mcLCv').parentElement.getBoundingClientRect().width, $('mcLCv').parentElement.getBoundingClientRect().height, null, function(){}); } else paint(); }, 150); } });
     ro.observe($('mcLCv').parentElement);
   }
   function open(left, right){
