@@ -357,6 +357,7 @@ function openChapter(bi,ci,vi){
   /* 팝 창(검색·메모장·지도…)에서 절을 고르면 본문 창이 그 장으로 간다 */
   if(isPopWin()){ POP.goto(bi, ci, vi); return; }
   st.mode = 'chapter'; st.bi = bi; st.ci = ci; st.vi = (vi === undefined ? -1 : vi);
+  if(window.ACT && BOOKS[bi]) ACT.read(bi, ci, BOOKS[bi].n);          /* 성경 기록: 3초 넘게 머문 장 */
   S.bi = bi; S.ci = ci; saveSettings();
   render();
   syncBookNav();
@@ -1226,6 +1227,7 @@ function loadHist(){
 function addHist(q, kind, sub){
   q = (q || '').trim();
   if(!q) return;
+  if(window.ACT) ACT.log('search', { label:q, data:{ k:kind || '', s:sub || '' } });   /* 성경 기록: 찾기 */
   hist = hist.filter(function(h){ return h.q !== q; });
   hist.unshift({ q:q, k:kind, s:sub || '', t:Date.now() });
   if(hist.length > HMAX) hist.length = HMAX;
@@ -1546,6 +1548,7 @@ function updateWordBox(){
   $('wordbox').hidden = !(S.dictHover && boxSupported());
 }
 function fillWordBox(info){
+  if(window.ACT && info) ACT.word(info, info.bi >= 0 && BOOKS[info.bi] ? BOOKS[info.bi].n + ' ' + (info.ci + 1) + ':' + (info.vi + 1) : '');
   var body = $('wbBody'), find = $('wbFind');
   $('wbTitle').textContent = info.kind === 'heb' ? '히브리어 낱말'
                            : info.kind === 'grk' ? '헬라어 낱말' : '영어 낱말';
@@ -1831,6 +1834,7 @@ function wordHTML(info){
 }
 function openWordModal(info){
   if(!info) return;
+  if(window.ACT) ACT.word(info, info.bi >= 0 && BOOKS[info.bi] ? BOOKS[info.bi].n + ' ' + (info.ci + 1) + ':' + (info.vi + 1) : '');
   hideWordPop();
   $('mWord').className = 'm-word' + (info.kind === 'eng' ? ' ltr' : '');
   $('mWord').textContent = (info.kind === 'heb' ? heb(info.word) : info.word);
@@ -2037,6 +2041,7 @@ function paintComm(){
 }
 function openComm(bi, ci, vi){
   var hits = commHits(bi, ci, vi);
+  if(window.ACT && hits.length && BOOKS[bi]) ACT.log('comm', { ref:BOOKS[bi].n + ' ' + (ci + 1) + ':' + (vi + 1), book:BOOKS[bi].n, label:BOOKS[bi].n + ' ' + (ci + 1) + ':' + (vi + 1) + ' 주석', data:{ bi:bi, ci:ci, vi:vi } });
   if(!hits.length) return toast('이 절에 연결된 주석이 없습니다');
   CM = { bi:bi, ci:ci, vi:vi, list:hits, wi:0, si:hits[0].pick };
   $('commModal').hidden = false;
@@ -3526,6 +3531,7 @@ function introRows(d){
 }
 function openIntro(bi){
   if(bi < 0 || bi >= BOOKS.length) return;
+  if(window.ACT) ACT.log('intro', { book:BOOKS[bi].n, label:BOOKS[bi].n + ' 개관', data:{ bi:bi } });
   introBi = bi;
   var b = BOOKS[bi], d = INTRO[b.n];
   $('inTitle').textContent = b.n;

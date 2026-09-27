@@ -171,6 +171,33 @@
     counts: function(){ return allHl().then(function(all){ var o = {}; all.forEach(function(h){ o[h.color] = (o[h.color] || 0) + 1; }); return o; }); }
   };
 
+  /* ── 성경 기록 하나로 (2026-09-27) — 찾기·장 읽기·지도·낱말·주석·학습 기록 (Supabase modu_activity)
+       담임목사 계정(sync_owners)일 때만 켜진다 — 서버 함수 is_sync_owner 로 확인 ── */
+  var actOwner = null;
+  function devName(){ return /iPhone|Android.+Mobile|Mobi/i.test(navigator.userAgent) ? '휴대폰' : /iPad|Android/i.test(navigator.userAgent) ? '태블릿' : '웹'; }
+  window.ACTDB = {
+    enabled: function(){
+      if(actOwner !== null) return Promise.resolve(actOwner);
+      var c = client(); if(!c) return Promise.resolve(false);
+      return session().then(function(s){
+        if(!s) return false;
+        return c.rpc('is_sync_owner').then(function(r){ actOwner = !r.error && r.data === true; return actOwner; });
+      }).catch(function(){ return false; });
+    },
+    add: function(a){
+      var c = client(); if(!c || !actOwner) return Promise.resolve(false);
+      return session().then(function(s){
+        if(!s) return false;
+        return c.from('modu_activity').insert({ user_id:s.user.id, kind:a.kind, ref:a.ref || '', book:a.book || '', label:a.label || '', data:a.data || {}, device:devName() })
+          .then(function(r){ if(r.error) throw r.error; return true; });
+      });
+    },
+    list: function(n){
+      var c = client(); if(!c || !actOwner) return Promise.resolve([]);
+      return c.from('modu_activity').select('kind,ref,book,label,data,device,at').order('at', { ascending:false }).limit(n || 3000).then(function(r){ return r.data || []; });
+    }
+  };
+
   /* ── 주석 풀기: commentary.enc = 'SBC1' + iv(12) + tag(16) + AES-256-GCM(gzip(JSON)) ── */
   var commCache = null;
   function b64(s){ var bin = atob(s), u = new Uint8Array(bin.length); for(var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; }

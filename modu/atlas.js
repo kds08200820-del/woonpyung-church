@@ -116,6 +116,7 @@ var ATLAS = (function(){
     meas = { a:null, b:null }; var _me = $('atMeas'); if(_me) _me.hidden = true;
     opener = document.activeElement;
     cur = m; cur.from = from || null; focusId = null; hover = null;
+    if(window.ACT && m) ACT.log('map', { label:m.title || m.id || '지도', ref:m.ref || '', data:{ id:m.id || '' } });   /* 성경 기록: 지도 */
     seenAdd(m);
     if(!list.length || list.indexOf(m) < 0) list = [m];
     cv = $('atCanvas'); g = cv.getContext('2d');

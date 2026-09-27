@@ -17,6 +17,7 @@ window.STUDY = (function(){
     var m = $('studyModal'); m.hidden = false; document.body.classList.add('modal-open');
     if(!list().length){ $('stBody').innerHTML = '<div class="st-empty">해설 자료(data/study/articles.js)를 읽지 못했습니다.</div>'; paintSide(); return; }
     show(byId(id) || cur || list()[0]);
+    var _a = byId(id) || cur; if(window.ACT && _a) ACT.log('study', { label:_a.title || _a.id, ref:_a.ref || '', data:{ id:_a.id } });   /* 성경 기록: 학습 */
     setTimeout(function(){ $('stClose').focus(); }, 0);
   }
   function back(){

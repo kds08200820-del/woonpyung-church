@@ -13,8 +13,8 @@ var KG = (function(){
 
   /* ── 자료 → 마디·선 ── */
   function build(){
-    return Promise.all([NOTES.graph(), window.HLDB ? HLDB.all() : []]).then(function(r){
-      var gr = r[0], hls = r[1] || [];
+    return Promise.all([NOTES.graph(), window.HLDB ? HLDB.all() : [], window.ACT ? ACT.list(4000) : []]).then(function(r){
+      var gr = r[0], hls = r[1] || [], acts = r[2] || [];
       N = []; E = []; byId = {}; adj = {};
       function add(n){ byId[n.id] = n; adj[n.id] = []; N.push(n); return n; }
       function link(a, b, w){ if(!byId[a] || !byId[b] || a === b) return; if(adj[a].indexOf(b) >= 0) return; E.push({ a:a, b:b, w:w || 1 }); adj[a].push(b); adj[b].push(a); }
@@ -43,9 +43,48 @@ var KG = (function(){
           });
         });
       }
+
+      /* ── 성경 기록(활동) — 읽은 장·찾은 말·지도·낱말·주석·학습·개관 ── */
+      if(acts.length){
+        var KN = { read:'읽은 장', search:'찾은 말', map:'본 지도', word:'찾아본 낱말', comm:'읽은 주석', study:'학습 해설', intro:'책 개관' };
+        var AC = { read:'#6cc4a1', search:'#f0a35e', map:'#5fa8e8', word:'#d98ad8', comm:'#c9b458', study:'#8fb3ff', intro:'#9ad0c2' };
+        var nRefs = gr.nodes.filter(function(n){ return n.ref; }).map(function(n){ var ps = APP.parseRefList(n.ref); return ps ? { id:n.id, ps:ps } : null; }).filter(Boolean);
+        var chapNode = function(bi, ci){
+          var id = 'a:read:' + bi + ':' + ci; if(byId[id]) return id;
+          var B = APP.BOOKS[bi]; if(!B) return null;
+          if(!byId['k:read']) add({ id:'k:read', kind:'akind', akind:'read', label:KN.read, sub:'성경 기록', color:AC.read });
+          add({ id:id, kind:'act', akind:'read', label:B.n + ' ' + (ci + 1) + '장', sub:'', color:AC.read, count:0, lastAt:'', devices:{}, bi:bi, ci:ci, vi:-1 });
+          link(id, 'k:read', .5);
+          return id;
+        };
+        acts.forEach(function(a){
+          var k = a.kind; if(!KN[k]) return;
+          var d = a.data || {}, hasCh = d.bi != null && d.bi >= 0 && d.ci != null && d.ci >= 0;
+          if(!hasCh && a.ref){ var ps = APP.parseRefList(String(a.ref).replace(/[–—~]/g, '-')); if(ps && ps[0]){ d = Object.assign({}, d, { bi:ps[0].bi, ci:ps[0].ci }); hasCh = true; } }
+          var id = k === 'read' ? (hasCh ? chapNode(d.bi, d.ci) : null) : 'a:' + k + ':' + (k === 'comm' && hasCh ? d.bi + ':' + d.ci : a.label);
+          if(!id) return;
+          var hub = 'k:' + k;
+          if(!byId[hub]) add({ id:hub, kind:'akind', akind:k, label:KN[k], sub:'성경 기록', color:AC[k] });
+          var n = byId[id];
+          if(!n) n = add({ id:id, kind:'act', akind:k, label:k === 'comm' && hasCh && APP.BOOKS[d.bi] ? APP.BOOKS[d.bi].n + ' ' + (d.ci + 1) + '장 주석' : a.label, sub:'', color:AC[k], count:0, lastAt:'', devices:{},
+                           bi:hasCh ? d.bi : -1, ci:hasCh ? d.ci : -1, vi:d.vi != null ? d.vi : -1, xid:d.id || '', q:a.label });
+          n.count = (n.count || 0) + 1; if(!n.lastAt || a.at > n.lastAt) n.lastAt = a.at; if(a.device) n.devices[a.device] = 1;
+          link(id, hub, .5);
+          if(hasCh && k !== 'read'){ var cid = chapNode(d.bi, d.ci); if(cid) link(id, cid, .7); }
+        });
+        /* 장 ↔ 그 장을 다룬 메모·형광펜, 찾은 말 ↔ 그 말이 제목에 든 메모 */
+        N.slice().forEach(function(p){
+          if(p.kind === 'act' && p.akind === 'read'){
+            nRefs.forEach(function(nr){ if(nr.ps.some(function(q){ return q.bi === p.bi && q.ci === p.ci; })) link(nr.id, p.id, .8); });
+            hls.forEach(function(h){ if(h.bi === p.bi && h.ci === p.ci) link('h:' + h.bi + ':' + h.ci + ':' + h.vi, p.id, .6); });
+          } else if(p.kind === 'act' && p.akind === 'search' && p.q && p.q.length >= 2){
+            gr.nodes.forEach(function(n){ if(!n.ghost && String(n.label || '').indexOf(p.q) >= 0) link(n.id, p.id, .5); });
+          }
+        });
+      }
       N.forEach(function(n){
         n.deg = adj[n.id].length;
-        n.r = n.kind === 'note' ? 4 + Math.min(12, Math.sqrt(n.deg) * 3) : n.kind === 'cat' ? 5 + Math.min(8, Math.sqrt(n.deg) * 2) : n.kind === 'tag' ? 3 + Math.min(6, Math.sqrt(n.deg) * 1.6) : n.kind === 'hl' ? 2.8 : 3.5;
+        n.r = n.kind === 'note' ? 4 + Math.min(12, Math.sqrt(n.deg) * 3) : n.kind === 'cat' ? 5 + Math.min(8, Math.sqrt(n.deg) * 2) : n.kind === 'tag' ? 3 + Math.min(6, Math.sqrt(n.deg) * 1.6) : n.kind === 'hl' ? 2.8 : n.kind === 'akind' ? 6 + Math.min(9, Math.sqrt(n.deg) * 1.4) : n.kind === 'act' ? 2.6 + Math.min(8, Math.sqrt(n.count || 1) * 1.5) : 3.5;
         n.hub = n.deg >= 3;
         var th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1), rad = 120 + Math.random() * 200;
         n.x = rad * Math.sin(ph) * Math.cos(th); n.y = rad * Math.sin(ph) * Math.sin(th); n.z = rad * Math.cos(ph) * .35;   /* 납작한 구 — 정면에서 보기 좋게 */
@@ -141,7 +180,7 @@ var KG = (function(){
         g.fillStyle = col; g.beginPath(); g.arc(p.sx, p.sy, r, 0, 6.283); g.fill();
       }
       /* 이름표 — 확대했거나, 허브·분류·선택·이웃 */
-      var show = state > 0 || p === hover || (!dimmed && (p.hub || p.kind === 'cat' || (labelAll && p.kind !== 'hl'))) || (state !== 0 && p.kind === 'hl' && zoom >= 1.6);
+      var show = state > 0 || p === hover || (!dimmed && (p.hub || p.kind === 'cat' || p.kind === 'akind' || (labelAll && p.kind !== 'hl'))) || (state !== 0 && p.kind === 'hl' && zoom >= 1.6);
       if(show){
         var fs = Math.max(9, Math.min(17, (p.hub ? 12.5 : 11) * Math.sqrt(p.s)));
         g.font = (state === 2 ? '600 ' : '400 ') + fs + 'px -apple-system,"Segoe UI","맑은 고딕","Malgun Gothic",sans-serif';
@@ -154,7 +193,7 @@ var KG = (function(){
     g.globalAlpha = 1;
     raf = requestAnimationFrame(draw);
   }
-  function colorOf(p){ return p.kind === 'ghost' ? C.ghost : p.kind === 'cat' || p.kind === 'hl' ? (p.color || '#e6c65a') : p.hub ? C.nodeHub : C.node; }
+  function colorOf(p){ return p.kind === 'ghost' ? C.ghost : p.kind === 'cat' || p.kind === 'hl' || p.kind === 'act' || p.kind === 'akind' ? (p.color || '#e6c65a') : p.hub ? C.nodeHub : C.node; }
 
   /* ── 마우스 ── */
   function pick(mx, my){
@@ -183,6 +222,13 @@ var KG = (function(){
     if(!pw) close();
     if(p.kind === 'note' || p.kind === 'ghost'){ if(APP.openNotes) APP.openNotes({ nid:p.nid, title:p.label }); else { APP.showView('notes'); NT.openNote(p.nid, p.label); } }
     else if(p.kind === 'hl'){ APP.openChapter(p.bi, p.ci, p.vi); }
+    else if(p.kind === 'act'){
+      if(p.akind === 'search'){ var qi = document.getElementById('q'); if(qi){ qi.value = p.q; APP.showView('search'); qi.dispatchEvent(new KeyboardEvent('keydown', { key:'Enter', bubbles:true })); } }
+      else if(p.akind === 'map' && window.ATLAS){ var mm = p.xid && ATLAS.byId ? ATLAS.byId(p.xid) : null; if(mm) ATLAS.open(mm); else ATLAS.openIndex(); }
+      else if(p.akind === 'study' && window.STUDY){ STUDY.open(p.xid); }
+      else if(p.akind === 'intro' && APP.openIntro && p.bi >= 0){ APP.openIntro(p.bi); }
+      else if(p.bi >= 0){ APP.openChapter(p.bi, p.ci, p.vi >= 0 ? p.vi : undefined); }
+    }
     else if(p.kind === 'tag'){ if(APP.openNotes) APP.openNotes({ tag:p.tag }); else { APP.showView('notes'); NT.searchTag(p.tag); } }
     else if(p.kind === 'cat'){ if(APP.openNotes) APP.openNotes({ hl:p.hcolor }); else { APP.showView('notes'); NT.setMode('hl'); HL.setFilter(p.hcolor); } }
   }
@@ -195,7 +241,7 @@ var KG = (function(){
     if(!p){ side.hidden = true; side.innerHTML = ''; side.parentElement.classList.remove('with-side'); return; }
     side.hidden = false; side.parentElement.classList.add('with-side');
     var my = ++sideReq;
-    var kindName = { note:'메모', ghost:'아직 쓰지 않은 메모', tag:'태그', cat:'형광펜 분류', hl:'형광펜 절' }[p.kind];
+    var kindName = { note:'메모', ghost:'아직 쓰지 않은 메모', tag:'태그', cat:'형광펜 분류', hl:'형광펜 절', act:'성경 기록', akind:'성경 기록 분류' }[p.kind];
     var related = adj[p.id].map(function(id){ return byId[id]; }).filter(Boolean)
       .sort(function(a, b){ return (a.kind === 'note' ? 0 : 1) - (b.kind === 'note' ? 0 : 1) || b.deg - a.deg; });
     side.innerHTML = '<div class="kgs-head"><div class="kgs-kind">' + kindName + ' · 이어진 지식 ' + related.length + '</div>' +
@@ -224,6 +270,13 @@ var KG = (function(){
         } else if(q.kind === 'cat'){
           if(self) return;
           html += '<article class="kgs-card tag" data-id="' + esc(q.id) + '"><h4><i style="background:' + (q.color || '#e6c65a') + '"></i>' + esc(q.label) + '</h4><div class="kgs-ref">형광펜 절 ' + q.deg + '개</div></article>';
+        } else if(q.kind === 'act'){
+          var devs = Object.keys(q.devices || {}), when = q.lastAt ? new Date(q.lastAt) : null;
+          html += '<article class="kgs-card tag" data-id="' + esc(q.id) + '"><h4><i style="background:' + (q.color || '#6cc4a1') + '"></i>' + esc(q.label) + (self ? ' <span class="kgs-me">지금 고른 것</span>' : '') + '</h4>' +
+            '<div class="kgs-ref">' + (q.count ? q.count + '번' : '') + (when ? ' · 마지막 ' + (when.getMonth() + 1) + '/' + when.getDate() + ' ' + String(when.getHours()).padStart(2, '0') + ':' + String(when.getMinutes()).padStart(2, '0') : '') + (devs.length ? ' · ' + esc(devs.join(', ')) : '') + '</div></article>';
+        } else if(q.kind === 'akind'){
+          if(self) return;
+          html += '<article class="kgs-card tag" data-id="' + esc(q.id) + '"><h4><i style="background:' + (q.color || '#6cc4a1') + '"></i>' + esc(q.label) + '</h4><div class="kgs-ref">성경 기록 ' + q.deg + '개</div></article>';
         } else if(q.kind === 'ghost'){
           html += '<article class="kgs-card ghost" data-id="' + esc(q.id) + '"><h4>' + esc(q.label) + '</h4><div class="kgs-ref">아직 쓰지 않은 메모 — 두 번 누르면 새로 씁니다</div></article>';
         }
@@ -234,11 +287,11 @@ var KG = (function(){
       });
     });
   }
-  function openLabel(p){ return p.kind === 'hl' ? '이 절로 가기' : p.kind === 'tag' ? '이 태그의 메모 찾기' : p.kind === 'cat' ? '이 분류의 형광펜 보기' : p.kind === 'ghost' ? '이 제목으로 메모 쓰기' : '메모장에서 열기'; }
+  function openLabel(p){ return p.kind === 'act' ? ({ search:'다시 찾기', map:'지도 열기', study:'해설 열기', intro:'개관 열기' }[p.akind] || '이 본문으로 가기') : p.kind === 'akind' ? '성경 기록' : p.kind === 'hl' ? '이 절로 가기' : p.kind === 'tag' ? '이 태그의 메모 찾기' : p.kind === 'cat' ? '이 분류의 형광펜 보기' : p.kind === 'ghost' ? '이 제목으로 메모 쓰기' : '메모장에서 열기'; }
 
   function paintStats(){
-    var c = { note:0, ghost:0, tag:0, cat:0, hl:0 }; N.forEach(function(p){ c[p.kind]++; });
-    $('kgStats').innerHTML = '<b>' + c.note + '</b> 메모 · <b>' + E.length + '</b> 연결 · <b>' + c.tag + '</b> 태그 · <b>' + c.hl + '</b> 형광펜 절' + (c.ghost ? ' · <span class="dim">아직 없는 메모 ' + c.ghost + '</span>' : '');
+    var c = { note:0, ghost:0, tag:0, cat:0, hl:0, act:0, akind:0 }; N.forEach(function(p){ c[p.kind]++; });
+    $('kgStats').innerHTML = '<b>' + c.note + '</b> 메모 · <b>' + E.length + '</b> 연결 · <b>' + c.tag + '</b> 태그 · <b>' + c.hl + '</b> 형광펜 절' + (c.act ? ' · <b>' + c.act + '</b> 성경 기록' : '') + (c.ghost ? ' · <span class="dim">아직 없는 메모 ' + c.ghost + '</span>' : '');
     $('kgEmpty').hidden = N.length > 0;
   }
   function search(q){
