@@ -934,6 +934,7 @@ console.log('[affairs.js] v20260923lic');
       loadWorshipJobs(panel);
       loadAppLicenses(panel);
       loadAttendanceStats(panel);
+      if (location.hash === '#attStats' && !window.__attStatsOpened) { window.__attStatsOpened = 1; attStatsModal(); }
       var tpCard = panel.querySelector('#tempPwCard');
       if (tpCard) tpCard.onclick = tempPwModal;
     }
@@ -1170,7 +1171,7 @@ console.log('[affairs.js] v20260923lic');
     function attBars(items, max, color) {   /* 가로 막대: [{label, value(0~100), note}] */
       return items.map(function (it) {
         return '<div style="display:flex;align-items:center;gap:8px;margin:5px 0;font-size:.84rem">' +
-          '<div style="width:92px;flex:none;text-align:right;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + esc(it.label) + '">' + esc(it.label) + '</div>' +
+          '<div style="width:' + (innerWidth < 600 ? 70 : 92) + 'px;flex:none;text-align:right;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + esc(it.label) + '">' + esc(it.label) + '</div>' +
           '<div style="flex:1;background:#eef2f7;border-radius:6px;height:16px;overflow:hidden"><div style="width:' + Math.max(0, Math.min(100, it.value / (max || 100) * 100)) + '%;height:100%;background:' + (color || '#2e7d5b') + ';border-radius:6px"></div></div>' +
           '<div style="width:44px;flex:none;font-weight:700;color:#1e293b">' + Math.round(it.value) + '%</div>' +
           '<div style="width:64px;flex:none;color:#94a3b8;font-size:.76rem">' + esc(it.note || '') + '</div></div>';
@@ -1190,7 +1191,7 @@ console.log('[affairs.js] v20260923lic');
     }
     function attStatsModal() {
       var ov = document.createElement('div');
-      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:' + (innerWidth < 600 ? '8px 6px' : '24px 14px') + ';overflow:auto';
       ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:1080px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap"><h3 style="margin:0;color:var(--accent,#032257)">✅ 출석 현황</h3>' +
         '<div style="display:flex;gap:6px;align-items:center"><select id="at_range" style="border:1px solid #d7dde6;border-radius:8px;padding:5px 8px"><option value="4">최근 4주</option><option value="12" selected>최근 12주</option><option value="year">올해</option></select>' +
@@ -1246,7 +1247,7 @@ console.log('[affairs.js] v20260923lic');
             stat('한 번도 안 옴', never + '명', '선택한 기간') +
           '</div>' +
           box('주별 출석률 <span style="font-weight:400;color:#94a3b8;font-size:.8rem">(주일 예배·주일학교에 한 번이라도 출석한 성도 ÷ 전체 성도)</span>', attTrend(weeks)) +
-          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px">' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:12px">' +
             box('부서별', attBars(seg('부서'), 100, '#2e7d5b')) +
             box('구역별', attBars(seg('구역'), 100, '#3a6db5')) +
             box('성별', attBars(seg('성별'), 100, '#b45309')) +

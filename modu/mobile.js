@@ -143,6 +143,21 @@
         ['📲', '홈 화면에 설치', function(){ doInstall(); }]
       ];
       grid.innerHTML = rows.map(function(r, i){ return '<button type="button" class="mm-it" data-i="' + i + '"><span class="mm-ic">' + r[0] + '</span>' + esc(r[1]) + '</button>'; }).join('');
+      /* 관리자에게만: 📊 출석 현황 (홈페이지 관리자 대시보드의 같은 통계 창) */
+      (function(){
+        try {
+          var M = window.MODU || {}, ref = new URL(M.supabaseUrl).hostname.split('.')[0], raw = localStorage.getItem('sb-' + ref + '-auth-token'); if(!raw) return;
+          var s0 = JSON.parse(raw), s = s0 && s0.currentSession ? s0.currentSession : s0; if(!s || !s.access_token || !s.user) return;
+          fetch(M.supabaseUrl.replace(/\/$/, '') + '/rest/v1/admins?select=uid&uid=eq.' + s.user.id, { headers:{ apikey:M.anonKey, Authorization:'Bearer ' + s.access_token } })
+            .then(function(r){ return r.ok ? r.json() : []; }).then(function(a){
+              if(!a || !a.length || $('mmAttStats')) return;
+              var b = document.createElement('button'); b.type = 'button'; b.className = 'mm-it'; b.id = 'mmAttStats';
+              b.innerHTML = '<span class="mm-ic">📊</span>출석 현황';
+              b.onclick = function(){ location.href = '../affairs.html#attStats'; };
+              var my = grid.querySelector('.mm-it[data-i="5"]'); if(my && my.nextSibling) grid.insertBefore(b, my.nextSibling); else grid.appendChild(b);
+            }).catch(function(){});
+        } catch(e){}
+      })();
       /* 데스크탑 메뉴 묶음도 그대로 (편집·이동·찾기·학습·성경연구·보기·본문성경·환경설정·도움말) */
       var mb = [].slice.call(document.querySelectorAll('#menubar .mb-item')).filter(function(b){ return !b.hidden; });
       if(mb.length){
