@@ -97,6 +97,47 @@
     var h = Math.floor(l/3600), m = Math.floor(l%3600/60), s = l%60;
     show('곧 ' + (sc.kind === 'sunday' ? pname(sc) + '예배' : sc.label) + '가 시작됩니다', (h ? h + ':' : '') + pad(m) + ':' + pad(s), href, 'soon');
   }
+  /* ── 이번 주 예배순서 시트 (더보기 → 예배순서) — 홈페이지 주보(../js/bulletins.js)의 순서 ── */
+  var bulP = null;
+  function loadBulletins(){
+    if(bulP) return bulP;
+    bulP = new Promise(function(res){
+      try { if(typeof BULLETINS !== 'undefined') return res(BULLETINS); } catch(e){}
+      var sc = document.createElement('script'); sc.src = '../js/bulletins.js?d=' + ymd(kst());
+      sc.onload = function(){ try { res(typeof BULLETINS !== 'undefined' ? BULLETINS : []); } catch(e){ res([]); } };
+      sc.onerror = function(){ bulP = null; res([]); };
+      document.head.appendChild(sc);
+    });
+    return bulP;
+  }
+  function escH(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  var sheet = null;
+  function closeOrder(){ if(sheet) sheet.hidden = true; }
+  function openOrder(){
+    if(!sheet){
+      sheet = document.createElement('div'); sheet.id = 'moOrder'; sheet.className = 'mo-order'; sheet.hidden = true;
+      sheet.innerHTML = '<div class="mm-sheet"><div class="mm-head"><b>예배순서</b><button type="button" class="mp-x" id="moOrderX" aria-label="닫기">✕</button></div><div id="moOrderBody"><p class="mo-o-empty">불러오는 중…</p></div></div>';
+      document.body.appendChild(sheet);
+      sheet.addEventListener('click', function(e){ if(e.target === sheet) closeOrder(); });
+      document.getElementById('moOrderX').onclick = closeOrder;
+    }
+    sheet.hidden = false;
+    var body = document.getElementById('moOrderBody');
+    loadBulletins().then(function(L){
+      var lim = ymd(new Date(kst().getTime() + 864e5)), b = null;
+      for(var i = 0; i < (L || []).length; i++) if(L[i].date <= lim){ b = L[i]; break; }
+      if(!b || !(b.order || []).length){ body.innerHTML = '<p class="mo-o-empty">이번 주 주보가 아직 없습니다.</p>'; return; }
+      var rows = b.order.map(function(l){ var p = String(l).split(/\s*·\s*/); return '<li><span class="mo-o-h">' + escH(p[0]) + '</span><span class="mo-o-r">' + escH(p.slice(1).join(' · ')) + '</span></li>'; }).join('');
+      body.innerHTML = '<div class="mo-o-top">' + escH(b.dateLabel || b.date) + ' · 주일 낮 예배</div>' +
+        '<div class="mo-o-t">«' + escH(b.title) + '»' + (b.scripture ? ' · ' + escH(b.scripture) : '') + '</div>' +
+        '<ol class="mo-o-list">' + rows + '</ol>' +
+        (b.wed ? '<div class="mo-o-side"><b>수요기도회</b> ' + escH(String(b.wed).replace(/^수요기도회 · /, '')) + '</div>' : '') +
+        (b.dawn ? '<div class="mo-o-side"><b>새벽기도회</b> ' + escH(String(b.dawn).replace(/^새벽기도회 · /, '')) + '</div>' : '') +
+        '<a class="mo-o-go" href="../word.html?open=sunday#sermon">순서대로 보기 ›</a>';
+    });
+  }
+  window.MODU_WORSHIP = { openOrder: openOrder, closeOrder: closeOrder };
+
   function start(){ if(!ensure()){ setTimeout(start, 500); return; } tick(); setInterval(tick, 1000); }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

@@ -261,3 +261,18 @@ body.hy-open #moTabs{z-index:85}
 .mo-worship[data-state=live]{background:#1f6f4a;color:#fff}
 .mo-worship .mw-go{opacity:.7;font-size:18px;line-height:1}
 @media (max-width: 900px){ .mo-worship{top:58px} }   /* 위 막대(.vhead) 높이 아래에 붙는다 */
+
+/* ── 예배순서 시트 (더보기 → 예배순서) ── */
+.mo-order{position:fixed;inset:0;z-index:130;background:rgba(0,0,0,.4);display:flex;align-items:flex-end}
+.mo-order[hidden]{display:none}
+.mo-o-top{font-size:13px;color:var(--fg3);margin:2px 6px 2px}
+.mo-o-t{font-size:16px;font-weight:700;margin:0 6px 10px;color:var(--fg)}
+.mo-o-list{list-style:none;counter-reset:mo;margin:0;padding:0 4px}
+.mo-o-list li{counter-increment:mo;display:flex;gap:10px;align-items:baseline;padding:10px 2px;border-bottom:1px dashed var(--line2);font-size:15px}
+.mo-o-list li::before{content:counter(mo);flex:none;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-fg);font-size:12px;display:inline-flex;align-items:center;justify-content:center}
+.mo-o-h{flex:none;min-width:5em;font-weight:700;color:var(--fg)}
+.mo-o-r{color:var(--fg2);word-break:keep-all}
+.mo-o-side{margin:10px 6px 0;font-size:14px;color:var(--fg2)}
+.mo-o-side b{color:var(--fg);margin-right:6px}
+.mo-o-go{display:block;margin:14px 4px 4px;padding:13px;border-radius:12px;background:var(--accent);color:var(--accent-fg);text-align:center;font-weight:700;text-decoration:none}
+.mo-o-empty{padding:20px 6px;color:var(--fg3)}

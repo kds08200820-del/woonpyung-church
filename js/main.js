@@ -54,6 +54,7 @@ function renderOrder(b) {
     </div>`;
   const btn = document.getElementById("sermonOrderOpen");
   if (btn) btn.addEventListener("click", () => WPCWorship.open("sunday", { date: b.date, bulletin: b }));
+  if (btn && !renderOrder.autoOpened && /[?&]open=sunday/.test(location.search)) { renderOrder.autoOpened = true; setTimeout(() => btn.click(), 300); }   /* 모두의 성경 '순서대로 보기' */
 }
 
 function layoutDeck() {

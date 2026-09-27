@@ -122,6 +122,7 @@
       more.addEventListener('click', function(e){ if(e.target === more) closeMore(); });
       $('mmClose').onclick = closeMore;
       var grid = $('mmGrid'), rows = [
+        ['⛪', '예배순서', function(){ if(window.MODU_WORSHIP) MODU_WORSHIP.openOrder(); }],
         ['📖', '책 개관', function(){ var b = $('introBtn'); if(b) b.click(); }],
         ['🌍', '지도·고고학 표시', function(){ var b = $('geoBtn'); if(b) b.click(); }],
         ['🗺', '지도 목록', function(){ if(window.ATLAS) ATLAS.openIndex(); }],
