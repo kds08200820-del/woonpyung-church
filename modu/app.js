@@ -3777,6 +3777,8 @@ window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메
       '-',
       { t:'오늘 복습', fn:function(){ openWordStudy(vbTab); setTimeout(function(){ $('vbQuiz').click(); }, 50); } },
       '-',
+      { t:'지도 학습', fn:function(){ if(window.STUDY) STUDY.open(); } },
+      '-',
       { t:'지식 그래프', fn:function(){ openKG(); } }
     ]; }],
     ['성경연구', 'R', function(){
