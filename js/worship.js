@@ -295,9 +295,13 @@
       '<p class="hero-sub hw-date">' + esc(today.getUTCMonth() + 1) + '월 ' + esc(today.getUTCDate()) + '일 (' + DOWK[dow] + ') · ' + esc(sc.label) + ' ' + esc(sc.time) + '</p>' +
       (info ? '<p class="hw-sermon">' + info + '</p>' : '') +
       '<div class="hw-count" id="hwCount" aria-live="polite"></div>' +
+      '<div class="hw-btns" id="hwPrep" hidden><button type="button" class="hero-cta hw-btn"><b>오늘의 예배 보기</b><small>말씀을 미리 읽고 준비하세요</small></button></div>' +
       '<p class="hw-note" id="hwNote"></p>';
     [].forEach.call(rot.querySelectorAll('.hero-slide'), function (el) { el.remove(); });
     rot.appendChild(d);
+    /* 카운트가 도는 동안(1시간·30분 전)에도 예배 순서·본문을 미리 볼 수 있다 — 출석은 예배 시간에만 (2026-09-27)
+       방송실 전체 화면(.hw-fs)에서는 .hw-btns 가 숨겨져 카운트만 나간다 */
+    d.querySelector('#hwPrep button').addEventListener('click', function () { openGate(sc.kind); });
     var hero = rot.closest('.hero') || document.body;
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
@@ -312,7 +316,8 @@
       if (left < 0) left = 0;
       var soon = preview || left <= soonSec, box = $('hwCount'), t = $('hwTitle'), note = $('hwNote');
       if (t) t.textContent = soon ? '곧 ' + partName(sc) + '예배가 시작됩니다' : '오늘은 주일입니다';
-      if (note) note.textContent = soon ? '예배 시작까지 남은 시간 · 예배 10분 전부터 오늘의 예배가 열립니다' : '';
+      if (note) note.textContent = soon ? '예배 시작까지 남은 시간' : '';
+      var prep = $('hwPrep'); if (prep) prep.hidden = !soon;
       if (box) { box.hidden = !soon; if (soon) { var h = Math.floor(left / 3600), m = Math.floor(left % 3600 / 60), s = left % 60; box.innerHTML = (h ? '<span><b>' + h + '</b>시간</span>' : '') + '<span><b>' + pad(m) + '</b>분</span><span><b>' + pad(s) + '</b>초</span>'; } }
     }
     tick(); tm = setInterval(tick, 1000);
