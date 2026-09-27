@@ -889,6 +889,10 @@ console.log('[affairs.js] v20260923lic');
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">💻 설교자의 성경 설치</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#2c4a86;line-height:1.1;margin-top:4px" id="appLicNum">–</div>' +
         '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="appLicSub">인증 코드·설치된 PC · 눌러서 관리</div></div>' +
+        '<div class="fin-card" id="attCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">✅ 출석 현황</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:#2e7d5b;line-height:1.1;margin-top:4px" id="attNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="attSub">전체 성도 대비 · 눌러서 통계 보기</div></div>' +
         '<div class="fin-card" id="tempPwCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">🔑 임시 비밀번호</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#b03a5b;line-height:1.1;margin-top:4px">발급</div>' +
@@ -929,6 +933,7 @@ console.log('[affairs.js] v20260923lic');
       loadBookProgress(panel);
       loadWorshipJobs(panel);
       loadAppLicenses(panel);
+      loadAttendanceStats(panel);
       var tpCard = panel.querySelector('#tempPwCard');
       if (tpCard) tpCard.onclick = tempPwModal;
     }
@@ -1135,6 +1140,124 @@ console.log('[affairs.js] v20260923lic');
       load();
     }
 
+    // ── ✅ 출석 현황 — 전체 성도(교적) 대비 출석률, 주별 흐름, 계층별(부서·구역·성별·연령대·직분) 그래프 (2026-09-27) ──
+    //  출석 자료: attendance(어른은 오늘의 예배 단추, 어린이는 주일학교 '출석' 달란트). 교적 member_key 로 잇는다.
+    var ATT_SUN = /^주일/;   /* 주일 1부·2부·예배 */
+    function attYmd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+    function attAge(b) { if (!b) return null; var d = new Date(b), n = new Date(); var a = n.getFullYear() - d.getFullYear(); if (n < new Date(n.getFullYear(), d.getMonth(), d.getDate())) a--; return a; }
+    function attSegs(m) {
+      var g = String(m.groups || '').trim(), dept = ['유초등부', '중등부', '고등부', '청년부', '장년부'].indexOf(g) >= 0 ? g : (m.ss_role === '어린이' ? '유초등부' : m.ss_role === '중학생' ? '중등부' : m.ss_role === '고등학생' ? '고등부' : '장년부');
+      var z = g.match(/(\d+)\s*구역\s*(.*)/), zone = z ? z[1] + '구역' + (z[2] ? ' ' + z[2].trim() : '') : '구역 없음';
+      var a = attAge(m.birth), age = a == null ? '미상' : a < 13 ? '12세 이하' : a < 20 ? '13~19세' : a >= 70 ? '70대 이상' : Math.floor(a / 10) * 10 + '대';
+      var sex = m.sex === '남' || m.sex === '여' ? m.sex : '미상', role = String(m.role || '').trim() || '미기재';
+      return { '부서': dept, '구역': zone, '성별': sex, '연령대': age, '직분': role };
+    }
+    function loadAttendanceStats(panel) {
+      var numEl = panel.querySelector('#attNum'), subEl = panel.querySelector('#attSub'), card = panel.querySelector('#attCard');
+      if (!card) return;
+      var from = new Date(); from.setDate(from.getDate() - 7 * 13);
+      Promise.all([api('GET', 'gyojeok?select=member_key&limit=5000'), api('GET', 'attendance?select=att_date,service,member_key&att_date=gte.' + attYmd(from) + '&limit=20000')]).then(function (r) {
+        var total = (r[0] || []).filter(function (m) { return m.member_key; }).length, rows = r[1] || [];
+        var days = {}; rows.forEach(function (a) { if (ATT_SUN.test(a.service) || a.service === '주일학교') (days[a.att_date] = days[a.att_date] || {})[a.member_key] = 1; });
+        var last = Object.keys(days).sort().pop();
+        if (!last || !total) { numEl.textContent = '0%'; subEl.textContent = '아직 출석 기록 없음 · 눌러서 보기'; return; }
+        var n = Object.keys(days[last]).length;
+        numEl.textContent = Math.round(n / total * 100) + '%';
+        subEl.textContent = last.slice(5).replace('-', '/') + ' 주일 ' + n + '/' + total + '명 · 눌러서 통계';
+      }).catch(function () { numEl.textContent = '–'; subEl.textContent = '불러오지 못함'; });
+      card.onclick = attStatsModal;
+    }
+    function attBars(items, max, color) {   /* 가로 막대: [{label, value(0~100), note}] */
+      return items.map(function (it) {
+        return '<div style="display:flex;align-items:center;gap:8px;margin:5px 0;font-size:.84rem">' +
+          '<div style="width:92px;flex:none;text-align:right;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + esc(it.label) + '">' + esc(it.label) + '</div>' +
+          '<div style="flex:1;background:#eef2f7;border-radius:6px;height:16px;overflow:hidden"><div style="width:' + Math.max(0, Math.min(100, it.value / (max || 100) * 100)) + '%;height:100%;background:' + (color || '#2e7d5b') + ';border-radius:6px"></div></div>' +
+          '<div style="width:44px;flex:none;font-weight:700;color:#1e293b">' + Math.round(it.value) + '%</div>' +
+          '<div style="width:64px;flex:none;color:#94a3b8;font-size:.76rem">' + esc(it.note || '') + '</div></div>';
+      }).join('');
+    }
+    function attTrend(weeks) {   /* 세로 막대: 주별 출석률 */
+      var W = 640, H = 170, pad = 26, bw = Math.min(38, (W - pad * 2) / Math.max(1, weeks.length) - 8);
+      var x = function (i) { return pad + i * ((W - pad * 2) / Math.max(1, weeks.length)) + 4; };
+      var bars = weeks.map(function (w, i) {
+        var h = (H - 44) * w.rate / 100, y = H - 22 - h;
+        return '<rect x="' + x(i) + '" y="' + y + '" width="' + bw + '" height="' + Math.max(1, h) + '" rx="4" fill="#3a6db5"><title>' + w.date + ' ' + w.n + '명 (' + Math.round(w.rate) + '%)</title></rect>' +
+          '<text x="' + (x(i) + bw / 2) + '" y="' + (y - 4) + '" text-anchor="middle" font-size="11" fill="#1e293b" font-weight="700">' + Math.round(w.rate) + '%</text>' +
+          '<text x="' + (x(i) + bw / 2) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="10.5" fill="#64748b">' + w.date.slice(5).replace('-', '/') + '</text>';
+      }).join('');
+      return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block" role="img" aria-label="주별 출석률">' +
+        '<line x1="' + pad + '" y1="' + (H - 22) + '" x2="' + (W - pad) + '" y2="' + (H - 22) + '" stroke="#cbd5e1"/>' + bars + '</svg>';
+    }
+    function attStatsModal() {
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:1080px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap"><h3 style="margin:0;color:var(--accent,#032257)">✅ 출석 현황</h3>' +
+        '<div style="display:flex;gap:6px;align-items:center"><select id="at_range" style="border:1px solid #d7dde6;border-radius:8px;padding:5px 8px"><option value="4">최근 4주</option><option value="12" selected>최근 12주</option><option value="year">올해</option></select>' +
+        '<button class="btn btn-line" id="at_close" style="padding:3px 11px">닫기</button></div></div>' +
+        '<div id="at_body"><p style="color:#94a3b8">불러오는 중…</p></div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { ov.remove(); });
+      ov.querySelector('#at_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      var yr = new Date().getFullYear(), from = new Date(yr, 0, 1);
+      var body = ov.querySelector('#at_body'), members = [], rows = [];
+      Promise.all([api('GET', 'gyojeok?select=member_key,name,birth,sex,role,groups,ss_role&limit=5000'), api('GET', 'attendance?select=att_date,service,member_key&att_date=gte.' + attYmd(from) + '&limit=50000')]).then(function (r) {
+        members = (r[0] || []).filter(function (m) { return m.member_key; }); rows = r[1] || []; paint();
+      }).catch(function () { body.innerHTML = '<p style="color:#c0392b">불러오지 못했습니다.</p>'; });
+      ov.querySelector('#at_range').onchange = paint;
+      function paint() {
+        if (!members.length) { body.innerHTML = '<p style="color:#94a3b8">교적 자료가 없습니다.</p>'; return; }
+        var rg = ov.querySelector('#at_range').value, today = attYmd(new Date());
+        var byDay = {}, bySvc = {};
+        rows.forEach(function (a) {
+          if (ATT_SUN.test(a.service) || a.service === '주일학교') (byDay[a.att_date] = byDay[a.att_date] || {})[a.member_key] = 1;
+          (bySvc[a.service] = bySvc[a.service] || {})[a.att_date + '|' + a.member_key] = 1;
+        });
+        var days = Object.keys(byDay).sort();
+        if (rg !== 'year') days = days.slice(-(+rg));
+        if (!days.length) { body.innerHTML = '<p style="color:#94a3b8">선택한 기간에 출석 기록이 없습니다. 예배 시간에 오늘의 예배 단추를 누르거나 주일학교에서 출석 달란트를 주면 쌓입니다.</p>'; return; }
+        var total = members.length, keySet = {}; members.forEach(function (m) { keySet[m.member_key] = m; });
+        var weeks = days.map(function (d) { var n = Object.keys(byDay[d]).filter(function (k) { return keySet[k]; }).length; return { date: d, n: n, rate: n / total * 100 }; });
+        var avg = weeks.reduce(function (s, w) { return s + w.rate; }, 0) / weeks.length, lastW = weeks[weeks.length - 1];
+        /* 사람별 출석 횟수 (기간 안) */
+        var cnt = {}; days.forEach(function (d) { Object.keys(byDay[d]).forEach(function (k) { cnt[k] = (cnt[k] || 0) + 1; }); });
+        var everyone = members.map(function (m) { return { m: m, seg: attSegs(m), n: cnt[m.member_key] || 0 }; });
+        var never = everyone.filter(function (x) { return !x.n; }).length;
+        /* 계층별 출석률 = 그 계층 사람들의 출석 합 ÷ (사람 수 × 주일 수) */
+        function seg(name) {
+          var g = {}; everyone.forEach(function (x) { var k = x.seg[name], o = g[k] || (g[k] = { ppl: 0, hits: 0 }); o.ppl++; o.hits += x.n; });
+          return Object.keys(g).map(function (k) { return { label: k, value: g[k].hits / (g[k].ppl * days.length) * 100, note: g[k].ppl + '명' }; })
+            .sort(function (a, b) { return b.value - a.value; });
+        }
+        var svcNames = Object.keys(bySvc).sort(), svcRows = svcNames.map(function (sn) {
+          var inRange = Object.keys(bySvc[sn]).filter(function (k) { var d = k.split('|')[0]; return rg === 'year' ? true : d >= days[0]; });
+          return '<tr><td style="padding:4px 10px">' + esc(sn) + '</td><td style="padding:4px 10px;text-align:right"><b>' + inRange.length + '</b>번</td></tr>';
+        }).join('');
+        /* 연속 결석: 기간의 마지막 4주에 한 번도 없는 사람 (장년·청년) */
+        var last4 = days.slice(-4), away = everyone.filter(function (x) { return x.seg['부서'] !== '유초등부' && !last4.some(function (d) { return byDay[d][x.m.member_key]; }); });
+        var box = function (t, inner) { return '<div style="border:1px solid #e5e9f0;border-radius:12px;padding:14px 16px;margin-bottom:12px"><div style="font-weight:700;color:#032257;margin-bottom:8px">' + t + '</div>' + inner + '</div>'; };
+        var stat = function (label, val, sub) { return '<div style="flex:1;min-width:130px;background:#f8fafc;border-radius:10px;padding:10px 12px"><div style="font-size:.76rem;color:#64748b">' + label + '</div><div style="font-size:1.55rem;font-weight:800;color:#032257">' + val + '</div><div style="font-size:.74rem;color:#94a3b8">' + sub + '</div></div>'; };
+        body.innerHTML =
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+            stat('전체 성도 (교적)', total + '명', '출석률의 기준') +
+            stat('최근 주일 (' + lastW.date.slice(5).replace('-', '/') + ')', Math.round(lastW.rate) + '%', lastW.n + '명 출석') +
+            stat('기간 평균', Math.round(avg) + '%', days.length + '주 · 주일마다 ' + Math.round(avg * total / 100) + '명') +
+            stat('한 번도 안 옴', never + '명', '선택한 기간') +
+          '</div>' +
+          box('주별 출석률 <span style="font-weight:400;color:#94a3b8;font-size:.8rem">(주일 예배·주일학교에 한 번이라도 출석한 성도 ÷ 전체 성도)</span>', attTrend(weeks)) +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px">' +
+            box('부서별', attBars(seg('부서'), 100, '#2e7d5b')) +
+            box('구역별', attBars(seg('구역'), 100, '#3a6db5')) +
+            box('성별', attBars(seg('성별'), 100, '#b45309')) +
+            box('연령대별', attBars(seg('연령대').sort(function (a, b) { return a.label.localeCompare(b.label, 'ko', { numeric: true }); }), 100, '#7c3aed')) +
+            box('직분별', attBars(seg('직분'), 100, '#0f766e')) +
+            box('예배별 출석 횟수', '<table style="width:100%;border-collapse:collapse;font-size:.88rem">' + svcRows + '</table>') +
+          '</div>' +
+          box('최근 4주 한 번도 나오지 않은 성도 <span style="font-weight:400;color:#94a3b8;font-size:.8rem">(유초등부 제외 · 심방 참고)</span> ' + away.length + '명',
+            away.length ? away.map(function (x) { return '<span style="display:inline-block;margin:0 6px 6px 0;padding:2px 9px;border-radius:999px;background:#fef3f2;color:#9f1239;font-size:.82rem">' + esc(x.m.name || x.m.member_key.split('|')[0]) + ' <span style="color:#94a3b8">' + esc(x.seg['구역'] === '구역 없음' ? x.seg['부서'] : x.seg['구역']) + '</span></span>'; }).join('') : '<span style="color:#94a3b8">없습니다</span>');
+      }
+    }
     // ── 🔑 임시 비밀번호 발급 (담임목사 전용) — 비밀번호 잊은 이메일 가입 성도용 ──
     // 실제 권한 확인과 발급은 R2 워커(/admin-temp-password)가 service_role 키로 수행한다.
     function tempPwModal() {
