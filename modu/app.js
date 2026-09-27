@@ -2870,8 +2870,8 @@ $('reader').addEventListener('click', function(e){
   if(!row || row.dataset.b === undefined) return;
   if(st.mode !== 'chapter' || st.bi < 0) return;
   if(row.classList.contains('sv')){
-    $('reader').querySelectorAll('.sv.vpick').forEach(function(x){ x.classList.remove('vpick'); });
-    row.classList.add('vpick'); st.vi = +row.dataset.v;
+    /* 여러 절 고르기: 누를 때마다 그 절을 더하고, 이미 고른 절을 누르면 뺀다 (2026-09-27) */
+    row.classList.toggle('vpick'); st.vi = +row.dataset.v;
   }
   recordRead(+row.dataset.b, +row.dataset.c, +row.dataset.v);
 });
@@ -2894,6 +2894,18 @@ $('reader').addEventListener('contextmenu', function(e){
     if(gs.length){
       rng = gs.filter(function(g){ return g.bi === bi && g.ci === ci && vi >= g.from && vi <= g.to; })[0] || gs[0];
       if(rng.from === rng.to && gs.length === 1) rng = null;
+    }
+  }
+  /* 스테판 보기에서 눌러 고른 절들 — 형광펜은 고른 절 모두에, 나머지(메모·복사·듣기)는 누른 절이 든 묶음에 */
+  var pickGroups = null;
+  if(!rng){
+    var pk = [].slice.call($('reader').querySelectorAll('.sv.vpick'));
+    if(pk.length){
+      if(!row.classList.contains('vpick') && row.classList.contains('sv')) pk.push(row);
+      pk.sort(function(a, b){ return (+a.dataset.v) - (+b.dataset.v); });
+      pickGroups = selectionGroups(pk);
+      rng = pickGroups.filter(function(g){ return g.bi === bi && g.ci === ci && vi >= g.from && vi <= g.to; })[0] || pickGroups[0];
+      if(rng.from === rng.to && pickGroups.length === 1) rng = null;
     }
   }
   var one = { bi:bi, ci:ci, from:vi, to:vi }, lg = langName(langOf(bi));
@@ -2919,7 +2931,7 @@ $('reader').addEventListener('contextmenu', function(e){
   /* 4 메모 */
   items.push(['📝 메모에 담기 — ' + label, function(){ if(window.NT) NT.fromVerses(vs, rng || one); }]);
   /* 5 형광펜 */
-  if(window.HL) items.push('-', HL.menuRow(rng || one));
+  if(window.HL) items.push('-', HL.menuRow(pickGroups && pickGroups.length > 1 ? pickGroups : (rng || one)));
   items.push('-');
   /* 6·7 듣기 */
   if(rng) items.push(['🔊 ' + lg + '로 듣기 — ' + rng.label, function(){ openReading([rng]); }]);
@@ -3702,6 +3714,7 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
                verseText:function(bi, ci, vi){ var t = verses(S.base, bi, ci)[vi]; return t ? flat(split(t).text) : ''; } };
 window.APP.openNotes = openNotesWith;
 window.APP.openKG = openKG;
+window.APP.hebInner = hebInner; window.APP.greekInner = greekInner; window.APP.fillWordBox = function(info){ if(S.dictHover) fillWordBox(info); };
 window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메모장을 특정 메모·태그로 연다 (팝 창이면 따로 뜨는 창으로) */
 
 /* ═══════════════ 위쪽 메뉴 · 아이콘 줄 (MyBible 식 구성) ═══════════════ */

@@ -14,7 +14,7 @@ var HL = (function(){
   var cache = {};                                    /* 'bi:ci' → { vi: color } */
   function key(bi, ci){ return bi + ':' + ci; }
   function paint(){
-    var rows = $('reader').querySelectorAll('.vpara[data-b],.vrow[data-b]');
+    var rows = $('reader').querySelectorAll('.vpara[data-b],.vrow[data-b],.sv[data-b]');
     if(!rows.length) return;
     var need = {};
     rows.forEach(function(r){ need[key(+r.dataset.b, +r.dataset.c)] = [+r.dataset.b, +r.dataset.c]; });
@@ -28,7 +28,7 @@ var HL = (function(){
     })).then(function(){ apply(); });
   }
   function apply(){
-    $('reader').querySelectorAll('.vpara[data-b],.vrow[data-b]').forEach(function(r){
+    $('reader').querySelectorAll('.vpara[data-b],.vrow[data-b],.sv[data-b]').forEach(function(r){
       var m = cache[key(+r.dataset.b, +r.dataset.c)] || {}, c = m[+r.dataset.v];
       COLORS.forEach(function(x){ r.classList.toggle('hl-' + x, c === x); });
     });
@@ -57,9 +57,13 @@ var HL = (function(){
 
   /* ── 오른쪽 단추 메뉴에 들어가는 색 고르기 줄 ── */
   function menuRow(g){
+    var many = Array.isArray(g) ? g : null;
+    if(many){ var gs = many; g = gs[0]; }
     var cur = currentColor(g);
     var d = document.createElement('div'); d.className = 'hl-row';
-    var label = g.label || (g.from === g.to ? refOf(g.bi, g.ci, g.from) : refOf(g.bi, g.ci, g.from) + '-' + (g.to+1));
+    var one1 = function(x){ return x.label || (x.from === x.to ? refOf(x.bi, x.ci, x.from) : refOf(x.bi, x.ci, x.from) + '-' + (x.to+1)); };
+    var label = many ? gs.map(one1).join(', ') : one1(g);
+    var setAll = function(c){ (many ? gs : [g]).forEach(function(x){ setColor(x, c); }); };
     d.innerHTML = '<div class="hl-title">🖍 형광펜 — ' + esc(label) + '</div><div class="hl-opts"></div>';
     var box = d.querySelector('.hl-opts');
     COLORS.forEach(function(c){
@@ -67,12 +71,12 @@ var HL = (function(){
       b.className = cur === c ? 'on' : '';
       b.innerHTML = '<span class="hl-sw ' + c + '"></span>' + esc(nameOf(c));
       b.title = KO[c];
-      b.onclick = function(ev){ ev.stopPropagation(); APP.closeCMenu(); setColor(g, c); };
+      b.onclick = function(ev){ ev.stopPropagation(); APP.closeCMenu(); setAll(c); };
       box.appendChild(b);
     });
     if(cur){
       var x = document.createElement('button'); x.type = 'button'; x.className = 'clear'; x.textContent = '지우기';
-      x.onclick = function(ev){ ev.stopPropagation(); APP.closeCMenu(); setColor(g, null); };
+      x.onclick = function(ev){ ev.stopPropagation(); APP.closeCMenu(); setAll(null); };
       box.appendChild(x);
     }
     return d;

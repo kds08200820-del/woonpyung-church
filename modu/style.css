@@ -1344,6 +1344,10 @@ body.modal-open{overflow:hidden}
 .steph .sv{cursor:pointer}
 .steph .sv:hover{background:color-mix(in srgb,var(--sel) 45%,transparent);border-radius:10px}
 .steph .sv.vpick{background:var(--sel);border-radius:10px;box-shadow:inset 3px 0 0 var(--accent)}   /* 누른 절 */
+/* 스테판 보기의 형광펜 — 절 전체 바탕 (고른 절 표시는 왼쪽 줄로 겹쳐 보인다) */
+.steph .sv.hl-yellow{background:var(--hl-yellow);border-radius:10px}.steph .sv.hl-green{background:var(--hl-green);border-radius:10px}
+.steph .sv.hl-blue{background:var(--hl-blue);border-radius:10px}.steph .sv.hl-pink{background:var(--hl-pink);border-radius:10px}
+.steph .sv.hl-orange{background:var(--hl-orange);border-radius:10px}.steph .sv.hl-purple{background:var(--hl-purple);border-radius:10px}
 .sv-no{font-size:12.5px;color:var(--accent);font-weight:700;margin:0 4px 4px}
 .sv-kor{font-family:var(--bodyfont);font-size:calc(var(--fs) - 2px);color:var(--fg2);margin:0 4px 8px;line-height:1.6}
 .sv-none{color:var(--fg3);font-size:13px;margin:0 4px}

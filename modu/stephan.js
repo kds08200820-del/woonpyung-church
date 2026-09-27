@@ -216,7 +216,7 @@ window.STEPH = (function(){
         var hit = i === vi ? ' vhit' : '';
         h += '<div class="sv' + hit + '" data-b="' + bi + '" data-c="' + ci + '" data-v="' + i + '">';
         h += '<div class="sv-no">' + (ci + 1) + ':' + (i + 1) + '</div>';
-        (APP.verseTexts ? APP.verseTexts(bi, ci, i) : []).forEach(function(bt, k){ h += '<div class="sv-base' + (k ? ' extra' : '') + (bt[2] === 'wlc' ? ' heb' : bt[2] === 'grk' ? ' grk' : '') + '"' + (bt[2] === 'wlc' ? ' dir="rtl"' : '') + '><span class="sv-bn">' + esc(bt[0]) + '</span>' + esc(bt[1]) + '</div>'; });
+        (APP.verseTexts ? APP.verseTexts(bi, ci, i) : []).forEach(function(bt, k){ h += '<div class="sv-base' + (k ? ' extra' : '') + (bt[2] === 'wlc' ? ' heb' : bt[2] === 'grk' ? ' grk' : '') + '"' + (bt[2] === 'wlc' ? ' dir="rtl"' : '') + '><span class="sv-bn">' + esc(bt[0]) + '</span>' + (bt[2] === 'wlc' && APP.hebInner ? APP.hebInner(bi, ci, i, bt[1]) : bt[2] === 'grk' && APP.greekInner ? APP.greekInner(bi, ci, i, bt[1]) : esc(bt[1])) + '</div>'; });
         if(!ws.length) h += '<div class="sv-none">(이 절은 원어성경 자료에 없습니다)</div>';
         h += '<div class="sv-words"' + (ot ? ' dir="rtl"' : '') + '>';
         ws.forEach(function(w, j){
@@ -238,11 +238,14 @@ window.STEPH = (function(){
       h += '</div>';
       r.innerHTML = h;
       [].forEach.call(r.querySelectorAll('.stw-p'), function(el){ el.onmouseenter = function(){ showTip(el, bi); }; el.onmouseleave = hideTip; });
-      [].forEach.call(r.querySelectorAll('.stw'), function(el){ el.onclick = function(e){ e.stopPropagation(); wordInfo(el, bi, ci); }; });
+      [].forEach.call(r.querySelectorAll('.stw'), function(el){
+        el.onclick = function(e){ e.stopPropagation(); wordInfo(el, bi, ci); };
+        el.onmouseenter = function(){ var info = wordInfo(el, bi, ci, true); if(info && APP.fillWordBox) APP.fillWordBox(info); };
+      });
       var t = r.querySelector('.vhit'); if(t) t.scrollIntoView({ block:'center' }); else r.scrollTop = 0;
     });
   }
-  function wordInfo(el, bi, ci){
+  function wordInfo(el, bi, ci, only){
     var sv = el.closest('.sv'), vi = +sv.dataset.v, w = STEPHAN[bi].w[ci][vi][+el.dataset.i]; if(!w) return;
     var no = String(w[0] || '').replace(/[^\d]/g, ''), ref = APP.ref(bi, ci, vi);
     var info;
@@ -252,6 +255,7 @@ window.STEPH = (function(){
       var d = APP.hebEntry(no);
       info = { kind:'heb', word:w[2], entries:[{ no:no, translit:d ? d[0] : '', pron:d ? d[1] : '', mean:d ? d[2] : '' }], morph:hbParse(w[4]) + ' (' + w[4] + ')' + (w[5] ? ' — ' + w[5] : ''), ref:ref };
     }
+    if(only) return info;          /* 마우스를 올렸을 때 — 뜻 상자에만 */
     APP.openWord(info);
   }
   function setOn(v){
