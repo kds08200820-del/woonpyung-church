@@ -3473,7 +3473,7 @@ console.log('[affairs.js] v20260923lic');
       if (!calYM) { var t = new Date(); calYM = { y: t.getFullYear(), m: t.getMonth() }; }
       var y = calYM.y, m = calYM.m, startDow = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
       var todayStr = today();
-      var byDate = {}; smRows.forEach(function (r) { if (worshipMode && !hasOrder(r)) return; var d = fmtD(r.sermon_date); if (d) (byDate[d] = byDate[d] || []).push(r); });
+      var byDate = {}; smRows.forEach(function (r) { var d = fmtD(r.sermon_date);   /* 예배매니저도 저장한 설교를 모두 보인다 — 예배 순서가 없는 것은 흐리게 (2026-09-27) */ if (d) (byDate[d] = byDate[d] || []).push(r); });
       var legend = Object.keys(SERVICE_COLORS).map(function (s) { return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:.74rem;margin:0 9px 4px 0"><span style="width:11px;height:11px;border-radius:3px;background:' + SERVICE_COLORS[s] + '"></span>' + esc(s) + '</span>'; }).join('');
       var wd = ['일', '월', '화', '수', '목', '금', '토'];
       var html = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
@@ -3491,7 +3491,7 @@ console.log('[affairs.js] v20260923lic');
           kkAt = 0;
           dayRows.forEach(function (r, i) { if (kkAt === 0 && r.service === '매일 QT') kkAt = i; });
         }
-        var items = dayRows.map(function (r, ri) { var c = svcColor(r.service); return '<div class="cal-item" data-id="' + esc(r.id) + '" title="' + esc((r.service || '') + ' · ' + (r.title || '') + (r.scripture ? ' · ' + r.scripture : '')) + '" style="background:' + c + '1a;border-left:3px solid ' + c + ';border-radius:4px;padding:2px 5px;margin-top:3px;cursor:pointer;font-size:.72rem;line-height:1.25"><b style="color:' + c + '">' + esc(r.title || '(제목없음)') + '</b>' + (r.scripture ? '<div style="color:#7b8794">' + esc(r.scripture) + '</div>' : '') + (ri === kkAt ? '<div>' + kkHtml + '</div>' : '') + '</div>'; }).join('');
+        var items = dayRows.map(function (r, ri) { var c = svcColor(r.service); return '<div class="cal-item" data-id="' + esc(r.id) + '" title="' + esc((r.service || '') + ' · ' + (r.title || '') + (r.scripture ? ' · ' + r.scripture : '') + (worshipMode && !hasOrder(r) ? ' · 예배 순서 아직 없음 (눌러서 작성)' : '')) + '" style="' + (worshipMode && !hasOrder(r) ? 'opacity:.5;' : '') + 'background:' + c + '1a;border-left:3px solid ' + c + ';border-radius:4px;padding:2px 5px;margin-top:3px;cursor:pointer;font-size:.72rem;line-height:1.25"><b style="color:' + c + '">' + esc(r.title || '(제목없음)') + '</b>' + (r.scripture ? '<div style="color:#7b8794">' + esc(r.scripture) + '</div>' : '') + (ri === kkAt ? '<div>' + kkHtml + '</div>' : '') + '</div>'; }).join('');
         if (kkHtml && kkAt < 0) items = '<div>' + kkHtml + '</div>' + items;
         var dnumColor = isToday ? '#fff' : (dow === 0 ? '#c0392b' : (dow === 6 ? '#2563eb' : '#48576b'));
         var dnum = isToday
