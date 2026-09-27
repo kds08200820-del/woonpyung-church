@@ -844,7 +844,24 @@ var ATLAS = (function(){
     m.addEventListener('click', function(e){ if(down && e.target === m && !(window.POP && POP.isPop)) close(); down = false; });
   }
   /* 지도를 열고 그 지점을 반짝인다 (본문의 지명 단어에서) */
-  function openAt(m, from, placeId, h){
+  /* 지도 한 장을 다른 캔버스에 그린다 (지도 비교) — 지금 열린 지도의 상태는 그대로 되돌린다 */
+  function renderTo(m, canvas, w, h, bounds, cb){
+    var sv = { cv:cv, g:g, W:W, H:H, DPR:DPR, cur:cur, base:base, img:img, lat:view.lat, lon:view.lon, k:view.k, lb:labelBoxes, f:focusId, hv:hover, me:meas, ru:ruler, tf:texFlat };
+    loadBase(m.base, function(){
+      var b2 = base, i2 = img;
+      try {
+        cv = canvas; g = canvas.getContext('2d'); DPR = window.devicePixelRatio || 1; W = w; H = h;
+        canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+        cur = m; base = b2; img = i2; focusId = null; hover = null; meas = { a:null, b:null }; ruler = null; texFlat = false;
+        fitBounds(bounds || m.bounds); draw();
+      } catch(e){ console.warn('[지도 비교]', e); }
+      cv = sv.cv; g = sv.g; W = sv.W; H = sv.H; DPR = sv.DPR; cur = sv.cur; base = sv.base; img = sv.img;
+      view.lat = sv.lat; view.lon = sv.lon; view.k = sv.k; labelBoxes = sv.lb; focusId = sv.f; hover = sv.hv; meas = sv.me; ruler = sv.ru; texFlat = sv.tf;
+      if(cb) cb();
+    });
+  }
+  function openAt(m, from, placeId, h, v3d){
+    if(v3d === true) view3dPref = true;          /* '3D로 보기' 로 열 때 */
     open(m, from);
     setTimeout(function(){
       if(cur !== m) return;
@@ -852,6 +869,6 @@ var ATLAS = (function(){
       if(h){ if(atlas3dOn) TERRAIN3D.focus(h.lat, h.lon, h.name); else { view.lat = h.lat; view.lon = h.lon; draw(); APP.toast(h.name); } }
     }, atlas3dOn ? 900 : 350);
   }
-  return { init:init, openFor:openFor, open:open, openAt:openAt, openIndex:openIndex, close:close, byId:byId, mapsFor:mapsFor, isOpen:function(){ return !$('atlasModal').hidden; }, list:function(){ return ATLAS_MAPS; } };
+  return { init:init, openFor:openFor, open:open, openAt:openAt, renderTo:renderTo, openIndex:openIndex, close:close, byId:byId, mapsFor:mapsFor, isOpen:function(){ return !$('atlasModal').hidden; }, list:function(){ return ATLAS_MAPS; } };
 })();
 ATLAS.init();

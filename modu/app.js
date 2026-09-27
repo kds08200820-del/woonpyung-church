@@ -274,13 +274,14 @@ document.querySelectorAll('.rnav[data-view]').forEach(function(b){
 function popRoute(){ return !!(window.POP && !POP.isPop); }
 function openAtlasFor(bi, ci, vi){ if(popRoute()) POP.open('atlas', { bi:bi, ci:ci, vi:(vi === undefined ? -1 : vi) }); else if(window.ATLAS) ATLAS.openFor(bi, ci, vi); }
 function openAtlasIndex(){ if(popRoute()) POP.open('atlas', { mode:'index' }); else if(window.ATLAS) ATLAS.openIndex(); }
-function openAtlasAt(m, from, placeId, h){
+function openAtlasAt(m, from, placeId, h, v3d){
   if(popRoute()){
     var a = { map:m.id, place:placeId || '' };
+    if(v3d) a.v3d = 1;
     if(from){ a.bi = from.bi; a.ci = from.ci; a.vi = (from.vi === undefined ? -1 : from.vi); }
     if(h){ a.lat = h.lat; a.lon = h.lon; a.pname = h.name || ''; }
     POP.open('atlas', a);
-  } else if(window.ATLAS) ATLAS.openAt(m, from, placeId, h);
+  } else if(window.ATLAS) ATLAS.openAt(m, from, placeId, h, v3d);
 }
 function openKG(a){ if(popRoute()) POP.open('kgraph', a || {}); else if(window.KG) KG.open(a); }   /* a: { nid, title } 이면 그 메모 둘레(로컬 그래프) */
 /* 메모장을 특정 메모·태그·형광펜 분류로 연다 (지식 그래프·명령창에서) — args: { nid, title, tag, hl } */
@@ -456,13 +457,46 @@ function geoData(bi, ci, vi){
 }
 var geoCache = {};
 /* 본문 지명 → 지도: data/geo-names.js 의 GEO_ENGINE 이 찾고(전수 조사 규칙 포함), 여기서는 그 지점을 담은 지도를 고른다 */
-function geoMapsAt(lat, lon, bi, ci){
+/* 그 지명이 나오는 지도 전부 — 차례: ① 이 본문(장)과 관련된 지도(좁게 다루는 것부터) ② 그 지역의 상세 지도(좁은 지역부터).
+   메뉴에는 앞의 5장을 먼저 보이고 나머지는 '더 보기'로 (2026-09-27) */
+function geoMapsAt(lat, lon, bi, ci, placeId){
   if(!window.ATLAS) return [];
-  function inside(m){ var b = m.bounds; return b && lat <= b[0] && lat >= b[2] && lon >= b[1] && lon <= b[3] && !(ATLAS_BASES[m.base] && ATLAS_BASES[m.base].vector); }
-  function area(m){ var b = m.bounds; return (b[0] - b[2]) * (b[3] - b[1]); }
-  var here = ATLAS.mapsFor(bi, ci).filter(inside);
-  var rest = ATLAS_MAPS.filter(function(m){ return inside(m) && here.indexOf(m) < 0; }).sort(function(a, b){ return area(a) - area(b); });
-  return here.slice(0, 4).concat(rest.slice(0, here.length ? 1 : 3));
+  function drawable(m){ return true; }   /* 시가지 도면(예루살렘 성)도 — 그 도시의 가장 자세한 지도다 */
+  function inside(m){ var b = m.bounds; return b && lat <= b[0] && lat >= b[2] && lon >= b[1] && lon <= b[3] && drawable(m); }
+  function listed(m){ return placeId && (m.places || []).indexOf(placeId) >= 0 && drawable(m); }
+  function area(m){ var b = m.bounds; return b ? (b[0] - b[2]) * (b[3] - b[1]) : 1e9; }
+  var GEN = { 'palestine-nt':1, 'roman-empire':1, 'tribes':1, 'ane':1 };   /* mapsFor 가 뒤에 붙이는 일반 지도 — 본문 관련으로 치지 않는다 */
+  var nm = placeId && window.ATLAS_PLACES && ATLAS_PLACES[placeId] ? String(ATLAS_PLACES[placeId][2] || '').replace(/\(.*?\)/g, '').trim() : '';
+  function named(m){ return nm && String(m.title || '').indexOf(nm) >= 0; }
+  var here = ATLAS.mapsFor(bi, ci).filter(function(m){ return !GEN[m.id] && (inside(m) || listed(m)); });
+  here.forEach(function(m){ m._rel = 1; });
+  var rest = ATLAS_MAPS.filter(function(m){ return (inside(m) || listed(m)) && here.indexOf(m) < 0; })
+    .sort(function(a, b){ return (named(b) ? 1 : 0) - (named(a) ? 1 : 0) || (listed(b) ? 1 : 0) - (listed(a) ? 1 : 0) || area(a) - area(b); });   /* 제목에 그 지명 → 그 지명을 직접 다룸 → 좁은 지역 */
+  rest.forEach(function(m){ m._rel = 0; });
+  return here.concat(rest);
+}
+/* 지명 메뉴: 앞의 5장 + '더 보기' */
+function geoMenu(x, y, maps, arts, go, all, place, go3d){
+  var TOP = 5, list = all ? maps : maps.slice(0, TOP), items = [];
+  /* 3D: 그 시대의 3D 복원(예루살렘 성)이 있으면 그것, 없으면 3D 지형이 되는 가장 자세한 지도 */
+  var j3 = window.JER3DV && JER3DV.ok ? maps.filter(function(m){ return m.era3d; }) : [];
+  var t3 = window.TERRAIN3D && TERRAIN3D.ok && TERRAIN3D.ok() ? maps.filter(function(m){ return !m.era3d && ATLAS_BASES[m.base] && !ATLAS_BASES[m.base].vector; }) : [];
+  if(go3d){
+    if(j3.length) (all ? j3 : j3.slice(0, 1)).forEach(function(m){ items.push(['🏛 ' + (place || '') + ' 3D로 보기 — ' + m.title, function(){ go3d(m); }]); });
+    else if(t3.length){
+      var ar = function(m){ return (m.bounds[0] - m.bounds[2]) * (m.bounds[3] - m.bounds[1]); }, nm3 = function(m){ return place && String(m.title).indexOf(place) >= 0 ? 0 : 1; };
+      var best = t3.slice().sort(function(a, b){ return nm3(a) - nm3(b) || ar(a) - ar(b); })[0];   /* 제목에 그 지명이 든 지도 → 가장 자세한 지역 */
+      items.push(['⛰ ' + (place || '') + ' 3D 지형으로 보기 — ' + best.title, function(){ go3d(best); }]);
+    }
+    if(items.length) items.push('-');
+  }
+  list.forEach(function(m, i){
+    if(i === TOP && all) items.push('-');
+    items.push([(m._rel ? '🗺 ' : '🗺 ') + m.title + (m._rel ? ' · 이 본문' : ''), function(){ go(m); }]);
+  });
+  if(!all && maps.length > TOP) items.push(['＋ 지도 더 보기 (' + (maps.length - TOP) + '장)', function(){ setTimeout(function(){ geoMenu(x, y, maps, arts, go, true, place, go3d); }, 0); }]);
+  if(arts.length){ items.push('-'); arts.forEach(function(a){ items.push(['📚 ' + a.title, function(){ STUDY.open(a.id); }]); }); }
+  openCMenu(x, y, items);
 }
 function geoMark(r){
   $('geoBtn').classList.toggle('on', GEO.on); $('geoBtn').setAttribute('aria-pressed', GEO.on ? 'true' : 'false');
@@ -480,15 +514,15 @@ function geoMark(r){
         var t = tn.nodeValue, hits = GEO_ENGINE.find(t, bi, ci); if(!hits.length) return;
         var frag = document.createDocumentFragment(), last = 0;
         hits.forEach(function(h){
-          var maps = geoMapsAt(h.lat, h.lon, bi, ci); if(!maps.length) return;
+          var maps = geoMapsAt(h.lat, h.lon, bi, ci, h.id); if(!maps.length) return;
           if(h.s > last) frag.appendChild(document.createTextNode(t.slice(last, h.s)));
           var sp = document.createElement('span'); sp.className = 'geoword'; sp.textContent = t.slice(h.s, h.e);
-          sp.title = '🗺 지도 보기 — ' + h.name + '\n' + maps.map(function(x){ return '· ' + x.title; }).join('\n') + (arts.length ? '\n📚 해설: ' + arts.map(function(a){ return a.title; }).join(' · ') : '') + '\n(누르면 엽니다)';
+          sp.title = '🗺 지도 보기 — ' + h.name + ' (' + maps.length + '장)\n' + maps.slice(0, 5).map(function(x){ return '· ' + x.title; }).join('\n') + (maps.length > 5 ? '\n· … 더 보기 ' + (maps.length - 5) + '장' : '') + (arts.length ? '\n📚 해설: ' + arts.map(function(a){ return a.title; }).join(' · ') : '') + '\n(누르면 엽니다)';
           sp.onclick = function(e){
             e.stopPropagation();
             var go = function(m){ openAtlasAt(m, { bi:bi, ci:ci, vi:vi }, h.id, h); };
-            if(maps.length === 1 && !arts.length){ go(maps[0]); return; }
-            openCMenu(e.clientX, e.clientY, maps.map(function(m){ return ['🗺 ' + m.title, function(){ go(m); }]; }).concat(arts.map(function(a){ return ['📚 ' + a.title, function(){ STUDY.open(a.id); }]; })));
+            if(maps.length === 1 && !arts.length && !maps[0].era3d){ go(maps[0]); return; }
+            geoMenu(e.clientX, e.clientY, maps, arts, go, false, h.name, function(m){ openAtlasAt(m, { bi:bi, ci:ci, vi:vi }, h.id, h, true); });
           };
           frag.appendChild(sp); last = h.e;
         });
@@ -2526,13 +2560,14 @@ function openCMenu(x, y, items){
     d.appendChild(b);
   });
   document.body.appendChild(d);
+  if(d.getBoundingClientRect().height > window.innerHeight - 12){ d.style.maxHeight = (window.innerHeight - 12) + 'px'; d.style.overflowY = 'auto'; }
   var b2 = d.getBoundingClientRect();
   d.style.left = Math.max(6, Math.min(x, window.innerWidth - b2.width - 8)) + 'px';
   d.style.top  = Math.max(6, Math.min(y, window.innerHeight - b2.height - 8)) + 'px';
   CMENU = d;
 }
 document.addEventListener('click', closeCMenu);
-document.addEventListener('scroll', closeCMenu, true);
+document.addEventListener('scroll', function(e){ if(CMENU && e.target && e.target.nodeType === 1 && CMENU.contains(e.target)) return; closeCMenu(); }, true);
 function copyVerseOnly(bi,ci,vi,vid){
   var t = verses(vid,bi,ci)[vi];
   if(!t) return toast('복사할 본문이 없습니다');
@@ -3629,7 +3664,7 @@ if(isPopWin()){
     if(n === 'atlas'){
       if(!window.ATLAS) return;
       if(a.mode === 'index') ATLAS.openIndex();
-      else if(a.map && ATLAS.byId(a.map)) ATLAS.openAt(ATLAS.byId(a.map), from, a.place || null, (a.lat !== undefined && a.lat !== '') ? { lat:+a.lat, lon:+a.lon, name:a.pname || '' } : null);
+      else if(a.map && ATLAS.byId(a.map)) ATLAS.openAt(ATLAS.byId(a.map), from, a.place || null, (a.lat !== undefined && a.lat !== '') ? { lat:+a.lat, lon:+a.lon, name:a.pname || '' } : null, String(a.v3d) === '1');
       else if(from) ATLAS.openFor(bi, ci, vi);
       else ATLAS.openIndex();
     } else if(n === 'kgraph'){ if(window.KG) KG.open(a && (a.nid || a.title) ? { nid:+a.nid || 0, title:a.title || '' } : null); }
@@ -3668,7 +3703,8 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
                verseTexts:function(bi, ci, vi){ return [S.base].concat(S.extra.filter(function(x){ return x !== S.base; })).map(function(id){ var v = vinfo(id); if(!v || !versionsFor(bi).some(function(x){ return x.id === id; })) return null; var t = verses(id, bi, ci)[vi]; if(!t) return null; return [v.name, id === 'wlc' || id === 'grk' ? t : flat(split(t).text), id]; }).filter(Boolean); },
                verseText:function(bi, ci, vi){ var t = verses(S.base, bi, ci)[vi]; return t ? flat(split(t).text) : ''; } };
 window.APP.openNotes = openNotesWith;
-window.APP.openKG = openKG;   /* 지식 그래프·명령창에서 메모장을 특정 메모·태그로 연다 (팝 창이면 따로 뜨는 창으로) */
+window.APP.openKG = openKG;
+window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메모장을 특정 메모·태그로 연다 (팝 창이면 따로 뜨는 창으로) */
 
 /* ═══════════════ 위쪽 메뉴 · 아이콘 줄 (MyBible 식 구성) ═══════════════ */
 (function(){
@@ -3754,6 +3790,7 @@ window.APP.openKG = openKG;   /* 지식 그래프·명령창에서 메모장을 
       '-',
       { t:'이 장의 지도 보기', off:!here, fn:function(){ openAtlasFor(st.bi, st.ci, v); } },
       { t:'성경 지도 목록 (개관)', fn:function(){ openAtlasIndex(); } },
+      { t:'지도 비교 — 같은 지역, 다른 시대를 나란히', fn:function(){ if(window.MAPCMP) MAPCMP.open(); } },
       { t:'성경지도 학습 — 성서 지리·고고학·시대사', fn:function(){ STUDY.open(); } },
       { t:'이 절과 관련된 성경지도 학습' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!(here && window.STUDY && STUDY.forVerse(st.bi, st.ci, v).length), fn:function(){ var a = STUDY.forVerse(st.bi, st.ci, v)[0]; if(a) STUDY.open(a.id); } },
       '-',

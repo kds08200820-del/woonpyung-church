@@ -126,6 +126,7 @@
         ['📖', '책 개관', function(){ var b = $('introBtn'); if(b) b.click(); }],
         ['🌍', '지도·고고학 표시', function(){ var b = $('geoBtn'); if(b) b.click(); }],
         ['🗺', '지도 목록', function(){ if(window.ATLAS) ATLAS.openIndex(); }],
+        ['🔀', '지도 비교', function(){ if(window.MAPCMP) MAPCMP.open(); }],
         ['🎵', '찬송가 악보', function(){ if(window.HYMN) HYMN.open(0); }],
         ['📜', '교독문', function(){ if(window.GYODOK_VIEW) GYODOK_VIEW.open(0); }],
         ['📋', '본문 복사', function(){ var b = $('copyBtn'); if(b) b.click(); }],
