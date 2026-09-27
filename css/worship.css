@@ -194,3 +194,10 @@ body.hw-fs-body { overflow: hidden; }
 .ws-body.ws-hymnfit { overflow: hidden; overscroll-behavior: none; }
 .ws-img:has(img.fit) { overflow: hidden; touch-action: none; }
 #wsOverlay { overscroll-behavior: none; }
+
+/* 가로로 돌리면: 악보를 화면 폭에 맞춰 크게, 위아래로만 스크롤 (2026-09-27) */
+@media (orientation: landscape) and (max-height: 700px){
+  .ws-body.ws-hymnfit { display: block; overflow-x: hidden; overflow-y: auto; }
+  .ws-img:has(img.fit) { overflow: visible; touch-action: pan-y; }
+  .ws-img img.fit { width: 100% !important; height: auto; object-fit: initial; }
+}

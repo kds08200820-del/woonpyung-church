@@ -123,6 +123,7 @@ var HYMN = (function(){
   function showIndex(){
     cur = 0; $('hyPop').hidden = true;
     $('hyTitle').textContent = B.name;
+    $('hymnModal').classList.remove('hy-viewing');
     $('hyTools').hidden = true;
     if($('hyBooks')) $('hyBooks').hidden = !BOOKS.joy.list.length; if($('hyFilt')) $('hyFilt').hidden = BK !== 'joy';
     $('hyImg').hidden = true; $('hyWait').hidden = true; $('hyNone').hidden = true;
@@ -148,6 +149,7 @@ var HYMN = (function(){
     $('hyNo').textContent = no + B.unit;
     var hx = byNo[no] || {};
     $('hySub').textContent = title(no) + (hx.key ? ' · ' + hx.key + '조' : '') + (hx.tags && hx.tags.length ? ' · ' + hx.tags.join(' ') : '');
+    $('hymnModal').classList.add('hy-viewing');
     $('hyTools').hidden = false; $('hyIn').value = ''; if($('hyBooks')) $('hyBooks').hidden = true; if($('hyFilt')) $('hyFilt').hidden = true;   /* 악보를 볼 때는 악보 자리를 넓게 */ $('hyPop').hidden = true;
     $('hyIndex').hidden = true; $('hyRail').hidden = true;
     var img = $('hyImg'), box = $('hyBody');
