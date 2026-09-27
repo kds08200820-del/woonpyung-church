@@ -139,7 +139,7 @@
   var PAD = 10;
   var SCHED = [
     { kind: 'dawn',   label: '새벽기도회', time: '새벽 4:30 ~ 6:00',   days: [1, 2, 3, 4, 5, 6], from: 4 * 60 + 30,  to: 6 * 60 },   /* 보통 화~금 — 실제로는 설교작성관리 달력에 '새벽기도'가 있는 날만 뜬다(주일 제외) */
-    { kind: 'wed',    label: '수요기도회', time: '오전 11:00',          days: [3],          from: 11 * 60,       to: 12 * 60 },
+    { kind: 'wed',    label: '수요기도회', time: '오전 11:00',          days: [3],          from: 11 * 60,       to: 12 * 60, lead: 60 },   /* 1시간 전부터 카운트 */
     { kind: 'sunday', part: 1, label: '주일 1부 예배', time: '오전 9:20',  days: [0], from: 9 * 60 + 20, to: 10 * 60 + 40, lead: 200 },   /* 안내는 오전 6시(200분 전)부터 */
     { kind: 'sunday', part: 2, label: '주일 2부 예배', time: '오전 11:00', days: [0], from: 11 * 60,     to: 12 * 60 + 30, lead: 30 }
   ];
@@ -261,10 +261,10 @@
   /* ── 예배 전 안내 슬라이드 — 시간이 되면(예배 10분 전) 스스로 '오늘의 예배'로 바뀐다
        · 주일 1부: 오전 6시부터 '오늘은 주일입니다', 1시간 전부터 '곧 1부 예배가 시작됩니다' + 남은 시간
        · 주일 2부: 10:30부터 '곧 2부 예배가 시작됩니다' + 남은 시간 (1부에 들어간 사람 제외)
-       · 수요·새벽: 30분 전부터 '곧 예배가 시작됩니다' + 남은 시간 ── */
+       · 수요: 1시간 전, 새벽: 30분 전부터 '곧 예배가 시작됩니다' + 남은 시간 ── */
   function byKind(k) { for (var i = 0; i < SCHED.length; i++) if (SCHED[i].kind === k) return SCHED[i]; return SCHED[2]; }
   function mountCountdown(rot, sc, preview) {
-    var b = sundayBulletin(), w = sc.kind === 'wed' ? wedInfo() : null, soonSec = sc.kind === 'sunday' && (sc.part === 1 || sc.single) ? 3600 : 1800;   /* 주일 1부(통합이면 그 예배)는 1시간 전, 그 밖은 30분 전부터 카운트 */
+    var b = sundayBulletin(), w = sc.kind === 'wed' ? wedInfo() : null, soonSec = (sc.kind === 'sunday' && (sc.part === 1 || sc.single)) || sc.kind === 'wed' ? 3600 : 1800;   /* 주일 1부(통합이면 그 예배)·수요는 1시간 전, 2부·새벽은 30분 전부터 카운트 */
     function pad(n) { return (n < 10 ? '0' : '') + n; }
     var info = sc.kind === 'sunday' ? (b && b.date >= todayStr && b.title ? '«' + esc(b.title) + '»' + (b.scripture ? ' · ' + esc(b.scripture) : '') : '')
              : sc.kind === 'wed' ? (w ? (w.title ? '«' + esc(w.title) + '»' : '') + (w.ref ? (w.title ? ' · ' : '') + esc(w.ref) : '') : '')
