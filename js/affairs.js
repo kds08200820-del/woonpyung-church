@@ -4001,7 +4001,7 @@ console.log('[affairs.js] v20260923lic');
         '.rp-pageinfo{text-align:center;font-size:.74rem;color:#8b96a5;padding:8px 0 2px}' +
         '.sed-sb{display:flex;align-items:center;gap:18px;padding:7px 18px;font-size:.76rem;flex:none}' +
         // ── 테마 토큰(.sed-dark = 테마 루트, 두 모드 공통) — Microsoft Word 365 라이트: 흰 패널·Word 파랑 강조·짙은 회색 캔버스 위 흰 용지 ──
-        '.sed-dark{--bg:#3d4b5c;--panel:#ffffff;--panel2:#f3f3f3;--line:#e0e0e0;--line2:#ededed;--fg:#242424;--fg2:#616161;--fg3:#8a8a8a;--accent:#185abd;--accent-fg:#fff;--accent-bg:#e8f0fb;--sel:#dbe6f5;--title:#2b579a;--shadow:0 1px 2px rgba(0,0,0,.08);--shadow2:0 8px 28px rgba(0,0,0,.35);background:radial-gradient(ellipse at 50% 30%,#3d4b5c 0%,#2f3b4a 100%);color:var(--fg);font-family:\'Segoe UI\',\'맑은 고딕\',\'Malgun Gothic\',system-ui,sans-serif;font-size:13px}' +
+        '.sed-dark{--bg:#3d4b5c;--panel:#ffffff;--panel2:#f3f3f3;--line:#e0e0e0;--line2:#ededed;--fg:#242424;--fg2:#616161;--fg3:#8a8a8a;--accent:#185abd;--accent-fg:#fff;--accent-bg:#e8f0fb;--sel:#dbe6f5;--title:#0f2157;--shadow:0 1px 2px rgba(0,0,0,.08);--shadow2:0 8px 28px rgba(0,0,0,.35);background:radial-gradient(ellipse at 50% 30%,#3d4b5c 0%,#2f3b4a 100%);color:var(--fg);font-family:\'Segoe UI\',\'맑은 고딕\',\'Malgun Gothic\',system-ui,sans-serif;font-size:13px}' +
         '.sed-dark :focus-visible{outline:1px solid var(--accent);outline-offset:1px}' +
         // 아이콘(인라인 SVG) 공통
         '.ic{width:16px;height:16px;vertical-align:-3px;margin-right:5px;flex:none}' +
