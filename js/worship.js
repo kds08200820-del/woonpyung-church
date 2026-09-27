@@ -603,7 +603,8 @@
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(GIVE.no).then(done, function () { window.prompt('계좌번호를 복사하세요', GIVE.no); });
       else window.prompt('계좌번호를 복사하세요', GIVE.no);
     }; }
-    if (s.type === 'hymn') pinch($('wsImgBox'), $('wsImg'));
+    document.querySelectorAll('.ws-body').forEach(function (b) { b.classList.toggle('ws-hymnfit', s.type === 'hymn'); });
+    if (s.type === 'hymn') { $('wsImg').classList.add('fit'); pinch($('wsImgBox'), $('wsImg')); }
     if (s.type === 'bible') fillBible(s);
   }
   function fillBible(s) {
@@ -646,11 +647,11 @@
       e.preventDefault();
       var r = box.getBoundingClientRect(), mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
       var px = (box.scrollLeft + mx) / z, py = (box.scrollTop + my) / z;
-      z = Math.max(1, Math.min(4, z0 * dist(e.touches) / d0)); img.style.width = (z * 100) + '%';
+      z = Math.max(1, Math.min(4, z0 * dist(e.touches) / d0)); img.style.width = (z * 100) + '%'; img.classList.toggle('fit', z === 1);
       box.scrollLeft = px * z - mx; box.scrollTop = py * z - my;
     }, { passive: false });
     box.addEventListener('touchend', function (e) { if (e.touches.length < 2) on = false; }, { passive: true });
-    box.addEventListener('dblclick', function () { z = z === 1 ? 2 : 1; img.style.width = (z * 100) + '%'; });
+    box.addEventListener('dblclick', function () { z = z === 1 ? 2 : 1; img.style.width = (z * 100) + '%'; img.classList.toggle('fit', z === 1); });
   }
 
   /* ── 전체 화면 ── */

@@ -139,7 +139,7 @@ var HYMN = (function(){
     m.hidden = true; document.body.classList.remove('modal-open'); document.body.classList.remove('hy-open');
     try{ if(location.hash.indexOf('#hymn=') === 0) history.replaceState(null, '', location.pathname + location.search); }catch(e){}
   }
-  function setZoom(z){ zoom = Math.max(1, Math.min(4, z)); $('hyImg').style.width = (zoom * 100) + '%'; }
+  function setZoom(z){ zoom = Math.max(1, Math.min(4, z)); $('hyImg').style.width = (zoom * 100) + '%'; $('hyImg').classList.toggle('fit', zoom === 1); $('hyBody').classList.toggle('hy-fitm', zoom === 1); }
   function setLock(v){
     locked = !!v; var b = $('hyLock');
     b.setAttribute('aria-pressed', locked ? 'true' : 'false'); b.textContent = locked ? '고정됨' : '고정';
