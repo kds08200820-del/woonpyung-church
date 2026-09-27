@@ -2899,9 +2899,9 @@ $('reader').addEventListener('contextmenu', function(e){
   /* 스테판 보기에서 눌러 고른 절들 — 형광펜은 고른 절 모두에, 나머지(메모·복사·듣기)는 누른 절이 든 묶음에 */
   var pickGroups = null;
   if(!rng){
-    var pk = [].slice.call($('reader').querySelectorAll('.sv.vpick'));
+    var pk = [].slice.call($('reader').querySelectorAll('.vpick'));   /* 스테판 줄뿐 아니라 본문 절도 (2026-09-28) */
     if(pk.length){
-      if(!row.classList.contains('vpick') && row.classList.contains('sv')) pk.push(row);
+      if(!row.classList.contains('vpick')) pk.push(row);
       pk.sort(function(a, b){ return (+a.dataset.v) - (+b.dataset.v); });
       pickGroups = selectionGroups(pk);
       rng = pickGroups.filter(function(g){ return g.bi === bi && g.ci === ci && vi >= g.from && vi <= g.to; })[0] || pickGroups[0];

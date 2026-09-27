@@ -1598,3 +1598,6 @@ html:has(body.hy-open),body.hy-open{overflow:hidden;overscroll-behavior:none}
 /* 복음성가 아래 책 고르기(기쁨으로 찬양·우리들 찬양) — 한 단 작게 (2026-09-27) */
 .hy-books2 button{padding:4px 10px;font-size:13px;border-color:rgba(255,255,255,.3)}
 .hy-books2 button.on{background:rgba(255,255,255,.85)}
+
+/* 컴퓨터에서도 절을 누르면 고른 표시 (2026-09-28) */
+#reader .vpara.vpick,#reader .vrow.vpick{background:var(--sel);box-shadow:inset 3px 0 0 var(--accent)}

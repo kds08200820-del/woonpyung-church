@@ -180,7 +180,7 @@
   /* ── 절 고르기: 절을 톡 누르면 골라진다(여러 절 가능). 오른쪽 둥근 단추가 고른 절에 작용한다 ── */
   var SEL = {};                                  /* "bi:ci:vi" → true */
   function selKeys(){ return Object.keys(SEL); }
-  function paintSel(){ [].forEach.call(document.querySelectorAll('#reader .vpara[data-b], #reader .vrow[data-b]'), function(r){ r.classList.toggle('mo-sel', !!SEL[r.dataset.b + ':' + r.dataset.c + ':' + r.dataset.v]); }); fab.classList.toggle('has-sel', selKeys().length > 0); }
+  function paintSel(){ [].forEach.call(document.querySelectorAll('#reader .vpara[data-b], #reader .vrow[data-b]'), function(r){ var on = !!SEL[r.dataset.b + ':' + r.dataset.c + ':' + r.dataset.v]; r.classList.toggle('mo-sel', on); r.classList.toggle('vpick', on); }); fab.classList.toggle('has-sel', selKeys().length > 0); }   /* vpick: 오른쪽 단추 메뉴가 고른 절 모두에 작용 */
   function clearSel(){ SEL = {}; paintSel(); }
   function selGroups(){
     var ks = selKeys().map(function(k){ var a = k.split(':').map(Number); return { bi:a[0], ci:a[1], vi:a[2] }; }).sort(function(x, y){ return x.bi - y.bi || x.ci - y.ci || x.vi - y.vi; });
@@ -193,7 +193,7 @@
   var reader0 = $('reader');
   if(reader0){
     reader0.addEventListener('click', function(e){
-      if(!touchUI.matches || Date.now() - lastCM < 400) return;
+      if(Date.now() - lastCM < 400) return;   /* 절 톡·클릭 고르기: 휴대폰·아이패드·컴퓨터 모두 (2026-09-28) */
       if(e.target.closest('a, button, input, select, .wpop, .morph, .hw, .gw, .eng, .stw')) return;
       var sel = window.getSelection(); if(sel && String(sel).trim()) return;
       var row = e.target.closest('.vpara[data-b], .vrow[data-b], .vrow .vcell'); if(!row) return;
