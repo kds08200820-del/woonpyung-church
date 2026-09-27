@@ -252,7 +252,16 @@ var HYMN = (function(){
     window.addEventListener('hashchange', fromHash);
   }
   /* 뒤로 단추: 한 단계씩 — 고르기 팝업 → 악보 → 목록 → 닫기 */
-  function back(){ if(POPREF && POPREF.isOpen()) POPREF.close(); else close(); }   /* 한 번에 성경으로 (2026-09-27) */
+  function back(){
+    if(POPREF && POPREF.isOpen()){ POPREF.close(); return; }
+    if(BK === 'joy' && cur){
+      var was = cur; $('hyIn').value = ''; showIndex();
+      var row = $('hyIndex').querySelector('.hy-row[data-no="' + was + '"]');          /* 보던 곡이 목록 가운데 오게 */
+      if(row){ var box = $('hyBody'); box.scrollTop = Math.max(0, row.offsetTop - box.offsetTop - box.clientHeight / 2 + row.offsetHeight / 2); row.classList.add('on'); }
+      return;
+    }   /* 기쁨으로 찬양: 악보 → 곡 목록 → 성경 (2026-09-27 요청) */
+    close();                                                              /* 새찬송가: 한 번에 성경으로 */
+  }
   init();
   return { open:open, close:close, back:back, isOpen:isOpen, show:show, title:title, src:src, max:MAX };
 })();
