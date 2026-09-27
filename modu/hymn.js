@@ -124,6 +124,7 @@ var HYMN = (function(){
     cur = 0; $('hyPop').hidden = true;
     $('hyTitle').textContent = B.name;
     $('hymnModal').classList.remove('hy-viewing');
+    $('hyBody').classList.remove('hy-fitm'); $('hyImg').classList.remove('fit');   /* 악보용 스크롤 잠금을 풀어 목록이 움직이게 (2026-09-27: 뒤로 온 목록이 멈추던 문제) */
     $('hyTools').hidden = true;
     if($('hyBooks')) $('hyBooks').hidden = !BOOKS.joy.list.length; if($('hyFilt')) $('hyFilt').hidden = BK !== 'joy';
     $('hyImg').hidden = true; $('hyWait').hidden = true; $('hyNone').hidden = true;
