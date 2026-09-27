@@ -133,7 +133,9 @@ var HYMN = (function(){
     /* 목록을 스크롤할 때만 나타나고, 멈추면 잠시 뒤 사라진다 */
     var tm = 0;
     $('hyBody').addEventListener('scroll', function(){
-      if(rail.hidden || cur) return;
+      /* 악보를 보며 위로 올리면 제목 줄·찾기 칸이 접혀 조·주제 줄까지만 남는다(몰입). 맨 위로 되돌리면 다시 펼침 (2026-09-28) */
+      if(cur){ var st = this.scrollTop, m = $('hymnModal'); if(st > 12) m.classList.add('hy-dive'); else if(st <= 0) m.classList.remove('hy-dive'); return; }
+      if(rail.hidden) return;
       rail.classList.add('show'); clearTimeout(tm);
       tm = setTimeout(function(){ if(!on) rail.classList.remove('show'); }, 1500);
     }, { passive:true });
@@ -141,7 +143,7 @@ var HYMN = (function(){
   function showIndex(){
     cur = 0; $('hyPop').hidden = true;
     $('hyTitle').textContent = B.name;
-    $('hymnModal').classList.remove('hy-viewing');
+    $('hymnModal').classList.remove('hy-viewing'); $('hymnModal').classList.remove('hy-dive');
     $('hyBody').classList.remove('hy-fitm'); $('hyImg').classList.remove('fit');   /* 악보용 스크롤 잠금을 풀어 목록이 움직이게 (2026-09-27: 뒤로 온 목록이 멈추던 문제) */
     $('hyTools').hidden = true;
     if($('hyBooks')) $('hyBooks').hidden = !BOOKS.ccm.list.length; if($('hyFilt')) $('hyFilt').hidden = !hasMeta();
@@ -216,6 +218,15 @@ var HYMN = (function(){
       box.scrollLeft = px * zoom - mx; box.scrollTop = py * zoom - my;
     }, { passive:false });
     box.addEventListener('touchend', function(e){ if(e.touches.length < 2) on = false; }, { passive:true });
+    /* 한 손가락으로 위로 밀면(화면에 맞춰 놓아 스크롤이 없을 때도) 제목 줄·찾기 칸이 접히고, 아래로 밀면 다시 펼친다 (2026-09-28) */
+    var sy = 0, one = false;
+    box.addEventListener('touchstart', function(e){ one = e.touches.length === 1 && !!cur; if(one) sy = e.touches[0].clientY; }, { passive:true });
+    box.addEventListener('touchend', function(e){
+      if(!one || e.touches.length) return; one = false;
+      var dy = e.changedTouches[0].clientY - sy, m = $('hymnModal');
+      if(dy < -40) m.classList.add('hy-dive');
+      else if(dy > 40 && box.scrollTop <= 0) m.classList.remove('hy-dive');
+    }, { passive:true });
   }
   function init(){
     if(!$('hymnModal')) return;

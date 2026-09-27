@@ -237,6 +237,9 @@ body.hy-open #moTabs{z-index:85}
 .hycard{width:100%;height:100%;max-height:none;border:0;border-radius:0}
 .hy-top{border-radius:0}
 .hy-tools{padding:6px 8px;gap:6px}
+/* 악보를 위로 올리면 제목 줄·찾기 칸이 접힌다(조·주제 줄과 장 이동 줄만 남음) — hymn.js 가 hy-dive 를 켠다 (2026-09-28) */
+.hy-dive .hy-toprow,.hy-dive #hyIn{display:none}
+.hy-dive .hy-top{padding-top:6px;padding-bottom:6px}
 .hy-zoom button{padding:6px 9px;font-size:12.5px}
 .hy-lock{padding:6px 10px;font-size:13px}
 
