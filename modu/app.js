@@ -328,7 +328,8 @@ function buildBookNav(){
 function buildChapNav(){
   var box = $('bnChaps'), bi = st.bi;
   if(bi < 0){ box.innerHTML = '<div class="bn-empty">책을 고르세요</div>'; return; }
-  var out = ['<div class="bn-grid">'];
+  /* 장 번호는 세로로 이어진다: 1·2·3… 이 왼쪽 열을 채운 뒤 오른쪽 열로 (2026-09-27 사용자 지시 — 가로 배열은 헛갈림) */
+  var out = ['<div class="bn-grid" style="grid-auto-flow:column;grid-template-rows:repeat(' + Math.ceil(BOOKS[bi].c / 2) + ',auto)">'];
   for(var c=0;c<BOOKS[bi].c;c++){
     out.push('<button type="button" data-ci="' + c + '"' + (c === st.ci ? ' class="on"' : '') + '>' + (c+1) + '</button>');
   }
@@ -3788,11 +3789,9 @@ window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메
       { t:'이 장의 지도', off:!here, fn:function(){ openAtlasFor(st.bi, st.ci, v); } },
       { t:'성경지도', fn:function(){ openAtlasIndex(); } },
       { t:'비교지도', fn:function(){ if(window.MAPCMP) MAPCMP.open(); } },
-      { t:'현대지도 비교', fn:function(){ if(window.MAPCMP) MAPCMP.openModern(); } },
       { t:'이 절의 지도 학습' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!(here && window.STUDY && STUDY.forVerse(st.bi, st.ci, v).length), fn:function(){ var a = STUDY.forVerse(st.bi, st.ci, v)[0]; if(a) STUDY.open(a.id); } },
       '-',
       { t:'낱말·구절 찾기', k:'Ctrl+F', fn:function(){ showView('search'); } },
-      { t:'원어 낱말 보기 안내', fn:function(){ toast('본문의 히브리어·헬라어 낱말에서 오른쪽 단추 → 자세히 보기'); } },
       '-',
       { t:'메모장', fn:function(){ showView('notes'); } },
       { t:'지식 그래프', fn:function(){ openKG(); } }

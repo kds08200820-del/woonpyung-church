@@ -1356,7 +1356,7 @@ body.modal-open{overflow:hidden}
 .stw-l{font-size:12.5px;color:var(--fg2)}
 .stw-t{font-size:calc(var(--fs) + 4px);color:var(--fg);font-weight:600}
 .stw-t.grk{font-family:"Gentium Plus","Times New Roman",serif}
-.stw-t.heb{font-family:"Bible Hebrew","SBL Hebrew","Times New Roman",serif;font-size:calc(var(--fs) + 8px);font-weight:400}
+.stw-t.heb{font-family:"Bible Hebrew","SBL Hebrew","Times New Roman",serif;font-size:calc(var(--fs) + 4px);font-weight:400;line-height:calc(var(--lh) + .45)}   /* 히브리어 WLC 본문 줄(.vtext.heb)과 같은 크기 (2026-09-27) */
 .stw-m{color:#c0392b;font-size:10px;margin-left:1px}
 .stw-a{font-size:13px;color:#6b5a8a;font-family:"Gentium Plus","Times New Roman",serif}
 .stw-p{font-size:10.5px;color:#2a6fbd;letter-spacing:.02em;cursor:help}
@@ -1389,7 +1389,7 @@ body.modal-open{overflow:hidden}
 .j3-label.meas{background:#1f5f8f;box-shadow:0 0 0 2px #fff,0 0 0 4px #1f5f8f}
 .sv-base.extra{font-size:calc(var(--fs) - 1px);color:var(--fg2);margin-top:-4px}
 .sv-base.extra .sv-bn{background:#8a7a5a}
-.sv-base.heb{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:calc(var(--fs) + 4px)}
+.sv-base.heb{font-family:"Bible Hebrew","SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:calc(var(--fs) + 4px)}
 .sv-base.grk{font-family:"Gentium Plus","Times New Roman",serif}
 /* 종합 검색 */
 .omni{border-bottom:2px solid var(--line);background:var(--panel2)}
@@ -1480,13 +1480,13 @@ body.popwin .atlascard,body.popwin .kgcard{width:100%;height:100%;max-width:none
 .lm-row + .lm-row{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
 .lm-lab{flex:0 0 auto;font-size:11.5px;font-weight:700;color:var(--fg3);min-width:56px}
 .lm-one{margin-right:14px}
-.lm-heb{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.6em;font-weight:800;color:var(--accent)}
+.lm-heb{font-family:"Bible Hebrew","SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.6em;font-weight:800;color:var(--accent)}
 .lm-no{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--accent-bg);color:var(--accent);font-weight:700}
 .lm-forms > div{display:flex;flex-wrap:wrap;gap:6px 8px;max-height:112px;overflow:auto;padding-right:4px}   /* 형태가 많으면 이 칸 안에서 스크롤 */
 .lm-form{display:inline-flex;gap:6px;align-items:baseline;padding:3px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:12.5px}
-.lm-form b{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.25em}
+.lm-form b{font-family:"Bible Hebrew","SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.25em}
 .lm-how{font-size:12.5px;color:var(--fg2);margin:2px 0 4px}
-.lm-how b{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.15em;color:var(--accent)}
+.lm-how b{font-family:"Bible Hebrew","SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.15em;color:var(--accent)}
 .hit .txt.heb mark b{font-weight:800}
 
 /* ── 찬송가 악보 보기 ── */
