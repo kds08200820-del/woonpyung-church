@@ -326,7 +326,8 @@ var MAPCMP = (function(){
     $('mcRSel').onchange = function(){ if(this.value === MOD.id){ toModern(); return; } var m = ATLAS.byId(this.value); if(m){ R = m; paint(); } };
     $('mcModern').onclick = function(){ if(R && R.modern){ var rec = suggest(L); R = rec[0] || R; $('mcRSel').value = R.id; paint(); } else toModern(); };
     bindModern();
-    ['L', 'R'].forEach(function(s){ $('mc' + s + 'Cv').onclick = function(){ var m = s === 'L' ? L : R; if(m.modern) return; close(); if(APP.openAtlasAt) APP.openAtlasAt(m, null); else ATLAS.open(m); }; });
+    /* 지도를 누르면 크게 본다 — 따로 뜬 비교지도 창이면 비교는 그대로 두고 성경 지도 창을 따로 띄운다 (평면도로) */
+    ['L', 'R'].forEach(function(s){ $('mc' + s + 'Cv').onclick = function(){ var m = s === 'L' ? L : R; if(m.modern) return; if(window.POP && POP.isPop && POP.open){ POP.open('atlas', { map:m.id }); return; } close(); if(APP.openAtlasAt) APP.openAtlasAt(m, null); else ATLAS.open(m); }; });
     var down = false;
     box.addEventListener('mousedown', function(e){ down = e.target === box; });
     box.addEventListener('click', function(e){ if(down && e.target === box && !box.classList.contains('mc-split')) close(); down = false; });

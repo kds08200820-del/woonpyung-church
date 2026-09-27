@@ -115,6 +115,8 @@ var ATLAS = (function(){
     if(ruler) rulerOff(false);                    /* 다른 지도를 열면 거리재기는 끈다 (보기는 새 지도에 맞추므로 되돌리지 않음) */
     meas = { a:null, b:null }; var _me = $('atMeas'); if(_me) _me.hidden = true;
     opener = document.activeElement;
+    if($('atlasModal').hidden) view3dPref = pending3d;   /* 새로 여는 창: 평면도 (3D로 보기 로 열 때만 3D) */
+    pending3d = false;
     cur = m; cur.from = from || null; focusId = null; hover = null;
     if(window.ACT && m) ACT.log('map', { label:m.title || m.id || '지도', ref:m.ref || '', data:{ id:m.id || '' } });   /* 성경 기록: 지도 */
     seenAdd(m);
@@ -131,7 +133,9 @@ var ATLAS = (function(){
     loadBase(m.base, function(){ fitBounds(m.bounds); draw(); });
     setTimeout(function(){ $('atClose').focus(); }, 0);
   }
-  var view3dPref = true;
+  /* 3D 는 사용자가 골랐을 때만 — 지도 창을 새로 열면 늘 평면도로 시작하고, '3D로 보기'(openAt v3d)로 열 때만 3D 로 시작한다.
+     창이 열려 있는 동안 3D 를 켜 두면 목록에서 다른 지도로 바꿔도 유지된다. (2026-09-27: 예전엔 true 가 기본이라 3D 자료가 있는 지도는 어디서 열든 3D 로 튀었다) */
+  var view3dPref = false, pending3d = false;
   /* ── 바탕 지도의 3D 지형: 지도 그림(강·지역·경로·지점)을 실제 고도 위에 입히고 지명은 공중에 띄운다 ── */
   var DEMBOX = { levant:[34.0, 31.5, 27.5, 37.0], ane:[42.0, 24.0, 22.0, 56.0] };
   function terrainView(m){
@@ -863,7 +867,7 @@ var ATLAS = (function(){
     });
   }
   function openAt(m, from, placeId, h, v3d){
-    if(v3d === true) view3dPref = true;          /* '3D로 보기' 로 열 때 */
+    pending3d = (v3d === true);                  /* '3D로 보기' 로 열 때 — open() 이 읽는다 */
     open(m, from);
     setTimeout(function(){
       if(cur !== m) return;
