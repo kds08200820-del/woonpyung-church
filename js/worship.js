@@ -190,10 +190,31 @@
   }
 
   /* ── 히어로 슬라이드 (main.js 보다 먼저 끼워 넣는다) ── */
+  /* ── 출석 (2026-09-27) — 히어로의 예배 단추를 누르면 서버가 시각을 다시 확인해 교적 열쇠로 출석을 남긴다. 미리 보기(?worship=)는 세지 않는다 ── */
+  var heroForce = false;
+  function serviceName(kind, part) {
+    if (kind === 'sunday') { var p = byPart(+part); return p && p.single ? '주일 예배' : '주일 ' + part + '부'; }
+    return kind === 'wed' ? '수요기도회' : kind === 'dawn' ? '새벽기도회' : '';
+  }
+  function attend(kind, part) {
+    var s = session(), svc = serviceName(kind, part);
+    if (!svc || heroForce) return;
+    if (!s) { toastWs('로그인하면 출석이 기록됩니다'); return; }
+    fetch(window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/rpc/attend_hero', { method: 'POST',
+      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + s.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_service: svc }) })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j) return;
+        if (j.ok && !j.already) toastWs('출석했습니다 — ' + svc + (j.late ? ' · ' + j.late_min + '분 늦음' : ' · 정시'));
+        else if (j.ok && j.already) toastWs('오늘 ' + svc + ' 출석은 이미 되어 있습니다');
+        else if (j.why === 'member') toastWs('내 정보에서 교적을 연결하면 출석이 기록됩니다');
+      }).catch(function () {});
+  }
   function heroSlide() {
     var rot = $('heroRotator'); if (!rot) return;
     var fm = location.search.match(/[?&]worship=(sunday|wed|dawn|countdown(?:-wed|-dawn|-2)?|1)/), force = fm ? (fm[1] === '1' ? true : fm[1]) : false;   /* ?worship=1|sunday|wed|dawn|countdown|countdown-wed|countdown-dawn : 시간과 상관없이 띄움(미리 보기용) */
-    var list = services(force);
+    var list = services(force); heroForce = force;
     if (!list.length) {
       /* 예배 전 안내: 주일은 오전 6시부터 '오늘은 주일입니다'(1시간 전부터 카운트), 수요·새벽은 30분 전부터 '곧 예배가 시작됩니다' + 카운트
          — 그날 예배가 있을 때만(새벽: 달력의 '새벽기도', 수요: 주보의 수요기도회 줄 또는 달력의 '수요기도회') */
@@ -255,7 +276,7 @@
     var hero = rot.closest('.hero') || document.body;
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
-    d.addEventListener('click', function (e) { var b = e.target.closest('.hw-btn'); if (!b) return; if (b.dataset.kind === 'sunday' && b.dataset.part) markJoined(b.dataset.part); openGate(b.dataset.kind); });
+    d.addEventListener('click', function (e) { var b = e.target.closest('.hw-btn'); if (!b) return; if (b.dataset.kind === 'sunday' && b.dataset.part) markJoined(b.dataset.part); attend(b.dataset.kind, b.dataset.part); openGate(b.dataset.kind); });
   }
 
   /* ── 예배 전 안내 슬라이드 — 시간이 되면(예배 10분 전) 스스로 '오늘의 예배'로 바뀐다

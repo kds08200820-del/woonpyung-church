@@ -118,6 +118,7 @@ console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 
       '<div id="qtProgress" style="margin-bottom:22px;"></div>' +
       '<div id="myEdu" style="margin-bottom:22px;"></div>' +
       '<h2 style="' + grp + '">💒 나의 교회생활</h2>' +
+      '<div id="myAttend" style="margin-bottom:22px;"></div>' +
       '<div id="ssDash" style="margin-bottom:22px;"></div>' +
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">💝 헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
       '<div id="myDocs" style="margin-bottom:22px;"></div>' +
@@ -129,10 +130,88 @@ console.log('[dashboard.js] v20260918order (인증 관리 주 단위·스크롤 
     loadBibleReading(me);
     loadQtProgress(me);
     loadMyEdu(me);
+    loadAttendance(me);
     loadSundaySchool(me);
     loadOfferings(me);
     loadMyDocs(me);
     loadFamily(me);
+  }
+
+  /* ================= 나의 출석 (2026-09-27) =================
+     어른: 홈페이지 '오늘의 예배' 단추(예배 시간에만)로 · 어린이: 주일학교 달란트 '출석'·'출석(지각)'으로.
+     출석률 = 출석한 주일 ÷ 첫 출석 기록 뒤로 지난 주일 수 (기록을 시작한 2026-09-27 이전은 세지 않는다) */
+  var ATT_START = '2026-09-27';
+  function attYmd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function attSundays(from, to) {
+    var out = [], d = new Date(from + 'T00:00:00'), end = new Date(to + 'T00:00:00');
+    while (d.getDay() !== 0) d.setDate(d.getDate() + 1);
+    for (; d <= end; d.setDate(d.getDate() + 7)) out.push(attYmd(d));
+    return out;
+  }
+  function attPerson(name, rows, isChild) {
+    var today = attYmd(new Date());
+    var sunRows = rows.filter(function (r) { return isChild ? r.service === '주일학교' : /^주일/.test(r.service); });
+    var first = rows.length ? rows.map(function (r) { return r.att_date; }).sort()[0] : today;
+    var from = first < ATT_START ? ATT_START : first, sundays = attSundays(from, today);
+    var byDay = {}; sunRows.forEach(function (r) { var o = byDay[r.att_date]; if (!o || (o.late && !r.late)) byDay[r.att_date] = r; });
+    var came = sundays.filter(function (d) { return byDay[d]; }), onTime = came.filter(function (d) { return !byDay[d].late; });
+    var rate = sundays.length ? Math.round(came.length / sundays.length * 100) : 0;
+    var yr = today.slice(0, 4);
+    var wed = rows.filter(function (r) { return r.service === '수요기도회' && r.att_date.slice(0, 4) === yr; }).length;
+    var dawn = rows.filter(function (r) { return r.service === '새벽기도회' && r.att_date.slice(0, 4) === yr; }).length;
+    var dots = sundays.slice(-12).map(function (d) {
+      var r = byDay[d], tip = d + (r ? (r.late ? ' 지각' : ' 정시') : ' 결석');
+      var st = r ? (r.late ? 'background:#e6b85c' : 'background:#2e7d5b') : 'border:1.5px solid #c9c2b3';
+      return '<span title="' + tip + '" style="display:inline-block;width:14px;height:14px;border-radius:50%;margin:0 2px;' + st + '"></span>';
+    }).join('');
+    var late = came.length - onTime.length;
+    return '<div style="padding:10px 0;border-top:1px solid #eee7da">' +
+      '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b>' + esc(name) + '</b>' +
+      (isChild ? '<span style="font-size:.78rem;color:#8a8478">주일학교</span>' : '') +
+      '<span style="margin-left:auto;font-size:1.3rem;font-weight:800;color:var(--accent,#032257)">' + rate + '%</span></div>' +
+      '<div style="font-size:.85rem;color:#5a564d;margin:4px 0 6px">주일 ' + came.length + '/' + sundays.length + '번 출석 · 정시 ' + onTime.length + '번' +
+      (late ? ' · 지각 ' + late + '번' : '') + (!isChild && (wed || dawn) ? ' · 올해 수요 ' + wed + '번 · 새벽 ' + dawn + '번' : '') + '</div>' +
+      (sundays.length ? '<div title="최근 주일 (초록 정시 · 노랑 지각 · 빈 원 결석)">' + dots + '</div>' : '<div style="font-size:.82rem;color:#8a8478">아직 지난 주일이 없습니다</div>') +
+      '</div>';
+  }
+  function loadAttendance(me) {
+    var box = document.getElementById('myAttend'); if (!box) return;
+    var card = function (body) { box.innerHTML = '<div class="form-card" style="padding:16px 18px;"><h3 style="margin:0 0 6px;font-size:1rem;color:var(--accent,#032257);">✅ 나의 출석</h3>' + body + '</div>'; };
+    card('<p class="qt-empty" style="margin:0">불러오는 중…</p>');
+    var people = [];
+    if (me.memberKey) people.push({ key: me.memberKey, name: me.memberName || '나', child: false });
+    if (me.spouseKey) people.push({ key: me.spouseKey, name: me.spouse || '배우자', child: false });
+    brFetch('rpc/ss_my_children', { method: 'POST', body: '{}' }).catch(function () { return []; }).then(function (kids) {
+      (kids || []).forEach(function (k) { if (k.member_key && !people.some(function (x) { return x.key === k.member_key; })) people.push({ key: k.member_key, name: k.name, child: true }); });
+      if (!people.length) { card('<p class="qt-empty" style="margin:0">교적이 연결되면 출석이 여기에 보입니다.</p>'); return null; }
+      var inList = people.map(function (x) { return '"' + String(x.key).replace(/"/g, '') + '"'; }).join(',');
+      return brFetch('attendance?select=att_date,service,member_key,late,late_min&member_key=in.(' + encodeURIComponent(inList) + ')&order=att_date.desc&limit=2000');
+    }).then(function (rows) {
+      if (!rows) return;
+      var body = people.map(function (x) { return attPerson(x.name, rows.filter(function (r) { return r.member_key === x.key; }), x.child); }).join('');
+      card('<p style="margin:0 0 4px;font-size:.82rem;color:#8a8478">예배 시간에 홈페이지 첫 화면의 <b>오늘의 예배</b> 단추를 누르면 출석이 됩니다. 어린이는 주일학교 선생님이 달란트로 출석을 줍니다.</p>' + body);
+      loadAttendanceAdmin(box);
+    }).catch(function () { card('<p class="qt-empty" style="margin:0">출석을 읽지 못했습니다.</p>'); });
+  }
+  /* 관리자: 최근 5주 예배별 출석 수 */
+  function loadAttendanceAdmin(box) {
+    var u = typeof sbUser === 'function' ? sbUser() : null; if (!u || !u.id) return;
+    brFetch('admins?uid=eq.' + u.id + '&select=uid').then(function (a) {
+      if (!a || !a.length) return null;
+      var to = new Date(), from = new Date(); from.setDate(from.getDate() - 35);
+      return brFetch('rpc/attendance_report', { method: 'POST', body: JSON.stringify({ p_from: attYmd(from), p_to: attYmd(to) }) });
+    }).then(function (rows) {
+      if (!rows) return;
+      var byDate = {}; rows.forEach(function (r) { (byDate[r.att_date] = byDate[r.att_date] || []).push(r); });
+      var html = Object.keys(byDate).sort().reverse().map(function (d) {
+        var cells = byDate[d].map(function (r) { var l = r.total - r.on_time; return esc(r.service) + ' <b>' + r.total + '</b>명' + (l ? ' <span style="color:#b07a1d">(지각 ' + l + ')</span>' : ''); }).join(' · ');
+        return '<tr><td style="padding:4px 8px;white-space:nowrap">' + esc(d.slice(5).replace('-', '/')) + '</td><td style="padding:4px 8px">' + cells + '</td></tr>';
+      }).join('');
+      var div = document.createElement('div'); div.className = 'form-card'; div.style.cssText = 'padding:16px 18px;margin-top:12px';
+      div.innerHTML = '<h3 style="margin:0 0 8px;font-size:1rem;color:var(--accent,#032257);">📊 출석 통계 <span style="font-size:.78rem;color:#8a8478;font-weight:400">관리자 · 최근 5주</span></h3>' +
+        (html ? '<table style="width:100%;border-collapse:collapse;font-size:.9rem">' + html + '</table>' : '<p class="qt-empty" style="margin:0">아직 출석 기록이 없습니다.</p>');
+      box.appendChild(div);
+    }).catch(function () {});
   }
 
   /* ================= 2026 모두의 성경 (모바일 웹앱) ================= */
