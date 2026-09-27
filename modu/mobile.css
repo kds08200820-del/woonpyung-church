@@ -276,3 +276,6 @@ body.hy-open #moTabs{z-index:85}
 .mo-o-side b{color:var(--fg);margin-right:6px}
 .mo-o-go{display:block;margin:14px 4px 4px;padding:13px;border-radius:12px;background:var(--accent);color:var(--accent-fg);text-align:center;font-weight:700;text-decoration:none}
 .mo-o-empty{padding:20px 6px;color:var(--fg3)}
+
+/* ── 미니 모드 (설교 작성기 안·따로 뜬 성경 창) — 예배 띠·설치 안내·홈 단추는 숨긴다 ── */
+.mo-mini #moWorship,.mo-mini #moInstall,.mo-mini .mo-home,.mo-mini #moInstallBar{display:none!important}

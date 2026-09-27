@@ -3422,7 +3422,12 @@ console.log('[affairs.js] v20260923lic');
         '.sed-aside-l{position:fixed;left:18px;top:74px;width:326px;z-index:9600;opacity:0;visibility:hidden;transform:translateX(-26px);transition:opacity .26s ease,transform .32s cubic-bezier(.22,.61,.36,1),visibility .26s}' +
         '.sed-aside-l.open{opacity:1;visibility:visible;transform:translateX(0)}' +
         '.sed-mode-worship .sed-aside-l{display:none!important}' +
-        '.mb-close{margin-left:auto;border:none;background:none;font-size:1.05rem;line-height:1;color:#9aa5b1;cursor:pointer;padding:2px 4px;border-radius:6px}.mb-close:hover{background:#eceff4;color:#33415c}' +
+        '.mb-modu{flex:1;width:100%;min-height:420px;border:0;border-top:1px solid #eef1f5;background:#fff;display:block}' +
+        '.mb-modu-off{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:30px 16px;color:#5a6b82;font-size:.9rem;text-align:center}' +
+        '.mb-modu-off button{border:1px solid #185abd;background:#fff;color:#185abd;border-radius:8px;padding:7px 14px;font:inherit;cursor:pointer}' +
+        '#se_bible_pop .mb-trans,#se_bible_pop .mb-selrow,#se_bible_pop #mb_set,#se_bible_pop #mb_set_btn,#se_bible_pop .mb-text{display:none!important}' +
+        '#se_bible_pop{width:400px}' +
+        '.mb-winbtn{font-size:1.15rem!important}.mb-winbtn+.mb-close{margin-left:0!important}.mb-close{margin-left:auto;border:none;background:none;font-size:1.05rem;line-height:1;color:#9aa5b1;cursor:pointer;padding:2px 4px;border-radius:6px}.mb-close:hover{background:#eceff4;color:#33415c}' +
         '.mb-card{border:1px solid #d7e0ee;border-radius:14px;background:#fff;box-shadow:0 18px 50px rgba(3,34,87,.22);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 92px)}' +
         '.mb-head{font-family:\'Noto Serif KR\',serif;font-weight:700;font-size:1.02rem;color:var(--accent,#032257);padding:13px 15px 12px;border-bottom:1px solid #eef1f5;background:linear-gradient(180deg,#fbfcfe 0%,#f3f7fb 100%);display:flex;align-items:center;gap:6px}' +
         '.mb-trans{display:flex;gap:5px;padding:11px 12px 7px}' +
@@ -3912,7 +3917,7 @@ console.log('[affairs.js] v20260923lic');
         '</div></div>' +
         '<div class="sed-wrap ' + (worshipMode ? 'sed-mode-worship' : 'sed-mode-sermon') + '">' +
         (worshipMode ? '' : '<div class="sed-aside-l" id="se_bible_pop"><div class="mb-card">' +
-          '<div class="mb-head">' + ic('book') + '성경 보기<button type="button" class="mb-close" id="mb_set_btn" title="보기 설정(배경·글씨 크기·줄간격)" aria-label="보기 설정">' + ic('settings') + '</button><button type="button" class="mb-close" id="mb_close" title="닫기" aria-label="닫기" style="margin-left:0">' + ic('x') + '</button></div>' +
+          '<div class="mb-head">' + ic('book') + '성경 보기<button type="button" class="mb-close mb-winbtn" id="mb_win_btn" title="따로 창으로 떼기 — 다른 모니터·브라우저 옆 어디로든 옮길 수 있습니다" aria-label="새 창으로">⧉</button><button type="button" class="mb-close" id="mb_set_btn" title="보기 설정(배경·글씨 크기·줄간격)" aria-label="보기 설정">' + ic('settings') + '</button><button type="button" class="mb-close" id="mb_close" title="닫기" aria-label="닫기" style="margin-left:0">' + ic('x') + '</button></div>' +
           '<div class="mb-trans"><button data-v="gyr" class="on">개역개정</button><button data-v="urm">우리말성경</button></div>' +
           '<div class="mb-selrow"><select id="mb_book"></select><select id="mb_chap"></select></div>' +
           // 보기 설정: 배경 색상 · 글씨 크기 · 줄간격 (localStorage에 저장)
@@ -3921,6 +3926,8 @@ console.log('[affairs.js] v20260923lic');
           '<div class="mb-setrow">글씨 <button type="button" class="mb-fsbtn" id="mb_fs_dn">−</button><b id="mb_fs_v" style="min-width:38px;text-align:center">15px</b><button type="button" class="mb-fsbtn" id="mb_fs_up">＋</button><span style="margin-left:8px">줄간격</span> <select id="mb_lh"><option value="1.6">1.6</option><option value="1.85">1.85</option><option value="2.1">2.1</option><option value="2.4">2.4</option></select></div>' +
           '</div>' +
           '<div class="mb-text" id="mb_text"><p class="mb-hint">성경책과 장을 고르면 본문이 표시됩니다.</p></div>' +
+          '<iframe class="mb-modu" id="mb_modu" title="모두의 성경" allow="clipboard-write"></iframe>' +
+          '<div class="mb-modu-off" id="mb_modu_off" style="display:none">성경이 따로 창으로 열려 있습니다.<br><button type="button" id="mb_modu_back">여기로 되돌리기</button></div>' +
           '<button type="button" class="mb-ins" id="mb_insert" title="현재 보고 있는 장을 위 본문(성경) 칸에 넣습니다">' + ic('plus') + '이 장을 본문칸에 넣기</button>' +
           '</div></div>') +
         '<div class="sed-aside"><div class="af-field" style="margin:0">' +
@@ -4484,13 +4491,13 @@ console.log('[affairs.js] v20260923lic');
         /* 성경 보기에서 복사·끌어 놓기 할 때는 글자만 담는다 — 브라우저가 어두운 배경·흰 글자·글꼴을 함께 실어 보내 본문에 음영이 들어가던 문제 */
         if (pop) {
           pop.addEventListener('copy', function (e) {
-            var sel = window.getSelection(); var t = sel ? String(sel) : '';
+            var sel = (pop.ownerDocument.defaultView || window).getSelection(); var t = sel ? String(sel) : '';
             if (!t || !e.clipboardData) return;
             e.preventDefault();
             e.clipboardData.setData('text/plain', t.replace(/ /g, ' '));
           });
           pop.addEventListener('dragstart', function (e) {
-            var sel = window.getSelection(); var t = sel ? String(sel) : '';
+            var sel = (pop.ownerDocument.defaultView || window).getSelection(); var t = sel ? String(sel) : '';
             if (!t || !e.dataTransfer) return;
             e.dataTransfer.clearData(); e.dataTransfer.setData('text/plain', t.replace(/ /g, ' '));
           });
@@ -4506,14 +4513,54 @@ console.log('[affairs.js] v20260923lic');
               var base = (rb && rb.offsetHeight > 0) ? rb.getBoundingClientRect().bottom : (hd ? hd.getBoundingClientRect().bottom : 66);
               var top = Math.max(64, Math.round(base) + 8);
               pop.style.top = top + 'px';
-              var card = pop.querySelector('.mb-card'); if (card) card.style.maxHeight = 'calc(100vh - ' + (top + 14) + 'px)';
+              var card = pop.querySelector('.mb-card'); if (card) { card.style.maxHeight = 'calc(100vh - ' + (top + 14) + 'px)'; card.style.height = card.style.maxHeight; }
             } catch (e) { }
             pop.classList.add('open');
           }
           if (openBtn) openBtn.style.background = '#dbe9ff';
         }
         function closePop() { if (pop) pop.classList.remove('open'); if (openBtn) openBtn.style.background = ''; }
-        if (openBtn) openBtn.onclick = function () { if (pop && pop.classList.contains('open')) closePop(); else openPop(); };
+        /* ── 성경 보기 = 모두의 성경 미니 (2026-09-27) ──
+             · 칸 안에는 modu/?mini=1 을 띄우고, ⧉ 로 따로 창을 열면 모니터·브라우저 사이를 자유롭게 오간다
+             · 모두의 성경이 보고 있는 장을 알려 주면(postMessage modu-ch) '이 장을 본문칸에 넣기'가 그 장을 넣는다
+             · 설교 준비 중 읽은 장·찾은 말씀은 모두의 성경 메모 「설교 준비 · 제목 (날짜)」에 쌓인다 (modu/mini.js) */
+        var moduFrame = ov.querySelector('#mb_modu'), moduOff = ov.querySelector('#mb_modu_off'), bwin = null;
+        function moduUrl() {
+          var t = ov.querySelector('#se_title'), d = ov.querySelector('#se_date');
+          return 'modu/index.html?mini=1&ref=' + encodeURIComponent(scInp ? scInp.value.trim() : '') +
+            '&sermon=' + encodeURIComponent(t ? t.value.trim() : '') + '&sdate=' + encodeURIComponent(d ? d.value : '');
+        }
+        function loadFrame() { if (moduFrame && !moduFrame.getAttribute('src')) moduFrame.setAttribute('src', moduUrl()); }
+        function onModuMsg(e) {
+          if (e.origin !== location.origin || !e.data || e.data.type !== 'modu-ch') return;
+          if (e.source !== (moduFrame && moduFrame.contentWindow) && e.source !== bwin) return;
+          var bi = e.data.bi | 0, ci = e.data.ci | 0;
+          if (bi >= 0 && bi < BBLK.length) { mbBook = bi + 1; mbChap = ci + 1; try { bookSel.value = mbBook; fillChaps(); } catch (x) { } }
+        }
+        window.addEventListener('message', onModuMsg);
+        function detachPop() {
+          if (bwin && !bwin.closed) { bwin.focus(); return; }
+          var W = 440, H = Math.min(920, (screen.availHeight || 900) - 40);
+          var w = window.open(moduUrl(), 'wpModuBible', 'popup=yes,width=' + W + ',height=' + H + ',left=' + Math.max(0, (window.screenX || 0) + 40) + ',top=' + Math.max(0, (window.screenY || 0) + 60));
+          if (!w) { alert('새 창이 막혀 있습니다. 주소창 오른쪽의 팝업 차단 표시를 눌러 이 사이트의 팝업을 허용해 주세요.'); return; }
+          bwin = w;
+          if (moduFrame) { moduFrame.removeAttribute('src'); moduFrame.style.display = 'none'; }   /* 두 곳에서 같은 기록이 겹치지 않게 칸 안의 것은 멈춘다 */
+          if (moduOff) moduOff.style.display = '';
+          var watch = setInterval(function () {
+            if (!bwin || bwin.closed) { clearInterval(watch); bwin = null; reattachPop(); return; }
+            if (!document.body.contains(ov)) { clearInterval(watch); try { bwin.close(); } catch (e) { } }
+          }, 800);
+        }
+        function reattachPop() {
+          if (bwin && !bwin.closed) try { bwin.close(); } catch (e) { }
+          bwin = null;
+          if (moduOff) moduOff.style.display = 'none';
+          if (moduFrame) { moduFrame.style.display = ''; if (pop && pop.classList.contains('open')) loadFrame(); }
+        }
+        var backBtn = ov.querySelector('#mb_modu_back'); if (backBtn) backBtn.onclick = function () { reattachPop(); loadFrame(); };
+        window.addEventListener('beforeunload', function () { if (bwin && !bwin.closed) try { bwin.close(); } catch (e) { } });
+        var winBtn = ov.querySelector('#mb_win_btn'); if (winBtn) winBtn.onclick = detachPop;
+        if (openBtn) openBtn.onclick = function () { if (bwin && !bwin.closed) { bwin.focus(); return; } if (pop && pop.classList.contains('open')) closePop(); else { openPop(); loadFrame(); } };
         if (closeBtn) closeBtn.onclick = closePop;
         ov.addEventListener('keydown', function (e) { if (e.key === 'Escape' && pop && pop.classList.contains('open')) closePop(); });
 
