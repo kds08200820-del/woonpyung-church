@@ -1569,7 +1569,5 @@ body.popwin .modal.hy-modal{padding:0}
 .hy-modal{overscroll-behavior:none}
 html:has(body.hy-open),body.hy-open{overflow:hidden;overscroll-behavior:none}
 
-/* 찬송가·교독문 닫기(성경으로) 단추를 작게 */
-.hy-toprow #hyClose, .hy-toprow .hy-ib[aria-label="닫기"]{width:30px;height:30px;font-size:19px;border-radius:7px;opacity:.85}
 /* 성경 본문: 두 손가락은 글자 크기만 (페이지 전체 확대 막기) */
 #reader{touch-action:pan-x pan-y}
