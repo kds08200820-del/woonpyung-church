@@ -205,7 +205,7 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 }
 
 /* PC 폭에서는 휴대폰 전용 요소를 감춘다 */
-@media (min-width: 901px){ #moFab,#moTabs,.mo-icons,#moPick,#moMore{display:none!important} .vhead h1.mo-title::after{content:''} }
+@media (min-width: 901px){ #moTabs,.mo-icons,#moPick,#moMore{display:none!important} .vhead h1.mo-title::after{content:''} }
 
 /* ── 문(로그인) ── */
 #moGate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;
@@ -279,3 +279,10 @@ body.hy-open #moTabs{z-index:85}
 
 /* ── 미니 모드 (설교 작성기 안·따로 뜬 성경 창) — 예배 띠·설치 안내·홈 단추는 숨긴다 ── */
 .mo-mini #moWorship,.mo-mini #moInstall,.mo-mini .mo-home,.mo-mini #moInstallBar{display:none!important}
+
+/* 넓은 화면: 마우스면 둥근 단추를 숨기고, 손가락 화면(아이패드)은 절 고르기와 둥근 단추를 그대로 (2026-09-27) */
+@media (min-width: 901px) and (pointer: fine){ #moFab{display:none!important} }
+@media (min-width: 901px) and (pointer: coarse){
+  #moFab{bottom:calc(var(--sab) + 18px);right:16px}
+  #reader .vpara.mo-sel, #reader .vrow.mo-sel{background:var(--sel);box-shadow:inset 3px 0 0 var(--accent)}
+}

@@ -11,6 +11,8 @@
   var infoFromEvent = X.infoFromEvent, fillWordBox = X.fillWordBox, anyPopupOpen = X.anyPopupOpen, goBackToRead = X.goBackToRead;
   var BOOKS = (window.APP && APP.BOOKS) || [];
   var narrow = window.matchMedia('(max-width: 900px)');
+  /* 손가락 화면(아이패드처럼 폭이 넓어도): 절을 톡 눌러 고르기·둥근 단추를 쓴다 (2026-09-27) */
+  var touchUI = window.matchMedia('(max-width: 900px), (pointer: coarse)');
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
   function toast(m){ if(window.APP) APP.toast(m); }
   var first = false;
@@ -190,7 +192,7 @@
   var reader0 = $('reader');
   if(reader0){
     reader0.addEventListener('click', function(e){
-      if(!narrow.matches || Date.now() - lastCM < 400) return;
+      if(!touchUI.matches || Date.now() - lastCM < 400) return;
       if(e.target.closest('a, button, input, select, .wpop, .morph, .hw, .gw, .eng, .stw')) return;
       var sel = window.getSelection(); if(sel && String(sel).trim()) return;
       var row = e.target.closest('.vpara[data-b], .vrow[data-b], .vrow .vcell'); if(!row) return;
