@@ -80,7 +80,10 @@ var MAPCMP = (function(){
     document.body.appendChild(box);
     var st = document.createElement('style');
     st.textContent =
-      '.mc-modal{z-index:205;padding:14px}.mc-card{width:min(1500px,100%);height:min(960px,100%);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow2);overflow:hidden}' +
+      '.mc-modal{z-index:205;padding:14px}.mc-card{width:min(1500px,86vw);height:min(960px,86vh);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow2);overflow:hidden}' +
+      '.mc-card{position:relative;resize:both;min-width:560px;min-height:420px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px)}' +
+      '.mc-head{cursor:move;user-select:none;touch-action:none}.mc-head :is(button,select,input){cursor:pointer}.mc-dragging,.mc-dragging *{cursor:move!important;user-select:none!important}' +
+      '@media (max-width:900px){.mc-card{min-width:0;resize:none}}' +
       '.mc-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}.mc-head b{font-size:17px}.mc-sub{color:var(--fg3);font-size:13px}.mc-sp{flex:1}' +
       '.mc-head .btn.on{background:var(--accent);color:var(--accent-fg,#fff);border-color:var(--accent)}' +
       '.mc-body{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}' +
@@ -95,6 +98,25 @@ var MAPCMP = (function(){
       '@media (max-width:900px){.mc-body{grid-template-columns:1fr;overflow:auto}.mc-pane{min-height:420px}.mc-diff{grid-template-columns:1fr}.mc-sub{display:none}}';
     document.head.appendChild(st);
     $('mcClose').onclick = close;
+    /* 창 옮기기: 머리줄을 끌면 창이 따라온다 (화면 밖으로는 못 나감), 두 번 누르면 가운데로. 끌다가 밖에서 놓아도 창은 닫히지 않는다 */
+    (function(){
+      var card = box.querySelector('.mc-card'), head = box.querySelector('.mc-head'), dx = 0, dy = 0, sx = 0, sy = 0, ox = 0, oy = 0, on = false;
+      function apply(){ card.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; }
+      function clamp(){
+        card.style.transform = ''; var r = card.getBoundingClientRect();
+        dx = Math.max(160 - r.right, Math.min(window.innerWidth - 160 - r.left, dx));   /* 창이 적어도 160px 는 보이게 */
+        dy = Math.max(8 - r.top, Math.min(window.innerHeight - 56 - r.top, dy)); apply();   /* 머리줄은 늘 화면 안에 */
+      }
+      head.addEventListener('pointerdown', function(e){
+        if(e.button !== 0 || e.target.closest('button,select,input,a')) return;
+        on = true; sx = e.clientX; sy = e.clientY; ox = dx; oy = dy; head.setPointerCapture(e.pointerId); document.body.classList.add('mc-dragging'); e.preventDefault();
+      });
+      head.addEventListener('pointermove', function(e){ if(!on) return; dx = ox + e.clientX - sx; dy = oy + e.clientY - sy; apply(); });
+      function end(e){ if(!on) return; on = false; document.body.classList.remove('mc-dragging'); try { head.releasePointerCapture(e.pointerId); } catch(x){} clamp(); }
+      head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
+      head.addEventListener('dblclick', function(e){ if(e.target.closest('button,select,input')) return; dx = dy = 0; apply(); });
+      window.addEventListener('resize', function(){ if(!box.hidden) clamp(); });
+    })();
     $('mcSame').onclick = function(){ same = !same; paint(); };
     $('mcSwap').onclick = function(){ var t = L; L = R; R = t; $('mcLSel').value = L.id; options($('mcRSel'), null, suggest(L)); $('mcRSel').value = R.id; paint(); };
     $('mcLSel').onchange = function(){ var m = ATLAS.byId(this.value); if(m) setL(m, true); };
