@@ -4305,6 +4305,7 @@ console.log('[affairs.js] v20260923lic');
           '<button type="button" class="btn btn-line" id="bd_joy_in" style="padding:6px 4px;font-size:.78rem" title="모두의 찬양에서 입례송(한 해 고정)">🚪 입례송</button>' +
           '<button type="button" class="btn btn-line" id="bd_joy_ch" style="padding:6px 4px;font-size:.78rem" title="모두의 찬양에서 성가곡">🎼 성가곡</button>' +
           '<button type="button" class="btn btn-line" id="bd_hymn" style="padding:6px 4px;font-size:.78rem" title="새찬송가 — 주일·수요기도회·새벽기도 모두">🎵 찬송가</button>' +
+          '<button type="button" class="btn btn-line" id="bd_joy_svc" style="padding:6px 4px;font-size:.78rem;grid-column:1/-1" title="수요기도회 등 — 예배 전 찬양 다음에 부르는 예배 찬양 2~3곡 (모두의 찬양·찬송가)">🎤 예배 찬양 (2~3곡)</button>' +
         '</div><div id="bd_songs" style="font-size:.8rem;color:#48576b;line-height:1.6"></div>' +
         '<div style="font-size:.72rem;color:#9aa5b1;margin-top:4px">저장하면 오늘의 예배에 악보로 나옵니다.</div></div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
@@ -4552,6 +4553,7 @@ console.log('[affairs.js] v20260923lic');
         // 주보 순서에 맞는 자리: 경배와 찬양은 맨 앞, 입례송은 경배와 찬양·목회 기도 다음(송영 앞), 성가대 찬양은 성경봉독 다음(말씀 앞)
         function idxOf(re) { for (var i = 0; i < order.length; i++) if (re.test(order[i].label || '')) return i; return -1; }
         if (label === '경배와 찬양') return 0;
+        if (label === '예배 찬양') { var w = idxOf(/^(경배와\s*찬양|예배\s*전\s*찬양)/); return w >= 0 ? w + 1 : 0; }   /* 수요기도회 등: 예배 전 찬양 바로 다음 */
         if (label === '입례송') { var a = idxOf(/송영/); if (a >= 0) return a; var b = idxOf(/목회\s*기도/); if (b >= 0) return b + 1; var c = idxOf(/경배와\s*찬양/); return c >= 0 ? c + 1 : 0; }
         var s = idxOf(/성경\s*봉독/); if (s >= 0) return s + 1; var m = idxOf(/말씀/); return m >= 0 ? m : order.length;
       }
@@ -4576,11 +4578,12 @@ console.log('[affairs.js] v20260923lic');
       ov.querySelector('#bd_joy_pre').onclick = function () { joyPick('경배와 찬양'); };
       ov.querySelector('#bd_joy_in').onclick = function () { joyPick('입례송'); };
       ov.querySelector('#bd_joy_ch').onclick = function () { joyPick('성가대 찬양'); };
+      ov.querySelector('#bd_joy_svc').onclick = function () { joyPick('예배 찬양'); };
       ov.querySelector('#bd_hymn').onclick = function () { ov.querySelector('#se_hymn').click(); };
       function paintSongs() {
         var box = ov.querySelector('#bd_songs'); if (!box) return;
         var rows = [];
-        ['경배와 찬양', '입례송', '성가대 찬양'].forEach(function (k) {
+        ['경배와 찬양', '예배 찬양', '입례송', '성가대 찬양'].forEach(function (k) {
           var i = joySlotIndex(k); if (i < 0) return;
           var its = normItems(order[i].items || order[i].jnos); if (!its.length) return;
           rows.push('<div><b style="color:#6b3fc4">' + esc(JOY_SLOTS[k].name) + '</b> ' + its.map(function (x) { return esc(songLabel(x)); }).join(' · ') + '</div>');
@@ -7562,8 +7565,8 @@ console.log('[affairs.js] v20260923lic');
   //  주보 제작 (설교 연동 · Supabase 저장/게시 · 인쇄 PDF)
   // ====================================================================
   /* 주보·설교 순서의 이름이 조금씩 달라도(경배와찬양·예배 전 찬양·성가곡…) 같은 자리로 알아본다 */
-  function joySlotKey(l) { l = String(l || '').replace(/\s+/g, ''); if (/^(경배와찬양|예배전찬양)/.test(l)) return '경배와 찬양'; if (/^입례/.test(l)) return '입례송'; if (/^성가(대찬양|곡|대)?$/.test(l)) return '성가대 찬양'; return ''; }
-  var JOY_SLOTS = { '경배와 찬양': { name: '예배 전 찬양', max: 4 }, '입례송': { name: '입례송', max: 1 }, '성가대 찬양': { name: '성가곡', max: 2 } };
+  function joySlotKey(l) { l = String(l || '').replace(/\s+/g, ''); if (/^(경배와찬양|예배전찬양)/.test(l)) return '경배와 찬양'; if (/^예배찬양/.test(l)) return '예배 찬양'; if (/^입례/.test(l)) return '입례송'; if (/^성가(대찬양|곡|대)?$/.test(l)) return '성가대 찬양'; return ''; }
+  var JOY_SLOTS = { '경배와 찬양': { name: '예배 전 찬양', max: 4 }, '예배 찬양': { name: '예배 찬양', max: 3 }, '입례송': { name: '입례송', max: 1 }, '성가대 찬양': { name: '성가곡', max: 2 } };
   var BULLETIN_PRESET = ['경배와찬양', '목회 기도', '입례송', '송영', '성시교독', '신앙고백', '찬송', '기도', '성경봉독', '성가대찬양', '말씀강해', '헌금봉헌', '교회소식', '기도', '찬송', '축도'];
   var OFFER_KEYS = ['십일조', '감사헌금', '주일헌금', '건축헌금', '선교헌금', '유년부', '차량헌금', '일천번기도'];
   var AMOUNT_KEYS = ['십일조', '감사헌금', '주일헌금', '생일감사', '건축헌금', '선교헌금', '차량헌금', '일천번제', '합계'];
