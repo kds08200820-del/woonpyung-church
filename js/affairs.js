@@ -738,7 +738,7 @@ console.log('[affairs.js] v20260923lic');
     document.body.appendChild(ov);
     var close = pushBackClose(function () { ov.remove(); });
     ov.querySelector('#jp_close').onclick = close;
-    pickerWinCtl(ov.querySelector('.fin-card'), ov.querySelector('#jp_close'), function () { return view ? 'modu/index.html#' + (view[0] === 'h' ? 'hymn' : 'joy') + '=' + view.slice(1) : ''; });
+    pickerWinCtl(ov.querySelector('.fin-card'), ov.querySelector('#jp_close'), function () { return view ? 'modu/index.html#' + (view[0] === 'h' ? 'hymn' : 'ccm') + '=' + view.slice(1)   /* 모두의 찬양 새 번호는 #ccm= (2026-09-28) */ : ''; });
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var selBox = ov.querySelector('#jp_sel'), listEl = ov.querySelector('#jp_list'), qEl = ov.querySelector('#jp_q'), msg = ov.querySelector('#jp_msg');
     var view = null, imgBox = ov.querySelector('#jp_img'), vt = ov.querySelector('#jp_vt'), pickBtn = ov.querySelector('#jp_pick');
@@ -4301,9 +4301,9 @@ console.log('[affairs.js] v20260923lic');
         // ── 예배 찬양: 기쁨으로 찬양(예배 전 찬양·입례송·성가곡) + 새찬송가 — 오늘의 예배에 자동으로 들어간다 (2026-09-27)
         '<div class="af-field"><label>🎶 예배 찬양</label>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px">' +
-          '<button type="button" class="btn btn-line" id="bd_joy_pre" style="padding:6px 4px;font-size:.78rem" title="기쁨으로 찬양에서 예배 전 찬양(보통 2곡)">🎶 예배 전 찬양</button>' +
-          '<button type="button" class="btn btn-line" id="bd_joy_in" style="padding:6px 4px;font-size:.78rem" title="기쁨으로 찬양에서 입례송(한 해 고정)">🚪 입례송</button>' +
-          '<button type="button" class="btn btn-line" id="bd_joy_ch" style="padding:6px 4px;font-size:.78rem" title="기쁨으로 찬양에서 성가곡">🎼 성가곡</button>' +
+          '<button type="button" class="btn btn-line" id="bd_joy_pre" style="padding:6px 4px;font-size:.78rem" title="모두의 찬양에서 예배 전 찬양(보통 2곡)">🎶 예배 전 찬양</button>' +
+          '<button type="button" class="btn btn-line" id="bd_joy_in" style="padding:6px 4px;font-size:.78rem" title="모두의 찬양에서 입례송(한 해 고정)">🚪 입례송</button>' +
+          '<button type="button" class="btn btn-line" id="bd_joy_ch" style="padding:6px 4px;font-size:.78rem" title="모두의 찬양에서 성가곡">🎼 성가곡</button>' +
           '<button type="button" class="btn btn-line" id="bd_hymn" style="padding:6px 4px;font-size:.78rem" title="새찬송가 — 주일·수요기도회·새벽기도 모두">🎵 찬송가</button>' +
         '</div><div id="bd_songs" style="font-size:.8rem;color:#48576b;line-height:1.6"></div>' +
         '<div style="font-size:.72rem;color:#9aa5b1;margin-top:4px">저장하면 오늘의 예배에 악보로 나옵니다.</div></div>' +
