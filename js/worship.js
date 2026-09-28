@@ -707,26 +707,40 @@
   function pinch(box, img) {
     var d0 = 0, z0 = 1, z = 1, on = false;
     function dist(t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
+    /* 맞춤(1배)은 높이에 맞춰 폭이 좁을 수 있다 — 그 폭 비율에 배율을 곱해야 벌리는 만큼만 이어서 커진다 (2026-09-28) */
+    function fitRatio() {
+      if (!img.naturalWidth || !img.naturalHeight || !box.clientWidth || !box.clientHeight) return 1;
+      return Math.min(1, (box.clientHeight / box.clientWidth) * (img.naturalWidth / img.naturalHeight));
+    }
+    function apply(nz) {
+      z = Math.max(1, Math.min(6, nz)); var fit = z < 1.02; if (fit) z = 1;
+      img.style.width = fit ? '' : (fitRatio() * z * 100) + '%'; img.classList.toggle('fit', fit);
+    }
+    function keep(mx, my, fn) {   /* 가리키는 그림 자리(0~1)를 재고 크기를 바꾼 뒤 같은 화면 위치로 스크롤 */
+      var r = box.getBoundingClientRect(), ir = img.getBoundingClientRect();
+      var px = (mx - (ir.left - r.left)) / (ir.width || 1), py = (my - (ir.top - r.top)) / (ir.height || 1);
+      fn();
+      var nr = img.getBoundingClientRect();
+      box.scrollLeft = box.scrollLeft + (px * nr.width + (nr.left - r.left)) - mx;
+      box.scrollTop = box.scrollTop + (py * nr.height + (nr.top - r.top)) - my;
+    }
     box.addEventListener('touchstart', function (e) { if (e.touches.length === 2) { on = true; d0 = dist(e.touches); z0 = z; } else on = false; }, { passive: true });
     box.addEventListener('touchmove', function (e) {
       if (!on || e.touches.length !== 2) return;
       e.preventDefault();
       var r = box.getBoundingClientRect(), mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
-      var px = (box.scrollLeft + mx) / z, py = (box.scrollTop + my) / z;
-      z = Math.max(1, Math.min(4, z0 * dist(e.touches) / d0)); img.style.width = (z * 100) + '%'; img.classList.toggle('fit', z === 1);
-      box.scrollLeft = px * z - mx; box.scrollTop = py * z - my;
+      var nz = z0 * dist(e.touches) / d0;
+      keep(mx, my, function () { apply(nz); });
     }, { passive: false });
     box.addEventListener('touchend', function (e) { if (e.touches.length < 2) on = false; }, { passive: true });
     /* 웹: Ctrl + 마우스 휠로 악보만 확대·축소 (2026-09-27) */
     box.addEventListener('wheel', function (e) {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      var r = box.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, ir = img.getBoundingClientRect();
-      var px = (box.scrollLeft + mx) / (ir.width || 1), py = (box.scrollTop + my) / (ir.height || 1);
-      z = Math.max(1, Math.min(4, z * (e.deltaY < 0 ? 1.12 : 1 / 1.12))); img.style.width = (z * 100) + '%'; img.classList.toggle('fit', z === 1);
-      var nr = img.getBoundingClientRect(); box.scrollLeft = px * nr.width - mx; box.scrollTop = py * nr.height - my;
+      var r = box.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, nz = z * (e.deltaY < 0 ? 1.12 : 1 / 1.12);
+      keep(mx, my, function () { apply(nz); });
     }, { passive: false });
-    box.addEventListener('dblclick', function () { z = z === 1 ? 2 : 1; img.style.width = (z * 100) + '%'; img.classList.toggle('fit', z === 1); });
+    box.addEventListener('dblclick', function () { apply(z === 1 ? 2 : 1); });
   }
 
   /* ── 전체 화면 ── */

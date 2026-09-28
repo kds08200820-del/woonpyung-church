@@ -198,7 +198,22 @@ var HYMN = (function(){
     m.hidden = true; document.body.classList.remove('modal-open'); document.body.classList.remove('hy-open');
     try{ if(/^#(hymn|ccm|joy|wr)=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); }catch(e){}
   }
-  function setZoom(z){ zoom = Math.max(1, Math.min(4, z)); $('hyImg').style.width = (zoom * 100) + '%'; $('hyImg').classList.toggle('fit', zoom === 1); $('hyBody').classList.toggle('hy-fitm', zoom === 1); }
+  /* 배율은 '화면에 맞춘 크기'를 1로 센다. 맞춤(1배)은 높이에 맞춰 폭이 좁게 그려질 수 있으므로,
+     그 폭 비율(fitRatio)에 배율을 곱해야 손가락을 벌리는 만큼만 이어서 커진다 (2026-09-28: 전에는 1.01배에서 폭 100%로 뛰어 극단적으로 움직였다) */
+  function fitRatio(){
+    var box = $('hyBody'), img = $('hyImg'); if(!img.naturalWidth || !img.naturalHeight) return 1;
+    var bw = box.clientWidth, bh = box.clientHeight; if(!bw || !bh) return 1;
+    var r = (bh / bw) * (img.naturalWidth / img.naturalHeight);       /* 높이에 맞췄을 때 폭이 상자 폭의 몇 배인가 */
+    if(window.matchMedia('(orientation: landscape) and (max-height: 700px)').matches) return 1;   /* 가로: 폭에 맞춘다 */
+    return Math.min(1, r);
+  }
+  function setZoom(z){
+    zoom = Math.max(1, Math.min(6, z));
+    var img = $('hyImg'), box = $('hyBody'), fit = zoom < 1.02;
+    if(fit){ zoom = 1; img.style.width = ''; }
+    else img.style.width = (fitRatio() * zoom * 100) + '%';
+    img.classList.toggle('fit', fit); box.classList.toggle('hy-fitm', fit);
+  }
   function setLock(v){
     locked = !!v; var b = $('hyLock');
     b.setAttribute('aria-pressed', locked ? 'true' : 'false'); b.textContent = locked ? '고정됨' : '고정';
@@ -213,9 +228,13 @@ var HYMN = (function(){
       if(!on || e.touches.length !== 2) return;
       e.preventDefault();
       var r = box.getBoundingClientRect(), mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
-      var old = zoom, px = (box.scrollLeft + mx) / old, py = (box.scrollTop + my) / old;
+      /* 손가락 사이 지점이 그림의 어느 자리인지(0~1) 재고, 크기를 바꾼 뒤 그 자리가 같은 화면 위치에 오도록 스크롤 */
+      var img = $('hyImg'), ir = img.getBoundingClientRect();
+      var px = (mx - (ir.left - r.left)) / (ir.width || 1), py = (my - (ir.top - r.top)) / (ir.height || 1);
       setZoom(z0 * dist(e.touches) / d0);
-      box.scrollLeft = px * zoom - mx; box.scrollTop = py * zoom - my;
+      var nr = img.getBoundingClientRect();
+      box.scrollLeft = box.scrollLeft + (px * nr.width + (nr.left - r.left)) - mx;
+      box.scrollTop = box.scrollTop + (py * nr.height + (nr.top - r.top)) - my;
     }, { passive:false });
     box.addEventListener('touchend', function(e){ if(e.touches.length < 2) on = false; }, { passive:true });
     /* 한 손가락으로 위로 밀면(화면에 맞춰 놓아 스크롤이 없을 때도) 제목 줄·찾기 칸이 접히고, 아래로 밀면 다시 펼친다 (2026-09-28) */
@@ -255,10 +274,11 @@ var HYMN = (function(){
       if(locked) return;
       var box = $('hyBody'), r = box.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
       var old = zoom, img = $('hyImg'), ir = img.getBoundingClientRect();
-      var px = (box.scrollLeft + mx) / (ir.width || 1), py = (box.scrollTop + my) / (ir.height || 1);
+      var px = (mx - (ir.left - r.left)) / (ir.width || 1), py = (my - (ir.top - r.top)) / (ir.height || 1);
       setZoom(old * (e.deltaY < 0 ? 1.12 : 1 / 1.12));
       var nr = img.getBoundingClientRect();
-      box.scrollLeft = px * nr.width - mx; box.scrollTop = py * nr.height - my;
+      box.scrollLeft = box.scrollLeft + (px * nr.width + (nr.left - r.left)) - mx;
+      box.scrollTop = box.scrollTop + (py * nr.height + (nr.top - r.top)) - my;
     }, { passive:false });
     $('hyBody').addEventListener('dblclick', function(e){ if(cur && !locked && e.target.id === 'hyImg') setZoom(zoom === 1 ? 2 : 1); });
     var m = $('hymnModal'), down = false;
