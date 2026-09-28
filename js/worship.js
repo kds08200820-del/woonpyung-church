@@ -92,9 +92,28 @@
     if (svcCache[key] !== undefined) return Promise.resolve(svcCache[key]);
     var s = session();                                          /* 로그인하지 않아도 공개 뷰로 읽는다 (2026-09-27) */
     if (!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return Promise.resolve((svcCache[key] = null));
-    var u = window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/worship_published?select=sermon_date,service,title,scripture,hymns,gyodok,preacher,songs&sermon_date=eq.' + date + '&service=in.(' + services.map(encodeURIComponent).join(',') + ')&limit=5';
+    var svIn = '&sermon_date=eq.' + date + '&service=in.(' + services.map(encodeURIComponent).join(',') + ')&limit=5';
+    var u = window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/worship_published?select=sermon_date,service,title,scripture,hymns,gyodok,preacher,songs' + svIn;
+    /* 공개 뷰는 한국 시각 '오늘까지'만 보인다 — 내일 수요기도회를 미리 보면 설교 매니저 기록이 안 잡혀 주보 제목만 나오고 찬송이 빠졌다(2026-09-29).
+       관리자(담임목사)는 설교 매니저 기록(sermons)을 직접 읽어 앞날도 미리 본다. 교인은 그대로 그날부터. */
+    function direct() {
+      if (!s || date <= todayStr) return Promise.resolve(null);
+      return isAdmin().then(function (ok) {
+        if (!ok) return null;
+        return fetch(window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/sermons?select=sermon_date,service,title,scripture,hymns,gyodok,preacher,worship_order' + svIn, { headers: sbHeaders() })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (rows) {
+            return (rows || []).map(function (r) {   /* worship_order 에서 찬양 자리만 골라 뷰의 songs 와 같은 모양으로 (worship_songs_of 와 같은 규칙) */
+              var wo = []; try { wo = JSON.parse(r.worship_order || '[]') || []; } catch (e) { wo = []; }
+              var songs = (Array.isArray(wo) ? wo : []).map(function (e) { var k = e && joySlotKey(e.label); return k ? { label: k, detail: e.detail, jnos: e.jnos || [], items: e.items || [] } : null; }).filter(Boolean);
+              var o = Object.assign({}, r, { songs: songs.length ? songs : null }); delete o.worship_order; return o;
+            });
+          });
+      }).catch(function () { return null; });
+    }
     return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (s ? s.token : window.SUPABASE_ANON_KEY) } })
       .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (rows) { return rows && rows.length ? rows : direct(); })
       .then(function (rows) {
         /* 같은 날 여러 기록(예: 새벽 = '매일 QT' + '새벽기도')이 있으면 앞 순서 기록을 바탕으로, 비어 있는 칸(찬송가·교독문·찬양 등)은 뒤 기록에서 채운다
            — 예전엔 첫 기록만 써서 '새벽기도'에 넣은 찬송가가 '매일 QT'에 가려 나오지 않았다 (2026-09-29) */
