@@ -53,20 +53,44 @@
     if(!head) return null;
     bar = document.createElement('a'); bar.id = 'moWorship'; bar.className = 'mo-worship'; bar.hidden = true;
     bar.innerHTML = '<span class="mw-t"></span><span class="mw-c"></span><span class="mw-go">›</span>';
-    bar.addEventListener('click', function(){ var st = bar.dataset.state, pt = bar.dataset.part; if(st === 'live' && pt) try { localStorage.setItem('ws_joined_' + ymd(kst()), pt); } catch(e){} });
+    bar.addEventListener('click', function(){
+      var st = bar.dataset.state, pt = bar.dataset.part;
+      if(st === 'live' && pt) try { localStorage.setItem('ws_joined_' + ymd(kst()), pt); } catch(e){}
+      if(st === 'live') attend(bar.dataset.svc);
+    });
     head.parentNode.insertBefore(bar, head.nextSibling);
     return bar;
   }
+  /* 출석 (2026-09-27) — 홈페이지 히어로와 같은 rpc attend_hero. 로그인 세션은 같은 도메인이라 그대로 쓴다 */
+  function session(){
+    try { var ref = new URL(M.supabaseUrl).hostname.split('.')[0], raw = localStorage.getItem('sb-' + ref + '-auth-token'); if(!raw) return null;
+      var s0 = JSON.parse(raw), s = s0 && s0.currentSession ? s0.currentSession : s0; return s && s.access_token ? s.access_token : null; } catch(e){ return null; }
+  }
+  function tell(m){ try { if(window.APP && APP.toast) APP.toast(m); } catch(e){} }
+  function attend(svc){
+    if(!svc || preview || !M.supabaseUrl) return;
+    var tk = session(); if(!tk){ tell('로그인하면 출석이 기록됩니다'); return; }
+    fetch(M.supabaseUrl.replace(/\/$/, '') + '/rest/v1/rpc/attend_hero', { method:'POST', keepalive:true,
+      headers:{ apikey:M.anonKey, Authorization:'Bearer ' + tk, 'Content-Type':'application/json' }, body:JSON.stringify({ p_service:svc }) })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        if(!j) return;
+        if(j.ok && !j.already) tell('출석했습니다 — ' + svc + (j.late ? ' · ' + j.late_min + '분 늦음' : ' · 정시'));
+        else if(j.ok && j.already) tell('오늘 ' + svc + ' 출석은 이미 되어 있습니다');
+        else if(j.why === 'member') tell('내 정보에서 교적을 연결하면 출석이 기록됩니다');
+      }).catch(function(){});
+  }
+  function svcName(sc){ return sc.kind === 'sunday' ? (sc.single ? '주일 예배' : '주일 ' + sc.part + '부') : sc.kind === 'wed' ? '수요기도회' : sc.kind === 'dawn' ? '새벽기도회' : ''; }
   function show(title, count, href, state){
     if(!bar || bar.dataset.state !== state) ensure();
     var b = ensure(); if(!b) return;
     b.querySelector('.mw-t').textContent = title;
     b.querySelector('.mw-c').textContent = count || '';
-    b.href = href; b.hidden = false; b.dataset.state = state; b.dataset.part = curPart;
+    b.href = href; b.hidden = false; b.dataset.state = state; b.dataset.part = curPart; b.dataset.svc = curSvc;
   }
   function hide(){ if(bar) bar.hidden = true; }
 
-  var curPart = '';
+  var curPart = '', curSvc = '';
   function tick(){
     var n = kst(), dow = n.getUTCDay(), date = ymd(n), sec = n.getUTCHours()*3600 + n.getUTCMinutes()*60 + n.getUTCSeconds();
     var pick = null, sc, i;
@@ -84,13 +108,13 @@
       if(left > PAD*60 && left <= sc.lead*60){ pick = { sc:sc, left:left, live:false }; break; }
     }
     if(!pick){ hide(); return; }
-    sc = pick.sc; curPart = sc.part ? String(sc.part) : '';
+    sc = pick.sc; curPart = sc.part ? String(sc.part) : ''; curSvc = svcName(sc);
     var key = date + '|' + sc.cal;
     if(!preview && sc.cal){
       if(okCache[key] === undefined){ okCache[key] = null; hasSermon(date, sc.cal).then(function(ok){ okCache[key] = ok; tick(); }); }
       if(!okCache[key]){ hide(); return; }
     }
-    var href = '../index.html?worship=' + sc.kind;
+    var href = preview ? '../index.html?worship=' + sc.kind : '../index.html';
     if(pick.live){ show(sc.kind === 'sunday' ? pname(sc) + '예배가 진행 중입니다' : '오늘의 예배 · ' + sc.label, sc.kind === 'sunday' ? pname(sc) + '예배 참여하기' : '열기', href, 'live'); return; }
     var l = pick.left, soon = !(sc.kind === 'sunday' && (sc.part === 1 || sc.single)) || l <= 3600;
     if(!soon){ show('오늘은 주일입니다', sc.label + ' ' + sc.time, href, 'day'); return; }

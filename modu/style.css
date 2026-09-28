@@ -1043,7 +1043,7 @@ body{flex-direction:column}
 .kg-head .btn:hover{background:#1f1f24;color:#fff}
 .kg-head .wb-x{color:#8e8e95}.kg-head .wb-x:hover{color:#fff}
 .kg-body{flex:1;position:relative;min-height:0;overflow:hidden;display:flex}
-#kgCanvas{display:block;cursor:grab;user-select:none;flex:1;min-width:0}
+#kgCanvas{display:block;cursor:grab;user-select:none;flex:1;min-width:0;touch-action:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .kg-side{flex:0 0 360px;border-left:1px solid #1f1f24;background:#101013;overflow:auto;overscroll-behavior:contain;animation:kgIn .16s ease-out}
 @keyframes kgIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
 .kgs-head{position:sticky;top:0;padding:14px 16px 12px;background:rgba(16,16,19,.92);backdrop-filter:blur(10px);border-bottom:1px solid #1f1f24}
@@ -1069,7 +1069,7 @@ body{flex-direction:column}
 .kg-legend{position:absolute;right:18px;bottom:12px;display:flex;gap:14px;font-size:11.5px;color:#8e8e95;user-select:none;pointer-events:none}
 .kg-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
 .kg-help{position:absolute;left:16px;bottom:12px;font-size:11.5px;color:#6b6b73;user-select:none;pointer-events:none}
-.kg-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:40px;color:#b9b9c2;font-size:14px;line-height:1.9;pointer-events:none}
+.kg-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:40px;color:#b9b9c2;font-size:14px;line-height:1.9;pointer-events:none}
 .kg-empty b{color:#b3a8ff}
 .kg-body.with-side .kg-legend{right:378px}
 
@@ -1344,6 +1344,10 @@ body.modal-open{overflow:hidden}
 .steph .sv{cursor:pointer}
 .steph .sv:hover{background:color-mix(in srgb,var(--sel) 45%,transparent);border-radius:10px}
 .steph .sv.vpick{background:var(--sel);border-radius:10px;box-shadow:inset 3px 0 0 var(--accent)}   /* 누른 절 */
+/* 스테판 보기의 형광펜 — 절 전체 바탕 (고른 절 표시는 왼쪽 줄로 겹쳐 보인다) */
+.steph .sv.hl-yellow{background:var(--hl-yellow);border-radius:10px}.steph .sv.hl-green{background:var(--hl-green);border-radius:10px}
+.steph .sv.hl-blue{background:var(--hl-blue);border-radius:10px}.steph .sv.hl-pink{background:var(--hl-pink);border-radius:10px}
+.steph .sv.hl-orange{background:var(--hl-orange);border-radius:10px}.steph .sv.hl-purple{background:var(--hl-purple);border-radius:10px}
 .sv-no{font-size:12.5px;color:var(--accent);font-weight:700;margin:0 4px 4px}
 .sv-kor{font-family:var(--bodyfont);font-size:calc(var(--fs) - 2px);color:var(--fg2);margin:0 4px 8px;line-height:1.6}
 .sv-none{color:var(--fg3);font-size:13px;margin:0 4px}
@@ -1356,7 +1360,7 @@ body.modal-open{overflow:hidden}
 .stw-l{font-size:12.5px;color:var(--fg2)}
 .stw-t{font-size:calc(var(--fs) + 4px);color:var(--fg);font-weight:600}
 .stw-t.grk{font-family:"Gentium Plus","Times New Roman",serif}
-.stw-t.heb{font-family:"Bible Hebrew","SBL Hebrew","Times New Roman",serif;font-size:calc(var(--fs) + 8px);font-weight:400}
+.stw-t.heb{font-family:"Bible Hebrew","SBL Hebrew","Times New Roman",serif;font-size:calc(var(--fs) + 4px);font-weight:400;line-height:calc(var(--lh) + .45)}   /* 히브리어 WLC 본문 줄(.vtext.heb)과 같은 크기 (2026-09-27) */
 .stw-m{color:#c0392b;font-size:10px;margin-left:1px}
 .stw-a{font-size:13px;color:#6b5a8a;font-family:"Gentium Plus","Times New Roman",serif}
 .stw-p{font-size:10.5px;color:#2a6fbd;letter-spacing:.02em;cursor:help}
@@ -1389,7 +1393,7 @@ body.modal-open{overflow:hidden}
 .j3-label.meas{background:#1f5f8f;box-shadow:0 0 0 2px #fff,0 0 0 4px #1f5f8f}
 .sv-base.extra{font-size:calc(var(--fs) - 1px);color:var(--fg2);margin-top:-4px}
 .sv-base.extra .sv-bn{background:#8a7a5a}
-.sv-base.heb{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:calc(var(--fs) + 4px)}
+.sv-base.heb{font-family:"Bible Hebrew","SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:calc(var(--fs) + 4px)}
 .sv-base.grk{font-family:"Gentium Plus","Times New Roman",serif}
 /* 종합 검색 */
 .omni{border-bottom:2px solid var(--line);background:var(--panel2)}
@@ -1480,13 +1484,13 @@ body.popwin .atlascard,body.popwin .kgcard{width:100%;height:100%;max-width:none
 .lm-row + .lm-row{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
 .lm-lab{flex:0 0 auto;font-size:11.5px;font-weight:700;color:var(--fg3);min-width:56px}
 .lm-one{margin-right:14px}
-.lm-heb{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.6em;font-weight:800;color:var(--accent)}
+.lm-heb{font-family:"Bible Hebrew","SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.6em;font-weight:800;color:var(--accent)}
 .lm-no{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--accent-bg);color:var(--accent);font-weight:700}
 .lm-forms > div{display:flex;flex-wrap:wrap;gap:6px 8px;max-height:112px;overflow:auto;padding-right:4px}   /* 형태가 많으면 이 칸 안에서 스크롤 */
 .lm-form{display:inline-flex;gap:6px;align-items:baseline;padding:3px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:12.5px}
-.lm-form b{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.25em}
+.lm-form b{font-family:"Bible Hebrew","SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.25em}
 .lm-how{font-size:12.5px;color:var(--fg2);margin:2px 0 4px}
-.lm-how b{font-family:"SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.15em;color:var(--accent)}
+.lm-how b{font-family:"Bible Hebrew","SBL Hebrew","Ezra SIL","Times New Roman",serif;font-size:1.15em;color:var(--accent)}
 .hit .txt.heb mark b{font-weight:800}
 
 /* ── 찬송가 악보 보기 ── */
@@ -1550,3 +1554,75 @@ body.popwin .modal.hy-modal{padding:0}
 .gd-it span{flex:1;min-width:0;display:flex;flex-direction:column}
 .gd-it small{color:var(--fg3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gd-it:hover,.gd-it:focus{background:var(--panel2)}
+
+/* 찬송가: 처음엔 악보 한 장이 화면에 다 들어오게, 태블릿도 전체 화면 (2026-09-27) */
+.hy-body.hy-fitm { display: flex; flex-direction: column; }
+.hy-body.hy-fitm img.fit { flex: 1; min-height: 0; width: 100% !important; height: 100%; object-fit: contain; }
+@media (max-width: 1100px), (pointer: coarse) {
+  .hy-modal { padding: 0; }
+  .hycard { width: 100%; height: 100%; height: 100dvh; max-height: none; border-radius: 0; }
+  .hy-top { border-radius: 0; }
+}
+
+/* 찬송가: 화면에 맞춘 상태에서는 손가락으로 밀어도 악보·창이 좌우로 움직이지 않게 (넘기기·두 손가락 확대는 스크립트가 처리) */
+.hy-body.hy-fitm{overflow:hidden;touch-action:none;overscroll-behavior:none}
+.hy-modal{overscroll-behavior:none}
+html:has(body.hy-open),body.hy-open{overflow:hidden;overscroll-behavior:none}
+
+/* 성경 본문: 두 손가락은 글자 크기만 (페이지 전체 확대 막기) */
+#reader{touch-action:pan-x pan-y}
+
+/* 기쁨으로 찬양 — 두 권 고르기·조·주제 거르기 (2026-09-27) */
+.hy-books{display:flex;gap:6px;justify-content:center}
+.hy-books[hidden]{display:none}
+.hy-books button{flex:1;max-width:190px;padding:7px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:transparent;color:#fff;font-size:14px;font-weight:600}
+.hy-books button.on{background:#fff;color:var(--accent);border-color:#fff}
+.hy-filt{display:flex;gap:6px;flex-wrap:wrap}
+.hy-filt[hidden]{display:none}
+.hy-filt select,.hy-filt button{flex:1;min-width:0;padding:8px 10px;border-radius:10px;border:none;background:rgba(255,255,255,.92);color:#222;font-size:14px}
+.hy-filt button{flex:0 0 auto;font-weight:600}
+.hy-row .hy-key{flex:0 0 auto;font-style:normal;font-size:12.5px;color:var(--fg3);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+
+/* 가로로 돌리면: 악보를 화면 폭에 맞춰 크게, 위아래로만 스크롤 (좌우 흔들림은 여전히 막음) — 찬송가·기쁨으로 찬양 (2026-09-27) */
+@media (orientation: landscape) and (max-height: 700px){
+  .hy-body.hy-fitm{overflow-x:hidden;overflow-y:auto;touch-action:pan-y;display:block}
+  .hy-body.hy-fitm img.fit{width:100% !important;height:auto;object-fit:initial}
+  .hy-viewing #hyIn{display:none}
+  .hy-viewing .hy-filt{display:none}
+  .hy-viewing .hy-top{padding-top:4px;padding-bottom:4px}
+  .hy-viewing .hy-tools{padding:3px 8px}
+  body.hy-open #moTabs{display:none !important}
+  body.hy-open .hy-modal{bottom:0 !important}
+}
+
+/* 복음성가 아래 책 고르기(기쁨으로 찬양·우리들 찬양) — 한 단 작게 (2026-09-27) */
+.hy-books2 button{padding:4px 10px;font-size:13px;border-color:rgba(255,255,255,.3)}
+.hy-books2 button.on{background:rgba(255,255,255,.85)}
+
+/* 컴퓨터에서도 절을 누르면 고른 표시 (2026-09-28) */
+#reader .vpara.vpick,#reader .vrow.vpick{background:var(--sel);box-shadow:inset 3px 0 0 var(--accent)}
+
+/* ───────── 원어 메모 (wordmemo.js, 2026-09-28) ───────── */
+/* 메모가 있는 낱말 — 밑줄 + 굵게. 히브리어는 굵게 하면 모음 점이 뭉개져 밑줄만 */
+.hw.wm,.gw.wm,.stw.wm .stw-t{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:4px;text-decoration-skip-ink:none}
+.gw.wm,.stw.wm .stw-t.grk{font-weight:700}
+.stw.wm{background:var(--accent-bg);border-radius:8px}
+.wm-sec{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.wm-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wm-head b{font-size:13px}
+.wm-n{font-size:12px;color:var(--fg3)}
+.wm-head .wm-add{margin-left:auto;padding:5px 10px;font-size:12.5px}
+.wm-list{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.wm-item{display:block;width:100%;text-align:left;border:1px solid var(--line2);background:var(--panel2);border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--fg);font:inherit;line-height:1.5}
+.wm-item:hover{border-color:var(--accent);background:var(--accent-bg)}
+.wm-item .t{font-weight:600;font-size:13px}
+.wm-item .r{font-size:11.5px;color:var(--accent);margin-left:6px}
+.wm-item .s{display:block;font-size:12px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#wordbox .wm-sec{margin-top:8px}
+#wordbox .wm-list{max-height:120px;overflow:auto}
+.wm-modal{z-index:230}
+.wmcard{width:min(560px,100%)}
+.wm-meta{font-size:12.5px;color:var(--fg3);margin-bottom:8px;word-break:keep-all}
+.wm-text{display:block;width:100%;min-height:180px;margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);font:inherit;font-size:14px;line-height:1.7;resize:vertical;box-sizing:border-box}
+.wm-text:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+

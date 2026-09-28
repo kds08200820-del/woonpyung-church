@@ -115,6 +115,8 @@ var ATLAS = (function(){
     if(ruler) rulerOff(false);                    /* 다른 지도를 열면 거리재기는 끈다 (보기는 새 지도에 맞추므로 되돌리지 않음) */
     meas = { a:null, b:null }; var _me = $('atMeas'); if(_me) _me.hidden = true;
     opener = document.activeElement;
+    if($('atlasModal').hidden) view3dPref = pending3d;   /* 새로 여는 창: 평면도 (3D로 보기 로 열 때만 3D) */
+    pending3d = false;
     cur = m; cur.from = from || null; focusId = null; hover = null;
     if(window.ACT && m) ACT.log('map', { label:m.title || m.id || '지도', ref:m.ref || '', data:{ id:m.id || '' } });   /* 성경 기록: 지도 */
     seenAdd(m);
@@ -131,7 +133,9 @@ var ATLAS = (function(){
     loadBase(m.base, function(){ fitBounds(m.bounds); draw(); });
     setTimeout(function(){ $('atClose').focus(); }, 0);
   }
-  var view3dPref = true;
+  /* 3D 는 사용자가 골랐을 때만 — 지도 창을 새로 열면 늘 평면도로 시작하고, '3D로 보기'(openAt v3d)로 열 때만 3D 로 시작한다.
+     창이 열려 있는 동안 3D 를 켜 두면 목록에서 다른 지도로 바꿔도 유지된다. (2026-09-27: 예전엔 true 가 기본이라 3D 자료가 있는 지도는 어디서 열든 3D 로 튀었다) */
+  var view3dPref = false, pending3d = false;
   /* ── 바탕 지도의 3D 지형: 지도 그림(강·지역·경로·지점)을 실제 고도 위에 입히고 지명은 공중에 띄운다 ── */
   var DEMBOX = { levant:[34.0, 31.5, 27.5, 37.0], ane:[42.0, 24.0, 22.0, 56.0] };
   function terrainView(m){
@@ -829,6 +833,8 @@ var ATLAS = (function(){
     $('atJ3').addEventListener('mousemove', on3dMove); $('atJ3').addEventListener('mouseleave', function(){ showDist(null); });
     cv.addEventListener('mouseleave', function(){ showDist(null);  if(!drag && hover){ hover = null; draw(); } });
     cv.addEventListener('wheel', onWheel, { passive:false });
+    /* 성경지도 학습(해설)은 지도 안에서 연다 — 메뉴의 '성경지도' 하나로 합침 (2026-09-27) */
+    (function(){ var ib = $('atIndexBtn'); if(!ib || $('atStudyBtn')) return; var b = document.createElement('button'); b.type = 'button'; b.className = ib.className.replace(/\bon\b/, '').trim(); b.id = 'atStudyBtn'; b.textContent = '학습'; b.title = '성경지도 학습 — 성서 지리·고고학·시대사 해설'; ib.parentNode.insertBefore(b, ib.nextSibling); b.onclick = function(){ if(window.STUDY) STUDY.open(); }; })();
     $('atClose').onclick = function(){ if(window.POP && POP.isPop) POP.close(); else close(); };   /* 따로 뜬 창이면 창을 숨긴다 */
     $('atViewSeg').onclick = function(e){ var b = e.target.closest('button'); if(!b || !cur) return; if(ruler) rulerOff(false); view3dPref = b.dataset.v === '3d'; setView3d(view3dPref, cur); if(!view3dPref) draw(); };
     $('atFavBtn').onclick = toggleFav;
@@ -844,7 +850,24 @@ var ATLAS = (function(){
     m.addEventListener('click', function(e){ if(down && e.target === m && !(window.POP && POP.isPop)) close(); down = false; });
   }
   /* 지도를 열고 그 지점을 반짝인다 (본문의 지명 단어에서) */
-  function openAt(m, from, placeId, h){
+  /* 지도 한 장을 다른 캔버스에 그린다 (지도 비교) — 지금 열린 지도의 상태는 그대로 되돌린다 */
+  function renderTo(m, canvas, w, h, bounds, cb){
+    var sv = { cv:cv, g:g, W:W, H:H, DPR:DPR, cur:cur, base:base, img:img, lat:view.lat, lon:view.lon, k:view.k, lb:labelBoxes, f:focusId, hv:hover, me:meas, ru:ruler, tf:texFlat };
+    loadBase(m.base, function(){
+      var b2 = base, i2 = img;
+      try {
+        cv = canvas; g = canvas.getContext('2d'); DPR = window.devicePixelRatio || 1; W = w; H = h;
+        canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+        cur = m; base = b2; img = i2; focusId = null; hover = null; meas = { a:null, b:null }; ruler = null; texFlat = false;
+        fitBounds(bounds || m.bounds); draw();
+      } catch(e){ console.warn('[지도 비교]', e); }
+      cv = sv.cv; g = sv.g; W = sv.W; H = sv.H; DPR = sv.DPR; cur = sv.cur; base = sv.base; img = sv.img;
+      view.lat = sv.lat; view.lon = sv.lon; view.k = sv.k; labelBoxes = sv.lb; focusId = sv.f; hover = sv.hv; meas = sv.me; ruler = sv.ru; texFlat = sv.tf;
+      if(cb) cb();
+    });
+  }
+  function openAt(m, from, placeId, h, v3d){
+    pending3d = (v3d === true);                  /* '3D로 보기' 로 열 때 — open() 이 읽는다 */
     open(m, from);
     setTimeout(function(){
       if(cur !== m) return;
@@ -852,6 +875,6 @@ var ATLAS = (function(){
       if(h){ if(atlas3dOn) TERRAIN3D.focus(h.lat, h.lon, h.name); else { view.lat = h.lat; view.lon = h.lon; draw(); APP.toast(h.name); } }
     }, atlas3dOn ? 900 : 350);
   }
-  return { init:init, openFor:openFor, open:open, openAt:openAt, openIndex:openIndex, close:close, byId:byId, mapsFor:mapsFor, isOpen:function(){ return !$('atlasModal').hidden; }, list:function(){ return ATLAS_MAPS; } };
+  return { init:init, openFor:openFor, open:open, openAt:openAt, renderTo:renderTo, openIndex:openIndex, close:close, byId:byId, mapsFor:mapsFor, isOpen:function(){ return !$('atlasModal').hidden; }, list:function(){ return ATLAS_MAPS; } };
 })();
 ATLAS.init();

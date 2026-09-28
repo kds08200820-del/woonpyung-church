@@ -274,15 +274,16 @@ document.querySelectorAll('.rnav[data-view]').forEach(function(b){
 function popRoute(){ return !!(window.POP && !POP.isPop); }
 function openAtlasFor(bi, ci, vi){ if(popRoute()) POP.open('atlas', { bi:bi, ci:ci, vi:(vi === undefined ? -1 : vi) }); else if(window.ATLAS) ATLAS.openFor(bi, ci, vi); }
 function openAtlasIndex(){ if(popRoute()) POP.open('atlas', { mode:'index' }); else if(window.ATLAS) ATLAS.openIndex(); }
-function openAtlasAt(m, from, placeId, h){
+function openAtlasAt(m, from, placeId, h, v3d){
   if(popRoute()){
     var a = { map:m.id, place:placeId || '' };
+    if(v3d) a.v3d = 1;
     if(from){ a.bi = from.bi; a.ci = from.ci; a.vi = (from.vi === undefined ? -1 : from.vi); }
     if(h){ a.lat = h.lat; a.lon = h.lon; a.pname = h.name || ''; }
     POP.open('atlas', a);
-  } else if(window.ATLAS) ATLAS.openAt(m, from, placeId, h);
+  } else if(window.ATLAS) ATLAS.openAt(m, from, placeId, h, v3d);
 }
-function openKG(){ if(popRoute()) POP.open('kgraph', {}); else if(window.KG) KG.open(); }
+function openKG(a){ if(popRoute()) POP.open('kgraph', a || {}); else if(window.KG) KG.open(a); }   /* a: { nid, title } 이면 그 메모 둘레(로컬 그래프) */
 /* 메모장을 특정 메모·태그·형광펜 분류로 연다 (지식 그래프·명령창에서) — args: { nid, title, tag, hl } */
 function openNotesWith(a){
   a = a || {};
@@ -327,7 +328,8 @@ function buildBookNav(){
 function buildChapNav(){
   var box = $('bnChaps'), bi = st.bi;
   if(bi < 0){ box.innerHTML = '<div class="bn-empty">책을 고르세요</div>'; return; }
-  var out = ['<div class="bn-grid">'];
+  /* 장 번호는 세로로 이어진다: 1·2·3… 이 왼쪽 열을 채운 뒤 오른쪽 열로 (2026-09-27 사용자 지시 — 가로 배열은 헛갈림) */
+  var out = ['<div class="bn-grid" style="grid-auto-flow:column;grid-template-rows:repeat(' + Math.ceil(BOOKS[bi].c / 2) + ',auto)">'];
   for(var c=0;c<BOOKS[bi].c;c++){
     out.push('<button type="button" data-ci="' + c + '"' + (c === st.ci ? ' class="on"' : '') + '>' + (c+1) + '</button>');
   }
@@ -372,17 +374,21 @@ function colsOpen(vs){
 }
 function hebInner(bi,ci,i,t){
   if(!HEB) return esc(t);
+  /* 원어 메모 표시: 낱말의 첫 스트롱 번호를 data-wk 로 두고, 메모가 있으면 .wm (wordmemo.js) */
+  var line = (((HEB.w[bi] || [])[ci] || [])[i] || ''), toks = line ? line.split('|') : [];
   return t.split(' ').map(function(w,wi){
-    return '<span class="hw" data-hb="' + bi + '" data-hc="' + ci + '" data-hv="' + i +
-           '" data-hi="' + wi + '">' + esc(heb(w)) + '</span>';
+    var tok = toks[wi] || '', no = tok ? (tok.split(':')[0] || '').split('+')[0] : '', wk = no ? 'H' + no : '';
+    return '<span class="hw' + (wk && window.WM ? WM.cls(wk) : '') + '" data-hb="' + bi + '" data-hc="' + ci + '" data-hv="' + i +
+           '" data-hi="' + wi + '"' + (wk ? ' data-wk="' + wk + '"' : '') + '>' + esc(heb(w)) + '</span>';
   }).join(' ');
 }
 function greekInner(bi,ci,i,t){
   var ws = gwordsOf(bi,ci,i);
   if(ws && ws.length){
     return ws.map(function(w,wi){
-      return '<span class="gw" data-gb="' + bi + '" data-gc="' + ci + '" data-gv="' + i +
-             '" data-gw="' + wi + '">' + esc(w[0]) + '</span>';
+      var no = String(w[3] || '').split('&')[0].replace(/\D/g, ''), wk = no ? 'G' + no : '';
+      return '<span class="gw' + (wk && window.WM ? WM.cls(wk) : '') + '" data-gb="' + bi + '" data-gc="' + ci + '" data-gv="' + i +
+             '" data-gw="' + wi + '"' + (wk ? ' data-wk="' + wk + '"' : '') + '>' + esc(w[0]) + '</span>';
     }).join(' ');
   }
   return esc(t);
@@ -456,13 +462,46 @@ function geoData(bi, ci, vi){
 }
 var geoCache = {};
 /* 본문 지명 → 지도: data/geo-names.js 의 GEO_ENGINE 이 찾고(전수 조사 규칙 포함), 여기서는 그 지점을 담은 지도를 고른다 */
-function geoMapsAt(lat, lon, bi, ci){
+/* 그 지명이 나오는 지도 전부 — 차례: ① 이 본문(장)과 관련된 지도(좁게 다루는 것부터) ② 그 지역의 상세 지도(좁은 지역부터).
+   메뉴에는 앞의 5장을 먼저 보이고 나머지는 '더 보기'로 (2026-09-27) */
+function geoMapsAt(lat, lon, bi, ci, placeId){
   if(!window.ATLAS) return [];
-  function inside(m){ var b = m.bounds; return b && lat <= b[0] && lat >= b[2] && lon >= b[1] && lon <= b[3] && !(ATLAS_BASES[m.base] && ATLAS_BASES[m.base].vector); }
-  function area(m){ var b = m.bounds; return (b[0] - b[2]) * (b[3] - b[1]); }
-  var here = ATLAS.mapsFor(bi, ci).filter(inside);
-  var rest = ATLAS_MAPS.filter(function(m){ return inside(m) && here.indexOf(m) < 0; }).sort(function(a, b){ return area(a) - area(b); });
-  return here.slice(0, 4).concat(rest.slice(0, here.length ? 1 : 3));
+  function drawable(m){ return true; }   /* 시가지 도면(예루살렘 성)도 — 그 도시의 가장 자세한 지도다 */
+  function inside(m){ var b = m.bounds; return b && lat <= b[0] && lat >= b[2] && lon >= b[1] && lon <= b[3] && drawable(m); }
+  function listed(m){ return placeId && (m.places || []).indexOf(placeId) >= 0 && drawable(m); }
+  function area(m){ var b = m.bounds; return b ? (b[0] - b[2]) * (b[3] - b[1]) : 1e9; }
+  var GEN = { 'palestine-nt':1, 'roman-empire':1, 'tribes':1, 'ane':1 };   /* mapsFor 가 뒤에 붙이는 일반 지도 — 본문 관련으로 치지 않는다 */
+  var nm = placeId && window.ATLAS_PLACES && ATLAS_PLACES[placeId] ? String(ATLAS_PLACES[placeId][2] || '').replace(/\(.*?\)/g, '').trim() : '';
+  function named(m){ return nm && String(m.title || '').indexOf(nm) >= 0; }
+  var here = ATLAS.mapsFor(bi, ci).filter(function(m){ return !GEN[m.id] && (inside(m) || listed(m)); });
+  here.forEach(function(m){ m._rel = 1; });
+  var rest = ATLAS_MAPS.filter(function(m){ return (inside(m) || listed(m)) && here.indexOf(m) < 0; })
+    .sort(function(a, b){ return (named(b) ? 1 : 0) - (named(a) ? 1 : 0) || (listed(b) ? 1 : 0) - (listed(a) ? 1 : 0) || area(a) - area(b); });   /* 제목에 그 지명 → 그 지명을 직접 다룸 → 좁은 지역 */
+  rest.forEach(function(m){ m._rel = 0; });
+  return here.concat(rest);
+}
+/* 지명 메뉴: 앞의 5장 + '더 보기' */
+function geoMenu(x, y, maps, arts, go, all, place, go3d){
+  var TOP = 5, list = all ? maps : maps.slice(0, TOP), items = [];
+  /* 3D: 그 시대의 3D 복원(예루살렘 성)이 있으면 그것, 없으면 3D 지형이 되는 가장 자세한 지도 */
+  var j3 = window.JER3DV && JER3DV.ok ? maps.filter(function(m){ return m.era3d; }) : [];
+  var t3 = window.TERRAIN3D && TERRAIN3D.ok && TERRAIN3D.ok() ? maps.filter(function(m){ return !m.era3d && ATLAS_BASES[m.base] && !ATLAS_BASES[m.base].vector; }) : [];
+  if(go3d){
+    if(j3.length) (all ? j3 : j3.slice(0, 1)).forEach(function(m){ items.push(['🏛 ' + (place || '') + ' 3D로 보기 — ' + m.title, function(){ go3d(m); }]); });
+    else if(t3.length){
+      var ar = function(m){ return (m.bounds[0] - m.bounds[2]) * (m.bounds[3] - m.bounds[1]); }, nm3 = function(m){ return place && String(m.title).indexOf(place) >= 0 ? 0 : 1; };
+      var best = t3.slice().sort(function(a, b){ return nm3(a) - nm3(b) || ar(a) - ar(b); })[0];   /* 제목에 그 지명이 든 지도 → 가장 자세한 지역 */
+      items.push(['⛰ ' + (place || '') + ' 3D 지형으로 보기 — ' + best.title, function(){ go3d(best); }]);
+    }
+    if(items.length) items.push('-');
+  }
+  list.forEach(function(m, i){
+    if(i === TOP && all) items.push('-');
+    items.push([(m._rel ? '🗺 ' : '🗺 ') + m.title + (m._rel ? ' · 이 본문' : ''), function(){ go(m); }]);
+  });
+  if(!all && maps.length > TOP) items.push(['＋ 지도 더 보기 (' + (maps.length - TOP) + '장)', function(){ setTimeout(function(){ geoMenu(x, y, maps, arts, go, true, place, go3d); }, 0); }]);
+  if(arts.length){ items.push('-'); arts.forEach(function(a){ items.push(['📚 ' + a.title, function(){ STUDY.open(a.id); }]); }); }
+  openCMenu(x, y, items);
 }
 function geoMark(r){
   $('geoBtn').classList.toggle('on', GEO.on); $('geoBtn').setAttribute('aria-pressed', GEO.on ? 'true' : 'false');
@@ -480,15 +519,15 @@ function geoMark(r){
         var t = tn.nodeValue, hits = GEO_ENGINE.find(t, bi, ci); if(!hits.length) return;
         var frag = document.createDocumentFragment(), last = 0;
         hits.forEach(function(h){
-          var maps = geoMapsAt(h.lat, h.lon, bi, ci); if(!maps.length) return;
+          var maps = geoMapsAt(h.lat, h.lon, bi, ci, h.id); if(!maps.length) return;
           if(h.s > last) frag.appendChild(document.createTextNode(t.slice(last, h.s)));
           var sp = document.createElement('span'); sp.className = 'geoword'; sp.textContent = t.slice(h.s, h.e);
-          sp.title = '🗺 지도 보기 — ' + h.name + '\n' + maps.map(function(x){ return '· ' + x.title; }).join('\n') + (arts.length ? '\n📚 해설: ' + arts.map(function(a){ return a.title; }).join(' · ') : '') + '\n(누르면 엽니다)';
+          sp.title = '🗺 지도 보기 — ' + h.name + ' (' + maps.length + '장)\n' + maps.slice(0, 5).map(function(x){ return '· ' + x.title; }).join('\n') + (maps.length > 5 ? '\n· … 더 보기 ' + (maps.length - 5) + '장' : '') + (arts.length ? '\n📚 해설: ' + arts.map(function(a){ return a.title; }).join(' · ') : '') + '\n(누르면 엽니다)';
           sp.onclick = function(e){
             e.stopPropagation();
             var go = function(m){ openAtlasAt(m, { bi:bi, ci:ci, vi:vi }, h.id, h); };
-            if(maps.length === 1 && !arts.length){ go(maps[0]); return; }
-            openCMenu(e.clientX, e.clientY, maps.map(function(m){ return ['🗺 ' + m.title, function(){ go(m); }]; }).concat(arts.map(function(a){ return ['📚 ' + a.title, function(){ STUDY.open(a.id); }]; })));
+            if(maps.length === 1 && !arts.length && !maps[0].era3d){ go(maps[0]); return; }
+            geoMenu(e.clientX, e.clientY, maps, arts, go, false, h.name, function(m){ openAtlasAt(m, { bi:bi, ci:ci, vi:vi }, h.id, h, true); });
           };
           frag.appendChild(sp); last = h.e;
         });
@@ -1556,6 +1595,7 @@ function fillWordBox(info){
                    (info.kind === 'heb' ? ' dir="rtl"' : '') + '>' +
                    esc(info.kind === 'heb' ? heb(info.word) : info.word) + '</div>' +
                    '<div class="wb-info">' + wordHTML(info) + '</div>';
+  if(window.WM) WM.mount(body, info);                  /* 원어 메모 칸 (wordmemo.js) */
   find.hidden = false;
   find.onclick = function(){ findWord(info); };
   var say = $('wbSay'), s = sayOf(info);
@@ -1842,6 +1882,7 @@ function openWordModal(info){
   $('mBody').innerHTML = wordRows(info, true).map(function(r){
     return '<div class="m-row"><div class="k">' + r[0] + '</div><div class="v">' + r[1] + '</div></div>';
   }).join('');
+  if(window.WM) WM.mount($('mBody'), info);            /* 원어 메모 칸 (wordmemo.js) */
   var save = $('mSave'), has = !!vocabFind(vocabId(info));
   save.textContent = has ? '단어장에 있음 — 빼기' : '단어장에 담기';
   save.onclick = function(){
@@ -2526,13 +2567,14 @@ function openCMenu(x, y, items){
     d.appendChild(b);
   });
   document.body.appendChild(d);
+  if(d.getBoundingClientRect().height > window.innerHeight - 12){ d.style.maxHeight = (window.innerHeight - 12) + 'px'; d.style.overflowY = 'auto'; }
   var b2 = d.getBoundingClientRect();
   d.style.left = Math.max(6, Math.min(x, window.innerWidth - b2.width - 8)) + 'px';
   d.style.top  = Math.max(6, Math.min(y, window.innerHeight - b2.height - 8)) + 'px';
   CMENU = d;
 }
 document.addEventListener('click', closeCMenu);
-document.addEventListener('scroll', closeCMenu, true);
+document.addEventListener('scroll', function(e){ if(CMENU && e.target && e.target.nodeType === 1 && CMENU.contains(e.target)) return; closeCMenu(); }, true);
 function copyVerseOnly(bi,ci,vi,vid){
   var t = verses(vid,bi,ci)[vi];
   if(!t) return toast('복사할 본문이 없습니다');
@@ -2548,7 +2590,7 @@ function goBackToRead(){
 }
 function anyPopupOpen(){
   if(searchPopOpen()) return true;
-  return ['ciModal','trModal','atlasModal','findModal','kgModal','commModal','introModal','askModal','wordModal','readModal','studyModal','hymnModal','gdModal'].some(function(id){ var m = $(id); return m && !m.hidden; }) || !$('recPop').hidden;
+  return ['ciModal','trModal','atlasModal','findModal','kgModal','commModal','introModal','askModal','wordModal','readModal','studyModal','hymnModal','gdModal','wmModal'].some(function(id){ var m = $(id); return m && !m.hidden; }) || !$('recPop').hidden;
 }
 document.addEventListener('mouseup', function(e){
   if(e.button === 3){ e.preventDefault(); if(!anyPopupOpen()) goBackToRead(); }      /* 마우스 옆 단추(뒤로) */
@@ -2834,8 +2876,8 @@ $('reader').addEventListener('click', function(e){
   if(!row || row.dataset.b === undefined) return;
   if(st.mode !== 'chapter' || st.bi < 0) return;
   if(row.classList.contains('sv')){
-    $('reader').querySelectorAll('.sv.vpick').forEach(function(x){ x.classList.remove('vpick'); });
-    row.classList.add('vpick'); st.vi = +row.dataset.v;
+    /* 여러 절 고르기: 누를 때마다 그 절을 더하고, 이미 고른 절을 누르면 뺀다 (2026-09-27) */
+    row.classList.toggle('vpick'); st.vi = +row.dataset.v;
   }
   recordRead(+row.dataset.b, +row.dataset.c, +row.dataset.v);
 });
@@ -2860,6 +2902,18 @@ $('reader').addEventListener('contextmenu', function(e){
       if(rng.from === rng.to && gs.length === 1) rng = null;
     }
   }
+  /* 스테판 보기에서 눌러 고른 절들 — 형광펜은 고른 절 모두에, 나머지(메모·복사·듣기)는 누른 절이 든 묶음에 */
+  var pickGroups = null;
+  if(!rng){
+    var pk = [].slice.call($('reader').querySelectorAll('.vpick'));   /* 스테판 줄뿐 아니라 본문 절도 (2026-09-28) */
+    if(pk.length){
+      if(!row.classList.contains('vpick')) pk.push(row);
+      pk.sort(function(a, b){ return (+a.dataset.v) - (+b.dataset.v); });
+      pickGroups = selectionGroups(pk);
+      rng = pickGroups.filter(function(g){ return g.bi === bi && g.ci === ci && vi >= g.from && vi <= g.to; })[0] || pickGroups[0];
+      if(rng.from === rng.to && pickGroups.length === 1) rng = null;
+    }
+  }
   var one = { bi:bi, ci:ci, from:vi, to:vi }, lg = langName(langOf(bi));
   var label = rng ? rng.label : ref(bi,ci,vi);
 
@@ -2871,22 +2925,19 @@ $('reader').addEventListener('contextmenu', function(e){
   /* 2-1 성경지도 학습 — 이 절·장을 다루는 해설 */
   if(window.STUDY) STUDY.forVerse(bi, ci, vi).slice(0, 3).forEach(function(a){ items.push(['📚 성경지도 학습 — ' + a.title, function(){ STUDY.open(a.id); }]); });
   /* 3 검색 (고른 낱말·번역) */
-  var fw = wordForFind(e);
-  if(fw) items.push(['🔍 “' + (fw.length > 24 ? fw.slice(0, 23) + '…' : fw) + '” 성경 전체에서 찾기', function(){ openFindPop(fw); }]);
-  translateItems().forEach(function(it){ items.push(it); });
-  var winfo = infoFromEvent(e);
+  /* 원어 낱말 위에서는 '자세히 보기' 하나만 — 찾기·인터넷·뜻 적기·단어장·발음은 그 창 안의 단추로 (2026-09-27 사용자 지시: 메뉴가 복잡함) */
+  var winfo = infoFromEvent(e), fw = wordForFind(e);
   if(winfo){
-    var wshort = cut(winfo.word, 14);
-    items.push(['‘' + wshort + '’ 자세히 보기', function(){ openWordModal(winfo); }]);
-    items.push(['‘' + wshort + '’ 인터넷에서 찾기', function(){ webSearch(winfo); }]);
-    items.push(['‘' + wshort + '’ 뜻 적어 넣기', function(){ askMeaning(winfo); }]);
-    if(!vocabFind(vocabId(winfo))) items.push(['‘' + wshort + '’ 단어장에 담기', function(){ addVocab(winfo); }]);
+    items.push(['🔤 ‘' + cut(winfo.word, 14) + '’ 자세히 보기', function(){ openWordModal(winfo); }]);
+  } else if(fw){
+    items.push(['🔍 “' + (fw.length > 24 ? fw.slice(0, 23) + '…' : fw) + '” 성경 전체에서 찾기', function(){ openFindPop(fw); }]);
   }
+  translateItems().forEach(function(it){ items.push(it); });
   items.push('-');
   /* 4 메모 */
   items.push(['📝 메모에 담기 — ' + label, function(){ if(window.NT) NT.fromVerses(vs, rng || one); }]);
   /* 5 형광펜 */
-  if(window.HL) items.push('-', HL.menuRow(rng || one));
+  if(window.HL) items.push('-', HL.menuRow(pickGroups && pickGroups.length > 1 ? pickGroups : (rng || one)));
   items.push('-');
   /* 6·7 듣기 */
   if(rng) items.push(['🔊 ' + lg + '로 듣기 — ' + rng.label, function(){ openReading([rng]); }]);
@@ -3629,10 +3680,10 @@ if(isPopWin()){
     if(n === 'atlas'){
       if(!window.ATLAS) return;
       if(a.mode === 'index') ATLAS.openIndex();
-      else if(a.map && ATLAS.byId(a.map)) ATLAS.openAt(ATLAS.byId(a.map), from, a.place || null, (a.lat !== undefined && a.lat !== '') ? { lat:+a.lat, lon:+a.lon, name:a.pname || '' } : null);
+      else if(a.map && ATLAS.byId(a.map)) ATLAS.openAt(ATLAS.byId(a.map), from, a.place || null, (a.lat !== undefined && a.lat !== '') ? { lat:+a.lat, lon:+a.lon, name:a.pname || '' } : null, String(a.v3d) === '1');
       else if(from) ATLAS.openFor(bi, ci, vi);
       else ATLAS.openIndex();
-    } else if(n === 'kgraph'){ if(window.KG) KG.open(); }
+    } else if(n === 'kgraph'){ if(window.KG) KG.open(a && (a.nid || a.title) ? { nid:+a.nid || 0, title:a.title || '' } : null); }
     else if(VIEWS[n]){
       showView(n);
       if(n === 'search') applySearchSpec(a);
@@ -3660,14 +3711,17 @@ if(isPopWin()){
 window.MODU_X = { S:S, toggleNav:toggleNav, saveSettings:saveSettings, applySettings:applySettings, infoFromEvent:infoFromEvent, fillWordBox:fillWordBox, anyPopupOpen:anyPopupOpen, goBackToRead:goBackToRead, step:step, verses:verses, parseRefList:parseRefList, bumpFont:bumpFont, cycleTheme:cycleTheme, openComm:openComm };
 window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:showView, openChapter:openChapter,
                parseRefList:parseRefList, BOOKS:BOOKS, st:st, CM:CM, korText:korText, ref:ref, closeCMenu:closeCMenu, setComm:setComm,
-               render:function(){ render(); }, openWord:function(info){ openWordModal(info); },
+               render:function(){ render(); }, openWord:function(info){ openWordModal(info); }, heb:heb,
                grkEntry:function(no){ return GRKD ? GRKD[no] : null; }, hebEntry:function(no){ return HEB && HEB.d ? HEB.d[no] : null; },
                vname:function(){ return vinfo(S.base).name; }, openIntro:openIntro, comm:function(){ return COMM; }, commHits:commHits, cmRange:cmRange,
                showComm:function(bi, ci, vi, hits, wi, si){ CM = { bi:bi, ci:ci, vi:vi, list:hits, wi:wi, si:si }; $('commModal').hidden = false; paintComm(); },
                /* 기본 성경 + 함께 볼 성경의 이 절 본문 [[이름, 글, 원어?]] — 스테판 원어 보기의 대역 줄 */
                verseTexts:function(bi, ci, vi){ return [S.base].concat(S.extra.filter(function(x){ return x !== S.base; })).map(function(id){ var v = vinfo(id); if(!v || !versionsFor(bi).some(function(x){ return x.id === id; })) return null; var t = verses(id, bi, ci)[vi]; if(!t) return null; return [v.name, id === 'wlc' || id === 'grk' ? t : flat(split(t).text), id]; }).filter(Boolean); },
                verseText:function(bi, ci, vi){ var t = verses(S.base, bi, ci)[vi]; return t ? flat(split(t).text) : ''; } };
-window.APP.openNotes = openNotesWith;   /* 지식 그래프·명령창에서 메모장을 특정 메모·태그로 연다 (팝 창이면 따로 뜨는 창으로) */
+window.APP.openNotes = openNotesWith;
+window.APP.openKG = openKG;
+window.APP.hebInner = hebInner; window.APP.greekInner = greekInner; window.APP.fillWordBox = function(info){ if(S.dictHover) fillWordBox(info); };
+window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메모장을 특정 메모·태그로 연다 (팝 창이면 따로 뜨는 창으로) */
 
 /* ═══════════════ 위쪽 메뉴 · 아이콘 줄 (MyBible 식 구성) ═══════════════ */
 (function(){
@@ -3719,8 +3773,8 @@ window.APP.openNotes = openNotesWith;   /* 지식 그래프·명령창에서 메
       '-',
       { t:'이전 책', fn:function(){ stepBook(-1); } },
       { t:'다음 책', fn:function(){ stepBook(1); } },
-      { t:'처음으로 (창세기 1장)', fn:function(){ inRead(); openChapter(0, 0, -1); } },
-      { t:'신약 처음 (마태복음 1장)', fn:function(){ inRead(); openChapter(39, 0, -1); } },
+      { t:'처음으로', fn:function(){ inRead(); openChapter(0, 0, -1); } },
+      { t:'신약 처음', fn:function(){ inRead(); openChapter(39, 0, -1); } },
       '-',
       { t:'책·장 목록 보이기', k:'Ctrl+B', on:!!S.showNav, fn:toggleNav }
     ]; }],
@@ -3740,7 +3794,9 @@ window.APP.openNotes = openNotesWith;   /* 지식 그래프·명령창에서 메
       { t:'영단어 학습', fn:function(){ openWordStudy('eng'); } },
       { t:'낱말 전체 보기', fn:function(){ openWordStudy('all'); } },
       '-',
-      { t:'오늘 복습 시작 (퀴즈)', fn:function(){ openWordStudy(vbTab); setTimeout(function(){ $('vbQuiz').click(); }, 50); } },
+      { t:'오늘 복습', fn:function(){ openWordStudy(vbTab); setTimeout(function(){ $('vbQuiz').click(); }, 50); } },
+      '-',
+      { t:'지도 학습', fn:function(){ if(window.STUDY) STUDY.open(); } },
       '-',
       { t:'지식 그래프', fn:function(){ openKG(); } }
     ]; }],
@@ -3749,15 +3805,14 @@ window.APP.openNotes = openNotesWith;   /* 지식 그래프·명령창에서 메
       var hits = here ? commHits(st.bi, st.ci, v) : [];
       return [
       { t:'이 절의 주석 보기' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!hits.length, fn:function(){ openComm(st.bi, st.ci, v); } },
-      { t:'주석 목록 — 책별 단락 훑어보기', fn:function(){ openCommIndex(here ? st.bi : 0); } },
+      { t:'주석 목록', fn:function(){ openCommIndex(here ? st.bi : 0); } },
       '-',
-      { t:'이 장의 지도 보기', off:!here, fn:function(){ openAtlasFor(st.bi, st.ci, v); } },
-      { t:'성경 지도 목록 (개관)', fn:function(){ openAtlasIndex(); } },
-      { t:'성경지도 학습 — 성서 지리·고고학·시대사', fn:function(){ STUDY.open(); } },
-      { t:'이 절과 관련된 성경지도 학습' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!(here && window.STUDY && STUDY.forVerse(st.bi, st.ci, v).length), fn:function(){ var a = STUDY.forVerse(st.bi, st.ci, v)[0]; if(a) STUDY.open(a.id); } },
+      { t:'이 장의 지도', off:!here, fn:function(){ openAtlasFor(st.bi, st.ci, v); } },
+      { t:'성경지도', fn:function(){ openAtlasIndex(); } },
+      { t:'비교지도', fn:function(){ if(window.MAPCMP) MAPCMP.open(); } },
+      { t:'이 절의 지도 학습' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!(here && window.STUDY && STUDY.forVerse(st.bi, st.ci, v).length), fn:function(){ var a = STUDY.forVerse(st.bi, st.ci, v)[0]; if(a) STUDY.open(a.id); } },
       '-',
       { t:'낱말·구절 찾기', k:'Ctrl+F', fn:function(){ showView('search'); } },
-      { t:'원어 낱말 자세히 보기 안내', fn:function(){ toast('본문의 히브리어·헬라어 낱말에서 오른쪽 단추 → 자세히 보기'); } },
       '-',
       { t:'메모장', fn:function(){ showView('notes'); } },
       { t:'지식 그래프', fn:function(){ openKG(); } }
@@ -3769,8 +3824,8 @@ window.APP.openNotes = openNotesWith;   /* 지식 그래프·명령창에서 메
       { t:'메모장', on:st.view === 'notes', fn:function(){ showView('notes'); } },
       '-',
       { t:'이 책 개관', off:st.bi < 0, fn:function(){ inRead(); $('introBtn').click(); } },
-      { t:'지도 보기 (이 장)', off:st.bi < 0, fn:function(){ openAtlasFor(st.bi, st.ci, st.vi >= 0 ? st.vi : 0); } },
-      { t:'성경 지도 목록 (개관)', fn:function(){ openAtlasIndex(); } }
+      { t:'이 장의 지도', off:st.bi < 0, fn:function(){ openAtlasFor(st.bi, st.ci, st.vi >= 0 ? st.vi : 0); } },
+      { t:'성경지도', fn:function(){ openAtlasIndex(); } }
     ]; }],
     ['본문성경', 'B', function(){
       var list = [{ t:'기본 성경: ' + vinfo(S.base).name, off:true }, '-'];

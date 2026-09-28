@@ -11,6 +11,8 @@
   var infoFromEvent = X.infoFromEvent, fillWordBox = X.fillWordBox, anyPopupOpen = X.anyPopupOpen, goBackToRead = X.goBackToRead;
   var BOOKS = (window.APP && APP.BOOKS) || [];
   var narrow = window.matchMedia('(max-width: 900px)');
+  /* 손가락 화면(아이패드처럼 폭이 넓어도): 절을 톡 눌러 고르기·둥근 단추를 쓴다 (2026-09-27) */
+  var touchUI = window.matchMedia('(max-width: 900px), (pointer: coarse)');
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
   function toast(m){ if(window.APP) APP.toast(m); }
   var first = false;
@@ -125,8 +127,11 @@
         ['⛪', '예배순서', function(){ if(window.MODU_WORSHIP) MODU_WORSHIP.openOrder(); }],
         ['📖', '책 개관', function(){ var b = $('introBtn'); if(b) b.click(); }],
         ['🌍', '지도·고고학 표시', function(){ var b = $('geoBtn'); if(b) b.click(); }],
-        ['🗺', '지도 목록', function(){ if(window.ATLAS) ATLAS.openIndex(); }],
-        ['🎵', '찬송가 악보', function(){ if(window.HYMN) HYMN.open(0); }],
+        ['🗺', '성경지도', function(){ if(window.ATLAS) ATLAS.openIndex(); }],
+        ['🔀', '비교지도', function(){ if(window.MAPCMP) MAPCMP.open(); }],
+        ['✅', '나의 출석', function(){ location.href = '../dashboard.html#myAttend'; }],
+        ['🎵', '찬송가 악보', function(){ if(window.HYMN) HYMN.open(0, 'hymn'); }],
+        ['🎶', '모두의 찬양', function(){ if(window.HYMN) HYMN.open(0, 'ccm'); }],
         ['📜', '교독문', function(){ if(window.GYODOK_VIEW) GYODOK_VIEW.open(0); }],
         ['📋', '본문 복사', function(){ var b = $('copyBtn'); if(b) b.click(); }],
         ['🔤', '스테판 원어 성경', function(){ if(!window.STEPH) return toast('원어 자료를 읽지 못했습니다'); STEPH.setOn(!STEPH.active()); toast(STEPH.active() ? '스테판 원어 성경으로 봅니다 — 본문 위 줄에서 보일 항목을 고르세요' : '일반 본문으로 돌아왔습니다'); }],
@@ -141,6 +146,21 @@
         ['📲', '홈 화면에 설치', function(){ doInstall(); }]
       ];
       grid.innerHTML = rows.map(function(r, i){ return '<button type="button" class="mm-it" data-i="' + i + '"><span class="mm-ic">' + r[0] + '</span>' + esc(r[1]) + '</button>'; }).join('');
+      /* 관리자에게만: 📊 출석 현황 (홈페이지 관리자 대시보드의 같은 통계 창) */
+      (function(){
+        try {
+          var M = window.MODU || {}, ref = new URL(M.supabaseUrl).hostname.split('.')[0], raw = localStorage.getItem('sb-' + ref + '-auth-token'); if(!raw) return;
+          var s0 = JSON.parse(raw), s = s0 && s0.currentSession ? s0.currentSession : s0; if(!s || !s.access_token || !s.user) return;
+          fetch(M.supabaseUrl.replace(/\/$/, '') + '/rest/v1/admins?select=uid&uid=eq.' + s.user.id, { headers:{ apikey:M.anonKey, Authorization:'Bearer ' + s.access_token } })
+            .then(function(r){ return r.ok ? r.json() : []; }).then(function(a){
+              if(!a || !a.length || $('mmAttStats')) return;
+              var b = document.createElement('button'); b.type = 'button'; b.className = 'mm-it'; b.id = 'mmAttStats';
+              b.innerHTML = '<span class="mm-ic">📊</span>출석 현황';
+              b.onclick = function(){ location.href = '../affairs.html#attStats'; };
+              var my = grid.querySelector('.mm-it[data-i="5"]'); if(my && my.nextSibling) grid.insertBefore(b, my.nextSibling); else grid.appendChild(b);
+            }).catch(function(){});
+        } catch(e){}
+      })();
       /* 데스크탑 메뉴 묶음도 그대로 (편집·이동·찾기·학습·성경연구·보기·본문성경·환경설정·도움말) */
       var mb = [].slice.call(document.querySelectorAll('#menubar .mb-item')).filter(function(b){ return !b.hidden; });
       if(mb.length){
@@ -160,7 +180,7 @@
   /* ── 절 고르기: 절을 톡 누르면 골라진다(여러 절 가능). 오른쪽 둥근 단추가 고른 절에 작용한다 ── */
   var SEL = {};                                  /* "bi:ci:vi" → true */
   function selKeys(){ return Object.keys(SEL); }
-  function paintSel(){ [].forEach.call(document.querySelectorAll('#reader .vpara[data-b], #reader .vrow[data-b]'), function(r){ r.classList.toggle('mo-sel', !!SEL[r.dataset.b + ':' + r.dataset.c + ':' + r.dataset.v]); }); fab.classList.toggle('has-sel', selKeys().length > 0); }
+  function paintSel(){ [].forEach.call(document.querySelectorAll('#reader .vpara[data-b], #reader .vrow[data-b]'), function(r){ var on = !!SEL[r.dataset.b + ':' + r.dataset.c + ':' + r.dataset.v]; r.classList.toggle('mo-sel', on); r.classList.toggle('vpick', on); }); fab.classList.toggle('has-sel', selKeys().length > 0); }   /* vpick: 오른쪽 단추 메뉴가 고른 절 모두에 작용 */
   function clearSel(){ SEL = {}; paintSel(); }
   function selGroups(){
     var ks = selKeys().map(function(k){ var a = k.split(':').map(Number); return { bi:a[0], ci:a[1], vi:a[2] }; }).sort(function(x, y){ return x.bi - y.bi || x.ci - y.ci || x.vi - y.vi; });
@@ -173,7 +193,7 @@
   var reader0 = $('reader');
   if(reader0){
     reader0.addEventListener('click', function(e){
-      if(!narrow.matches || Date.now() - lastCM < 400) return;
+      if(Date.now() - lastCM < 400) return;   /* 절 톡·클릭 고르기: 휴대폰·아이패드·컴퓨터 모두 (2026-09-28) */
       if(e.target.closest('a, button, input, select, .wpop, .morph, .hw, .gw, .eng, .stw')) return;
       var sel = window.getSelection(); if(sel && String(sel).trim()) return;
       var row = e.target.closest('.vpara[data-b], .vrow[data-b], .vrow .vcell'); if(!row) return;
@@ -386,6 +406,22 @@
       var sel = window.getSelection(); if(sel && String(sel).trim()) return;
       if(X.step){ X.step(dx < 0 ? 1 : -1); reader.scrollTop = 0; window.scrollTo(0, 0); }
     }, { passive:true });
+  }
+
+  /* ── 성경 본문에서 두 손가락 벌리기·오므리기 = 글자 크기만 (페이지 전체가 커지지 않게) (2026-09-27) ── */
+  if(reader){
+    var fz = null;
+    function fd(ts){ var dx = ts[0].clientX - ts[1].clientX, dy = ts[0].clientY - ts[1].clientY; return Math.sqrt(dx * dx + dy * dy) || 1; }
+    reader.addEventListener('touchstart', function(e){ if(e.touches.length === 2){ fz = { d:fd(e.touches) }; clearLP(); } }, { passive:true });
+    reader.addEventListener('touchmove', function(e){
+      if(!fz || e.touches.length !== 2) return;
+      e.preventDefault();
+      var r = fd(e.touches) / fz.d;
+      if(r > 1.18 && X.bumpFont){ X.bumpFont(1); fz.d = fd(e.touches); }
+      else if(r < 0.85 && X.bumpFont){ X.bumpFont(-1); fz.d = fd(e.touches); }
+    }, { passive:false });
+    reader.addEventListener('touchend', function(e){ if(e.touches.length < 2) fz = null; }, { passive:true });
+    ['gesturestart', 'gesturechange'].forEach(function(n){ reader.addEventListener(n, function(e){ e.preventDefault(); }, { passive:false }); });
   }
 
   /* ── 길게 누르기 → 오른쪽 단추 메뉴 (iOS 는 contextmenu 를 내지 않는다) ── */

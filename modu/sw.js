@@ -2,9 +2,9 @@
    · 앱 껍데기(html·css·js·글꼴)는 판(version)마다 새 저장소에 담고 옛것은 지운다
    · 큰 자료(R2 의 성경·사전·지도·주석)는 한 번 받으면 오래 둔다 (자료 판이 바뀌면 주소가 바뀐다)
    · Supabase(로그인·메모)는 늘 네트워크 */
-var VERSION = '1.0.42';
+var VERSION = '1.0.81';
 var SHELL = 'modu-shell-' + VERSION, DATA = 'modu-data-v2';   /* v2: crossOrigin 없이 받아 둔 불투명 응답을 버린다 */
-var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'worship-banner.js', 'mini.js', 'activity.js', 'icon.png', 'manifest.webmanifest'];
+var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'worship-banner.js', 'mini.js', 'activity.js', 'compare.js', 'hymn.js', 'hymn-data.js', 'ccm-data.js', 'gyodok.js', 'icon.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', function(e){
   self.skipWaiting();                                                    /* 새 판은 기다리지 않고 바로 갈아탄다 */
@@ -35,7 +35,8 @@ self.addEventListener('fetch', function(e){
     /* 껍데기: 저장된 것을 먼저 주고, 없으면 받아서 담는다 */
     e.respondWith(caches.open(SHELL).then(function(c){
       return c.match(req, { ignoreSearch:true }).then(function(hit){
-        var net = fetch(req).then(function(r){ if(r && r.ok) c.put(req, r.clone()); return r; }).catch(function(){ return hit; });
+        /* 브라우저 HTTP 캐시의 옛 사본을 새 판에 담지 않도록 늘 서버에 확인하고 받는다 (2026-09-27: hymn.js·joy-data.js 옛것이 남아 기쁨으로 찬양이 안 보이던 문제) */
+        var net = fetch(new Request(req, { cache:'no-cache' })).then(function(r){ if(r && r.ok) c.put(req, r.clone()); return r; }).catch(function(){ return hit; });
         return hit || net;
       });
     }));

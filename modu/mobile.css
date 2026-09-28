@@ -205,7 +205,7 @@ body{display:flex;flex-direction:column;min-height:100dvh}
 }
 
 /* PC 폭에서는 휴대폰 전용 요소를 감춘다 */
-@media (min-width: 901px){ #moFab,#moTabs,.mo-icons,#moPick,#moMore{display:none!important} .vhead h1.mo-title::after{content:''} }
+@media (min-width: 901px){ #moTabs,.mo-icons,#moPick,#moMore{display:none!important} .vhead h1.mo-title::after{content:''} }
 
 /* ── 문(로그인) ── */
 #moGate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;
@@ -237,6 +237,9 @@ body.hy-open #moTabs{z-index:85}
 .hycard{width:100%;height:100%;max-height:none;border:0;border-radius:0}
 .hy-top{border-radius:0}
 .hy-tools{padding:6px 8px;gap:6px}
+/* 악보를 위로 올리면 제목 줄·찾기 칸이 접힌다(조·주제 줄과 장 이동 줄만 남음) — hymn.js 가 hy-dive 를 켠다 (2026-09-28) */
+.hy-dive .hy-toprow,.hy-dive #hyIn{display:none}
+.hy-dive .hy-top{padding-top:6px;padding-bottom:6px}
 .hy-zoom button{padding:6px 9px;font-size:12.5px}
 .hy-lock{padding:6px 10px;font-size:13px}
 
@@ -279,3 +282,31 @@ body.hy-open #moTabs{z-index:85}
 
 /* ── 미니 모드 (설교 작성기 안·따로 뜬 성경 창) — 예배 띠·설치 안내·홈 단추는 숨긴다 ── */
 .mo-mini #moWorship,.mo-mini #moInstall,.mo-mini .mo-home,.mo-mini #moInstallBar{display:none!important}
+
+/* 넓은 화면: 마우스면 둥근 단추를 숨기고, 손가락 화면(아이패드)은 절 고르기와 둥근 단추를 그대로 (2026-09-27) */
+@media (min-width: 901px) and (pointer: fine){ #moFab{display:none!important} }
+@media (min-width: 901px) and (pointer: coarse){
+  #moFab{bottom:calc(var(--sab) + 18px);right:16px}
+  #reader .vpara.mo-sel, #reader .vrow.mo-sel{background:var(--sel);box-shadow:inset 3px 0 0 var(--accent)}
+}
+
+/* 아이패드 등 넓은 손가락 화면: 휴대폰과 같은 둥근 단추·색 팔레트 (2026-09-27) */
+@media (min-width: 901px) and (pointer: coarse){
+#moFab{position:fixed;right:10px;bottom:calc(var(--mo-bar) + var(--sab) + 12px);z-index:35;display:flex;flex-direction:column;gap:8px}
+#moFab[hidden]{display:none}
+.mo-fab{width:56px;height:56px;border-radius:50%;border:none;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 4px 12px rgba(0,0,0,.25);font-size:10.5px;line-height:1.1;padding:0}
+.mo-fab .ic{font-size:18px;line-height:1}
+.mo-fab.pen{background:#b88f25;position:relative}.mo-fab.copy{background:#3a6db8}.mo-fab.comm{background:#7556b3}.mo-fab.map{background:#2f8d68}
+.mo-fab.pen .dot{position:absolute;right:4px;top:4px;width:14px;height:14px;border-radius:50%;border:2px solid #fff;background:#f2d54a}
+.mo-fab.pen.hl-green .dot{background:#8fd18f}.mo-fab.pen.hl-blue .dot{background:#8ab8f0}.mo-fab.pen.hl-pink .dot{background:#f4a3c1}.mo-fab.pen.hl-orange .dot{background:#f5b26b}.mo-fab.pen.hl-purple .dot{background:#c3a5e8}
+#moFab.has-sel .mo-fab{box-shadow:0 0 0 3px rgba(255,255,255,.9),0 4px 14px rgba(0,0,0,.3)}
+#moPal{position:fixed;z-index:36;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.25);
+  transform:translateY(-50%) scale(.3);transform-origin:right center;opacity:0;transition:transform .22s cubic-bezier(.34,1.56,.64,1),opacity .18s}
+#moPal.open{transform:translateY(-50%) scale(1);opacity:1}
+#moPal[hidden]{display:none}
+.pal-c{width:30px;height:30px;border-radius:50%;border:2px solid transparent;padding:0}
+.pal-c.on{border-color:var(--fg);transform:scale(1.15)}
+.pal-c.hl-yellow{background:#f2d54a}.pal-c.hl-green{background:#8fd18f}.pal-c.hl-blue{background:#8ab8f0}.pal-c.hl-pink{background:#f4a3c1}.pal-c.hl-orange{background:#f5b26b}.pal-c.hl-purple{background:#c3a5e8}
+.pal-x{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--fg3);font-size:13px;padding:0}
+#moFab{bottom:calc(var(--sab) + 18px);right:16px}
+}

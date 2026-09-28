@@ -533,7 +533,7 @@
       <button class="btn" id="atFavListBtn" title="즐겨찾기한 지도 목록">즐겨찾기</button>
       <button type="button" class="btn at-ruler" id="atRulerBtn" title="거리재기 — 지도를 눌러 거리를 잽니다 (Esc 로 끔)" aria-pressed="false"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>거리재기</button>
       <span class="seg at-view" id="atViewSeg" hidden><button type="button" data-v="3d" class="on">3D 복원</button><button type="button" data-v="2d">평면도</button></span>
-      <button class="btn" id="atIndexBtn" title="모든 지도를 성경 순서로 훑어봅니다">지도 목록</button>
+      <button class="btn" id="atIndexBtn" title="모든 지도를 성경 순서로 훑어봅니다">목록</button>
       <button class="btn" id="atGoVerse" title="지도를 닫고 본문으로">본문으로</button>
       <span class="seg at-zoom"><button type="button" id="atOut" title="축소">−</button><button type="button" id="atFit" title="지도 전체 보기">맞춤</button><button type="button" id="atIn" title="확대">＋</button></span>
       <button class="wb-x" id="atClose" title="닫기 (Esc)" aria-label="닫기">×</button>
@@ -553,7 +553,9 @@
         <b id="hyTitle">새찬송가</b>
         <button type="button" class="hy-ib" id="hyClose" title="닫기 (Esc)" aria-label="닫기">×</button>
       </div>
+      <div class="hy-books" id="hyBooks" role="group" aria-label="찬송 책"><button type="button" data-bk="hymn" class="on">찬송가</button><button type="button" data-bk="ccm">모두의 찬양</button></div>
       <input id="hyIn" placeholder="장, 제목을 입력해주세요" autocomplete="off" inputmode="search">
+      <div class="hy-filt" id="hyFilt" hidden><select id="hyKey" aria-label="조"></select><select id="hyTag" aria-label="주제"></select><button type="button" id="hySort" title="번호순 ↔ 가나다순">번호순</button></div>
     </div>
     <div class="hy-tools" id="hyTools" hidden>
       <button class="btn icon" id="hyPrev" title="이전 장 (←)">◀</button>
@@ -678,7 +680,7 @@
       <aside class="kg-side" id="kgSide" hidden></aside>
       <div class="kg-legend" id="kgLegend"></div>
       <div class="kg-empty" id="kgEmpty" hidden>아직 메모가 없습니다.<br>메모장에서 글을 쓰고 <b>[[다른 메모]]</b>로 잇거나 <b>#태그</b>를 달면, 본문에 형광펜을 칠하면 여기에 지식의 별자리가 생깁니다.</div>
-      <div class="kg-help">끌어서 돌리기 · 휠로 확대 · 누르면 이어진 지식과 메모 보기 · 두 번 누르면 열기</div>
+      <div class="kg-help">끌어서 돌리기 · 휠·두 손가락으로 확대 · 누르면 이어진 지식과 메모 보기 · 두 번 누르면 열기</div>
     </div>
   </div>
 </div>
@@ -784,6 +786,7 @@
 <script src="highlight.js"></script>
 <script src="kgraph.js"></script>
 <script src="stephan.js"></script>
+<script src="wordmemo.js"></script>
 <script src="data/d1/geo-names.js?v=20260926"></script>
 <script src="atlas.js"></script>
 <script src="data/d1/study/articles.js?v=20260926"></script>
@@ -791,7 +794,9 @@
 <script src="data/d1/study/dem-ane.js?v=20260926"></script>
 <script src="terrain3d.js"></script>
 <script src="study.js"></script>
+<script src="compare.js"></script>
 <script src="hymn-data.js"></script>
+<script src="ccm-data.js"></script>
 <script src="hymn.js"></script>
 <script src="gyodok-data.js"></script>
 <script src="gyodok.js"></script>
