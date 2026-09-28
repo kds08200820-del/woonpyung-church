@@ -95,7 +95,20 @@
     var u = window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/worship_published?select=sermon_date,service,title,scripture,hymns,gyodok,preacher,songs&sermon_date=eq.' + date + '&service=in.(' + services.map(encodeURIComponent).join(',') + ')&limit=5';
     return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (s ? s.token : window.SUPABASE_ANON_KEY) } })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (rows) { var pick = null; if (rows && rows.length) { services.some(function (sv) { pick = rows.filter(function (r) { return r.service === sv; })[0] || null; return !!pick; }); } svcCache[key] = pick; return pick; })
+      .then(function (rows) {
+        /* 같은 날 여러 기록(예: 새벽 = '매일 QT' + '새벽기도')이 있으면 앞 순서 기록을 바탕으로, 비어 있는 칸(찬송가·교독문·찬양 등)은 뒤 기록에서 채운다
+           — 예전엔 첫 기록만 써서 '새벽기도'에 넣은 찬송가가 '매일 QT'에 가려 나오지 않았다 (2026-09-29) */
+        var pick = null;
+        services.forEach(function (sv) {
+          (rows || []).filter(function (r) { return r.service === sv; }).forEach(function (r) {
+            if (!pick) { pick = Object.assign({}, r); return; }
+            ['title', 'scripture', 'hymns', 'gyodok', 'preacher', 'songs'].forEach(function (f) {
+              var v = pick[f]; if (v == null || v === '' || (Array.isArray(v) && !v.length)) pick[f] = r[f];
+            });
+          });
+        });
+        svcCache[key] = pick; return pick;
+      })
       .catch(function () { svcCache[key] = null; return null; });
   }
   function hymnNos(str) { return String(str || '').split(/[,\s·]+/).map(function (x) { return parseInt(x, 10); }).filter(function (n) { return n >= 1 && n <= 645; }); }
