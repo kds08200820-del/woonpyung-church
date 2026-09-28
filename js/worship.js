@@ -106,12 +106,15 @@
             return (rows || []).map(function (r) {   /* worship_order 에서 찬양 자리만 골라 뷰의 songs 와 같은 모양으로 (worship_songs_of 와 같은 규칙) */
               var wo = []; try { wo = JSON.parse(r.worship_order || '[]') || []; } catch (e) { wo = []; }
               var songs = (Array.isArray(wo) ? wo : []).map(function (e) { var k = e && joySlotKey(e.label); return k ? { label: k, detail: e.detail, jnos: e.jnos || [], items: e.items || [] } : null; }).filter(Boolean);
-              var o = Object.assign({}, r, { songs: songs.length ? songs : null }); delete o.worship_order; return o;
+              var conti = (Array.isArray(wo) ? wo : []).filter(function (e) { return e && e.label && !e.noexport; }).map(function (e) { return { label: e.label, items: e.items, jnos: e.jnos, hno: e.hno, detail: /^(교독|성시교독)/.test(String(e.label).replace(/\s+/g, '')) ? e.detail : undefined }; });
+              var o = Object.assign({}, r, { songs: songs.length ? songs : null, conti: conti.length ? conti : null }); delete o.worship_order; return o;
             });
           });
       }).catch(function () { return null; });
     }
-    return fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (s ? s.token : window.SUPABASE_ANON_KEY) } })
+    var hd = { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (s ? s.token : window.SUPABASE_ANON_KEY) } };
+    return fetch(u.replace(',songs', ',songs,conti'), hd)   /* conti = 설교 매니저의 예배 순서 콘티 (20260929_1400_worship_conti.sql) — SQL 실행 전이면 conti 없이 다시 */
+      .then(function (r) { return r.ok ? r : fetch(u, hd); })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (rows) { return rows && rows.length ? rows : direct(); })
       .then(function (rows) {
@@ -121,7 +124,7 @@
         services.forEach(function (sv) {
           (rows || []).filter(function (r) { return r.service === sv; }).forEach(function (r) {
             if (!pick) { pick = Object.assign({}, r); return; }
-            ['title', 'scripture', 'hymns', 'gyodok', 'preacher', 'songs'].forEach(function (f) {
+            ['title', 'scripture', 'hymns', 'gyodok', 'preacher', 'songs', 'conti'].forEach(function (f) {
               var v = pick[f]; if (v == null || v === '' || (Array.isArray(v) && !v.length)) pick[f] = r[f];
             });
           });
@@ -133,8 +136,28 @@
   function hymnNos(str) { return String(str || '').split(/[,\s·]+/).map(function (x) { return parseInt(x, 10); }).filter(function (n) { return n >= 1 && n <= 645; }); }
   function gyodokNo(str) { var m = String(str || '').match(/(\d{1,3})/); return m ? +m[1] : 0; }
   /* 새벽·수요기도회 순서: 찬송 → 교독문 → 본문 → 말씀 */
+  /* 설교 매니저 '예배 순서(콘티)' — 블록 순서 그대로 (말씀 블록이 있을 때만 콘티로 본다, 2026-09-29) */
+  function contiSlides(rec, title, ref, who) {
+    var out = [], hasBible = false;
+    rec.conti.forEach(function (e) {
+      var lb = String(e.label || ''), k = joySlotKey(lb), nb = lb.replace(/\s+/g, '');
+      if (k) { var head = k === '경배와 찬양' ? '예배 전 찬양' : k === '예배 찬양' ? '찬양' : k === '성가대 찬양' ? '성가곡' : '입례송'; [].push.apply(out, joySlides(head, [], e.jnos, e.items)); }
+      else if (nb === '찬송') {
+        var its = e.items && e.items.length ? e.items : (e.hno ? [{ b: 'h', n: +e.hno }] : hymnNos(rec.hymns).map(function (n) { return { b: 'h', n: n }; }));
+        [].push.apply(out, joySlides('찬송', [], null, its));
+      }
+      else if (/^(교독|성시교독)/.test(nb)) { var g = gyodokNo(e.detail || rec.gyodok); if (g) out.push({ type: 'gyodok', head: '성시교독', no: g, sub: String(e.detail || rec.gyodok || '').replace(/^\d+\.?\s*/, '') }); }
+      else if (/^(성경|본문)/.test(nb)) { if (ref) { out.push({ type: 'bible', head: '성경봉독', ref: ref }); hasBible = true; } }
+      else if (/^말씀/.test(nb)) { if (ref && !hasBible) { out.push({ type: 'bible', head: '성경봉독', ref: ref }); hasBible = true; } out.push({ type: 'sermon', head: '말씀', title: title || '', ref: ref || '', who: who || '', quote: '' }); }
+      else if (/주기도/.test(nb)) out.push({ type: 'lord', head: '주기도문' });
+      else if (/사도신경|신앙고백/.test(nb)) out.push({ type: 'creed', head: '신앙고백' });
+      else out.push({ type: 'text', head: lb, lines: [lb], big: true });
+    });
+    return out;
+  }
   function midweekSlides(k, date, title, ref, who, rec) {
     slides.push({ type: 'cover', k: k, date: dateLabel(date), title: title || '', ref: ref || '', who: who || '', quote: '' });
+    if (rec && Array.isArray(rec.conti) && rec.conti.some(function (e) { return /^말씀/.test(String(e && e.label || '').replace(/\s+/g, '')); })) { [].push.apply(slides, contiSlides(rec, title, ref, who)); return; }
     var SGm = {}; ((rec && rec.songs) || []).forEach(function (x) { if (x && x.label) SGm[x.label] = x; });   /* 기쁨으로 찬양 (2026-09-27) */
     if (SGm['경배와 찬양']) [].push.apply(slides, joySlides('경배와 찬양', [], SGm['경배와 찬양'].jnos, SGm['경배와 찬양'].items));
     if (SGm['예배 찬양']) [].push.apply(slides, joySlides('예배 찬양', [], SGm['예배 찬양'].jnos, SGm['예배 찬양'].items));   /* 수요기도회: 예배 전 찬양 다음 예배 찬양 2~3곡 (2026-09-29) */
