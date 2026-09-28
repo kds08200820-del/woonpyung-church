@@ -223,7 +223,8 @@ window.STEPH = (function(){
           var txt = w[2] || '';
           var mark = /</.test(txt); txt = txt.replace(/</g, '');
           var gap = /^-+$/.test(txt);
-          h += '<div class="stw' + (gap ? ' gap' : '') + '" data-i="' + j + '">';
+          var wk = (function(){ var n = String(w[0] || '').replace(/[^\d]/g, ''); return n ? (bi >= 39 ? 'G' : 'H') + n : ''; })();   /* 원어 메모 표시 (wordmemo.js) */
+          h += '<div class="stw' + (gap ? ' gap' : '') + (wk && window.WM ? WM.cls(wk) : '') + '" data-i="' + j + '"' + (wk ? ' data-wk="' + wk + '"' : '') + '>';
           if(opt.s) h += '<span class="stw-s">' + esc(w[0]) + '</span>';
           if(opt.l) h += '<span class="stw-l"' + (ot ? ' dir="rtl"' : '') + '>' + esc(w[1]) + '</span>';
           h += '<span class="stw-t' + (ot ? ' heb' : ' grk') + '"' + (ot ? ' dir="rtl"' : '') + '>' + (gap ? '—' : esc(txt)) + (mark ? '<sup class="stw-m" title="두 본문(스테판·알란드)이 다른 곳">*</sup>' : '') + '</span>';

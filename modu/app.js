@@ -374,17 +374,21 @@ function colsOpen(vs){
 }
 function hebInner(bi,ci,i,t){
   if(!HEB) return esc(t);
+  /* 원어 메모 표시: 낱말의 첫 스트롱 번호를 data-wk 로 두고, 메모가 있으면 .wm (wordmemo.js) */
+  var line = (((HEB.w[bi] || [])[ci] || [])[i] || ''), toks = line ? line.split('|') : [];
   return t.split(' ').map(function(w,wi){
-    return '<span class="hw" data-hb="' + bi + '" data-hc="' + ci + '" data-hv="' + i +
-           '" data-hi="' + wi + '">' + esc(heb(w)) + '</span>';
+    var tok = toks[wi] || '', no = tok ? (tok.split(':')[0] || '').split('+')[0] : '', wk = no ? 'H' + no : '';
+    return '<span class="hw' + (wk && window.WM ? WM.cls(wk) : '') + '" data-hb="' + bi + '" data-hc="' + ci + '" data-hv="' + i +
+           '" data-hi="' + wi + '"' + (wk ? ' data-wk="' + wk + '"' : '') + '>' + esc(heb(w)) + '</span>';
   }).join(' ');
 }
 function greekInner(bi,ci,i,t){
   var ws = gwordsOf(bi,ci,i);
   if(ws && ws.length){
     return ws.map(function(w,wi){
-      return '<span class="gw" data-gb="' + bi + '" data-gc="' + ci + '" data-gv="' + i +
-             '" data-gw="' + wi + '">' + esc(w[0]) + '</span>';
+      var no = String(w[3] || '').split('&')[0].replace(/\D/g, ''), wk = no ? 'G' + no : '';
+      return '<span class="gw' + (wk && window.WM ? WM.cls(wk) : '') + '" data-gb="' + bi + '" data-gc="' + ci + '" data-gv="' + i +
+             '" data-gw="' + wi + '"' + (wk ? ' data-wk="' + wk + '"' : '') + '>' + esc(w[0]) + '</span>';
     }).join(' ');
   }
   return esc(t);
@@ -1591,6 +1595,7 @@ function fillWordBox(info){
                    (info.kind === 'heb' ? ' dir="rtl"' : '') + '>' +
                    esc(info.kind === 'heb' ? heb(info.word) : info.word) + '</div>' +
                    '<div class="wb-info">' + wordHTML(info) + '</div>';
+  if(window.WM) WM.mount(body, info);                  /* 원어 메모 칸 (wordmemo.js) */
   find.hidden = false;
   find.onclick = function(){ findWord(info); };
   var say = $('wbSay'), s = sayOf(info);
@@ -1877,6 +1882,7 @@ function openWordModal(info){
   $('mBody').innerHTML = wordRows(info, true).map(function(r){
     return '<div class="m-row"><div class="k">' + r[0] + '</div><div class="v">' + r[1] + '</div></div>';
   }).join('');
+  if(window.WM) WM.mount($('mBody'), info);            /* 원어 메모 칸 (wordmemo.js) */
   var save = $('mSave'), has = !!vocabFind(vocabId(info));
   save.textContent = has ? '단어장에 있음 — 빼기' : '단어장에 담기';
   save.onclick = function(){
@@ -2584,7 +2590,7 @@ function goBackToRead(){
 }
 function anyPopupOpen(){
   if(searchPopOpen()) return true;
-  return ['ciModal','trModal','atlasModal','findModal','kgModal','commModal','introModal','askModal','wordModal','readModal','studyModal','hymnModal','gdModal'].some(function(id){ var m = $(id); return m && !m.hidden; }) || !$('recPop').hidden;
+  return ['ciModal','trModal','atlasModal','findModal','kgModal','commModal','introModal','askModal','wordModal','readModal','studyModal','hymnModal','gdModal','wmModal'].some(function(id){ var m = $(id); return m && !m.hidden; }) || !$('recPop').hidden;
 }
 document.addEventListener('mouseup', function(e){
   if(e.button === 3){ e.preventDefault(); if(!anyPopupOpen()) goBackToRead(); }      /* 마우스 옆 단추(뒤로) */
@@ -3705,7 +3711,7 @@ if(isPopWin()){
 window.MODU_X = { S:S, toggleNav:toggleNav, saveSettings:saveSettings, applySettings:applySettings, infoFromEvent:infoFromEvent, fillWordBox:fillWordBox, anyPopupOpen:anyPopupOpen, goBackToRead:goBackToRead, step:step, verses:verses, parseRefList:parseRefList, bumpFont:bumpFont, cycleTheme:cycleTheme, openComm:openComm };
 window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:showView, openChapter:openChapter,
                parseRefList:parseRefList, BOOKS:BOOKS, st:st, CM:CM, korText:korText, ref:ref, closeCMenu:closeCMenu, setComm:setComm,
-               render:function(){ render(); }, openWord:function(info){ openWordModal(info); },
+               render:function(){ render(); }, openWord:function(info){ openWordModal(info); }, heb:heb,
                grkEntry:function(no){ return GRKD ? GRKD[no] : null; }, hebEntry:function(no){ return HEB && HEB.d ? HEB.d[no] : null; },
                vname:function(){ return vinfo(S.base).name; }, openIntro:openIntro, comm:function(){ return COMM; }, commHits:commHits, cmRange:cmRange,
                showComm:function(bi, ci, vi, hits, wi, si){ CM = { bi:bi, ci:ci, vi:vi, list:hits, wi:wi, si:si }; $('commModal').hidden = false; paintComm(); },

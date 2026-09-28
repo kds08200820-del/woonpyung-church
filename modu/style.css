@@ -1601,3 +1601,28 @@ html:has(body.hy-open),body.hy-open{overflow:hidden;overscroll-behavior:none}
 
 /* 컴퓨터에서도 절을 누르면 고른 표시 (2026-09-28) */
 #reader .vpara.vpick,#reader .vrow.vpick{background:var(--sel);box-shadow:inset 3px 0 0 var(--accent)}
+
+/* ───────── 원어 메모 (wordmemo.js, 2026-09-28) ───────── */
+/* 메모가 있는 낱말 — 밑줄 + 굵게. 히브리어는 굵게 하면 모음 점이 뭉개져 밑줄만 */
+.hw.wm,.gw.wm,.stw.wm .stw-t{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:4px;text-decoration-skip-ink:none}
+.gw.wm,.stw.wm .stw-t.grk{font-weight:700}
+.stw.wm{background:var(--accent-bg);border-radius:8px}
+.wm-sec{margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)}
+.wm-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wm-head b{font-size:13px}
+.wm-n{font-size:12px;color:var(--fg3)}
+.wm-head .wm-add{margin-left:auto;padding:5px 10px;font-size:12.5px}
+.wm-list{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.wm-item{display:block;width:100%;text-align:left;border:1px solid var(--line2);background:var(--panel2);border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--fg);font:inherit;line-height:1.5}
+.wm-item:hover{border-color:var(--accent);background:var(--accent-bg)}
+.wm-item .t{font-weight:600;font-size:13px}
+.wm-item .r{font-size:11.5px;color:var(--accent);margin-left:6px}
+.wm-item .s{display:block;font-size:12px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#wordbox .wm-sec{margin-top:8px}
+#wordbox .wm-list{max-height:120px;overflow:auto}
+.wm-modal{z-index:230}
+.wmcard{width:min(560px,100%)}
+.wm-meta{font-size:12.5px;color:var(--fg3);margin-bottom:8px;word-break:keep-all}
+.wm-text{display:block;width:100%;min-height:180px;margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--fg);font:inherit;font-size:14px;line-height:1.7;resize:vertical;box-sizing:border-box}
+.wm-text:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+
