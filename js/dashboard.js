@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260929att14 (출석 통계를 교사 생활 탭으로)');
+console.log('[dashboard.js] v20260930link1 (학생으로 안 잡히는 달란트 계정에 연결 끊김 안내)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1472,7 +1472,11 @@ console.log('[dashboard.js] v20260929att14 (출석 통계를 교사 생활 탭�
               return '<tr><td style="padding:6px 8px;white-space:nowrap;">' + esc(r.talent_date) + '</td><td style="padding:6px 8px;">' + esc(r.reason || '') + '</td>' +
                 '<td style="padding:6px 8px;text-align:right;font-weight:700;color:' + (a < 0 ? '#c0392b' : '#4a6a9c') + ';">' + (a > 0 ? '+' : '') + won(a) + '</td></tr>';
             }).join('') + '</tbody></table></div>' :
-            '<p style="color:#9aa5b1;font-size:.86rem;">아직 받은 달란트가 없습니다.</p>');
+            '<p style="color:#9aa5b1;font-size:.86rem;">아직 받은 달란트가 없습니다.</p>') +
+          // 학생 계정이 아닌데 달란트가 있다 = 어린이인데 교적의 주일학교 칸이 비어 있거나, 이름·생년월일이 바뀌어
+          // 계정과 교적의 연결이 끊긴 경우(2026-09-30). 그러면 '나의 주일학교'(QT·필사·미션 인증) 칸이 나오지 않으므로 원인을 알려 준다.
+          (!isSsStudent(ctx) && rows.length ? '<p id="ssLinkHint" style="font-size:.8rem;color:#8a8a8a;margin:10px 0 0;line-height:1.7;">QT·필사·미션 인증을 올리는 칸이 보이지 않나요? 교적의 <b>주일학교</b> 칸이 비어 있거나, 이름·생년월일이 바뀌어 계정과 교적의 연결이 끊긴 것입니다. 교회 사무실이나 주일학교 선생님께 알려 주세요.</p>' : '') +
+          '</div>';
       }).catch(function () { el.innerHTML = ''; });
   }
 

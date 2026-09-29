@@ -144,6 +144,11 @@ window.WPF = (function () {
         return rest('DELETE', 'budget?code=like.' + String(params.code || '').slice(0, 3) + '*', null, 'return=representation').then(function (rows) { return { ok: true, deleted: (rows || []).length }; });
       case 'listGyojeok':
         return rest('GET', 'gyojeok?select=*&order=name&limit=20000').then(function (rows) { return { ok: true, members: (rows || []).map(gjOut) }; });
+      // 계정 연결 점검·복구 (supabase/20260930_0900_gyojeok_rekey.sql). SQL 을 아직 안 돌렸으면 PGRST202 오류가 난다.
+      case 'ssLinkCheck':
+        return rpc('ss_link_check').then(function (rows) { return { ok: true, rows: rows || [] }; });
+      case 'rekeyMember':
+        return rpc('rekey_member', { p_old: params.oldKey, p_new: params.newKey });
       case 'addGyojeok': {
         var nm = String(params.name || '').trim();
         var bd = String(params.birth || '').replace(/[^0-9]/g, '');

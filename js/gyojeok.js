@@ -159,6 +159,52 @@ console.log('[gyojeok.js] v20260817gjdel');
     q.addEventListener('input', draw); draw(); setTimeout(function () { q.focus(); q.select(); }, 50);
   }
 
+  /* ── 계정 연결 점검(2026-09-30) — supabase/20260930_0900_gyojeok_rekey.sql 의 ss_link_check()·rekey_member()
+   * · orphan : 홈페이지 계정의 매칭키로 교적을 찾을 수 없다(교적의 이름·생년월일이 바뀌어 키가 달라짐).
+   *            그러면 그 사람(특히 어린이)의 대시보드에서 QT·필사 인증 칸이 사라지고 달란트·출석·헌금이 따로 논다.
+   *            같은 이름의 교적이 하나뿐이면 [연결 고치기]로 계정·달란트·인증·출석·헌금 연결을 새 키로 옮긴다.
+   * · no_role: 주일학교 칸이 비어 있는데 달란트·인증 기록이 있다 → 이름을 눌러 수정에서 학년을 고른다.
+   * SQL 을 아직 안 돌렸으면(RPC 없음) 상자를 보이지 않는다. */
+  function linkCheckBox(panel, ms) {
+    var box = panel.querySelector('#gj_linkcheck'); if (!box) return;
+    WPF.call('ssLinkCheck').then(function (r) {
+      var rows = (r && r.rows) || [];
+      if (!rows.length) { box.innerHTML = ''; return; }
+      box.innerHTML = '<div style="background:#fff8e6;border:1px solid #f0e3bd;border-radius:8px;padding:8px 11px;font-size:.83rem;margin-bottom:8px">' +
+        '<b style="color:#8a6d1f">⚠ 계정 연결 점검 — ' + rows.length + '건</b>' +
+        '<p style="margin:4px 0 6px;color:#8a6d1f">홈페이지 계정이 교적과 이어지지 않으면 그 사람(특히 어린이)의 대시보드에서 QT·필사·미션 인증 칸이 사라지고, 달란트·출석·헌금이 따로 놀게 됩니다.</p>' +
+        rows.map(function (x, i) {
+          var cnt = '달란트 ' + (x.talents || 0) + ' · 인증 ' + (x.submissions || 0) + (x.offerings ? ' · 헌금 ' + x.offerings : '');
+          if (x.kind === 'no_role') {
+            return '<div style="padding:5px 0;border-top:1px dashed #f0e3bd"><a href="#" class="lc-name" data-key="' + esc(x.old_key) + '" style="color:var(--accent,#032257);font-weight:700">' + esc(x.name) + '</a> — 교적의 <b>주일학교</b> 칸이 비어 있습니다(' + cnt + '). 이름을 눌러 <b>수정</b>에서 어린이·중학생·고등학생 중 하나를 골라 주세요.</div>';
+          }
+          return '<div style="padding:5px 0;border-top:1px dashed #f0e3bd"><b>' + esc(x.name) + '</b> — 계정 키 <code>' + esc(x.old_key) + '</code> 로는 교적을 찾을 수 없습니다(' + cnt + '). ' +
+            (x.new_key
+              ? '교적 키 <code>' + esc(x.new_key) + '</code> 로 옮길 수 있어요. <button type="button" class="btn btn-solid lc-fix" data-i="' + i + '" style="padding:3px 11px;font-size:.78rem">연결 고치기</button>'
+              : '같은 이름의 교적이 없거나 여러 명이라 자동으로 고를 수 없습니다. 교적을 확인한 뒤 SQL Editor 에서 <code>select public.rekey_member(\'옛키\', \'새키\');</code> 로 이어 주세요.') +
+            '</div>';
+        }).join('') +
+        '<p class="fin-msg" id="lc_msg" style="margin:6px 0 0"></p></div>';
+      var msg = box.querySelector('#lc_msg');
+      Array.prototype.forEach.call(box.querySelectorAll('.lc-name'), function (a) {
+        a.onclick = function (e) { e.preventDefault(); var m = ms.filter(function (y) { return String(y['매칭키']) === a.dataset.key; })[0]; if (m) showDetail(m); };
+      });
+      Array.prototype.forEach.call(box.querySelectorAll('.lc-fix'), function (b) {
+        b.onclick = function () {
+          var x = rows[Number(b.dataset.i)]; if (!x) return;
+          if (!confirm(x.name + ' 님의 계정·달란트·인증·출석·헌금 연결을\n' + x.old_key + ' → ' + x.new_key + '\n로 옮길까요?')) return;
+          b.disabled = true; msg.style.color = '#7b8794'; msg.textContent = '옮기는 중…';
+          WPF.call('rekeyMember', { oldKey: x.old_key, newKey: x.new_key }).then(function (r) {
+            if (!r || !r.ok) throw new Error((r && r.error) || '실패');
+            msg.style.color = 'green';
+            msg.textContent = '✓ ' + x.name + ' 연결됨 — 계정 ' + r.links + ' · 달란트 ' + r.talents + ' · 인증 ' + r.submissions + ' · 출석 ' + r.attendance + ' · 헌금 ' + r.offerings;
+            setTimeout(function () { linkCheckBox(panel, ms); }, 1500);
+          }).catch(function (e) { b.disabled = false; msg.style.color = '#c0392b'; msg.textContent = '실패: ' + e.message; });
+        };
+      });
+    }).catch(function () { box.innerHTML = ''; });   // RPC 가 없으면(마이그레이션 미실행) 조용히 숨긴다
+  }
+
   /* ── 교적 명단 ── */
   var ALL = [];
   function renderMembers(panel) {
@@ -176,6 +222,7 @@ console.log('[gyojeok.js] v20260817gjdel');
       panel.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap"><b>교적 명단 (' + ms.length + '명)</b><input type="text" id="gj_search" placeholder="🔍 이름 검색" style="padding:7px 11px;border:1px solid #cdd7e3;border-radius:8px;font:inherit;flex:1;min-width:140px;max-width:260px"><span style="display:flex;gap:10px;align-items:center"><span style="color:var(--ink-soft);font-size:.85rem">부부 ' + Math.round(couples) + '쌍</span><button class="btn btn-line" id="gj_trash" style="padding:7px 12px;white-space:nowrap">🗑 삭제 보관함</button><button class="btn btn-solid" id="gj_add" style="padding:7px 14px;white-space:nowrap">＋ 교적 추가</button></span></div>' +
         '<p style="color:var(--ink-soft);font-size:.83rem;margin-bottom:8px">이름을 클릭하면 개인 신상을 볼 수 있습니다. 상세에서 <b>수정</b>·<b>삭제</b>할 수 있습니다.</p>' +
         (dupTotal ? '<p style="background:#fff8e6;border:1px solid #f0e3bd;color:#8a6d1f;border-radius:8px;padding:8px 11px;font-size:.83rem;margin-bottom:8px">⚠ 이름·생년월일이 똑같은 교적이 <b>' + dupTotal + '건</b> 있습니다(아래 ⚠ 표시). 같은 사람이 두 번 등록된 것이라면 하나를 삭제해 주세요.</p>' : '') +
+        '<div id="gj_linkcheck"></div>' +
         '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th>세대주</th><th>관계</th><th>배우자</th><th>그룹</th><th>직책</th><th>주일학교</th><th>휴대폰</th></tr></thead><tbody id="gj_tbody"></tbody></table></div></div>';
       var tbody = panel.querySelector('#gj_tbody');
       function draw(q) {
@@ -185,6 +232,7 @@ console.log('[gyojeok.js] v20260817gjdel');
         Array.prototype.forEach.call(tbody.querySelectorAll('.gj-name'), function (a) { a.onclick = function (e) { e.preventDefault(); var m = byRid(ms, a.dataset.rid); if (m) showDetail(m); }; });
       }
       draw('');
+      linkCheckBox(panel, ms);   // 계정 연결 점검(끊긴 어린이 계정 등) — 문제 없으면 아무것도 안 보인다
       panel.querySelector('#gj_search').addEventListener('input', function () { draw(this.value); });
       panel.querySelector('#gj_add').onclick = function () { showAddMember(panel); };
       panel.querySelector('#gj_trash').onclick = function () { showTrash(panel); };
