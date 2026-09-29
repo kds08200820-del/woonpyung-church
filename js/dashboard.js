@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260929off12 (헌금 그래프 테마 색, 작은 항목은 기타로)');
+console.log('[dashboard.js] v20260929att13 (출석 숫자에서 지각 칸 뺌)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -257,7 +257,7 @@ console.log('[dashboard.js] v20260929off12 (헌금 그래프 테마 색, 작은 
       '<div style="display:flex;justify-content:space-between;font-size:.78rem;color:#8a8a8a;margin-top:3px"><span>' + (isChild ? '올해 주일학교가 모인 ' : '') + unitWord + ' ' + st.days.length + '번 중 ' + st.came + '번 출석</span><span>' + esc(st.days[0].slice(5).replace('-', '/')) + '부터</span></div>' +
       attMonthChart(st, fromYm, toYm);
   }
-  /* 출석 숫자 칸(상세 보기 안) — 출석·결석·지각·연속 */
+  /* 출석 숫자 칸(상세 보기 안) — 출석·결석·연속 (지각 칸은 2026-09-29 뺌) */
   function attNumbers(st) {
     var cell = function (label, val, color) {
       return '<div style="flex:1;min-width:64px;background:#f7f5f0;border:1px solid #e6e3dd;border-radius:10px;padding:8px 6px;text-align:center">' +
@@ -265,7 +265,7 @@ console.log('[dashboard.js] v20260929off12 (헌금 그래프 테마 색, 작은 
     };
     return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">' +
       cell('출석', st.came + '번', '#032257') + cell('결석', st.absent + '번', st.absent ? '#4a4a4a' : '#8a8a8a') +
-      cell('지각', st.late + '번', st.late ? '#4a4a4a' : '#8a8a8a') + cell('연속 출석', st.streak + '주', 'var(--accent,#032257)') + '</div>';
+      cell('연속 출석', st.streak + '주', 'var(--accent,#032257)') + '</div>';
   }
   function attRateHead(st) {
     return '<span style="margin-left:auto;white-space:nowrap"><span style="font-size:.78rem;color:#8a8a8a">출석률 </span><span style="font-size:1.5rem;font-weight:800;color:' + attColor(st.rate) + '">' + st.rate + '%</span></span>';
