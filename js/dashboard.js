@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260929tcard9 (교사 어린이 기록 카드 정리, 모두의 성경 카드 뺌)');
+console.log('[dashboard.js] v20260929off10 (헌금 카드 맨 밑으로)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -120,11 +120,13 @@ console.log('[dashboard.js] v20260929tcard9 (교사 어린이 기록 카드 정�
       '<div id="myAttend" style="margin-bottom:22px;"></div>' +
       '<div id="ssDash"></div>' +
       '<div id="myEdu" style="margin-bottom:22px;"></div>' +
-      '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
       '<div id="myDocs" style="margin-bottom:22px;"></div>' +
       '<div id="familyTree" style="margin-bottom:22px;"></div>' +
       '<div id="kidsDash"></div>' +
       '<div id="teacherDash"></div>' +
+      /* 헌금은 맨 밑(2026-09-29 요청) */
+      '<div style="margin-top:32px;"></div>' +
+      '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
       '<p style="text-align:center;margin-top:14px;"><a class="btn btn-line" href="index.html#qt">이번 주 말씀·주보는 홈에서 보기 →</a></p>';
     loadWelcomeName(me);
     loadTodayQt(me);
