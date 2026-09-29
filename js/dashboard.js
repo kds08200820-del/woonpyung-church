@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260929tab11 (탭: 나의 신앙생활 / 자녀의 신앙생활 / 교사 생활)');
+console.log('[dashboard.js] v20260929off12 (헌금 그래프 테마 색, 작은 항목은 기타로)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1140,17 +1140,22 @@ console.log('[dashboard.js] v20260929tab11 (탭: 나의 신앙생활 / 자녀의
     show('all', tabs[0]);
   }
   function renderOfferingView(el, list, r, me, spouseNote) {
-    var PAL = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4', '#a855f7', '#eab308', '#f43f5e', '#0ea5e9'];
+    // 테마 색(남색·연남색·금색 계열) — 큰 항목 다섯은 제 색, 나머지는 회색 '기타'로 묶어 원그래프에 보인다(2026-09-29)
+    var PAL = ['#032257', '#4a6a9c', '#b89b5e', '#8fa3c4', '#d6c49a'], ETC = '#c8c5bf';
     var byAcc = {};
     list.forEach(function (o) { var a = o.account || '기타'; if (!byAcc[a]) byAcc[a] = { name: a, total: 0, count: 0 }; byAcc[a].total += Number(o.amount) || 0; byAcc[a].count++; });
     var accs = Object.keys(byAcc).map(function (k) { return byAcc[k]; }).sort(function (a, b) { return b.total - a.total; });
-    accs.forEach(function (a, i) { a.color = PAL[i % PAL.length]; });
+    accs.forEach(function (a, i) { a.color = i < PAL.length ? PAL[i] : ETC; });
+    // 원그래프·범례용: 다섯 항목 + 기타
+    var pie = accs.slice(0, PAL.length), rest = accs.slice(PAL.length);
+    if (rest.length === 1) pie.push(rest[0]);
+    else if (rest.length > 1) pie.push({ name: '기타 ' + rest.length + '개', total: rest.reduce(function (x, a) { return x + a.total; }, 0), color: ETC, etc: rest.map(function (a) { return a.name; }).join(', ') });
     var total = r.total || list.reduce(function (s, o) { return s + (Number(o.amount) || 0); }, 0);
     var ds = list.map(function (o) { return fmtDate(o.date); }).filter(Boolean).sort();
     var period = ds.length ? ds[0] + ' ~ ' + ds[ds.length - 1] : '';
     var hasGiver = list.some(function (o) { return o.giver && o.giver !== (me.memberName || ''); });
     var R = 54, C = 2 * Math.PI * R, off = 0;
-    var segs = accs.map(function (a) {
+    var segs = pie.map(function (a) {
       var len = (a.total / (total || 1)) * C;
       var s = '<circle r="' + R + '" cx="75" cy="75" fill="none" stroke="' + a.color + '" stroke-width="22" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 75 75)"></circle>';
       off += len; return s;
@@ -1159,14 +1164,14 @@ console.log('[dashboard.js] v20260929tab11 (탭: 나의 신앙생활 / 자녀의
       '<text x="75" y="70" text-anchor="middle" font-size="10" fill="#7b8794">총 헌금</text>' +
       '<text x="75" y="89" text-anchor="middle" font-size="12" font-weight="700" fill="#032257">' + won(total) + '</text></svg>';
     var legend = '<div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px;">' +
-      accs.map(function (a) { return '<div style="display:flex;align-items:center;gap:8px;font-size:.85rem;"><span style="width:11px;height:11px;border-radius:3px;background:' + a.color + ';flex:0 0 auto;"></span><span style="flex:1;">' + esc(a.name) + '</span><b style="font-variant-numeric:tabular-nums;">' + won(a.total) + '</b><span style="color:#9aa5b1;width:40px;text-align:right;">' + (total ? (a.total / total * 100).toFixed(0) : 0) + '%</span></div>'; }).join('') +
+      pie.map(function (a) { return '<div' + (a.etc ? ' title="' + esc(a.etc) + '"' : '') + ' style="display:flex;align-items:center;gap:8px;font-size:.85rem;"><span style="width:11px;height:11px;border-radius:3px;background:' + a.color + ';flex:0 0 auto;"></span><span style="flex:1;">' + esc(a.name) + '</span><b style="font-variant-numeric:tabular-nums;">' + won(a.total) + '</b><span style="color:#9aa5b1;width:40px;text-align:right;">' + (total ? (a.total / total * 100).toFixed(0) : 0) + '%</span></div>'; }).join('') +
       '</div>';
     var maxAcc = accs.length ? accs[0].total : 1;
     var byTab = '<table style="width:100%;border-collapse:collapse;font-size:.88rem;">' +
       accs.map(function (a) {
         var bar = (a.total / (maxAcc || 1) * 100).toFixed(1);
         return '<tr><td style="padding:7px 8px 7px 0;white-space:nowrap;"><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + a.color + ';margin-right:6px;"></span>' + esc(a.name) + '</td>' +
-          '<td style="width:44%;padding:7px 0;"><div style="background:#eef2f7;border-radius:5px;height:9px;overflow:hidden;"><div style="width:' + bar + '%;height:100%;background:' + a.color + ';"></div></div></td>' +
+          '<td style="width:44%;padding:7px 0;"><div style="background:#f0ede6;border-radius:5px;height:9px;overflow:hidden;"><div style="width:' + bar + '%;height:100%;background:' + a.color + ';"></div></div></td>' +
           '<td style="text-align:right;padding:7px 0 7px 8px;font-variant-numeric:tabular-nums;"><b>' + won(a.total) + '</b> <span style="color:#9aa5b1;">' + a.count + '건</span></td></tr>';
       }).join('') + '</table>';
     var sorted = list.slice().sort(function (a, b) { return String(fmtDate(b.date)).localeCompare(String(fmtDate(a.date))); });
@@ -1179,7 +1184,7 @@ console.log('[dashboard.js] v20260929tab11 (탭: 나의 신앙생활 / 자녀의
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">' +
         statCard('총 헌금액', won(total) + '원', '#032257') +
         statCard('헌금 건수', list.length + '건', '#4a6a9c') +
-        statCard('헌금 항목', accs.length + '개', '#3b82f6') +
+        statCard('헌금 항목', accs.length + '개', '#9c8350') +
       '</div>' +
       '<div class="form-card" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;justify-content:center;margin-bottom:14px;padding:18px;">' + donut + legend + '</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
