@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260929off10 (헌금 카드 맨 밑으로)');
+console.log('[dashboard.js] v20260929tab11 (탭: 나의 신앙생활 / 자녀의 신앙생활 / 교사 생활)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -106,14 +106,13 @@ console.log('[dashboard.js] v20260929off10 (헌금 카드 맨 밑으로)');
   }
 
   function renderDashboard(me) {
-    var grp = GRP_STYLE;
     root.innerHTML =
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;">' +
       '<h2 id="dashWelcome" style="margin:0;font-size:1.15rem;color:var(--accent,#032257);">' + esc(me.memberName || '') + '님, 환영합니다</h2>' +
-      '<div id="dashQuick" style="display:flex;gap:14px;flex-wrap:wrap;"><span id="qKids"></span><span id="qTeach"></span></div>' +
       '</div>' +
-      /* 대시보드는 '나' 를 돌보는 곳 — 나(신앙·교회생활) → 자녀들의 교회생활 → 나의 교사생활 순서(2026-09-29) */
-      '<h2 style="' + grp + 'margin-top:6px;">나의 신앙·교회생활</h2>' +
+      /* 대시보드는 '나' 를 돌보는 곳 — 탭: 나의 신앙생활 / 자녀의 신앙생활 / 교사 생활 (자녀·교사 탭은 해당될 때만, 2026-09-29) */
+      '<div id="dashTabs"></div>' +
+      '<div class="dash-pane" data-pane="me">' +
       '<div id="dashQt" style="margin-bottom:22px;"></div>' +
       '<div id="bibleRead" style="margin-bottom:22px;"></div>' +
       '<div id="qtProgress" style="margin-bottom:22px;"></div>' +
@@ -122,12 +121,13 @@ console.log('[dashboard.js] v20260929off10 (헌금 카드 맨 밑으로)');
       '<div id="myEdu" style="margin-bottom:22px;"></div>' +
       '<div id="myDocs" style="margin-bottom:22px;"></div>' +
       '<div id="familyTree" style="margin-bottom:22px;"></div>' +
-      '<div id="kidsDash"></div>' +
-      '<div id="teacherDash"></div>' +
       /* 헌금은 맨 밑(2026-09-29 요청) */
-      '<div style="margin-top:32px;"></div>' +
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
+      '</div>' +
+      '<div class="dash-pane" data-pane="kids" style="display:none"><div id="kidsDash"></div></div>' +
+      '<div class="dash-pane" data-pane="teach" style="display:none"><div id="teacherDash"></div></div>' +
       '<p style="text-align:center;margin-top:14px;"><a class="btn btn-line" href="index.html#qt">이번 주 말씀·주보는 홈에서 보기 →</a></p>';
+    dashTabs();
     loadWelcomeName(me);
     loadTodayQt(me);
     loadBibleReading(me);
@@ -142,6 +142,39 @@ console.log('[dashboard.js] v20260929off10 (헌금 카드 맨 밑으로)');
   }
 
   var GRP_STYLE = 'font-family:"Noto Serif KR",serif;font-size:1.05rem;font-weight:700;color:var(--accent,#032257);margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent,#032257);';
+  /* ── 대시보드 탭 — 나의 신앙생활 / 자녀의 신앙생활 / 교사 생활 ──
+   * 자녀 탭은 같은 세대에 주일학교 자녀가 있을 때, 교사 탭은 교사단일 때만 생긴다(읽은 뒤 dashTabAdd).
+   * 고른 탭은 이 기기에 기억해 두었다가 다음에 들어오면 그 탭부터 연다. */
+  var DASH_TABS = [{ id: 'me', label: '나의 신앙생활' }], DASH_CUR = 'me', DASH_KEY = 'wpc-dash-tab';
+  var DASH_ORDER = { me: 0, kids: 1, teach: 2 };
+  function dashSaved() { try { return localStorage.getItem(DASH_KEY) || ''; } catch (e) { return ''; } }
+  function dashTabs() {
+    var bar = document.getElementById('dashTabs'); if (!bar) return;
+    var many = DASH_TABS.length > 1;
+    bar.innerHTML = '<div role="tablist" style="display:flex;align-items:flex-end;gap:' + (many ? '4px' : '0') + ';margin:32px 0 18px;border-bottom:2px solid var(--accent,#032257);">' +
+      DASH_TABS.map(function (t) {
+        var on = t.id === DASH_CUR;
+        return '<button type="button" role="tab" aria-selected="' + on + '" class="dash-tab" data-tab="' + t.id + '" style="background:none;border:0;padding:0 0 8px;margin:0 0 -2px;white-space:nowrap;cursor:' + (many ? 'pointer' : 'default') + ';' +
+          (many ? 'flex:1;text-align:center;font-size:clamp(.86rem,3.7vw,1.05rem);' : 'font-size:1.05rem;') +
+          'font-family:\'Noto Serif KR\',serif;font-weight:700;color:' + (on ? 'var(--accent,#032257)' : '#8a8a8a') + ';border-bottom:3px solid ' + (on && many ? 'var(--accent,#032257)' : 'transparent') + ';">' + t.label + '</button>';
+      }).join('') + '</div>';
+    Array.prototype.forEach.call(bar.querySelectorAll('.dash-tab'), function (b) { b.onclick = function () { dashShow(b.dataset.tab, true); }; });
+  }
+  function dashShow(id, remember) {
+    if (!DASH_TABS.some(function (t) { return t.id === id; })) id = 'me';
+    DASH_CUR = id;
+    Array.prototype.forEach.call(document.querySelectorAll('.dash-pane'), function (p) { p.style.display = p.dataset.pane === id ? '' : 'none'; });
+    if (remember) { try { localStorage.setItem(DASH_KEY, id); } catch (e) { } }
+    dashTabs();
+  }
+  function dashTabAdd(id, label) {
+    if (DASH_TABS.some(function (t) { return t.id === id; })) return;
+    DASH_TABS.push({ id: id, label: label });
+    DASH_TABS.sort(function (x, y) { return DASH_ORDER[x.id] - DASH_ORDER[y.id]; });
+    var want = /teacher/.test(location.hash) ? 'teach' : /kids/.test(location.hash) ? 'kids' : dashSaved();
+    if (want === id) dashShow(id, false); else dashTabs();
+  }
+
   /* 주일학교 권한(ss_context) — 출석·주일학교·자녀 화면이 함께 쓰므로 한 번만 읽는다 */
   var ssCtxP = null;
   function ssContext() {
@@ -1357,10 +1390,9 @@ console.log('[dashboard.js] v20260929off10 (헌금 카드 맨 밑으로)');
     ssContext().then(function (ctx) {
       if (ctx.isTeacher) {
         var tb = document.getElementById('teacherDash');
-        tb.innerHTML = '<h2 style="' + GRP_STYLE + '">나의 교사생활</h2><div id="teacherBody" style="margin-bottom:22px;"></div>';
+        tb.innerHTML = '<div id="teacherBody" style="margin-bottom:22px;"></div>';
         renderSsTeacher(tb.querySelector('#teacherBody'), ctx, me);
-        var qt = document.getElementById('qTeach');
-        if (qt) qt.innerHTML = '<a href="#teacherDash" style="display:inline-block;margin-top:8px;font-size:.84rem;color:var(--accent,#032257);font-weight:600;">나의 교사생활로 ↓</a>';
+        dashTabAdd('teach', '교사 생활');
       }
       else if (isSsStudent(ctx)) {
         el.style.marginBottom = '22px';
@@ -2407,12 +2439,17 @@ console.log('[dashboard.js] v20260929off10 (헌금 카드 맨 밑으로)');
       kids = kids || [];
       if (!kids.length) {
         // 자녀가 0명 — 교적상 자녀는 있는데 주일학교와 연결이 안 됐을 수 있으므로 무엇이 빠졌는지 안내(2026-08-26)
-        ssContext().then(function (ctx) { if (!isSsStudent(ctx) && !ctx.isTeacher) { box.innerHTML = '<div id="ssKidHint" style="margin-top:22px;"></div>'; ssGuardianHint(box.querySelector('#ssKidHint'), me); } });
+        ssContext().then(function (ctx) {
+          if (isSsStudent(ctx) || ctx.isTeacher) return;
+          var fam = document.getElementById('familyTree'); if (!fam) return;
+          var hint = document.createElement('div'); hint.style.marginBottom = '22px';
+          fam.parentNode.insertBefore(hint, fam.nextSibling);
+          ssGuardianHint(hint, me);
+        });
         return;
       }
-      box.innerHTML = '<h2 style="' + GRP_STYLE + '">자녀들의 교회생활</h2><div id="kidsBody"></div>';
-      var q = document.getElementById('qKids');
-      if (q) q.innerHTML = '<a href="#kidsDash" style="display:inline-block;margin-top:8px;font-size:.84rem;color:var(--accent,#032257);font-weight:600;">자녀들의 교회생활로 ↓</a>';
+      box.innerHTML = '<div id="kidsBody"></div>';
+      dashTabAdd('kids', '자녀의 신앙생활');
       renderKids(box.querySelector('#kidsBody'), me, kids);
     });
   }
