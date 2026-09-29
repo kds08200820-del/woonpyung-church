@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260929att13 (출석 숫자에서 지각 칸 뺌)');
+console.log('[dashboard.js] v20260929att14 (출석 통계를 교사 생활 탭으로)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -325,7 +325,6 @@ console.log('[dashboard.js] v20260929att13 (출석 숫자에서 지각 칸 뺌)'
       if (!rows) return;
       var body = people.map(function (x) { return attPerson(x.name, rows.filter(function (r) { return r.member_key === x.key; })); }).join('');
       card('<p style="margin:0 0 4px;font-size:.82rem;color:#8a8a8a">예배 시간에 홈페이지 첫 화면의 <b>오늘의 예배</b> 단추를 누르면 출석이 됩니다.' + (people.length > 1 ? ' 나와 배우자의 출석입니다.' : '') + '</p>' + body);
-      loadAttendanceAdmin(box);
     }).catch(function () { card('<p class="qt-empty" style="margin:0">출석을 읽지 못했습니다.</p>'); });
   }
   /* 관리자: 최근 5주 예배별 출석 수 */
@@ -342,7 +341,7 @@ console.log('[dashboard.js] v20260929att13 (출석 숫자에서 지각 칸 뺌)'
         var cells = byDate[d].map(function (r) { return esc(r.service) + ' <b>' + r.total + '</b>명'; }).join(' · ');
         return '<tr><td style="padding:4px 8px;white-space:nowrap">' + esc(d.slice(5).replace('-', '/')) + '</td><td style="padding:4px 8px">' + cells + '</td></tr>';
       }).join('');
-      var div = document.createElement('div'); div.className = 'form-card'; div.style.cssText = 'padding:16px 18px;margin-top:12px';
+      var div = document.createElement('div'); div.className = 'form-card'; div.style.cssText = 'padding:16px 18px;';
       div.innerHTML = '<h3 style="margin:0 0 8px;font-size:1rem;color:var(--accent,#032257);">출석 통계 <span style="font-size:.78rem;color:#8a8478;font-weight:400">관리자 · 최근 5주</span></h3>' +
         (html ? '<table style="width:100%;border-collapse:collapse;font-size:.9rem">' + html + '</table>' : '<p class="qt-empty" style="margin:0">아직 출석 기록이 없습니다.</p>');
       box.appendChild(div);
@@ -364,7 +363,7 @@ console.log('[dashboard.js] v20260929att13 (출석 숫자에서 지각 칸 뺌)'
       var avg = Math.round(rows.length / held * 10) / 10;
       var trs = list.map(function (k) {
         var pct = Math.round(k.n / held * 100);
-        return '<tr><td style="padding:4px 8px">' + esc(k.name) + '</td><td style="padding:4px 8px;text-align:right">' + k.n + '/' + held + '</td>' +
+        return '<tr><td style="padding:4px 8px;white-space:nowrap">' + esc(k.name) + '</td><td style="padding:4px 8px;text-align:right;white-space:nowrap">' + k.n + '/' + held + '</td>' +
           '<td style="padding:4px 8px;width:45%"><div style="background:#eee7da;border-radius:6px;height:10px"><div style="width:' + pct + '%;height:10px;border-radius:6px;background:#032257"></div></div></td>' +
           '<td style="padding:4px 8px;text-align:right;font-weight:700">' + pct + '%</td></tr>';
       }).join('');
@@ -1395,8 +1394,10 @@ console.log('[dashboard.js] v20260929att13 (출석 숫자에서 지각 칸 뺌)'
     ssContext().then(function (ctx) {
       if (ctx.isTeacher) {
         var tb = document.getElementById('teacherDash');
-        tb.innerHTML = '<div id="teacherBody" style="margin-bottom:22px;"></div>';
+        tb.innerHTML = '<div id="teacherBody" style="margin-bottom:22px;"></div><div id="attAdminBox" style="margin-bottom:22px;"></div>';
         renderSsTeacher(tb.querySelector('#teacherBody'), ctx, me);
+        /* 출석 통계(관리자) — 나의 출석에서 교사 생활 탭으로 옮김(2026-09-29). 관리자는 서버에서 교사단으로 치므로 늘 이 탭이 있다 */
+        loadAttendanceAdmin(tb.querySelector('#attAdminBox'));
         dashTabAdd('teach', '교사 생활');
       }
       else if (isSsStudent(ctx)) {
