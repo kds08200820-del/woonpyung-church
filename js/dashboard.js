@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260929plain7 (이모지·그라데이션 뺌, 테마 색)');
+console.log('[dashboard.js] v20260929tcard9 (교사 어린이 기록 카드 정리, 모두의 성경 카드 뺌)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -114,7 +114,6 @@ console.log('[dashboard.js] v20260929plain7 (이모지·그라데이션 뺌, 테
       '</div>' +
       /* 대시보드는 '나' 를 돌보는 곳 — 나(신앙·교회생활) → 자녀들의 교회생활 → 나의 교사생활 순서(2026-09-29) */
       '<h2 style="' + grp + 'margin-top:6px;">나의 신앙·교회생활</h2>' +
-      '<div id="moduApp" style="margin-bottom:22px;"></div>' +
       '<div id="dashQt" style="margin-bottom:22px;"></div>' +
       '<div id="bibleRead" style="margin-bottom:22px;"></div>' +
       '<div id="qtProgress" style="margin-bottom:22px;"></div>' +
@@ -128,7 +127,6 @@ console.log('[dashboard.js] v20260929plain7 (이모지·그라데이션 뺌, 테
       '<div id="teacherDash"></div>' +
       '<p style="text-align:center;margin-top:14px;"><a class="btn btn-line" href="index.html#qt">이번 주 말씀·주보는 홈에서 보기 →</a></p>';
     loadWelcomeName(me);
-    loadModuApp(me);
     loadTodayQt(me);
     loadBibleReading(me);
     loadQtProgress(me);
@@ -341,24 +339,6 @@ console.log('[dashboard.js] v20260929plain7 (이모지·그라데이션 뺌, 테
         '<table style="width:100%;border-collapse:collapse;font-size:.9rem">' + trs + '</table>';
       box.appendChild(div);
     }).catch(function () {});
-  }
-
-  /* ================= 2026 모두의 성경 (모바일 웹앱) ================= */
-  function loadModuApp(me) {
-    var box = document.getElementById('moduApp'); if (!box) return;
-    var ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
-    var how = ios ? 'Safari 로 열어 <b>공유()</b> → <b>홈 화면에 추가</b>를 누르면 앱처럼 설치됩니다.'
-            : android ? '열린 뒤 <b>설정 → 홈 화면에 설치</b>(또는 Chrome 메뉴의 <b>앱 설치</b>)를 누르면 앱처럼 설치됩니다.'
-            : '휴대폰에서 이 페이지를 열어 설치하세요. PC 에서는 브라우저로 그대로 볼 수 있습니다.';
-    box.innerHTML = '<div class="form-card" style="padding:16px 18px;">' +
-      '<h3 style="margin:0 0 8px;font-size:1rem;color:var(--accent,#032257);">2026 모두의 성경 <span id="moduVer" style="font-weight:400;font-size:.78rem;color:#7b8794"></span></h3>' +
-      '<p style="margin:0 0 10px;font-size:.86rem;line-height:1.6;color:#4b5563;">개역개정·역본 대조·원어 낱말 사전·주석·성경지도·메모장·형광펜을 휴대폰에서 씁니다. 정회원만 열 수 있고, 지금 로그인한 계정으로 바로 들어갑니다.</p>' +
-      '<p style="margin:0 0 12px;font-size:.8rem;line-height:1.6;color:#7b8794;">' + how + '</p>' +
-      '<a class="btn btn-solid" href="modu/" style="padding:8px 18px;">모두의 성경 열기 →</a></div>';
-    brFetch('modu_release?select=version,notes&enabled=eq.true&order=updated_at.desc&limit=1').then(function (rows) {
-      var r = rows && rows[0], el = document.getElementById('moduVer');
-      if (r && el) el.textContent = '판 ' + r.version;
-    }).catch(function () { });
   }
 
   /* ================= 나의 성경읽기 (구속사 365 · 우리말성경) ================= */
@@ -1886,43 +1866,52 @@ console.log('[dashboard.js] v20260929plain7 (이모지·그라데이션 뺌, 테
       var byReason = {};
       tal.forEach(function (r) { var k = r.reason || '(내용 없음)'; if (!byReason[k]) byReason[k] = { cnt: 0, sum: 0 }; byReason[k].cnt++; byReason[k].sum += Number(r.amount) || 0; });
       var reasons = Object.keys(byReason).sort(function (a, b) { return byReason[b].cnt - byReason[a].cnt; });
+      // 자녀 화면과 같은 방식 — 처음엔 출석·달란트 그래프와 인증 횟수 한 줄, 자세한 표는 상세 보기 안(2026-09-29)
+      var sec = function (title, note, right) {
+        return '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;border-top:1px solid #e6e3dd;padding-top:12px;margin-top:12px"><b style="font-size:.95rem;color:var(--accent,#032257)">' + title + '</b>' +
+          (note ? '<span style="font-size:.76rem;color:#8a8a8a">' + note + '</span>' : '') + (right || '') + '</div>';
+      };
+      var sub = function (t) { return '<b style="font-size:.86rem;color:var(--accent,#032257);display:block;margin:14px 0 4px">' + t + '</b>'; };
+      var empty = function (t) { return '<p style="color:#9aa5b1;font-size:.84rem;margin:0">' + t + '</p>'; };
       box.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
         '<h3 style="margin:0;color:var(--accent,#032257);font-size:1.05rem;">' + esc(s.name) + ' <span style="font-size:.8rem;color:#7b8794;font-weight:400;">' + esc(String(s.birth || '').slice(0, 10)) + '</span></h3>' +
         '<button type="button" class="btn btn-line" id="scdClose" style="padding:4px 12px;">닫기</button></div>' +
-        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">' +
-        statCard('올해 출석률', att.rate + '%', attColor(att.rate)) +
-        statCard('달란트', won(total), '#9c8350') +
-        statCard('QT', qt.all + '회', '#2b5797') +
-        statCard('필사', pil.all + '회', '#4a6a9c') +
-        '</div>' +
-        '<div style="background:#fafbfd;border:1px solid #e8edf3;border-radius:10px;padding:12px;margin-bottom:12px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">' +
-        '<b style="font-size:.84rem;color:var(--accent,#032257);">' + yr + '년 주일학교 출석 (1월부터)</b>' +
-        '<span style="font-size:.78rem;color:#7b8794;">이번 달 QT ' + qt.month + '회 · 필사 ' + pil.month + '회</span></div>' +
-        attGraph(att, true, '주일') + attNumbers(att) +
-        '<p style="font-size:.72rem;color:#9aa5b1;margin:6px 0 0;">‘출석’·‘출석(지각)’ 달란트를 준 날이 출석이고, 모인 날은 그날 어린이 한 명이라도 출석한 날입니다. 부모·어린이의 ‘나의 출석’과 같은 숫자입니다.</p></div>' +
+        // 출석
+        sec('올해 출석', '1월부터', attRateHead(att)) + attGraph(att, true, '주일') +
+        // 달란트
+        sec('달란트', '', '<span style="margin-left:auto;white-space:nowrap"><span style="font-size:.78rem;color:#8a8a8a">모은 달란트 </span><span style="font-size:1.5rem;font-weight:800;color:#9c8350">' + won(total) + '</span></span>') +
+        talentGraph(tal) +
+        // 인증 — 숫자 한 줄
+        sec('인증', '', '<span style="margin-left:auto;font-size:.86rem;color:#4a4a4a">QT <b>' + qt.all + '</b>회 · 필사 <b>' + pil.all + '</b>회 <span style="color:#8a8a8a">(이번 달 ' + qt.month + ' · ' + pil.month + ')</span></span>') +
+        // 교사 작업 단추는 늘 보이게
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">' +
+        '<button type="button" class="btn btn-solid" id="scdLedger" style="padding:7px 14px;">달란트 내역·지급</button>' +
+        '<button type="button" class="btn btn-line" id="scdItems" style="padding:7px 14px;">항목 관리</button></div>' +
+        '<details style="margin-top:14px;border-top:1px solid #e6e3dd;padding-top:10px">' +
+        '<summary style="cursor:pointer;font-size:.9rem;color:var(--accent,#032257);font-weight:700">상세 보기 — 출석 횟수 · 항목별 달란트 · 달란트 기록 · 최근 인증</summary>' +
+        sub('출석 횟수 · 날짜') +
+        (att.days.length ? attNumbers(att) + attDetail(attRows) : empty('아직 출석 기록이 없습니다.')) +
+        '<p style="font-size:.72rem;color:#9aa5b1;margin:6px 0 0;">‘출석’·‘출석(지각)’ 달란트를 준 날이 출석이고, 모인 날은 그날 어린이 한 명이라도 출석한 날입니다. 부모·어린이 화면과 같은 숫자입니다.</p>' +
+        sub('항목별 달란트') +
         (reasons.length ?
-          '<b style="font-size:.84rem;color:var(--accent,#032257);display:block;margin-bottom:6px;">항목별 기록</b>' +
-          '<div style="overflow:auto;max-height:220px;margin-bottom:12px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.84rem;">' +
+          '<div style="overflow:auto;max-height:220px;"><table class="board-table" style="width:100%;border-collapse:collapse;font-size:.84rem;">' +
           '<thead><tr style="background:#f5f8fc;"><th style="text-align:left;padding:6px 8px;">항목</th><th style="text-align:right;padding:6px 8px;">횟수</th><th style="text-align:right;padding:6px 8px;">달란트 합계</th></tr></thead><tbody>' +
           reasons.map(function (k) {
             var g = byReason[k];
             return '<tr><td style="padding:5px 8px;">' + esc(k) + '</td><td style="padding:5px 8px;text-align:right;">' + g.cnt + '회</td><td style="padding:5px 8px;text-align:right;font-weight:700;color:' + (g.sum < 0 ? '#c0392b' : '#4a6a9c') + ';">' + (g.sum > 0 ? '+' : '') + won(g.sum) + '</td></tr>';
-          }).join('') + '</tbody></table></div>' :
-          '<p style="color:#9aa5b1;font-size:.84rem;margin-bottom:12px;">아직 기록이 없습니다.</p>') +
+          }).join('') + '</tbody></table></div>' : empty('아직 기록이 없습니다.')) +
+        sub('달란트 기록') + talentTable(tal) +
+        sub('최근 인증') +
         (certs.length ?
-          '<b style="font-size:.84rem;color:var(--accent,#032257);display:block;margin-bottom:6px;">최근 인증</b>' +
-          '<div style="overflow:auto;max-height:180px;margin-bottom:12px;">' +
+          '<div style="overflow:auto;max-height:180px;">' +
           certs.slice(0, 10).map(function (r) {
             return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 2px;border-bottom:1px dashed #eef1f5;font-size:.82rem;">' +
               '<span>' + certPill(r.stype) + ' <span style="color:#7b8794;">' + esc(r.sub_date) + '</span></span>' +
               '<span>' + ((r.liked_by || []).length ? '<span style="color:#4a6a9c;">좋아요 ' + (r.liked_by || []).length + '</span> ' : '') +
               (r.confirmed_by ? '<span style="color:#4a6a9c;font-weight:700;">✓ 확인</span>' : '<span style="color:#9aa5b1;">대기</span>') + '</span></div>';
-          }).join('') + '</div>' : '') +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<button type="button" class="btn btn-solid" id="scdLedger" style="padding:7px 14px;">달란트 내역·지급</button>' +
-        '<button type="button" class="btn btn-line" id="scdItems" style="padding:7px 14px;">항목 관리</button></div>';
+          }).join('') + '</div>' : empty('아직 올린 인증이 없습니다.')) +
+        '</details>';
       box.querySelector('#scdClose').onclick = close;
       box.querySelector('#scdLedger').onclick = function () { close(); ssTalentModal(el, ctx, me, s); };
       box.querySelector('#scdItems').onclick = function () { ssItemManager(); };
