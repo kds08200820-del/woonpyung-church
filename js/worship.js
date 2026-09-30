@@ -100,7 +100,7 @@
       if (!s || date <= todayStr) return Promise.resolve(null);
       return isAdmin().then(function (ok) {
         if (!ok) return null;
-        return fetch(window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/sermons?select=sermon_date,service,title,scripture,hymns,gyodok,preacher,worship_order' + svIn, { headers: sbHeaders() })
+        return fetch(window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/sermons?select=sermon_date,service,title,scripture,hymns,gyodok,preacher,summary,worship_order' + svIn, { headers: sbHeaders() })
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (rows) {
             return (rows || []).map(function (r) {   /* worship_order 에서 찬양 자리만 골라 뷰의 songs 와 같은 모양으로 (worship_songs_of 와 같은 규칙) */
@@ -113,7 +113,8 @@
       }).catch(function () { return null; });
     }
     var hd = { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (s ? s.token : window.SUPABASE_ANON_KEY) } };
-    return fetch(u.replace(',songs', ',songs,conti'), hd)   /* conti = 설교 매니저의 예배 순서 콘티 (20260929_1400_worship_conti.sql) — SQL 실행 전이면 conti 없이 다시 */
+    return fetch(u.replace(',songs', ',songs,conti,summary'), hd)   /* summary = 말씀 블록의 설교 요약 (20260930_1100_worship_summary.sql) — SQL 실행 전이면 빼고 다시 */
+      .then(function (r) { return r.ok ? r : fetch(u.replace(',songs', ',songs,conti'), hd); })   /* conti = 설교 매니저의 예배 순서 콘티 (20260929_1400_worship_conti.sql) — SQL 실행 전이면 conti 없이 다시 */
       .then(function (r) { return r.ok ? r : fetch(u, hd); })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (rows) { return rows && rows.length ? rows : direct(); })
@@ -124,7 +125,7 @@
         services.forEach(function (sv) {
           (rows || []).filter(function (r) { return r.service === sv; }).forEach(function (r) {
             if (!pick) { pick = Object.assign({}, r); return; }
-            ['title', 'scripture', 'hymns', 'gyodok', 'preacher', 'songs', 'conti'].forEach(function (f) {
+            ['title', 'scripture', 'hymns', 'gyodok', 'preacher', 'songs', 'conti', 'summary'].forEach(function (f) {
               var v = pick[f]; if (v == null || v === '' || (Array.isArray(v) && !v.length)) pick[f] = r[f];
             });
           });
@@ -148,7 +149,7 @@
       }
       else if (/^(교독|성시교독)/.test(nb)) { var g = gyodokNo(e.detail || rec.gyodok); if (g) out.push({ type: 'gyodok', head: '성시교독', no: g, sub: String(e.detail || rec.gyodok || '').replace(/^\d+\.?\s*/, '') }); }
       else if (/^(성경|본문)/.test(nb)) { if (ref) { out.push({ type: 'bible', head: '성경봉독', ref: ref }); hasBible = true; } }
-      else if (/^말씀/.test(nb)) { if (ref && !hasBible) { out.push({ type: 'bible', head: '성경봉독', ref: ref }); hasBible = true; } out.push({ type: 'sermon', head: '말씀', title: title || '', ref: ref || '', who: who || '', quote: '' }); }
+      else if (/^말씀/.test(nb)) { if (ref && !hasBible) { out.push({ type: 'bible', head: '성경봉독', ref: ref }); hasBible = true; } out.push({ type: 'sermon', head: '말씀', title: title || '', ref: ref || '', who: who || '', quote: '', summary: rec.summary || null }); }
       else if (/주기도/.test(nb)) out.push({ type: 'lord', head: '주기도문' });
       else if (/사도신경|신앙고백/.test(nb)) out.push({ type: 'creed', head: '신앙고백' });
       else out.push({ type: 'text', head: lb, lines: [lb], big: true });
@@ -168,7 +169,7 @@
     }
     if (ref) slides.push({ type: 'bible', head: '성경 본문', ref: ref });
     if (SGm['성가대 찬양']) [].push.apply(slides, joySlides('성가대 찬양', [], SGm['성가대 찬양'].jnos, SGm['성가대 찬양'].items));
-    slides.push({ type: 'sermon', head: '말씀', title: title || '', ref: ref || '', who: who || '', quote: '' });
+    slides.push({ type: 'sermon', head: '말씀', title: title || '', ref: ref || '', who: who || '', quote: '', summary: (rec && rec.summary) || null });
   }
   function dateLabel(d) { var m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return String(d); var dt = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return (+m[2]) + '월 ' + (+m[3]) + '일 (' + DOWK[dt.getUTCDay()] + ')'; }
 
@@ -683,6 +684,10 @@
   }
   /* 홈페이지 '이번 주 말씀'의 설교 요약(주보 summary: heading·sectionTitle·points[{lead,text}]·apply) */
   function summaryHtml(sm) {
+    if (typeof sm === 'string') {   /* 새벽·수요기도회: 설교 매니저 '말씀' 블록에 적은 설교 요약(글) — 빈 줄·줄바꿈은 문단으로 (2026-09-30) */
+      var ps = sm.replace(/\r/g, '').split(/\n\s*\n/).map(function (x) { return x.trim(); }).filter(Boolean);
+      return ps.length ? '<div class="ws-sum"><div class="ws-sum-t">말씀 요약</div><div class="ws-sum-txt">' + ps.map(function (x) { return '<p>' + esc(x).replace(/\n/g, '<br>') + '</p>'; }).join('') + '</div></div>' : '';
+    }
     if (!sm || !(sm.points || []).length) return '';
     return '<div class="ws-sum"><div class="ws-sum-t">' + esc(sm.sectionTitle || '말씀 요약') + '</div>' +
       (sm.points || []).map(function (p, i) { return '<div class="ws-sum-p"><div class="ws-sum-lead"><span class="ws-sum-n">' + (i + 1) + '</span>' + esc(p.lead || '') + '</div><p>' + esc(p.text || '') + '</p></div>'; }).join('') +

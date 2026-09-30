@@ -4298,11 +4298,12 @@ console.log('[affairs.js] v20260923lic');
         // QT 함께 만들기·키워드·미리보기 요약: 화면에서 뺌(2026-09-29 담임목사 지시) — 값은 그대로 저장되고, QT 는 예배 종류(매일 QT·새벽기도)에 따라 저절로 켜진다
         '<div class="af-field se-hide-worship" style="display:none"><label>QT</label><label class="sed-qt" id="se_qt_lbl"><input type="checkbox" id="se_qt_toggle" style="width:16px;height:16px;cursor:pointer;accent-color:#185abd;margin:0;flex:none">함께 만들기</label></div>' +
         '<div class="af-field se-hide-worship" style="display:none"><label>' + ic('tag') + '키워드 <span style="font-weight:400">(최대 3개)</span></label><input type="text" id="se_keywords" value="' + esc(rec.keywords || '') + '" placeholder="쉼표로 구분"></div>' +
-        '<div class="af-field se-hide-worship" style="display:none"><label>' + ic('pencil') + '미리보기 요약</label><textarea id="se_summary" maxlength="500" placeholder="목록·카드 하단에 노출 (최대 500자, 2줄까지 표시)" style="min-height:74px">' + esc(rec.summary || '') + '</textarea></div>' +
+        // 요약(sermons.summary)은 예배 순서(콘티)의 '말씀' 블록을 누르면 펼쳐지는 칸에서 적는다 — 이 숨은 칸이 저장 값을 들고 있다 (2026-09-30)
+        '<div class="af-field se-hide-worship" style="display:none"><label>' + ic('pencil') + '설교 요약</label><textarea id="se_summary" maxlength="2000" style="min-height:74px">' + esc(rec.summary || '') + '</textarea></div>' +
         // ── 예배 찬양: 기쁨으로 찬양(예배 전 찬양·입례송·성가곡) + 새찬송가 — 오늘의 예배에 자동으로 들어간다 (2026-09-27)
         // ── 예배 순서(콘티): 블록을 끌어 순서를 짜면 오늘의 예배가 그 순서대로 (수요·새벽·금요 등, 주일 낮 예배는 주보대로) (2026-09-29)
         '<div class="af-field" id="bd_conti_field" style="display:none"><label>🧩 예배 순서 <span style="font-weight:400">(콘티)</span></label>' +
-        '<div style="font-size:.72rem;color:#9aa5b1;margin:-2px 0 6px">블록을 ≡ 로 끌어 순서를 바꾸고, 누르면 곡·교독문을 고릅니다. 이 순서대로 오늘의 예배에 나옵니다.</div>' +
+        '<div style="font-size:.72rem;color:#9aa5b1;margin:-2px 0 6px">블록을 ≡ 로 끌어 순서를 바꾸고, 누르면 곡·교독문을 고릅니다. 말씀을 누르면 설교 요약을 적습니다. 이 순서대로 오늘의 예배에 나옵니다.</div>' +
         '<div id="bd_conti"></div>' +
         '<div id="bd_conti_add" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><button type="button" class="btn btn-line" id="bd_conti_prev" style="padding:5px 4px;font-size:.72rem" title="같은 예배의 지난 기록 순서를 가져옵니다 — 📌 고정한 블록은 곡까지">⟲ 지난 순서로</button>' +
@@ -4627,23 +4628,43 @@ console.log('[affairs.js] v20260923lic');
         return '';
       }
       var ctSortable = null;
+      // '말씀' 블록을 누르면 그 블록 안에 설교 요약 칸이 펼쳐진다 — 값은 숨은 #se_summary(sermons.summary)에 그대로 (2026-09-30)
+      var ctSumIt = null, SUM_MAX = 2000;
+      function sumVal() { var h = ov.querySelector('#se_summary'); return h ? h.value : ''; }
       function contiOn() { var sv = (ov.querySelector('#se_service') || {}).value || ''; return !worshipMode && sv && sv !== '주일 낮 예배'; }
       function paintConti() {
         var f = ov.querySelector('#bd_conti_field'), sf = ov.querySelector('#bd_songs_field'), box = ov.querySelector('#bd_conti'); if (!f || !box) return;
         var on = contiOn(); f.style.display = on ? '' : 'none'; if (sf) sf.style.display = on ? 'none' : '';
         if (!on) return;
+        if (order.indexOf(ctSumIt) < 0) ctSumIt = null;   /* 펼쳐 둔 말씀 블록을 뺐으면 접는다 */
         box.innerHTML = order.length ? order.map(function (it, i) {
           var song = !!joySlotKey(it.label) || it.label === '찬송';
-          return '<div class="ct-row" data-i="' + i + '" style="display:flex;align-items:center;gap:6px;border:1px solid ' + (song ? '#d9ccf2' : '#dfe5ee') + ';background:' + (song ? '#faf7ff' : '#fff') + ';border-radius:8px;padding:6px 7px;margin-bottom:5px">' +
+          var serm = /^말씀/.test(it.label || ''), open = serm && ctSumIt === it, sum = serm ? sumVal().trim() : '';
+          return '<div class="ct-row" data-i="' + i + '" style="border:1px solid ' + (song ? '#d9ccf2' : open ? '#9fb4d3' : '#dfe5ee') + ';background:' + (song ? '#faf7ff' : '#fff') + ';border-radius:8px;padding:6px 7px;margin-bottom:5px">' +
+            '<div style="display:flex;align-items:center;gap:6px">' +
             '<span class="ct-handle" title="끌어서 순서 바꾸기" style="cursor:grab;color:#9aa5b1;font-size:1rem;touch-action:none;user-select:none">≡</span>' +
-            '<div class="ct-open" data-i="' + i + '" style="flex:1;min-width:0;cursor:pointer"><div style="font-weight:700;font-size:.84rem;color:' + (song ? '#6b3fc4' : 'var(--accent,#032257)') + '">' + (i + 1) + '. ' + esc(contiName(it)) + '</div>' +
+            '<div class="ct-open" data-i="' + i + '"' + (serm ? ' title="' + (open ? '누르면 요약 칸을 접습니다' : '누르면 설교 요약을 적습니다') + '"' : '') + ' style="flex:1;min-width:0;cursor:pointer"><div style="font-weight:700;font-size:.84rem;color:' + (song ? '#6b3fc4' : 'var(--accent,#032257)') + '">' + (i + 1) + '. ' + esc(contiName(it)) +
+            (serm ? ' <span style="font-weight:400;font-size:.68rem;color:' + (sum ? '#4a6a9c' : '#9aa5b1') + ';border:1px solid ' + (sum ? '#cdd7e3' : '#e4e8ee') + ';border-radius:4px;padding:0 4px;margin-left:2px">' + (sum ? '요약 있음' : '요약 없음') + '</span>' : '') + '</div>' +
             '<div style="font-size:.72rem;color:#7b8794;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(contiSub(it)) + '</div></div>' +
             '<button type="button" class="ct-fix" data-i="' + i + '" title="고정 — 다음 주에도 곡·내용까지 그대로" style="border:0;background:none;cursor:pointer;font-size:.86rem;opacity:' + (it.fixed ? '1' : '.28') + '">📌</button>' +
-            '<button type="button" class="ct-del" data-i="' + i + '" title="빼기" style="border:0;background:none;color:#c0392b;cursor:pointer;font-size:.9rem">✕</button></div>';
+            '<button type="button" class="ct-del" data-i="' + i + '" title="빼기" style="border:0;background:none;color:#c0392b;cursor:pointer;font-size:.9rem">✕</button></div>' +
+            (open ? '<div class="ct-sum" style="margin-top:7px;padding-top:7px;border-top:1px solid #eef1f5">' +
+              '<div style="font-size:.74rem;font-weight:700;color:var(--accent,#032257);margin-bottom:4px">설교 요약</div>' +
+              '<textarea class="ct-sum-in" maxlength="' + SUM_MAX + '" placeholder="설교의 요점을 적어 두세요. 오늘의 예배 말씀 화면에 제목 아래 나옵니다." style="width:100%;box-sizing:border-box;min-height:160px;resize:vertical;font-size:.8rem;line-height:1.6;padding:7px 8px;border:1px solid #dfe5ee;border-radius:6px;font-family:inherit">' + esc(sumVal()) + '</textarea>' +
+              '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;font-size:.7rem;color:#9aa5b1"><span class="ct-sum-n">' + sumVal().length + ' / ' + SUM_MAX + '자</span>' +
+              '<button type="button" class="ct-sum-close" style="border:0;background:none;color:#4a6a9c;cursor:pointer;font-size:.72rem;padding:2px 4px">접기</button></div></div>' : '') +
+            '</div>';
         }).join('') : '<div style="font-size:.78rem;color:#9aa5b1;padding:6px 2px">아직 순서가 없습니다. 아래에서 블록을 더하거나 ‘기본 순서로’를 누르세요.</div>';
         Array.prototype.forEach.call(box.querySelectorAll('.ct-fix'), function (b) { b.onclick = function () { var it = order[Number(b.dataset.i)]; if (it) { it.fixed = !it.fixed; renderOrder(); } }; });
         Array.prototype.forEach.call(box.querySelectorAll('.ct-del'), function (b) { b.onclick = function () { order.splice(Number(b.dataset.i), 1); renderOrder(); }; });
         Array.prototype.forEach.call(box.querySelectorAll('.ct-open'), function (b) { b.onclick = function () { contiEdit(Number(b.dataset.i)); }; });
+        var sumIn = box.querySelector('.ct-sum-in');
+        if (sumIn) sumIn.oninput = function () {   /* 입력은 ov 까지 올라가 dirty·자동 저장에 잡힌다 */
+          var h = ov.querySelector('#se_summary'); if (h) h.value = sumIn.value;
+          var n = box.querySelector('.ct-sum-n'); if (n) n.textContent = sumIn.value.length + ' / ' + SUM_MAX + '자';
+        };
+        var sumX = box.querySelector('.ct-sum-close');
+        if (sumX) sumX.onclick = function () { ctSumIt = null; paintConti(); };
         if (ctSortable) { try { ctSortable.destroy(); } catch (e) { } ctSortable = null; }
         if (window.Sortable) ctSortable = window.Sortable.create(box, {
           handle: '.ct-handle', draggable: '.ct-row', animation: 170, forceFallback: true, fallbackTolerance: 3,   /* 마우스·터치 모두 같은 방식으로 끌기 */
@@ -4667,6 +4688,10 @@ console.log('[affairs.js] v20260923lic');
           });
         } else if (it.label === '교독문') {
           gyodokPicker(function (g) { it.detail = g.no + '. ' + g.title; var gv = ov.querySelector('#se_gyodok_v'); if (gv) gv.value = it.detail; renderOrder(); });
+        } else if (/^말씀/.test(it.label || '')) {   /* 설교 요약 칸 펼치기·접기 */
+          ctSumIt = ctSumIt === it ? null : it; paintConti();
+          var ta = ctSumIt && ov.querySelector('#bd_conti .ct-sum-in');
+          if (ta) { ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) { } }
         }
       }
       // 지난 순서: 같은 예배의 가장 최근(이 날짜보다 앞) 기록 가운데 '말씀' 블록이 있는 콘티 — 블록 순서를 그대로 쓰고,

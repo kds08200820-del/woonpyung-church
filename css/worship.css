@@ -129,6 +129,7 @@ body.ws-open { overflow: hidden; }
 .ws-sum-lead { font-weight: 700; color: #032257; font-size: 1.08em; margin-bottom: 4px; display: flex; gap: 8px; align-items: baseline; }
 .ws-sum-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: #032257; color: #fff; font-size: .78em; display: inline-flex; align-items: center; justify-content: center; }
 .ws-sum p { margin: 0; font-size: 1.05em; line-height: 1.75; word-break: keep-all; color: #2b2721; }
+.ws-sum-txt p + p { margin-top: 12px; }
 .ws-sum-apply { margin-top: 16px; padding: 14px 16px; background: #fbf8f1; border-left: 4px solid #c9a961; border-radius: 0 10px 10px 0; }
 
 /* 관리자 편집 */
