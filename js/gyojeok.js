@@ -8,7 +8,7 @@
  *  비어 있어 아무것도 안 열린다). 그래서 화면 안에서는 항상 rid(=교적ID,
  *  없으면 불러온 순번)로 사람을 찾는다.
  */
-console.log('[gyojeok.js] v20260817gjdel');
+console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남은 달란트·인증도 잇기)');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -159,10 +159,12 @@ console.log('[gyojeok.js] v20260817gjdel');
     q.addEventListener('input', draw); draw(); setTimeout(function () { q.focus(); q.select(); }, 50);
   }
 
-  /* ── 계정 연결 점검(2026-09-30) — supabase/20260930_0900_gyojeok_rekey.sql 의 ss_link_check()·rekey_member()
-   * · orphan : 홈페이지 계정의 매칭키로 교적을 찾을 수 없다(교적의 이름·생년월일이 바뀌어 키가 달라짐).
+  /* ── 계정 연결 점검(2026-09-30, 10-03 보완) — supabase/20261003_2130_ss_link_repair.sql 의 ss_link_check()·rekey_member()
+   * · orphan : 홈페이지 계정의 매칭키로 교적을 찾을 수 없다(교적의 이름·생년월일이 바뀌어 키가 달라짐,
+   *            또는 교적 인증에서 생년월일을 잘못 넣어 준회원으로 남음).
    *            그러면 그 사람(특히 어린이)의 대시보드에서 QT·필사 인증 칸이 사라지고 달란트·출석·헌금이 따로 논다.
-   *            같은 이름의 교적이 하나뿐이면 [연결 고치기]로 계정·달란트·인증·출석·헌금 연결을 새 키로 옮긴다.
+   *            같은 이름의 교적이 하나뿐이면 [연결 고치기]로 계정·달란트·인증·출석·헌금 연결을 새 키로 옮기고 정회원으로 올린다.
+   * · stray  : 달란트·인증 기록의 키가 교적에도 계정에도 없다(생년월일을 고치면서 옛 키에 남음) → 같은 방법으로 옮긴다.
    * · no_role: 주일학교 칸이 비어 있는데 달란트·인증 기록이 있다 → 이름을 눌러 수정에서 학년을 고른다.
    * SQL 을 아직 안 돌렸으면(RPC 없음) 상자를 보이지 않는다. */
   function linkCheckBox(panel, ms) {
@@ -178,10 +180,16 @@ console.log('[gyojeok.js] v20260817gjdel');
           if (x.kind === 'no_role') {
             return '<div style="padding:5px 0;border-top:1px dashed #f0e3bd"><a href="#" class="lc-name" data-key="' + esc(x.old_key) + '" style="color:var(--accent,#032257);font-weight:700">' + esc(x.name) + '</a> — 교적의 <b>주일학교</b> 칸이 비어 있습니다(' + cnt + '). 이름을 눌러 <b>수정</b>에서 어린이·중학생·고등학생 중 하나를 골라 주세요.</div>';
           }
-          return '<div style="padding:5px 0;border-top:1px dashed #f0e3bd"><b>' + esc(x.name) + '</b> — 계정 키 <code>' + esc(x.old_key) + '</code> 로는 교적을 찾을 수 없습니다(' + cnt + '). ' +
+          var what = x.kind === 'stray'
+            ? '달란트·인증 기록이 옛 키 <code>' + esc(x.old_key) + '</code> 에 남아 있습니다(교적·계정 어디에도 없는 키, ' + cnt + '). '
+            : '계정 키 <code>' + esc(x.old_key) + '</code> 로는 교적을 찾을 수 없습니다(' + cnt + (/정회원/.test(x.status || '') ? '' : ' · 준회원') + '). ';
+          return '<div style="padding:5px 0;border-top:1px dashed #f0e3bd"><b>' + esc(x.name) + '</b> — ' + what +
             (x.new_key
-              ? '교적 키 <code>' + esc(x.new_key) + '</code> 로 옮길 수 있어요. <button type="button" class="btn btn-solid lc-fix" data-i="' + i + '" style="padding:3px 11px;font-size:.78rem">연결 고치기</button>'
-              : '같은 이름의 교적이 없거나 여러 명이라 자동으로 고를 수 없습니다. 교적을 확인한 뒤 SQL Editor 에서 <code>select public.rekey_member(\'옛키\', \'새키\');</code> 로 이어 주세요.') +
+              ? '교적 키 <code>' + esc(x.new_key) + '</code> 로 옮길 수 있어요' +
+                (x.kind === 'orphan' && !/정회원/.test(x.status || '') ? '(옮기면 정회원이 됩니다)' : '') +
+                (x.target_links ? ' — 이 교적에는 이미 계정 ' + x.target_links + '개가 이어져 있습니다(같은 사람의 다른 계정이면 괜찮습니다)' : '') +
+                '. <button type="button" class="btn btn-solid lc-fix" data-i="' + i + '" style="padding:3px 11px;font-size:.78rem">연결 고치기</button>'
+              : '같은 이름의 교적이 없거나 여러 명이라 자동으로 고를 수 없습니다. 교적을 확인한 뒤 SQL Editor 에서 <code>select public.ss_link_repair(\'이름\');</code> 을 실행하면 후보를 보여 줍니다.') +
             '</div>';
         }).join('') +
         '<p class="fin-msg" id="lc_msg" style="margin:6px 0 0"></p></div>';
@@ -197,7 +205,7 @@ console.log('[gyojeok.js] v20260817gjdel');
           WPF.call('rekeyMember', { oldKey: x.old_key, newKey: x.new_key }).then(function (r) {
             if (!r || !r.ok) throw new Error((r && r.error) || '실패');
             msg.style.color = 'green';
-            msg.textContent = '✓ ' + x.name + ' 연결됨 — 계정 ' + r.links + ' · 달란트 ' + r.talents + ' · 인증 ' + r.submissions + ' · 출석 ' + r.attendance + ' · 헌금 ' + r.offerings;
+            msg.textContent = '✓ ' + x.name + ' 연결됨 — 계정 ' + r.links + ' · 달란트 ' + r.talents + ' · 인증 ' + r.submissions + ' · 출석 ' + r.attendance + ' · 헌금 ' + r.offerings + (r.upgraded ? ' · 정회원으로 올림' : '');
             setTimeout(function () { linkCheckBox(panel, ms); }, 1500);
           }).catch(function (e) { b.disabled = false; msg.style.color = '#c0392b'; msg.textContent = '실패: ' + e.message; });
         };
