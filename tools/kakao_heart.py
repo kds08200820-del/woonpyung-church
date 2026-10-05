@@ -23,6 +23,8 @@ r"""
 안전장치:
   - 말풍선 아래에 이미 빨간 하트가 있으면 누르지 않는다.
     (내가 누른 하트를 다시 누르면 꺼지기 때문 — 다른 사람이 누른 하트여도 건너뛴다)
+  - 고르는 창에서는 빨간 그림 중 '하트 모양'만 누른다(화난 얼굴 같은 다른 빨간 공감 제외).
+    하트 모양을 못 찾으면 아무것도 누르지 않고 멈춘다.
   - 하트를 누른 뒤 다시 캡처해 하트가 생겼는지 확인하고, 안 생겼으면 그 자리에서 멈춘다.
     (엉뚱한 곳을 연달아 누르는 일을 막는다)
   - 내 글(노란 말풍선)과 날짜 구분선 위쪽은 보지 않는다.
@@ -189,8 +191,9 @@ def ocr_lines(img):
 
 
 def _is_red(p):
+    # 카카오톡 하트 공감 분홍(#FF2073)은 그림에 따라 파랑이 112~127 로 흔들린다 — b 기준을 넉넉히
     r, g, b = p[:3]
-    return r > 200 and g < 110 and b < 125 and r - g > 110
+    return r > 200 and g < 110 and b < 150 and r - g > 110
 
 
 def _is_yellow(p):
@@ -213,19 +216,13 @@ def count_px(img, box, pred):
     return n
 
 
-def new_red_center(before, after, min_px=150):
-    """하트 고르는 창의 하트 중심. 없으면 None.
-
-    - 이웃 댓글의 ❤1 이 섞이지 않게, 공감 버튼을 누르기 전·후를 비교해 새로 나타난 빨간 점만 본다.
-    - 고르는 창의 다른 이모티콘에도 작은 빨간 부분(볼·입)이 있어서 전체 평균을 누르면 빈 곳을 누른다.
-      하트는 꽉 찬 한 덩어리(약 24×21, 390점)라 '가장 큰 연결 덩어리'를 고른다. (2026-09-23 실측)
-    """
-    pa, pb = after.load(), before.load()
-    w, h = min(after.width, before.width), min(after.height, before.height)
-    new = set((x, y) for y in range(h) for x in range(w)
-              if _is_red(pa[x, y]) and not _is_red(pb[x, y]))
-    best, seen = [], set()
-    for p in new:
+def _blobs(points, diag=True):
+    """점 집합을 이어진 덩어리들로 나눈다 (큰 것부터). diag=False 면 상하좌우로만 잇는다."""
+    points = set(points)
+    steps = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)
+             if (dx or dy) and (diag or not (dx and dy))]
+    out, seen = [], set()
+    for p in points:
         if p in seen:
             continue
         seen.add(p)
@@ -233,19 +230,153 @@ def new_red_center(before, after, min_px=150):
         while stack:
             q = stack.pop()
             comp.append(q)
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    r = (q[0] + dx, q[1] + dy)
-                    if r in new and r not in seen:
-                        seen.add(r)
-                        stack.append(r)
-        if len(comp) > len(best):
-            best = comp
-    if len(best) < min_px:
+            for dx, dy in steps:
+                r = (q[0] + dx, q[1] + dy)
+                if r in points and r not in seen:
+                    seen.add(r)
+                    stack.append(r)
+        out.append(comp)
+    out.sort(key=len, reverse=True)
+    return out
+
+
+def _holes(comp):
+    """덩어리 안에 갇힌 빈 곳(구멍)들 (큰 것부터). 바깥과 이어진 빈 곳은 구멍이 아니다."""
+    s = set(comp)
+    xs = [x for x, _ in comp]
+    ys = [y for _, y in comp]
+    x0, x1, y0, y1 = min(xs) - 1, max(xs) + 1, min(ys) - 1, max(ys) + 1
+    empty = set((x, y) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1) if (x, y) not in s)
+    stack = [p for p in empty if p[0] in (x0, x1) or p[1] in (y0, y1)]
+    outside = set(stack)
+    while stack:
+        x, y = stack.pop()
+        for r in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if r in empty and r not in outside:
+                outside.add(r)
+                stack.append(r)
+    return _blobs(empty - outside, diag=False)
+
+
+def _box(pts):
+    xs = [x for x, _ in pts]
+    ys = [y for _, y in pts]
+    return min(xs), min(ys), max(xs) - min(xs) + 1, max(ys) - min(ys) + 1
+
+
+def _pointy_bottom(pts):
+    """위쪽은 넓고 아래로 갈수록 좁아져 뾰족하게 끝나는가 (하트의 아래쪽). 동그라미는 아니다."""
+    x0, y0, w, h = _box(pts)
+    rows = Counter(y for _, y in pts)
+    upper = max(rows[y0 + i] for i in range(max(1, int(h * 0.5))))
+    lower = max(rows[y0 + i] for i in range(int(h * 0.8), h))
+    return upper >= 0.8 * w and lower <= 0.6 * w
+
+
+def _notched_top(pts):
+    """위 가운데가 양쪽 볼록한 곳보다 파여 있는가 (하트의 위쪽). 동그라미·얼굴은 아니다."""
+    x0, y0, w, h = _box(pts)
+    top = {}
+    for x, y in pts:
+        top[x] = min(top.get(x, y), y)
+
+    def highest(a, b):
+        v = [top[x] for x in range(x0 + int(w * a), x0 + int(w * b) + 1) if x in top]
+        return min(v) if v else y0 + h
+
+    lobes = max(highest(0.1, 0.4), highest(0.6, 0.9))
+    return highest(0.45, 0.55) - lobes >= max(1, h * 0.08)
+
+
+def _solidity(pts):
+    """덩어리 넓이 ÷ 감싸는 볼록 껍질 넓이. 하트는 0.95 안팎, 집게·다리가 삐죽한 그림(🦀)은 0.7 아래."""
+    P = sorted(set(pts))
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower, upper = [], []
+    for p in P:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(P):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    hull = lower[:-1] + upper[:-1]
+    if len(hull) < 3:
+        return 1.0
+    edges = list(zip(hull, hull[1:] + hull[:1]))
+    x0, y0, w, h = _box(P)
+    inside = sum(1 for y in range(y0, y0 + h) for x in range(x0, x0 + w)
+                 if all((b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]) >= 0 for a, b in edges))
+    return len(P) / max(1, inside)
+
+
+def _symmetry(pts):
+    """좌우를 뒤집어 겹치는 정도 (1 = 완전 대칭)."""
+    x0, _, w, _ = _box(pts)
+    s = set(pts)
+    m = set((2 * x0 + w - 1 - x, y) for x, y in s)
+    return len(s & m) / len(s | m)
+
+
+def _heart_kind(comp):
+    """빨간 덩어리가 하트 그림이면 그 종류, 아니면 None.
+
+    - "원 속 흰 하트": 카카오톡 기본 하트 공감 아이콘(분홍 원 #FF2073 에 흰 하트가 뚫림).
+      원 안의 가장 큰 구멍 하나가 하트 모양이어야 한다. 화난 얼굴은 눈·입 구멍이 작고 여러 개라 아니다.
+    - "빨간 하트": 속이 꽉 찬 하트(❤). 위 가운데가 파이고 아래가 뾰족하고, 좌우 대칭에 삐죽한 데가 없어야
+      한다. 반짝이(흰 점) 구멍 하나는 봐준다.
+    """
+    x0, y0, w, h = _box(comp)
+    holes = _holes(comp)
+    filled = comp + [p for o in holes for p in o]
+    if (holes and 0.85 <= w / h <= 1.18 and 0.68 <= len(filled) / (w * h) <= 0.88
+            and 0.08 <= len(holes[0]) / len(filled) <= 0.45
+            and sum(len(o) for o in holes[1:]) <= 0.25 * len(holes[0])):
+        hx, _, hw, hh = _box(holes[0])
+        if abs((hx + hw / 2) - (x0 + w / 2)) <= 0.12 * w and _pointy_bottom(holes[0]):
+            return "원 속 흰 하트"
+    if (0.85 <= w / h <= 1.5 and 0.45 <= len(comp) / (w * h) <= 0.9
+            and sum(len(o) for o in holes[:1]) <= 0.15 * len(comp)
+            and sum(len(o) for o in holes[1:]) <= 0.06 * len(comp)
+            and _notched_top(comp) and _pointy_bottom(comp)
+            and _solidity(filled) >= 0.88 and _symmetry(filled) >= 0.9):
+        return "빨간 하트"
+    return None
+
+
+# 카카오톡 하트 공감 아이콘 원 색 (skin 의 ico-reaction-big-01_24.svg)
+KAKAO_HEART_RGB = (255, 32, 115)
+
+
+def new_red_center(before, after, min_px=100):
+    """하트 고르는 창의 하트 중심. 없으면 None.
+
+    - 이웃 댓글의 ❤1 이 섞이지 않게, 공감 버튼을 누르기 전·후를 비교해 새로 나타난 빨간 점만 본다.
+    - 카카오톡 26.4 부터 공감이 114종이 되어 고르는 창에 화난 얼굴 같은 빨간 그림이 함께 뜬다.
+      하트 아이콘은 원 속에 흰 하트가 뚫려 있어 빨간 점이 오히려 적다 — 예전처럼 '가장 큰 빨간 덩어리'를
+      고르면 화난 얼굴을 누른다(2026-10 하트 대신 화난 표정이 달린 원인). 그래서 모양으로 하트를 찾고,
+      하트 모양이 하나도 없으면 아무것도 누르지 않는다.
+    """
+    pa, pb = after.load(), before.load()
+    w, h = min(after.width, before.width), min(after.height, before.height)
+    new = set((x, y) for y in range(h) for x in range(w)
+              if _is_red(pa[x, y]) and not _is_red(pb[x, y]))
+    found = []
+    for comp in _blobs(new):
+        if len(comp) < min_px:
+            break
+        if _heart_kind(comp):
+            rgb = [sum(pa[x, y][i] for x, y in comp) / len(comp) for i in range(3)]
+            found.append((sum(abs(a - b) for a, b in zip(rgb, KAKAO_HEART_RGB)), comp))
+    if not found:
         return None
-    xs = [x for x, _ in best]
-    ys = [y for _, y in best]
-    return (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    comp = min(found, key=lambda f: f[0])[1]             # 기본 하트 색에 가장 가까운 것
+    x0, y0, cw, ch = _box(comp)
+    return x0 + (cw - 1) / 2, y0 + (ch - 1) / 2
 
 
 # ── 대화 목록 읽기 ─────────────────────────────────────────────────────
@@ -422,8 +553,11 @@ def press_heart(lst, it):
     if not c:
         win32api.keybd_event(win32con.VK_ESCAPE, 0, 0, 0)
         win32api.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
-        raise HeartError(f"{it.label()} 댓글: 공감 버튼을 눌렀는데 하트 고르는 창이 보이지 않습니다 "
-                         f"(보정값 button_dx/dy 확인 필요).")
+        os.makedirs(LOG_DIR, exist_ok=True)
+        path = os.path.join(LOG_DIR, f"kakao_heart_picker_{datetime.now():%Y%m%d_%H%M%S}.png")
+        shot.save(path)
+        raise HeartError(f"{it.label()} 댓글: 공감 버튼을 눌렀는데 하트 그림을 찾지 못해 아무것도 누르지 않았습니다 "
+                         f"(고르는 창이 안 떴으면 보정값 button_dx/dy 확인 — 화면: {os.path.basename(path)}).")
     click(area[0] + c[0], area[1] + c[1])
     time.sleep(1.0)
     park(lst)
