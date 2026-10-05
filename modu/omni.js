@@ -139,6 +139,25 @@ var OMNI = (function(){
     });
     return out;
   }
+  /* ── 원전 연구(오르 엔진이 만든 66권 단락 요약 — data/exeg-index.js) ── */
+  function findExeg(q){
+    var IDX = window.EXIDX, out = []; if(!IDX || q.length < 2) return out;
+    var FL = { X:'교차 병행', A:'교대 병행', I:'포괄', L:'열쇠말 반복', P:'병행법' };
+    var want = null; Object.keys(FL).forEach(function(k){ if(FL[k].indexOf(q) === 0 || q === FL[k]) want = k; });
+    for(var bi = 0; bi < IDX.length && out.length < 80; bi++){
+      var b = APP.BOOKS[bi], bookHit = has(b.n, q) || has(b.a, q);
+      for(var ci = 0; ci < IDX[bi].length && out.length < 80; ci++){
+        IDX[bi][ci].forEach(function(p){
+          var ref = b.n + ' ' + (ci + 1) + ':' + (p.v0 + 1) + (p.v1 > p.v0 ? '-' + (p.v1 + 1) : '');
+          var hit = want ? (p.f || '').indexOf(want) >= 0 : (has(p.h, q) || has(p.i, q) || has(ref, q));
+          if(!hit || (bookHit && !want && !has(p.h, q) && !has(p.i, q))) return;
+          out.push({ t:esc(ref) + (p.h ? ' <span class="dim">「' + mark(p.h, q) + '」</span>' : ''), s:'하나님의 손길 ' + p.g + ' · 인간의 응답 ' + p.m + ((p.f || '').split('').map(function(c){ return FL[c]; }).filter(Boolean).length ? ' · ' + (p.f || '').split('').map(function(c){ return FL[c]; }).filter(Boolean).join('·') : ''), b:snip(p.i, q, 150),
+            go:(function(bi, ci, v0){ return function(){ if(APP.openExeg) APP.openExeg(bi, ci, v0); }; })(bi, ci, p.v0) });
+        });
+      }
+    }
+    return out;
+  }
   /* ── 내 노트 (비동기) ── */
   function findNotes(q, cb){
     if(!window.NOTES || !NOTES.list) return cb([]);
@@ -182,6 +201,7 @@ var OMNI = (function(){
       { key:'eng', icon:'Aa', name:'영어 낱말', items:findEng(q) },
       { key:'intro', icon:'📖', name:'책 개관', items:findIntro(q) },
       { key:'comm', icon:'✎', name:'주석', items:findComm(q) },
+      { key:'exeg', icon:'✦', name:'원전 연구(오르 엔진 — 단락 요약·구조)', items:findExeg(q) },
       { key:'note', icon:'🗒', name:'내 노트', items:[] }
     ];
     paint(raw);

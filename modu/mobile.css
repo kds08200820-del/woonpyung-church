@@ -310,3 +310,8 @@ body.hy-open #moTabs{z-index:85}
 .pal-x{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--fg3);font-size:13px;padding:0}
 #moFab{bottom:calc(var(--sab) + 18px);right:16px}
 }
+/* 원전 연구 — 좁은 화면: 머리 줄은 두 줄로, 목차는 숨기고 본문만 */
+#v-exeg .vhead{flex-wrap:wrap}
+#v-exeg .ex-sel{max-width:40vw}
+#v-exeg #exNote,#v-exeg #exHelp{display:none}
+@media (max-width:900px){ #v-exeg .ex-main{padding:12px 14px 60px;font-size:14px} #v-exeg .ex-vt{font-size:13px} #v-exeg .ex-td-m{width:38%} }

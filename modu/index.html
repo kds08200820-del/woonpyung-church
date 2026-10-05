@@ -65,6 +65,7 @@
       <button class="btn icon" id="next" title="다음 장 (→)">▶</button>
       <span class="spacer"></span>
       <button class="btn sb-btn" id="stephBtn" hidden title="스테판 원어 성경 — 원문·스트롱 번호·문법·뜻을 행간으로 봅니다" aria-pressed="false">원어</button>
+      <button class="btn" id="exegBtn" title="원전 연구 — 이 장의 원어 석의·문장구조·구속사적 틀·설교 개요"><span class="hb-ic">✦</span><span class="hb-tx"> 원전 연구</span></button>
       <button class="btn icon" id="geoBtn" title="지도·고고학 연동 — 지도나 해설이 있는 절 번호를 진하게 표시합니다" aria-pressed="false">🌍</button>
       <button class="btn" id="hymnBtn" title="새찬송가 악보 보기 — 장 번호나 제목으로 찾습니다"><span class="hb-ic">🎵</span><span class="hb-tx"> 찬송가</span></button>
       <button class="btn" id="gyodokBtn" title="새찬송가 교독문 보기 — 번호나 제목으로 찾습니다"><span class="hb-ic">📜</span><span class="hb-tx"> 교독문</span></button>
@@ -170,6 +171,27 @@
       <div id="vbQuizPane" hidden></div>
       <div id="vbStats"></div>
       <div id="vbList"></div>
+    </div>
+  </section>
+
+  <!-- ─────────── 원전 연구 ─────────── -->
+  <section class="view" id="v-exeg">
+    <header class="vhead">
+      <h1>원전 연구 <span class="ex-engine" title="오르(אוֹר, 빛) — 원전 분석 엔진">오르</span></h1>
+      <select id="exBook" class="ex-sel"></select>
+      <select id="exChap" class="ex-sel"></select>
+      <button class="btn icon" id="exPrev" title="이전 장">◀</button>
+      <button class="btn icon" id="exNext" title="다음 장">▶</button>
+      <span class="spacer"></span>
+      <button class="btn" id="exGo" title="본문 창을 이 장으로 옮깁니다">본문으로</button>
+      <button class="btn" id="exCopy" title="이 장의 원전 연구를 글로 복사">복사</button>
+      <button class="btn" id="exNote" title="이 장의 원전 연구를 메모장에 저장 (#원전연구)">메모장에 저장</button>
+      <button class="btn" id="exHelp" title="분석 방법 안내">?</button>
+      <button class="wb-x vpClose" title="닫기 (Esc)" aria-label="닫기">×</button>
+    </header>
+    <div class="vbody split">
+      <aside class="ex-toc" id="exToc"></aside>
+      <div class="ex-main" id="exMain"></div>
     </div>
   </section>
 
@@ -787,6 +809,11 @@
 <script src="kgraph.js"></script>
 <script src="stephan.js"></script>
 <script src="wordmemo.js"></script>
+<script src="data/d1/exeg-lex.js?v=20261006"></script>
+<script src="data/d1/exeg-freq.js?v=20261006"></script>
+<script src="data/d1/exeg-index.js?v=20261006"></script>
+<script src="exeg-engine.js"></script>
+<script src="exeg.js"></script>
 <script src="data/d1/geo-names.js?v=20260926"></script>
 <script src="atlas.js"></script>
 <script src="data/d1/study/articles.js?v=20260926"></script>

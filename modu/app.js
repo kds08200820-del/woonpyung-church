@@ -194,7 +194,7 @@ function lastVerse(bi,ci){
 var st = { view:'read', mode:'chapter', bi:S.bi, ci:S.ci, vi:-1, passages:[], hits:[], sel:-1 };
 
 /* ─────────────── 화면 전환 ─────────────── */
-var VIEWS = { read:'v-read', search:'v-search', vocab:'v-vocab', notes:'v-notes', settings:'v-settings' };
+var VIEWS = { read:'v-read', search:'v-search', vocab:'v-vocab', notes:'v-notes', settings:'v-settings', exeg:'v-exeg' };
 var viewHist = [];                      /* 화면 이동 내력 — 뒤로 가기 (검색 결과 → 본문 → 뒤로 → 검색 결과) */
 /* ── 검색·원어 학습·메모장·설정은 화면을 바꾸지 않고 본문 위에 떠 있는 창(팝업)으로 연다.
    본문(read)은 늘 뒤에 남아 있고, 창을 닫으면 그대로 본문으로 돌아간다 ── */
@@ -266,6 +266,12 @@ function showView(name, isBack){
   if(name === 'settings') refreshAudioInfo();
   if(name === 'notes' && window.NT) NT.show();
   closeMorph(); closeDrops();
+}
+/* 원전 연구 — 데스크탑에서는 따로 뜨는 창, 웹판은 본문 위 팝업. a: { bi, ci, vi, help, index } */
+function openExeg(bi, ci, vi, extra){
+  var a = { bi:bi, ci:ci || 0, vi:(vi === undefined || vi === null) ? -1 : vi };
+  if(extra) Object.keys(extra).forEach(function(k){ a[k] = extra[k]; });
+  if(popRoute()) POP.open('exeg', a); else { showView('exeg'); if(window.EXEG) EXEG.show(a); }
 }
 document.querySelectorAll('.rnav[data-view]').forEach(function(b){
   b.onclick = function(){ showView(b.dataset.view); };
@@ -3720,6 +3726,7 @@ window.APP = { $:$, esc:esc, toast:toast, put:put, copyText:copyText, showView:s
                verseText:function(bi, ci, vi){ var t = verses(S.base, bi, ci)[vi]; return t ? flat(split(t).text) : ''; } };
 window.APP.openNotes = openNotesWith;
 window.APP.openKG = openKG;
+window.APP.openExeg = openExeg;
 window.APP.hebInner = hebInner; window.APP.greekInner = greekInner; window.APP.fillWordBox = function(info){ if(S.dictHover) fillWordBox(info); };
 window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메모장을 특정 메모·태그로 연다 (팝 창이면 따로 뜨는 창으로) */
 
@@ -3807,6 +3814,12 @@ window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메
       { t:'이 절의 주석 보기' + (here ? ' — ' + ref(st.bi, st.ci, v) : ''), off:!hits.length, fn:function(){ openComm(st.bi, st.ci, v); } },
       { t:'주석 목록', fn:function(){ openCommIndex(here ? st.bi : 0); } },
       '-',
+      { t:'원전 연구 — 이 장' + (here ? ' (' + BOOKS[st.bi].n + ' ' + (st.ci + 1) + '장)' : '') + ' · 석의·문장구조·구속사·설교 개요', off:!here, fn:function(){ openExeg(st.bi, st.ci, -1); } },
+      { t:'원전 연구 — 이 절이 든 단락부터' + (here && st.vi >= 0 ? ' (' + ref(st.bi, st.ci, st.vi) + ')' : ''), off:!(here && st.vi >= 0), fn:function(){ openExeg(st.bi, st.ci, st.vi); } },
+      { t:'원전 연구 목차 (66권)', fn:function(){ openExeg(-1, 0, -1, { index:1 }); } },
+      { t:'원전 연구 — 분석 방법 안내(오르 엔진)', fn:function(){ openExeg(here ? st.bi : -1, here ? st.ci : 0, -1, { help:1 }); } },
+      { t:'스테판 원어 성경으로 보기', on:!!(window.STEPH && STEPH.active()), fn:function(){ inRead(); if(window.STEPH) STEPH.setOn(!STEPH.active()); } },
+      '-',
       { t:'이 장의 지도', off:!here, fn:function(){ openAtlasFor(st.bi, st.ci, v); } },
       { t:'성경지도', fn:function(){ openAtlasIndex(); } },
       { t:'비교지도', fn:function(){ if(window.MAPCMP) MAPCMP.open(); } },
@@ -3821,6 +3834,7 @@ window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메
       { t:'본문', on:st.view === 'read', fn:function(){ showView('read'); } },
       { t:'검색', on:st.view === 'search', fn:function(){ showView('search'); } },
       { t:'원어 학습', on:st.view === 'vocab', fn:function(){ showView('vocab'); } },
+      { t:'원전 연구', on:st.view === 'exeg', fn:function(){ openExeg(st.bi, st.ci, -1); } },
       { t:'메모장', on:st.view === 'notes', fn:function(){ showView('notes'); } },
       '-',
       { t:'이 책 개관', off:st.bi < 0, fn:function(){ inRead(); $('introBtn').click(); } },
