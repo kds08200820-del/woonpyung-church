@@ -1,5 +1,10 @@
-/* 오르(אוֹר) — 원전 연구 엔진. 스테판 원어 성경(data/stephan/b<책>.js)의 낱말 자료를 네 단계로 분석한다.
+/* 오르(אוֹר) 원전 분석 엔진 — 판 1.0 (2026-10-06)
+   스테판 원어 성경(data/stephan/b<책>.js)의 낱말 자료를 네 단계로 분석한다.
    이름 '오르'는 히브리어 אוֹר(빛, 창 1:3)에서 — 원문에 빛을 비추어 하나님의 손길을 드러낸다는 뜻.
+   ── 판 내력 ──
+   1.0  2026-10-06  첫 판. 이정렬 목사의 『원전 중심 구속사 설교』 방법을 규칙으로 옮김(형태소 → 어순·문장구조 → 구속사적 틀 → 설교 개요).
+                    앞으로 저자(이정렬 목사)와의 논의를 거쳐 주어·화자 판단, 구조 후보 문턱(TUNE), 어휘표(data/exeg-lex.js)를 다듬어 정확성을 높인다.
+                    규칙을 바꾸면 아래 VERSION 을 올리고(1.1, 1.2 …) 여기와 CLAUDE.md '오르 엔진 판 내력'에 무엇을 바꿨는지 적은 뒤 tools/build-exeg.js --text 를 다시 돌린다.
    이정렬, 『원전 중심 구속사 설교 — 성경 해석에서 설교 작성까지』(2023)의 방법을 따른다(저자 동의).
      ① 형태소 해석   : 어간(칼·닢알·피엘·푸알·히프일·호프알·히트파엘)·시상(완료·미완료·와우 연속법·명령·부정사·분사), 헬라어 시제·태·법
      ② 구문·문장구조 : 어순(술어-주어-목적 기본 어순에서 벗어난 도치 = 강조), 와우 연속법의 서술 줄기, 부정어, 키아즘(교차·교대 병행)·포괄·반복 낱말·시의 병행법
@@ -8,6 +13,7 @@
    규칙에 따른 자동 분석이므로 설교자의 석의로 검증해야 한다. 브라우저(window.EXEGINE)와 Node(tools/build-exeg.js) 양쪽에서 쓴다. */
 (function(root, factory){ if(typeof module === 'object' && module.exports) module.exports = factory(); else root.EXEGINE = factory(); })(this, function(){
   'use strict';
+  var ENGINE_VERSION = '1.0';          /* 오르 엔진 판 — 규칙을 바꾸면 올린다 (판 내력은 파일 머리) */
 
   /* ───────── 낱말 갈래표 ───────── */
   var DIV_H = { 3068:1, 3069:1, 430:1, 410:1, 433:1, 136:1, 7706:1, 3050:1, 5945:1 };                 /* 하나님의 이름 */
@@ -545,7 +551,7 @@
         out.push('', '④ 설교 개요(초안)');
         f.outline.forEach(function(o){ out.push(o.h); o.items.forEach(function(i){ out.push('  - ' + i); }); });
       });
-      out.push('', '(오르(אוֹר) 원전 분석 엔진 ' + '1.0' + ' · 방법: 이정렬, 『원전 중심 구속사 설교 — 성경 해석에서 설교 작성까지』 · 자동 분석 — 설교자의 석의로 검증)');
+      out.push('', '(오르(אוֹר) 원전 분석 엔진 ' + ENGINE_VERSION + ' · 방법: 이정렬, 『원전 중심 구속사 설교 — 성경 해석에서 설교 작성까지』 · 자동 분석 — 설교자의 석의로 검증)');
       return out.join('\n');
     }
     /* 목차용 요약 */
@@ -557,5 +563,5 @@
     }
     return { analyze:analyze, summarize:summarize, toText:toText, pericopes:pericopes, tokens:tokens, GENRE:GENRE, GENRE_KO:GENRE_KO, CAT_KO:CAT_KO };
   }
-  return { NAME:'오르', FULL:'오르(אוֹר) 원전 분석 엔진', VERSION:'1.0', create:create, parseHeb:parseHeb, parseGrk:parseGrk, explainHeb:explainHeb, explainGrk:explainGrk, GENRE:GENRE, GENRE_KO:GENRE_KO, CAT_KO:CAT_KO };
+  return { NAME:'오르', FULL:'오르(אוֹר) 원전 분석 엔진', VERSION:ENGINE_VERSION, create:create, parseHeb:parseHeb, parseGrk:parseGrk, explainHeb:explainHeb, explainGrk:explainGrk, GENRE:GENRE, GENRE_KO:GENRE_KO, CAT_KO:CAT_KO };
 });
