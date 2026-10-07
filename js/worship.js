@@ -276,6 +276,7 @@
     var rot = $('heroRotator'); if (!rot) return;
     var fm = location.search.match(/[?&]worship=(sunday|wed|dawn|countdown(?:-wed|-dawn|-2)?|1)/), force = fm ? (fm[1] === '1' ? true : fm[1]) : false;   /* ?worship=1|sunday|wed|dawn|countdown|countdown-wed|countdown-dawn : 시간과 상관없이 띄움(미리 보기용) */
     var list = services(force); heroForce = force;
+    if (!force) heroLast = heroSig();               /* 지금 띄운 예배 상태 — 시간이 흘러 달라지면 heroRefresh 가 다시 그린다 */
     if (!list.length) {
       /* 예배 전 안내: 주일은 오전 6시부터 '오늘은 주일입니다'(1시간 전부터 카운트), 수요·새벽은 30분 전부터 '곧 예배가 시작됩니다' + 카운트
          — 그날 예배가 있을 때만(새벽: 달력의 '새벽기도', 수요: 주보의 수요기도회 줄 또는 달력의 '수요기도회') */
@@ -293,36 +294,69 @@
       return;
     }
     /* 새벽기도회는 설교작성관리 달력에 그날 '새벽기도'가 있을 때만 — 확인이 끝난 뒤 끼워 넣는다 */
-    var dawn = list.filter(function (s) { return s.kind === 'dawn'; })[0];
+    var dawn = list.filter(function (s) { return s.kind === 'dawn'; })[0], hero0 = rot.closest('.hero') || document.body;
     if (dawn && !force) {
       hasSermon(todayStr, '새벽기도').then(function (ok) {
         var rest = list.filter(function (s) { return s.kind !== 'dawn'; });
         if (ok) rest.unshift(dawn);
         if (rest.length) mount(rot, rest);
+        else if (hero0.classList.contains('hero-worship-only')) location.reload();   /* 앞서 띄운 예배를 지웠는데 띄울 것이 없으면 원래 첫 화면으로 */
       });
       return;
     }
     /* 주일 1부 진행 중(10:30~10:50)에 2부 카운트가 겹치는 때: 1부에 들어가지 않은 사람에게는 2부 카운트를 */
     if (!force && dow === 0) {
       var p2 = byPart(2), live1 = list.filter(function (s) { return s.kind === 'sunday' && s.part === 1; })[0];
-      if (live1 && p2 && nowMin() >= p2.from - p2.lead && nowMin() < p2.from - PAD && !joined()) { mountCountdown(rot, p2, false); watch(rot); return; }
+      if (live1 && p2 && nowMin() >= p2.from - p2.lead && nowMin() < p2.from - PAD && !joined()) { mountCountdown(rot, p2, false); return; }
       if (live1) list = list.filter(function (s) { return !(s.kind === 'sunday' && s.part === 2); });   /* 1부 진행 중에는 2부 안내를 빼고 */
     }
     mount(rot, list);
-    watch(rot);
   }
-  /* 시간이 흐르며 예배 칸이 바뀌면(1부 끝 → 2부, 예배 끝) 30초마다 다시 셈한다 */
-  var watchTm = 0;
-  function watch(rot) {
-    if (watchTm) return;
-    function sig() { refreshClock(); var p2 = byPart(2); return services(false).map(function (s) { return s.kind + s.part; }).join(',') + '|' + (dow === 0 && nowMin() >= p2.from - p2.lead && nowMin() < p2.from - PAD && !joined() ? 'c2' : ''); }
-    var last = sig();
-    watchTm = setInterval(function () {
-      if (document.body.classList.contains('ws-open')) return;           /* 예배 보기 창이 열려 있으면 건드리지 않는다 */
-      var now = sig(); if (now === last) return; last = now;
-      if (now === '|') { location.reload(); return; }                    /* 예배가 다 끝났으면 원래 첫 화면으로 */
-      clearInterval(watchTm); watchTm = 0; var el = $('heroWorship'); if (el) el.remove(); heroSlide();
-    }, 30000);
+  /* ── 첫 화면 예배 칸을 늘 지금 시각에 맞춘다 (2026-10-07)
+       예전엔 예배가 있는 시간에 연 페이지만 30초마다 다시 셌고(새벽기도회 칸은 그마저 빠졌다), 휴대폰에서 백그라운드로 두면
+       타이머가 멈춰, 앞 예배(예: 새벽기도회) 칸이 그대로 남아 새 예배(수요기도회 등)가 시작돼도 새로고침해야 바뀌었다.
+       이제는 30초마다·화면으로 돌아올 때마다·예배 보기 창을 닫을 때마다 다시 세고, 단추를 누를 때도 한 번 더 확인해 지금 예배로 들어간다 ── */
+  var loadDay = todayStr, heroLast = null, heroEmpty = true;
+  function heroSig() {                              /* 지금 띄워야 할 것: 날짜 | 진행 중 예배 | 카운트 중 예배 */
+    refreshClock();
+    var n = nowMin(), live = services(false).map(function (s) { return s.kind + s.part; }), cd = [];
+    SCHED.forEach(function (sc) {
+      if (sc.days.indexOf(dow) < 0) return;
+      var lead = sc.lead || 30;
+      if (!(n >= sc.from - lead && n < sc.from - PAD)) return;
+      if (sc.kind === 'sunday' && sc.part === 2 && !sc.single && joined()) return;
+      cd.push(sc.kind + (sc.part || ''));
+    });
+    heroEmpty = !live.length && !cd.length;
+    return todayStr + '|' + live.join(',') + '|' + cd.join(',');
+  }
+  function rebuildHero() {
+    if (todayStr !== loadDay) { location.reload(); return; }          /* 날이 바뀌면 주보·QT 를 새로 읽도록 통째로 */
+    var rot = $('heroRotator'); if (!rot) return;
+    var hero = rot.closest('.hero') || document.body;
+    if (heroEmpty) { heroLast = heroSig(); if (hero.classList.contains('hero-worship-only')) location.reload(); return; }   /* 예배가 다 끝났으면 원래 첫 화면으로 */
+    var el = $('heroWorship'); if (el) el.remove();
+    heroSlide();
+  }
+  function heroRefresh() {
+    if (heroForce || !$('heroRotator')) return false;
+    if (document.body.classList.contains('ws-open')) return false;     /* 예배 보기 창이 열려 있으면 건드리지 않는다 — 닫을 때 다시 센다 */
+    if (heroSig() === heroLast) return false;
+    rebuildHero(); return true;
+  }
+  /* 예배 단추를 눌렀을 때 — 그새 예배가 바뀌었으면 첫 화면을 다시 그리고 지금 예배로 들어간다 */
+  function enter(kind, part, preview) {
+    if (!heroForce && heroSig() !== heroLast) {
+      if (todayStr !== loadDay) { try { sessionStorage.setItem('ws_enter', '1'); } catch (e) {} location.reload(); return; }
+      var fresh = services(false);
+      rebuildHero();
+      var pick = fresh.filter(function (s) { return s.kind === kind && String(s.part || '') === String(part || ''); })[0]
+              || fresh.filter(function (s) { return s.kind !== 'dawn'; })[0] || fresh[0];
+      if (pick) { kind = pick.kind; part = pick.part ? String(pick.part) : ''; preview = false; }
+      else if (!preview) { toastWs('예배 시간이 바뀌었습니다. 첫 화면을 다시 확인해 주세요'); return; }
+    }
+    if (!preview) { if (kind === 'sunday' && part) markJoined(part); attend(kind, part); }
+    openGate(kind);
   }
   function mount(rot, list) {
     var d = document.createElement('div'); d.className = 'hero-slide is-active hero-worship'; d.id = 'heroWorship';
@@ -337,7 +371,9 @@
     var hero = rot.closest('.hero') || document.body;
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
-    d.addEventListener('click', function (e) { var b = e.target.closest('.hw-btn'); if (!b) return; if (b.dataset.kind === 'sunday' && b.dataset.part) markJoined(b.dataset.part); attend(b.dataset.kind, b.dataset.part); openGate(b.dataset.kind); });
+    d.addEventListener('click', function (e) { var b = e.target.closest('.hw-btn'); if (!b) return; enter(b.dataset.kind, b.dataset.part); });
+    var again = null; try { again = sessionStorage.getItem('ws_enter'); sessionStorage.removeItem('ws_enter'); } catch (e) {}
+    if (again) { var b0 = d.querySelector('.hw-btn'); if (b0) setTimeout(function () { b0.click(); }, 0); }   /* 날이 바뀐 채 단추를 눌러 새로 읽었으면 바로 들어간다 */
   }
 
   /* ── 예배 전 안내 슬라이드 — 시간이 되면(예배 10분 전) 스스로 '오늘의 예배'로 바뀐다
@@ -362,13 +398,14 @@
     rot.appendChild(d);
     /* 카운트가 도는 동안(1시간·30분 전)에도 예배 순서·본문을 미리 볼 수 있다 — 출석은 예배 시간에만 (2026-09-27)
        방송실 전체 화면(.hw-fs)에서는 .hw-btns 가 숨겨져 카운트만 나간다 */
-    d.querySelector('#hwPrep button').addEventListener('click', function () { openGate(sc.kind); });
+    d.querySelector('#hwPrep button').addEventListener('click', function () { enter(sc.kind, sc.part, true); });
     var hero = rot.closest('.hero') || document.body;
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
     fsButton(hero);
     var tm = 0, startDow = dow;
     function tick() {
+      if (!d.isConnected) { clearInterval(tm); return; }               /* 다시 그려 빠진 카운트는 멈춘다 */
       var n = kst(), left = sc.from * 60 - (n.getUTCHours() * 3600 + n.getUTCMinutes() * 60 + n.getUTCSeconds());
       if (!preview && (n.getUTCDay() !== startDow || left <= PAD * 60)) {   /* 예배 10분 전 → 오늘의 예배 슬라이드로 */
         clearInterval(tm); refreshClock();
@@ -442,6 +479,7 @@
   /* ── 문: 로그인·정회원 확인 뒤 열기 ── */
   function openGate(kind, ctx) {                 /* ctx: { date, bulletin } — 예배순서 보관함에서 지난 날짜를 열 때 */
     ctx = ctx || {};
+    qtCache = {}; svcCache = {};                   /* 열 때마다 새로 읽는다 — 설교 매니저에서 고친 순서·찬송이 닫았다 다시 열면 바로 보이도록 (2026-10-07) */
     var ov = ensureOverlay();
     ov.hidden = false; document.body.classList.add('ws-open');
     if (window.ModalNav) ModalNav.open(closeViewer);
@@ -837,8 +875,15 @@
     return overlay;
   }
   function setSize(d) { textSize = Math.max(0.8, Math.min(1.8, +(textSize + d).toFixed(2))); var b = $('wsBody'); if (b) b.style.fontSize = (textSize * 100) + '%'; try { localStorage.setItem('wpc.worship.size', String(textSize)); } catch (e) {} }
-  function closeViewer() { if (!overlay) return; overlay.hidden = true; document.body.classList.remove('ws-open'); }
+  function closeViewer() { if (!overlay) return; overlay.hidden = true; document.body.classList.remove('ws-open'); setTimeout(heroRefresh, 0); }
 
   window.WPCWorship = { open: openGate, close: closeViewer, services: services, wedInfo: wedInfo, bulletins: bulletins, today: todayStr };
   heroSlide();
+  if ($('heroRotator') && !heroForce) {
+    if (heroLast === null) heroLast = heroSig();
+    setInterval(heroRefresh, 30000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) heroRefresh(); });   /* 휴대폰에서 다시 화면으로 돌아왔을 때 */
+    window.addEventListener('pageshow', function () { heroRefresh(); });
+    window.addEventListener('focus', function () { heroRefresh(); });
+  }
 })();
