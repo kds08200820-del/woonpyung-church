@@ -7675,6 +7675,7 @@ console.log('[affairs.js] v20260923lic');
       '.bar{flex-shrink:0;position:sticky;top:0;background:rgba(255,255,255,.96);border-bottom:1px solid #e3ddd0;padding:6px 12px;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;z-index:10;-webkit-overflow-scrolling:touch}',
       '.bar button{flex-shrink:0;font:inherit;font-size:14px;border:1px solid #cdd7e3;background:#fff;border-radius:8px;padding:5px 11px;cursor:pointer;white-space:nowrap}',
       '.bar button.active{background:#032257;color:#fff;border-color:#032257}',
+      '.bar button.exit{color:#032257;border-color:#032257;font-weight:700}body.dark .bar button.exit{color:#e0c98a;border-color:#7a6a45}',
       '.bar .hint{flex-shrink:0;font-size:12px;color:#9a8f78;margin-left:auto;white-space:nowrap}',
       /* 덱 컨테이너 */
       '#deck{flex:1;overflow:hidden;position:relative}',
@@ -7811,6 +7812,13 @@ console.log('[affairs.js] v20260923lic');
         'else{enterImmersive();}' +
       '};' +
       'exitBtn.onclick=function(){if(isFs()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}exitImmersive();};' +
+      /* 나가기 — 전체화면을 풀고 발표 창을 닫아 설교 매니저로 (창이 안 닫히는 브라우저면 안내) */
+      'document.getElementById("exit").onclick=function(){' +
+        'try{if(isFs())(document.exitFullscreen||document.webkitExitFullscreen).call(document);}catch(e){}' +
+        'try{if(window.opener&&!window.opener.closed)window.opener.focus();}catch(e){}' +
+        'window.close();' +
+        'setTimeout(function(){if(!window.closed)alert("이 창(탭)을 닫으면 설교 매니저로 돌아갑니다.");},400);' +
+      '};' +
       'document.addEventListener("fullscreenchange",function(){updateFs();setTimeout(reflow,60);});' +
       'document.addEventListener("webkitfullscreenchange",function(){updateFs();setTimeout(reflow,60);});' +
       /* transform 슬라이드 적용 */
@@ -7868,6 +7876,7 @@ console.log('[affairs.js] v20260923lic');
       '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&family=Noto+Serif+KR:wght@400;600;700&display=swap" rel="stylesheet">' +
       '<style>' + css + '</style></head><body class="scroll">' +
       '<div class="bar">' +
+        '<button id="exit" class="exit" title="발표를 마치고 설교 매니저로 돌아갑니다">‹ 나가기</button>' +
         '<button id="dec">가–</button>' +
         '<button id="inc">가+</button>' +
         '<button id="dark">🌙</button>' +
