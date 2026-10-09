@@ -235,7 +235,7 @@
         if (!force && !(n >= sc.from - PAD && n <= sc.to + PAD)) return;
       }
       var sub = '';
-      if (sc.kind === 'sunday') sub = b ? (b.date >= todayStr ? b.title : '지난 주보 · ' + b.title) : '';
+      if (sc.kind === 'sunday') sub = b && b.date >= todayStr ? b.title : '';   /* 지난 주보 제목은 띄우지 않는다 — 이번 주 순서는 설교 매니저 블록에서 올 수 있다 (2026-10-09) */
       else if (sc.kind === 'wed') { var w = wedInfo(); sub = w ? (w.title ? '«' + w.title + '» · ' : '') + w.ref : ''; }
       else sub = '오늘의 QT 본문';
       out.push({ kind: sc.kind, part: sc.part || 0, label: sc.label, sub: sub, time: sc.time });
@@ -578,6 +578,39 @@
     return out;
   }
 
+  /* 이번 주일 — 오늘이 주일이면 오늘, 토요일이면 내일, 그 밖에는 지난 주일 (주보 고르기와 같은 규칙: 내일까지의 가장 가까운 주일) */
+  function sundayDate() { var t = new Date(today.getTime() + 864e5); return ymd(new Date(t.getTime() - t.getUTCDay() * 864e5)); }
+  function bulletinOn(d) { var L = bulletins(); for (var i = 0; i < L.length; i++) if (L[i].date === d) return L[i]; return null; }
+  function hasSermonBlock(conti) { return Array.isArray(conti) && conti.some(function (e) { return e && /^(말씀|설교)/.test(String(e.label || '').replace(/\s+/g, '')); }); }
+  /* 설교 매니저에서 블록으로 짠 주일 순서(rec.conti) → 슬라이드
+       · 블록에 곡·교독문이 있으면 그것을, 비어 있으면 같은 날 주보의 같은 자리(이름+순번) 줄로 채운다
+       · 성경봉독·말씀은 설교 기록(제목·본문·설교자·요약), 요절은 주보
+       · skip: 성도 화면에 띄우지 않는 순서(목회 기도·신앙고백·기도·교회소식·축도)를 뺀다 — sundaySlides 와 같은 규칙 */
+  function sundayFromConti(rec, b, sd, skip) {
+    var SKIP = /^(목회\s*기도|신앙\s*고백|기도|교회\s*소식|축도)$/;
+    var bb = { scripture: rec.scripture || (b && b.scripture) || '', preacher: rec.preacher || (b && b.preacher) || '', quote: (b && b.quote) || '', summary: rec.summary || (b && b.summary) || null };
+    var bl = {}, bs = {}, seen = {};
+    ((b && b.order) || []).forEach(function (l) { var k = ordKey(String(l).split(/\s*·\s*/)[0]); bs[k] = (bs[k] || 0) + 1; bl[k + '#' + bs[k]] = l; });
+    var out = [{ type: 'cover', k: '주일 예배', date: b ? (b.dateLabel || b.date) + (b.week ? ' · ' + b.week : '') : dateLabel(sd), title: rec.title || (b && b.title) || '', ref: bb.scripture, who: bb.preacher, quote: bb.quote }];
+    rec.conti.forEach(function (e, ci) {
+      var lb = String(e.label || '').trim(), k = ordKey(lb); seen[k] = (seen[k] || 0) + 1;
+      if (!lb || (skip && SKIP.test(lb))) return;
+      var line = bl[k + '#' + seen[k]], rest = line ? String(line).split(/\s*·\s*/).slice(1).join(' · ').trim() : '';
+      var its = e.items && e.items.length ? e.items : (e.hno ? [{ b: 'h', n: +e.hno }] : null);
+      var n0 = out.length, g;
+      if (joySlotKey(lb)) [].push.apply(out, joySlides(lb, songs(rest), e.jnos, its));
+      else if (its) [].push.apply(out, joySlides(lb, [], null, its));                       /* 송영·찬송·특송 … 고른 곡 */
+      else if (k === '교독' && (g = gyodokNo(e.detail) || gyodokNo((rest.match(/교독문\s*(\d+)/) || [])[1]))) out.push({ type: 'gyodok', head: lb, no: g, sub: String(e.detail || rest).replace(/^\d+\.?\s*/, '').replace(/교독문\s*\d+\s*번?/, '').replace(/[()]/g, '').trim() });
+      else if (k === '성경봉독') { var ref = rest || bb.scripture; if (ref) out.push({ type: 'bible', head: lb, ref: ref }); }
+      else if (k === '말씀') out.push({ type: 'sermon', head: lb, title: rec.title || songs(rest)[0] || rest, ref: bb.scripture, who: bb.preacher, quote: bb.quote, summary: bb.summary });
+      else if (line) out.push(parseItem(line, bb));                                          /* 송영 10장 «…» 처럼 주보 줄로 */
+      else if (/^(신앙고백|주기도문|헌금)$/.test(k)) out.push(parseItem(lb, bb));                  /* 사도신경·주기도문 전문, 온라인 헌금 */
+      else out.push({ type: 'text', head: lb, lines: [lb], big: true });
+      for (var x = n0; x < out.length; x++) out[x].oi = ci;
+    });
+    return out;
+  }
+
   /* ── 권한별 화면 (2026-10-09 담임목사 지시) — 설교 매니저(주일 낮 예배)에서 짠 순서대로
        · 반주자: 주보 순서 사이에 반주 악보(기도송·헌금송·폐회송 — 찬송가·모두의 찬양 악보 또는 올린 악보 파일)
        · 목회자(관리자 포함): 주보 순서 사이에 목회자 기도(설교 전 기도·헌금 기도 …) + 목회 기도·축도 칸의 기도문
@@ -707,15 +740,26 @@
     ctx = ctx || {}; curKind = kind; slides = []; idx = 0;
     var date = ctx.date || todayStr; curDate = date; editing = false;
     if (kind === 'sunday') {
-      var b = ctx.bulletin || sundayBulletin();
-      if (!b) return setBody('<div class="ws-none">이번 주 주보 자료가 아직 없습니다.</div>');
+      /* 주일 순서 (2026-10-09): 설교 매니저에서 블록으로 짠 순서(말씀 블록이 있는 콘티)가 있으면 그것을, 없으면 주보 순서를
+         · 날짜 = 보관함에서 고른 날, 아니면 이번 주일(토요일이면 내일) — 주보가 아직 없어도 짠 순서로 예배를 연다
+         · 반주자·목회자(관리자 포함)는 자기 블록도 함께 받는다 — 성도·로그인 전에는 부르지 않는다 */
+      var sd = ctx.date || sundayDate(), b0 = ctx.bulletin || bulletinOn(sd);
+      curDate = sd;
       setBody('<div class="ws-lock"><div class="ws-lock-t">예배 순서를 불러오는 중…</div></div>');
-      /* 반주자·목회자(관리자 포함)는 자기 블록도 함께 받는다 — 성도·로그인 전에는 부르지 않는다 (2026-10-09) */
-      Promise.all([loadService(b.date || date, ['주일 낮 예배']), loadRole(b.date || date)]).then(function (rs) {
+      Promise.all([loadService(sd, ['주일 낮 예배']), loadRole(sd)]).then(function (rs) {
         var rec = rs[0]; wsRole = rs[1];
-        slides = sundaySlides(b, rec, true);
-        roleFull = wsRole ? sundaySlides(b, rec, false) : null;
-        start();
+        if (rec && hasSermonBlock(rec.conti)) {
+          slides = sundayFromConti(rec, b0, sd, true);
+          roleFull = wsRole ? sundayFromConti(rec, b0, sd, false) : null;
+          return start();
+        }
+        var b = b0 || sundayBulletin();
+        if (!b) return setBody('<div class="ws-none">이번 주 예배 순서가 아직 없습니다.<br>설교 매니저에서 주일 예배 순서를 짜거나 주보를 올려 주세요.</div>');
+        (b.date && b.date !== sd ? loadService(b.date, ['주일 낮 예배']) : Promise.resolve(rec)).then(function (rec2) {   /* 지난 주보면 그 주의 곡 기록으로 */
+          slides = sundaySlides(b, rec2, true);
+          roleFull = wsRole ? sundaySlides(b, rec2, false) : null;
+          start();
+        });
       });
     } else if (kind === 'wed') {
       wsRole = null; roleFull = null;
