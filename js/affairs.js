@@ -4319,6 +4319,15 @@ console.log('[affairs.js] v20260923lic');
           '<button type="button" class="btn btn-line" id="bd_joy_svc" style="padding:6px 4px;font-size:.78rem;grid-column:1/-1" title="수요기도회 등 — 예배 전 찬양 다음에 부르는 예배 찬양 2~3곡 (모두의 찬양·찬송가)">🎤 예배 찬양 (2~3곡)</button>' +
         '</div><div id="bd_songs" style="font-size:.8rem;color:#48576b;line-height:1.6"></div>' +
         '<div style="font-size:.72rem;color:#9aa5b1;margin-top:4px">저장하면 오늘의 예배에 악보로 나옵니다.</div></div>' +
+        // ── 주일 예배 순서(보는 사람별): 주보 순서(모두) 사이에 목회자 기도·반주자 악보를 끼운다 — 오늘의 예배가 로그인한 사람의 권한대로 펼친다 (2026-10-09)
+        '<div class="af-field" id="bd_sun_field" style="display:none"><label>주일 예배 순서 <span style="font-weight:400">(보는 사람별)</span></label>' +
+        '<div style="font-size:.72rem;color:#7b8794;margin:-2px 0 7px;line-height:1.55">주보 순서 사이에 목회자 기도와 반주자 악보를 넣습니다. 성도는 주보 순서를, <b style="color:#4a6a9c">목회자</b>·<b style="color:#9a7b3e">반주자</b>는 자기 블록이 들어간 순서를 오늘의 예배에서 봅니다. 📌 고정한 블록은 다음 주에도 그대로 들어갑니다.</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:7px"><button type="button" class="btn btn-line" id="bd_sun_bul" style="padding:5px 4px;font-size:.72rem" title="이 날짜 주보의 순서로 모두 블록을 맞춥니다 — 목회자·반주자 블록은 같은 자리에 그대로">주보 순서 불러오기</button>' +
+        '<button type="button" class="btn btn-line" id="bd_sun_prev" style="padding:5px 4px;font-size:.72rem" title="지난 주일에 📌 고정한 목회자·반주자 블록을 같은 자리에 넣습니다">지난 주 고정 블록</button></div>' +
+        '<div id="bd_sun"></div>' +
+        '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:#4a6a9c;margin-bottom:3px">목회자 기도</div><div id="bd_sun_add_p" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
+        '<div class="sun-addrow" id="bd_sun_drop_a" style="margin-top:7px;border:1px dashed transparent;border-radius:7px;padding:2px"><div style="font-size:.7rem;font-weight:700;color:#9a7b3e;margin-bottom:3px">반주자 악보 <span style="font-weight:400;color:#9aa5b1">— 악보 파일을 여기나 블록 위로 끌어다 놓아도 됩니다</span></div><div id="bd_sun_add_a" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
+        '</div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
         '</div>' +
         '<div class="bd-pane bd-pane-attach" id="bd_attach" style="display:none">' +
@@ -4394,7 +4403,7 @@ console.log('[affairs.js] v20260923lic');
         return '';
       }
       // 항목 전문(기도문·소식·신앙고백 등) 작성 모달 → it.body 에 저장
-      function orderTextModal(it, title, ph) {
+      function orderTextModal(it, title, ph, after) {   // after: 저장한 뒤 부를 함수(주일 예배 순서 — 고친 것으로 표시)
         var ov2 = document.createElement('div');
         ov2.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto';
         ov2.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:640px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
@@ -4408,14 +4417,15 @@ console.log('[affairs.js] v20260923lic');
         ov2.querySelector('#otm_cancel').onclick = close;
         ov2.addEventListener('click', function (e) { if (e.target === ov2) close(); });
         ov2.querySelector('#otm_ta').focus();
-        ov2.querySelector('#otm_save').onclick = function () { it.body = ov2.querySelector('#otm_ta').value; it.fixed = ov2.querySelector('#otm_fixed').checked; close(); renderOrder(); };
+        ov2.querySelector('#otm_save').onclick = function () { it.body = ov2.querySelector('#otm_ta').value; it.fixed = ov2.querySelector('#otm_fixed').checked; close(); renderOrder(); if (after) after(); };
       }
       function renderOrder() {
         var rowsHtml = order.map(function (it, i) {
           var detailLine = it.detail ? '<div class="od-detail-view" style="font-size:.82rem;color:#48576b;margin-top:2px">' + esc(it.detail) + '</div>' : '';
           var bodyPrev = (it.body && !it._openBody) ? '<div style="font-size:.78rem;color:#7b8794;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ' + esc(it.body.replace(/\s+/g, ' ').slice(0, 40)) + (it.body.length > 40 ? '…' : '') + '</div>' : '';
           var badges = (it.fixed ? ' <span style="font-size:.64rem;background:#fff3d6;color:#a8742a;border-radius:4px;padding:1px 6px;font-weight:700">📌 고정</span>' : '') +
-            (it.noexport ? ' <span style="font-size:.64rem;background:#f1f3f6;color:#8a93a0;border-radius:4px;padding:1px 6px;font-weight:700">🚫 출력제외</span>' : '');
+            (it.noexport ? ' <span style="font-size:.64rem;background:#f1f3f6;color:#8a93a0;border-radius:4px;padding:1px 6px;font-weight:700">🚫 출력제외</span>' : '') +
+            (audOf(it) !== 'all' ? ' <span style="font-size:.64rem;border:1px solid currentColor;color:' + (it.aud === 'pastor' ? '#4a6a9c' : '#9a7b3e') + ';border-radius:4px;padding:0 5px;font-weight:700">' + AUD_NAME[it.aud] + '만</span>' : '');
           return '<div class="od-row" data-i="' + i + '" style="display:flex;align-items:flex-start;gap:6px;border:1px solid #e1e7ef;border-radius:9px;padding:7px 9px;margin-bottom:6px;background:#fff' + (it.noexport ? ';opacity:.62' : '') + '">' +
             '<span class="od-handle" style="cursor:grab;color:#9aa5b1;padding-top:2px;touch-action:none">≡</span>' +
             '<span style="flex:0 0 16px;text-align:center;color:#7b8794;font-size:.74rem;padding-top:3px">' + (i + 1) + '</span>' +
@@ -4760,9 +4770,272 @@ console.log('[affairs.js] v20260923lic');
           if (p) contiDefault(sv, p.order); else if (CONTI_DEFAULT[sv]) contiDefault(sv);
         });
       }
+      // ── 주일 예배 순서(보는 사람별) — 주일 낮 예배 (2026-10-09 담임목사 지시)
+      //    모두 블록 = 주보 순서(성도 화면은 주보를 따른다) · 목회자 블록 = 기도문(목회자만) · 반주자 블록 = 악보(반주자만)
+      //    모두 블록에 적은 전문(body)도 목회자만 본다(목회 기도·축도의 기도문). 공개 뷰는 전문을 내보내지 않는다.
+      //    목회자·반주자 블록의 자리는 '바로 앞 모두 블록'(이름+순번)으로 기억한다 — 주보가 바뀌어도 기도 뒤 기도송, 헌금봉헌 뒤 헌금송 자리에 들어간다
+      var SUN_ADD_P = ['목회 기도', '설교 전 기도', '헌금 기도', '축도', '기도'];
+      var SUN_ADD_A = ['기도송', '헌금송', '폐회송', '반주 악보'];
+      var AUD_C = { all: '#8a93a0', pastor: '#4a6a9c', accomp: '#9a7b3e' };
+      var sunTouched = false, sunSortable = null, sunAutoDone = false, sunReady = true;
+      function sunNeedSql() { if (sunReady) return false; alert('먼저 Supabase SQL Editor 에서 supabase/20261009_1900_worship_roles.sql 을 한 번 실행해 주세요.\n실행 전에는 목회자·반주자 블록이 성도 화면에서 걸러지지 않습니다.'); return true; }
+      var sunWasComposed = /"aud"/.test(rec.worship_order || '');   // 예전에 보는 사람을 정해 저장한 순서
+      function sunOn() { return !worshipMode && ((ov.querySelector('#se_service') || {}).value === '주일 낮 예배'); }
+      function sunDirty() { sunTouched = true; try { ov.dispatchEvent(new Event('input')); } catch (e) { } }   // 자동 저장·닫기 확인에 잡히게
+      function sunPriv(it) { return audOf(it) !== 'all'; }
+      // 저장할 때 블록의 aud — 주일 순서를 짰으면 모두 블록에도 'all' 을 적어 '짠 순서'임을 남긴다(오늘의 예배가 지난 주 고정 블록을 이어받을지 가른다)
+      function sunAudOut(o) {
+        if (sunPriv(o)) return o.aud;
+        var sv = (ov.querySelector('#se_service') || {}).value;
+        return sv === '주일 낮 예배' && (sunTouched || sunWasComposed || order.some(sunPriv)) ? 'all' : undefined;
+      }
+      function sunBulletin() {
+        var d = (ov.querySelector('#se_date') || {}).value || '', L = [];
+        try { L = (typeof BULLETINS !== 'undefined' && BULLETINS) || []; } catch (e) { L = []; }
+        for (var i = 0; i < L.length; i++) if (L[i].date === d && (L[i].order || []).length) return L[i];
+        return null;
+      }
+      function sunSub(it) {
+        var a = audOf(it);
+        if (a === 'accomp') {
+          var t = normItems(it.items || it.jnos).map(songLabel), n = (it.images || []).length;
+          if (n) t.push('악보 파일 ' + n + '개');
+          return (it._up ? '올리는 중… ' : '') + (t.length ? t.join(' · ') : '누르면 곡을 고르거나 악보를 올립니다') + (it.detail ? ' · ' + it.detail : '');
+        }
+        if (a === 'pastor') return it.body ? String(it.body).replace(/\s+/g, ' ').slice(0, 60) : '누르면 기도문을 적습니다';
+        if (joySlotKey(it.label)) { var ss = normItems(it.items || it.jnos); if (ss.length) return ss.map(songLabel).join(' · '); }
+        return it.detail || '';
+      }
+      // 악보 파일 끌어다 놓기 — 파일을 끌 때만 받는다(블록 끌어 옮기기는 Sortable 이 따로)
+      function sunDropZone(el, onFiles) {
+        function hasFiles(e) { return !!(e.dataTransfer && [].indexOf.call(e.dataTransfer.types || [], 'Files') >= 0); }
+        el.addEventListener('dragover', function (e) { if (!hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); el.style.outline = '2px dashed #b89b5e'; el.style.outlineOffset = '1px'; });
+        el.addEventListener('dragleave', function (e) { if (!el.contains(e.relatedTarget)) el.style.outline = ''; });
+        el.addEventListener('drop', function (e) {
+          var fs = e.dataTransfer && e.dataTransfer.files; if (!fs || !fs.length) return;
+          e.preventDefault(); e.stopPropagation(); el.style.outline = '';
+          onFiles(Array.prototype.slice.call(fs));
+        });
+      }
+      function sunUpload(it, files) {
+        files = (files || []).filter(function (f) { return /^(image\/|application\/pdf)/.test(f.type || '') || /\.(png|jpe?g|webp|gif|pdf)$/i.test(f.name || ''); });
+        if (!files.length) { alert('악보는 그림 파일(jpg·png·webp)이나 PDF 로 올려 주세요.'); return Promise.resolve(); }
+        if (!(window.ChurchUpload && ChurchUpload.isReady())) { alert('업로드 서버가 설정되지 않았습니다.'); return Promise.resolve(); }
+        it._up = (it._up || 0) + files.length; renderOrder(); if (it._modalPaint) it._modalPaint();
+        return files.reduce(function (p, f) {   // 고른 순서대로 한 장씩 — 넘겨 보는 순서가 된다
+          return p.then(function () {
+            return ChurchUpload.upload(f, { folder: 'worship/accomp', compress: false })
+              .then(function (res) { (it.images = it.images || []).push(res.url); })
+              .catch(function (e) { alert('「' + (f.name || '파일') + '」 올리기 실패: ' + e.message); })
+              .then(function () { it._up = Math.max(0, (it._up || 1) - 1); renderOrder(); if (it._modalPaint) it._modalPaint(); });
+          });
+        }, Promise.resolve()).then(sunDirty);
+      }
+      // 반주자 블록 — 찬송가·모두의 찬양에서 고르기 + 악보 파일(끌어다 놓기·여러 장) + 메모 + 📌 고정
+      function accompModal(it) {
+        var m = document.createElement('div');
+        m.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9400;display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto';   /* 곡 고르기 창(9500)이 이 위로 뜬다 */
+        m.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:640px;width:100%;padding:18px 20px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px"><h3 style="margin:0;color:#032257;font-size:1.05rem">' + esc(it.label) + ' <span style="font-size:.7rem;font-weight:600;color:#9a7b3e;border:1px solid #9a7b3e;border-radius:4px;padding:0 5px;vertical-align:2px">반주자만 봅니다</span></h3><button type="button" class="btn btn-line" id="acm_close" style="padding:3px 11px">닫기</button></div>' +
+          '<div style="font-size:.76rem;color:#7b8794;margin-bottom:12px">찬송가·모두의 찬양에서 고르거나 악보 파일을 올립니다. 둘 다 넣으면 고른 곡 다음에 올린 파일이 이어집니다.</div>' +
+          '<div style="font-size:.8rem;font-weight:700;color:#032257;margin-bottom:5px">책에서 고르기</div><div id="acm_songs" style="font-size:.84rem;color:#48576b;margin-bottom:6px"></div>' +
+          '<button type="button" class="btn btn-line" id="acm_pick" style="padding:6px 12px;font-size:.8rem">찬송가·모두의 찬양에서 고르기</button>' +
+          '<div style="font-size:.8rem;font-weight:700;color:#032257;margin:16px 0 5px">악보 파일</div>' +
+          '<div id="acm_drop" style="border:2px dashed #d8cbab;border-radius:10px;background:#fbf8f1;padding:18px 12px;text-align:center;color:#7a6a45;font-size:.84rem;cursor:pointer">악보 파일을 여기로 끌어다 놓거나, 눌러서 고르세요<br><span style="font-size:.74rem;color:#9a8f78">jpg·png·webp·pdf · 여러 장을 한 번에 올릴 수 있습니다 · 올린 순서대로 넘겨 봅니다</span></div>' +
+          '<div id="acm_files" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>' +
+          '<label style="display:block;font-size:.8rem;font-weight:700;color:#032257;margin:16px 0 5px">메모 <span style="font-weight:400;color:#9aa5b1">(예: 전주 4마디, 2절까지)</span></label>' +
+          '<input type="text" id="acm_memo" value="' + esc(it.detail || '') + '" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
+          '<label style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:.82rem;color:#5a6b82"><input type="checkbox" id="acm_fixed"' + (it.fixed ? ' checked' : '') + ' style="width:15px;height:15px;accent-color:#b89b5e;margin:0"> 📌 고정 — 다음 주에도 이 악보 그대로</label>' +
+          '<div style="text-align:right;margin-top:14px"><button type="button" class="btn btn-solid" id="acm_ok" style="padding:8px 22px;font-weight:700">확인</button></div></div>';
+        document.body.appendChild(m);
+        function paint() {
+          if (!document.body.contains(m)) return;
+          var ss = normItems(it.items || it.jnos);
+          m.querySelector('#acm_songs').innerHTML = ss.length ? ss.map(function (x) { return '<div>' + esc(songLabel(x)) + '</div>'; }).join('') : '<span style="color:#9aa5b1">고른 곡이 없습니다</span>';
+          var imgs = it.images || [];
+          m.querySelector('#acm_files').innerHTML = imgs.map(function (u, k) {
+            var pdf = /\.pdf(\?|#|$)/i.test(u);
+            return '<div style="width:96px;border:1px solid #e1e7ef;border-radius:6px;overflow:hidden;background:#fff">' +
+              '<a href="' + esc(u) + '" target="_blank" rel="noopener" title="크게 보기">' + (pdf ? '<span style="display:flex;align-items:center;justify-content:center;height:112px;font-size:.82rem;color:#032257;background:#f5f7fa">PDF</span>' : '<img src="' + esc(u) + '" alt="악보 ' + (k + 1) + '" style="display:block;width:100%;height:112px;object-fit:cover;object-position:top">') + '</a>' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;font-size:.7rem;padding:2px 4px;color:#7b8794">' + (k + 1) +
+              '<span>' + (k ? '<button type="button" class="acm-mv" data-k="' + k + '" title="앞으로" style="border:0;background:none;cursor:pointer;color:#5b6b7d;padding:0 3px">◀</button>' : '') +
+              '<button type="button" class="acm-rm" data-k="' + k + '" title="빼기" style="border:0;background:none;cursor:pointer;color:#c0392b;padding:0 3px">✕</button></span></div></div>';
+          }).join('') + (it._up ? '<div style="align-self:center;font-size:.8rem;color:#9a7b3e">올리는 중… (' + it._up + ')</div>' : '');
+          Array.prototype.forEach.call(m.querySelectorAll('.acm-rm'), function (b) { b.onclick = function () { if (!confirm(Number(b.dataset.k) + 1 + '번째 악보 파일을 뺄까요?')) return; it.images.splice(Number(b.dataset.k), 1); paint(); renderOrder(); sunDirty(); }; });
+          Array.prototype.forEach.call(m.querySelectorAll('.acm-mv'), function (b) { b.onclick = function () { var k = Number(b.dataset.k), t = it.images[k - 1]; it.images[k - 1] = it.images[k]; it.images[k] = t; paint(); renderOrder(); sunDirty(); }; });
+        }
+        it._modalPaint = paint; paint();
+        var pickInp = document.createElement('input'); pickInp.type = 'file'; pickInp.multiple = true; pickInp.accept = 'image/*,application/pdf';
+        pickInp.onchange = function () { sunUpload(it, Array.prototype.slice.call(pickInp.files || [])); pickInp.value = ''; };
+        var drop = m.querySelector('#acm_drop');
+        drop.onclick = function () { pickInp.click(); };
+        sunDropZone(drop, function (files) { sunUpload(it, files); });
+        m.addEventListener('dragover', function (e) { e.preventDefault(); });   /* 놓을 곳을 조금 빗나가도 브라우저가 파일을 열어 버리지 않게 */
+        m.addEventListener('drop', function (e) { e.preventDefault(); });
+        m.querySelector('#acm_pick').onclick = function () {
+          joyPicker(normItems(it.items || it.jnos), 4, it.label, function (picks) {
+            it.items = picks.map(function (p) { return { b: p.b === 'h' ? 'h' : 'c', n: p.no }; }); delete it.jnos; delete it.hno;
+            paint(); renderOrder(); sunDirty();
+          });
+        };
+        function close() {
+          var memo = m.querySelector('#acm_memo').value.trim(), fx = m.querySelector('#acm_fixed').checked;
+          if (memo !== (it.detail || '') || fx !== !!it.fixed) { it.detail = memo; it.fixed = fx; sunDirty(); }
+          delete it._modalPaint; m.remove(); renderOrder();
+        }
+        m.querySelector('#acm_close').onclick = close; m.querySelector('#acm_ok').onclick = close;
+        m.addEventListener('click', function (e) { if (e.target === m) close(); });
+      }
+      function sunEdit(i) {
+        var it = order[i]; if (!it) return;
+        var a = audOf(it), k = joySlotKey(it.label);
+        if (a === 'accomp') { accompModal(it); return; }
+        if (a === 'all' && k) { joyPicker(normItems(it.items || it.jnos), JOY_SLOTS[k].max, JOY_SLOTS[k].name, function (picks) { joySet(k, picks); sunDirty(); }); return; }
+        var prayer = a === 'pastor' || /기도|축도/.test(it.label || '');
+        orderTextModal(it, it.label + (prayer ? ' — 기도문' : ' — 목회자 메모') + ' (목회자만 봅니다)',
+          prayer ? '기도문을 적으세요. 오늘의 예배와 발표자 모드에서 목회자에게만 보입니다. 매주 같은 기도문이면 📌 고정으로 두세요.' : '이 순서에서 목회자가 볼 메모를 적으세요. 성도에게는 보이지 않습니다.', sunDirty);
+      }
+      function paintSun() {
+        var f = ov.querySelector('#bd_sun_field'), box = ov.querySelector('#bd_sun'); if (!f || !box) return;
+        var on = sunOn(); f.style.display = on ? '' : 'none'; if (!on) return;
+        var warn = sunReady ? '' : '<div style="font-size:.74rem;color:#c0392b;border:1px solid #f0c9c4;background:#fdf3f2;border-radius:6px;padding:6px 8px;margin-bottom:6px">목회자·반주자 블록을 넣으려면 먼저 SQL Editor 에서 supabase/20261009_1900_worship_roles.sql 을 실행해 주세요.</div>';
+        box.innerHTML = warn + (order.length ? order.map(function (it, i) {
+          var a = audOf(it), c = AUD_C[a], pub = a === 'all';
+          var memo = pub && it.body ? '<span style="font-weight:400;font-size:.64rem;color:#4a6a9c;margin-left:3px">· 기도문(목회자만)</span>' : '';
+          return '<div class="sun-row" data-i="' + i + '" style="border:1px solid ' + (pub ? '#e4e8ee' : c + '55') + ';border-left:3px solid ' + c + ';background:' + (pub ? '#fff' : (a === 'pastor' ? '#f5f8fc' : '#fbf8f1')) + ';border-radius:7px;padding:5px 7px;margin-bottom:4px">' +
+            '<div style="display:flex;align-items:center;gap:6px">' +
+            '<span class="sun-handle" title="끌어서 자리 옮기기" style="cursor:grab;color:#9aa5b1;font-size:1rem;touch-action:none;user-select:none">≡</span>' +
+            '<div class="sun-open" data-i="' + i + '" style="flex:1;min-width:0;cursor:pointer" title="' + (a === 'accomp' ? '곡 고르기·악보 올리기 (파일을 이 블록 위로 끌어다 놓아도 됩니다)' : (pub && joySlotKey(it.label) ? '곡 고르기' : '기도문·메모 적기 (목회자만)')) + '">' +
+              '<div style="font-weight:700;font-size:.8rem;color:' + (pub ? 'var(--accent,#032257)' : c) + '">' + (i + 1) + '. ' + esc(it.label || '항목') +
+                ' <span style="font-weight:600;font-size:.62rem;color:' + c + ';border:1px solid ' + c + ';border-radius:4px;padding:0 4px;margin-left:2px">' + AUD_NAME[a] + '</span>' + memo + '</div>' +
+              '<div style="font-size:.7rem;color:#7b8794;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(sunSub(it)) + '</div></div>' +
+            '<button type="button" class="sun-fix" data-i="' + i + '" title="고정 — 다음 주에도 그대로" style="border:0;background:none;cursor:pointer;font-size:.82rem;opacity:' + (it.fixed ? '1' : '.28') + '">📌</button>' +
+            '<button type="button" class="sun-del" data-i="' + i + '" title="빼기" style="border:0;background:none;color:#c0392b;cursor:pointer;font-size:.86rem">✕</button></div></div>';
+        }).join('') : '<div style="font-size:.76rem;color:#9aa5b1;padding:6px 2px">아직 순서가 없습니다. ‘주보 순서 불러오기’를 누르세요.</div>');
+        Array.prototype.forEach.call(box.querySelectorAll('.sun-open'), function (b) { b.onclick = function () { sunEdit(Number(b.dataset.i)); }; });
+        Array.prototype.forEach.call(box.querySelectorAll('.sun-fix'), function (b) { b.onclick = function () { var it = order[Number(b.dataset.i)]; if (it) { it.fixed = !it.fixed; renderOrder(); sunDirty(); } }; });
+        Array.prototype.forEach.call(box.querySelectorAll('.sun-del'), function (b) {
+          b.onclick = function () {
+            var i = Number(b.dataset.i), it = order[i]; if (!it) return;
+            if ((it.body || (it.images || []).length) && !confirm('「' + (it.label || '항목') + '」 블록을 뺄까요?\n적어 둔 기도문·올린 악보도 함께 빠집니다.')) return;
+            order.splice(i, 1); renderOrder(); sunDirty();
+          };
+        });
+        Array.prototype.forEach.call(box.querySelectorAll('.sun-row'), function (row) {   // 반주자 블록 위로 악보 파일을 끌어다 놓으면 그 블록에 올린다
+          var it = order[Number(row.dataset.i)]; if (it && audOf(it) === 'accomp') sunDropZone(row, function (files) { sunUpload(it, files); });
+        });
+        if (sunSortable) { try { sunSortable.destroy(); } catch (e) { } sunSortable = null; }
+        if (window.Sortable) sunSortable = window.Sortable.create(box, {
+          handle: '.sun-handle', draggable: '.sun-row', animation: 170, forceFallback: true, fallbackTolerance: 3,
+          onEnd: function () {
+            var no = Array.prototype.map.call(box.querySelectorAll('.sun-row'), function (r) { return order[Number(r.dataset.i)]; }).filter(Boolean);
+            if (no.length === order.length) { order.length = 0; Array.prototype.push.apply(order, no); }
+            renderOrder(); sunDirty();
+          }
+        });
+      }
+      function sunKeys(list) { var seen = {}; return list.map(function (it) { var k = ordKey(it.label); seen[k] = (seen[k] || 0) + 1; return k + '#' + seen[k]; }); }
+      function sunIdx(key, last) { var r = -1; for (var i = 0; i < order.length; i++) if (!sunPriv(order[i]) && ordKey(order[i].label) === key) { r = i; if (!last) break; } return r; }
+      function sunAfter(i) { i++; while (i < order.length && sunPriv(order[i])) i++; return i; }   // 그 블록 바로 뒤에 붙은 목회자·반주자 블록들 다음
+      function sunAddAt(label) {   // 새 블록의 기본 자리 — 끌어서 얼마든지 옮길 수 있다
+        var i;
+        if (label === '설교 전 기도') { i = sunIdx('말씀'); return i >= 0 ? i : order.length; }
+        if (label === '헌금 기도') { i = sunIdx('헌금'); return i >= 0 ? sunAfter(i) : order.length; }
+        if (label === '기도송') { i = sunIdx('기도'); return i >= 0 ? sunAfter(i) : order.length; }
+        if (label === '헌금송') { i = sunIdx('헌금'); return i >= 0 ? i + 1 : order.length; }
+        if (label === '폐회송') { i = sunIdx('축도', true); return i >= 0 ? sunAfter(i) : order.length; }
+        return order.length;
+      }
+      function sunAdd(label, aud) {
+        if (sunNeedSql()) return;
+        if (aud === 'pastor' && (label === '목회 기도' || label === '축도')) {   // 주보에 있는 순서면 그 블록에 기도문을 단다
+          var ex = sunIdx(ordKey(label)); if (ex >= 0) { sunEdit(ex); return; }
+        }
+        if (label !== '기도' && label !== '반주 악보') {   // 이미 있는 블록(기도송·헌금송·설교 전 기도 …)이면 새로 만들지 않고 그 블록을 연다
+          for (var j = 0; j < order.length; j++) if (audOf(order[j]) === aud && order[j].label === label) { sunEdit(j); return; }
+        }
+        var it = { label: label, detail: '', url: '', aud: aud, fixed: true };
+        order.splice(sunAddAt(label), 0, it); renderOrder(); sunDirty();
+        sunEdit(order.indexOf(it));
+      }
+      // 주보 순서로 모두 블록을 맞춘다 — 같은 이름·순번의 블록에 있던 곡(예배 전 찬양 등)·기도문·고정·첨부는 옮기고, 목회자·반주자 블록은 같은 자리에
+      function sunFromBulletin(b) {
+        var pub = (b.order || []).map(function (l) { var p = String(l).split(/\s*·\s*/); return { label: (p[0] || '').trim(), detail: p.slice(1).join(' · ').trim(), url: '', aud: 'all' }; }).filter(function (x) { return x.label; });
+        var nk = sunKeys(pub), oldPub = order.filter(function (it) { return !sunPriv(it); }), ok = sunKeys(oldPub), hit = [];
+        oldPub.forEach(function (o, i) {
+          var j = nk.indexOf(ok[i]); if (j < 0) return;
+          hit.push(o);
+          var keepF = ['body', 'fixed', 'url', 'images', 'noexport'].concat(joySlotKey(o.label) ? ['items', 'jnos'] : []);   /* 찬송 번호는 주보가 맞다 */
+          keepF.forEach(function (f) { var v = o[f]; if (v != null && v !== '' && v !== false && !(Array.isArray(v) && !v.length)) pub[j][f] = v; });
+        });
+        // 주보에 없는 모두 블록이라도 곡·기도문·첨부가 있으면 버리지 않는다(예: 주보에 줄이 없는 입례송)
+        var fl = ordAnchors(order, function (it) { return sunPriv(it) || (hit.indexOf(it) < 0 && !!(normItems(it.items || it.jnos).length || it.body || it.url)); });
+        var merged = ordPlace(pub, fl);
+        order.length = 0; Array.prototype.push.apply(order, merged);
+      }
+      // 지난 주일 순서의 📌 고정 블록 → 이 순서의 같은 자리에 (같은 이름의 블록이 이미 있으면 건너뜀). 모두 블록의 고정 기도문(축도 등)은 같은 블록에
+      function sunCarry(prev) {
+        var have = {}; order.forEach(function (it) { if (sunPriv(it)) have[audOf(it) + '|' + it.label] = 1; });
+        var fl = ordAnchors(prev, sunPriv).filter(function (p) { return p.it.fixed && !have[audOf(p.it) + '|' + p.it.label]; })
+          .map(function (p) { var cp = JSON.parse(JSON.stringify(p.it)); delete cp._up; delete cp._openBody; return { it: cp, prevs: p.prevs, nexts: p.nexts }; });
+        var prevPub = prev.filter(function (it) { return !sunPriv(it); }), pk = sunKeys(prevPub);
+        var curPub = order.filter(function (it) { return !sunPriv(it); }), ck = sunKeys(curPub), n = 0;
+        prevPub.forEach(function (o, i) { if (!o.fixed || !o.body) return; var j = ck.indexOf(pk[i]); if (j >= 0 && !curPub[j].body) { curPub[j].body = o.body; curPub[j].fixed = true; n++; } });
+        if (fl.length) { var merged = ordPlace(curPub, ordAnchors(order, sunPriv).concat(fl)); order.length = 0; Array.prototype.push.apply(order, merged); }
+        return n + fl.length;
+      }
+      function sunPrev() {   // 이 날짜 앞에서 보는 사람을 정해 짠 가장 최근 주일 순서
+        var d = (ov.querySelector('#se_date') || {}).value || '';
+        if (!d) return Promise.resolve(null);
+        return api('GET', 'sermons?select=worship_order,sermon_date&service=eq.' + encodeURIComponent('주일 낮 예배') + '&sermon_date=lt.' + d + '&worship_order=like.*' + encodeURIComponent('"aud"') + '*&order=sermon_date.desc&limit=1')
+          .then(function (rows) {
+            var r = rows && rows[0]; if (!r) return null;
+            var wo = []; try { wo = JSON.parse(r.worship_order || '[]') || []; } catch (e) { wo = []; }
+            return Array.isArray(wo) && wo.length ? { date: fmtD(r.sermon_date), order: wo } : null;
+          }).catch(function () { return null; });
+      }
+      // 여는 순간(주일 낮 예배): 주보가 있고 순서가 아직 기본 틀이면 주보 순서로, 아직 짜지 않은 주일이면 지난 주 고정 블록을 미리 넣어 둔다
+      //   — 화면에만 넣고 저장은 하지 않는다. 저장하지 않아도 오늘의 예배는 지난 주 고정 블록을 쓴다(worship_role_order)
+      function sunAuto() {
+        if (!sunOn() || sunAutoDone) return;
+        sunAutoDone = true;
+        var b = sunBulletin(), plain = order.filter(function (it) { return !sunPriv(it) && !joySlotKey(it.label); });
+        if (b && !plain.some(function (it) { return String(it.detail || '').trim(); })) { sunFromBulletin(b); renderOrder(); }
+        if (sunWasComposed || order.some(sunPriv)) return;
+        roleSqlReady().then(function (ok) { return ok ? sunPrev() : null; })   /* SQL 실행 전에는 넣지 않는다 */
+          .then(function (p) { if (p && sunOn() && !order.some(sunPriv) && sunCarry(p.order)) renderOrder(); });
+      }
+      (function () {
+        var ap = ov.querySelector('#bd_sun_add_p'), aa = ov.querySelector('#bd_sun_add_a'); if (!ap || !aa) return;
+        function btn(l, c) { return '<button type="button" class="btn btn-line sun-add" data-l="' + esc(l) + '" style="padding:3px 8px;font-size:.72rem;color:' + c + '">＋ ' + esc(l) + '</button>'; }
+        ap.innerHTML = SUN_ADD_P.map(function (l) { return btn(l, AUD_C.pastor); }).join('');
+        aa.innerHTML = SUN_ADD_A.map(function (l) { return btn(l, AUD_C.accomp); }).join('');
+        Array.prototype.forEach.call(ap.querySelectorAll('.sun-add'), function (b) { b.onclick = function () { sunAdd(b.dataset.l, 'pastor'); }; });
+        Array.prototype.forEach.call(aa.querySelectorAll('.sun-add'), function (b) { b.onclick = function () { sunAdd(b.dataset.l, 'accomp'); }; });
+        // 블록이 아닌 곳(반주자 악보 줄 등)에 악보 파일을 놓으면 새 '반주 악보' 블록을 끝에 만든다 — 끌어서 자리를 옮기면 된다
+        sunDropZone(ov.querySelector('#bd_sun_field'), function (files) { if (sunNeedSql()) return; var it = { label: '반주 악보', detail: '', url: '', aud: 'accomp', fixed: true }; order.push(it); renderOrder(); sunUpload(it, files); });
+        ov.querySelector('#bd_sun_bul').onclick = function () {
+          var b = sunBulletin(), d = (ov.querySelector('#se_date') || {}).value || '';
+          if (!b) { alert((d || '이 날짜') + ' 주보가 아직 홈페이지에 없습니다. 주보가 올라온 뒤 다시 눌러 주세요.\n목회자·반주자 블록은 지금 자리에 넣어 두면, 주보가 바뀌어도 같은 자리(기도 뒤, 헌금봉헌 뒤 …)에 들어갑니다.'); return; }
+          if (order.length && !confirm(b.date + ' 주보 순서(' + b.order.length + '개)로 모두 블록을 맞출까요?\n목회자·반주자 블록과 적어 둔 기도문은 같은 자리에 그대로 둡니다.')) return;
+          sunFromBulletin(b); renderOrder(); sunDirty();
+        };
+        ov.querySelector('#bd_sun_prev').onclick = function () {
+          var btn0 = this; btn0.disabled = true;
+          sunPrev().then(function (p) {
+            btn0.disabled = false;
+            if (!p) { alert('이 날짜 앞에 목회자·반주자 블록을 짠 주일 기록이 없습니다.'); return; }
+            var n = sunCarry(p.order);
+            if (!n) { alert(p.date + ' 주일의 📌 고정 블록이 이미 모두 들어 있습니다.'); return; }
+            renderOrder(); sunDirty();
+          });
+        };
+      })();
+      ['#se_service', '#se_date'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('change', function () { sunAutoDone = false; sunAuto(); paintSun(); }); });
       var renderOrder0 = renderOrder;
-      renderOrder = function () { renderOrder0(); paintSongs(); paintConti(); };
-      paintSongs(); contiAuto(); paintConti();   // 여는 순간: 수요·새벽 등 예전 기록이면 기본 순서를 채워 둔다
+      renderOrder = function () { renderOrder0(); paintSongs(); paintConti(); paintSun(); };
+      paintSongs(); contiAuto(); paintConti(); sunAuto(); paintSun();
+      roleSqlReady().then(function (ok) { if (!ok) { sunReady = false; paintSun(); } });   // 여는 순간: 수요·새벽 등 예전 기록이면 기본 순서를 채워 둔다 · 주일은 주보 순서·지난 주 고정 블록
       ov.querySelector('#se_joy_in').onclick = function () { joyPick('입례송'); };
       ov.querySelector('#se_joy_ch').onclick = function () { joyPick('성가대 찬양'); };
       // 입례송은 바꾸기 전까지 계속 같은 곡(보통 한 해에 한 번 바꿈) — 주일 낮 예배에 입례송이 비어 있으면 가장 최근 주일의 것(없으면 이 PC에 기억한 것)으로 채운다.
@@ -5193,7 +5466,7 @@ console.log('[affairs.js] v20260923lic');
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
           hymns: ov.querySelector('#se_hymns_v').value || null,
-          worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, items: (function () { var it = normItems(o.items || o.jnos); return it.length ? it : undefined; })(),   /* 저장할 때 옛 번호도 모두의 찬양 번호로 */ body: o.body || '', fixed: !!o.fixed, noexport: !!o.noexport, images: o.images || undefined }; })) : null),
+          worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, items: (function () { var it = normItems(o.items || o.jnos); return it.length ? it : undefined; })(),   /* 저장할 때 옛 번호도 모두의 찬양 번호로 */ body: o.body || '', fixed: !!o.fixed, noexport: !!o.noexport, images: (o.images && o.images.length) ? o.images : undefined, aud: sunAudOut(o) }; })) : null),
           // 설교 매니저 확장(supabase/sermons_manager.sql): 시리즈·키워드·요약·상태
           series: seriesArr.length ? seriesArr.join(', ') : null,
           keywords: (function () { var el = ov.querySelector('#se_keywords'); if (!el) return null; var a = el.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean).slice(0, 3); return a.join(', ') || null; })(),
@@ -7507,10 +7780,24 @@ console.log('[affairs.js] v20260923lic');
   function pvOrder(r) {
     var o = [], i;
     try { o = JSON.parse(r.worship_order || '[]') || []; } catch (e) { o = []; }
-    o = o.filter(function (it) { return it && !it.noexport; });   // '출력 제외' 칸은 건너뜀
-    if (o.length) return o;
+    o = o.filter(function (it) { return it && !it.noexport && audOf(it) !== 'accomp'; });   // '출력 제외' 칸·반주자 악보 블록은 건너뜀 (목회자 기도는 넣는다)
     var B = [];
     try { B = (typeof BULLETINS !== 'undefined' && BULLETINS) || []; } catch (e) { B = []; }
+    if (o.length) {
+      /* 주일: 내용이 비어 있는 모두 블록(기본 틀)은 같은 날 주보의 같은 자리 줄로 채운다 */
+      var bl = null; if (!r.service || r.service === '주일 낮 예배') for (i = 0; i < B.length; i++) if (B[i].date === r.sermon_date && (B[i].order || []).length) { bl = B[i].order; break; }
+      if (bl) {
+        var bseen = {}, bmap = {}, oseen = {};
+        bl.forEach(function (line) { var p = String(line).split(/\s*·\s*/), k = ordKey(p[0]); bseen[k] = (bseen[k] || 0) + 1; bmap[k + '#' + bseen[k]] = p.slice(1).join(' · ').trim(); });
+        o = o.map(function (it) {
+          if (audOf(it) !== 'all') return it;
+          var k = ordKey(it.label); oseen[k] = (oseen[k] || 0) + 1;
+          var d = bmap[k + '#' + oseen[k]];
+          return !String(it.detail || '').trim() && d ? Object.assign({}, it, { detail: d }) : it;
+        });
+      }
+      return o;
+    }
     if (!r.service || r.service === '주일 낮 예배') for (i = 0; i < B.length; i++) if (B[i].date === r.sermon_date && (B[i].order || []).length)
       return B[i].order.map(function (line) { var p = String(line).split(/\s*·\s*/); return { label: (p[0] || '').trim(), detail: p.slice(1).join(' · ').trim() }; });
     String(r.hymns || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean)
@@ -7639,7 +7926,7 @@ console.log('[affairs.js] v20260923lic');
       if (x.kind === 'lord') return '주기도문';
       if (x.kind === 'bible') return x.ref || '';
       if (x.kind === 'sermon') return r.title || x.it.detail || '';
-      return x.it.detail || '';
+      return x.it.detail || (String(x.it.body || '').trim() ? '기도문' : '');   // 목회자 기도(설교 전 기도·헌금 기도)는 이름 옆에 '기도문'
     }
 
     // ── 페이지 구성: 표지 → 오늘의 예배 순서(목록) → 순서 칸마다 한 쪽(찬양은 곡마다 한 쪽) → 말씀 뒤에 설교 원고 ──
@@ -7902,6 +8189,59 @@ console.log('[affairs.js] v20260923lic');
   // ====================================================================
   /* 주보·설교 순서의 이름이 조금씩 달라도(경배와찬양·예배 전 찬양·성가곡…) 같은 자리로 알아본다 */
   function joySlotKey(l) { l = String(l || '').replace(/\s+/g, ''); if (/^(경배와찬양|예배전찬양)/.test(l)) return '경배와 찬양'; if (/^예배찬양/.test(l)) return '예배 찬양'; if (/^입례/.test(l)) return '입례송'; if (/^성가(대찬양|곡|대)?$/.test(l)) return '성가대 찬양'; return ''; }
+  /* ── 주일 예배 순서의 보는 사람(aud) — 모두(주보 순서) · 반주자 · 목회자 (2026-10-09) ── */
+  var AUD_NAME = { all: '모두', accomp: '반주자', pastor: '목회자' };
+  /* 20261009_1900_worship_roles.sql 을 실행했는가 — 실행 전에는 공개 뷰가 목회자·반주자 블록을 걸러 내지 못하므로 그 블록을 넣지 못하게 한다 */
+  var roleSqlP = null;
+  function roleSqlReady() {
+    if (!roleSqlP) roleSqlP = api('POST', 'rpc/worship_role_order', { p_date: today() })
+      .then(function () { return true; }, function (e) { return !/PGRST202|Could not find the function|does not exist|HTTP 404/i.test((e && e.message) || ''); });
+    return roleSqlP;
+  }
+  function audOf(it) { return it && (it.aud === 'accomp' || it.aud === 'pastor') ? it.aud : 'all'; }
+  /* 순서 이름을 같은 자리로 알아보는 열쇠 — 주보('말씀강해')와 설교 매니저('말씀(설교)')처럼 이름이 조금 달라도 같게 */
+  function ordKey(l) {
+    l = String(l || '').replace(/\s+/g, '').replace(/\(.*?\)/g, '');
+    var j = joySlotKey(l); if (j) return j;
+    if (/^(말씀|설교)/.test(l)) return '말씀';
+    if (/교독/.test(l)) return '교독';
+    if (/신앙고백|사도신경/.test(l)) return '신앙고백';
+    if (/주기도/.test(l)) return '주기도문';
+    if (/^(성경|본문)/.test(l)) return '성경봉독';
+    if (/^송영/.test(l)) return '송영';
+    if (/^목회기도/.test(l)) return '목회기도';
+    if (/^축도/.test(l)) return '축도';
+    if (/^(헌금|봉헌)/.test(l)) return '헌금';
+    if (/소식|광고/.test(l)) return '소식';
+    if (/기도/.test(l)) return '기도';
+    if (/^찬송/.test(l)) return '찬송';
+    return l;
+  }
+  /* 떠다니는 블록(목회자·반주자 등, isFloat 가 참)마다 앞·뒤 모두 블록들을 '이름#순번'으로 기억한다(가까운 것부터) → [{it, prevs, nexts}] */
+  function ordAnchors(list, isFloat) {
+    var seen = {}, keys = [], out = [];
+    (list || []).forEach(function (it) {
+      if (!isFloat(it)) { var k = ordKey(it.label); seen[k] = (seen[k] || 0) + 1; keys.push(k + '#' + seen[k]); }
+      else out.push({ it: it, prevs: keys.slice().reverse(), nexts: null, at: keys.length });
+    });
+    out.forEach(function (p) { p.nexts = keys.slice(p.at); delete p.at; });
+    return out;
+  }
+  /* 모두 블록(pub) 사이에 떠다니는 블록을 기억한 자리대로 끼운다 — 새 순서에 있는 가장 가까운 앞 블록 뒤, 뒤 블록이 더 가까우면 그 앞, 둘 다 없으면 끝 */
+  function ordPlace(pub, fl) {
+    var seen = {}, pos = pub.map(function (it) { var k = ordKey(it.label); seen[k] = (seen[k] || 0) + 1; return k + '#' + seen[k]; });
+    var after = {}, before = {}, tail = [];
+    function first(keys) { for (var d = 0; d < keys.length; d++) { var i = pos.indexOf(keys[d]); if (i >= 0) return { i: i, d: d }; } return null; }
+    fl.forEach(function (p) {
+      var a = first(p.prevs || []), b = first(p.nexts || []);
+      if (a && (!b || a.d <= b.d)) (after[a.i] = after[a.i] || []).push(p.it);
+      else if (b) (before[b.i] = before[b.i] || []).push(p.it);
+      else tail.push(p.it);
+    });
+    var out = [];
+    pub.forEach(function (it, i) { [].push.apply(out, before[i] || []); out.push(it); [].push.apply(out, after[i] || []); });
+    return out.concat(tail);
+  }
   var JOY_SLOTS = { '경배와 찬양': { name: '예배 전 찬양', max: 4 }, '예배 찬양': { name: '예배 찬양', max: 3 }, '입례송': { name: '입례송', max: 1 }, '성가대 찬양': { name: '성가곡', max: 2 } };
   var BULLETIN_PRESET = ['경배와찬양', '목회 기도', '입례송', '송영', '성시교독', '신앙고백', '찬송', '기도', '성경봉독', '성가대찬양', '말씀강해', '헌금봉헌', '교회소식', '기도', '찬송', '축도'];
   var OFFER_KEYS = ['십일조', '감사헌금', '주일헌금', '건축헌금', '선교헌금', '유년부', '차량헌금', '일천번기도'];
@@ -8848,6 +9188,7 @@ console.log('[affairs.js] v20260923lic');
           if (sun.scripture) ov.querySelector('#bt_scripture').value = sun.scripture;
           if (sun.preacher) ov.querySelector('#bt_preacher').value = sun.preacher;
           var wo = []; try { wo = JSON.parse(sun.worship_order || '[]') || []; } catch (e) { wo = []; }
+          wo = wo.filter(function (it) { return it && audOf(it) === 'all'; });   /* 목회자·반주자 블록(기도문·반주 악보)은 주보에 넣지 않는다 */
           if (wo.length) { order = wo.map(function (it) { return { name: it.label || '', detail: it.detail || '' }; }); renderBOrder(); }
           n++;
         }

@@ -412,22 +412,26 @@
             markBroadcast();
           })
           .catch(() => {});
-        // 방송실 관리자(member_links.can_broadcast)면 이름 아래에 '(방송실 관리자)'
-        let isBroadcast = false;
+        // 방송실 관리자(can_broadcast)·목회자(can_pastor)·반주자(can_accompany)면 이름 아래에 '(방송실 관리자)'·'(반주자)' 처럼
+        let roleText = "";
         function markBroadcast() {
-          if (!isBroadcast) return;
+          if (!roleText) return;
           [".auth-name", ".ac-name"].forEach((sel) => {
             const el = document.querySelector(sel);
             if (!el || el.querySelector(".auth-bc")) return;
             const s = document.createElement("small");
             s.className = "auth-bc";
-            s.textContent = "(방송실 관리자)";
+            s.textContent = "(" + roleText + ")";
             el.appendChild(s);
           });
         }
         fetch(window.SUPABASE_URL + "/rest/v1/rpc/broadcast_access", { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, headers), body: "{}" })
           .then((r) => (r.ok ? r.json() : null))
-          .then((a) => { if (a && a.canBroadcast) { isBroadcast = true; markBroadcast(); } })
+          .then((a) => {
+            if (!a) return;
+            roleText = [a.canBroadcast && "방송실 관리자", a.canPastor && !a.isAdmin && "목회자", a.canAccompany && "반주자"].filter(Boolean).join(" · ");
+            markBroadcast();
+          })
           .catch(() => {});
       } catch (e) {}
     }

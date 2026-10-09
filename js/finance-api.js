@@ -239,6 +239,8 @@ window.WPF = (function () {
         });
       case 'setBroadcast':
         return rpc('set_broadcast', { p_uid: params.targetUid, p_on: !!params.on });
+      case 'setWorshipRole':   // 반주자(accompany)·목회자(pastor) — 20261009_1900_worship_roles.sql
+        return rpc('set_worship_role', { p_uid: params.targetUid, p_role: params.role, p_on: !!params.on });
       case 'getSettings':
         return rest('GET', 'app_settings?select=key,value&limit=2000').then(function (rows) {
           var s = {}; (rows || []).forEach(function (r) { s[r.key] = r.value; }); return { ok: true, settings: s };

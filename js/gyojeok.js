@@ -20,7 +20,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
   function fmtPhone(p) { p = String(p == null ? '' : p).replace(/[^0-9]/g, ''); if (!p) return ''; if (p.length === 10 && p.charAt(0) !== '0') p = '0' + p; if (p.length === 11) return p.slice(0, 3) + '-' + p.slice(3, 7) + '-' + p.slice(7); if (p.length === 10) return p.slice(0, 3) + '-' + p.slice(3, 6) + '-' + p.slice(6); return p; }
   function msgCard(t, x) { return '<div class="fin-card" style="text-align:center;padding:40px 18px;"><h3 style="margin:0 0 8px;color:var(--accent,#032257);">' + esc(t) + '</h3><p style="color:var(--ink-soft,#7b8794);">' + esc(x) + '</p></div>'; }
   function loading(el) { el.innerHTML = '<p class="qt-loading">불러오는 중…</p>'; }
-  var ROLES = [{ k: 'isAdmin', label: '관리자' }, { k: 'canFinance', label: '재정권한' }, { k: 'canBroadcast', label: '방송실 관리자' }];
+  var ROLES = [{ k: 'isAdmin', label: '관리자' }, { k: 'canFinance', label: '재정권한' }, { k: 'canBroadcast', label: '방송실 관리자' }, { k: 'canPastor', label: '목회자', role: 'pastor' }, { k: 'canAccompany', label: '반주자', role: 'accompany' }];
   function stPill(st) { return '<span class="fin-pill ' + (st === '정회원' ? 'in' : 'out') + '">' + (st === '정회원' ? '정회원' : '준회원') + '</span>'; }
   // 화면 안에서 사람을 가리키는 열쇠(파일 머리말 참고). 교적ID가 있으면 그것, 없으면 순번.
   function tagRids(list) { list.forEach(function (m, i) { m._rid = String(m['교적ID'] != null && m['교적ID'] !== '' ? m['교적ID'] : 'i' + i); }); return list; }
@@ -51,7 +51,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
     Promise.all([WPF.call('listAccess'), WPF.call('listGyojeok')]).then(function (res) {
       var users = (res[0].users || []).sort(function (a, b) { return (b.isAdmin - a.isAdmin) || (b.canFinance - a.canFinance) || String(a.name).localeCompare(String(b.name), 'ko'); });
       var gj = tagRids((res[1].members || []).filter(function (m) { return m['이름']; }));
-      panel.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">홈페이지에 가입한 회원입니다. <b>회원</b> 칸에서 정/준회원을 바꿀 수 있고, <b>정회원</b>으로 바꾸면 교적과 연결됩니다(헌금조회·가정합산 연동). <b>권한</b> 칸에서 ‘+ 권한 추가’로 하나씩 줄 수 있고 여러 개를 함께 가질 수 있습니다(뺄 때는 ×). <b>관리자</b>는 교적관리·전체 기능, <b>재정권한</b>은 재정관리, <b>방송실 관리자</b>는 첫 화면의 예배 전 카운트를 전체 화면으로 띄웁니다.</p>' +
+      panel.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">홈페이지에 가입한 회원입니다. <b>회원</b> 칸에서 정/준회원을 바꿀 수 있고, <b>정회원</b>으로 바꾸면 교적과 연결됩니다(헌금조회·가정합산 연동). <b>권한</b> 칸에서 ‘+ 권한 추가’로 하나씩 줄 수 있고 여러 개를 함께 가질 수 있습니다(뺄 때는 ×). <b>관리자</b>는 교적관리·전체 기능, <b>재정권한</b>은 재정관리, <b>방송실 관리자</b>는 첫 화면의 예배 전 카운트를 전체 화면으로 띄웁니다. <b>목회자</b>는 오늘의 예배에서 설교 매니저에 적은 기도문(목회 기도·설교 전 기도·헌금 기도·축도)을, <b>반주자</b>는 반주용 악보(기도송·헌금송·폐회송)를 함께 봅니다. 다른 성도에게는 보이지 않습니다.</p>' +
         '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>이름</th><th>이메일</th><th>회원</th><th>권한</th></tr></thead><tbody>' +
         users.map(function (u) {
           return '<tr data-uid="' + esc(u.uid) + '"><td><b>' + esc(u.name || '(이름없음)') + '</b></td><td style="color:var(--ink-soft)">' + esc(u.email) + '</td>' +
@@ -71,7 +71,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
         var sel = tr.querySelector('.ck-status'), rc = tr.querySelector('.gj-roles');
         var prevStatus = u.status === '정회원' ? '정회원' : '준회원';
         /* 권한: 가진 것은 배지(× 로 빼기), 아직 없는 것은 '+ 권한 추가' 선택 상자 — 하나 주면 남은 것으로 다시 선택 상자가 나온다 */
-        function roles() { return ROLES.filter(function (r) { return !(r.k === 'canBroadcast' && u.canBroadcast === undefined); }); }   /* 방송실: SQL 실행 전이면 목록에서 뺀다 */
+        function roles() { return ROLES.filter(function (r) { return !((r.k === 'canBroadcast' || r.role) && u[r.k] === undefined); }); }   /* 방송실·목회자·반주자: SQL 실행 전이면 목록에서 뺀다 */
         function drawRoles() {
           var have = roles().filter(function (r) { return u[r.k]; }), left = roles().filter(function (r) { return !u[r.k]; });
           rc.innerHTML = have.map(function (r) { return '<span class="fin-pill role" data-k="' + r.k + '">' + r.label + '<button type="button" class="role-x" title="' + r.label + ' 빼기" aria-label="' + r.label + ' 빼기">×</button></span>'; }).join('') +
@@ -81,7 +81,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
           var r = ROLES.filter(function (x) { return x.k === k; })[0];
           msg.style.color = 'var(--ink-soft)'; msg.textContent = '저장 중…';
           var body = { targetUid: uid }, call;
-          if (k === 'canBroadcast') { body.on = val; call = 'setBroadcast'; } else { body[k] = val; call = 'setAccess'; }
+          if (k === 'canBroadcast') { body.on = val; call = 'setBroadcast'; } else if (r.role) { body.role = r.role; body.on = val; call = 'setWorshipRole'; } else { body[k] = val; call = 'setAccess'; }
           WPF.call(call, body).then(assertOk).then(function () { u[k] = val; drawRoles(); flash(true, '✓ ' + (u.name || '') + ' · ' + r.label + ' ' + (val ? '부여' : '해제') + '됨'); })
             .catch(function (e) { drawRoles(); flash(false, '오류: ' + e.message); });
         }

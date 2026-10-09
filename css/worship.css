@@ -202,3 +202,18 @@ body.hw-fs-body { overflow: hidden; }
   .ws-img:has(img.fit) { overflow: visible; touch-action: pan-y; }
   .ws-img img.fit { width: 100% !important; height: auto; object-fit: initial; }
 }
+
+/* 권한별 화면 — 반주자·목회자 (2026-10-09) · 색은 테마 금색·연남색 */
+.ws-view { border: 0; background: rgba(255,255,255,.14); color: #fff; border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; max-width: 9.5em; }
+.ws-view option { color: #1d1d1d; background: #fff; }
+.ws-role { display: inline-block; font-size: .8em; letter-spacing: 0; font-weight: 700; border: 1px solid currentColor; border-radius: 5px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; }
+.ws-role-accomp { color: #9a7b3e; }
+.ws-role-pastor { color: #4a6a9c; }
+.ws-chip.ws-chip-accomp { border-color: #b89b5e; color: #7a6a45; }
+.ws-chip.ws-chip-pastor { border-color: #4a6a9c; color: #4a6a9c; }
+.ws-chip.on.ws-chip-accomp, .ws-chip.on.ws-chip-pastor { color: #fff; border-color: #032257; }
+.ws-prayer { margin-top: 18px; padding: 14px 16px; background: #f5f8fc; border-left: 4px solid #4a6a9c; border-radius: 0 10px 10px 0; }
+.ws-prayer-t { font-size: .82em; font-weight: 700; color: #4a6a9c; margin-bottom: 8px; }
+.ws-prayer-txt p { margin: 0 0 .8em; font-family: "Noto Serif KR", serif; font-size: 1.15em; line-height: 1.9; word-break: keep-all; color: #2b2721; }
+.ws-role-tip { color: #9a7b3e; }
+@media (max-width: 560px) { .ws-view { max-width: 7.5em; font-size: .8rem; } }
