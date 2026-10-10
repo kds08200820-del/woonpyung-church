@@ -668,13 +668,18 @@
       cur = { k: k, first: i, last: i, oi: sl.oi }; groups[k + '#' + seen[k]] = cur;
     });
     /* 끼울 것: 이 화면 사람의 블록 + (목회자 화면) 기도문을 적어 둔 모두 블록 */
-    var ents = [], pubs = [], seen2 = {};
+    var ents = [], pubs = [], seen2 = {}, seen3 = {};
     order.forEach(function (it, pos) {
       if (!priv(it)) {
         var k = ordKey(it.label); seen2[k] = (seen2[k] || 0) + 1; var key = k + '#' + seen2[k];
         pubs.push({ key: key, pos: pos });
         if (view === 'pastor' && it.body) ents.push({ it: it, self: key, pos: pos });
-      } else if (it.aud === view) ents.push({ it: it, pos: pos });
+      } else if (it.aud === view) {
+        /* 목회 기도·축도는 목회자 블록(2026-10-10) — 바탕(주보)에 그 칸이 있으면 그 칸 아래에 기도문, 없으면 블록 슬라이드로 */
+        var pk = ordKey(it.label), slot = null;
+        if (view === 'pastor' && /^(목회기도|축도)$/.test(pk)) { seen3[pk] = (seen3[pk] || 0) + 1; slot = pk + '#' + seen3[pk]; }
+        ents.push({ it: it, pos: pos, slot: slot });
+      }
     });
     /* 자리: 설교 매니저 순서에서 가장 가까운 '화면에 있는 모두 칸' — 앞 칸이면 그 뒤에, 뒤 칸이면 그 앞에 (거리가 같으면 앞 칸) */
     function nearest(e) {
@@ -689,6 +694,7 @@
     var after = {}, before = {}, prayer = {}, tail = [];
     ents.forEach(function (e) {
       if (e.self && groups[e.self]) { prayer[groups[e.self].first] = e.it.body; return; }   /* 그 칸이 화면에 있으면 그 칸 아래에 기도문 */
+      if (e.slot && groups[e.slot]) { if (e.it.body) prayer[groups[e.slot].first] = e.it.body; return; }
       var sl = e.self ? [{ type: 'prayer', head: e.it.label || '기도', sub: '', body: e.it.body, role: 'pastor' }] : privSlides(e.it);
       var n = nearest(e);
       if (!n) [].push.apply(tail, sl);
