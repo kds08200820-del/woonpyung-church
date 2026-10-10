@@ -33,7 +33,7 @@ body.ws-open { overflow: hidden; }
 .ws-strip::-webkit-scrollbar { display: none; }
 .ws-chip { flex: 0 0 auto; border: 1px solid #ddd3bf; background: #fff; color: #5a5346; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .8rem; white-space: nowrap; cursor: pointer; }
 .ws-chip.on { background: #032257; color: #fff; border-color: #032257; font-weight: 700; }
-.ws-body { flex: 1; min-height: 0; overflow: auto; padding: 18px 20px 30px; line-height: 1.75; font-size: 100%; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
+.ws-body { flex: 1; min-height: 0; overflow: auto; padding: 18px 20px 30px; line-height: 1.75; font-size: 100%; -webkit-overflow-scrolling: touch; touch-action: pan-y; }   /* 옆으로 미는 손짓은 화면 넘기기(worship.js swipe) — 브라우저가 가로채지 않게 pan-y 만 */
 .ws-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #ebe5d8; background: #fff; }
 .ws-btn { flex: 1; padding: 13px 10px; border-radius: 10px; border: 1px solid #cfc6b3; background: #fff; color: #032257; font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; }
 .ws-btn.primary { background: #032257; color: #fff; border-color: #032257; }

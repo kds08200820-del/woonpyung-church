@@ -8278,8 +8278,9 @@ console.log('[affairs.js] v20261010form1');
       'body.scroll .pg+.pg{border-top:2px dashed #e7e0cf;padding-top:36px}',
       /* ── 페이지 모드 (transform 슬라이드 — iOS 안정) ── */
       'body.paged #deck{overflow:hidden}',
-      'body.paged #track{display:flex;flex-direction:row;height:100%;transition:transform .32s cubic-bezier(.4,0,.2,1);will-change:transform}',
-      'body.paged .pg{flex:0 0 100%;width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 28px 44px}',
+      'body.paged #track{display:flex;flex-direction:row;height:100%;transition:transform .34s cubic-bezier(.22,.61,.36,1);will-change:transform}',
+      'body.paged .pg{flex:0 0 100%;width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:24px 28px 44px;touch-action:pan-y}',   /* 옆으로 미는 손짓은 쪽 넘기기 — 브라우저가 가로채지 않게 */
+      'body.scroll #deck{touch-action:pan-y}',
       'body.paged .pg-img{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}',
       /* 공통 요소 */
       'h1{font-size:1.6em;margin:0 0 6px;line-height:1.35}',
@@ -8475,15 +8476,19 @@ console.log('[affairs.js] v20261010form1');
       'var moved=false;' +
       'deck.addEventListener("click",function(e){if(!b.classList.contains("paged"))return;if(moved){moved=false;return;}if(e.target.closest&&e.target.closest("a,button,input,textarea"))return;var x=e.clientX,w=window.innerWidth||deck.clientWidth;if(x<w*0.22){goPage(-1);}else if(x>w*0.78){goPage(1);}});' +
       /* 터치 스와이프 — 손가락 따라 미리보기 후 손 떼면 페이지 전환 */
-      'var sx=0,sy=0,st=0,sw=0,dragging=false,locked=false;' +
-      'track.addEventListener("touchstart",function(e){if(!b.classList.contains("paged"))return;var t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();sw=deck.clientWidth||window.innerWidth||1;dragging=true;locked=false;track.style.transition="none";},{passive:true});' +
-      'track.addEventListener("touchmove",function(e){if(!dragging)return;var t=e.touches[0],dx=t.clientX-sx,dy=t.clientY-sy;' +
-        'if(!locked){if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>6){locked="x";}else if(Math.abs(dy)>10){locked="y";}}' +
-        'if(locked==="x"){moved=true;var pct=(-curPg*100)+(dx/sw*100);track.style.transform="translateX("+pct+"%)";}},{passive:true});' +
-      'track.addEventListener("touchend",function(e){if(!dragging)return;dragging=false;track.style.transition="";' +
-        'var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;' +
+      /* (2026-10-10) 휴대폰·패드: 처음·끝 쪽에서는 덜 따라오다 제자리로, 두 손가락이면 멈춤, 스크롤 모드에서도 옆으로 밀면 앞뒤 쪽으로 부드럽게 */
+      'var sx=0,sy=0,st=0,sw=0,dragging=false,locked=false,sdrag=false;' +
+      'track.addEventListener("touchstart",function(e){var t=e.touches[0];if(e.touches.length!==1){if(dragging&&locked==="x")apply();dragging=false;sdrag=false;return;}sx=t.clientX;sy=t.clientY;st=Date.now();sw=deck.clientWidth||window.innerWidth||1;locked=false;' +
+        'if(!b.classList.contains("paged")){sdrag=true;return;}dragging=true;track.style.transition="none";},{passive:true});' +
+      'track.addEventListener("touchmove",function(e){if(!dragging)return;if(e.touches.length!==1){dragging=false;track.style.transition="";apply();return;}var t=e.touches[0],dx=t.clientX-sx,dy=t.clientY-sy;' +
+        'if(!locked){if(Math.abs(dx)>Math.abs(dy)*1.2&&Math.abs(dx)>8){locked="x";}else if(Math.abs(dy)>10){locked="y";}}' +
+        'if(locked==="x"){moved=true;if((curPg===0&&dx>0)||(curPg===total-1&&dx<0))dx*=0.3;var pct=(-curPg*100)+(dx/sw*100);track.style.transform="translateX("+pct+"%)";}},{passive:true});' +
+      'track.addEventListener("touchend",function(e){var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;' +
+        'if(sdrag){sdrag=false;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){var ps=track.querySelectorAll(".pg"),k=curIdx()+(dx<0?1:-1);if(ps[k]){ps[k].scrollIntoView({behavior:"smooth",block:"start"});setTimeout(updateNav,450);}}return;}' +
+        'if(!dragging)return;dragging=false;track.style.transition="";' +
         'if(locked==="x"&&(Math.abs(dx)>sw*0.12||(dt<500&&Math.abs(dx)>30))){goPage(dx<0?1:-1);}else{apply();}' +
         'setTimeout(function(){moved=false;},50);},{passive:true});' +
+      'track.addEventListener("touchcancel",function(){if(dragging){dragging=false;track.style.transition="";apply();}sdrag=false;},{passive:true});' +
       /* 오늘의 예배 순서: 목록의 줄을 누르면 그 순서(또는 설교 원고)로, [순서] 단추는 목록으로 */
       'function goEl(el){if(!el)return;if(b.classList.contains("paged")){var ps=track.querySelectorAll(".pg");for(var k=0;k<ps.length;k++)if(ps[k]===el){curPg=k;apply();return;}}else{el.scrollIntoView({block:"start"});}}' +
       'function goTarget(id){return id==="body"?track.querySelector(".pg-body"):document.getElementById(id);}' +

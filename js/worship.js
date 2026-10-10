@@ -992,19 +992,73 @@
   }
   function setBody(h) { var b = $('wsBody'); b.innerHTML = h; b.scrollTop = 0; b.scrollLeft = 0; }
   function go(i) { if (i < 0 || i >= slides.length) return; idx = i; render(); }
+  /* ◀ ▶ 단추·화살표 키로 넘길 때도 옆으로 부드럽게 (2026-10-10) */
+  var slideBusy = false;
+  function slideGo(step) {
+    var n = idx + step, b = $('wsBody');
+    if (n < 0 || n >= slides.length || slideBusy) return;
+    if (!b || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { go(n); return; }
+    var d = Math.min(60, (b.clientWidth || 300) * 0.12);
+    slideBusy = true;
+    b.style.transition = 'transform .16s ease-in, opacity .16s ease-in'; b.style.transform = 'translateX(' + (step > 0 ? -d : d) + 'px)'; b.style.opacity = '0';
+    setTimeout(function () {
+      go(n);
+      b.style.transition = 'none'; b.style.transform = 'translateX(' + (step > 0 ? d : -d) + 'px)'; void b.offsetWidth;
+      b.style.transition = 'transform .26s cubic-bezier(.22,.61,.36,1), opacity .26s ease'; b.style.transform = ''; b.style.opacity = '';
+      setTimeout(function () { b.style.transition = ''; slideBusy = false; }, 280);
+    }, 160);
+  }
 
   /* ── 손짓: 좌우 밀기, 두 손가락 확대 ── */
-  function swipe(el, fn) {
-    var sx = 0, sy = 0, sl = 0, on = false;
-    el.addEventListener('touchstart', function (e) { if (e.touches.length !== 1) { on = false; return; } on = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY; sl = el.scrollLeft; }, { passive: true });
-    el.addEventListener('touchend', function (e) {
-      if (!on) return; on = false;
-      var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-      if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
-      var box = $('wsImgBox');
-      if (box) { var maxL = box.scrollWidth - box.clientWidth; if (maxL > 2) { if (dx < 0 && box.scrollLeft < maxL - 2) return; if (dx > 0 && box.scrollLeft > 2) return; } }
-      fn(dx < 0 ? -1 : 1);
+  /* 좌우 밀기 — 손가락을 따라 화면이 움직이고, 충분히 밀면 옆 장면으로 미끄러져 넘어간다 (2026-10-10 휴대폰·패드)
+     step: +1 다음 · -1 앞 / canGo(step): 그쪽에 장면이 있는가(끝에서는 덜 따라오다 제자리로)
+     확대한 악보를 옆으로 끄는 중이면(그림이 그쪽으로 더 움직일 수 있으면) 넘기지 않는다 */
+  function swipe(el, fn, canGo) {
+    var sx = 0, sy = 0, t0 = 0, dx = 0, w = 1, on = false, lock = null, busy = false;
+    function setX(x, op, anim) {
+      el.style.transition = anim ? 'transform .26s cubic-bezier(.22,.61,.36,1), opacity .26s ease' : 'none';
+      el.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      el.style.opacity = op == null ? '' : String(op);
+    }
+    function imgCanPan(mx) {
+      var box = $('wsImgBox'); if (!box) return false;
+      var maxL = box.scrollWidth - box.clientWidth; if (maxL <= 2) return false;
+      return mx < 0 ? box.scrollLeft < maxL - 2 : box.scrollLeft > 2;
+    }
+    function reset() { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; }
+    el.addEventListener('touchstart', function (e) {
+      if (busy || e.touches.length !== 1) { if (on && lock === 'x') setX(0, null, true); on = false; return; }
+      on = true; lock = null; dx = 0; sx = e.touches[0].clientX; sy = e.touches[0].clientY; t0 = Date.now(); w = el.clientWidth || window.innerWidth || 1;
     }, { passive: true });
+    el.addEventListener('touchmove', function (e) {
+      if (!on) return;
+      if (e.touches.length !== 1) { on = false; if (lock === 'x') setX(0, null, true); return; }
+      var mx = e.touches[0].clientX - sx, my = e.touches[0].clientY - sy;
+      if (!lock) {
+        if (Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my) * 1.2) lock = imgCanPan(mx) ? 'no' : 'x';
+        else if (Math.abs(my) > 10) lock = 'y';
+      }
+      if (lock !== 'x') return;
+      dx = canGo(mx < 0 ? 1 : -1) ? mx : mx * 0.3;
+      setX(dx, 1 - Math.min(0.35, Math.abs(dx) / w * 0.5), false);
+    }, { passive: true });
+    function end() {
+      if (!on) return; on = false;
+      if (lock !== 'x') return;
+      var step = dx < 0 ? 1 : -1, fast = Date.now() - t0 < 300 && Math.abs(dx) > 40;
+      if ((Math.abs(dx) > w * 0.2 || fast) && canGo(step)) {
+        busy = true; setX(step > 0 ? -w : w, 0, true);
+        setTimeout(function () {
+          fn(step);
+          setX(step > 0 ? w * 0.3 : -w * 0.3, 0, false);
+          void el.offsetWidth;
+          setX(0, 1, true);
+          setTimeout(function () { reset(); busy = false; }, 280);
+        }, 240);
+      } else { setX(0, null, true); setTimeout(function () { if (!on && !busy) reset(); }, 280); }
+    }
+    el.addEventListener('touchend', end, { passive: true });
+    el.addEventListener('touchcancel', function () { if (on && lock === 'x') { on = false; setX(0, null, true); } on = false; }, { passive: true });
   }
   function pinch(box, img) {
     var d0 = 0, z0 = 1, z = 1, on = false;
@@ -1063,20 +1117,20 @@
       '</div>';
     document.body.appendChild(overlay);
     $('wsClose').onclick = function () { if (window.ModalNav) ModalNav.close(); else closeViewer(); };
-    $('wsPrev').onclick = function () { go(idx - 1); };
+    $('wsPrev').onclick = function () { slideGo(-1); };
     $('wsEdit').onclick = toggleEdit;
     $('wsView').onchange = function () {   /* 성도·반주자·목회자 화면 바꾸기 — 고른 화면은 이 기기에 기억 */
       wsView = this.value; try { localStorage.setItem('wpc.worship.view', wsView); } catch (e) {}
       if (editing) { editing = false; $('wsEdit').textContent = '편집'; }
       idx = 0; applyView();
     };
-    $('wsNext').onclick = function () { go(idx + 1); };
+    $('wsNext').onclick = function () { slideGo(1); };
     $('wsStrip').addEventListener('click', function (e) { var c = e.target.closest('.ws-chip'); if (c) go(+c.dataset.i); });
     $('wsSmall').onclick = function () { setSize(-0.1); }; $('wsLarge').onclick = function () { setSize(0.1); };
-    swipe($('wsBody'), function (dir) { go(idx + (dir < 0 ? 1 : -1)); });
+    swipe($('wsBody'), function (step) { go(idx + step); }, function (step) { var n = idx + step; return n >= 0 && n < slides.length; });
     document.addEventListener('keydown', function (e) {
       if (overlay.hidden) return;
-      if (e.key === 'ArrowLeft') { go(idx - 1); e.preventDefault(); } else if (e.key === 'ArrowRight') { go(idx + 1); e.preventDefault(); }
+      if (e.key === 'ArrowLeft') { slideGo(-1); e.preventDefault(); } else if (e.key === 'ArrowRight') { slideGo(1); e.preventDefault(); }
     });
     try { textSize = +localStorage.getItem('wpc.worship.size') || 1; } catch (e) {}
     setSize(0);
