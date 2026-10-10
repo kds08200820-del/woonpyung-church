@@ -8260,6 +8260,21 @@ console.log('[affairs.js] v20261010form1');
       /* 성경봉독 절 번호 */
       '.lt-bible p{margin:.25em 0}.vn{font-family:"Noto Sans KR",sans-serif;font-size:.6em;font-weight:700;color:#b89b5e;margin-right:.45em;vertical-align:.3em}',
       '.it-src{font-family:"Noto Sans KR",sans-serif;font-size:.6em;color:#9a8f78;margin-top:10px}',
+      /* 아래 길잡이 막대 — 쪽마다 한 칸(같은 순서끼리 묶음), 지금 쪽 표시, 누르면 그 쪽으로 (2026-10-10) */
+      '#pnav{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:4px 12px calc(4px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e3ddd0;font-family:"Noto Sans KR",sans-serif;font-size:13px;line-height:1.3;color:#7a6a45;z-index:20}',
+      '#pnav_cur{flex:0 1 auto;max-width:36%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;color:#032257}',
+      '#pnav_seg{flex:1;display:flex;align-items:stretch;height:30px;min-width:0}',
+      '.pn{flex:1 1 0;min-width:0;border:0;padding:0;margin:0 1px;background:transparent;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent}',
+      '.pn::after{content:"";position:absolute;left:0;right:0;top:12px;height:6px;border-radius:2px;background:#e6dfcf}',
+      '.pn.pn-body::after{background:#d8dee8}.pn.pn-g{margin-left:5px}',
+      '.pn.done::after{background:#cdb983}.pn.pn-body.done::after{background:#93a7c6}',
+      '.pn:hover::after{background:#b89b5e}',
+      '.pn.on::after{background:#032257;top:8px;height:14px}',
+      '#pnav_num{flex:0 0 auto;color:#9a8f78;white-space:nowrap}',
+      'body.dark #pnav{background:rgba(21,23,27,.96);border-top-color:#2a2d33;color:#cbb98a}body.dark #pnav_cur{color:#e0c98a}',
+      'body.dark .pn::after{background:#2f3239}body.dark .pn.pn-body::after{background:#2a3140}body.dark .pn.done::after{background:#7a6a45}body.dark .pn.pn-body.done::after{background:#3f5578}body.dark .pn.on::after{background:#e0c98a}',
+      '@media (max-width:600px){#pnav_cur{max-width:42%;font-size:12px}#pnav_num{font-size:11px}}',
+      '@media print{#pnav{display:none}}',
       '@media print{.bar{display:none}body{display:block;font-size:13pt}#deck{display:block;overflow:visible}#track,body.paged #track{display:block;transform:none!important}body.paged .pg{width:auto;height:auto;page-break-after:always;overflow:visible}}'
     ].join('');
 
@@ -8285,7 +8300,27 @@ console.log('[affairs.js] v20261010form1');
           '}' +
         '}' +
         'total=track.querySelectorAll(".pg").length;if(curPg>total-1)curPg=total-1;if(curPg<0)curPg=0;' +
+        'buildNav();' +
       '}' +
+      /* 아래 길잡이 막대: 쪽마다 한 칸, 같은 순서(찬양 여러 곡·설교 원고 여러 쪽)는 붙여서 묶는다 */
+      'var nav=document.getElementById("pnav_seg"),navCur=document.getElementById("pnav_cur"),navNum=document.getElementById("pnav_num"),navLab=[];' +
+      'function pgLabel(p){var c=p.classList;if(c.contains("pg-cover"))return "표지";if(c.contains("pg-toc"))return "예배 순서";if(c.contains("pg-body"))return "설교 원고";if(c.contains("pg-bible"))return "성경 본문";' +
+        'var l=p.querySelector(".it-label"),n=p.querySelector(".it-num");if(!l)return "";var t=(l.firstChild&&l.firstChild.nodeType===3?l.firstChild.textContent:l.textContent).trim();' +
+        'return (n?n.textContent.split("/")[0].trim()+". ":"")+t;}' +
+      'function buildNav(){if(!nav)return;var ps=track.querySelectorAll(".pg"),h="",prev=null;navLab=[];' +
+        'for(var k=0;k<ps.length;k++){var L=pgLabel(ps[k]);navLab.push(L);' +
+          'h+="<button type=\\"button\\" class=\\"pn"+(L!==prev&&k?" pn-g":"")+(ps[k].classList.contains("pg-body")?" pn-body":"")+"\\" data-k=\\""+k+"\\" title=\\""+eh(L).replace(/\\"/g,"&quot;")+"\\" aria-label=\\""+(k+1)+"쪽 "+eh(L).replace(/\\"/g,"&quot;")+"\\"></button>";prev=L;}' +
+        'nav.innerHTML=h;updateNav();}' +
+      'function curIdx(){if(b.classList.contains("paged"))return curPg;var ps=track.querySelectorAll(".pg"),y=deck.scrollTop+8,c=0;' +
+        'if(ps.length&&deck.scrollTop+deck.clientHeight>=deck.scrollHeight-2)return ps.length-1;' +   /* 맨 아래까지 내렸으면 마지막 쪽 */
+        'for(var k=0;k<ps.length;k++){if(ps[k].offsetTop<=y)c=k;else break;}return c;}' +
+      'function updateNav(){if(!nav)return;var c=curIdx(),bs=nav.children,n=bs.length;' +
+        'for(var k=0;k<n;k++){bs[k].classList.toggle("on",k===c);bs[k].classList.toggle("done",k<c);}' +
+        'var L=navLab[c]||"",a=c,z=c;while(a>0&&navLab[a-1]===L)a--;while(z<n-1&&navLab[z+1]===L)z++;' +
+        'navCur.textContent=L+(z>a?" "+(c-a+1)+"/"+(z-a+1):"");navNum.textContent=(c+1)+" / "+n;}' +
+      'if(nav)nav.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest(".pn");if(!t)return;var k=+t.getAttribute("data-k");' +
+        'if(b.classList.contains("paged")){curPg=k;apply();}else{var ps=track.querySelectorAll(".pg");if(ps[k]){ps[k].scrollIntoView({block:"start"});updateNav();}}});' +
+      'var navT=0;deck.addEventListener("scroll",function(){if(b.classList.contains("paged")||navT)return;navT=setTimeout(function(){navT=0;updateNav();},80);},{passive:true});' +
       /* 글자 크기 */
       'function ap(){b.style.fontSize=s+"px";try{localStorage.setItem("sermonFs",s)}catch(e){}if(b.classList.contains("paged")){buildBody();apply();}}' +
       'try{var sv=parseInt(localStorage.getItem("sermonFs"),10);if(sv)s=sv}catch(e){}' +
@@ -8318,7 +8353,7 @@ console.log('[affairs.js] v20261010form1');
       'document.addEventListener("fullscreenchange",function(){updateFs();setTimeout(reflow,60);});' +
       'document.addEventListener("webkitfullscreenchange",function(){updateFs();setTimeout(reflow,60);});' +
       /* transform 슬라이드 적용 */
-      'function apply(){if(b.classList.contains("paged")){track.style.transform="translateX("+(-curPg*100)+"%)";}ind.textContent=(curPg+1)+"/"+total;}' +
+      'function apply(){if(b.classList.contains("paged")){track.style.transform="translateX("+(-curPg*100)+"%)";}ind.textContent=(curPg+1)+"/"+total;updateNav();}' +
       'function goPage(d){curPg=Math.max(0,Math.min(total-1,curPg+d));apply();}' +
       /* 페이지↔스크롤 토글 */
       'var pgBtn=document.getElementById("pgbtn");' +
@@ -8386,6 +8421,7 @@ console.log('[affairs.js] v20261010form1');
         '<span class="hint">' + (qtMode ? 'QT · 우리말성경' : (hasOrder ? '예배 순서 · 설교' : '설교')) + ' · 좌우 끝을 탭하면 넘김</span>' +
       '</div>' +
       '<div id="deck"><div id="track">' + pages.join('') + '</div></div>' +
+      '<div id="pnav"><span id="pnav_cur"></span><div id="pnav_seg" role="navigation" aria-label="쪽 이동"></div><span id="pnav_num"></span></div>' +
       '<div class="edge" id="edgeL"><span>‹</span></div><div class="edge" id="edgeR"><span>›</span></div>' +
       '<button id="exitfs">⊡ 도구 보기</button>' +
       '<script>' + js + '<\/script>' +
