@@ -4779,7 +4779,10 @@ console.log('[affairs.js] v20260923lic');
       var SUN_ADD_ALL = ['경배와 찬양', '목회 기도', '입례송', '송영', '성시교독', '신앙고백', '찬송', '기도', '성경봉독', '성가대 찬양', '특송', '말씀강해', '헌금봉헌', '교회소식', '주기도문', '축도', '직접 입력'];
       var SUN_ADD_P = ['목회 기도', '설교 전 기도', '헌금 기도', '축도', '기도'];
       var SUN_ADD_A = ['기도송', '헌금송', '폐회송', '반주 악보'];
-      var AUD_C = { all: '#8a93a0', pastor: '#4a6a9c', accomp: '#9a7b3e' };
+      // 보는 사람별 블록 색 (테마 색) — 모두: 남색·흰 바탕, 목회자: 연남색·푸른 바탕, 반주자: 금색·누런 바탕
+      var AUD_C = { all: '#032257', pastor: '#4a6a9c', accomp: '#9a7b3e' };    // 글자·왼쪽 띠
+      var AUD_BG = { all: '#fff', pastor: '#e8eef7', accomp: '#f6eedc' };      // 바탕
+      var AUD_BD = { all: '#d3d9e2', pastor: '#a9bcd6', accomp: '#d9c597' };   // 테두리
       var sunTouched = false, sunBuilt = false, sunSortable = null, sunAutoDone = false, sunReady = true;
       function sunNeedSql() { if (sunReady) return false; alert('먼저 Supabase SQL Editor 에서 supabase/20261009_1900_worship_roles.sql 을 한 번 실행해 주세요.\n실행 전에는 목회자·반주자 블록이 성도 화면에서 걸러지지 않습니다.'); return true; }
       var sunWasComposed = /"aud"/.test(rec.worship_order || '');   // 예전에 보는 사람을 정해 저장한 순서
@@ -4979,7 +4982,7 @@ console.log('[affairs.js] v20260923lic');
         box.innerHTML = warn + (order.length ? order.map(function (it, i) {
           var a = audOf(it), c = AUD_C[a], pub = a === 'all';
           var memo = pub && it.body ? '<span style="font-weight:400;font-size:.64rem;color:#4a6a9c;margin-left:3px">· 기도문(목회자만)</span>' : '';
-          return '<div class="sun-row" data-i="' + i + '" style="border:1px solid ' + (pub ? '#e4e8ee' : c + '55') + ';border-left:3px solid ' + c + ';background:' + (pub ? '#fff' : (a === 'pastor' ? '#f5f8fc' : '#fbf8f1')) + ';border-radius:7px;padding:5px 7px;margin-bottom:4px">' +
+          return '<div class="sun-row" data-i="' + i + '" style="border:1px solid ' + AUD_BD[a] + ';border-left:4px solid ' + c + ';background:' + AUD_BG[a] + ';border-radius:7px;padding:5px 7px;margin-bottom:4px">' +
             '<div style="display:flex;align-items:center;gap:6px">' +
             '<span class="sun-handle" title="끌어서 자리 옮기기" style="cursor:grab;color:#9aa5b1;font-size:1rem;touch-action:none;user-select:none">≡</span>' +
             '<div class="sun-open" data-i="' + i + '" style="flex:1;min-width:0;cursor:pointer" title="' + (a === 'accomp' ? '곡 고르기·악보 올리기 (파일을 이 블록 위로 끌어다 놓아도 됩니다)' : a === 'pastor' ? '기도문 적기 (목회자만)' : sunSongKey(it) ? '곡 고르기' : ordKey(it.label) === '교독' ? '교독문 고르기' : ordKey(it.label) === '말씀' ? '설교 요약 적기' : '내용·기도문 적기') + '">' +
@@ -5154,14 +5157,15 @@ console.log('[affairs.js] v20260923lic');
       }
       (function () {
         var ap = ov.querySelector('#bd_sun_add_p'), aa = ov.querySelector('#bd_sun_add_a'); if (!ap || !aa) return;
-        function btn(l, c) { return '<button type="button" class="btn btn-line sun-add" data-l="' + esc(l) + '" style="padding:3px 8px;font-size:.72rem;color:' + c + '">＋ ' + esc(l) + '</button>'; }
+        // 더하기 단추도 그 블록과 같은 색 — 어느 줄에서 더하면 어떤 색 블록이 생기는지 보이게
+        function btn(l, a) { return '<button type="button" class="btn btn-line sun-add" data-l="' + esc(l) + '" style="padding:3px 8px;font-size:.72rem;color:' + AUD_C[a] + ';background:' + AUD_BG[a] + ';border-color:' + AUD_BD[a] + '">＋ ' + esc(l) + '</button>'; }
         var al = ov.querySelector('#bd_sun_add_all');
         if (al) {
-          al.innerHTML = SUN_ADD_ALL.map(function (l) { return btn(l, 'var(--accent,#032257)'); }).join('');
+          al.innerHTML = SUN_ADD_ALL.map(function (l) { return btn(l, 'all'); }).join('');
           Array.prototype.forEach.call(al.querySelectorAll('.sun-add'), function (b) { b.onclick = function () { sunAdd(b.dataset.l, 'all'); }; });
         }
-        ap.innerHTML = SUN_ADD_P.map(function (l) { return btn(l, AUD_C.pastor); }).join('');
-        aa.innerHTML = SUN_ADD_A.map(function (l) { return btn(l, AUD_C.accomp); }).join('');
+        ap.innerHTML = SUN_ADD_P.map(function (l) { return btn(l, 'pastor'); }).join('');
+        aa.innerHTML = SUN_ADD_A.map(function (l) { return btn(l, 'accomp'); }).join('');
         Array.prototype.forEach.call(ap.querySelectorAll('.sun-add'), function (b) { b.onclick = function () { sunAdd(b.dataset.l, 'pastor'); }; });
         Array.prototype.forEach.call(aa.querySelectorAll('.sun-add'), function (b) { b.onclick = function () { sunAdd(b.dataset.l, 'accomp'); }; });
         // 블록이 아닌 곳(반주자 악보 줄 등)에 악보 파일을 놓으면 새 '반주 악보' 블록을 끝에 만든다 — 끌어서 자리를 옮기면 된다
