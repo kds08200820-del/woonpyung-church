@@ -42,6 +42,8 @@
       { href: "library.html#worship", label: "예배 자료실" },
       { href: "mahanaim.html", label: "마하나임 찬양단" },
     ] },
+    // 신청서(2026-10-10): 지금 받는 신청서 · 내 신청서 · 지난 신청서 — js/forms.js
+    { href: "forms.html", label: "신청서" },
     { href: "finance.html", label: "교회행정", adminOnly: true, sub: [
       { href: "finance.html", label: "재정관리" },
       { href: "gyojeok.html", label: "교적관리" },

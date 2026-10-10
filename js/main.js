@@ -1446,37 +1446,44 @@ document.querySelectorAll(".qna-q").forEach((btn) => {
 })();
 
 // ===== 5-5. 히어로 제목 회전 + 점 인디케이터 + 손가락 스와이프 =====
+//  슬라이드는 나중에 붙을 수 있다(신청서 — js/forms.js). 붙인 쪽이 window.WPCHero.refresh() 를 부르면
+//  슬라이드·점을 다시 세고, is-active 가 붙은 슬라이드부터 다시 돈다.
 (function () {
   const rot = document.getElementById("heroRotator");
   if (!rot) return;
-  const slides = [...rot.querySelectorAll(".hero-slide")];
-  if (slides.length < 2) return;
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const dotsBox = document.getElementById("heroDots");
-  let i = 0, timer = null;
+  let i = 0, timer = null, slides = [], dots = [];
 
-  // 점(바) 생성
-  let dots = [];
-  if (dotsBox) {
-    dotsBox.innerHTML = slides
-      .map((_, n) => `<button type="button" class="hero-dot${n === 0 ? " active" : ""}" aria-label="${n + 1}번째 슬라이드"></button>`)
+  // 슬라이드 목록·점(바) 만들기
+  function build() {
+    slides = [...rot.querySelectorAll(".hero-slide")];
+    i = Math.max(0, slides.findIndex((s) => s.classList.contains("is-active")));
+    slides.forEach((s, n) => s.classList.toggle("is-active", n === i));
+    dots = [];
+    if (!dotsBox) return;
+    dotsBox.innerHTML = slides.length < 2 ? "" : slides
+      .map((_, n) => `<button type="button" class="hero-dot${n === i ? " active" : ""}" aria-label="${n + 1}번째 슬라이드"></button>`)
       .join("");
     dots = [...dotsBox.querySelectorAll(".hero-dot")];
+    dots.forEach((d, n) => d.addEventListener("click", () => { go(n); start(); }));
   }
 
   function go(n) {
+    if (slides.length < 2) return;
     slides[i].classList.remove("is-active");
     if (dots[i]) dots[i].classList.remove("active");
     i = (n + slides.length) % slides.length;
     slides[i].classList.add("is-active");
     if (dots[i]) dots[i].classList.add("active");
   }
-  function start() { stop(); if (!reduce) timer = setInterval(() => go(i + 1), 5200); }
+  function start() { stop(); if (!reduce && slides.length > 1) timer = setInterval(() => go(i + 1), 5200); }
   function stop() { if (timer) { clearInterval(timer); timer = null; } }
 
-  dots.forEach((d, n) => d.addEventListener("click", () => { go(n); start(); }));
+  build();
+  window.WPCHero = { refresh() { build(); start(); }, stop: stop, start: start };
 
-  // 손가락 스와이프(좌/우)
+  // 손가락 스와이프(좌/우) — 슬라이드가 하나뿐이면 go() 가 아무것도 하지 않는다
   let x0 = null;
   const surface = rot.closest(".hero") || rot;
   surface.addEventListener("touchstart", (e) => { x0 = e.touches[0].clientX; }, { passive: true });

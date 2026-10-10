@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20260930link1 (학생으로 안 잡히는 달란트 계정에 연결 끊김 안내)');
+console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 위)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -110,6 +110,8 @@ console.log('[dashboard.js] v20260930link1 (학생으로 안 잡히는 달란트
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;">' +
       '<h2 id="dashWelcome" style="margin:0;font-size:1.15rem;color:var(--accent,#032257);">' + esc(me.memberName || '') + '님, 환영합니다</h2>' +
       '</div>' +
+      /* 신청서에 교회가 보낸 안내(납부 확인 요청 등)가 있으면 맨 위에 한 줄 (2026-10-10) */
+      '<div id="formsNotice"></div>' +
       /* 대시보드는 '나' 를 돌보는 곳 — 탭: 나의 신앙생활 / 자녀의 신앙생활 / 교사 생활 (자녀·교사 탭은 해당될 때만, 2026-09-29) */
       '<div id="dashTabs"></div>' +
       '<div class="dash-pane" data-pane="me">' +
@@ -121,6 +123,8 @@ console.log('[dashboard.js] v20260930link1 (학생으로 안 잡히는 달란트
       '<div id="myEdu" style="margin-bottom:22px;"></div>' +
       '<div id="myDocs" style="margin-bottom:22px;"></div>' +
       '<div id="familyTree" style="margin-bottom:22px;"></div>' +
+      /* 신청서 — 헌금 바로 위 (2026-10-10 요청) */
+      '<div id="myForms" style="margin-bottom:22px;"></div>' +
       /* 헌금은 맨 밑(2026-09-29 요청) */
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
       '</div>' +
@@ -138,7 +142,22 @@ console.log('[dashboard.js] v20260930link1 (학생으로 안 잡히는 달란트
     loadOfferings(me);
     loadMyDocs(me);
     loadFamily(me);
+    loadMyForms();
     loadKids(me);
+  }
+
+  /* ================= 신청서 (2026-10-10) — 헌금 바로 위 =================
+     그리는 일은 js/forms.js(WPCForms.mineCard)가 한다 — 신청서 페이지·첫 화면 '신청 확인'과 같은 화면·단추.
+     카드: 교회가 보낸 안내 → 지금 받는 신청서(신청하기) → 최근 신청 3건 → '신청서 작성 상세 보기'(지난 신청 전부).
+     forms.js 가 아직 없으면 한 번 불러온다. 표가 아직 없으면(SQL 실행 전) 카드를 숨긴다. */
+  function loadMyForms() {
+    var el = document.getElementById('myForms'); if (!el) return;
+    function go() { window.WPCForms.mineCard(el, { noticeEl: document.getElementById('formsNotice'), onGo: function () { dashShow('me', false); } }); }
+    if (window.WPCForms) { go(); return; }
+    var s = document.createElement('script');
+    s.src = 'js/forms.js?v=20261010form1';
+    s.onload = function () { if (window.WPCForms) go(); };
+    document.body.appendChild(s);
   }
 
   var GRP_STYLE = 'font-family:"Noto Serif KR",serif;font-size:1.05rem;font-weight:700;color:var(--accent,#032257);margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent,#032257);';

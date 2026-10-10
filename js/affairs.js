@@ -2,7 +2,7 @@
  * 데이터는 Supabase(visitations/counsels/memos 등, 관리자 RLS)에 저장.
  * 콘솔: [affairs.js] v20260712memo
  */
-console.log('[affairs.js] v20260923lic');
+console.log('[affairs.js] v20261010form1');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -211,7 +211,7 @@ console.log('[affairs.js] v20260923lic');
       cols: [['doc_date', '일자'], ['title', '제목'], ['category', '분류'], ['manager', '담당'], ['file_url', '파일'], ['content', '내용']]
     }
   };
-  var TAB_ORDER = [['dashboard', '대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['song', '🎵 찬양관리'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['doc', '자료실'], ['library', '나의 도서관'], ['bible', '📖 성경 보기'], ['settings', '설정']];
+  var TAB_ORDER = [['dashboard', '대시보드'], ['sermon', '설교관리'], ['worship', '예배매니저'], ['song', '🎵 찬양관리'], ['illus', '예화 클립'], ['bulletin', '주보제작'], ['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리'], ['forms', '신청서'], ['doc', '자료실'], ['library', '나의 도서관'], ['bible', '📖 성경 보기'], ['settings', '설정']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -269,7 +269,22 @@ console.log('[affairs.js] v20260923lic');
     else if (tab === 'settings') renderSettings(p);
     else if (tab === 'edu') renderEdu(p);
     else if (tab === 'doc') renderArchive(p);
+    else if (tab === 'forms') renderForms(p);
     else renderManager(p, TYPES[tab]);
+  }
+
+  // ═══════════════ 신청서 — 행사·모임 신청 보관함 (2026-10-10) ═══════════════
+  //  화면은 js/forms-admin.js(WPCFormsAdmin) — affairs.html 이 불러 두고, 없으면 여기서 한 번 불러온다.
+  //  자료: app_forms · app_entries (supabase/20261010_1140_app_forms.sql)
+  function renderForms(panel) {
+    function go() { window.WPCFormsAdmin.render(panel, { api: api, esc: esc, msgCard: msgCard, pushBackClose: pushBackClose }); }
+    if (window.WPCFormsAdmin) { go(); return; }
+    panel.innerHTML = msgCard('신청서', '불러오는 중…');
+    var s = document.createElement('script');
+    s.src = 'js/forms-admin.js?v=20261010form1';
+    s.onload = function () { if (window.WPCFormsAdmin && document.body.contains(panel)) go(); };
+    s.onerror = function () { panel.innerHTML = msgCard('불러오지 못했습니다', '잠시 뒤에 다시 열어 주십시오.'); };
+    document.body.appendChild(s);
   }
 
   // ═══════════════ 자료실 — 성도별 자료 보관·통합 관리 ═══════════════
