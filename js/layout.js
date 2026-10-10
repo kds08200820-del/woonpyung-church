@@ -91,6 +91,7 @@
         <div class="footer-actions">
           <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">카카오톡 채널 추가</a>
           <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">온라인헌금</a>
+          <a class="cts-partner" href="https://www.cts.tv" target="_blank" rel="noopener" title="CTS 기독교TV 홈페이지로 이동"><img src="images/cts-partner.png?v=20261010" alt="CTS 기독교TV 동역교회" style="display:block;height:64px;width:auto" /></a>
         </div>
         <div class="footer-meta">
           <p>담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</p>
