@@ -1,11 +1,11 @@
 /* forms.js — 신청서 (행사·모임 신청, 2026-10-10)
- *  · 홈페이지 히어로: 신청 기간인 신청서(show_hero)를 첫 슬라이드로 — '신청하기' · '신청 확인'
+ *  · 홈페이지 히어로: 신청 기간인 신청서(show_hero)만 보인다(다른 문구는 돌리지 않음) — '신청하기' · '신청 확인'
  *  · 신청서 페이지(forms.html): 지금 받는 신청서 · 내 신청서 · 지난 신청서
  *  · 대시보드 카드: dashboard.js 가 WPCForms.mineCard(el, { noticeEl }) 로 부른다 (헌금 바로 위)
  *  · 신청·고치기·취소·'납부했습니다'·교회 안내 읽음은 모두 Supabase 함수(rpc)로 한다
  *  자료: app_forms · app_entries — supabase/20261010_1140_app_forms.sql (실행 전에는 조용히 숨는다)
  */
-console.log('[forms.js] v20261010form3');
+console.log('[forms.js] v20261010form4');
 
 (function () {
   if (window.WPCForms) return;
@@ -604,6 +604,8 @@ console.log('[forms.js] v20261010form3');
           '<div class="ap-hbtns"><button type="button" class="hero-cta ap-hgo" data-act="apply">신청하기</button><button type="button" class="hero-cta" data-act="status">신청 확인</button></div>';
         rot.insertBefore(d, rot.firstChild);
       });
+      /* 신청 기간에는 신청서만 보인다 — 다른 문구 슬라이드는 돌리지 않는다 (2026-10-10 목사님 지시). 신청서가 둘이면 둘만 돈다 */
+      Array.prototype.forEach.call(rot.querySelectorAll('.hero-slide:not(.hero-apply)'), function (s) { s.remove(); });
       Array.prototype.forEach.call(rot.querySelectorAll('.hero-slide'), function (s) { s.classList.remove('is-active'); });
       rot.querySelector('.hero-apply').classList.add('is-active');
       if (window.WPCHero) window.WPCHero.refresh();
