@@ -4,8 +4,10 @@
  *  · 대시보드 카드: dashboard.js 가 WPCForms.mineCard(el, { noticeEl }) 로 부른다 (헌금 바로 위)
  *  · 신청·고치기·취소·'납부했습니다'·교회 안내 읽음은 모두 Supabase 함수(rpc)로 한다
  *  자료: app_forms · app_entries — supabase/20261010_1140_app_forms.sql (실행 전에는 조용히 숨는다)
+ *  참가자 이름(2026-10-10): 인원마다 이름을 받아 app_submit(…, p_names) 로 보낸다 — 같은 신청서에 같은 이름은 서버가 막는다
+ *    (supabase/20261010_1300_app_participants.sql)
  */
-console.log('[forms.js] v20261010form5');
+console.log('[forms.js] v20261010form6');
 
 (function () {
   if (window.WPCForms) return;
@@ -41,6 +43,15 @@ console.log('[forms.js] v20261010form5');
     '.ap-step button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line,#e6e3dd);background:#fff;color:var(--accent,#032257);font-size:1.25rem;line-height:1;cursor:pointer;font-family:inherit}' +
     '.ap-step button:disabled{opacity:.35;cursor:default}' +
     '.ap-step b{min-width:30px;text-align:center;font-size:1.08rem;color:var(--accent,#032257)}' +
+    '.ap-names{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line,#e6e3dd);border-radius:10px;padding:12px 12px 10px;background:var(--paper-alt,#f7f5f0)}' +
+    '.ap-names>p{margin:0;font-size:.84rem;color:var(--ink-soft,#4a4a4a);font-weight:500}' +
+    '.ap-names>p small{font-weight:400;color:var(--muted,#8a8a8a)}' +
+    '.ap-pname{display:flex;align-items:center;gap:10px;margin:0}' +
+    '.ap-pname>span{flex:0 0 74px;font-size:.84rem;color:var(--accent,#032257)}' +
+    '.ap-pname input{flex:1;min-width:0;font:inherit;font-size:1rem;padding:9px 12px;border:1px solid var(--line,#e6e3dd);border-radius:9px;background:#fff;box-sizing:border-box}' +
+    '.ap-pname input:focus{outline:none;border-color:var(--accent-soft,#4a6a9c)}' +
+    '.ap-pname input.is-bad{border-color:#c0392b}' +
+    '.ap-nerr{color:#c0392b;font-size:.84rem;margin:0}' +
     '.ap-total{display:flex;justify-content:space-between;align-items:baseline;padding:12px 2px 2px;border-top:1px solid var(--line,#e6e3dd);color:var(--accent,#032257);font-weight:700}' +
     '.ap-total b{font-size:1.2rem}' +
     '.ap-err{color:#c0392b;font-size:.88rem;margin:0}' +
@@ -193,6 +204,16 @@ console.log('[forms.js] v20261010form5');
     if (f && f.ask_minor === false) return (e.adults + e.minors) + '명';
     return '성인 ' + e.adults + '명' + (e.minors ? ' · 미성년자 ' + e.minors + '명' : '');
   }
+  /* 참가자 이름 — [{name, kind:'adult'|'minor'}] (20261010_1300 전에 낸 신청은 []) */
+  function partsOf(e) { return (e && Array.isArray(e.participants) ? e.participants : []).filter(function (x) { return x && x.name; }); }
+  function partText(e, f) {
+    var ps = partsOf(e); if (!ps.length) return '';
+    var ad = ps.filter(function (x) { return x.kind !== 'minor'; }).map(function (x) { return x.name; });
+    var mi = ps.filter(function (x) { return x.kind === 'minor'; }).map(function (x) { return x.name; });
+    if (f && f.ask_minor === false) return ad.concat(mi).join(', ');
+    return [ad.length ? '성인 ' + ad.join(', ') : '', mi.length ? '미성년자 ' + mi.join(', ') : ''].filter(Boolean).join(' · ');
+  }
+  function nameKey(n) { return String(n || '').replace(/\s+/g, '').toLowerCase(); }   // 서버 app_name_key 와 같게
   function memoLine(f, e) { var l = (f && f.memo_label) || '메모'; return l + (/[?？.]$/.test(l) ? ' ' : ': ') + e.memo; }
   function isOpen(f) {
     var now = Date.now();
@@ -342,6 +363,10 @@ console.log('[forms.js] v20261010form5');
   function showForm(f, e, p) {
     var cur = e || {};
     var v = { adults: e ? e.adults : 1, minors: e ? e.minors : 0 };
+    /* 참가자 이름 — 인원 단추로 칸이 늘고 준다. 줄였다 다시 늘리면 적어 둔 이름이 돌아온다 */
+    var nm = { adults: [], minors: [] };
+    partsOf(e).forEach(function (x) { nm[x.kind === 'minor' ? 'minors' : 'adults'].push(x.name); });
+    if (!nm.adults[0]) nm.adults[0] = cur.name || p.name || '';
     var askMinor = f.ask_minor !== false, paidLock = e && e.paid_at && e.status === 'active';
     var aFee = +f.fee_adult || 0, mFee = +f.fee_minor || 0;
     function countRow(k, label, sub) {
@@ -358,6 +383,7 @@ console.log('[forms.js] v20261010form5');
       (askMinor
         ? countRow('adults', '성인', aFee ? '1명 ' + won(aFee) + '원' : '무료') + countRow('minors', '미성년자', '만 19세 미만 · ' + (mFee ? '1명 ' + won(mFee) + '원' : '무료'))
         : countRow('adults', '인원', aFee ? '1명 ' + won(aFee) + '원' : '무료')) +
+      '<div class="ap-names" data-names></div>' +
       (f.memo_label ? '<label class="ap-field"><span>' + esc(f.memo_label) + '</span><textarea name="memo" rows="3" maxlength="1000">' + esc(cur.memo || '') + '</textarea></label>' : '') +
       '<div class="ap-total"><span>신청비 합계</span><b data-total></b></div>' +
       (paidLock ? '<p class="ap-note">‘납부했습니다’를 누른 신청입니다. 금액이 바뀌는 인원 수정은 교회에 말씀해 주십시오.</p>' : '') +
@@ -366,8 +392,36 @@ console.log('[forms.js] v20261010form5');
       '<p class="ap-note">가족이 함께 오시면 인원에 함께 적어 주십시오. 한 계정으로 한 번 신청하며, 다시 내면 앞의 신청을 고칩니다.</p>' +
       '</form>';
     openModal(html, function (b) {
-      var form = b.querySelector('form'), err = b.querySelector('.ap-err');
+      var form = b.querySelector('form'), err = b.querySelector('.ap-err'), box = b.querySelector('[data-names]');
       function total() { return v.adults * aFee + (askMinor ? v.minors * mFee : 0); }
+      function nameRows() {                     // 지금 인원에 맞는 이름 칸 — [{k, i, label}]
+        var out = [], k, i;
+        for (i = 0; i < v.adults; i++) out.push({ k: 'adults', i: i, label: (askMinor ? '성인 ' : '참가자 ') + (i + 1) });
+        if (askMinor) for (i = 0; i < v.minors; i++) out.push({ k: 'minors', i: i, label: '미성년자 ' + (i + 1) });
+        return out;
+      }
+      function drawNames(msg) {
+        var rows = nameRows();
+        box.innerHTML = '<p>참가자 이름 <small>· 오시는 분마다 한 분씩 적어 주십시오</small></p>' + rows.map(function (r) {
+          return '<label class="ap-pname"><span>' + r.label + '</span><input data-k="' + r.k + '" data-i="' + r.i + '" maxlength="30" autocomplete="off" value="' + esc(nm[r.k][r.i] || '') + '" aria-label="' + r.label + ' 이름"></label>';
+        }).join('') + '<p class="ap-nerr"' + (msg ? '' : ' hidden') + '>' + esc(msg || '') + '</p>';
+        box.hidden = !rows.length;
+        Array.prototype.forEach.call(box.querySelectorAll('input'), function (inp) {
+          inp.oninput = function () { nm[inp.dataset.k][+inp.dataset.i] = inp.value; inp.classList.remove('is-bad'); };
+        });
+      }
+      function markNames(keys, msg) {           // 문제 있는 이름 칸을 빨간 테두리로
+        drawNames(msg);
+        Array.prototype.forEach.call(box.querySelectorAll('input'), function (inp) { if (keys.indexOf(nameKey(inp.value)) >= 0) inp.classList.add('is-bad'); });
+        var first = box.querySelector('input.is-bad'); if (first) first.focus();
+      }
+      function collect() {                      // 보낼 이름 — 성인 먼저, 그다음 미성년자
+        return nameRows().map(function (r) { return String(nm[r.k][r.i] || '').trim(); });
+      }
+      /* 신청하는 분 이름을 고치면, 아직 손대지 않은 '성인 1'도 따라간다 */
+      var autoFirst = !partsOf(e).length;
+      form.name.addEventListener('input', function () { if (autoFirst) { nm.adults[0] = form.name.value; var i0 = box.querySelector('input[data-k="adults"][data-i="0"]'); if (i0) i0.value = form.name.value; } });
+      box.addEventListener('input', function (ev) { if (ev.target.matches('input[data-k="adults"][data-i="0"]')) autoFirst = false; });
       function paint() {
         ['adults', 'minors'].forEach(function (k) {
           var el = b.querySelector('[data-v="' + k + '"]'); if (el) el.textContent = v[k];
@@ -377,17 +431,35 @@ console.log('[forms.js] v20261010form5');
         var t = total(); b.querySelector('[data-total]').textContent = t ? won(t) + '원' : '없음';
       }
       Array.prototype.forEach.call(b.querySelectorAll('.ap-step button'), function (btn) {
-        btn.onclick = function () { var k = btn.dataset.k; v[k] = Math.max(0, Math.min(50, v[k] + (+btn.dataset.d))); paint(); };
+        btn.onclick = function () { var k = btn.dataset.k; v[k] = Math.max(0, Math.min(50, v[k] + (+btn.dataset.d))); paint(); drawNames(); };
       });
-      paint();
+      paint(); drawNames();
       form.onsubmit = function (ev) {
         ev.preventDefault();
         var name = form.name.value.trim(), phone = form.phone.value.trim(), memo = form.memo ? form.memo.value.trim() : '';
         var bad = !name ? '신청하는 분 이름을 적어 주십시오.' : !phone ? '연락처를 적어 주십시오.' : (v.adults + (askMinor ? v.minors : 0)) < 1 ? '인원을 한 명 이상 적어 주십시오.' : '';
         if (bad) { err.textContent = bad; err.hidden = false; return; }
         err.hidden = true;
+        var names = collect(), keys = names.map(nameKey), seen = {}, twice = [];
+        var empty = names.some(function (n) { return !n; }), long = names.filter(function (n) { return n.length > 30; });
+        keys.forEach(function (k, i) { if (k && seen[k]) twice.push(names[i]); seen[k] = 1; });
+        if (empty) { markNames([''], '참가자 이름을 모두 적어 주십시오.'); return; }
+        if (long.length) { markNames(long.map(nameKey), '이름은 30자까지 적을 수 있습니다.'); return; }
+        if (twice.length) { markNames(twice.map(nameKey), '같은 이름을 두 번 적었습니다: ' + twice.join(', ')); return; }
+        drawNames();
         var btn = form.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = '보내는 중…';
-        rpc('app_submit', { p_form: f.id, p_name: name, p_phone: phone, p_adults: v.adults, p_minors: askMinor ? v.minors : 0, p_memo: memo }).then(function (r) {
+        rpc('app_submit', { p_form: f.id, p_name: name, p_phone: phone, p_adults: v.adults, p_minors: askMinor ? v.minors : 0, p_memo: memo, p_names: names }).then(function (r) {
+          if (r && !r.ok && (r.why === 'dup' || r.why === 'dupself')) {   // 이미 신청된 이름 — 그 칸을 표시
+            markNames((r.names || []).map(nameKey), String(r.error || '').replace(/\.?$/, '.') + (r.why === 'dup' ? ' 같은 이름의 다른 분이면 이름 뒤에 구별할 말을 붙여 주십시오. 예: 홍길동(청년부)' : ''));
+            btn.disabled = false; btn.textContent = e && e.status === 'active' ? '고친 내용 저장' : '신청하기';
+            return;
+          }
+          if (r && !r.ok && r.why === 'pname') {
+            drawNames(r.error);
+            var bi = box.querySelectorAll('input')[r.index]; if (bi) { bi.classList.add('is-bad'); bi.focus(); }
+            btn.disabled = false; btn.textContent = e && e.status === 'active' ? '고친 내용 저장' : '신청하기';
+            return;
+          }
           if (!r || !r.ok) throw new Error((r && r.error) || '신청하지 못했습니다.');
           changed();
           return loadEntry(f.id).then(function (e2) { showStatus(f, e2, r.updated ? '고친 내용을 저장했습니다.' : '신청했습니다.'); });
@@ -420,6 +492,7 @@ console.log('[forms.js] v20261010form5');
       html += '<div style="margin-top:12px">' + chip(e) + '</div>' + msgHTML(e) +
         '<dl class="ap-dl"><dt>신청한 분</dt><dd>' + esc(e.name) + '</dd><dt>연락처</dt><dd>' + esc(e.phone) + '</dd>' +
         '<dt>인원</dt><dd>' + esc(peopleText(e, f)) + '</dd>' +
+        (partText(e, f) ? '<dt>참가자</dt><dd>' + esc(partText(e, f)) + '</dd>' : '') +
         (e.memo ? '<dt>' + esc(f.memo_label || '메모') + '</dt><dd>' + nl2br(e.memo) + '</dd>' : '') +
         '<dt>신청비</dt><dd>' + (e.fee_total > 0 ? won(e.fee_total) + '원' : '없음') + '</dd>' +
         '<dt>신청한 날</dt><dd>' + esc(dtText(e.created_at)) + '</dd>' +
@@ -478,6 +551,7 @@ console.log('[forms.js] v20261010form5');
         (whenPlace(f) ? '<p class="ap-item-meta">' + esc(whenPlace(f)) + '</p>' : '') +
         '<p class="ap-item-meta">' + esc(peopleText(e, f)) + ' · ' + (e.fee_total > 0 ? won(e.fee_total) + '원' : '신청비 없음') + ' · ' + esc(dayText(e.created_at)) + ' 신청</p>' +
         (full ? '<p class="ap-item-meta">신청한 분 ' + esc(e.name) + (e.phone ? ' · ' + esc(e.phone) : '') + '</p>' +
+          (partText(e, f) ? '<p class="ap-item-meta">참가자 ' + esc(partText(e, f)) + '</p>' : '') +
           (e.memo ? '<p class="ap-item-meta">' + esc(memoLine(f, e)) + '</p>' : '') +
           (e.paid_at ? '<p class="ap-item-meta">납부 ' + esc(dtText(e.paid_at)) + (e.confirmed_at ? ' · 교회 확인' : '') + '</p>' : '') +
           msgHTML(e) : '') +
@@ -610,7 +684,7 @@ console.log('[forms.js] v20261010form5');
     }).catch(function () { /* 표가 아직 없으면(SQL 실행 전) 공지사항 그대로 */ });
   }
 
-  window.WPCForms = { openApply: openApply, openStatus: openStatus, mineCard: mineCard, renderPage: renderPage, tossMeUrl: tossMeUrl, tossApp: tossApp, payTarget: payTarget, churchPay: churchPay };
+  window.WPCForms = { openApply: openApply, openStatus: openStatus, mineCard: mineCard, renderPage: renderPage, tossMeUrl: tossMeUrl, tossApp: tossApp, payTarget: payTarget, churchPay: churchPay, partText: partText };
   notice();
   var pageRoot = document.getElementById('apPage');
   if (pageRoot) renderPage(pageRoot);

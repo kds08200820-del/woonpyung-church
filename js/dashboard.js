@@ -155,7 +155,7 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
     function go() { window.WPCForms.mineCard(el, { noticeEl: document.getElementById('formsNotice'), onGo: function () { dashShow('me', false); } }); }
     if (window.WPCForms) { go(); return; }
     var s = document.createElement('script');
-    s.src = 'js/forms.js?v=20261010form3';
+    s.src = 'js/forms.js?v=20261010form6';
     s.onload = function () { if (window.WPCForms) go(); };
     document.body.appendChild(s);
   }

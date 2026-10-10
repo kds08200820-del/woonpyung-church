@@ -281,7 +281,7 @@ console.log('[affairs.js] v20261010form1');
     if (window.WPCFormsAdmin) { go(); return; }
     panel.innerHTML = msgCard('신청서', '불러오는 중…');
     var s = document.createElement('script');
-    s.src = 'js/forms-admin.js?v=20261010form3';
+    s.src = 'js/forms-admin.js?v=20261010form6';
     s.onload = function () { if (window.WPCFormsAdmin && document.body.contains(panel)) go(); };
     s.onerror = function () { panel.innerHTML = msgCard('불러오지 못했습니다', '잠시 뒤에 다시 열어 주십시오.'); };
     document.body.appendChild(s);

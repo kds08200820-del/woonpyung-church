@@ -8,7 +8,7 @@
  *  affairs.js 의 '신청서' 탭이 WPCFormsAdmin.render(panel, { api, esc, msgCard, pushBackClose }) 로 부른다.
  *  자료: app_forms · app_entries — supabase/20261010_1140_app_forms.sql
  */
-console.log('[forms-admin.js] v20261010form5');
+console.log('[forms-admin.js] v20261010form6');
 
 window.WPCFormsAdmin = (function () {
   var CSS =
@@ -57,6 +57,11 @@ window.WPCFormsAdmin = (function () {
     '.fa-check input{width:18px;height:18px;accent-color:var(--accent,#032257)}' +
     '.fa-modal .modal-box{max-width:480px;padding:28px 24px 22px}' +
     '.fa-modal textarea{width:100%;min-height:110px;padding:10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;box-sizing:border-box}' +
+    '.fa-plist{margin:8px 0 0;padding-left:26px;columns:2 220px;column-gap:24px;font-size:.88rem}' +
+    '.fa-plist li{break-inside:avoid;padding:2px 0;color:#1a1a1a}' +
+    '.fa-plist li small{color:#8a8a8a}' +
+    '.fa-pdet{margin-top:14px;border:1px solid var(--line,#e6e3dd);border-radius:10px;padding:10px 14px;background:#fff}' +
+    '.fa-pdet>summary{cursor:pointer;font-weight:700;color:var(--accent,#032257);font-size:.92rem}' +
     '@media (max-width:560px){.fa-ents{grid-template-columns:1fr}.fa-head .fa-right{margin-left:0}}';
 
   function injectCss() {
@@ -112,12 +117,22 @@ window.WPCFormsAdmin = (function () {
     });
     return s;
   }
+  /* 참가자 이름 — [{name, kind}] (이름을 받기 전에 낸 신청은 [] → '명단 없음') */
+  function partsOf(e) { return (e && Array.isArray(e.participants) ? e.participants : []).filter(function (x) { return x && x.name; }); }
+  function kindName(x, f) { return f && f.ask_minor === false ? '' : (x.kind === 'minor' ? '미성년자' : '성인'); }
+  function partLine(e, f) {
+    var ps = partsOf(e); if (!ps.length) return '';
+    if (f && f.ask_minor === false) return ps.map(function (x) { return x.name; }).join(', ');
+    var ad = ps.filter(function (x) { return x.kind !== 'minor'; }).map(function (x) { return x.name; });
+    var mi = ps.filter(function (x) { return x.kind === 'minor'; }).map(function (x) { return x.name; });
+    return [ad.length ? '성인 ' + ad.join(', ') : '', mi.length ? '미성년자 ' + mi.join(', ') : ''].filter(Boolean).join(' · ');
+  }
   function notReady(e) { return /42P01|42883|PGRST20[0-9]|does not exist|schema cache|Could not find/i.test((e && e.message) || ''); }
 
   function render(panel, ctx) {
     injectCss();
     var api = ctx.api, esc = ctx.esc, msgCard = ctx.msgCard;
-    var FORMS = [], ENTRIES = [], filter = 'all', backClose = null;
+    var FORMS = [], ENTRIES = [], filter = 'all', backClose = null, HASPARTS = true;
     function alive() { return document.body.contains(panel); }
     function rpcPay(id, action, msg) {
       return api('POST', 'rpc/app_admin_payment', { p_id: id, p_action: action, p_msg: msg || '' }).then(function (r) {
@@ -130,8 +145,9 @@ window.WPCFormsAdmin = (function () {
       return Promise.all([
         api('GET', 'app_forms?select=*&order=open_at.desc,id.desc'),
         api('GET', 'app_entries?select=*&order=created_at.asc'),
-        api('GET', 'church_settings?key=eq.pay_default&select=data').catch(function () { return []; })
-      ]).then(function (r) { FORMS = r[0] || []; ENTRIES = r[1] || []; PAYDEF = (r[2] && r[2][0] && r[2][0].data) || null; });
+        api('GET', 'church_settings?key=eq.pay_default&select=data').catch(function () { return []; }),
+        api('GET', 'app_entries?select=participants&limit=0').then(function () { return true; }, function () { return false; })   /* 참가자 칸이 있나 (20261010_1300) */
+      ]).then(function (r) { FORMS = r[0] || []; ENTRIES = r[1] || []; PAYDEF = (r[2] && r[2][0] && r[2][0].data) || null; HASPARTS = r[3]; });
     }
     /* 교회 기본 납부 계좌 — 설정에 저장한 것, 없으면 홈페이지 온라인헌금 창의 계좌 */
     function defaultPay() {
@@ -152,6 +168,7 @@ window.WPCFormsAdmin = (function () {
       if (!alive()) return;
       var html = '<div class="fin-card"><div class="fa-head"><h3>신청서</h3><span class="fa-sub">만든 신청서가 차례로 쌓입니다. 신청 기간에는 홈페이지 공지사항 맨 위에 저절로 뜹니다.</span>' +
         '<div class="fa-right"><button class="btn btn-solid" id="fa_new" style="padding:8px 16px;font-size:.86rem">새 신청서</button></div></div>';
+      if (!HASPARTS) html += '<p class="fa-pay" style="margin:0 0 12px"><span class="fa-warn">참가자 이름 기능이 아직 준비되지 않았습니다.</span> Supabase → SQL Editor 에서 supabase/20261010_1300_app_participants.sql 을 한 번 실행해 주십시오. 그 전에는 새 신청을 받을 수 없습니다.</p>';
       if (!FORMS.length) html += '<p style="color:#8a8a8a;margin:0">아직 만든 신청서가 없습니다.</p>';
       html += '<div class="fa-list">' + FORMS.map(function (f) {
         var st = stateOf(f), s = sum(entriesOf(f.id));
@@ -201,6 +218,7 @@ window.WPCFormsAdmin = (function () {
         '<div class="fa-stat"><span>납부 완료</span><b>' + won(s.paid) + '원</b><small>교회 확인 ' + won(s.conf) + '원' + (s.unconfN ? ' · 확인 전 ' + s.unconfN + '건' : '') + '</small></div>' +
         '<div class="fa-stat"><span>미납</span><b>' + won(s.due) + '원</b><small>' + s.dueN + '건</small></div>' +
         '</div>' +
+        partListHTML(f, list) +
         '<div class="fa-filter">' + [['all', '전체'], ['due', '미납'], ['claimed', '납부 완료(확인 전)'], ['conf', '교회 확인'], ['off', '취소']].map(function (t) {
           return '<button type="button" data-f="' + t[0] + '" class="' + (filter === t[0] ? 'on' : '') + '">' + t[1] + '</button>';
         }).join('') + '</div>' +
@@ -224,6 +242,22 @@ window.WPCFormsAdmin = (function () {
         };
       });
     }
+    /* 참가자 명단 — 취소하지 않은 신청의 참가자 전부, 번호와 신청한 분 */
+    function partListHTML(f, list) {
+      var act = list.filter(function (e) { return e.status !== 'cancelled'; }), rows = [], none = 0;
+      act.forEach(function (e) {
+        var ps = partsOf(e);
+        if (!ps.length) { none++; return; }
+        ps.forEach(function (x) { rows.push({ name: x.name, kind: kindName(x, f), from: e.name }); });
+      });
+      if (!act.length) return '';
+      return '<details class="fa-pdet" open><summary>참가자 명단 · ' + rows.length + '명' + (none ? ' (명단 없음 ' + none + '건)' : '') + '</summary>' +
+        (rows.length ? '<ol class="fa-plist">' + rows.map(function (r) {
+          return '<li>' + esc(r.name) + (r.kind ? ' <small>' + r.kind + '</small>' : '') + ' <small>· ' + esc(r.from) + ' 신청</small></li>';
+        }).join('') + '</ol>' : '<p class="fa-note" style="margin-top:8px">아직 이름이 적힌 신청이 없습니다.</p>') +
+        (none ? '<p class="fa-note">명단 없음 = 참가자 이름을 받기 전에 낸 신청입니다. 신청한 분이 ‘신청 고치기’로 이름을 적으면 명단에 들어갑니다.</p>' : '') +
+        '</details>';
+    }
     function entHTML(e) {
       var p = payOf(e), off = e.status === 'cancelled', f = formOf(e.form_id) || {}, btn = [];
       if (!off && e.fee_total > 0) {
@@ -237,6 +271,7 @@ window.WPCFormsAdmin = (function () {
       return '<div class="fa-ent' + (off ? ' is-off' : '') + '" data-id="' + e.id + '"><div class="fa-ent-hd"><b>' + esc(e.name) + '</b><span class="fa-st fa-st-' + p[0] + '">' + p[1] + '</span></div>' +
         '<p>' + esc(e.phone || '연락처 없음') + '</p>' +
         '<p>' + (f.ask_minor === false ? (e.adults + e.minors) + '명' : '성인 ' + e.adults + '명 · 미성년자 ' + e.minors + '명') + ' · ' + (e.fee_total > 0 ? won(e.fee_total) + '원' : '신청비 없음') + '</p>' +
+        (partLine(e, f) ? '<p>참가자: ' + esc(partLine(e, f)) + '</p>' : '<p style="color:#8a8a8a">참가자: 명단 없음</p>') +
         (e.memo ? '<p>' + esc((f.memo_label || '메모') + (/[?？.]$/.test(f.memo_label || '') ? ' ' : ': ') + e.memo) + '</p>' : '') +
         '<p style="color:#8a8a8a">신청 ' + esc(day(e.created_at)) + (e.paid_at ? ' · ' + (e.paid_by === 'admin' ? '납부 처리 ' : '납부했습니다 ') + esc(day(e.paid_at)) : '') + (e.confirmed_at ? ' · 교회 확인 ' + esc(day(e.confirmed_at)) : '') + '</p>' +
         (e.admin_msg ? '<div class="fa-msg">보낸 안내(' + esc(day(e.admin_msg_at)) + ', ' + (e.msg_read_at ? '읽음' : '아직 안 읽음') + '): ' + esc(e.admin_msg) + '</div>' : '') +
@@ -271,9 +306,10 @@ window.WPCFormsAdmin = (function () {
     }
 
     function csv(f, list) {
-      var head = ['번호', '신청일', '이름', '연락처', '성인', '미성년자', f.memo_label || '메모', '금액', '신청 상태', '납부', '납부일', '교회 확인'];
+      var head = ['번호', '신청일', '이름', '연락처', '성인', '미성년자', '참가자', f.memo_label || '메모', '금액', '신청 상태', '납부', '납부일', '교회 확인'];
       var rows = list.map(function (e, i) {
-        return [i + 1, localInput(e.created_at).replace('T', ' '), e.name, e.phone, e.adults, e.minors, e.memo, e.fee_total, e.status === 'cancelled' ? '취소' : '신청',
+        var ps = partsOf(e).map(function (x) { var k = kindName(x, f); return x.name + (k ? '(' + k + ')' : ''); }).join(', ') || '명단 없음';
+        return [i + 1, localInput(e.created_at).replace('T', ' '), e.name, e.phone, e.adults, e.minors, ps, e.memo, e.fee_total, e.status === 'cancelled' ? '취소' : '신청',
           e.fee_total > 0 ? (e.paid_at ? (e.paid_by === 'admin' ? '납부 처리' : '납부 완료') : '미납') : '없음',
           e.paid_at ? localInput(e.paid_at).replace('T', ' ') : '', e.confirmed_at ? localInput(e.confirmed_at).replace('T', ' ') : ''];
       });
