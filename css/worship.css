@@ -217,3 +217,11 @@ body.hw-fs-body { overflow: hidden; }
 .ws-prayer-txt p { margin: 0 0 .8em; font-family: "Noto Serif KR", serif; font-size: 1.15em; line-height: 1.9; word-break: keep-all; color: #2b2721; }
 .ws-role-tip { color: #9a7b3e; }
 @media (max-width: 560px) { .ws-view { max-width: 7.5em; font-size: .8rem; } }
+
+/* 설교하기 (관리자·담임목사, 2026-10-10) — 오늘의 예배 단추 아래, 발표자 모드로 */
+.hw-preach-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
+.hero-cta.hw-preach { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; min-width: 200px; padding: 10px 22px; margin-top: 0; font: inherit; font-weight: 700; cursor: pointer; line-height: 1.35; background: transparent; border-color: var(--gold, #b89b5e); color: #f3e3bd; }
+.hero-cta.hw-preach:hover { background: var(--gold, #b89b5e); color: #10203f; }
+.hero-cta.hw-preach small { font-size: .74rem; font-weight: 400; opacity: .85; }
+.hero.hw-fs .hw-preach-row { display: none !important; }
+@media (max-width: 560px) { .hero-cta.hw-preach { width: 100%; min-width: 0; } }

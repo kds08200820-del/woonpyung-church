@@ -11380,11 +11380,34 @@ console.log('[affairs.js] v20261010form1');
     }
     api('GET', 'admins?uid=eq.' + s.uid + '&select=uid').then(function (rows) {
       if (!rows || !rows.length) { root.innerHTML = msgCard('접근 권한이 없습니다', '행정관리는 관리자만 이용할 수 있습니다.'); return; }
+      var pq = presentQuery(); if (pq) { presentFromUrl(pq); return; }   /* 히어로 '설교하기' → 발표자 모드로 바로 */
       loadMembers();
       loadGeneral(); // 설립일(호수 주년 기준) 미리 로드
       render();
       maybeQtIncoming();
     }).catch(function (e) { root.innerHTML = msgCard('오류', e.message); });
+  }
+
+  // 히어로 '설교하기'(worship.js preachRow) → affairs.html?present=sunday|wed|dawn&date=YYYY-MM-DD
+  //   그날 그 예배의 설교 기록을 이 탭에서 바로 발표자 모드로 연다 (2026-10-10 담임목사 요청). 나가기를 누르면 이 탭이 닫힌다.
+  function presentQuery() {
+    try {
+      var q = new URLSearchParams(location.search), k = q.get('present');
+      var SV = { sunday: '주일 낮 예배', wed: '수요기도회', dawn: '새벽기도' };
+      if (!k || !SV[k]) return null;
+      var d = q.get('date'); if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) d = today();
+      return { svc: SV[k], date: d };
+    } catch (e) { return null; }
+  }
+  function presentFromUrl(p) {
+    root.innerHTML = msgCard('발표자 모드', fmtD(p.date) + ' ' + p.svc + ' 설교를 여는 중입니다…');
+    Promise.all([api('GET', 'sermons?select=*&service=eq.' + encodeURIComponent(p.svc) + '&sermon_date=eq.' + p.date + '&limit=1'), window.BULLETINS_LIVE || null])
+      .then(function (r) {
+        var rec = r[0] && r[0][0];
+        if (!rec) { root.innerHTML = msgCard('설교 기록이 없습니다', fmtD(p.date) + ' ' + p.svc + ' 설교를 설교 매니저에서 먼저 써 주세요.') + '<p style="text-align:center;margin-top:12px"><a class="btn btn-line" href="affairs.html">목회 행정 열기</a></p>'; return; }
+        sermonReadingView(rec, { win: window });
+      })
+      .catch(function (e) { root.innerHTML = msgCard('오류', e.message); });
   }
 
   // 북마클릿이 du.plus 페이지 본문을 window.name 으로 실어 보내면, 여기서 받아 가져오기 모달을 자동으로 연다.

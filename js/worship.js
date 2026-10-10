@@ -359,6 +359,25 @@
     if (!preview) { if (kind === 'sunday' && part) markJoined(part); attend(kind, part); }
     openGate(kind);
   }
+  /* ── 설교하기 (2026-10-10 담임목사 요청): 주일·수요·새벽 예배가 히어로에 뜨면 관리자(담임목사)에게만 '설교하기' —
+       누르면 새 탭에서 목회 행정이 그날 그 예배의 설교를 발표자 모드로 바로 연다(affairs.html?present=종류&date=날짜).
+       발표자 모드는 목회 행정(관리자 전용)에 있어 관리자에게만 보인다. 방송실 전체 화면에서는 숨긴다. ── */
+  var PREACH_NAME = { sunday: '주일 낮 예배', wed: '수요기도회', dawn: '새벽기도' };
+  function preachRow(d, kinds) {
+    kinds = kinds.filter(function (k, i) { return PREACH_NAME[k] && kinds.indexOf(k) === i; });
+    if (!kinds.length || !session()) return;
+    isAdmin().then(function (ok) {
+      if (!ok || !d.isConnected || d.querySelector('.hw-preach-row')) return;
+      var row = document.createElement('div'); row.className = 'hw-preach-row';
+      row.innerHTML = kinds.map(function (k) { return '<button type="button" class="hero-cta hw-preach" data-k="' + k + '">' + (kinds.length > 1 ? esc(PREACH_NAME[k]) + ' ' : '') + '설교하기<small>발표자 모드 · 담임목사</small></button>'; }).join('');
+      var after = d.querySelector('.hw-btns'); if (after && after.nextSibling) d.insertBefore(row, after.nextSibling); else d.appendChild(row);
+      row.addEventListener('click', function (e) {
+        var b = e.target.closest('.hw-preach'); if (!b) return;
+        var w = window.open('affairs.html?present=' + encodeURIComponent(b.dataset.k) + '&date=' + todayStr, '_blank');
+        if (!w) location.href = 'affairs.html?present=' + encodeURIComponent(b.dataset.k) + '&date=' + todayStr;   /* 팝업이 막히면 이 탭에서 */
+      });
+    });
+  }
   function mount(rot, list) {
     var d = document.createElement('div'); d.className = 'hero-slide is-active hero-worship'; d.id = 'heroWorship';
     var sp = list.length === 1 && list[0].kind === 'sunday' ? list[0] : null;   /* 주일: 'N부 예배가 진행 중입니다' + 'N부 예배 참여하기' (통합이면 '예배가 진행 중입니다') */
@@ -373,6 +392,7 @@
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
     d.addEventListener('click', function (e) { var b = e.target.closest('.hw-btn'); if (!b) return; enter(b.dataset.kind, b.dataset.part); });
+    preachRow(d, list.map(function (s) { return s.kind; }));
     var again = null; try { again = sessionStorage.getItem('ws_enter'); sessionStorage.removeItem('ws_enter'); } catch (e) {}
     if (again) { var b0 = d.querySelector('.hw-btn'); if (b0) setTimeout(function () { b0.click(); }, 0); }   /* 날이 바뀐 채 단추를 눌러 새로 읽었으면 바로 들어간다 */
   }
@@ -400,6 +420,7 @@
     /* 카운트가 도는 동안(1시간·30분 전)에도 예배 순서·본문을 미리 볼 수 있다 — 출석은 예배 시간에만 (2026-09-27)
        방송실 전체 화면(.hw-fs)에서는 .hw-btns 가 숨겨져 카운트만 나간다 */
     d.querySelector('#hwPrep button').addEventListener('click', function () { enter(sc.kind, sc.part, true); });
+    preachRow(d, [sc.kind]);
     var hero = rot.closest('.hero') || document.body;
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
