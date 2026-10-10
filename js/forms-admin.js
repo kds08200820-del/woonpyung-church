@@ -4,11 +4,11 @@
  *  · 신청서 하나 = 한 화면: 신청자 명단 · 인원 · 금액 합계 · 납부 상태
  *      입금 확인 / 납부 취소(미납으로 되돌림) + 안내 보내기 / 납부 처리(현금 등) / 안내 보내기 / 신청 취소·되살리기 / 명단 내려받기
  *  · 양식 만들기·고치기: 제목·안내·행사 날짜/시각/장소·신청 기간·신청비·납부 받는 곳(은행·계좌·예금주·토스 링크)
- *    신청 기간에는 홈페이지 첫 화면(히어로)에 저절로 뜬다(js/forms.js).
+ *    신청 기간에는 홈페이지 공지사항 맨 위에 저절로 뜬다(js/forms.js).
  *  affairs.js 의 '신청서' 탭이 WPCFormsAdmin.render(panel, { api, esc, msgCard, pushBackClose }) 로 부른다.
  *  자료: app_forms · app_entries — supabase/20261010_1140_app_forms.sql
  */
-console.log('[forms-admin.js] v20261010form3');
+console.log('[forms-admin.js] v20261010form5');
 
 window.WPCFormsAdmin = (function () {
   var CSS =
@@ -150,7 +150,7 @@ window.WPCFormsAdmin = (function () {
     /* ── 목록(보관함) ── */
     function showList() {
       if (!alive()) return;
-      var html = '<div class="fin-card"><div class="fa-head"><h3>신청서</h3><span class="fa-sub">만든 신청서가 차례로 쌓입니다. 신청 기간에는 홈페이지 첫 화면에 저절로 뜹니다.</span>' +
+      var html = '<div class="fin-card"><div class="fa-head"><h3>신청서</h3><span class="fa-sub">만든 신청서가 차례로 쌓입니다. 신청 기간에는 홈페이지 공지사항 맨 위에 저절로 뜹니다.</span>' +
         '<div class="fa-right"><button class="btn btn-solid" id="fa_new" style="padding:8px 16px;font-size:.86rem">새 신청서</button></div></div>';
       if (!FORMS.length) html += '<p style="color:#8a8a8a;margin:0">아직 만든 신청서가 없습니다.</p>';
       html += '<div class="fa-list">' + FORMS.map(function (f) {
@@ -189,7 +189,7 @@ window.WPCFormsAdmin = (function () {
         '<a class="btn btn-line" href="forms.html?f=' + f.id + '" target="_blank" rel="noopener" style="padding:6px 13px;font-size:.84rem">홈페이지에서 보기</a></div></div>' +
         '<div class="fa-item-hd"><b style="font-size:1.2rem;color:var(--accent,#032257)">' + esc(f.title) + '</b><span class="fa-st fa-st-' + st[0] + '">' + st[1] + '</span></div>' +
         (eventText(f) || f.place ? '<div class="fa-meta">행사 ' + esc([eventText(f), f.place].filter(Boolean).join(' · ')) + '</div>' : '') +
-        '<div class="fa-meta">신청 기간 ' + esc(dt(f.open_at)) + ' ~ ' + esc(f.close_at ? dt(f.close_at) : '마감 없음') + (f.show_hero ? ' · 이 기간에 첫 화면에 뜸' : ' · 첫 화면에 띄우지 않음') + '</div>' +
+        '<div class="fa-meta">신청 기간 ' + esc(dt(f.open_at)) + ' ~ ' + esc(f.close_at ? dt(f.close_at) : '마감 없음') + (f.show_hero ? ' · 이 기간에 공지사항에 뜸' : ' · 공지사항에 띄우지 않음') + '</div>' +
         '<div class="fa-meta">신청비 ' + esc(feeText(f)) + '</div>' +
         (needsPay ? '<div class="fa-pay">' + (hasPay
           ? '납부 받는 곳: ' + esc([fp.pay_bank, fp.pay_account, fp.pay_holder ? '예금주 ' + fp.pay_holder : ''].filter(Boolean).join(' ')) + (fp.pay_toss_url ? (fp.pay_account ? ' · ' : '') + '토스 링크 ' + esc(fp.pay_toss_url) : '') + (ownPay(f) ? '' : ' (교회 기본 계좌 — 목회 행정 > 설정에서 바꿉니다)')
@@ -295,13 +295,13 @@ window.WPCFormsAdmin = (function () {
       var html = '<div class="fin-card"><div class="fa-head"><button class="btn btn-line" id="fa_cancel" style="padding:6px 13px;font-size:.84rem">← ' + (f && !copy ? '돌아가기' : '신청서 목록') + '</button><h3>' + (isNew ? '새 신청서' : '양식 고치기') + '</h3></div>' +
         '<div class="fa-sec">무엇을 받는 신청서인가</div><div class="fa-grid">' +
         fld('제목', '<input id="ff_title" maxlength="200" value="' + esc(v.title || '') + '" placeholder="예: 삼일 만세길 걷기">', true) +
-        fld('첫 화면 한 줄 안내 (선택)', '<input id="ff_summary" maxlength="200" value="' + esc(v.summary || '') + '" placeholder="비우면 날짜·장소·신청비만 나옵니다">', true) +
+        fld('공지사항 한 줄 안내 (선택)', '<input id="ff_summary" maxlength="200" value="' + esc(v.summary || '') + '" placeholder="비우면 날짜·장소·신청비만 나옵니다">', true) +
         fld('자세한 안내 (선택)', '<textarea id="ff_body" rows="4">' + esc(v.body || '') + '</textarea>', true) +
         fld('행사 날짜', '<input type="date" id="ff_date" value="' + esc(v.event_date || '') + '">') +
         fld('행사 시각', '<input type="time" id="ff_time" value="' + esc(String(v.event_time || '').slice(0, 5)) + '">') +
         fld('장소', '<input id="ff_place" maxlength="200" value="' + esc(v.place || '') + '">') +
         '</div>' +
-        '<div class="fa-sec">신청 기간 — 이 기간에 홈페이지 첫 화면에 저절로 뜹니다</div><div class="fa-grid">' +
+        '<div class="fa-sec">신청 기간 — 이 기간에 홈페이지 공지사항 맨 위에 저절로 뜹니다</div><div class="fa-grid">' +
         fld('신청 시작', '<input type="datetime-local" id="ff_open" value="' + esc(localInput(v.open_at) || localInput(new Date().toISOString())) + '">') +
         fld('신청 마감 (비우면 마감 없음)', '<input type="datetime-local" id="ff_close" value="' + esc(localInput(v.close_at)) + '">') +
         '</div>' +
@@ -320,7 +320,7 @@ window.WPCFormsAdmin = (function () {
         '<p class="fa-note">토스 송금 링크(toss.me)를 넣으면 ‘토스로 송금하기’가 그 링크에 금액을 붙여 열립니다. 비워 두면 은행·계좌번호로 토스 앱 송금 화면을 엽니다(토스 앱이 있는 휴대폰). 계좌번호 복사 단추는 늘 함께 나옵니다.</p>' +
         '<p class="fa-note" id="ff_preview"></p>' +
         '<div class="fa-sec">보이기</div><div style="display:flex;gap:18px;flex-wrap:wrap">' +
-        chk('ff_hero', '신청 기간에 홈페이지 첫 화면에 띄웁니다', v.show_hero !== false) +
+        chk('ff_hero', '신청 기간에 홈페이지 공지사항에 띄웁니다', v.show_hero !== false) +
         chk('ff_pub', '공개 (끄면 숨김 — 홈페이지·신청서 페이지에서 내립니다)', v.published !== false) +
         '</div>' +
         '<p id="ff_err" class="fa-warn" style="font-size:.88rem;margin:12px 0 0" hidden></p>' +

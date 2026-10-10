@@ -1,11 +1,11 @@
 /* forms.js — 신청서 (행사·모임 신청, 2026-10-10)
- *  · 홈페이지 히어로: 신청 기간인 신청서(show_hero)만 보인다(다른 문구는 돌리지 않음) — '신청하기' · '신청 확인'
+ *  · 공지사항(홈·우리 이야기) 맨 위: 신청 기간인 신청서 — '신청하기' · '신청 확인' (히어로에는 넣지 않는다)
  *  · 신청서 페이지(forms.html): 지금 받는 신청서 · 내 신청서 · 지난 신청서
  *  · 대시보드 카드: dashboard.js 가 WPCForms.mineCard(el, { noticeEl }) 로 부른다 (헌금 바로 위)
  *  · 신청·고치기·취소·'납부했습니다'·교회 안내 읽음은 모두 Supabase 함수(rpc)로 한다
  *  자료: app_forms · app_entries — supabase/20261010_1140_app_forms.sql (실행 전에는 조용히 숨는다)
  */
-console.log('[forms.js] v20261010form4');
+console.log('[forms.js] v20261010form5');
 
 (function () {
   if (window.WPCForms) return;
@@ -17,15 +17,11 @@ console.log('[forms.js] v20261010form4');
 
   /* ── 화면 모양 (테마 색만: 남색·연남색·금색·선·바탕) ── */
   var CSS =
-    '.hero-apply .ap-heye{font-size:.78rem;letter-spacing:.3em;color:var(--gold,#b89b5e);margin:0 0 14px}' +
-    '.hero-apply .ap-hsum{margin-top:12px!important;font-size:1rem}' +
-    '.hero-apply .ap-hwhen{margin-top:12px!important;font-size:1.02rem;opacity:.95}' +
-    '.hero-apply .ap-hfee{margin:6px 0 0;font-size:.92rem;color:rgba(255,255,255,.82)}' +
-    '.ap-hbtns{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:24px}' +
-    '.ap-hbtns .hero-cta{margin-top:0;min-width:150px;font:inherit;cursor:pointer;background:rgba(255,255,255,.1)}' +
-    '.ap-hbtns .hero-cta.ap-hgo{background:#fff;color:var(--accent,#032257);border-color:#fff;font-weight:700}' +
-    '.ap-hbtns .hero-cta.ap-hgo:hover{background:rgba(255,255,255,.88)}' +
-    '@media (max-width:560px){.ap-hbtns{flex-wrap:nowrap;width:100%;max-width:340px;margin-left:auto;margin-right:auto}.ap-hbtns .hero-cta{flex:1;min-width:0;padding:12px 8px}}' +
+    /* 공지사항 맨 위 신청 안내 (공지 목록의 .nt-item 모양을 그대로 쓴다) */
+    '.ap-ntbox{margin-bottom:12px}' +
+    '.ap-ntbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}' +
+    '.ap-ntbtns .btn{padding:8px 18px;font-size:.88rem;cursor:pointer}' +
+    '@media (max-width:560px){.ap-ntbtns .btn{flex:1}}' +
     '.ap-modal .modal-box{max-width:520px;padding:34px 30px 26px}' +
     '@media (max-width:560px){.ap-modal{padding:10px}.ap-modal .modal-box{padding:28px 18px 20px;max-height:92vh;border-radius:14px}}' +
     '.ap-eye{font-size:.76rem;letter-spacing:.12em;color:var(--accent-soft,#4a6a9c);margin:0 0 4px}' +
@@ -585,40 +581,37 @@ console.log('[forms.js] v20261010form4');
     if (q) openApply(q[1]);
   }
 
-  /* ── 홈페이지 히어로 — 신청 기간인 신청서를 첫 슬라이드로 ── */
-  function hero() {
-    var rot = document.getElementById('heroRotator'); if (!rot) return;
+  /* ── 공지사항 맨 위 신청 안내 (2026-10-10 목사님 지시)
+       히어로에 넣으면 오늘의 예배·문구 슬라이드와 부딪친다 → 히어로는 손대지 않고, 공지사항 목록 위에 고정 안내로.
+       신청 기간인 신청서(show_hero = '공지사항에 띄움')마다 한 칸(최대 3). 홈 공지사항·우리 이야기 공지사항. ── */
+  function notice() {
+    var boxes = ['homeNoticeBox', 'communityNoticeBox'].map(function (id) { return document.getElementById(id); }).filter(Boolean);
+    if (!boxes.length) return;
     loadOpen().then(function (list) {
-      list = list.filter(function (f) { return f.show_hero; }).slice(0, 2);
+      list = list.filter(function (f) { return f.show_hero; }).slice(0, 3);
       if (!list.length) return;
-      var heroEl = rot.closest('.hero') || document.body;
-      if (heroEl.classList.contains('hero-worship-only') || document.getElementById('heroWorship')) return;   // 예배 시간에는 예배만
-      list.slice().reverse().forEach(function (f) {
-        var d = document.createElement('div');
-        d.className = 'hero-slide hero-apply'; d.setAttribute('data-form', f.id);
-        var fee = feeText(f), until = untilText(f);
-        d.innerHTML = '<p class="ap-heye">신청 안내</p><h1 class="hero-title">' + esc(f.title) + '</h1>' +
-          (f.summary ? '<p class="hero-sub ap-hsum">' + esc(f.summary) + '</p>' : '') +
-          (whenPlace(f) ? '<p class="hero-sub ap-hwhen">' + esc(whenPlace(f)) + '</p>' : '') +
-          '<p class="ap-hfee">' + esc(fee) + (until ? ' · ' + esc(until) : '') + '</p>' +
-          '<div class="ap-hbtns"><button type="button" class="hero-cta ap-hgo" data-act="apply">신청하기</button><button type="button" class="hero-cta" data-act="status">신청 확인</button></div>';
-        rot.insertBefore(d, rot.firstChild);
+      boxes.forEach(function (nb) {
+        var prev = nb.previousElementSibling; if (prev && prev.classList.contains('ap-ntbox')) return;
+        var w = document.createElement('div'); w.className = 'nt-wrap ap-ntbox';
+        w.innerHTML = '<div class="nt-list">' + list.map(function (f) {
+          var until = untilText(f), line = [whenPlace(f), feeText(f)].filter(Boolean).join(' · ');
+          return '<div class="nt-item pinned" data-form="' + esc(f.id) + '"><div class="nt-head"><div class="nt-t"><span class="nt-pin">신청</span>' + esc(f.title) + '</div>' +
+            (until ? '<div class="nt-meta">' + esc(until) + '</div>' : '') + '</div>' +
+            '<div class="nt-body">' + (f.summary ? esc(f.summary) + '<br>' : '') + esc(line) + '</div>' +
+            '<div class="ap-ntbtns"><button type="button" class="btn btn-solid" data-act="apply">신청하기</button><button type="button" class="btn btn-line" data-act="status">신청 확인</button></div></div>';
+        }).join('') + '</div>';
+        nb.parentNode.insertBefore(w, nb);
+        w.addEventListener('click', function (ev) {
+          var b = ev.target.closest('[data-act]'); if (!b) return;
+          var id = b.closest('[data-form]').getAttribute('data-form');
+          if (b.getAttribute('data-act') === 'apply') openApply(id); else openStatus(id);
+        });
       });
-      /* 신청 기간에는 신청서만 보인다 — 다른 문구 슬라이드는 돌리지 않는다 (2026-10-10 목사님 지시). 신청서가 둘이면 둘만 돈다 */
-      Array.prototype.forEach.call(rot.querySelectorAll('.hero-slide:not(.hero-apply)'), function (s) { s.remove(); });
-      Array.prototype.forEach.call(rot.querySelectorAll('.hero-slide'), function (s) { s.classList.remove('is-active'); });
-      rot.querySelector('.hero-apply').classList.add('is-active');
-      if (window.WPCHero) window.WPCHero.refresh();
-    }).catch(function () { /* 표가 아직 없으면(SQL 실행 전) 원래 첫 화면 그대로 */ });
-    rot.addEventListener('click', function (ev) {
-      var b = ev.target.closest('.hero-apply [data-act]'); if (!b) return;
-      var id = b.closest('.hero-apply').getAttribute('data-form');
-      if (b.getAttribute('data-act') === 'apply') openApply(id); else openStatus(id);
-    });
+    }).catch(function () { /* 표가 아직 없으면(SQL 실행 전) 공지사항 그대로 */ });
   }
 
   window.WPCForms = { openApply: openApply, openStatus: openStatus, mineCard: mineCard, renderPage: renderPage, tossMeUrl: tossMeUrl, tossApp: tossApp, payTarget: payTarget, churchPay: churchPay };
-  hero();
+  notice();
   var pageRoot = document.getElementById('apPage');
   if (pageRoot) renderPage(pageRoot);
 })();
