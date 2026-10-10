@@ -8,7 +8,7 @@
  *  affairs.js 의 '신청서' 탭이 WPCFormsAdmin.render(panel, { api, esc, msgCard, pushBackClose }) 로 부른다.
  *  자료: app_forms · app_entries — supabase/20261010_1140_app_forms.sql
  */
-console.log('[forms-admin.js] v20261010form1');
+console.log('[forms-admin.js] v20261010form3');
 
 window.WPCFormsAdmin = (function () {
   var CSS =
@@ -125,12 +125,20 @@ window.WPCFormsAdmin = (function () {
         return r.entry;
       });
     }
+    var PAYDEF = null;   // 목회 행정 > 설정 > '신청서 납부 계좌' (church_settings.pay_default)
     function load() {
       return Promise.all([
         api('GET', 'app_forms?select=*&order=open_at.desc,id.desc'),
-        api('GET', 'app_entries?select=*&order=created_at.asc')
-      ]).then(function (r) { FORMS = r[0] || []; ENTRIES = r[1] || []; });
+        api('GET', 'app_entries?select=*&order=created_at.asc'),
+        api('GET', 'church_settings?key=eq.pay_default&select=data').catch(function () { return []; })
+      ]).then(function (r) { FORMS = r[0] || []; ENTRIES = r[1] || []; PAYDEF = (r[2] && r[2][0] && r[2][0].data) || null; });
     }
+    /* 교회 기본 납부 계좌 — 설정에 저장한 것, 없으면 홈페이지 온라인헌금 창의 계좌 */
+    function defaultPay() {
+      if (PAYDEF && (PAYDEF.pay_toss_url || (PAYDEF.pay_bank && PAYDEF.pay_account))) return PAYDEF;
+      return window.WPCForms && window.WPCForms.churchPay ? window.WPCForms.churchPay() : {};
+    }
+    function ownPay(f) { return !!(f.pay_toss_url || (f.pay_bank && f.pay_account)); }
     function entriesOf(id) { return ENTRIES.filter(function (e) { return String(e.form_id) === String(id); }); }
     function formOf(id) { return FORMS.filter(function (f) { return String(f.id) === String(id); })[0]; }
     function enter(fn) {                      // 목록 → 한 신청서/양식 화면: 휴대폰 '뒤로'가 목록으로 오게
@@ -162,7 +170,8 @@ window.WPCFormsAdmin = (function () {
       if (!alive()) return;
       var f = formOf(id); if (!f) { showList(); return; }
       var list = entriesOf(id), s = sum(list), st = stateOf(f);
-      var hasPay = f.pay_toss_url || (f.pay_bank && f.pay_account);
+      var fp = ownPay(f) ? f : Object.assign({}, f, defaultPay());   /* 비워 두면 교회 기본 계좌 */
+      var hasPay = fp.pay_toss_url || (fp.pay_bank && fp.pay_account);
       var needsPay = (+f.fee_adult || 0) > 0 || (f.ask_minor && (+f.fee_minor || 0) > 0);
       var shown = list.filter(function (e) {
         if (filter === 'all') return e.status !== 'cancelled';
@@ -183,7 +192,7 @@ window.WPCFormsAdmin = (function () {
         '<div class="fa-meta">신청 기간 ' + esc(dt(f.open_at)) + ' ~ ' + esc(f.close_at ? dt(f.close_at) : '마감 없음') + (f.show_hero ? ' · 이 기간에 첫 화면에 뜸' : ' · 첫 화면에 띄우지 않음') + '</div>' +
         '<div class="fa-meta">신청비 ' + esc(feeText(f)) + '</div>' +
         (needsPay ? '<div class="fa-pay">' + (hasPay
-          ? '납부 받는 곳: ' + esc([f.pay_bank, f.pay_account, f.pay_holder ? '예금주 ' + f.pay_holder : ''].filter(Boolean).join(' ')) + (f.pay_toss_url ? (f.pay_account ? ' · ' : '') + '토스 링크 ' + esc(f.pay_toss_url) : '')
+          ? '납부 받는 곳: ' + esc([fp.pay_bank, fp.pay_account, fp.pay_holder ? '예금주 ' + fp.pay_holder : ''].filter(Boolean).join(' ')) + (fp.pay_toss_url ? (fp.pay_account ? ' · ' : '') + '토스 링크 ' + esc(fp.pay_toss_url) : '') + (ownPay(f) ? '' : ' (교회 기본 계좌 — 목회 행정 > 설정에서 바꿉니다)')
           : '<span class="fa-warn">납부 받는 곳(계좌·토스 링크)이 비어 있습니다.</span> ‘양식 고치기’에서 넣으면 신청한 분 화면에 ‘토스로 송금하기’와 계좌가 나옵니다.') + '</div>' : '') +
         '<div class="fa-grid fa-sgrid" style="margin-top:14px">' +
         '<div class="fa-stat"><span>신청</span><b>' + s.n + '건</b>' + (s.off ? '<small>취소 ' + s.off + '건 따로</small>' : '') + '</div>' +
@@ -280,6 +289,7 @@ window.WPCFormsAdmin = (function () {
       if (!alive()) return;
       var isNew = !f || copy, v = f || {};
       if (copy) v = Object.assign({}, f, { title: f.title + ' (새)', open_at: null, close_at: null, event_date: null, event_time: null });
+      if (isNew && !ownPay(v)) { var dp = defaultPay(); v = Object.assign({}, v, { pay_bank: dp.pay_bank || '', pay_account: dp.pay_account || '', pay_holder: dp.pay_holder || '', pay_toss_url: dp.pay_toss_url || '' }); }   /* 새 신청서 = 교회 기본 계좌 */
       function fld(label, inner, full) { return '<div class="af-field"' + (full ? ' style="grid-column:1/-1"' : '') + '><label>' + label + '</label>' + inner + '</div>'; }
       function chk(id, label, on) { return '<label class="fa-check"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '> ' + label + '</label>'; }
       var html = '<div class="fin-card"><div class="fa-head"><button class="btn btn-line" id="fa_cancel" style="padding:6px 13px;font-size:.84rem">← ' + (f && !copy ? '돌아가기' : '신청서 목록') + '</button><h3>' + (isNew ? '새 신청서' : '양식 고치기') + '</h3></div>' +

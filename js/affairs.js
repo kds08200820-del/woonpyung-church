@@ -281,7 +281,7 @@ console.log('[affairs.js] v20261010form1');
     if (window.WPCFormsAdmin) { go(); return; }
     panel.innerHTML = msgCard('신청서', '불러오는 중…');
     var s = document.createElement('script');
-    s.src = 'js/forms-admin.js?v=20261010form1';
+    s.src = 'js/forms-admin.js?v=20261010form3';
     s.onload = function () { if (window.WPCFormsAdmin && document.body.contains(panel)) go(); };
     s.onerror = function () { panel.innerHTML = msgCard('불러오지 못했습니다', '잠시 뒤에 다시 열어 주십시오.'); };
     document.body.appendChild(s);
@@ -11037,6 +11037,17 @@ console.log('[affairs.js] v20261010form1');
       '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><button class="btn btn-solid" id="set_save_g" style="padding:8px 16px;font-size:.85rem">💾 기본 정보 저장</button> <span id="set_gmsg" class="fin-msg"></span></div>' +
       '<p style="margin:10px 0 0;color:#9aa5b1;font-size:.78rem">※ 브라우저 보안상 웹페이지가 PC의 저장 <b>폴더</b>를 직접 지정할 수는 없습니다. 인쇄 창에서 <b>대상 → ‘PDF로 저장’</b>을 고른 뒤 폴더를 한 번 선택하면, 브라우저가 그 위치를 기억해 다음부터 같은 폴더로 저장됩니다.</p>' +
       '</div>' +
+      // 신청서 납부 계좌 (2026-10-10)
+      '<div class="fin-card"><h3 style="margin:0 0 4px;color:var(--accent,#032257)">신청서 납부 계좌</h3>' +
+      '<p style="margin:0 0 12px;color:var(--ink-soft,#7b8794);font-size:.9rem">신청서의 신청비를 받는 교회 계좌입니다. 저장하면 계좌를 따로 정하지 않은 신청서에 이 계좌가 들어가고, 새 신청서에도 미리 채워집니다. 신청한 분 화면에 ‘토스로 송금하기’와 계좌번호 복사가 나옵니다.</p>' +
+      '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end">' +
+      '<div class="af-field"><label>은행</label><input type="text" id="set_pay_bank" maxlength="40" placeholder="예: 농협"></div>' +
+      '<div class="af-field"><label>계좌번호</label><input type="text" id="set_pay_acct" maxlength="40" inputmode="numeric"></div>' +
+      '<div class="af-field"><label>예금주</label><input type="text" id="set_pay_holder" maxlength="60"></div>' +
+      '<div class="af-field"><label>토스 송금 링크 (선택)</label><input type="text" id="set_pay_toss" maxlength="200" placeholder="https://toss.me/아이디"></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><button class="btn btn-solid" id="set_save_pay" style="padding:8px 16px;font-size:.85rem">계좌 저장</button> <span id="set_pmsg" class="fin-msg"></span></div>' +
+      '</div>' +
       '<div class="fin-card"><h3 style="margin:0 0 4px;color:var(--accent,#032257)">연간 봉사위원</h3>' +
       '<p style="margin:0 0 12px;color:var(--ink-soft,#7b8794);font-size:.9rem">월별 봉사위원을 한 번 입력해 두면, <b>주보 제작 → 데이터 불러오기</b> 시 해당 월 봉사위원이 자동으로 채워집니다. 그 달 <b>마지막 주일</b> 주보에는 다음 달 봉사위원도 함께 표기됩니다.</p>' +
       '<div id="set_rows"></div>' +
@@ -11090,6 +11101,41 @@ console.log('[affairs.js] v20261010form1');
         .catch(function (e) { if (/42P01|PGRST205|does not exist|schema cache/i.test(e.message)) gmsg('church_settings.sql 실행 필요', '#c0392b'); else gmsg('저장 실패: ' + e.message, '#c0392b'); });
     };
     loadGeneral().then(function (g) { fEl.value = (g && g.founded) || FOUNDED_DATE; aEl.value = annivOf(fEl.value); pEl.value = (g && g.pdf_name) || PDF_NAME; pdfPreview(); });
+    // 신청서 납부 계좌 — church_settings.pay_default. 신청서 표(app_forms)는 누구나 읽으므로, 저장할 때 계좌를 비워 둔 신청서와
+    //   예전 기본 계좌를 쓰던 신청서에 새 계좌를 적어 넣는다(따로 정한 계좌는 건드리지 않는다). 처음 값은 온라인헌금 창의 계좌.
+    (function () {
+      var PK = ['pay_bank', 'pay_account', 'pay_holder', 'pay_toss_url'], IDS = { pay_bank: 'set_pay_bank', pay_account: 'set_pay_acct', pay_holder: 'set_pay_holder', pay_toss_url: 'set_pay_toss' };
+      function el(k) { return panel.querySelector('#' + IDS[k]); }
+      function pmsg(t, c) { var e = panel.querySelector('#set_pmsg'); if (e) { e.style.color = c || '#7b8794'; e.textContent = t; } }
+      function giveAcct() {   /* 홈페이지 온라인헌금 창(layout.js)의 계좌 */
+        function txt(sel) { var e = document.querySelector(sel); return e ? String(e.textContent || '').trim() : ''; }
+        return { pay_bank: txt('#giveModal .give-bank'), pay_account: txt('#giveAcctNo'), pay_holder: txt('#giveModal .give-holder').replace(/^예금주\s*[·:]?\s*/, ''), pay_toss_url: '' };
+      }
+      function has(p) { return !!(p && (p.pay_toss_url || (p.pay_bank && p.pay_account))); }
+      function same(a, b) { return PK.every(function (k) { return String(a[k] || '').trim() === String(b[k] || '').trim(); }); }
+      var cur = null;   // 지금 기본 계좌(저장한 것 또는 온라인헌금 창)
+      api('GET', 'church_settings?key=eq.pay_default&select=data').catch(function () { return []; }).then(function (rows) {
+        var d = rows && rows[0] && rows[0].data; cur = has(d) ? d : giveAcct();
+        PK.forEach(function (k) { if (el(k)) el(k).value = cur[k] || ''; });
+      });
+      panel.querySelector('#set_save_pay').onclick = function () {
+        var nv = {}; PK.forEach(function (k) { nv[k] = el(k).value.trim(); });
+        if (nv.pay_toss_url && !/^https?:\/\//i.test(nv.pay_toss_url)) nv.pay_toss_url = 'https://' + nv.pay_toss_url;
+        if (!has(nv)) { pmsg('은행과 계좌번호를 적어 주십시오.', '#c0392b'); return; }
+        var b = this, old = cur || giveAcct(); b.disabled = true; pmsg('저장 중…');
+        api('POST', 'church_settings?on_conflict=key', { key: 'pay_default', data: nv, updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal')
+          .then(function () {
+            cur = nv;
+            return api('GET', 'app_forms?select=id,pay_bank,pay_account,pay_holder,pay_toss_url').then(function (forms) {
+              var todo = (forms || []).filter(function (f) { return !has(f) || same(f, old); });
+              return Promise.all(todo.map(function (f) { return api('PATCH', 'app_forms?id=eq.' + f.id, nv, 'return=minimal'); })).then(function () { return todo.length; });
+            }, function () { return 0; });   /* 신청서 표가 아직 없으면 설정만 */
+          })
+          .then(function (n) { pmsg('저장했습니다' + (n ? ' — 신청서 ' + n + '개에 이 계좌를 넣었습니다.' : '.'), 'green'); })
+          .catch(function (e) { pmsg(/42P01|PGRST205|does not exist|schema cache/i.test(e.message) ? 'church_settings.sql 실행 필요' : '저장 실패: ' + e.message, '#c0392b'); })
+          .then(function () { b.disabled = false; });
+      };
+    })();
     panel.querySelector('#set_add').onclick = function () { coms.push({ month: '', offering: '', guide: '', parking: '' }); renderRows(); };
     panel.querySelector('#set_save').onclick = function () {
       coms.sort(function (a, b) { return (a.month || '') < (b.month || '') ? -1 : 1; });

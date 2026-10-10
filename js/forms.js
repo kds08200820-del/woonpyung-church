@@ -5,7 +5,7 @@
  *  · 신청·고치기·취소·'납부했습니다'·교회 안내 읽음은 모두 Supabase 함수(rpc)로 한다
  *  자료: app_forms · app_entries — supabase/20261010_1140_app_forms.sql (실행 전에는 조용히 숨는다)
  */
-console.log('[forms.js] v20261010form1');
+console.log('[forms.js] v20261010form3');
 
 (function () {
   if (window.WPCForms) return;
@@ -212,6 +212,15 @@ console.log('[forms.js] v20261010form1');
   function chip(e) { var s = stateOf(e); return '<span class="ap-chip ap-chip-' + s[0] + '">' + s[1] + '</span>'; }
 
   /* ── 납부: 토스 송금 링크 · 계좌 ── */
+  /* 납부 받는 곳을 비워 둔 신청서는 교회 계좌로 받는다 (2026-10-10 목사님 지시)
+     교회 계좌 = 홈페이지 온라인헌금 창(layout.js)에 적힌 계좌. 목회 행정 > 설정 > '신청서 납부 계좌'에서 바꾸면
+     계좌를 따로 정하지 않은 신청서에 그 계좌가 저장된다(affairs.js) — 여기는 그 전까지의 기본값 */
+  function churchPay() {
+    function txt(sel) { var el = document.querySelector(sel); return el ? String(el.textContent || '').trim() : ''; }
+    return { pay_bank: txt('#giveModal .give-bank') || '농협', pay_account: txt('#giveAcctNo') || '351-1344-7987-23',
+      pay_holder: txt('#giveModal .give-holder').replace(/^예금주\s*[·:]?\s*/, '') || '운평장로교회', pay_toss_url: '' };
+  }
+  function payTarget(f) { return (f.pay_toss_url || (f.pay_bank && f.pay_account)) ? f : Object.assign({}, f, churchPay()); }
   function tossMeUrl(u, amount) {              // https://toss.me/아이디 → https://toss.me/아이디/금액
     u = String(u || '').trim(); if (!u) return '';
     if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
@@ -230,6 +239,7 @@ console.log('[forms.js] v20261010form1');
     return 'supertoss://send?bank=' + encodeURIComponent(f.pay_bank) + '&accountNo=' + acct + (amount > 0 ? '&amount=' + amount : '');
   }
   function payHTML(f, e) {
+    f = payTarget(f);
     var amt = +e.fee_total || 0, web = tossMeUrl(f.pay_toss_url, amt), app = web ? '' : tossApp(f, amt);
     var acct = f.pay_bank && f.pay_account;
     var h = '<div class="ap-pay"><div class="ap-pay-amt"><span>낼 금액</span><b>' + won(amt) + '원</b></div>';
@@ -605,7 +615,7 @@ console.log('[forms.js] v20261010form1');
     });
   }
 
-  window.WPCForms = { openApply: openApply, openStatus: openStatus, mineCard: mineCard, renderPage: renderPage, tossMeUrl: tossMeUrl, tossApp: tossApp };
+  window.WPCForms = { openApply: openApply, openStatus: openStatus, mineCard: mineCard, renderPage: renderPage, tossMeUrl: tossMeUrl, tossApp: tossApp, payTarget: payTarget, churchPay: churchPay };
   hero();
   var pageRoot = document.getElementById('apPage');
   if (pageRoot) renderPage(pageRoot);
