@@ -30,6 +30,7 @@
     };
     if (d.column_title || d.column_body) b.book = { title: d.column_title || '', author: '', publisher: '', text: d.column_body || '' };
     if (d.summary && ((d.summary.points || []).length || d.summary.apply)) b.summary = d.summary;
+    else if (typeof BULLETIN_SUMMARIES !== 'undefined' && BULLETIN_SUMMARIES[dt]) b.summary = BULLETIN_SUMMARIES[dt];   /* 게시 주보에 요약이 비었으면 bulletins.js 의 날짜별 요약 */
     return b;
   }
 

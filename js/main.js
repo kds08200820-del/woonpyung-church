@@ -960,7 +960,15 @@ function loadSBBulletins() {
   const u = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/bulletins_public?select=*&order=bdate.desc&limit=60";
   fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + window.SUPABASE_ANON_KEY } })
     .then((r) => (r.ok ? r.json() : []))
-    .then((rows) => { SB_BULLETINS = rows || []; if (SB_BULLETINS.length) { buildMonthOptions(); renderBulletins(); } })
+    .then((rows) => {
+      SB_BULLETINS = rows || [];
+      // 게시분에 설교 요약이 비었으면 bulletins.js 의 날짜별 요약(BULLETIN_SUMMARIES)을 붙인다
+      SB_BULLETINS.forEach((b) => {
+        const x = typeof BULLETIN_SUMMARIES !== "undefined" && BULLETIN_SUMMARIES[String(b.bdate || "").slice(0, 10)];
+        if (x && !hasSBSummary(b)) b.data = Object.assign({}, b.data, { summary: x });
+      });
+      if (SB_BULLETINS.length) { buildMonthOptions(); renderBulletins(); }
+    })
     .catch(() => {});
 }
 
