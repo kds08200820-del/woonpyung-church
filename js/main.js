@@ -3,7 +3,7 @@
 // ============================================================
 
 // ===== 1. 말씀(설교) 카드 덱: 최대 4주 · 3D 회전 전환 =====
-const WEEKS = BULLETINS.slice(0, 4); // 최근 4주만 표기
+let WEEKS = BULLETINS.slice(0, 4); // 최근 4주만 표기 (게시된 새 주보가 오면 bulletins:live 에서 다시 잡는다)
 const sermonDeck = document.getElementById("sermonDeck");
 const sermonSide = document.getElementById("sermonSide");
 const sermonDots = document.getElementById("sermonDots");
@@ -1195,7 +1195,8 @@ if (modal) {
 
 // ===== 4. 홈 '이번 주 말씀' 하이라이트 =====
 const homeSermon = document.getElementById("homeSermon");
-if (homeSermon && typeof BULLETINS !== "undefined" && BULLETINS.length) {
+function renderHomeSermon() {
+  if (!homeSermon || typeof BULLETINS === "undefined" || !BULLETINS.length) return;
   const b = BULLETINS[0];
   homeSermon.innerHTML = `
     <span class="hs-date">${b.dateLabel} · 주일 낮 예배</span>
@@ -1204,10 +1205,12 @@ if (homeSermon && typeof BULLETINS !== "undefined" && BULLETINS.length) {
     <blockquote class="hs-quote">${b.quote}</blockquote>
     <a class="btn btn-line" href="word.html">설교 더 보기 →</a>`;
 }
+renderHomeSermon();
 
 // ===== 4b. 홈 '이번 주 주보' 미리보기 =====
 const homeBulletin = document.getElementById("homeBulletin");
-if (homeBulletin && typeof BULLETINS !== "undefined" && BULLETINS.length) {
+function renderHomeBulletin() {
+  if (!homeBulletin || typeof BULLETINS === "undefined" || !BULLETINS.length) return;
   const b = BULLETINS[0];
   const orderItems = (b.order || []).map((o) => `<li>${o}</li>`).join("");
   const newsItems = (b.news || []).slice(0, 3).map((n) => `<li><strong>${n.title}</strong>${n.detail}</li>`).join("");
@@ -1237,6 +1240,7 @@ if (homeBulletin && typeof BULLETINS !== "undefined" && BULLETINS.length) {
       </div>
     </div>`;
 }
+renderHomeBulletin();
 
 // ===== 5. 새가족 등록 폼 (welcome) =====
 const newcomerForm = document.getElementById("newcomerForm");
@@ -1498,7 +1502,7 @@ document.querySelectorAll(".qna-q").forEach((btn) => {
 })();
 
 // ===== 5-6. 함께 드리는 기도(prayer.html) — 이번 주 기도 제목 =====
-(function () {
+function renderPrayerThisWeek() {
   const box = document.getElementById("prayerThisWeek");
   if (!box || typeof BULLETINS === "undefined" || !BULLETINS.length) return;
   const b = BULLETINS[0];
@@ -1510,7 +1514,16 @@ document.querySelectorAll(".qna-q").forEach((btn) => {
     </div>
     ${news ? `<div class="pr-news">${news}</div>` : ""}
     <p class="pr-source">${b.dateLabel} 주보 기준</p>`;
-})();
+}
+renderPrayerThisWeek();
+
+// ===== 게시된 새 주보(js/bulletins-live.js)가 늦게 오면 — 페이지를 열 때 한 번 그린 곳을 다시 그린다 (2026-10-10) =====
+window.addEventListener("bulletins:live", () => {
+  WEEKS = BULLETINS.slice(0, 4); active = 0;
+  if (sermonDeck) buildDeck();
+  renderHomeSermon(); renderHomeBulletin(); renderPrayerThisWeek();
+  if (bulletinList) { buildMonthOptions(); renderBulletins(); }
+});
 
 // ===== 5-7. 지도 모달 (선교지 등 주소 카드 클릭 시) =====
 (function () {

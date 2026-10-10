@@ -1093,5 +1093,6 @@
     document.addEventListener('visibilitychange', function () { if (!document.hidden) heroRefresh(); });   /* 휴대폰에서 다시 화면으로 돌아왔을 때 */
     window.addEventListener('pageshow', function () { heroRefresh(); });
     window.addEventListener('focus', function () { heroRefresh(); });
+    window.addEventListener('bulletins:live', function () { heroRefresh(); });   /* 게시된 새 주보(js/bulletins-live.js)가 늦게 오면 */
   }
 })();

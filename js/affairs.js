@@ -3780,6 +3780,8 @@ console.log('[affairs.js] v20261010form1');
         '.sed-mode-worship .sed-aside>.af-field>label{font-size:1.35rem}' +
         '.sed-mode-worship #se_order .od-row{padding:10px 12px;margin-bottom:8px}' +
         '.qtc-card{border:1px solid #e1e6ef;border-radius:12px;background:#fff;padding:14px 15px;box-shadow:0 4px 14px rgba(3,34,87,.05)}' +
+        '.bx-drop{margin-top:9px;border:2px dashed #cdd7e3;border-radius:10px;padding:16px 10px;text-align:center;font-size:.8rem;color:#7b8794;cursor:pointer;background:#fafbfd;line-height:1.5}' +
+        '.bx-drop:hover,.bx-drop.on{border-color:#4a6a9c;background:#eef3fa;color:#032257}' +
         '.qtc-h{font-size:1.02rem;font-weight:800;color:var(--accent,#032257);display:flex;align-items:center;gap:5px}' +
         '.qtc-sub{font-size:.74rem;color:#9aa5b1;margin:5px 0 9px;line-height:1.45}' +
         '.qtc-paste{width:100%;min-height:148px;border:1px solid #e2e8f0;border-radius:8px;padding:9px 11px;font:inherit;font-size:.82rem;line-height:1.5;outline:none;resize:vertical}.qtc-paste:focus{border-color:#9db4d6}' +
@@ -4391,8 +4393,14 @@ console.log('[affairs.js] v20261010form1');
         '</div>' +
         '<textarea id="se_content" style="display:none"></textarea></div>' +
         '</div></main>' +
-        // ── 우측 패널: 생명의삶 자동분류 ──
+        // ── 우측 패널: 주보 넣기 · 생명의삶 자동분류 ──
         '<aside class="sed-aside-r">' +
+        '<div class="qtc-card" id="bx_card" style="margin-bottom:10px">' +
+        '<div class="qtc-h">' + ic('download') + '주보 넣기</div>' +
+        '<div class="qtc-sub">이번 주 주보(<b>.hwpx</b>)를 넣으면 <b>주일 낮 예배</b>의 날짜·제목·본문·설교자·예배 순서를 채우고, 같은 주보를 <b>홈페이지에 게시</b>합니다. 오늘의 예배와 발표자 모드에도 바로 쓰입니다.</div>' +
+        '<div class="bx-drop" id="bx_drop" role="button" tabindex="0">주보 파일(.hwpx)을 여기로 끌어다 놓거나 눌러서 고르세요</div>' +
+        '<div id="bx_msg" style="font-size:.76rem;margin-top:7px;line-height:1.55"></div>' +
+        '</div>' +
         '<div class="rp-pane" id="rp_qtc"><div class="qtc-card">' +
         '<div class="qtc-h">' + ic('download') + '생명의삶 자동분류</div>' +
         '<div class="qtc-sub">생명의삶(목회자판) 자료 전체를 붙여넣고 <b>분류</b>를 누르면 — 매일 QT로 설정되고 <b>날짜·본문·개역개정·우리말성경·제목·설교 원고·예화 클립</b>이 자동 입력됩니다.</div>' +
@@ -5240,6 +5248,93 @@ console.log('[affairs.js] v20261010form1');
         };
       })();
       ['#se_service', '#se_date'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('change', function () { sunAutoDone = false; sunAuto(); paintSun(); }); });
+      // ── 주보 넣기 (2026-10-10 목사님 요청): 한글(.hwpx) 주보 → 주일 낮 예배 칸(날짜·제목·본문·설교자·예배 순서) + 주보 제작 임시저장 ──
+      //    읽기는 주보 제작과 같은 parseBulletinHwpx. 이미 적어 둔 제목·본문·설교자는 바꾸지 않고 알려만 준다.
+      //    예배 순서는 빈 모두 블록만 주보의 같은 자리 줄로 채운다(sunFill). 블록이 없으면 지난 주일 순서(없으면 기본 순서)로 먼저 짠다.
+      (function () {
+        var drop = ov.querySelector('#bx_drop'); if (!drop) return;
+        function bxMsg(html, color) { var e = ov.querySelector('#bx_msg'); e.style.color = color || '#5a6b82'; e.innerHTML = html; }
+        function saveBulletin(P, suspect) {   // 주보 제작(bulletins)에 같은 날짜 주보로 저장하고 게시. suspect: 지난 주 내용이 남은 듯한 까닭(있으면 게시 전에 묻는다)
+          return api('GET', 'bulletins?select=id,data,published,title,scripture,preacher&bdate=eq.' + P.bdate).then(function (rows) {
+            var ex = rows && rows[0];
+            /* 이미 저장된 주보와 설교가 다르면 묻는다 — 지난 주 파일을 고쳐 쓰다 예배 순서표가 덜 바뀐 경우가 잦다 */
+            function nz(s) { return String(s || '').replace(/[\s“”"'‘’]/g, ''); }
+            var diff = ex && ((ex.title && P.title && nz(ex.title) !== nz(P.title)) || (ex.scripture && P.scripture && nz(ex.scripture) !== nz(P.scripture)));
+            if (diff && !confirm('주보 제작에 저장된 ' + P.bdate + ' 주보와 이 파일의 설교가 다릅니다.\n\n저장된 주보: ' + (ex.title || '') + ' · ' + (ex.scripture || '') + '\n이 파일: ' + (P.title || '') + ' · ' + (P.scripture || '') + '\n\n이 파일 내용으로 바꿀까요?')) return { skipped: 'diff' };
+            /* 넣으면 바로 게시 — 홈페이지·오늘의 예배·발표자 모드가 쓴다 (목사님 지시). 다만 지난 주 내용이 남은 듯하면 묻는다:
+               아니오 → 게시하지 않고 임시저장만(이미 게시된 주보는 건드리지 않는다) */
+            var pub = !diff && !suspect ? true : (diff ? true : confirm('이 파일에 지난 주 내용이 남아 있을 수 있습니다.\n\n' + suspect + '\n\n그래도 홈페이지에 게시할까요?\n(취소: 게시하지 않고 주보 제작에 임시저장만 합니다)'));
+            if (!pub && ex && ex.published) return { skipped: 'live' };
+            var payload = { bdate: P.bdate, title: P.title || (ex && ex.title) || null, scripture: P.scripture || (ex && ex.scripture) || null, preacher: P.preacher || (ex && ex.preacher) || null,
+              data: bulletinDataFromHwpx(P, ex && ex.data), published: pub, updated_at: new Date().toISOString() };
+            return (ex ? api('PATCH', 'bulletins?id=eq.' + ex.id, payload, 'return=minimal') : api('POST', 'bulletins', payload, 'return=minimal'))
+              .then(function () { return { saved: true, published: pub }; });
+          }).catch(function (e) { return { error: /42P01|PGRST205|does not exist|schema cache/i.test(e.message) ? 'bulletins.sql 실행 필요' : e.message }; });
+        }
+        function apply(P) {
+          if (!P || !P.bdate) { bxMsg('<b>주보 날짜를 찾지 못했습니다.</b> 운평 주보 양식(.hwpx)이 맞는지 확인해 주세요.', '#c0392b'); return; }
+          var svcEl = ov.querySelector('#se_service'), dtEl = ov.querySelector('#se_date');
+          if (dtEl.value && dtEl.value !== P.bdate && !confirm('이 설교 기록의 날짜는 ' + dtEl.value + ', 주보 날짜는 ' + P.bdate + '입니다.\n주보 날짜로 바꿀까요?')) { bxMsg('넣지 않았습니다 — 날짜가 다릅니다. 그 주일의 설교 기록을 열고 넣어 주세요.', '#c0392b'); return; }
+          var svcChanged = false, dateChanged = dtEl.value !== P.bdate;
+          if (svcEl.value !== '주일 낮 예배') {
+            if (rec.id || ov.querySelector('#se_title').value.trim() || (ed && ed.textContent.trim())) { bxMsg('지금 기록은 <b>' + esc(svcEl.value || '다른 예배') + '</b>입니다. 주보는 <b>주일 낮 예배</b> 기록에서 넣어 주세요. 새 설교를 시작해 넣어도 됩니다.', '#c0392b'); return; }
+            svcEl.value = '주일 낮 예배'; svcChanged = true;
+          }
+          dtEl.value = P.bdate;
+          var done = ['날짜 ' + P.bdate], kept = [];
+          var noByDate = bulletinNo(P.bdate);   /* 호수가 날짜와 다르면 지난 주 파일이 덜 고쳐졌을 수 있다 */
+          if (P.no && noByDate && P.no !== noByDate) P.warn = (P.warn || []).concat(['파일의 호수는 ' + P.no + ', 날짜(' + P.bdate + ')로는 ' + noByDate + '입니다. 지난 주 파일을 고쳐 쓰다 덜 바뀐 곳(예배 순서표의 성경봉독·말씀강해 등)이 없는지 확인해 주세요.']);
+          [['#se_title', P.title, '제목'], ['#se_scripture', P.scripture, '본문'], ['#se_preacher', P.preacher, '설교자']].forEach(function (x) {
+            var el = ov.querySelector(x[0]); if (!el || !x[1]) return;
+            var cur = el.value.trim();
+            if (!cur) { el.value = x[1]; done.push(x[2]); } else if (cur !== x[1]) kept.push(x[2] + '(주보: ' + x[1] + ')');
+          });
+          var lines = (P.order || []).filter(function (o) { return o && o.name; }).map(function (o) { return o.name + (o.detail ? ' · ' + o.detail : ''); });
+          bxMsg('예배 순서를 채우는 중…');
+          (sunHasSermon() ? Promise.resolve() : sunPrev().then(function (p) { sunBuild(p ? p.order : sunDefault()); sunBuilt = true; }))
+            .then(function () {
+              var n = lines.length ? sunFill({ order: lines }) : 0;
+              sunAutoDone = true; renderOrder();
+              if (svcChanged) svcEl.dispatchEvent(new Event('change'));   /* 블록에 말씀이 있으니 sunAuto 는 다시 짜지 않는다 */
+              if (dateChanged) dtEl.dispatchEvent(new Event('change'));
+              sunDirty();
+              if (n) done.push('예배 순서 ' + n + '칸');
+              bxMsg('주보 제작에 저장하는 중…');
+              var why = [];
+              if (P.no && bulletinNo(P.bdate) && P.no !== bulletinNo(P.bdate)) why.push('· 파일의 호수 ' + P.no + ' (날짜로는 ' + bulletinNo(P.bdate) + ')');
+              var curTitle = ov.querySelector('#se_title').value.trim();
+              if (P.title && curTitle && curTitle.replace(/[\s“”"'‘’]/g, '') !== P.title.replace(/[\s“”"'‘’]/g, '')) why.push('· 파일의 설교 제목 「' + P.title + '」 (설교 매니저: 「' + curTitle + '」)');
+              return saveBulletin(P, why.join('\n'));
+            })
+            .then(function (b) {
+              var h = '<b style="color:#1e874b">' + esc(done.join(' · ')) + ' — 넣었습니다.</b>';
+              if (kept.length) h += '<div style="color:#8a6d1f;margin-top:4px">이미 적혀 있어 그대로 둔 칸: ' + esc(kept.join(', ')) + '</div>';
+              if (b.saved && b.published) h += '<div style="margin-top:4px">' + esc(P.bdate) + ' 주보를 홈페이지에 게시했습니다. 고칠 곳은 주보 제작에서 고치면 됩니다.</div>';
+              else if (b.saved) h += '<div style="margin-top:4px">' + esc(P.bdate) + ' 주보를 주보 제작에 임시저장했습니다(게시하지 않음). 확인한 뒤 주보 제작에서 게시해 주세요.</div>';
+              else if (b.skipped) h += '<div style="margin-top:4px">주보 제작에 저장된 주보는 그대로 두었습니다.</div>';
+              else if (b.error) h += '<div style="margin-top:4px;color:#c0392b">주보 제작 저장 실패: ' + esc(b.error) + '</div>';
+              if (P.warn && P.warn.length) h += '<div style="margin-top:4px;color:#8a6d1f">확인: ' + P.warn.map(esc).join('<br>확인: ') + '</div>';
+              bxMsg(h);
+            })
+            .catch(function (e) { bxMsg('넣는 중 오류: ' + esc(e.message), '#c0392b'); });
+        }
+        function read(f) {
+          if (!f) return;
+          if (!/\.hwpx$/i.test(f.name)) { bxMsg('한글 <b>.hwpx</b> 주보만 넣을 수 있습니다. (.hwp 는 한글에서 “hwpx로 저장” 뒤 넣어 주세요)', '#c0392b'); return; }
+          if (!window.JSZip) { bxMsg('압축 해제 모듈(JSZip)이 없습니다. 새로고침 뒤 다시 해 주세요.', '#c0392b'); return; }
+          bxMsg('주보를 읽는 중…');
+          f.arrayBuffer().then(function (buf) { return window.JSZip.loadAsync(buf); })
+            .then(function (zip) { var fe = zip.file('Contents/section0.xml') || zip.file('section0.xml'); if (!fe) throw new Error('section0.xml 을 찾지 못했습니다'); return fe.async('string'); })
+            .then(function (xml) { apply(parseBulletinHwpx(xml, f.name)); })
+            .catch(function (e) { bxMsg('주보를 읽지 못했습니다: ' + esc(e.message), '#c0392b'); });
+        }
+        drop.addEventListener('dragover', function (e) { e.preventDefault(); e.stopPropagation(); drop.classList.add('on'); });
+        drop.addEventListener('dragleave', function () { drop.classList.remove('on'); });
+        drop.addEventListener('drop', function (e) { e.preventDefault(); e.stopPropagation(); drop.classList.remove('on'); read(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]); });
+        function pick() { var fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.hwpx'; fi.onchange = function () { read(fi.files && fi.files[0]); }; fi.click(); }
+        drop.addEventListener('click', pick);
+        drop.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+      })();
       var renderOrder0 = renderOrder;
       renderOrder = function () { renderOrder0(); paintSongs(); paintConti(); paintSun(); };
       paintSongs(); contiAuto(); paintConti(); sunAuto(); paintSun();
@@ -9051,7 +9146,9 @@ console.log('[affairs.js] v20261010form1');
       var done = [], setv = function (id, v) { if (v) { ov.querySelector(id).value = v; return true; } return false; };
       if (P.bdate) {
         ov.querySelector('#bt_bdate').value = P.bdate;
-        ov.querySelector('#bt_no').value = P.no || bulletinNo(P.bdate);
+        var noByDate = bulletinNo(P.bdate);   /* 호수는 날짜로 — 파일의 호수가 지난 주 그대로면 알려 준다 */
+        if (P.no && noByDate && P.no !== noByDate) P.warn = (P.warn || []).concat(['파일의 호수는 ' + P.no + ', 날짜로는 ' + noByDate + '입니다. 지난 주 파일을 고쳐 쓰다 덜 바뀐 곳(예배 순서표의 성경봉독·말씀강해 등)이 없는지 확인해 주세요.']);
+        ov.querySelector('#bt_no').value = noByDate || P.no;
         ov.querySelector('#bt_week').value = bulletinWeekLabel(P.bdate);
         done.push('주일 ' + P.bdate + (P.no ? ' (No. ' + P.no + ')' : ''));
       }
@@ -9571,6 +9668,26 @@ console.log('[affairs.js] v20261010form1');
     });
     var o = {}; order.forEach(function (k) { o[k] = acc[k].join(' '); });
     return o;
+  }
+  /* 읽은 주보(parseBulletinHwpx 결과) → 주보 제작 bulletins.data 모양 (설교 매니저 '주보 넣기'가 쓴다, 2026-10-10)
+     주보 제작 화면의 applyHwpx → gather 와 같은 칸. prev(이미 저장된 data)의 다른 칸(설교 요약·헤드라인 등)은 그대로 둔다. */
+  function bulletinDataFromHwpx(P, prev) {
+    var d = Object.assign({}, prev || {});
+    function num(v) { return Number(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')) || 0; }
+    d.no = bulletinNo(P.bdate) || P.no; d.week = bulletinWeekLabel(P.bdate);   /* 호수는 날짜로 — 파일의 호수가 지난 주 그대로인 일이 있다 */
+    if (P.order && P.order.length) d.order = P.order.slice();
+    ['wed_series', 'wed_title', 'wed_dateline', 'dawn', 'qt', 'column_title', 'column_body', 'service_schedule', 'servants', 'missions'].forEach(function (k) { if (P[k]) d[k] = P[k]; });
+    var off = {}, amt = {}, tot = 0;
+    Object.keys(P.offering || {}).forEach(function (k) { if (P.offering[k]) off[k] = P.offering[k]; });
+    Object.keys(P.amounts || {}).forEach(function (k) { var a = num(P.amounts[k]); if (a && k !== '합계') { amt[k] = a.toLocaleString('en-US'); tot += a; } });
+    if (Object.keys(off).length) d.offering = off;
+    if (tot) { amt['합계'] = tot.toLocaleString('en-US'); d.offering_amounts = amt; }
+    var com = Object.assign({}, d.committee || {});
+    COMMITTEE_KEYS.forEach(function (k) { if (P.committee && P.committee[k]) com[k] = P.committee[k]; else if (com[k] == null) com[k] = ''; });
+    d.committee = com;
+    if (P.notices && P.notices.length) d.notices = P.notices.join('\n');
+    d.founded = FOUNDED_DATE;
+    return d;
   }
   function parseBulletinHwpx(xml, filename) {
     var T = bxTables(xml);
