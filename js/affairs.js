@@ -4326,9 +4326,9 @@ console.log('[affairs.js] v20260923lic');
         '<button type="button" class="btn btn-line" id="bd_sun_def" style="padding:5px 2px;font-size:.72rem" title="경배와 찬양 → 목회 기도 → 입례송 → 송영 → … → 축도">기본 순서로</button>' +
         '<button type="button" class="btn btn-line" id="bd_sun_fill" style="padding:5px 2px;font-size:.72rem;grid-column:1/-1" title="이 날짜 주보가 있으면 비어 있는 블록(송영·교독문·기도자 …)을 주보 내용으로 채웁니다">주보로 빈칸 채우기</button></div>' +
         '<div id="bd_sun"></div>' +
-        '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:var(--accent,#032257);margin-bottom:3px">순서 더하기 <span style="font-weight:400;color:#9aa5b1">— 모두가 봅니다</span></div><div id="bd_sun_add_all" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
-        '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:#4a6a9c;margin-bottom:3px">목회자 기도 <span style="font-weight:400;color:#9aa5b1">— 목회자만 봅니다</span></div><div id="bd_sun_add_p" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
-        '<div class="sun-addrow" id="bd_sun_drop_a" style="margin-top:7px;border:1px dashed transparent;border-radius:7px;padding:2px"><div style="font-size:.7rem;font-weight:700;color:#9a7b3e;margin-bottom:3px">반주자 악보 <span style="font-weight:400;color:#9aa5b1">— 반주자만 봅니다 · 악보 파일을 여기나 블록 위로 끌어다 놓아도 됩니다</span></div><div id="bd_sun_add_a" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
+        '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:var(--accent,#032257);margin-bottom:3px">순서 더하기 <span style="font-weight:600;font-size:.62rem;color:#032257;border:1px solid #032257;border-radius:4px;padding:0 4px">모두</span></div><div id="bd_sun_add_all" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
+        '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:#4a6a9c;margin-bottom:3px">목회자 기도 <span style="font-weight:600;font-size:.62rem;color:#4a6a9c;border:1px solid #4a6a9c;border-radius:4px;padding:0 4px">목회자</span></div><div id="bd_sun_add_p" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
+        '<div class="sun-addrow" id="bd_sun_drop_a" style="margin-top:7px;border:1px dashed transparent;border-radius:7px;padding:2px"><div style="font-size:.7rem;font-weight:700;color:#9a7b3e;margin-bottom:3px">반주자 악보 <span style="font-weight:600;font-size:.62rem;color:#9a7b3e;border:1px solid #9a7b3e;border-radius:4px;padding:0 4px">반주자</span> <span style="font-weight:400;color:#9aa5b1">악보 파일을 여기나 블록 위로 끌어다 놓아도 됩니다</span></div><div id="bd_sun_add_a" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
         '</div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
         '</div>' +
@@ -4427,7 +4427,7 @@ console.log('[affairs.js] v20260923lic');
           var bodyPrev = (it.body && !it._openBody) ? '<div style="font-size:.78rem;color:#7b8794;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ' + esc(it.body.replace(/\s+/g, ' ').slice(0, 40)) + (it.body.length > 40 ? '…' : '') + '</div>' : '';
           var badges = (it.fixed ? ' <span style="font-size:.64rem;background:#fff3d6;color:#a8742a;border-radius:4px;padding:1px 6px;font-weight:700">📌 고정</span>' : '') +
             (it.noexport ? ' <span style="font-size:.64rem;background:#f1f3f6;color:#8a93a0;border-radius:4px;padding:1px 6px;font-weight:700">🚫 출력제외</span>' : '') +
-            (audOf(it) !== 'all' ? ' <span style="font-size:.64rem;border:1px solid currentColor;color:' + (it.aud === 'pastor' ? '#4a6a9c' : '#9a7b3e') + ';border-radius:4px;padding:0 5px;font-weight:700">' + AUD_NAME[it.aud] + '만</span>' : '');
+            (audOf(it) !== 'all' ? ' <span style="font-size:.64rem;border:1px solid currentColor;color:' + (it.aud === 'pastor' ? '#4a6a9c' : '#9a7b3e') + ';border-radius:4px;padding:0 5px;font-weight:700">' + AUD_NAME[it.aud] + '</span>' : '');
           return '<div class="od-row" data-i="' + i + '" style="display:flex;align-items:flex-start;gap:6px;border:1px solid #e1e7ef;border-radius:9px;padding:7px 9px;margin-bottom:6px;background:#fff' + (it.noexport ? ';opacity:.62' : '') + '">' +
             '<span class="od-handle" style="cursor:grab;color:#9aa5b1;padding-top:2px;touch-action:none">≡</span>' +
             '<span style="flex:0 0 16px;text-align:center;color:#7b8794;font-size:.74rem;padding-top:3px">' + (i + 1) + '</span>' +
@@ -4774,9 +4774,9 @@ console.log('[affairs.js] v20260923lic');
       }
       // ── 주일 예배 순서(블록) — 주일 낮 예배 (2026-10-09 담임목사 지시: 순서를 직접 짜고 고정적으로 운영)
       //    모두 블록 = 예배 순서(오늘의 예배가 이 순서대로) · 목회자 블록 = 기도문(목회자만) · 반주자 블록 = 악보(반주자만)
-      //    모두 블록에 적은 전문(body)도 목회자만 본다(목회 기도·축도의 기도문). 공개 뷰는 전문을 내보내지 않는다.
+      //    목회 기도·축도는 목회자 블록이다(2026-10-10 목사님 지시 — 성도가 보는 순서에는 넣지 않는다). 예전에 모두 블록으로 저장한 것은 열 때 목회자 블록으로 바꾼다.
       //    새 주일은 지난 주일 순서로 저절로 시작한다(📌 고정 블록은 내용까지) — 처음이면 기본 순서
-      var SUN_ADD_ALL = ['경배와 찬양', '목회 기도', '입례송', '송영', '성시교독', '신앙고백', '찬송', '기도', '성경봉독', '성가대 찬양', '특송', '말씀강해', '헌금봉헌', '교회소식', '주기도문', '축도', '직접 입력'];
+      var SUN_ADD_ALL = ['경배와 찬양', '입례송', '송영', '성시교독', '신앙고백', '찬송', '기도', '성경봉독', '성가대 찬양', '특송', '말씀강해', '헌금봉헌', '교회소식', '주기도문', '직접 입력'];
       var SUN_ADD_P = ['목회 기도', '설교 전 기도', '헌금 기도', '축도', '기도'];
       var SUN_ADD_A = ['기도송', '헌금송', '폐회송', '반주 악보'];
       // 보는 사람별 블록 색 (테마 색) — 모두: 남색·흰 바탕, 목회자: 연남색·푸른 바탕, 반주자: 금색·누런 바탕
@@ -4789,6 +4789,7 @@ console.log('[affairs.js] v20260923lic');
       function sunOn() { return !worshipMode && ((ov.querySelector('#se_service') || {}).value === '주일 낮 예배'); }
       function sunDirty() { sunTouched = true; try { ov.dispatchEvent(new Event('input')); } catch (e) { } }   // 자동 저장·닫기 확인에 잡히게
       function sunPriv(it) { return audOf(it) !== 'all'; }
+      function sunToPastor(it) { if (it && audOf(it) === 'all' && ordPastorKey(it.label)) { it.aud = 'pastor'; return true; } return false; }   // 모두 블록으로 저장된 목회 기도·축도 → 목회자 블록
       // 저장할 때 블록의 aud — 주일 순서를 짰으면 모두 블록에도 'all' 을 적어 '짠 순서'임을 남긴다(오늘의 예배가 지난 주 고정 블록을 이어받을지 가른다)
       function sunAudOut(o) {
         if (sunPriv(o)) return o.aud;
@@ -4808,7 +4809,7 @@ console.log('[affairs.js] v20260923lic');
           if (n) t.push('악보 파일 ' + n + '개');
           return (it._up ? '올리는 중… ' : '') + (t.length ? t.join(' · ') : '누르면 곡을 고르거나 악보를 올립니다') + (it.detail ? ' · ' + it.detail : '');
         }
-        if (a === 'pastor') return it.body ? String(it.body).replace(/\s+/g, ' ').slice(0, 60) : '누르면 기도문을 적습니다';
+        if (a === 'pastor') return [it.detail, it.body ? String(it.body).replace(/\s+/g, ' ').slice(0, 60) : ''].filter(Boolean).join(' · ') || '누르면 기도문을 적습니다';
         var k = ordKey(it.label), v;
         if (sunSongKey(it)) { var ss = normItems(it.items || it.jnos || (it.hno ? [{ b: 'h', n: it.hno }] : [])); return ss.length ? ss.map(songLabel).join(' · ') : (it.detail || '누르면 곡을 고릅니다'); }
         if (k === '교독') return it.detail || '누르면 교독문을 고릅니다';
@@ -4850,7 +4851,7 @@ console.log('[affairs.js] v20260923lic');
         var m = document.createElement('div');
         m.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9400;display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto';   /* 곡 고르기 창(9500)이 이 위로 뜬다 */
         m.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:640px;width:100%;padding:18px 20px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px"><h3 style="margin:0;color:#032257;font-size:1.05rem">' + esc(it.label) + ' <span style="font-size:.7rem;font-weight:600;color:#9a7b3e;border:1px solid #9a7b3e;border-radius:4px;padding:0 5px;vertical-align:2px">반주자만 봅니다</span></h3><button type="button" class="btn btn-line" id="acm_close" style="padding:3px 11px">닫기</button></div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px"><h3 style="margin:0;color:#032257;font-size:1.05rem">' + esc(it.label) + ' <span style="font-size:.7rem;font-weight:600;color:#9a7b3e;border:1px solid #9a7b3e;border-radius:4px;padding:0 5px;vertical-align:2px">반주자</span></h3><button type="button" class="btn btn-line" id="acm_close" style="padding:3px 11px">닫기</button></div>' +
           '<div style="font-size:.76rem;color:#7b8794;margin-bottom:12px">찬송가·모두의 찬양에서 고르거나 악보 파일을 올립니다. 둘 다 넣으면 고른 곡 다음에 올린 파일이 이어집니다.</div>' +
           '<div style="font-size:.8rem;font-weight:700;color:#032257;margin-bottom:5px">책에서 고르기</div><div id="acm_songs" style="font-size:.84rem;color:#48576b;margin-bottom:6px"></div>' +
           '<button type="button" class="btn btn-line" id="acm_pick" style="padding:6px 12px;font-size:.8rem">찬송가·모두의 찬양에서 고르기</button>' +
@@ -4905,7 +4906,8 @@ console.log('[affairs.js] v20260923lic');
         var a = audOf(it), k = ordKey(it.label), sk = sunSongKey(it);
         if (a === 'accomp') { accompModal(it); return; }
         if (a === 'pastor') {
-          orderTextModal(it, it.label + ' — 기도문 (목회자만 봅니다)', '기도문을 적으세요. 오늘의 예배와 발표자 모드에서 목회자에게만 보입니다. 매주 같은 기도문이면 📌 고정으로 두세요.', sunDirty);
+          if (ordPastorSlot(it)) { sunPubModal(it); return; }   /* 목회 기도·축도 — 맡은 분(주보에 나가는 내용)과 기도문 */
+          orderTextModal(it, it.label + ' — 기도문', '기도문을 적으세요. 오늘의 예배와 발표자 모드의 목회자 화면에 나옵니다. 매주 같은 기도문이면 📌 고정으로 두세요.', sunDirty);
           return;
         }
         if (sk) {   // 이 블록의 곡 — 같은 이름 블록이 여러 개여도(찬송 앞·뒤) 이 블록에만
@@ -4925,20 +4927,22 @@ console.log('[affairs.js] v20260923lic');
         if (k === '말씀') { sunSumModal(); return; }
         sunPubModal(it);
       }
-      // 모두 블록 고치기 — 순서 이름 · 내용(예: 기도하는 분) · 목회자 메모·기도문(목회자만) · 📌 고정
+      // 모두 블록 고치기 — 순서 이름 · 내용(예: 기도하는 분) · 📌 고정
+      //   목회 기도·축도(목회자 블록)도 이 창 — 맡은 분(주보에 나가는 내용)과 기도문을 함께 적는다
+      //   모두 블록에 예전에 적어 둔 메모·기도문이 있으면 지우지 않도록 그 칸을 보여 준다
       function sunPubModal(it) {
-        var k = ordKey(it.label), m = document.createElement('div');
+        var k = ordKey(it.label), m = document.createElement('div'), pas = audOf(it) === 'pastor';
         var ph = { '기도': '기도하는 분 (예: 홍길동 장로)', '목회기도': '사회자', '헌금': '신령과 진정으로', '축도': '김동석 목사', '소식': '사회자', '신앙고백': '사도신경' }[k] || '이 순서에 적을 내용';
-        var prayer = /기도|축도/.test(it.label || '');
+        var showBody = pas || String(it.body || '').trim();
         m.style.cssText = 'position:fixed;inset:0;background:rgba(10,15,25,.5);z-index:9400;display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto';
         m.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:600px;width:100%;padding:18px 20px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
-          '<h3 style="margin:0 0 12px;color:#032257;font-size:1.05rem">' + esc(it.label || '순서') + '</h3>' +
+          '<h3 style="margin:0 0 12px;color:#032257;font-size:1.05rem">' + esc(it.label || '순서') + (pas ? ' <span style="font-size:.7rem;font-weight:600;color:#4a6a9c;border:1px solid #4a6a9c;border-radius:4px;padding:0 5px;vertical-align:2px">목회자</span>' : '') + '</h3>' +
           '<label style="display:block;font-size:.8rem;font-weight:700;color:#032257;margin-bottom:4px">순서 이름</label>' +
           '<input type="text" id="spm_label" value="' + esc(it.label || '') + '" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
-          '<label style="display:block;font-size:.8rem;font-weight:700;color:#032257;margin:12px 0 4px">내용</label>' +
+          '<label style="display:block;font-size:.8rem;font-weight:700;color:#032257;margin:12px 0 4px">' + (pas ? '맡은 분' : '내용') + '</label>' +
           '<input type="text" id="spm_detail" value="' + esc(it.detail || '') + '" placeholder="' + esc(ph) + '" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit">' +
-          '<label style="display:block;font-size:.8rem;font-weight:700;color:#4a6a9c;margin:12px 0 4px">' + (prayer ? '기도문' : '메모') + ' <span style="font-weight:400;color:#9aa5b1">(목회자만 봅니다)</span></label>' +
-          '<textarea id="spm_body" placeholder="' + (prayer ? '기도문을 적으세요. 오늘의 예배·발표자 모드에서 목회자에게만 보입니다.' : '목회자가 볼 메모를 적으세요. 성도에게는 보이지 않습니다.') + '" style="width:100%;box-sizing:border-box;min-height:150px;padding:10px 12px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;line-height:1.8;font-family:\'Noto Serif KR\',serif">' + esc(it.body || '') + '</textarea>' +
+          (showBody ? '<label style="display:block;font-size:.8rem;font-weight:700;color:#4a6a9c;margin:12px 0 4px">기도문</label>' +
+          '<textarea id="spm_body" placeholder="기도문을 적으세요. 오늘의 예배와 발표자 모드의 목회자 화면에 나옵니다." style="width:100%;box-sizing:border-box;min-height:150px;padding:10px 12px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;line-height:1.8;font-family:\'Noto Serif KR\',serif">' + esc(it.body || '') + '</textarea>' : '') +
           '<label style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:.82rem;color:#5a6b82"><input type="checkbox" id="spm_fixed"' + (it.fixed ? ' checked' : '') + ' style="width:15px;height:15px;accent-color:#b89b5e;margin:0"> 📌 고정 — 다음 주에도 내용까지 그대로</label>' +
           '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button type="button" class="btn btn-line" id="spm_cancel" style="padding:8px 16px">취소</button><button type="button" class="btn btn-solid" id="spm_ok" style="padding:8px 22px;font-weight:700">확인</button></div></div>';
         document.body.appendChild(m);
@@ -4949,7 +4953,7 @@ console.log('[affairs.js] v20260923lic');
           var lb = m.querySelector('#spm_label').value.trim();
           if (lb) it.label = lb;
           it.detail = m.querySelector('#spm_detail').value.trim();
-          it.body = m.querySelector('#spm_body').value;
+          var bd = m.querySelector('#spm_body'); if (bd) it.body = bd.value;
           it.fixed = m.querySelector('#spm_fixed').checked;
           close(); renderOrder(); sunDirty();
         };
@@ -4979,15 +4983,15 @@ console.log('[affairs.js] v20260923lic');
         var on = sunOn(); f.style.display = on ? '' : 'none'; if (!on) return;
         var sf = ov.querySelector('#bd_songs_field'); if (sf) sf.style.display = 'none';   /* 주일은 곡도 블록에서 고른다 */
         var warn = sunReady ? '' : '<div style="font-size:.74rem;color:#c0392b;border:1px solid #f0c9c4;background:#fdf3f2;border-radius:6px;padding:6px 8px;margin-bottom:6px">목회자·반주자 블록을 넣으려면 먼저 SQL Editor 에서 supabase/20261009_1900_worship_roles.sql 을 실행해 주세요.</div>';
+        if (order.filter(sunToPastor).length) setTimeout(sunDirty, 0);   /* 예전 순서의 모두 목회 기도·축도를 바꿨으면 저장되게 */
         box.innerHTML = warn + (order.length ? order.map(function (it, i) {
           var a = audOf(it), c = AUD_C[a], pub = a === 'all';
-          var memo = pub && it.body ? '<span style="font-weight:400;font-size:.64rem;color:#4a6a9c;margin-left:3px">· 기도문(목회자만)</span>' : '';
           return '<div class="sun-row" data-i="' + i + '" style="border:1px solid ' + AUD_BD[a] + ';border-left:4px solid ' + c + ';background:' + AUD_BG[a] + ';border-radius:7px;padding:5px 7px;margin-bottom:4px">' +
             '<div style="display:flex;align-items:center;gap:6px">' +
             '<span class="sun-handle" title="끌어서 자리 옮기기" style="cursor:grab;color:#9aa5b1;font-size:1rem;touch-action:none;user-select:none">≡</span>' +
-            '<div class="sun-open" data-i="' + i + '" style="flex:1;min-width:0;cursor:pointer" title="' + (a === 'accomp' ? '곡 고르기·악보 올리기 (파일을 이 블록 위로 끌어다 놓아도 됩니다)' : a === 'pastor' ? '기도문 적기 (목회자만)' : sunSongKey(it) ? '곡 고르기' : ordKey(it.label) === '교독' ? '교독문 고르기' : ordKey(it.label) === '말씀' ? '설교 요약 적기' : '내용·기도문 적기') + '">' +
+            '<div class="sun-open" data-i="' + i + '" style="flex:1;min-width:0;cursor:pointer" title="' + (a === 'accomp' ? '곡 고르기·악보 올리기 (파일을 이 블록 위로 끌어다 놓아도 됩니다)' : a === 'pastor' ? '기도문 적기' : sunSongKey(it) ? '곡 고르기' : ordKey(it.label) === '교독' ? '교독문 고르기' : ordKey(it.label) === '말씀' ? '설교 요약 적기' : '내용 적기') + '">' +
               '<div style="font-weight:700;font-size:.8rem;color:' + (pub ? 'var(--accent,#032257)' : c) + '">' + (i + 1) + '. ' + esc(it.label || '항목') +
-                ' <span style="font-weight:600;font-size:.62rem;color:' + c + ';border:1px solid ' + c + ';border-radius:4px;padding:0 4px;margin-left:2px">' + AUD_NAME[a] + '</span>' + memo + '</div>' +
+                ' <span style="font-weight:600;font-size:.62rem;color:' + c + ';border:1px solid ' + c + ';border-radius:4px;padding:0 4px;margin-left:2px">' + AUD_NAME[a] + '</span></div>' +
               '<div style="font-size:.7rem;color:#7b8794;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(sunSub(it)) + '</div></div>' +
             '<button type="button" class="sun-fix" data-i="' + i + '" title="고정 — 다음 주에도 그대로" style="border:0;background:none;cursor:pointer;font-size:.82rem;opacity:' + (it.fixed ? '1' : '.28') + '">📌</button>' +
             '<button type="button" class="sun-del" data-i="' + i + '" title="빼기" style="border:0;background:none;color:#c0392b;cursor:pointer;font-size:.86rem">✕</button></div></div>';
@@ -5024,7 +5028,8 @@ console.log('[affairs.js] v20260923lic');
         if (label === '헌금 기도') { i = sunIdx('헌금'); return i >= 0 ? sunAfter(i) : order.length; }
         if (label === '기도송') { i = sunIdx('기도'); return i >= 0 ? sunAfter(i) : order.length; }
         if (label === '헌금송') { i = sunIdx('헌금'); return i >= 0 ? i + 1 : order.length; }
-        if (label === '폐회송') { i = sunIdx('축도', true); return i >= 0 ? sunAfter(i) : order.length; }
+        if (label === '폐회송') { i = -1; order.forEach(function (it, q) { if (ordKey(it.label) === '축도') i = q; }); return i >= 0 ? sunAfter(i) : order.length; }
+        if (ordPastorKey(label)) return sunPubAt(label);   /* 목회 기도·축도 — 기본 순서의 자리 */
         return order.length;
       }
       // 기본 순서 — 운평장로교회 주보의 주일 낮 예배 순서. 해마다 같은 칸(목회 기도 사회자·신앙고백·헌금봉헌·교회소식·축도)은 📌 고정
@@ -5035,7 +5040,7 @@ console.log('[affairs.js] v20260923lic');
           { label: '성시교독' }, { label: '신앙고백', detail: '사도신경', fixed: true }, { label: '찬송' }, { label: '기도' },
           { label: '성경봉독' }, { label: '성가대 찬양' }, { label: '말씀강해' }, { label: '헌금봉헌', detail: '신령과 진정으로', fixed: true },
           { label: '교회소식', detail: '사회자', fixed: true }, { label: '찬송' }, { label: '축도', detail: who, fixed: !!who }
-        ].map(function (t) { return Object.assign({ detail: '', url: '', aud: 'all' }, t); });
+        ].map(function (t) { return Object.assign({ detail: '', url: '', aud: ordPastorKey(t.label) ? 'pastor' : 'all' }, t); });
       }
       function sunPubAt(label) {   // 새 모두 블록의 자리 — 기본 순서에서의 자리를 따라 (특송은 말씀 앞, 주기도문은 신앙고백 뒤, 직접 입력은 끝)
         var D = sunKeys(sunDefault()), k = ordKey(label);
@@ -5060,8 +5065,8 @@ console.log('[affairs.js] v20260923lic');
           else { var row = ov.querySelector('#bd_sun .sun-row[data-i="' + ni + '"]'); if (row) try { row.scrollIntoView({ block: 'nearest' }); } catch (e) { } }
           return;
         }
-        if (aud === 'pastor' && (label === '목회 기도' || label === '축도')) {   // 순서에 있는 블록이면 그 블록에 기도문을 단다
-          var ex = sunIdx(ordKey(label)); if (ex >= 0) { sunEdit(ex); return; }
+        if (ordPastorKey(label)) {   // 목회 기도·축도가 이미 있으면 새로 만들지 않고 그 블록을 연다
+          for (var q = 0; q < order.length; q++) if (ordKey(order[q].label) === ordKey(label)) { sunToPastor(order[q]); renderOrder(); sunEdit(q); return; }
         }
         if (label !== '기도' && label !== '반주 악보') {   // 이미 있는 블록(기도송·헌금송·설교 전 기도 …)이면 새로 만들지 않고 그 블록을 연다
           for (var j = 0; j < order.length; j++) if (audOf(order[j]) === aud && order[j].label === label) { sunEdit(j); return; }
@@ -5077,15 +5082,17 @@ console.log('[affairs.js] v20260923lic');
       //   · 틀에 없던 블록도 내용이 있으면 버리지 않는다 — 기도송·헌금송·폐회송·설교 전 기도·헌금 기도는 제자리, 나머지는 원래 이웃 옆
       function sunBuild(tpl) {
         var pool = {}, used = [], nu = [];
+        order.forEach(sunToPastor);
         order.forEach(function (it) { var key = audOf(it) + '|' + ordKey(it.label) + '|' + (audOf(it) === 'all' ? '' : it.label); (pool[key] = pool[key] || []).push(it); });
         (tpl || []).forEach(function (t) {
           if (!t || !t.label) return;
+          sunToPastor(t);
           var a = audOf(t), key = a + '|' + ordKey(t.label) + '|' + (a === 'all' ? '' : t.label), have = (pool[key] || []).shift();
           if (have) used.push(have);
           if (have && sunHas(have)) { nu.push(have); return; }
           if (t.fixed) { var c = JSON.parse(JSON.stringify(t)); delete c._up; delete c._openBody; c.aud = a; nu.push(c); return; }
-          if (a !== 'all') { if (have) nu.push(have); return; }
-          nu.push(have || { label: t.label, detail: '', url: '', aud: 'all' });
+          if (a !== 'all' && !ordPastorKey(t.label)) { if (have) nu.push(have); return; }   /* 목회 기도·축도는 순서 칸이라 고정이 아니어도 빈 블록으로 둔다 */
+          nu.push(have || { label: t.label, detail: '', url: '', aud: a });
         });
         var left = order.filter(function (it) { return used.indexOf(it) < 0 && sunHas(it); });
         var spot = left.filter(function (it) { return sunPriv(it) && sunSpot(it.label); }), rest = left.filter(function (it) { return spot.indexOf(it) < 0; });
@@ -8360,6 +8367,9 @@ console.log('[affairs.js] v20260923lic');
     return roleSqlP;
   }
   function audOf(it) { return it && (it.aud === 'accomp' || it.aud === 'pastor') ? it.aud : 'all'; }
+  /* 목회 기도·축도 — 주보 순서의 칸이지만 화면에서는 목회자 블록(2026-10-10). 주보에는 이름·내용(맡은 분)만 넣는다 */
+  function ordPastorKey(l) { return /^(목회기도|축도)$/.test(ordKey(l)); }
+  function ordPastorSlot(it) { return audOf(it) === 'pastor' && ordPastorKey(it.label); }
   /* 순서 이름을 같은 자리로 알아보는 열쇠 — 주보('말씀강해')와 설교 매니저('말씀(설교)')처럼 이름이 조금 달라도 같게 */
   function ordKey(l) {
     l = String(l || '').replace(/\s+/g, '').replace(/\(.*?\)/g, '');
@@ -9349,7 +9359,7 @@ console.log('[affairs.js] v20260923lic');
           if (sun.scripture) ov.querySelector('#bt_scripture').value = sun.scripture;
           if (sun.preacher) ov.querySelector('#bt_preacher').value = sun.preacher;
           var wo = []; try { wo = JSON.parse(sun.worship_order || '[]') || []; } catch (e) { wo = []; }
-          wo = wo.filter(function (it) { return it && audOf(it) === 'all'; });   /* 목회자·반주자 블록(기도문·반주 악보)은 주보에 넣지 않는다 */
+          wo = wo.filter(function (it) { return it && (audOf(it) === 'all' || ordPastorSlot(it)); });   /* 목회자·반주자 블록(기도문·반주 악보)은 주보에 넣지 않는다 — 목회 기도·축도는 순서 칸이라 이름·맡은 분만 넣는다 */
           if (wo.length) { order = wo.map(function (it) { return { name: it.label || '', detail: it.detail || '' }; }); renderBOrder(); }
           n++;
         }
