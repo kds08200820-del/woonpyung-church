@@ -24,6 +24,7 @@
     { href: "story.html", label: "우리 이야기", sub: [
       { href: "story.html#album", label: "우리들 소식" },
       { href: "story.html#notice", label: "공지사항" },
+      { href: "forms.html", label: "신청서" },   // 신청서(2026-10-10): 지금 받는 신청서 · 내 신청서 · 지난 신청서 — js/forms.js
       { href: "story.html#board", label: "게시판" },
       { href: "story.html#request", label: "기도 부탁" },
       { href: "story.html#thisweek", label: "이번 주 기도 제목" },
@@ -42,8 +43,6 @@
       { href: "library.html#worship", label: "예배 자료실" },
       { href: "mahanaim.html", label: "마하나임 찬양단" },
     ] },
-    // 신청서(2026-10-10): 지금 받는 신청서 · 내 신청서 · 지난 신청서 — js/forms.js
-    { href: "forms.html", label: "신청서" },
     { href: "finance.html", label: "교회행정", adminOnly: true, sub: [
       { href: "finance.html", label: "재정관리" },
       { href: "gyojeok.html", label: "교적관리" },
@@ -89,7 +88,7 @@
           <span class="logo-kr">운평장로교회</span>
           <span class="logo-en">UNPYEONG PRESBYTERIAN CHURCH · SINCE 1964</span>
         </div>
-        <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="bylaws.html">정관</a><a href="terms.html">이용약관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
+        <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="forms.html">신청서</a><a href="bylaws.html">정관</a><a href="terms.html">이용약관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
         <div class="footer-actions">
           <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">카카오톡 채널 추가</a>
           <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">온라인헌금</a>
