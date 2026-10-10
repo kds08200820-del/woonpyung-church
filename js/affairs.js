@@ -1070,6 +1070,10 @@ console.log('[affairs.js] v20261010form1');
         statCard(yr + '년 설교', thisYear, '올해 누적', '#1f6feb') +
         statCard('이번 달', thisMonth, ym, '#2e8b57') +
         statCard('성경 커버리지', covDone + '/' + covTotal + '권', pct + '% · 구약 ' + otDone + ' · 신약 ' + ntDone, '#c0392b') +
+        '<div class="fin-card" id="appFormsCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
+        '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">신청서</div>' +
+        '<div style="font-size:1.85rem;font-weight:800;color:var(--accent,#032257);line-height:1.1;margin-top:4px" id="appFormsNum">–</div>' +
+        '<div style="font-size:.75rem;color:#9aa5b1;margin-top:3px" id="appFormsSub">진행 중인 신청서 · 눌러서 보기</div></div>' +
         '<div class="fin-card" id="qtAttendCard" style="margin:0;padding:16px 18px;cursor:pointer">' +
         '<div style="font-size:.8rem;color:var(--ink-soft,#7b8794);font-weight:600">📋 오늘 QT 출석</div>' +
         '<div style="font-size:1.85rem;font-weight:800;color:#0d9488;line-height:1.1;margin-top:4px" id="qtAttendNum">–</div>' +
@@ -1149,6 +1153,7 @@ console.log('[affairs.js] v20261010form1');
       loadBookAudio(panel);
       loadBookProgress(panel);
       loadWorshipJobs(panel);
+      loadAppForms(panel);
       loadAppLicenses(panel);
       loadAttendanceStats(panel);
       if (location.hash === '#attStats' && !window.__attStatsOpened) { window.__attStatsOpened = 1; attStatsModal(); }
@@ -1536,6 +1541,27 @@ console.log('[affairs.js] v20261010form1');
       pending: ['대기 중', '#7b8794'], processing: ['생성 중', '#2c4a86'],
       done: ['완료', '#1e874b'], error: ['실패', '#c0392b']
     };
+    // ── 신청서 — 지금 신청 기간인 신청서의 신청자 수 (2026-10-10). 눌러서 신청서 탭 ──
+    function loadAppForms(panel) {
+      var numEl = panel.querySelector('#appFormsNum'), subEl = panel.querySelector('#appFormsSub'), card = panel.querySelector('#appFormsCard');
+      if (!numEl || !card) return;
+      card.onclick = function () { var b = document.querySelector('.fin-tabs button[data-t="forms"]'); if (b) b.click(); };
+      api('GET', 'app_forms?select=id,title,open_at,close_at,published&order=open_at.desc')
+        .then(function (forms) {
+          var now = Date.now();
+          var open = (forms || []).filter(function (f) { return f.published && Date.parse(f.open_at) <= now && (!f.close_at || Date.parse(f.close_at) > now); });
+          if (!open.length) { numEl.textContent = '0건'; subEl.textContent = '진행 중인 신청서 없음 · 눌러서 보관함'; return null; }
+          var ids = open.map(function (f) { return f.id; }).join(',');
+          return api('GET', 'app_entries?select=form_id,adults,minors,fee_total,paid_at&status=eq.active&form_id=in.(' + ids + ')').then(function (rows) {
+            rows = rows || [];
+            var people = 0, due = 0;
+            rows.forEach(function (e) { people += (+e.adults || 0) + (+e.minors || 0); if (e.fee_total > 0 && !e.paid_at) due++; });
+            numEl.textContent = rows.length + '명';
+            subEl.textContent = open[0].title + (open.length > 1 ? ' 외 ' + (open.length - 1) + '건' : '') + ' · 참가 ' + people + '명' + (due ? ' · 미납 ' + due + '건' : '');
+          });
+        })
+        .catch(function () { numEl.textContent = '–'; subEl.textContent = '신청서를 불러오지 못했습니다 · 눌러서 보기'; });
+    }
     function loadWorshipJobs(panel) {
       var numEl = panel.querySelector('#wpJobsNum'), subEl = panel.querySelector('#wpJobsSub');
       var card = panel.querySelector('#wpJobsCard');
