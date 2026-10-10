@@ -540,3 +540,26 @@ window.ModalNav = (function () {
     count: function () { return stack.length; }
   };
 })();
+
+/* ============================================================
+   창 안에서 누른 채 바깥(어두운 바탕)에서 놓아도 창이 닫히지 않게 (2026-10-10 목사님 알림)
+   — 브라우저는 누른 곳과 놓은 곳이 다르면 둘을 감싸는 요소(=화면을 덮은 바탕)를 '눌렀다'고 친다.
+     그래서 '바탕을 누르면 닫기'인 창이 모두 닫혔다(곡 고르기·기도문·명단 창 등 50여 곳).
+   · 클릭이 화면 전체를 덮은 고정 요소에 떨어졌는데, 누르기는 그 안쪽 다른 요소에서 시작했으면 그 클릭을 없앤다.
+     바탕을 직접 눌렀다 놓은 것은 그대로 닫힌다.
+   ============================================================ */
+(function () {
+  var downEl = null;
+  document.addEventListener("pointerdown", function (e) { downEl = e.target; }, true);
+  document.addEventListener("click", function (e) {
+    var t = e.target, d = downEl;
+    downEl = null;
+    if (!d || d === t || !(t instanceof Element) || !t.contains(d)) return;
+    var cs = getComputedStyle(t);
+    if (cs.position !== "fixed") return;
+    var r = t.getBoundingClientRect();
+    if (r.width < window.innerWidth * 0.9 || r.height < window.innerHeight * 0.9) return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+  }, true);
+})();
