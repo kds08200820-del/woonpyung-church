@@ -29,6 +29,8 @@ console.log('[forms.js] v20261010form6');
     '.ap-eye{font-size:.76rem;letter-spacing:.12em;color:var(--accent-soft,#4a6a9c);margin:0 0 4px}' +
     '.ap-title{font-family:"Noto Serif KR",serif;font-size:1.32rem;line-height:1.4;color:var(--accent,#032257);margin:0 0 6px;word-break:keep-all}' +
     '.ap-meta{color:var(--ink-soft,#4a4a4a);font-size:.9rem;margin:0 0 2px;word-break:keep-all}' +
+    '.ap-img{display:block;margin:12px 0 0;border:1px solid var(--line,#e6e3dd);border-radius:10px;overflow:hidden;background:#fff}.ap-img img{display:block;width:100%;height:auto}' +
+    '.ap-imgnote{font-size:.76rem;color:#8a8a8a;margin:4px 0 0}' +
     '.ap-body{font-size:.92rem;line-height:1.75;color:var(--ink,#1a1a1a);background:var(--paper-alt,#f7f5f0);border-radius:10px;padding:12px 14px;margin:12px 0 0;word-break:keep-all}' +
     '.ap-text{font-size:.94rem;color:var(--ink-soft,#4a4a4a);margin:12px 0 0;word-break:keep-all}' +
     '.ap-form{margin-top:16px;display:flex;flex-direction:column;gap:12px}' +
@@ -355,6 +357,20 @@ console.log('[forms.js] v20261010form6');
       showForm(f, e, p);
     }).catch(function (e) { openModal(errorHTML(e)); });
   }
+  /* 안내 그림(app_forms.image_url, 2026-10-10) — 코스 약도·포스터. 누르면 새 창에서 크게 */
+  function imgHTML(f) {
+    var u = String((f && f.image_url) || '').trim(); if (!/^(https?:\/\/|images\/)/i.test(u)) return '';
+    return '<a class="ap-img" href="' + esc(u) + '" target="_blank" rel="noopener"><img src="' + esc(u) + '" alt="' + esc(f.title) + ' 안내 그림"></a><p class="ap-imgnote">그림을 누르면 크게 볼 수 있습니다.</p>';
+  }
+  /* 안내만 보기(로그인 없이) — 공지사항 '코스·안내 보기' */
+  function openInfo(f) {
+    if (!f) return;
+    openModal(headHTML(f, '안내') + (f.summary ? '<p class="ap-text">' + esc(f.summary) + '</p>' : '') + (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') + imgHTML(f) +
+      '<div class="ap-actions"><button type="button" class="ap-btn" data-go="apply">신청하기</button><button type="button" class="ap-btn-line" data-go="status">신청 확인</button></div>',
+      function (body) {
+        Array.prototype.forEach.call(body.querySelectorAll('[data-go]'), function (b) { b.onclick = function () { if (b.getAttribute('data-go') === 'apply') openApply(f.id); else openStatus(f.id); }; });
+      });
+  }
   function headHTML(f, eye) {
     return '<p class="ap-eye">' + esc(eye) + '</p><h3 class="ap-title">' + esc(f.title) + '</h3>' +
       (whenPlace(f) ? '<p class="ap-meta">' + esc(whenPlace(f)) + '</p>' : '') +
@@ -376,7 +392,7 @@ console.log('[forms.js] v20261010form6');
     }
     var html = headHTML(f, e ? '신청 고치기' : '신청서') +
       (f.summary ? '<p class="ap-text">' + esc(f.summary) + '</p>' : '') +
-      (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') +
+      (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') + imgHTML(f) +
       '<form class="ap-form" novalidate>' +
       '<label class="ap-field"><span>신청하는 분 이름</span><input name="name" maxlength="60" autocomplete="name" value="' + esc(cur.name || p.name || '') + '" required></label>' +
       '<label class="ap-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="010-0000-0000" value="' + esc(cur.phone || p.phone || '') + '" required></label>' +
@@ -483,7 +499,7 @@ console.log('[forms.js] v20261010form6');
     var open = isOpen(f), html = headHTML(f, '신청 확인') + (done ? '<p class="ap-done">' + esc(done) + '</p>' : '');
     if (!e) {
       var before = f.open_at && new Date(f.open_at).getTime() > Date.now();
-      html += (f.summary ? '<p class="ap-text">' + esc(f.summary) + '</p>' : '') + (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') +
+      html += (f.summary ? '<p class="ap-text">' + esc(f.summary) + '</p>' : '') + (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') + imgHTML(f) +
         '<p class="ap-text">이 신청서에 아직 신청하지 않았습니다.</p>' +
         (open ? '<div class="ap-actions"><button type="button" class="ap-btn ap-wide" data-edit>신청하기</button></div>'
           : '<p class="ap-note">' + (before ? esc(dtText(f.open_at)) + '부터 신청을 받습니다.' : '신청이 마감되었습니다.') + '</p>');
@@ -625,7 +641,7 @@ console.log('[forms.js] v20261010form6');
             (whenPlace(f) ? '<p class="ap-meta">' + esc(whenPlace(f)) + '</p>' : '') +
             '<p class="ap-meta">' + esc(feeText(f)) + (f.close_at ? ' · ' + esc(dtText(f.close_at)) + '까지 신청' : '') + '</p>' +
             (f.summary ? '<p class="ap-text">' + esc(f.summary) + '</p>' : '') +
-            (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') +
+            (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') + imgHTML(f) +
             (has ? '<div style="margin-top:12px">신청함 ' + chip(e) + '</div>' : '') +
             '<div class="ap-actions">' + (has ? '<button type="button" class="ap-btn" data-status="' + f.id + '">신청 확인</button><button type="button" class="ap-btn-line" data-edit="' + f.id + '">신청 고치기</button>'
               : '<button type="button" class="ap-btn" data-apply="' + f.id + '">신청하기</button>' + (s ? '' : '<button type="button" class="ap-btn-line" data-status="' + f.id + '">신청 확인</button>')) + '</div></div>';
@@ -672,13 +688,15 @@ console.log('[forms.js] v20261010form6');
           return '<div class="nt-item pinned" data-form="' + esc(f.id) + '"><div class="nt-head"><div class="nt-t"><span class="nt-pin">신청</span>' + esc(f.title) + '</div>' +
             (until ? '<div class="nt-meta">' + esc(until) + '</div>' : '') + '</div>' +
             '<div class="nt-body">' + (f.summary ? esc(f.summary) + '<br>' : '') + esc(line) + '</div>' +
-            '<div class="ap-ntbtns"><button type="button" class="btn btn-solid" data-act="apply">신청하기</button><button type="button" class="btn btn-line" data-act="status">신청 확인</button></div></div>';
+            '<div class="ap-ntbtns"><button type="button" class="btn btn-solid" data-act="apply">신청하기</button><button type="button" class="btn btn-line" data-act="status">신청 확인</button>' +
+            (f.body || f.image_url ? '<button type="button" class="btn btn-line" data-act="info">' + (f.image_url ? '코스·안내 보기' : '안내 보기') + '</button>' : '') + '</div></div>';
         }).join('') + '</div>';
         nb.parentNode.insertBefore(w, nb);
         w.addEventListener('click', function (ev) {
           var b = ev.target.closest('[data-act]'); if (!b) return;
           var id = b.closest('[data-form]').getAttribute('data-form');
-          if (b.getAttribute('data-act') === 'apply') openApply(id); else openStatus(id);
+          var act = b.getAttribute('data-act');
+          if (act === 'apply') openApply(id); else if (act === 'info') openInfo(list.filter(function (f) { return String(f.id) === String(id); })[0]); else openStatus(id);
         });
       });
     }).catch(function () { /* 표가 아직 없으면(SQL 실행 전) 공지사항 그대로 */ });

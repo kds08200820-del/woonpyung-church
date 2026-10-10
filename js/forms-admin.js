@@ -324,6 +324,7 @@ window.WPCFormsAdmin = (function () {
     function showEdit(f, copy) {
       if (!alive()) return;
       var isNew = !f || copy, v = f || {};
+      var hasImgCol = FORMS.some(function (x) { return 'image_url' in x; });   /* 20261010_1700_app_forms_image.sql 실행 뒤에만 '안내 그림' 칸 */
       if (copy) v = Object.assign({}, f, { title: f.title + ' (새)', open_at: null, close_at: null, event_date: null, event_time: null });
       if (isNew && !ownPay(v)) { var dp = defaultPay(); v = Object.assign({}, v, { pay_bank: dp.pay_bank || '', pay_account: dp.pay_account || '', pay_holder: dp.pay_holder || '', pay_toss_url: dp.pay_toss_url || '' }); }   /* 새 신청서 = 교회 기본 계좌 */
       function fld(label, inner, full) { return '<div class="af-field"' + (full ? ' style="grid-column:1/-1"' : '') + '><label>' + label + '</label>' + inner + '</div>'; }
@@ -333,6 +334,10 @@ window.WPCFormsAdmin = (function () {
         fld('제목', '<input id="ff_title" maxlength="200" value="' + esc(v.title || '') + '" placeholder="예: 삼일 만세길 걷기">', true) +
         fld('공지사항 한 줄 안내 (선택)', '<input id="ff_summary" maxlength="200" value="' + esc(v.summary || '') + '" placeholder="비우면 날짜·장소·신청비만 나옵니다">', true) +
         fld('자세한 안내 (선택)', '<textarea id="ff_body" rows="4">' + esc(v.body || '') + '</textarea>', true) +
+        /* 안내 그림(코스 약도·포스터) — image_url, 2026-10-10. 칸이 아직 없으면(SQL 전) 보이지 않는다 */
+        (hasImgCol ? fld('안내 그림 (선택) — 코스 약도·포스터 등', '<div style="display:flex;gap:6px;align-items:center"><input id="ff_img" maxlength="500" value="' + esc(v.image_url || '') + '" placeholder="그림 주소 — 아래 단추로 올리면 저절로 채워집니다" style="flex:1;min-width:0">' +
+          '<button type="button" class="btn btn-line" id="ff_img_up" style="padding:6px 12px;white-space:nowrap">그림 올리기</button><button type="button" class="btn btn-line" id="ff_img_rm" style="padding:6px 10px">빼기</button></div>' +
+          '<div id="ff_img_pv" style="margin-top:8px"></div>', true) : '') +
         fld('행사 날짜', '<input type="date" id="ff_date" value="' + esc(v.event_date || '') + '">') +
         fld('행사 시각', '<input type="time" id="ff_time" value="' + esc(String(v.event_time || '').slice(0, 5)) + '">') +
         fld('장소', '<input id="ff_place" maxlength="200" value="' + esc(v.place || '') + '">') +
@@ -374,6 +379,25 @@ window.WPCFormsAdmin = (function () {
       }
       ['ff_fa', 'ff_toss', 'ff_bank', 'ff_acct'].forEach(function (id) { $(id).addEventListener('input', preview); });
       preview();
+      if (hasImgCol) {   // 안내 그림: 올리기(교회 파일 서버) · 주소 붙여넣기 · 미리보기 · 빼기
+        var imgIn = $('ff_img'), imgPv = $('ff_img_pv'), imgMsg = function (t) { imgPv.innerHTML = '<span style="font-size:.82rem;color:#c0392b">' + esc(t) + '</span>'; };
+        var paintImg = function () { var u = imgIn.value.trim(); imgPv.innerHTML = /^(https?:\/\/|images\/)/i.test(u) ? '<img src="' + esc(u) + '" alt="안내 그림 미리보기" style="max-width:100%;max-height:260px;border:1px solid var(--line,#e6e3dd);border-radius:8px">' : ''; };
+        imgIn.addEventListener('input', paintImg); paintImg();
+        $('ff_img_rm').onclick = function () { imgIn.value = ''; paintImg(); };
+        $('ff_img_up').onclick = function () {
+          if (!(window.ChurchUpload && window.ChurchUpload.isReady())) { imgMsg('파일 올리기 서버가 준비되지 않았습니다. 그림 주소를 직접 넣어 주십시오.'); return; }
+          var fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'image/*';
+          fi.onchange = function () {
+            var file = fi.files && fi.files[0]; if (!file) return;
+            var btn = $('ff_img_up'); btn.disabled = true; btn.textContent = '올리는 중…';
+            window.ChurchUpload.upload(file, { folder: 'forms', compress: false })
+              .then(function (res) { imgIn.value = res.url; paintImg(); })
+              .catch(function (e) { imgMsg('올리지 못했습니다: ' + e.message); })
+              .then(function () { btn.disabled = false; btn.textContent = '그림 올리기'; });
+          };
+          fi.click();
+        };
+      }
       $('ff_save').onclick = function () {
         var err = $('ff_err');
         function fail(t) { err.textContent = t; err.hidden = false; }
@@ -395,6 +419,7 @@ window.WPCFormsAdmin = (function () {
           pay_bank: $('ff_bank').value.trim(), pay_account: $('ff_acct').value.trim(), pay_holder: $('ff_holder').value.trim(), pay_toss_url: toss,
           show_hero: $('ff_hero').checked, published: $('ff_pub').checked
         };
+        if (hasImgCol) body.image_url = $('ff_img').value.trim() || null;
         var b = this; b.disabled = true; err.hidden = true;
         var req = isNew ? api('POST', 'app_forms', body, 'return=representation') : api('PATCH', 'app_forms?id=eq.' + f.id, body, 'return=representation');
         req.then(function (rows) {
