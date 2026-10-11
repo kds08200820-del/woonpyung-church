@@ -8396,6 +8396,10 @@ console.log('[affairs.js] v20261010form1');
       '.body blockquote{border-left:4px solid #d8cbab;margin:.6em 0;padding:.2em 0 .2em 16px;color:#6b5d3e;font-style:italic}body.dark .body blockquote{border-left-color:#5a513a;color:#cbb98a}',
       '.body mark{padding:0 2px;border-radius:2px}.body hr{border:none;border-top:1px solid #d8cbab;margin:.9em 0}body.dark .body hr{border-top-color:#3a3d44}',
       '.body .lt-prayer-h{font-size:1.18em;font-weight:800;color:#7a5d27;margin:1em 0 .35em;padding-top:.6em;border-top:2px solid #e4dcc9}body.dark .body .lt-prayer-h{color:#e0c98a;border-top-color:#3a3d44}',
+      /* 🔒 고정 중 — 확대·세로 움직임 없이 쪽 넘기기만 */
+      'body.locked{position:fixed;left:0;right:0;top:0;bottom:0;height:auto;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}',
+      'body.locked #deck,body.locked #track,body.locked .pg{touch-action:none}',
+      'body.locked .pg{overflow:hidden}',
       /* 페이지 표시기 */
       '#pg_ind{flex-shrink:0;font-size:12px;color:#9a8f78;min-width:44px;text-align:center;display:none}',
       'body.paged #pg_ind{display:block}',
@@ -8540,9 +8544,23 @@ console.log('[affairs.js] v20261010form1');
         'if(!paged){track.style.transform="";}else{curPg=0;}' +
         'buildBody();apply();' +
       '}' +
-      'pgBtn.onclick=function(){setMode(!b.classList.contains("paged"))};' +
+      'pgBtn.onclick=function(){if(b.classList.contains("locked"))return;setMode(!b.classList.contains("paged"))};' +
       'ap();' +
       'try{setMode(localStorage.getItem("sermonPaged")==="1")}catch(e){setMode(false)}' +
+      /* 🔒 고정 — 설교 중 화면이 확대·축소되거나 움직이지 않게: 쪽 넘기기(좌우 밀기·가장자리 탭·◀▶)만 된다 (2026-10-11)
+         확대(핀치·두 번 탭·Ctrl+휠)·세로 스크롤·당겨서 새로고침 막기, 페이지 모드로 고정 */
+      'var lockBtn=document.getElementById("lock"),vp=document.querySelector("meta[name=viewport]");' +
+      'function isLocked(){return b.classList.contains("locked");}' +
+      'function setLock(on){b.classList.toggle("locked",on);lockBtn.classList.toggle("active",on);lockBtn.textContent=on?"🔓 고정 해제":"🔒 고정";' +
+        'if(vp)vp.setAttribute("content",on?"width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover":"width=device-width,initial-scale=1,viewport-fit=cover");' +
+        'if(on&&!b.classList.contains("paged"))setMode(true);else if(on)reflow();' +
+        'try{localStorage.setItem("sermonLock",on?"1":"0")}catch(e){}}' +
+      'lockBtn.onclick=function(){setLock(!isLocked())};' +
+      '["gesturestart","gesturechange","gestureend"].forEach(function(n){document.addEventListener(n,function(e){if(isLocked())e.preventDefault();},{passive:false});});' +
+      'document.addEventListener("touchmove",function(e){if(isLocked()&&(e.touches.length>1||!(e.target.closest&&e.target.closest(".bar,#pnav"))))e.preventDefault();},{passive:false});' +
+      'document.addEventListener("wheel",function(e){if(isLocked()&&e.ctrlKey)e.preventDefault();},{passive:false});' +
+      'document.addEventListener("dblclick",function(e){if(isLocked())e.preventDefault();});' +
+      'try{if(localStorage.getItem("sermonLock")==="1")setLock(true)}catch(e){}' +
       /* ◀ ▶ 버튼 */
       'document.getElementById("prev").onclick=function(){goPage(-1)};' +
       'document.getElementById("next").onclick=function(){goPage(1)};' +
@@ -8598,6 +8616,7 @@ console.log('[affairs.js] v20261010form1');
         '<button id="inc">가+</button>' +
         '<button id="dark">🌙</button>' +
         '<button id="fs">⛶ 전체화면</button>' +
+        '<button id="lock" title="설교 중 화면이 확대·축소·움직이지 않게 고정 — 좌우로 밀어 쪽만 넘깁니다">🔒 고정</button>' +
         '<button id="pgbtn">📖 페이지</button>' +
         (hasOrder ? '<button id="tocbtn">순서</button>' : '') +
         '<button id="prev">◀</button>' +
