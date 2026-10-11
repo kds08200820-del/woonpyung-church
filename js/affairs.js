@@ -8285,14 +8285,23 @@ console.log('[affairs.js] v20261010form1');
       else t = esc(s.title || '');
       return '<div class="it-song-t">' + t + '</div>' + (src ? '<div class="it-score"><img src="' + esc(absUrl(src)) + '" alt="' + (s.kind === 'h' ? '새찬송가 ' + s.n + '장' : '모두의 찬양 ' + s.n + '번') + ' 악보"></div>' : '<div class="it-d">악보가 없는 곡입니다.</div>');
     }
+    // 설교 매니저 곡 고르기 창에서 올린 악보·가사 파일 — 곡 뒤에 쪽마다 한 장 (PDF 는 열기 링크)
+    function filePages(x, num, idA) {
+      var im = (x.it.images || []).filter(Boolean);
+      return im.map(function (u, k) {
+        var lab = esc(x.label) + (im.length > 1 ? '<span class="it-k">' + (k + 1) + ' / ' + im.length + '</span>' : '');
+        var body = /\.pdf(\?|#|$)/i.test(u) ? '<div style="margin-top:8px"><a href="' + esc(absUrl(u)) + '" target="_blank" rel="noopener">📎 악보 PDF 열기</a></div>' : '<div class="it-score"><img src="' + esc(absUrl(u)) + '" alt="악보 파일 ' + (k + 1) + '"></div>';
+        return '<div class="pg pg-fixed pg-item pg-song"' + (k === 0 && idA ? idA : '') + '>' + num + '<div class="it-label">' + lab + '</div>' + body + '</div>';
+      });
+    }
     function tocSub(x) {
-      if (x.kind === 'song') return x.songs.map(function (s) { return s.kind === 'h' ? s.n + '장 ' + (s.title || '') : (s.title || ''); }).join(' · ');
+      if (x.kind === 'song') return x.songs.map(function (s) { return s.kind === 'h' ? s.n + '장 ' + (s.title || '') : (s.title || ''); }).join(' · ') + ((x.it.images || []).length ? ' · 악보 파일 ' + x.it.images.length + '개' : '');
       if (x.kind === 'gyodok') return x.g ? '교독문 ' + x.g.no + '번 ' + x.g.title : (x.it.detail || '');
       if (x.kind === 'creed') return '사도신경';
       if (x.kind === 'lord') return '주기도문';
       if (x.kind === 'bible') return x.ref || '';
       if (x.kind === 'sermon') return r.title || x.it.detail || '';
-      return x.it.detail || (String(x.it.body || '').trim() ? '기도문' : '');   // 목회자 기도(설교 전 기도·헌금 기도)는 이름 옆에 '기도문'
+      return x.it.detail || ((x.it.images || []).length ? '악보 파일 ' + x.it.images.length + '개' : '') || (String(x.it.body || '').trim() ? '기도문' : '');   // 목회자 기도(설교 전 기도·헌금 기도)는 이름 옆에 '기도문'
     }
 
     // ── 페이지 구성: 표지 → 오늘의 예배 순서(목록) → 순서 칸마다 한 쪽(찬양은 곡마다 한 쪽) → 말씀 뒤에 설교 원고 ──
@@ -8308,9 +8317,12 @@ console.log('[affairs.js] v20261010form1');
             var lab = esc(x.label) + (x.songs.length > 1 ? '<span class="it-k">' + (k + 1) + ' / ' + x.songs.length + '</span>' : '');
             pages.push('<div class="pg pg-fixed pg-item pg-song"' + (k === 0 ? idA : '') + '>' + num + '<div class="it-label">' + lab + '</div>' + songHtml(s) + (k === 0 ? extraHtml(x.it) : '') + '</div>');
           });
+          [].push.apply(pages, filePages(x, num));
         } else {
           var anchor = x.kind === 'sermon' && !anchored; if (anchor) anchored = true;
-          pages.push('<div class="pg pg-fixed pg-item' + (anchor ? ' pg-sermon-anchor' : '') + '"' + idA + '>' + num + '<div class="it-label">' + esc(x.label) + '</div>' + itemHtml(x) + extraHtml(x.it) + '</div>');
+          var fileOnly = x.kind === 'text' && (x.it.images || []).length && !x.it.detail && !String(x.it.body || '').trim() && !x.it.url;   /* 이름만 있고 올린 악보 파일뿐인 칸(성가대 찬양)은 이름만 있는 쪽을 따로 두지 않는다 */
+          if (!fileOnly) pages.push('<div class="pg pg-fixed pg-item' + (anchor ? ' pg-sermon-anchor' : '') + '"' + idA + '>' + num + '<div class="it-label">' + esc(x.label) + '</div>' + itemHtml(x) + extraHtml(x.it) + '</div>');
+          [].push.apply(pages, filePages(x, num, fileOnly ? idA : ''));
         }
         toc += '<button type="button" class="toc-row" data-go="it-' + i + '"><span class="toc-n">' + (i + 1) + '</span><span class="toc-l">' + esc(x.label) + '</span><span class="toc-d">' + esc(tocSub(x)) + '</span></button>';
       });
