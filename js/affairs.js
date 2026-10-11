@@ -8422,7 +8422,7 @@ console.log('[affairs.js] v20261010form1');
       'body.dark .pg+.pg{border-top-color:#2a2d33}',
       /* 오늘의 예배 순서(목록) — 누르면 그 순서로 */
       '.pg-toc .toc-t{font-family:"Noto Sans KR",sans-serif;font-weight:800;font-size:1.3em;color:#032257;margin:0 0 2px}body.dark .pg-toc .toc-t{color:#e0c98a}',
-      '.toc-row{display:flex;gap:12px;align-items:baseline;width:100%;text-align:left;font:inherit;font-size:.8em;line-height:1.5;background:none;border:0;border-bottom:1px solid #ece6d8;padding:10px 4px;cursor:pointer;color:inherit}',
+      '.toc-row{display:flex;gap:12px;align-items:baseline;width:100%;text-align:left;font:inherit;font-size:18px;line-height:1.5;background:none;border:0;border-bottom:1px solid #ece6d8;padding:10px 4px;cursor:pointer;color:inherit}',
       '.toc-row:hover{background:#f3efe4}body.dark .toc-row{border-bottom-color:#2a2d33}body.dark .toc-row:hover{background:#1e2026}',
       '.toc-n{flex:0 0 1.6em;text-align:right;font-family:"Noto Sans KR",sans-serif;font-size:.85em;color:#b89b5e}',
       '.toc-l{flex:0 0 7.2em;font-family:"Noto Sans KR",sans-serif;font-weight:700;color:#032257}body.dark .toc-l{color:#9bbcf0}',
@@ -8530,7 +8530,7 @@ console.log('[affairs.js] v20261010form1');
       'document.addEventListener("webkitfullscreenchange",function(){updateFs();setTimeout(reflow,60);});' +
       /* transform 슬라이드 적용 */
       'function apply(){if(b.classList.contains("paged")){track.style.transform="translateX("+(-curPg*100)+"%)";}ind.textContent=(curPg+1)+"/"+total;updateNav();}' +
-      'function goPage(d){curPg=Math.max(0,Math.min(total-1,curPg+d));apply();}' +
+      'var lastNav=0;function goPage(d){var n=Date.now();if(n-lastNav<300)return;lastNav=n;curPg=Math.max(0,Math.min(total-1,curPg+d));apply();}' +
       /* 페이지↔스크롤 토글 */
       'var pgBtn=document.getElementById("pgbtn");' +
       'function setMode(paged){' +
@@ -8552,23 +8552,29 @@ console.log('[affairs.js] v20261010form1');
         'if(e.key==="ArrowRight"||e.key==="PageDown"||e.key===" "){e.preventDefault();goPage(1);}' +
         'else if(e.key==="ArrowLeft"||e.key==="PageUp"){e.preventDefault();goPage(-1);}' +
       '});' +
-      /* 좌/우 가장자리 탭으로 페이지 넘김 (스와이프가 안 되는 환경 대비, 링크·버튼·스와이프 직후 제외) */
-      'var moved=false;' +
-      'deck.addEventListener("click",function(e){if(!b.classList.contains("paged"))return;if(moved){moved=false;return;}if(e.target.closest&&e.target.closest("a,button,input,textarea"))return;var x=e.clientX,w=window.innerWidth||deck.clientWidth;if(x<w*0.22){goPage(-1);}else if(x>w*0.78){goPage(1);}});' +
-      /* 터치 스와이프 — 손가락 따라 미리보기 후 손 떼면 페이지 전환 */
-      /* (2026-10-10) 휴대폰·패드: 처음·끝 쪽에서는 덜 따라오다 제자리로, 두 손가락이면 멈춤, 스크롤 모드에서도 옆으로 밀면 앞뒤 쪽으로 부드럽게 */
-      'var sx=0,sy=0,st=0,sw=0,dragging=false,locked=false,sdrag=false;' +
-      'track.addEventListener("touchstart",function(e){var t=e.touches[0];if(e.touches.length!==1){if(dragging&&locked==="x")apply();dragging=false;sdrag=false;return;}sx=t.clientX;sy=t.clientY;st=Date.now();sw=deck.clientWidth||window.innerWidth||1;locked=false;' +
-        'if(!b.classList.contains("paged")){sdrag=true;return;}dragging=true;track.style.transition="none";},{passive:true});' +
-      'track.addEventListener("touchmove",function(e){if(!dragging)return;if(e.touches.length!==1){dragging=false;track.style.transition="";apply();return;}var t=e.touches[0],dx=t.clientX-sx,dy=t.clientY-sy;' +
-        'if(!locked){if(Math.abs(dx)>Math.abs(dy)*1.2&&Math.abs(dx)>8){locked="x";}else if(Math.abs(dy)>10){locked="y";}}' +
-        'if(locked==="x"){moved=true;if((curPg===0&&dx>0)||(curPg===total-1&&dx<0))dx*=0.3;var pct=(-curPg*100)+(dx/sw*100);track.style.transform="translateX("+pct+"%)";}},{passive:true});' +
-      'track.addEventListener("touchend",function(e){var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;' +
-        'if(sdrag){sdrag=false;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){var ps=track.querySelectorAll(".pg"),k=curIdx()+(dx<0?1:-1);if(ps[k]){ps[k].scrollIntoView({behavior:"smooth",block:"start"});setTimeout(updateNav,450);}}return;}' +
-        'if(!dragging)return;dragging=false;track.style.transition="";' +
-        'if(locked==="x"&&(Math.abs(dx)>sw*0.12||(dt<500&&Math.abs(dx)>30))){goPage(dx<0?1:-1);}else{apply();}' +
-        'setTimeout(function(){moved=false;},50);},{passive:true});' +
-      'track.addEventListener("touchcancel",function(){if(dragging){dragging=false;track.style.transition="";apply();}sdrag=false;},{passive:true});' +
+      /* 쪽 넘기기 — 마우스 클릭(좌/우 가장자리)과 터치(밀기·가장자리 탭)를 따로 처리한다.
+         (2026-10-11) 아이패드: 터치 이벤트+클릭이 겹쳐 한 번에 여러 쪽이 넘어가고 밀기가 안 먹던 문제 — 터치는 포인터 이벤트 하나로 통합,
+         한 번에 한 쪽만(goPage 에 0.3초 잠금), 터치 직후에 따라오는 클릭은 무시 */
+      'var lastTouch=0;' +
+      'deck.addEventListener("click",function(e){if(!b.classList.contains("paged"))return;if(Date.now()-lastTouch<800)return;if(e.target.closest&&e.target.closest("a,button,input,textarea"))return;var x=e.clientX,w=window.innerWidth||deck.clientWidth;if(x<w*0.22){goPage(-1);}else if(x>w*0.78){goPage(1);}});' +
+      'var sx=0,sy=0,st=0,sw=1,pid=null,locked=false,multi=false;' +
+      'function inCtl(t){return !!(t&&t.closest&&t.closest("a,button,input,textarea,[data-go]"));}' +
+      'track.addEventListener("pointerdown",function(e){if(e.pointerType==="mouse")return;' +
+        'if(pid!==null&&pid!==e.pointerId){multi=true;if(locked==="x")apply();return;}' +
+        'pid=e.pointerId;multi=false;sx=e.clientX;sy=e.clientY;st=Date.now();sw=deck.clientWidth||window.innerWidth||1;locked=false;' +
+        'if(b.classList.contains("paged"))track.style.transition="none";});' +
+      'track.addEventListener("pointermove",function(e){if(e.pointerId!==pid||multi)return;var dx=e.clientX-sx,dy=e.clientY-sy;' +
+        'if(!locked){if(Math.abs(dx)>Math.abs(dy)*1.2&&Math.abs(dx)>8)locked="x";else if(Math.abs(dy)>10)locked="y";}' +
+        'if(locked==="x"&&b.classList.contains("paged")){if((curPg===0&&dx>0)||(curPg===total-1&&dx<0))dx*=0.3;track.style.transform="translateX("+((-curPg*100)+(dx/sw*100))+"%)";}});' +
+      'function endTouch(e,cancel){if(e.pointerId!==pid)return;var dx=e.clientX-sx,dy=e.clientY-sy,dt=Date.now()-st,was=locked,paged=b.classList.contains("paged"),tap=!was&&Math.abs(dx)<10&&Math.abs(dy)<10;' +
+        'pid=null;lastTouch=Date.now();track.style.transition="";' +
+        'if(multi||cancel){multi=false;if(paged)apply();return;}' +
+        'if(was==="x"&&(Math.abs(dx)>sw*0.12||(dt<500&&Math.abs(dx)>30))){' +
+          'if(paged)goPage(dx<0?1:-1);else{var ps=track.querySelectorAll(".pg"),k=curIdx()+(dx<0?1:-1);if(ps[k]){ps[k].scrollIntoView({behavior:"smooth",block:"start"});setTimeout(updateNav,450);}}' +
+        '}else{if(paged)apply();' +
+          'if(tap&&paged&&!inCtl(e.target)){var w=window.innerWidth||deck.clientWidth;if(e.clientX<w*0.22)goPage(-1);else if(e.clientX>w*0.78)goPage(1);}}}' +
+      'track.addEventListener("pointerup",function(e){endTouch(e,false);});' +
+      'track.addEventListener("pointercancel",function(e){endTouch(e,true);});' +
       /* 오늘의 예배 순서: 목록의 줄을 누르면 그 순서(또는 설교 원고)로, [순서] 단추는 목록으로 */
       'function goEl(el){if(!el)return;if(b.classList.contains("paged")){var ps=track.querySelectorAll(".pg");for(var k=0;k<ps.length;k++)if(ps[k]===el){curPg=k;apply();return;}}else{el.scrollIntoView({block:"start"});}}' +
       'function goTarget(id){return id==="body"?track.querySelector(".pg-body"):document.getElementById(id);}' +
