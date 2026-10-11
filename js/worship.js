@@ -1141,8 +1141,9 @@
         '<div class="ws-top"><b>오늘의 예배</b><span class="ws-step" id="wsStep"></span><span class="ws-sp"></span>' +
           '<select class="ws-view" id="wsView" hidden aria-label="화면 고르기" title="성도 · 반주자 · 목회자 화면"></select>' +
           '<button type="button" class="ws-ib ws-edit-btn" id="wsEdit" hidden>편집</button>' +
+          '<button type="button" class="ws-ib" id="wsFull" title="전체 화면 (Esc: 되돌리기)">⛶ 전체화면</button>' +
           '<button type="button" class="ws-ib" id="wsSmall" title="글자 작게">A−</button><button type="button" class="ws-ib" id="wsLarge" title="글자 크게">A+</button>' +
-          '<button type="button" class="ws-ib ws-x" id="wsClose" aria-label="닫기">×</button></div>' +
+          '<button type="button" class="ws-ib ws-x" id="wsClose" aria-label="나가기">✕ 나가기</button></div>' +
         '<div class="ws-strip" id="wsStrip"></div>' +
         '<div class="ws-body" id="wsBody"></div>' +
         '<div class="ws-nav"><button type="button" class="ws-btn" id="wsPrev">◀ 이전</button><button type="button" class="ws-btn primary" id="wsNext">다음 ▶</button></div>' +
@@ -1150,6 +1151,8 @@
     document.body.appendChild(overlay);
     $('wsClose').onclick = function () { if (window.ModalNav) ModalNav.close(); else closeViewer(); };
     $('wsPrev').onclick = function () { slideGo(-1); };
+    $('wsFull').onclick = function () { wsFullToggle(); };
+    document.addEventListener('fullscreenchange', wsFullSync); document.addEventListener('webkitfullscreenchange', wsFullSync);
     $('wsEdit').onclick = toggleEdit;
     $('wsView').onchange = function () {   /* 성도·반주자·목회자 화면 바꾸기 — 고른 화면은 이 기기에 기억 */
       wsView = this.value; try { localStorage.setItem('wpc.worship.view', wsView); } catch (e) {}
@@ -1169,7 +1172,25 @@
     return overlay;
   }
   function setSize(d) { textSize = Math.max(0.8, Math.min(1.8, +(textSize + d).toFixed(2))); var b = $('wsBody'); if (b) b.style.fontSize = (textSize * 100) + '%'; try { localStorage.setItem('wpc.worship.size', String(textSize)); } catch (e) {} }
-  function closeViewer() { if (!overlay) return; overlay.hidden = true; document.body.classList.remove('ws-open'); setTimeout(heroRefresh, 0); }
+  /* 전체 화면 — 브라우저 전체 화면(Esc 로 되돌림), 안 되는 기기(아이폰 등)는 창 가득 */
+  function wsIsFull() { return !!(document.fullscreenElement || document.webkitFullscreenElement) || (overlay && overlay.classList.contains('ws-full')); }
+  function wsFullSync() { if (!overlay) return; var native = !!(document.fullscreenElement || document.webkitFullscreenElement); if (!native && !overlay.classList.contains('ws-fake')) overlay.classList.remove('ws-full'); else overlay.classList.add('ws-full'); var b = $('wsFull'); if (b) b.textContent = wsIsFull() ? '⛶ 전체화면 해제' : '⛶ 전체화면'; }
+  function wsFullToggle() {
+    if (wsIsFull()) { wsFullOff(); return; }
+    var req = overlay.requestFullscreen || overlay.webkitRequestFullscreen, p = null;
+    overlay.classList.add('ws-full');
+    if (req) { try { p = req.call(overlay); } catch (e) { p = null; } }
+    function fake() { overlay.classList.add('ws-fake'); wsFullSync(); }
+    if (!req) fake(); else if (p && p.then) p.then(wsFullSync, fake);
+    wsFullSync();
+  }
+  function wsFullOff() {
+    if (!overlay) return;
+    overlay.classList.remove('ws-fake', 'ws-full');
+    if (document.fullscreenElement || document.webkitFullscreenElement) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} }
+    wsFullSync();
+  }
+  function closeViewer() { if (!overlay) return; wsFullOff(); overlay.hidden = true; document.body.classList.remove('ws-open'); setTimeout(heroRefresh, 0); }
 
   window.WPCWorship = { open: openGate, close: closeViewer, services: services, wedInfo: wedInfo, bulletins: bulletins, today: todayStr };
   heroSlide();

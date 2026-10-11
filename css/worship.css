@@ -225,3 +225,9 @@ body.hw-fs-body { overflow: hidden; }
 .hero-cta.hw-preach small { font-size: .74rem; font-weight: 400; opacity: .85; }
 .hero.hw-fs .hw-preach-row { display: none !important; }
 @media (max-width: 560px) { .hero-cta.hw-preach { width: 100%; min-width: 0; } }
+
+/* 오늘의 예배 전체 화면 (2026-10-11) — 카드를 화면 가득, 위 줄(나가기·전체화면 해제)은 그대로 둔다 */
+#wsOverlay.ws-full { padding: 0; background: #fffdf8; }
+#wsOverlay.ws-full .ws-card { width: 100%; height: 100%; height: 100dvh; border-radius: 0; box-shadow: none; }
+#wsOverlay.ws-fake { z-index: 5000; }
+.ws-ib.ws-x { font-size: .9rem; padding: 6px 12px; }
