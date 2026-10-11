@@ -8222,8 +8222,6 @@ console.log('[affairs.js] v20261010form1');
     var _craw = r.content || '';
     var _isHtml = /<(p|div|h[1-6]|ul|ol|li|blockquote|br|span|mark|b|i|strong|em|u|s|font)\b/i.test(_craw);
     var bodyIsHtml = false, bodyBlocks, bodyLh = '', bodyLs = '';
-    /* 설교 매니저에서 정한 글자 크기(px)는 발표자 모드의 글자 크기(가−/가+)에 비례하게 em 으로 — 편집기 기본 글자 크기(1.06rem≈17px)를 1 로 */
-    function emSizes(h) { return String(h).replace(/font-size\s*:\s*([\d.]+)\s*(px|pt)/gi, function (m, n, u) { var px = parseFloat(n) * (u.toLowerCase() === 'pt' ? 4 / 3 : 1); return 'font-size:' + (Math.round(px / 16.96 * 1000) / 1000) + 'em'; }); }
     if (_isHtml) {
       var _tmp = document.createElement('div'); _tmp.innerHTML = _craw;
       /* 줄간격·자간을 정했으면 원고 전체가 <div data-se-root> 하나로 저장된다 — 풀어서 그 값은 본문에 적용하고 안의 문단을 쪽 나눔 단위로 */
@@ -8231,7 +8229,7 @@ console.log('[affairs.js] v20261010form1');
       if (_root) { bodyLh = _root.getAttribute('data-se-lh') || ''; bodyLs = _root.getAttribute('data-se-ls') || ''; _tmp = _root; }
       bodyBlocks = [];
       Array.prototype.forEach.call(_tmp.childNodes, function (n) {
-        if (n.nodeType === 1) { if ((n.outerHTML || '').trim()) bodyBlocks.push(emSizes(n.outerHTML)); }
+        if (n.nodeType === 1) { if ((n.outerHTML || '').trim()) bodyBlocks.push(n.outerHTML); }
         else if (n.nodeType === 3 && n.textContent.trim()) bodyBlocks.push('<p>' + n.textContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p>');
       });
       if (!bodyBlocks.length) bodyBlocks = [_craw];
@@ -8388,10 +8386,13 @@ console.log('[affairs.js] v20261010form1');
       '.lt-body{font-size:.98em;line-height:1.85;white-space:pre-wrap;margin-top:4px}',
       '.pg-img .img-pg-t{font-family:"Noto Sans KR",sans-serif;font-size:.75em;color:#7a5d27;font-weight:700;margin-bottom:10px;text-align:center}',
       '.pg-img img{max-width:100%;max-height:calc(100% - 40px);object-fit:contain;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.1)}',
+      /* 설교 원고(본문)는 설교 매니저 편집기와 같은 모양 — 기본 글자 1.06rem·줄간격 2·어절 줄바꿈, 매니저에서 정한 글자 크기(px)는 그대로.
+         발표자 모드의 글자 크기(가−/가+)·예배 순서 쪽에는 영향을 주지 않는다 */
+      '.body{font-size:1.06rem;line-height:2;word-break:keep-all;overflow-wrap:break-word;-webkit-text-size-adjust:none}',
       '.body{white-space:normal' + (/^[\d.]+$/.test(bodyLh) ? ';line-height:' + bodyLh : '') + (/^-?[\d.]+(px|em)?$/.test(bodyLs) ? ';letter-spacing:' + bodyLs + (/^-?[\d.]+$/.test(bodyLs) ? 'px' : '') : '') + '}',
-      '.body h1,.body h2{font-size:1.32em;font-weight:800;margin:.6em 0 .3em;line-height:1.4;color:#10243f}body.dark .body h1,body.dark .body h2{color:#e8edf6}',
-      '.body h3{font-size:1.14em;font-weight:700;margin:.5em 0 .25em;color:#1b3a5c}body.dark .body h3{color:#9bbcf0}',
-      '.body p{margin:.5em 0}.body ul,.body ol{margin:.5em 0;padding-left:1.5em}.body li{margin:.2em 0}',
+      '.body h1,.body h2{font-size:1.42em;font-weight:800;margin:.6em 0 .3em;line-height:1.4;color:#10243f}body.dark .body h1,body.dark .body h2{color:#e8edf6}',
+      '.body h3{font-size:1.18em;font-weight:700;margin:.5em 0 .25em;color:#1b3a5c}body.dark .body h3{color:#9bbcf0}',
+      '.body p{margin:.45em 0}.body ul,.body ol{margin:.5em 0;padding-left:1.5em}.body li{margin:.2em 0}',
       '.body blockquote{border-left:4px solid #d8cbab;margin:.6em 0;padding:.2em 0 .2em 16px;color:#6b5d3e;font-style:italic}body.dark .body blockquote{border-left-color:#5a513a;color:#cbb98a}',
       '.body mark{padding:0 2px;border-radius:2px}.body hr{border:none;border-top:1px solid #d8cbab;margin:.9em 0}body.dark .body hr{border-top-color:#3a3d44}',
       '.body .lt-prayer-h{font-size:1.18em;font-weight:800;color:#7a5d27;margin:1em 0 .35em;padding-top:.6em;border-top:2px solid #e4dcc9}body.dark .body .lt-prayer-h{color:#e0c98a;border-top-color:#3a3d44}',
