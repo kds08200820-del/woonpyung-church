@@ -8222,19 +8222,36 @@ console.log('[affairs.js] v20261010form1');
     var _craw = r.content || '';
     var _isHtml = /<(p|div|h[1-6]|ul|ol|li|blockquote|br|span|mark|b|i|strong|em|u|s|font)\b/i.test(_craw);
     var bodyIsHtml = false, bodyBlocks, bodyLh = '', bodyLs = '';
+    /* 원고 안에 따로 붙은 글자 크기·자간도 기본 글자와 같은 배율(--sk)로 키운다 (2026-10-13 2배).
+       부모 글자를 따르지 않는 값만 — px·pt·rem(편집기 기본 1.06rem 이 문단 병합·붙여넣기로 붙는다)·크기 낱말·<font size>.
+       em·% 는 이미 커진 부모를 따라 저절로 커지므로 그대로 둔다 */
+    var _kw = { 'xx-small': 9, 'x-small': 10, small: 13, medium: 16, large: 18, 'x-large': 24, 'xx-large': 32, 'xxx-large': 48 };
+    var _abs = { px: 1, pt: 4 / 3, pc: 16, 'in': 96, cm: 96 / 2.54, mm: 96 / 25.4, q: 96 / 101.6 };
+    function _skv(v) {
+      v = String(v || '').trim().toLowerCase();
+      var m = /^(-?[\d.]+)(px|pt|pc|in|cm|mm|q|rem)$/.exec(v);
+      if (m && m[2] === 'rem') return 'calc(var(--sk) * ' + parseFloat(m[1]) + 'rem)';
+      var px = m ? parseFloat(m[1]) * _abs[m[2]] : _kw[v];
+      return px == null || isNaN(px) ? '' : 'calc(var(--sk) * ' + (Math.round(px * 100) / 100) + 'px)';
+    }
+    function skSizes(box) {
+      Array.prototype.forEach.call(box.querySelectorAll('font[size]'), function (el) {   /* 옛 <font size="1~7">(+1·-1 은 3 기준) */
+        var a = el.getAttribute('size'), n = /^[+-]/.test(a) ? 3 + parseInt(a, 10) : parseInt(a, 10);
+        el.removeAttribute('size');
+        if (!el.style.fontSize && n) el.style.fontSize = [10, 13, 16, 18, 24, 32, 48][Math.max(1, Math.min(7, n)) - 1] + 'px';
+      });
+      Array.prototype.forEach.call(box.querySelectorAll('[style]'), function (el) {
+        var f = _skv(el.style.fontSize), l = _skv(el.style.letterSpacing);
+        if (f) el.style.fontSize = f;
+        if (l) el.style.letterSpacing = l;
+      });
+    }
     if (_isHtml) {
       var _tmp = document.createElement('div'); _tmp.innerHTML = _craw;
       /* 줄간격·자간을 정했으면 원고 전체가 <div data-se-root> 하나로 저장된다 — 풀어서 그 값은 본문에 적용하고 안의 문단을 쪽 나눔 단위로 */
       var _root = _tmp.children.length === 1 && _tmp.firstElementChild.hasAttribute('data-se-root') ? _tmp.firstElementChild : null;
       if (_root) { bodyLh = _root.getAttribute('data-se-lh') || ''; bodyLs = _root.getAttribute('data-se-ls') || ''; _tmp = _root; }
-      /* 원고 안에서 따로 정한 글자 크기·자간(px·pt)도 기본 글자와 같은 배율(--sk)로 키운다 (2026-10-13 2배) */
-      var _kw = { 'xx-small': 9, 'x-small': 10, small: 13, medium: 16, large: 18, 'x-large': 24, 'xx-large': 32, 'xxx-large': 48 };
-      function _skv(v) { var m = /^(-?[\d.]+)(px|pt)$/i.exec(String(v).trim()); var px = m ? parseFloat(m[1]) * (m[2].toLowerCase() === 'pt' ? 4 / 3 : 1) : _kw[String(v).trim().toLowerCase()]; return px == null || isNaN(px) ? '' : 'calc(var(--sk) * ' + (Math.round(px * 100) / 100) + 'px)'; }
-      Array.prototype.forEach.call(_tmp.querySelectorAll('[style]'), function (el) {
-        var f = _skv(el.style.fontSize), l = _skv(el.style.letterSpacing);
-        if (f) el.style.fontSize = f;
-        if (l) el.style.letterSpacing = l;
-      });
+      skSizes(_tmp);
       bodyBlocks = [];
       Array.prototype.forEach.call(_tmp.childNodes, function (n) {
         if (n.nodeType === 1) { if ((n.outerHTML || '').trim()) bodyBlocks.push(n.outerHTML); }
@@ -8250,7 +8267,7 @@ console.log('[affairs.js] v20261010form1');
       if (bodyIsHtml) {
         bodyBlocks.push('<h2 class="lt-prayer-h">🙏 기도</h2>');
         if (/<(p|div|h[1-6]|br|span|b|i|u|strong|em)\b/i.test(prayerRaw)) {
-          var _pt = document.createElement('div'); _pt.innerHTML = prayerRaw;
+          var _pt = document.createElement('div'); _pt.innerHTML = prayerRaw; skSizes(_pt);
           Array.prototype.forEach.call(_pt.childNodes, function (n) { if (n.nodeType === 1) { if ((n.outerHTML || '').trim()) bodyBlocks.push(n.outerHTML); } else if (n.nodeType === 3 && n.textContent.trim()) bodyBlocks.push('<p>' + _eh(n.textContent) + '</p>'); });
         } else {
           prayerRaw.split(/\n{2,}/).forEach(function (p) { if (p.trim()) bodyBlocks.push('<p>' + _eh(p).replace(/\n/g, '<br>') + '</p>'); });
