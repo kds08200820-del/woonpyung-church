@@ -8227,6 +8227,14 @@ console.log('[affairs.js] v20261010form1');
       /* 줄간격·자간을 정했으면 원고 전체가 <div data-se-root> 하나로 저장된다 — 풀어서 그 값은 본문에 적용하고 안의 문단을 쪽 나눔 단위로 */
       var _root = _tmp.children.length === 1 && _tmp.firstElementChild.hasAttribute('data-se-root') ? _tmp.firstElementChild : null;
       if (_root) { bodyLh = _root.getAttribute('data-se-lh') || ''; bodyLs = _root.getAttribute('data-se-ls') || ''; _tmp = _root; }
+      /* 원고 안에서 따로 정한 글자 크기·자간(px·pt)도 기본 글자와 같은 배율(--sk)로 키운다 (2026-10-13 2배) */
+      var _kw = { 'xx-small': 9, 'x-small': 10, small: 13, medium: 16, large: 18, 'x-large': 24, 'xx-large': 32, 'xxx-large': 48 };
+      function _skv(v) { var m = /^(-?[\d.]+)(px|pt)$/i.exec(String(v).trim()); var px = m ? parseFloat(m[1]) * (m[2].toLowerCase() === 'pt' ? 4 / 3 : 1) : _kw[String(v).trim().toLowerCase()]; return px == null || isNaN(px) ? '' : 'calc(var(--sk) * ' + (Math.round(px * 100) / 100) + 'px)'; }
+      Array.prototype.forEach.call(_tmp.querySelectorAll('[style]'), function (el) {
+        var f = _skv(el.style.fontSize), l = _skv(el.style.letterSpacing);
+        if (f) el.style.fontSize = f;
+        if (l) el.style.letterSpacing = l;
+      });
       bodyBlocks = [];
       Array.prototype.forEach.call(_tmp.childNodes, function (n) {
         if (n.nodeType === 1) { if ((n.outerHTML || '').trim()) bodyBlocks.push(n.outerHTML); }
@@ -8386,13 +8394,14 @@ console.log('[affairs.js] v20261010form1');
       '.lt-body{font-size:.98em;line-height:1.85;white-space:pre-wrap;margin-top:4px}',
       '.pg-img .img-pg-t{font-family:"Noto Sans KR",sans-serif;font-size:.75em;color:#7a5d27;font-weight:700;margin-bottom:10px;text-align:center}',
       '.pg-img img{max-width:100%;max-height:calc(100% - 40px);object-fit:contain;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.1)}',
-      /* 설교 원고(본문)는 설교 매니저 편집기와 같은 모양 — 기본 글자 1.06rem·줄간격 2·어절 줄바꿈, 매니저에서 정한 글자 크기(px)는 그대로.
+      /* 설교 원고(본문)는 설교 매니저 편집기와 같은 모양(줄간격 2·어절 줄바꿈)을 --sk 배로 키운다 — 기본 글자 1.06rem×2, 매니저에서 정한 글자 크기·자간(px)도 ×2 (2026-10-13).
          발표자 모드의 글자 크기(가−/가+)·예배 순서 쪽에는 영향을 주지 않는다 */
-      '.body{font-size:1.06rem;line-height:2;word-break:keep-all;overflow-wrap:break-word;-webkit-text-size-adjust:none}',
-      '.body{white-space:normal' + (/^[\d.]+$/.test(bodyLh) ? ';line-height:' + bodyLh : '') + (/^-?[\d.]+(px|em)?$/.test(bodyLs) ? ';letter-spacing:' + bodyLs + (/^-?[\d.]+$/.test(bodyLs) ? 'px' : '') : '') + '}',
+      '.body{--sk:2;font-size:calc(var(--sk) * 1.06rem);line-height:2;word-break:keep-all;overflow-wrap:break-word;-webkit-text-size-adjust:none}',
+      '.body{white-space:normal' + (/^[\d.]+$/.test(bodyLh) ? ';line-height:' + bodyLh : '') + (/^-?[\d.]+(px|em)?$/.test(bodyLs) ? ';letter-spacing:' + (/em$/.test(bodyLs) ? bodyLs : 'calc(var(--sk) * ' + parseFloat(bodyLs) + 'px)') : '') + '}',
       '.body h1,.body h2{font-size:1.42em;font-weight:800;margin:.6em 0 .3em;line-height:1.4;color:#10243f}body.dark .body h1,body.dark .body h2{color:#e8edf6}',
       '.body h3{font-size:1.18em;font-weight:700;margin:.5em 0 .25em;color:#1b3a5c}body.dark .body h3{color:#9bbcf0}',
       '.body p{margin:.45em 0}.body ul,.body ol{margin:.5em 0;padding-left:1.5em}.body li{margin:.2em 0}',
+      '.body .cut{overflow:hidden}.body .cutin{display:flow-root;position:relative}',   /* 쪽보다 긴 문단의 조각 */
       '.body blockquote{border-left:4px solid #d8cbab;margin:.6em 0;padding:.2em 0 .2em 16px;color:#6b5d3e;font-style:italic}body.dark .body blockquote{border-left-color:#5a513a;color:#cbb98a}',
       '.body mark{padding:0 2px;border-radius:2px}.body hr{border:none;border-top:1px solid #d8cbab;margin:.9em 0}body.dark .body hr{border-top-color:#3a3d44}',
       '.body .lt-prayer-h{font-size:1.18em;font-weight:800;color:#7a5d27;margin:1em 0 .35em;padding-top:.6em;border-top:2px solid #e4dcc9}body.dark .body .lt-prayer-h{color:#e0c98a;border-top-color:#3a3d44}',
@@ -8458,7 +8467,34 @@ console.log('[affairs.js] v20261010form1');
       '@media print{.bar{display:none}body{display:block;font-size:13pt}#deck{display:block;overflow:visible}#track,body.paged #track{display:block;transform:none!important}body.paged .pg{width:auto;height:auto;page-break-after:always;overflow:visible}}'
     ].join('');
 
+    /* 발표 창 안에서 도는 함수(toString 으로 넣음) — 한 쪽보다 긴 문단을 줄과 줄 사이에서 끊어 여러 쪽에 나눈다 (2026-10-13 글자 2배).
+       문단은 그대로 두고 쪽마다 보이는 창(.cut)만 아래로 옮기므로 서식이 깨지지 않는다. 🔒 고정 중에는 쪽 안 스크롤이 막혀 넘치면 글이 잘렸다.
+       돌려주는 값: [[보일 시작 y, 끝 y], ...] (문단 맨 위 기준 px) */
+    function presenterSplitBlock(pg, inr, html) {
+      var cs = getComputedStyle(pg), avail = pg.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 2;
+      inr.innerHTML = '<div class="cut"><div class="cutin">' + html + '</div></div>';
+      var cin = inr.firstChild.firstChild, top0 = cin.getBoundingClientRect().top, full = cin.offsetHeight;
+      if (avail < 40 || full <= avail) return [[0, full]];
+      /* 글자 조각(줄마다 하나)과 그림의 위·아래 — 이것들을 가로지르지 않는 높이에서만 끊는다 */
+      var rs = [], rg = document.createRange(), tw = document.createTreeWalker(cin, NodeFilter.SHOW_TEXT), n;
+      function add(r) { if (r.bottom > r.top) rs.push([r.top - top0, r.bottom - top0]); }
+      while ((n = tw.nextNode())) { rg.selectNodeContents(n); Array.prototype.forEach.call(rg.getClientRects(), add); }
+      Array.prototype.forEach.call(cin.querySelectorAll('img,svg,video,iframe'), function (el) { add(el.getBoundingClientRect()); });
+      function ok(c) { for (var k = 0; k < rs.length; k++) if (rs[k][0] < c - .5 && rs[k][1] > c + .5) return false; return true; }
+      var cands = rs.map(function (r) { return r[1]; }).concat([full]).sort(function (a, b) { return a - b; });
+      var segs = [], s = 0;
+      while (s < full - 1) {
+        var e = 0;
+        for (var k = 0; k < cands.length; k++) { var c = cands[k]; if (c <= s + .5) continue; if (c - s > avail) break; if (ok(c)) e = c; }
+        if (!e) e = Math.min(full, s + avail);   /* 한 줄(또는 그림)이 쪽보다 크면 쪽 높이에서 자른다 */
+        segs.push([s, e]); s = e;
+      }
+      return segs;
+    }
+
     var js = '(function(){' +
+      presenterSplitBlock.toString() + ';' +
+      'function cutHtml(h,g){return "<div class=\\"cut\\" style=\\"height:"+(g[1]-g[0])+"px\\"><div class=\\"cutin\\" style=\\"top:"+(-g[0])+"px\\">"+h+"</div></div>";}' +
       'var b=document.body,s=22,deck=document.getElementById("deck"),track=document.getElementById("track"),ind=document.getElementById("pg_ind");' +
       'var BODY=' + bodyLinesJson + ';var HTML=' + (bodyIsHtml ? 'true' : 'false') + ';' +
       'var curPg=0,total=0,reflowTimer=null;' +
@@ -8476,6 +8512,9 @@ console.log('[affairs.js] v20261010form1');
           'while(i<BODY.length){var pg=mkBodyPage();addPg(pg);var inr=pg.firstChild,started=false;' +
             'while(i<BODY.length){var prev=inr.innerHTML;inr.innerHTML=prev+lineHtml(BODY[i]);' +
               'if(started&&pg.scrollHeight>pg.clientHeight+1){inr.innerHTML=prev;break;}' +
+              /* 문단 하나가 빈 쪽에도 안 들어가면 줄 사이에서 끊어 다음 쪽들로 — 다음 문단은 마지막 조각 뒤에 이어 붙는다 */
+              'if(!started&&pg.scrollHeight>pg.clientHeight+1){var sg=presenterSplitBlock(pg,inr,lineHtml(BODY[i]));' +
+                'for(var q=0;q<sg.length;q++){if(q){pg=mkBodyPage();addPg(pg);inr=pg.firstChild;}inr.innerHTML=cutHtml(lineHtml(BODY[i]),sg[q]);}}' +
               'started=true;i++;}' +
           '}' +
         '}' +
