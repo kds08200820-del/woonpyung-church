@@ -181,7 +181,7 @@
   /* ── 절 고르기: 절을 톡 누르면 골라진다(여러 절 가능). 오른쪽 둥근 단추가 고른 절에 작용한다 ── */
   var SEL = {};                                  /* "bi:ci:vi" → true */
   function selKeys(){ return Object.keys(SEL); }
-  function paintSel(){ [].forEach.call(document.querySelectorAll('#reader .vpara[data-b], #reader .vrow[data-b]'), function(r){ var on = !!SEL[r.dataset.b + ':' + r.dataset.c + ':' + r.dataset.v]; r.classList.toggle('mo-sel', on); r.classList.toggle('vpick', on); }); fab.classList.toggle('has-sel', selKeys().length > 0); }   /* vpick: 오른쪽 단추 메뉴가 고른 절 모두에 작용 */
+  function paintSel(){ [].forEach.call(document.querySelectorAll('#reader .vpara[data-b], #reader .vrow[data-b]'), function(r){ var on = !!SEL[r.dataset.b + ':' + r.dataset.c + ':' + r.dataset.v]; r.classList.toggle('mo-sel', on); r.classList.toggle('vpick', on); }); fab.classList.toggle('has-sel', selKeys().length > 0); fabSync(); }   /* vpick: 오른쪽 단추 메뉴가 고른 절 모두에 작용 */
   function clearSel(){ SEL = {}; paintSel(); }
   function selGroups(){
     var ks = selKeys().map(function(k){ var a = k.split(':').map(Number); return { bi:a[0], ci:a[1], vi:a[2] }; }).sort(function(x, y){ return x.bi - y.bi || x.ci - y.ci || x.vi - y.vi; });
@@ -207,16 +207,28 @@
     new MutationObserver(function(){ var st = APP.st; var keep = {}; selKeys().forEach(function(k){ if(k.indexOf(st.bi + ':' + st.ci + ':') === 0) keep[k] = true; }); SEL = keep; paintSel(); }).observe(reader0, { childList:true });
   }
 
-  /* ── 오른쪽 둥근 단추: 색연필 · 복사 · 주석 · 지도 ── */
+  /* ── 오른쪽 둥근 단추: 색연필 · 복사 · 주석 · 지도 ──
+     평소에는 작은 '도구' 단추 하나만 보이고(본문을 가리지 않게), 누르거나 절을 고르면 위로 펼쳐진다 (1.0.83) */
   var HLC = ['yellow', 'green', 'blue', 'pink', 'orange', 'purple'], hlColor = 'yellow';
   try{ hlColor = localStorage.getItem('modu.hlColor') || 'yellow'; }catch(e){}
   var fab = document.createElement('div'); fab.id = 'moFab';
-  fab.innerHTML = '<button type="button" class="mo-fab pen" data-k="pen"><span class="ic">🖍</span><span class="lb">색연필</span><i class="dot"></i></button>' +
+  fab.innerHTML = '<div class="mo-fab-tools">' +
+                  '<button type="button" class="mo-fab pen" data-k="pen"><span class="ic">🖍</span><span class="lb">색연필</span><i class="dot"></i></button>' +
                   '<button type="button" class="mo-fab copy" data-k="copy"><span class="ic">📋</span><span class="lb">복사</span></button>' +
                   '<button type="button" class="mo-fab comm" data-k="comm"><span class="ic">📖</span><span class="lb">주석</span></button>' +
-                  '<button type="button" class="mo-fab map" data-k="map"><span class="ic">🗺</span><span class="lb">지도</span></button>';
+                  '<button type="button" class="mo-fab map" data-k="map"><span class="ic">🗺</span><span class="lb">지도</span></button>' +
+                  '</div><button type="button" class="mo-fab main" data-k="main" aria-expanded="false" title="색연필·복사·주석·지도"><span class="ic">✎</span><span class="lb">도구</span></button>';
   document.body.appendChild(fab);
-  var pen = fab.querySelector('.pen');
+  var pen = fab.querySelector('.pen'), fabMain = fab.querySelector('.main'), fabOpen = false;
+  /* 펼침: 손으로 연 때 또는 고른 절이 있을 때 */
+  function fabSync(){
+    if(!fabMain) return;
+    var open = fabOpen || selKeys().length > 0;
+    fab.classList.toggle('open', open);
+    fabMain.setAttribute('aria-expanded', open ? 'true' : 'false');
+    fabMain.querySelector('.ic').textContent = open ? '✕' : '✎';
+    fabMain.querySelector('.lb').textContent = open ? '닫기' : '도구';
+  }
   function paintPen(){ pen.className = 'mo-fab pen hl-' + hlColor; pen.title = '색연필 — ' + (window.HL && HL.nameOf ? HL.nameOf(hlColor) : ''); }
   paintPen();
   function doPen(){
@@ -264,8 +276,18 @@
   pen.addEventListener('contextmenu', function(e){ e.preventDefault(); palOpen(); });
   fab.addEventListener('click', function(e){
     var b = e.target.closest('.mo-fab'); if(!b || penLong) return;
+    if(b.dataset.k === 'main'){                                   /* 접기: 고른 절도 함께 푼다 */
+      var open = fab.classList.contains('open');
+      fabOpen = !open; if(open && selKeys().length) clearSel(); fabSync(); return;
+    }
     ({ pen:doPen, copy:doCopy, comm:doComm, map:doMap })[b.dataset.k]();
   });
+  /* 손으로 펼친 것은 단추 밖(본문 절 고르기 말고)을 누르면 접힌다 */
+  document.addEventListener('click', function(e){
+    if(!fabOpen || e.target.closest('#moFab') || e.target.closest('#moPal') || e.target.closest('#reader')) return;
+    fabOpen = false; fabSync();
+  });
+  fabSync();
 
   var tabs = document.createElement('nav'); tabs.id = 'moTabs';
   tabs.innerHTML = [['read', '📖', '성경'], ['hymn', '🎵', '찬송가'], ['gyodok', '📜', '교독문'], ['search', '🔍', '찾기'], ['notes', '📝', '메모'], ['more', '☰', '더보기']]

@@ -389,3 +389,20 @@ html[data-theme="clay"]{
   & .mo-in:focus{border-color:#E9805F;box-shadow:0 0 0 4px rgba(233,128,95,.18)}
   & .mo-foot{border-top-color:#F0E6D9;color:#A39282}
 }
+
+/* ── 둥근 단추 접기 (1.0.83): 평소에는 '도구' 단추 하나, 누르거나 절을 고르면 위로 펼쳐진다 ── */
+#moFab{align-items:flex-end}
+#moFab .mo-fab-tools{display:flex;flex-direction:column;gap:8px;transition:opacity .16s ease,transform .16s ease}
+#moFab:not(.open) .mo-fab-tools{opacity:0;transform:translateY(14px) scale(.92);pointer-events:none;visibility:hidden;height:0;overflow:hidden}
+.mo-fab.main{width:46px;height:46px;background:rgba(60,52,46,.62);font-size:9.5px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.mo-fab.main .ic{font-size:16px}
+#moFab.open .mo-fab.main{background:rgba(60,52,46,.82)}
+#moFab.has-sel .mo-fab.main{box-shadow:0 4px 12px rgba(0,0,0,.25)}
+html[data-theme="clay"] .mo-fab.main{background:rgba(233,128,95,.78)}
+html[data-theme="clay"] #moFab.open .mo-fab.main{background:#E9805F}
+
+/* ── 위 막대의 '원전 연구' 단추 (1.0.83): 막대가 강조색·흰 글씨라 단추 바탕(밝은 --bg)에 글씨가 하얗게 묻히던 것 ──
+   점토 바탕은 막대가 세이지·밤색 글씨라 따로(위 clay 덩어리) */
+html:not([data-theme="clay"]) #v-read > .vhead #exegBtn{background:rgba(255,255,255,.16);color:var(--accent-fg);border-color:rgba(255,255,255,.55);box-shadow:none}
+html:not([data-theme="clay"]) #v-read > .vhead #exegBtn:hover{background:rgba(255,255,255,.26);color:var(--accent-fg)}
+html[data-theme="clay"] #v-read > .vhead #exegBtn{color:var(--fg)}
