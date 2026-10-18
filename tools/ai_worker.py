@@ -105,8 +105,25 @@ WORKER = _env("AI_WORKER_NAME", "church-pc")
 MODEL_COUNSEL = _env("AI_MODEL_COUNSEL", "haiku")   # 교인 질문 — 빠른 응답이 중요
 MODEL_ADMIN = _env("AI_MODEL_ADMIN", "sonnet")      # 기도문·검수 — 문장 품질이 중요
 
-POLL_SEC = 1.5          # 사람이 화면에서 기다리는 중이므로 짧게
+# 큐 확인 간격 (2026-10-18 Supabase 사용량 절감)
+#  예전에는 밤낮없이 1.5초마다 확인해 하루 4만6천 번 — 홈페이지 전체 API 요청의 69% 였다.
+#  이제 작업을 마친 뒤(또는 워커를 켠 뒤) 3분 동안만 1.5초로 바짝 확인해 이어지는 질문을 바로 받고,
+#  조용해지면 10초, 10분이 지나면 25초 간격으로 늦춘다 → 하루 4~5천 번.
+#  가장 긴 간격은 목회행정 화면이 '워커가 꺼졌다'고 보는 45초(js/affairs.js AI_OFFLINE_MS)보다 넉넉히 짧아야 한다.
+POLL_STEPS = (          # (마지막 작업 뒤 지난 시간(초), 그동안의 확인 간격(초))
+    (3 * 60, 1.5),
+    (10 * 60, 10),
+)
+POLL_IDLE_SEC = 25      # 그 뒤로는 이 간격
 IDLE_LOG_SEC = 600      # 조용할 때 10분마다 "살아 있음" 한 줄
+
+
+def poll_interval(quiet_for):
+    """마지막 작업 뒤 quiet_for 초가 지났을 때 다음 확인까지 쉴 시간."""
+    for until, sec in POLL_STEPS:
+        if quiet_for < until:
+            return sec
+    return POLL_IDLE_SEC
 
 TIMEOUT = {             # 종류별 최대 생성 시간(초)
     "counsel": 180,
@@ -664,12 +681,13 @@ def main():
             print("대기 중인 작업이 없습니다.")
         return
 
-    print(f"대기 중… ({POLL_SEC}초 간격, Ctrl+C 로 종료)")
+    print(f"대기 중… (작업 뒤 3분은 {POLL_STEPS[0][1]}초, 조용하면 최대 {POLL_IDLE_SEC}초 간격, Ctrl+C 로 종료)")
     idle_since = time.time()
+    last_job = time.time()                   # 켠 직후도 '방금 작업한 것'처럼 바짝 확인
     while True:
         try:
             if run_once():
-                idle_since = time.time()
+                idle_since = last_job = time.time()
             else:
                 if time.time() - idle_since >= IDLE_LOG_SEC:
                     print(f"   (대기 중 — {datetime.now().strftime('%m-%d %H:%M')})")
@@ -677,7 +695,7 @@ def main():
                     if claude_logged_in() is False:
                         print(LOGIN_HELP, file=sys.stderr)
                     idle_since = time.time()
-                time.sleep(POLL_SEC)
+                time.sleep(poll_interval(time.time() - last_job))
         except KeyboardInterrupt:
             print("\n종료합니다.")
             return

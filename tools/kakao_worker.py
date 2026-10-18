@@ -57,7 +57,8 @@ SUPABASE_URL = _env("SUPABASE_URL", "https://cetacttsdwzxjzkyozgd.supabase.co").
 SERVICE_KEY = _env("SUPABASE_SERVICE_ROLE_KEY")
 WORKER = _env("KAKAO_WORKER_NAME", "home-pc")
 
-POLL_SEC = 30
+# 2026-10-18: 30초 → 60초 (Supabase 요청 줄이기 — 한 번에 발송·하트 두 번씩 묻는다). 예약 발송이 1분 안에 나가면 충분하다.
+POLL_SEC = 60
 # 예약 시각이 이만큼 넘게 지났으면 보내지 않는다.
 # (PC가 꺼져 있다가 한참 뒤에 켜졌을 때 새벽 QT가 한밤중에 날아가는 것을 막는다)
 MAX_LATE_HOURS = float(_env("KAKAO_MAX_LATE_HOURS", "6") or 6)

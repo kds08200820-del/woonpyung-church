@@ -11626,7 +11626,15 @@ console.log('[affairs.js] v20261010form1');
       });
     }
 
-    // ── 전역 감시: 25초마다 작업 상태 확인 → 칩 갱신 + 검토/완성 알림 ──
+    // ── 전역 감시: 작업 상태 확인 → 칩 갱신 + 검토/완성 알림 ──
+    //  (2026-10-18 Supabase 사용량 절감) 예전에는 이 화면을 켜 두기만 해도 25초마다 확인했다(하루 2천4백 번).
+    //  이제 교회 PC 가 일하는 중인 작업이 있을 때만 다시 확인한다 — 화면을 보고 있으면 25초, 다른 탭·최소화면 60초.
+    //  일하는 작업이 없으면 멈추고, 이 탭으로 돌아오거나 스튜디오를 닫을 때 한 번 다시 확인한다.
+    var WORKING = ['pending', 'processing', 'regen', 'approved', 'revise'];   // 'review' 는 사람 차례라 기다릴 것이 없다
+    var STALE_MS = 3 * 3600 * 1000;   // 3시간 넘게 그대로인 작업은 멈춘 것으로 보고 기다리지 않는다
+    var watchTimer = null, watchBusy = false, watchOn = false, lastWatch = 0;
+    function scheduleWatch(ms) { if (watchTimer) clearTimeout(watchTimer); watchTimer = ms ? setTimeout(watch, ms) : null; }
+    function kickWatch() { if (!watchBusy && Date.now() - lastWatch > 10000) watch(); }
     function toast(text, date) {
       var t = document.createElement('div');
       t.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:99999;background:#1c2836;color:#fff;padding:13px 18px;border-radius:12px;box-shadow:0 10px 34px rgba(0,0,0,.4);font-size:.88rem;cursor:pointer;max-width:320px';
@@ -11644,7 +11652,10 @@ console.log('[affairs.js] v20261010form1');
       } catch (e) { }
     }
     function watch() {
-      api('GET', 'video_jobs?select=id,sermon_date,status,progress,video_url,claimed_by,error&order=created_at.desc&limit=40').then(function (rows) {
+      scheduleWatch(0);
+      watchBusy = true; lastWatch = Date.now();
+      api('GET', 'video_jobs?select=id,sermon_date,status,progress,video_url,claimed_by,error,updated_at&order=created_at.desc&limit=40').then(function (rows) {
+        watchBusy = false;
         var next = {};
         (rows || []).forEach(function (j) { if (!next[j.sermon_date]) next[j.sermon_date] = j; });
         (rows || []).forEach(function (j) {
@@ -11662,14 +11673,27 @@ console.log('[affairs.js] v20261010form1');
         });
         jobs = next;
         refreshChips();
-      }).catch(function () { });
+        var now = Date.now();
+        watchOn = (rows || []).some(function (j) {
+          return WORKING.indexOf(j.status) >= 0 && !(now - Date.parse(j.updated_at) > STALE_MS);
+        });
+        if (watchOn) scheduleWatch(document.hidden ? 60000 : 25000);
+      }).catch(function () {
+        watchBusy = false;
+        if (watchOn) scheduleWatch(60000);   // 잠깐 끊긴 것이면 1분 뒤 다시
+      });
     }
-    setInterval(watch, 25000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) kickWatch(); });
     setTimeout(watch, 2500);
 
     // ── 스튜디오 팝업 ──
     function esc2(s) { return esc(s); }
-    function closeStudio() { if (vsTimer) { clearInterval(vsTimer); vsTimer = null; } var m = document.getElementById('vs_ov'); if (m) m.remove(); vsLastStatus = null; }
+    function closeStudio() {
+      if (vsTimer) { clearInterval(vsTimer); vsTimer = null; }
+      var m = document.getElementById('vs_ov');
+      if (m) { m.remove(); kickWatch(); }   // 스튜디오에서 만들기·승인을 했을 수 있다 — 전역 감시를 다시 깨운다
+      vsLastStatus = null;
+    }
 
     function openStudio(date, saveFn) {
       closeStudio();

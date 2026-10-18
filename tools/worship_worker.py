@@ -22,7 +22,7 @@ Claude Code 구독을 그대로 쓰므로 API 키가 필요 없습니다.
 
 사용법:
   python worship_worker.py --once     # 대기 작업 1건만 처리하고 종료
-  python worship_worker.py --watch    # 계속 대기하며 처리 (기본 20초 간격)
+  python worship_worker.py --watch    # 계속 대기하며 처리 (기본 60초 간격)
   python worship_worker.py --dry-run --date 2026-08-02   # 업로드 없이 생성만 시험
 
 ── 안전 설계 ────────────────────────────────────────────────
@@ -93,7 +93,8 @@ R2_KEY = _env("WORKER_UPLOAD_KEY")
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_SRC = os.path.join(REPO_DIR, ".claude", "skills")
 
-POLL_SEC = 20
+# 2026-10-18: 20초 → 60초 (Supabase 요청 줄이기). 작업 하나가 30분 넘게 걸리므로 1분 늦게 시작해도 차이가 없다.
+POLL_SEC = 60
 # 산출물 6종 생성 실측: 룻기 4장 설교(짧은 원고) 기준 32분.
 # 원고가 길면 더 걸리므로 여유를 두어 75분.
 CLAUDE_TIMEOUT = 75 * 60
