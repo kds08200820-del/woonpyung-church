@@ -9,6 +9,12 @@
 #
 # 발송은 하지 않는다 — 워커만 켠다. 워커는 한 개만 돌도록 스스로 막는다(뮤텍스).
 # 너무 늦은 예약(기본 6시간 초과)은 워커가 보내지 않고 오류로 남긴다.
+#
+# 2026-10-14 목사님 요청: 워커는 오전 6~7시에만 돈다 ("그 외 시간에는 필요 없습니다").
+#   6시대(06:00~06:59)에는 꺼져 있으면 켜고, 그 밖의 시각에는 켜져 있으면 끈다(워커와 그 창까지).
+#   이 감시 작업이 15분마다 돌므로 06:00 에 켜지고 07:00 에 꺼진다. 시간을 바꾸려면 아래 두 값만 고친다.
+$StartHour = 6      # 이 시각부터
+$EndHour   = 7      # 이 시각 전까지
 
 $ErrorActionPreference = 'Stop'
 
@@ -20,9 +26,32 @@ function Write-Log($msg) {
     try { [IO.File]::AppendAllText($Log, $line, (New-Object Text.UTF8Encoding $false)) } catch {}
 }
 
-$running = Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
-    Where-Object { $_.CommandLine -match 'kakao_worker\.py' -and $_.CommandLine -match '--watch' }
-if ($running) { return }
+$running = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
+    Where-Object { $_.CommandLine -match 'kakao_worker\.py' -and $_.CommandLine -match '--watch' })
+$hour = (Get-Date).Hour
+$inWindow = ($hour -ge $StartHour -and $hour -lt $EndHour)
+
+if (-not $inWindow) {
+    if ($running.Count) {
+        # 워커와 그 창(카카오예약워커.bat 를 돌리는 cmd)까지 끈다 — python 만 끄면 bat 의 'pause' 창이 남는다
+        $all = Get-CimInstance Win32_Process
+        $ids = New-Object System.Collections.Generic.HashSet[int]
+        foreach ($r in $running) {
+            [void]$ids.Add([int]$r.ProcessId)
+            $parent = $all | Where-Object { $_.ProcessId -eq $r.ParentProcessId }
+            while ($parent -and ($parent.Name -in @('python.exe', 'cmd.exe'))) {
+                if ($parent.Name -eq 'cmd.exe' -and $parent.CommandLine -notmatch '카카오예약워커') { break }
+                [void]$ids.Add([int]$parent.ProcessId)
+                $pp = $parent.ParentProcessId
+                $parent = $all | Where-Object { $_.ProcessId -eq $pp }
+            }
+        }
+        foreach ($id in $ids) { Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }
+        Write-Log ("워커는 {0}~{1}시에만 돕니다 — 지금 {2}시라 껐습니다." -f $StartHour, $EndHour, $hour)
+    }
+    return
+}
+if ($running.Count) { return }
 
 if (-not (Test-Path $Bat)) {
     Write-Log "워커 실행 파일이 없습니다: $Bat"
