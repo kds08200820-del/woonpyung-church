@@ -631,6 +631,13 @@ ul { list-style: none; }
   .nav-menu { gap: 16px; }
   .nav-menu a { font-size: .85rem; }
 }
+/* 그래도 넘칠 때만(js/layout.js fitHeader 가 hdr-tight 를 붙임): 로고 글자를 숨기고 더 좁게 */
+@media (min-width: 761px) {
+  #header.hdr-tight .logo-kr { display: none; }
+  #header.hdr-tight .nav-inner { padding: 0 14px; }
+  #header.hdr-tight .nav-menu { gap: 11px; }
+  #header.hdr-tight .nav-menu a { font-size: .8rem; }
+}
 
 @media (max-width: 760px) {
   .nav-menu {
