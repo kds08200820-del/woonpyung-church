@@ -373,7 +373,9 @@ window.GardenScene = (function () {
   /* ── 캐릭터 ── */
   function setCharacter(key, o) {
     o = o || {};
-    var k = String(key || 'a').toLowerCase(); if (!CHAR_COLOR[k]) k = 'a';
+    /* 도서관 인물 9명(pastor·m1~m4·f1~f4) + 예전 키 a/b/c — 그림이 있는 키만 받고, 없으면 a */
+    var k = String(key || 'a').toLowerCase();
+    if (!/^[a-z0-9-]{1,20}$/.test(k) || !(CHAR_COLOR[k] || has('chars/char-' + k + '.webp'))) k = 'a';
     S.charKey = k; S.nickname = o.nickname || '';
     if (!S.el.char) return;
     var box = S.el.char; box.innerHTML = ''; box.setAttribute('data-char', k);
@@ -382,7 +384,7 @@ window.GardenScene = (function () {
     else if (o.avatarUrl && has(o.avatarUrl.replace(/^images\/garden\/default\//, ''))) src = url(o.avatarUrl.replace(/^images\/garden\/default\//, ''));
     else src = asset('chars/char-' + k + '.webp');
     if (src) { var im = el('img', 'g-char-img'); im.src = src; im.alt = ''; im.draggable = false; box.appendChild(im); return; }
-    var c = CHAR_COLOR[k], ph = el('div', 'g-char-ph');
+    var c = CHAR_COLOR[k] || CHAR_COLOR.a, ph = el('div', 'g-char-ph');
     ph.style.setProperty('--skin', c.skin); ph.style.setProperty('--body', c.body);
     ph.innerHTML = '<i class="g-cp-head"></i><i class="g-cp-body"><b>' + esc((o.nickname || '').trim().slice(0, 1)) + '</b></i><i class="g-cp-arm g-cp-arm-l"></i><i class="g-cp-arm g-cp-arm-r"></i><i class="g-cp-shadow"></i>';
     box.appendChild(ph);

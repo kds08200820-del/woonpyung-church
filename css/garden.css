@@ -217,7 +217,10 @@ body.garden [hidden] { display: none !important; }
 .g-flabel { display: block; font-size: .82rem; font-weight: 800; color: var(--g-fg2); margin-bottom: 6px; }
 .g-field input[type="text"] { width: 100%; min-height: 48px; padding: 0 14px; border-radius: 14px; border: 1.5px solid var(--g-line); background: #fff; font: inherit; font-size: 1rem; color: var(--g-fg); }
 .g-field input[type="text"]:focus { outline: none; border-color: var(--g-coral); box-shadow: 0 0 0 4px var(--g-coral-ring); }
-.g-avatars { display: flex; gap: 12px; }
+.g-avatars { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 12px 10px; justify-items: center; }
+/* 실제 인물 그림: 전신 그림의 머리·어깨가 둥근 칸에 꽉 차게 */
+.g-av.has-img { overflow: hidden; background: linear-gradient(180deg, #fffaf3, #f3eadf); }
+.g-av-face { position: absolute; inset: 0; border-radius: 50%; background-repeat: no-repeat; background-size: 170% auto; background-position: 50% 4%; }
 .g-av { width: 72px; height: 72px; border-radius: 50%; border: 3px solid var(--g-line); background: var(--g-soft); cursor: pointer; padding: 0; position: relative; user-select: none; transition: transform .15s, border-color .2s; }
 .g-av i { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -22px 0 0 -17px; border-radius: 50%; background: #f8dcc6; box-shadow: 0 24px 0 -4px var(--av, #E9805F); }
 .g-av-a { --av: #E9805F; } .g-av-b { --av: #6f9fcf; } .g-av-c { --av: #7fb089; }

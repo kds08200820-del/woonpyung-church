@@ -116,7 +116,18 @@ window.GardenHud = (function () {
   }
   function rulesMap() { var m = {}; ((H.state && H.state.rules) || []).forEach(function (r) { if (r && r.kind && r.active !== false) m[r.kind] = r; }); return m; }
   function kindLabel(kind, rules) { var r = (rules || rulesMap())[kind]; var l = r ? label(r.label) : ''; return l || (I.has('kind.' + kind) ? t('kind.' + kind) : kind); }
-  function avatarKeyOf(url) { var m = String(url || '').match(/char-([abc])\b/); return m ? m[1] : ''; }
+  function avatarKeyOf(url) { var m = String(url || '').match(/char-([a-z0-9-]+)\.webp/); return m ? m[1] : ''; }
+  /* 고를 수 있는 모습 — 도서관 인물(서 있는 전신 그림이 있을 때). 목사님 모습은 교회 관리자에게만.
+     예전 키 a/b/c 는 m1·f1·m2 와 같은 그림이라 그 칸에 표시한다 */
+  var AV_PEOPLE = ['m1', 'f1', 'm2', 'f2', 'm3', 'f3', 'm4', 'f4'];
+  var AV_LEGACY = { a: 'm1', b: 'f1', c: 'm2' };
+  function avatarChoices(me) {
+    var list = AV_PEOPLE.filter(function (k) { return SCENE.has('chars/char-' + k + '.webp'); });
+    if (!list.length) return ['a', 'b', 'c'];                                   /* 그림이 없으면 예전 자리표시 3칸 */
+    var role = (me && me.role) || '';
+    if ((role === 'owner' || role === 'admin') && SCENE.has('chars/char-pastor.webp')) list.unshift('pastor');
+    return list;
+  }
   function avatarUrlOf(key) { return 'images/garden/default/chars/char-' + key + '.webp'; }
 
   /* ── 레일 ── */
@@ -306,13 +317,34 @@ window.GardenHud = (function () {
   }
 
   /* ── 첫 심기(온보딩): 1 닉네임·아바타 → 2 씨앗·이름 ── */
-  var ob = { step: 1, avatar: 'a', species: '', rec: null, busy: false, resolve: null, planted: null };
+  var ob = { step: 1, avatar: 'a', species: '', rec: null, busy: false, resolve: null, planted: null, mode: 'plant', savedAvatar: '' };
+  function pickAvatar(me) {
+    ob.choices = avatarChoices(me);
+    ob.avatar = me.avatar_key || avatarKeyOf(me.avatar_url) || ob.choices[0];
+    if (ob.choices.indexOf(ob.avatar) < 0) ob.avatar = AV_LEGACY[ob.avatar] && ob.choices.indexOf(AV_LEGACY[ob.avatar]) >= 0 ? AV_LEGACY[ob.avatar] : ob.choices[0];
+  }
+  /* 모습 바꾸기 — 첫 심기 창의 1단계(이름·모습)만 열어 저장한다. 저장 없이 닫으면 원래 모습으로 되돌린다 */
+  function openProfile() {
+    if (ob.rec || !H.state) return;
+    var me = H.state.me || {};
+    ob.mode = 'profile'; ob.busy = false; ob.resolve = null;
+    pickAvatar(me); ob.savedAvatar = me.avatar_key || ob.avatar;
+    $('gObNick').value = String(me.nickname || '').slice(0, 20);
+    renderAvatars();
+    $('gObErr').hidden = true;
+    showStep(1);
+    ob.rec = openModal('gmPlant', { initialFocus: '#gObNick', onClose: function () {
+      ob.rec = null;
+      if (ob.mode === 'profile') SCENE.setCharacter((H.state && H.state.me && H.state.me.avatar_key) || ob.savedAvatar, { nickname: (H.state && H.state.me && H.state.me.nickname) || '' });
+      ob.mode = 'plant';
+    } });
+  }
   function openOnboarding(st) {
     return new Promise(function (resolve) {
       if (ob.rec) { resolve(null); return; }
-      ob.resolve = resolve; ob.planted = null; ob.busy = false;
+      ob.mode = 'plant'; ob.resolve = resolve; ob.planted = null; ob.busy = false;
       var me = (st && st.me) || {};
-      ob.avatar = me.avatar_key || avatarKeyOf(me.avatar_url) || 'a';
+      pickAvatar(me);
       $('gObNick').value = String(me.nickname || '').slice(0, 20);
       renderAvatars();
       var list = speciesList();
@@ -332,8 +364,13 @@ window.GardenHud = (function () {
   }
   function renderAvatars() {
     var wrap = $('gObAvatars');
-    wrap.innerHTML = ['a', 'b', 'c'].map(function (k) {
-      return '<button type="button" class="g-av g-av-' + k + (k === ob.avatar ? ' is-on' : '') + '" role="radio" aria-checked="' + (k === ob.avatar) + '" data-key="' + k + '" aria-label="' + esc(t('onboard.avatar.' + k)) + '"><i></i></button>';
+    var keys = ob.choices || ['a', 'b', 'c'];
+    wrap.innerHTML = keys.map(function (k, i) {
+      var src = SCENE.asset('chars/char-' + k + '.webp');
+      var name = k === 'pastor' ? t('onboard.avatar.pastor') : (I.has('onboard.avatar.' + k) ? t('onboard.avatar.' + k) : t('onboard.avatar.n', { n: i + 1 }));
+      /* 얼굴이 보이게 전신 그림의 윗부분을 둥근 칸에 크게 — 그림이 없으면 예전 색 동그라미 */
+      var face = src ? '<span class="g-av-face" style="background-image:url(&quot;' + esc(src) + '&quot;)"></span>' : '<i></i>';
+      return '<button type="button" class="g-av g-av-' + esc(k) + (src ? ' has-img' : '') + (k === ob.avatar ? ' is-on' : '') + '" role="radio" aria-checked="' + (k === ob.avatar) + '" data-key="' + esc(k) + '" aria-label="' + esc(name) + '" title="' + esc(name) + '">' + face + '</button>';
     }).join('');
     Array.prototype.forEach.call(wrap.querySelectorAll('.g-av'), function (b) {
       b.addEventListener('click', function () {
@@ -353,16 +390,31 @@ window.GardenHud = (function () {
   function showStep(n) {
     ob.step = n;
     show($('gObStep1'), n === 1); show($('gObStep2'), n === 2);
-    $('gmPlantTitle').textContent = t(n === 1 ? 'onboard.step1.title' : 'onboard.step2.title');
-    $('gObStepNum').textContent = t('onboard.step', { n: n, total: 2 });
+    var prof = ob.mode === 'profile';
+    $('gmPlantTitle').textContent = prof ? t('profile.title') : t(n === 1 ? 'onboard.step1.title' : 'onboard.step2.title');
+    $('gObStepNum').textContent = prof ? '' : t('onboard.step', { n: n, total: 2 });
+    $('gObNext').textContent = prof ? t('profile.save') : t('onboard.next');
     setTimeout(function () { try { (n === 1 ? $('gObNick') : $('gObName')).focus({ preventScroll: true }); } catch (e) { } }, 30);
   }
   function bindOnboarding() {
     $('gObNext').addEventListener('click', function () {
       var nick = $('gObNick').value.trim();
       if (!nick || nick.length > 20) { $('gObErr').textContent = t('onboard.err.nick'); $('gObErr').hidden = false; $('gObNick').focus(); return; }
-      $('gObErr').hidden = true; SCENE.setCharacter(ob.avatar, { nickname: nick }); showStep(2);
+      $('gObErr').hidden = true; SCENE.setCharacter(ob.avatar, { nickname: nick });
+      if (ob.mode !== 'profile') { showStep(2); return; }
+      if (ob.busy) return;                                         /* 모습 바꾸기: 저장하고 닫는다 (이중 저장 막기) */
+      ob.busy = true;
+      var btn = $('gObNext'); btn.disabled = true; btn.textContent = t('profile.saving');
+      SDK.setProfile({ nickname: nick, avatar_key: ob.avatar })
+        .then(function (r) {
+          if (!r || r.ok === false) throw new Error((r && r.why) || 'profile');
+          if (H.state) { H.state.me = r.me || H.state.me || {}; H.state.me.nickname = nick; H.state.me.avatar_key = ob.avatar; SDK.saveState(H.state); }
+          ob.mode = 'saved'; closeModal(ob.rec); renderRail(); toast(t('profile.done'));
+        })
+        .catch(function (e) { var err = $('gObErr'); err.textContent = SDK.notReady(e) ? t('onboard.err.notready') : t('onboard.err.save'); err.hidden = false; })
+        .then(function () { ob.busy = false; btn.disabled = false; btn.textContent = ob.mode === 'profile' ? t('profile.save') : t('onboard.next'); });
     });
+    if ($('gProfileBtn')) $('gProfileBtn').addEventListener('click', openProfile);
     $('gObNick').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('gObNext').click(); } });
     $('gObBack').addEventListener('click', function () { showStep(1); });
     $('gObName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('gObPlant').click(); } });
