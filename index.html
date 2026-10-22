@@ -2,6 +2,33 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+  <script>
+  /* 신앙 정원(2026-10-23): 로그인한 사람은 첫 화면이 '내 정원'(garden.html).
+     · ?home=1 = 원래 첫 화면(교회 소개 보기) · ?worship= 방송실 예배 미리 보기는 그대로
+     · 카카오 로그인 복귀(#access_token=…)는 auth.js 가 세션을 만든 뒤(sb-ready → SIGNED_IN) 보낸다
+     · 로그인 전 방문자·검색엔진에는 아무 변화 없음. 저장소 오류가 나도 홈은 그대로 열린다 */
+  (function () { try {
+    var q = location.search;
+    if (/[?&](home=1|worship=)/.test(q)) return;
+    if (/(^|[#&])(access_token|error)=/.test(location.hash) || /[?&]code=/.test(q)) {
+      // 세션이 이미 만들어진 뒤에 구독하면 SIGNED_IN 대신 INITIAL_SESSION 이 오므로 둘 다 받는다. 오류(#error=)면 세션이 없어 홈에 남는다
+      window.addEventListener('sb-ready', function (e) {
+        try {
+          var sb = (e.detail && e.detail.sb) || window.__sb;
+          sb.auth.onAuthStateChange(function (ev, s) {
+            if ((ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') && s && s.user) location.replace('garden.html');
+          });
+        } catch (_) {}
+      });
+      return;
+    }
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i); if (!/^sb-.*-auth-token$/.test(k)) continue;
+      var s = JSON.parse(localStorage.getItem(k)); s = (s && s.currentSession) || s;
+      if (s && s.access_token && s.user) { location.replace('garden.html' + q + location.hash); return; }
+    }
+  } catch (e) {} })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>운평장로교회 | UNPYEONG CHURCH</title>
   <meta name="description" content="1964년부터 이어온 믿음의 공동체, 운평장로교회입니다. 성경을 따라, 은혜로 살아가는 공동체로 여러분을 환영합니다." />
