@@ -1,0 +1,26 @@
+{
+ "version": "20261023fm1",
+ "theme": "farm",
+ "files": {
+  "crop-grape-1.webp": 30038,
+  "crop-grape-2.webp": 38354,
+  "crop-lettuce-1.webp": 28354,
+  "crop-lettuce-2.webp": 55844,
+  "crop-strawberry-1.webp": 25702,
+  "crop-strawberry-2.webp": 31796,
+  "crop-tomato-1.webp": 31586,
+  "crop-tomato-2.webp": 39594,
+  "fruit-fig.webp": 5282,
+  "fruit-grape.webp": 7106,
+  "fruit-lettuce.webp": 7798,
+  "fruit-olive.webp": 6406,
+  "fruit-strawberry.webp": 8800,
+  "fruit-tomato.webp": 6058,
+  "tex-grass.webp": 81792,
+  "tex-soil.webp": 35068
+ },
+ "variants": {
+  "season": []
+ },
+ "anchors": {}
+}

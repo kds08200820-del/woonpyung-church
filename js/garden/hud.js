@@ -136,10 +136,71 @@ window.GardenHud = (function () {
     if (v && typeof v === 'object') { var loc = String(I.locale() || 'ko'); return v[loc] || v[loc.split('-')[0]] || v.ko || v.en || ''; }
     return v ? String(v) : '';
   }
+  function fmtTal(n) { return I.fmtNum(Math.round((+n || 0) * 10) / 10); }
+  /* 달란트 잔액을 바꿔 그린다(내 땅·열매 따기 뒤) */
+  function setTalent(v) {
+    var g = garden(); if (g && v != null) g.talent_balance = +v;
+    $('gTalentNum').textContent = fmtTal(g ? g.talent_balance : v);
+    if (store.rec) $('gmStoreNum').textContent = fmtTal(g ? g.talent_balance : v);
+  }
+  /* ── 믿음 나무 열매 따기 (state.fruit 는 2단계 SQL 뒤에만 온다 — 없으면 단추도 숨긴다) ── */
+  var FR = { on: false, layer: null };
+  function fruitLeft() { var f = (H.state || {}).fruit; if (!f || !f.per_day) return []; var out = []; for (var n = 1; n <= f.per_day; n++) if ((f.picked || []).indexOf(n) < 0) out.push(n); return out; }
+  function renderFruitBtn() {
+    var b = $('gFruitBtn'), fb = $('gFarmBtn'), st = H.state || {};
+    if (fb) show(fb, st.fruit !== undefined && !H.offline);
+    if (!b) return;
+    var f = st.fruit, left = fruitLeft();
+    show(b, !!(f && f.per_day > 0));
+    if (!f || !f.per_day) { fruitMode(false); return; }
+    b.disabled = !left.length;
+    b.textContent = left.length ? (FR.on ? t('fruit.done') : t('fruit.open', { n: left.length })) : t('fruit.none');
+    if (!left.length) fruitMode(false);
+  }
+  function fruitMode(on) {
+    FR.on = !!on;
+    if (FR.layer) { FR.layer.remove(); FR.layer = null; }
+    window.removeEventListener('resize', placeFruits); window.removeEventListener('scroll', placeFruits);
+    if (!FR.on) return;
+    var layer = document.createElement('div'); layer.className = 'g-fruit-layer'; layer.setAttribute('role', 'group'); layer.setAttribute('aria-label', t('fruit.layer'));
+    var sp = (garden() || {}).species || 'olive';
+    fruitLeft().forEach(function (n) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'g-fruit'; b.setAttribute('data-n', n);
+      b.setAttribute('aria-label', t('fruit.aria', { n: n }));
+      b.innerHTML = '<img alt="" draggable="false" src="images/garden/farm/fruit-' + esc(sp) + '.webp" onerror="this.parentNode.classList.add(\'noimg\');this.remove()">';
+      b.addEventListener('click', function () { pickFruit(b); });
+      layer.appendChild(b);
+    });
+    document.body.appendChild(layer); FR.layer = layer;
+    placeFruits();
+    window.addEventListener('resize', placeFruits); window.addEventListener('scroll', placeFruits, { passive: true });
+  }
+  function placeFruits() {
+    var L = FR.layer, pl = document.querySelector('.g-plant-anchor .g-plant'); if (!L || !pl) return;
+    var r = pl.getBoundingClientRect(), fixed = getComputedStyle($('gScene')).position === 'fixed';
+    L.style.position = fixed ? 'fixed' : 'absolute';
+    L.style.left = r.left + (fixed ? 0 : window.scrollX) + 'px'; L.style.top = r.top + (fixed ? 0 : window.scrollY) + 'px';
+    L.style.width = r.width + 'px'; L.style.height = r.height + 'px';
+    var bs = L.querySelectorAll('.g-fruit'), tot = (H.state.fruit || {}).per_day || bs.length;
+    Array.prototype.forEach.call(bs, function (b) {
+      var n = +b.getAttribute('data-n'), a = n * 2.39996, rr = 0.3 + 0.7 * Math.sqrt((n - 0.5) / tot);
+      b.style.left = (50 + Math.cos(a) * rr * 30) + '%'; b.style.top = (30 + Math.sin(a) * rr * 16) + '%';
+    });
+  }
+  function pickFruit(b) {
+    if (b.disabled) return; b.disabled = true; b.classList.add('is-going');
+    SDK.pickFruit(+b.getAttribute('data-n')).then(function (r) {
+      if (!r || !r.ok) { b.disabled = false; b.classList.remove('is-going'); toast(t('fruit.err')); return; }
+      if (r.picked) SCENE.floatXp(0, '+' + fmtTal(r.gain) + ' ' + H.talentLabel);
+      H.state.fruit = r.fruit; setTalent(r.talent_balance);
+      setTimeout(function () { b.remove(); renderFruitBtn(); }, 420);
+    }).catch(function () { b.disabled = false; b.classList.remove('is-going'); toast(t('fruit.err')); });
+  }
   function renderRail() {
     var st = H.state || {}, g = garden(), ch = st.church || {};
     H.talentLabel = labelOf(ch.talent_label) || t('talent.unit');
-    $('gTalentNum').textContent = I.fmtNum(g.talent_balance); $('gTalentUnit').textContent = H.talentLabel;
+    $('gTalentNum').textContent = fmtTal(g.talent_balance); $('gTalentUnit').textContent = H.talentLabel;
+    renderFruitBtn();
     var streak = st.qt_streak | 0;
     show($('gStreak'), streak > 0); $('gStreakText').textContent = t('rail.streak', { n: I.fmtNum(streak) });
     show($('gOffline'), H.offline);
@@ -291,7 +352,7 @@ window.GardenHud = (function () {
   function openStore() {
     if (store.rec) return;
     var g = garden();
-    $('gmStoreNum').textContent = I.fmtNum(g.talent_balance); $('gmStoreUnit').textContent = H.talentLabel;
+    $('gmStoreNum').textContent = fmtTal(g.talent_balance); $('gmStoreUnit').textContent = H.talentLabel;
     $('gmStoreList').innerHTML = ''; $('gmStoreTotal').textContent = '';
     store.offset = 0; store.total = 0; show($('gmStoreEmpty'), false); show($('gmStoreMore'), false);
     store.rec = openModal('gmStore', { onClose: function () { store.rec = null; } });
@@ -319,7 +380,7 @@ window.GardenHud = (function () {
     var when = row.at ? I.fmtDate(new Date(row.at)) : '';
     li.innerHTML = '<span class="g-led-k">' + esc(kindLabel(row.kind, rules)) + '</span><span class="g-led-d">' + esc(when) + '</span>' +
       '<span class="g-led-x">' + ((row.xp | 0) ? '+' + esc(I.fmtNum(row.xp | 0)) + ' XP' : '') + '</span>' +
-      '<span class="g-led-t">' + ((row.talent | 0) ? ((row.talent > 0 ? '+' : '') + esc(I.fmtNum(row.talent | 0)) + ' ' + esc(H.talentLabel)) : '') + '</span>';
+      '<span class="g-led-t">' + ((+row.talent || 0) ? ((row.talent > 0 ? '+' : '') + esc(fmtTal(row.talent)) + ' ' + esc(H.talentLabel)) : '') + '</span>';
     $('gmStoreList').appendChild(li);
   }
 
@@ -629,11 +690,13 @@ window.GardenHud = (function () {
   function init(o) {
     I = o.i18n; SDK = o.sdk; SCENE = o.scene; t = I.t; P = o.params || {};
     I.apply(document);
-    ['gmQt', 'gmStore', 'gmPlant'].forEach(bindModal);
+    ['gmQt', 'gmStore', 'gmPlant', 'gmFarm'].forEach(function (id) { if ($(id)) bindModal(id); });
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);
     bindOnboarding(); bindBanner(); bindBar(); bindTodoFold();
+    if ($('gFruitBtn')) $('gFruitBtn').addEventListener('click', function () { fruitMode(!FR.on); renderFruitBtn(); });
+    if ($('gFarmBtn') && window.GardenFarm) $('gFarmBtn').addEventListener('click', function () { fruitMode(false); renderFruitBtn(); window.GardenFarm.open(); });
   }
   /* 오늘의 할 일 접기 — 접어 두면 다음에도 접힌 채로(이 기기에 기억) */
   function bindTodoFold() {
@@ -656,6 +719,7 @@ window.GardenHud = (function () {
     init: init, render: render, state: function () { return H.state; }, setState: function (s) { H.state = s; },
     toast: toast, openModal: openModal, closeModal: closeModal, openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
     loadQt: loadQt, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
-    syncPlot: syncPlot, renderTodo: renderTodo, garden: garden
+    syncPlot: syncPlot, renderTodo: renderTodo, garden: garden,
+    setTalent: setTalent, talentLabel: function () { return H.talentLabel; }
   };
 })();

@@ -105,6 +105,12 @@
     if (p.locale != null) a.p_locale = p.locale;
     return rpc('garden_set_profile', a);
   }
+  /* 내 땅·작물·열매 (20261023_1300_garden_farm.sql) */
+  function farm() { return rpc('garden_farm', { p_church: SLUG }); }
+  function farmBuy(x, y) { return rpc('garden_farm_buy', { p_church: SLUG, p_x: x, p_y: y }); }
+  function farmPlant(x, y, crop) { return rpc('garden_farm_plant', { p_church: SLUG, p_x: x, p_y: y, p_crop: crop }); }
+  function farmPick(x, y, n) { return rpc('garden_farm_pick', { p_church: SLUG, p_x: x, p_y: y, p_n: n }); }
+  function pickFruit(n) { return rpc('garden_pick_fruit', { p_church: SLUG, p_n: n }); }
   function history(limit, offset) { return rpc('garden_history', { p_church: SLUG, p_limit: Math.min(Math.max(+limit || 30, 1), 100), p_offset: Math.max(+offset || 0, 0) }); }
 
   /* ── 큐티 (dashboard.js 897 방식: 오늘 이전 최근 1건) ── */
@@ -172,6 +178,7 @@
   window.GardenSDK = {
     init: init, slug: function () { return SLUG; }, session: sess, hasConfig: function () { return !!(SB && AK); },
     state: state, sync: sync, setPlant: setPlant, setProfile: setProfile, history: history,
+    farm: farm, farmBuy: farmBuy, farmPlant: farmPlant, farmPick: farmPick, pickFruit: pickFruit,
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,
     attend: attend, hasSermon: hasSermon, weather: weather,
     lastState: lastState, saveState: saveState, notReady: notReady, isNetwork: isNetwork

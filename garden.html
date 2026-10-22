@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261023gd4" />
+  <link rel="stylesheet" href="css/garden.css?v=20261023fm1" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -67,6 +67,10 @@
         <div class="g-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="g-bar-fill" id="gGrowFill"></div></div>
         <p class="g-grow-done" id="gGrowDone"></p>
         <button type="button" class="g-link g-profile-btn" id="gProfileBtn" data-i18n="profile.open"></button>
+        <div class="g-farm-acts">
+          <button type="button" class="g-btn g-btn-primary" id="gFruitBtn" hidden></button>
+          <button type="button" class="g-btn g-btn-line" id="gFarmBtn" hidden data-i18n="farm.open"></button>
+        </div>
       </section>
     </aside>
 
@@ -153,6 +157,22 @@
     </div>
   </div>
 
+  <!-- 내 땅(밭) -->
+  <div class="g-modal g-modal-farm" id="gmFarm" hidden>
+    <div class="g-backdrop" data-close></div>
+    <div class="g-mbox g-mbox-farm" role="dialog" aria-modal="true" aria-labelledby="gmFarmTitle">
+      <span class="g-grab" aria-hidden="true"></span>
+      <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
+      <div class="g-mhead gf-head">
+        <h2 class="g-mtitle" id="gmFarmTitle" data-i18n="farm.title"></h2>
+        <p class="g-msub" data-i18n="farm.sub"></p>
+        <div class="gf-stats"><span class="g-chip gf-bal"><b id="gfBal">0</b><span id="gfUnit" data-i18n="talent.unit"></span></span><span class="g-chip" id="gfCount"></span><span class="g-chip" id="gfPrice"></span></div>
+      </div>
+      <div class="gf-wrap"><div class="gf-board" id="gfBoard"></div></div>
+      <div class="gf-sheet" id="gfSheet" hidden></div>
+    </div>
+  </div>
+
   <div class="g-toast" id="gToast" role="status" aria-live="polite" hidden></div>
 
   <script src="js/config.js?v=20260908lib"></script>
@@ -160,10 +180,11 @@
   <script src="js/bulletins-live.js?v=20261010sum1"></script>
   <script src="js/layout.js?v=20261023lib1"></script>
   <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/garden/i18n.js?v=20261023gd4"></script>
-  <script src="js/garden/sdk.js?v=20261023gd1"></script>
+  <script src="js/garden/i18n.js?v=20261023fm1"></script>
+  <script src="js/garden/sdk.js?v=20261023fm1"></script>
   <script src="js/garden/scene.js?v=20261023gd4"></script>
-  <script src="js/garden/hud.js?v=20261023gd4"></script>
-  <script src="js/garden/main.js?v=20261023lib1"></script>
+  <script src="js/garden/hud.js?v=20261023fm1"></script>
+  <script src="js/garden/farm.js?v=20261023fm1"></script>
+  <script src="js/garden/main.js?v=20261023fm1"></script>
 </body>
 </html>

@@ -131,6 +131,7 @@
     SDK.init();
     I.setLocale('ko', 'Asia/Seoul'); setTitle(); fixHeader();
     HUD.init({ i18n: I, sdk: SDK, scene: SCENE, params: P });
+    if (window.GardenFarm) window.GardenFarm.init({ i18n: I, sdk: SDK, hud: HUD });
     if (reduceMotion()) document.documentElement.classList.add('g-reduce');
     M.bootDay = I.todayStr();
     if (/(^|[#&])access_token=/.test(location.hash || '')) { signing(); return; }
