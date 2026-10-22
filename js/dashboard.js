@@ -160,7 +160,7 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
     document.body.appendChild(s);
   }
 
-  var GRP_STYLE = 'font-family:"Noto Serif KR",serif;font-size:1.05rem;font-weight:700;color:var(--accent,#3A281C);margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent,#3A281C);';
+  var GRP_STYLE = 'font-family:var(--font, sans-serif);font-size:1.05rem;font-weight:700;color:var(--accent,#3A281C);margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--accent,#3A281C);';
   /* ── 대시보드 탭 — 나의 신앙생활 / 자녀의 신앙생활 / 교사 생활 ──
    * 자녀 탭은 같은 세대에 주일학교 자녀가 있을 때, 교사 탭은 교사단일 때만 생긴다(읽은 뒤 dashTabAdd).
    * 고른 탭은 이 기기에 기억해 두었다가 다음에 들어오면 그 탭부터 연다. */
@@ -175,7 +175,7 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
         var on = t.id === DASH_CUR;
         return '<button type="button" role="tab" aria-selected="' + on + '" class="dash-tab" data-tab="' + t.id + '" style="background:none;border:0;padding:0 0 8px;margin:0 0 -2px;white-space:nowrap;cursor:' + (many ? 'pointer' : 'default') + ';' +
           (many ? 'flex:1;text-align:center;font-size:clamp(.86rem,3.7vw,1.05rem);' : 'font-size:1.05rem;') +
-          'font-family:\'Noto Serif KR\',serif;font-weight:700;color:' + (on ? 'var(--accent,#3A281C)' : '#8B7B6C') + ';border-bottom:3px solid ' + (on && many ? 'var(--accent,#3A281C)' : 'transparent') + ';">' + t.label + '</button>';
+          'font-family:var(--font, sans-serif);font-weight:700;color:' + (on ? 'var(--accent,#3A281C)' : '#8B7B6C') + ';border-bottom:3px solid ' + (on && many ? 'var(--accent,#3A281C)' : 'transparent') + ';">' + t.label + '</button>';
       }).join('') + '</div>';
     Array.prototype.forEach.call(bar.querySelectorAll('.dash-tab'), function (b) { b.onclick = function () { dashShow(b.dataset.tab, true); }; });
   }
@@ -532,7 +532,7 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
     ov.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:720px;width:100%;padding:16px 18px;box-shadow:0 24px 60px rgba(0,0,0,.32);display:flex;flex-direction:column;max-height:calc(100vh - 28px);max-height:calc(100dvh - 28px)">' +
       '<div style="flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div style="min-width:0">' +
       '<div style="font-size:.76rem;color:#5b7a52;font-weight:700">Day ' + day.d + ' · ' + esc(P.themes[day.t]) + '</div>' +
-      '<h3 style="margin:4px 0 0;color:var(--accent,#3A281C);font-family:\'Noto Serif KR\',serif">' + esc(day.r) + ' <span style="font-size:.72rem;color:#AFA49C;font-weight:400">우리말성경</span></h3></div>' +
+      '<h3 style="margin:4px 0 0;color:var(--accent,#3A281C);font-family:var(--font, sans-serif)">' + esc(day.r) + ' <span style="font-size:.72rem;color:#AFA49C;font-weight:400">우리말성경</span></h3></div>' +
       '<div style="display:flex;gap:6px;flex:0 0 auto">' +
       '<button class="btn btn-line" id="brm_ai" style="padding:4px 12px;white-space:nowrap">음성듣기</button>' +
       '<button class="btn btn-line" id="brm_close" style="padding:4px 12px;white-space:nowrap">닫기</button></div></div>' +
@@ -546,7 +546,7 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
           (dn ? '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #E7DED7;font-size:.86rem;line-height:1.75;color:#3f5240">' + esc(dn) + '</div>' : '') +
           '</div>';
       })() +
-      '<div id="brm_body" style="margin-top:14px;line-height:1.95;font-size:1.02rem;font-family:\'Noto Serif KR\',serif;color:#332A23"><p class="qt-loading">본문을 불러오는 중…</p></div>' +
+      '<div id="brm_body" style="margin-top:14px;line-height:1.95;font-size:1.02rem;font-family:var(--font, sans-serif);color:#332A23"><p class="qt-loading">본문을 불러오는 중…</p></div>' +
       '</div>' +
       (onDone ? '<div style="flex:0 0 auto;margin-top:12px;text-align:center"><button type="button" id="brm_done" style="padding:10px 28px;border:0;border-radius:10px;background:var(--accent,#3A281C);color:#fff;font:inherit;font-weight:700;cursor:pointer">✓ 읽기 완료</button></div>' : '') +
       '</div>';

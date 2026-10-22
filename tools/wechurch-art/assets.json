@@ -113,7 +113,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
+      "pick": 1,
       "label_ko": "나 — 내면의 천국"
     },
     {
@@ -134,7 +134,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
+      "pick": 1,
       "label_ko": "집 — 가정의 천국"
     },
     {
@@ -155,7 +155,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
+      "pick": 1,
       "label_ko": "교회"
     },
     {
@@ -176,7 +176,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
+      "pick": 1,
       "label_ko": "세상 — 지역"
     },
     {
@@ -197,7 +197,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
+      "pick": 1,
       "label_ko": "차고와 차"
     },
     {
@@ -218,7 +218,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
+      "pick": 1,
       "label_ko": "땅과 길"
     },
     {
@@ -262,7 +262,7 @@
       "variants": [
         "768"
       ],
-      "pick": null,
+      "pick": 1,
       "label_ko": "운평 홈 히어로"
     },
     {

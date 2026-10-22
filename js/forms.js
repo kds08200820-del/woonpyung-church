@@ -27,7 +27,7 @@ console.log('[forms.js] v20261010form6');
     '.ap-modal .modal-box{max-width:520px;padding:34px 30px 26px}' +
     '@media (max-width:560px){.ap-modal{padding:10px}.ap-modal .modal-box{padding:28px 18px 20px;max-height:92vh;border-radius:14px}}' +
     '.ap-eye{font-size:.76rem;letter-spacing:.12em;color:var(--accent-soft,#6E523C);margin:0 0 4px}' +
-    '.ap-title{font-family:"Noto Serif KR",serif;font-size:1.32rem;line-height:1.4;color:var(--accent,#3A281C);margin:0 0 6px;word-break:keep-all}' +
+    '.ap-title{font-family:var(--font, sans-serif);font-size:1.32rem;line-height:1.4;color:var(--accent,#3A281C);margin:0 0 6px;word-break:keep-all}' +
     '.ap-meta{color:var(--ink-soft,#4A3628);font-size:.9rem;margin:0 0 2px;word-break:keep-all}' +
     '.ap-img{display:block;margin:12px 0 0;border:1px solid var(--line,#E6D8C6);border-radius:10px;overflow:hidden;background:#fff}.ap-img img{display:block;width:100%;height:auto}' +
     '.ap-imgnote{font-size:.76rem;color:#8B7B6C;margin:4px 0 0}' +
@@ -105,7 +105,7 @@ console.log('[forms.js] v20261010form6');
     '.ap-open-row span{font-size:.82rem;color:var(--ink-soft,#4A3628)}' +
     '.ap-topnote{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border:1px solid var(--gold,#B5562F);border-left-width:4px;background:#FBF5EC;border-radius:10px;padding:11px 14px;font-size:.92rem;color:var(--accent,#3A281C);max-width:680px;margin:0 auto 22px;box-sizing:border-box}' +
     '.ap-sec{margin:0 0 40px}' +
-    '.ap-sec>h2{font-family:"Noto Serif KR",serif;font-size:1.2rem;color:var(--accent,#3A281C);margin:0 0 14px;padding-bottom:8px;border-bottom:2px solid var(--accent,#3A281C)}' +
+    '.ap-sec>h2{font-family:var(--font, sans-serif);font-size:1.2rem;color:var(--accent,#3A281C);margin:0 0 14px;padding-bottom:8px;border-bottom:2px solid var(--accent,#3A281C)}' +
     '.ap-fcard{background:#fff;border:1px solid var(--line,#E6D8C6);border-radius:16px;padding:20px 22px;margin-bottom:14px}' +
     '.ap-fcard .ap-actions{margin-top:14px}' +
     '.ap-past{list-style:none;margin:0;padding:0}' +

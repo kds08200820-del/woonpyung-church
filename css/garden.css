@@ -418,3 +418,23 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
   .g-root[data-mode="loading"]::after { top: 28dvh; }
 }
 @media (max-width: 400px) { .g-seeds { grid-template-columns: 1fr 1fr 1fr; } .g-seed b { font-size: .8rem; } .g-seed small { display: none; } }
+
+/* ===== 2026-10-23 담임목사 요청 =====
+   · 날씨(기온)는 장면 하늘 위 — 오른쪽 패널 왼쪽 위. 예배 띠가 떠 있으면 그 아래로
+   · 오늘의 할 일은 접을 수 있다(제목 단추, 완료 수 표시) */
+.g-wx-float { position: fixed; z-index: 3; top: calc(var(--g-hdr) + 14px); right: calc(var(--g-panel-w) + 36px); box-shadow: var(--g-shadow-s); }
+body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 74px); }
+.g-root[data-mode="gate"] .g-wx-float, .g-root[data-mode="loading"] .g-wx-float { display: none !important; }
+.g-fold-h { margin: 14px 0 6px; }
+.g-fold { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 8px 0 4px; border: 0; border-radius: 12px; background: none;
+  font: inherit; font-size: .95rem; font-weight: 800; color: var(--g-fg); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.g-fold:hover { background: var(--g-soft); }
+.g-fold:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+.g-fold-n { font-size: .76rem; font-weight: 800; color: var(--g-sage-ink); background: var(--g-mint); border-radius: 999px; padding: 3px 9px; font-variant-numeric: tabular-nums; }
+.g-fold-ic { margin-left: auto; width: 9px; height: 9px; border-right: 2px solid var(--g-fg2); border-bottom: 2px solid var(--g-fg2); transform: translateY(-2px) rotate(45deg); transition: transform .2s ease; }
+.g-fold[aria-expanded="false"] .g-fold-ic { transform: translateY(1px) rotate(-135deg); }
+@media (max-width: 1000px) { .g-wx-float { right: 16px; top: calc(var(--g-hdr) + 12px); } }
+@media (max-width: 760px) {
+  .g-wx-float { position: absolute; top: calc(var(--g-hdr) + 10px); right: 12px; }
+  body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 66px); }
+}

@@ -1,0 +1,20 @@
+{
+ "version": "20261023wc1",
+ "theme": "wechurch",
+ "files": {
+  "church-hero-768.webp": 6486,
+  "church-hero.webp": 17812,
+  "circle-church.webp": 106828,
+  "circle-home.webp": 86072,
+  "circle-me.webp": 132676,
+  "circle-world.webp": 61384,
+  "land.webp": 46676,
+  "neighbor.webp": 99598,
+  "world-768.webp": 41962,
+  "world.webp": 142866
+ },
+ "variants": {
+  "season": []
+ },
+ "anchors": {}
+}

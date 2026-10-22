@@ -189,26 +189,6 @@ window.GardenScene = (function () {
     S.el.plot.appendChild(soil); S.el.plot.appendChild(ch); S.el.plot.appendChild(pl); S.el.plot.appendChild(np);
   }
 
-  /* ── 시차(마우스/기울기) ── */
-  var par = { x: 0, y: 0, tx: 0, ty: 0, raf: 0 };
-  function parallaxTick() {
-    par.raf = 0;
-    par.x += (par.tx - par.x) * .08; par.y += (par.ty - par.y) * .08;
-    LAYERS.forEach(function (L) {
-      if (!L.px) return;
-      S.el[L.id].style.transform = 'translate(' + (-par.x * L.px * 40).toFixed(1) + 'px,' + (-par.y * L.px * 16).toFixed(1) + 'px)';
-    });
-    if (Math.abs(par.tx - par.x) > .002 || Math.abs(par.ty - par.y) > .002) par.raf = requestAnimationFrame(parallaxTick);
-  }
-  function onPointer(e) {
-    if (S.reduce || !S.root) return;
-    var r = S.root.getBoundingClientRect();
-    par.tx = ((e.clientX - r.left) / (r.width || 1) - .5) * 2;
-    par.ty = ((e.clientY - r.top) / (r.height || 1) - .5) * 2;
-    if (!par.raf) par.raf = requestAnimationFrame(parallaxTick);
-  }
-  function onLeave() { par.tx = 0; par.ty = 0; if (!par.raf && !S.reduce) par.raf = requestAnimationFrame(parallaxTick); }
-
   /* ── 입자(비·눈) ── */
   function startParticles(type) {
     S.pType = type;
@@ -269,9 +249,7 @@ window.GardenScene = (function () {
     layout();
     window.addEventListener('resize', layout);
     if (window.ResizeObserver) { try { new ResizeObserver(layout).observe(container); } catch (e) { } }
-    if (window.matchMedia && matchMedia('(hover:hover) and (pointer:fine)').matches) {
-      container.addEventListener('pointermove', onPointer); container.addEventListener('pointerleave', onLeave);
-    }
+    /* 마우스를 따라 배경이 움직이던 시차(parallax)는 없앴다 — 어지럽다는 담임목사 의견(2026-10-23). 배경은 고정 */
     document.addEventListener('visibilitychange', function () { if (document.hidden) stopParticles(false); else if (S.pType) startParticles(S.pType); });
     setReducedMotion(S.reduce);
     setSky(S.phase, S.weather, { instant: true });

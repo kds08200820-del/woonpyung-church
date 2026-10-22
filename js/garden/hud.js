@@ -131,9 +131,14 @@ window.GardenHud = (function () {
   function avatarUrlOf(key) { return 'images/garden/default/chars/char-' + key + '.webp'; }
 
   /* ── 레일 ── */
+  // 교회 설정의 글자는 {"ko":"달란트","en":"Talents"} 처럼 언어별 묶음일 수 있다 — 지금 언어 것을 고른다
+  function labelOf(v) {
+    if (v && typeof v === 'object') { var loc = String(I.locale() || 'ko'); return v[loc] || v[loc.split('-')[0]] || v.ko || v.en || ''; }
+    return v ? String(v) : '';
+  }
   function renderRail() {
     var st = H.state || {}, g = garden(), ch = st.church || {};
-    H.talentLabel = ch.talent_label || t('talent.unit');
+    H.talentLabel = labelOf(ch.talent_label) || t('talent.unit');
     $('gTalentNum').textContent = I.fmtNum(g.talent_balance); $('gTalentUnit').textContent = H.talentLabel;
     var streak = st.qt_streak | 0;
     show($('gStreak'), streak > 0); $('gStreakText').textContent = t('rail.streak', { n: I.fmtNum(streak) });
@@ -170,6 +175,8 @@ window.GardenHud = (function () {
     });
     ul.innerHTML = '';
     show($('gTodoEmpty'), !items.length);
+    var cnt = $('gTodoCount');
+    if (cnt) { cnt.textContent = t('todo.count', { done: items.filter(function (x) { return x.done; }).length, total: items.length }); show(cnt, items.length > 0); }
     items.forEach(function (it) {
       var li = document.createElement('li'); li.className = 'g-todo-item' + (it.done ? ' is-done' : '');
       var href = TASK_HREF[it.kind], tag = href ? 'a' : 'button';
@@ -626,7 +633,18 @@ window.GardenHud = (function () {
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);
-    bindOnboarding(); bindBanner(); bindBar();
+    bindOnboarding(); bindBanner(); bindBar(); bindTodoFold();
+  }
+  /* 오늘의 할 일 접기 — 접어 두면 다음에도 접힌 채로(이 기기에 기억) */
+  function bindTodoFold() {
+    var b = $('gTodoFold'), body = $('gTodoBody'); if (!b || !body) return;
+    function set(open, save) {
+      b.setAttribute('aria-expanded', String(open)); body.hidden = !open;
+      if (save) { try { localStorage.setItem('g_todo_open', open ? '1' : '0'); } catch (e) { } }
+    }
+    var saved = null; try { saved = localStorage.getItem('g_todo_open'); } catch (e) { }
+    set(saved !== '0', false);
+    b.addEventListener('click', function () { set(b.getAttribute('aria-expanded') !== 'true', true); });
   }
   function render(state, o) {
     o = o || {};

@@ -114,6 +114,11 @@
   function paintScene(S) {
     var w = S.weather || {}, kind = w.kind || 'clear', ph = S.phase, night = ph === 'night';
     setSky(ph);
+    // 흐림·비·눈·안개면 하늘을 잿빛으로 (구름양에 따라)
+    var over = kind === 'rain' || kind === 'storm' ? 1 : kind === 'snow' || kind === 'fog' ? 0.8 : Math.max(0, ((w.cloud == null ? 0 : w.cloud) - 55) / 45) * 0.7;
+    var skyF = over > 0.02 ? 'grayscale(' + (0.65 * over).toFixed(2) + ') brightness(' + (1 - 0.2 * over).toFixed(2) + ')' : 'none';
+    $('wcSkyA').style.filter = skyF; $('wcSkyB').style.filter = skyF;
+    $('wcClouds').style.filter = over > 0.5 ? 'grayscale(.55) brightness(.8)' : 'none';
     $('wcStars').style.opacity = night ? String(kind === 'clear' ? 1 : 0.15) : (ph === 'dusk' || ph === 'dawn' ? '0.25' : '0');
     $('wcClouds').style.backgroundImage = 'url(../images/garden/default/sky/clouds-overlay.webp)';
     $('wcClouds').style.opacity = String(Math.min(1, 0.12 + (w.cloud == null ? 30 : w.cloud) / 100 * 0.9) * (night ? 0.55 : 1));
@@ -172,14 +177,22 @@
     M.parts = [];
     for (var i = 0; i < n; i++) M.parts.push({ x: Math.random() * cv.width, y: Math.random() * cv.height, s: 0.7 + Math.random() * 0.6, ph: Math.random() * 6.28 });
     M.dpr = dpr;
+    draw(0, 0);   // 첫 장은 바로 그린다(애니메이션이 멈춘 환경에서도 비·눈이 보이게)
     if (!M.raf) { M.lastT = 0; M.raf = requestAnimationFrame(tick); }
   }
   function tick(t) {
-    var cv = $('wcFx'), ctx = cv.getContext('2d'), dt = M.lastT ? Math.min(0.05, (t - M.lastT) / 1000) : 0.016;
+    var dt = M.lastT ? Math.min(0.05, (t - M.lastT) / 1000) : 0.016;
     M.lastT = t;
+    draw(t, dt);
+    var stage = $('wcStage');
+    if (!stage.isConnected || !M.parts.length) { M.raf = 0; return; }
+    M.raf = requestAnimationFrame(tick);
+  }
+  function draw(t, dt) {
+    var cv = $('wcFx'), ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, cv.width, cv.height);
     var rain = M.pType === 'rain', W2 = cv.width, H2 = cv.height, len = rain ? Math.max(8, M.vy * 0.035) : 0;
-    ctx.strokeStyle = 'rgba(230,236,245,.55)'; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.2 * M.dpr;
+    ctx.strokeStyle = 'rgba(214,222,234,.7)'; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.2 * M.dpr;
     if (rain) ctx.beginPath();
     for (var i = 0; i < M.parts.length; i++) {
       var p = M.parts[i];
@@ -190,9 +203,6 @@
       else { ctx.beginPath(); ctx.arc(p.x, p.y, 1.6 * p.s * M.dpr, 0, 6.283); ctx.fill(); }
     }
     if (rain) ctx.stroke();
-    var stage = $('wcStage');
-    if (!stage.isConnected) { M.raf = 0; return; }
-    M.raf = requestAnimationFrame(tick);
   }
 
   // ---------------------------------------------------------------- 표

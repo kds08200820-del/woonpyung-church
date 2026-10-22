@@ -29,6 +29,7 @@ window.GardenI18n = (function () {
     'growth.first': '첫 그루를 키우는 중',
 
     'todo.title': '오늘의 할 일',
+    'todo.count': '{done}/{total}',
     'todo.empty': '오늘 할 일이 아직 없습니다 — 교회 규칙이 정해지면 여기에 보입니다',
     'todo.done': '완료',
     'todo.login.done': '오늘 정원에 들렀어요',

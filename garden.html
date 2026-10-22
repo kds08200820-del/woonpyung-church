@@ -14,13 +14,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261023gd3" />
+  <link rel="stylesheet" href="css/garden.css?v=20261023gd4" />
 </head>
 <body class="garden" data-church="woonpyung">
 
   <div class="g-root" id="gRoot" data-mode="loading">
     <!-- 장면(층): scene.js 가 채운다 -->
     <div class="g-scene" id="gScene" aria-hidden="true"></div>
+
+    <!-- 날씨: 장면 하늘 위 (오른쪽 패널 왼쪽 위) -->
+    <div class="g-chip g-chip-wx g-wx-float" id="gWx" hidden><span class="g-chip-ic" id="gWxIc" aria-hidden="true"></span><span id="gWxText"></span></div>
 
     <!-- 왼쪽 서재(개인) -->
     <aside class="g-study g-panel" id="gStudy" aria-labelledby="gStudyTitle">
@@ -48,14 +51,15 @@
       <h2 class="g-ptitle g-sr" id="gRailTitle" data-i18n="rail.title"></h2>
       <div class="g-chips">
         <button type="button" class="g-pill g-pill-talent" id="gTalentBtn" aria-haspopup="dialog" data-i18n-title="talent.open"><span class="g-pill-ic" aria-hidden="true">🪙</span><b id="gTalentNum">0</b><span class="g-pill-unit" id="gTalentUnit"></span></button>
-        <div class="g-chip g-chip-wx" id="gWx" hidden><span class="g-chip-ic" id="gWxIc" aria-hidden="true"></span><span id="gWxText"></span></div>
         <div class="g-chip g-chip-streak" id="gStreak" hidden><span class="g-chip-ic" aria-hidden="true">🔥</span><span id="gStreakText"></span></div>
         <div class="g-chip g-chip-off" id="gOffline" hidden data-i18n="rail.offline"></div>
       </div>
       <section class="g-todo" aria-labelledby="gTodoTitle">
-        <h3 class="g-stitle" id="gTodoTitle" data-i18n="todo.title"></h3>
-        <ul class="g-todo-list" id="gTodoList"></ul>
-        <p class="g-empty" id="gTodoEmpty" hidden data-i18n="todo.empty"></p>
+        <h3 class="g-stitle g-fold-h" id="gTodoTitle"><button type="button" class="g-fold" id="gTodoFold" aria-expanded="true" aria-controls="gTodoBody"><span data-i18n="todo.title"></span><span class="g-fold-n" id="gTodoCount" hidden></span><span class="g-fold-ic" aria-hidden="true"></span></button></h3>
+        <div id="gTodoBody">
+          <ul class="g-todo-list" id="gTodoList"></ul>
+          <p class="g-empty" id="gTodoEmpty" hidden data-i18n="todo.empty"></p>
+        </div>
       </section>
       <section class="g-growth" aria-labelledby="gGrowTitle">
         <h3 class="g-stitle" id="gGrowTitle" data-i18n="growth.title"></h3>
@@ -156,10 +160,10 @@
   <script src="js/bulletins-live.js?v=20261010sum1"></script>
   <script src="js/layout.js?v=20261023lib1"></script>
   <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/garden/i18n.js?v=20261023gd3"></script>
+  <script src="js/garden/i18n.js?v=20261023gd4"></script>
   <script src="js/garden/sdk.js?v=20261023gd1"></script>
-  <script src="js/garden/scene.js?v=20261023gd3"></script>
-  <script src="js/garden/hud.js?v=20261023lib1"></script>
+  <script src="js/garden/scene.js?v=20261023gd4"></script>
+  <script src="js/garden/hud.js?v=20261023gd4"></script>
   <script src="js/garden/main.js?v=20261023lib1"></script>
 </body>
 </html>

@@ -53,9 +53,9 @@ body.ws-open { overflow: hidden; }
 .ws-cover { text-align: center; padding: 30px 8px; }
 .ws-cover-k { font-size: .9em; letter-spacing: .25em; color: #A26348; font-weight: 700; }
 .ws-cover-date { font-size: .95em; color: #83766B; margin: 8px 0 18px; }
-.ws-cover-t { font-family: "Noto Serif KR", serif; font-size: 1.7em; font-weight: 700; color: #3A281C; line-height: 1.35; margin-bottom: 10px; }
+.ws-cover-t { font-family: var(--font, sans-serif); font-size: 1.7em; font-weight: 700; color: #3A281C; line-height: 1.35; margin-bottom: 10px; }
 .ws-cover-s { font-size: 1.05em; color: #5E544C; }
-.ws-cover-q { margin: 22px auto 0; max-width: 560px; font-family: "Noto Serif KR", serif; font-size: 1.05em; line-height: 1.7; color: #403A34; background: #F3EADF; border: 1px solid #E0D2C0; border-radius: 10px; padding: 14px 18px; }
+.ws-cover-q { margin: 22px auto 0; max-width: 560px; font-family: var(--font, sans-serif); font-size: 1.05em; line-height: 1.7; color: #403A34; background: #F3EADF; border: 1px solid #E0D2C0; border-radius: 10px; padding: 14px 18px; }
 .ws-img { overflow: auto; background: #fff; border: 1px solid #E4DCD2; border-radius: 8px; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
 .ws-img img { display: block; width: 100%; max-width: none; height: auto; }
 /* 교독문 */
@@ -214,7 +214,7 @@ body.hw-fs-body { overflow: hidden; }
 .ws-chip.on.ws-chip-accomp, .ws-chip.on.ws-chip-pastor { color: #fff; border-color: #3A281C; }
 .ws-prayer { margin-top: 18px; padding: 14px 16px; background: #FBF8F6; border-left: 4px solid #6E523C; border-radius: 0 10px 10px 0; }
 .ws-prayer-t { font-size: .82em; font-weight: 700; color: #6E523C; margin-bottom: 8px; }
-.ws-prayer-txt p { margin: 0 0 .8em; font-family: "Noto Serif KR", serif; font-size: 1.15em; line-height: 1.9; word-break: keep-all; color: #2B2421; }
+.ws-prayer-txt p { margin: 0 0 .8em; font-family: var(--font, sans-serif); font-size: 1.15em; line-height: 1.9; word-break: keep-all; color: #2B2421; }
 .ws-role-tip { color: #9C593C; }
 @media (max-width: 560px) { .ws-view { max-width: 7.5em; font-size: .8rem; } }
 

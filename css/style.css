@@ -2004,7 +2004,7 @@ a.auth-name { white-space: nowrap; word-break: keep-all; }
   border-radius: 22px; border: 1px solid var(--line); color: var(--ink); justify-content: flex-end; text-align: left;
   background: #EAD9C3 url("../images/wechurch/church-hero.webp?v=20261023wc1") left center / cover no-repeat; }
 .hero-overlay, .hero-scroll { display: none; }
-.hero-content { max-width: 50%; margin-right: 3%; padding: 26px 0 22px; }
+.hero-content { max-width: 45%; margin-right: 4%; padding: 26px 0 22px; }
 .hero-rotator { min-height: 210px; }
 .hero-since { margin-bottom: 8px; }
 .hero-dots { margin-top: 18px; }
