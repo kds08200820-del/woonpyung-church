@@ -1,0 +1,23 @@
+{
+ "version": "20261023gd1",
+ "theme": "default",
+ "files": {
+  "floor/floor-tiles.webp": 108540,
+  "mid/hills-768.webp": 14370,
+  "mid/hills.webp": 32390,
+  "sky/clouds-overlay.webp": 36684,
+  "sky/sky-dawn-768.webp": 2346,
+  "sky/sky-dawn.webp": 6214,
+  "sky/sky-day-768.webp": 2124,
+  "sky/sky-day.webp": 5826,
+  "sky/sky-dusk-768.webp": 1864,
+  "sky/sky-dusk.webp": 5158,
+  "sky/sky-night-768.webp": 16160,
+  "sky/sky-night.webp": 38278,
+  "study/shelf-wall.webp": 33016
+ },
+ "variants": {
+  "season": []
+ },
+ "anchors": {}
+}
