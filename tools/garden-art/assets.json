@@ -1,0 +1,1375 @@
+{
+  "version": "20261023gd2",
+  "theme": "default",
+  "out_root": "images/garden/default",
+  "style_ref": {
+    "source": "C:\\Users\\user\\OneDrive\\바탕 화면\\프로그램\\도서관\\homepage\\art-src\\scene\\gen.py (STYLE·CLAY·land_prompt·char_prompt), 참고 그림 art-src\\성장단계-통창풍경.jpg, dview-tree-779.png, site\\hero.jpg",
+    "chars": "C:\\Users\\user\\OneDrive\\바탕 화면\\프로그램\\도서관\\app\\src\\renderer\\art\\chars\\solo_<id>.png (옷차림만 참고, 다리가 없거나 이상해 새로 그림 — 소유자 지시 2026-10-23)",
+    "STYLE": "soft 3D clay pastel illustration, warm peach cream and soft sage palette, gentle rounded shapes, clean matte materials, soft natural daylight, rich fine detail, crisp edges, high quality",
+    "CLAY": "cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed"
+  },
+  "comfy": {
+    "url": "http://127.0.0.1:8188",
+    "output_dir": "C:\\ComfyUI\\output",
+    "run_bat": "C:\\ComfyUI\\run_comfyui.bat",
+    "unet": "flux1-schnell-Q4_K_S.gguf",
+    "clip1": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+    "clip2": "clip_l.safetensors",
+    "vae": "flux_ae.safetensors",
+    "steps": 4,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "scheduler": "simple"
+  },
+  "style_prefix": "",
+  "style_suffix": "",
+  "sprite_suffix": "isolated on a flat solid evenly lit pure white background, nothing else in the frame",
+  "chroma_suffix": "the entire background is one solid flat vivid saturated neon magenta chroma-key background (#FF00FF), perfectly even, nothing else in the frame",
+  "chroma_suffix_black": "the entire background is solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame",
+  "chroma_suffix_blue": "the entire background is a flat solid saturated pure blue (#0000FF) backdrop, no clouds, no sun, no gradient, nothing else in the frame",
+  "chroma_key": {
+    "color": [
+      255,
+      0,
+      255
+    ],
+    "t0": 70,
+    "t1": 150,
+    "feather": 0.8
+  },
+  "webp": {
+    "quality": 82,
+    "method": 6
+  },
+  "margin": 0.04,
+  "notes": [
+    "v2(2026-10-23): 소유자 지시로 도서관 홈페이지 화풍(STYLE/CLAY)에 맞춤. 프롬프트는 자산마다 완성형이라 style_prefix/suffix 는 비움.",
+    "프롬프트 조립: prompt (+ add) + bg=rembg → sprite_suffix / bg=chroma → key 색 문구(프롬프트에 이미 있으면 생략)",
+    "후보 k 의 seed = seed + (k-1). 식물은 종마다 seed 가 같아 단계끼리 생김새가 비슷하다.",
+    "bg=chroma 의 key: black(기본 — Flux 가 마젠타·초록·파랑은 파스텔로 옅게 그려 키가 안 먹음)|magenta|green|blue. key_sides=top 이면 위쪽 변과 이어진 영역만 지움(언덕 그늘 보존)",
+    "rembg 가 실패(알파 검사 불통)하면 자동으로 마젠타 배경으로 다시 만들어 크로마키 → state.json 의 bg_used 에 기록",
+    "anchor.soil_y + base=bottom: 식물 바닥(접지 그림자 포함)을 캔버스 높이의 94% 에 놓고 fit(단계별 높이 비율)으로 성장 느낌. anchor.foot_y: 발 선",
+    "alias 자산은 다른 자산의 내보낸 파일 복사(char-a/b/c = m1/f1/m2). pick: 고른 후보 번호(1부터), null 이면 아직 안 고름",
+    "rembg 실패 시 대체 키 색 = fallback_key(black). 마젠타 대체본(_m)은 가장자리에 분홍·청록 번짐이 남았음(2026-10-23)",
+    "version: 원 세션 요청(2026-10-23)으로 gd2. 같은 이름으로 그림을 바꿀 때마다 올린다(다음 큰 교체는 gd3). 되돌리지 말 것."
+  ],
+  "assets": [
+    {
+      "id": "sky-dawn",
+      "group": "bg",
+      "out": "sky/sky-dawn.webp",
+      "gen": [
+        1536,
+        960
+      ],
+      "final": [
+        1536,
+        768
+      ],
+      "prompt": "A seamless soft sky backdrop filling the entire frame edge to edge, only sky, no floor, no ground, no stage, no horizon line, no hills, no trees, no buildings, no birds, early dawn sky in soft peach, rose and pale lavender, a gentle warm glow low at the bottom, a few faint soft clouds, calm and hopeful. soft 3D clay pastel illustration, warm peach cream and soft sage palette, gentle rounded shapes, clean matte materials, soft natural daylight, rich fine detail, crisp edges, high quality",
+      "seed": 5101,
+      "bg": "none",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [
+        "768"
+      ],
+      "pick": 2,
+      "crop_top": true
+    },
+    {
+      "id": "sky-day",
+      "group": "bg",
+      "out": "sky/sky-day.webp",
+      "gen": [
+        1536,
+        960
+      ],
+      "final": [
+        1536,
+        768
+      ],
+      "prompt": "A seamless soft sky backdrop filling the entire frame edge to edge, only sky, no floor, no ground, no stage, no horizon line, no hills, no trees, no buildings, no birds, a clear bright daytime sky in soft pale blue blending into warm cream near the bottom, gentle sunlight, a few small soft white clouds. soft 3D clay pastel illustration, warm peach cream and soft sage palette, gentle rounded shapes, clean matte materials, soft natural daylight, rich fine detail, crisp edges, high quality",
+      "seed": 5201,
+      "bg": "none",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [
+        "768"
+      ],
+      "pick": 2,
+      "crop_top": true
+    },
+    {
+      "id": "sky-dusk",
+      "group": "bg",
+      "out": "sky/sky-dusk.webp",
+      "gen": [
+        1536,
+        960
+      ],
+      "final": [
+        1536,
+        768
+      ],
+      "prompt": "A seamless soft sky backdrop filling the entire frame edge to edge, only sky, no floor, no ground, no stage, no horizon line, no hills, no trees, no buildings, no birds, a warm sunset sky in golden peach, coral and dusty rose blending into soft violet at the top, a gentle sun glow low at the bottom, a few thin soft clouds. soft 3D clay pastel illustration, warm peach cream and soft sage palette, gentle rounded shapes, clean matte materials, soft natural daylight, rich fine detail, crisp edges, high quality",
+      "seed": 5301,
+      "bg": "none",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [
+        "768"
+      ],
+      "pick": 1,
+      "crop_top": true
+    },
+    {
+      "id": "sky-night",
+      "group": "bg",
+      "out": "sky/sky-night.webp",
+      "gen": [
+        1536,
+        960
+      ],
+      "final": [
+        1536,
+        768
+      ],
+      "prompt": "A seamless soft sky backdrop filling the entire frame edge to edge, only sky, no floor, no ground, no stage, no horizon line, no hills, no trees, no buildings, no birds, a deep navy blue night sky (#032257) with a soft indigo glow near the bottom, many small glossy pearl-like round stars of different sizes scattered across the whole sky, a smooth pale yellow crescent moon in the upper left, peaceful and dreamy. soft 3D clay pastel illustration, warm peach cream and soft sage palette, gentle rounded shapes, clean matte materials, soft natural daylight, rich fine detail, crisp edges, high quality",
+      "seed": 5401,
+      "bg": "none",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [
+        "768"
+      ],
+      "pick": 2,
+      "crop_top": true
+    },
+    {
+      "id": "clouds-overlay",
+      "group": "bg",
+      "out": "sky/clouds-overlay.webp",
+      "gen": [
+        1536,
+        512
+      ],
+      "final": [
+        1536,
+        512
+      ],
+      "prompt": "Five separate soft fluffy rounded white clouds spread evenly apart across a wide frame, each cloud fully inside the frame, smooth matte white with soft pale blue shading, floating on solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 5501,
+      "bg": "chroma",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 2,
+      "key": "black",
+      "key_sides": "all"
+    },
+    {
+      "id": "hills",
+      "group": "bg",
+      "out": "mid/hills.webp",
+      "gen": [
+        1536,
+        768
+      ],
+      "final": [
+        1536,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render diorama, soft pastel colors, matte clay texture, rounded simple toy-like shapes, miniature, gentle soft light. Wide eye-level view of a peaceful garden landscape, open outdoors only, no window, no frame. In the foreground a soft green lawn with a low cream wooden picket fence on the right, a few round fluffy trees with dense rounded tuft canopies and sturdy brown trunks, small round bushes and little pastel flowers, a small winding stepping-stone path. Layered rounded clay hills and a valley leading to distant soft clay mountains at the horizon. Summer: lush soft greens, vivid but soft colors. The sky above the mountains is solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame.",
+      "seed": 5601,
+      "bg": "chroma",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [
+        "768"
+      ],
+      "pick": 2,
+      "key": "black",
+      "key_sides": "top"
+    },
+    {
+      "id": "floor-tiles",
+      "group": "bg",
+      "out": "floor/floor-tiles.webp",
+      "gen": [
+        1536,
+        512
+      ],
+      "final": [
+        1536,
+        384
+      ],
+      "prompt": "A horizontal strip of smooth rounded beige and warm gray stepping stone paving tiles set in short soft green grass, seen from a slightly elevated front view, the paving fills the lower part of the frame edge to edge and its top edge is an irregular rounded edge of stones and grass; above it the whole background is solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 5701,
+      "bg": "chroma",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "key": "black",
+      "key_sides": "all",
+      "crop_bottom": true
+    },
+    {
+      "id": "shelf-wall",
+      "group": "bg",
+      "out": "study/shelf-wall.webp",
+      "gen": [
+        768,
+        1024
+      ],
+      "final": [
+        768,
+        1024
+      ],
+      "prompt": "Front view of a tall built-in light oak bookshelf wall filling the whole frame edge to edge, shelves packed with many colorful books in warm colors, a small brass reading lamp with a warm glow and a small potted plant on one shelf, a tiny framed picture, warm natural daylight, no floor, no window, no people. soft 3D clay pastel illustration, warm peach cream and soft sage palette, gentle rounded shapes, clean matte materials, soft natural daylight, rich fine detail, crisp edges, high quality",
+      "seed": 5801,
+      "bg": "none",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 2
+    },
+    {
+      "id": "sunflower-0",
+      "group": "plant",
+      "out": "plants/sunflower-0.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a single striped sunflower seed lying on its side, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7101,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.16
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "sunflower",
+      "stage": 0,
+      "label_ko": "해바라기 0 씨앗"
+    },
+    {
+      "id": "sunflower-1",
+      "group": "plant",
+      "out": "plants/sunflower-1.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a tiny sunflower sprout with a short pale green stem and two small round cotyledon leaves, rising from a small patch of dark soil, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7101,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.3
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 3,
+      "species": "sunflower",
+      "stage": 1,
+      "label_ko": "해바라기 1 싹"
+    },
+    {
+      "id": "sunflower-2",
+      "group": "plant",
+      "out": "plants/sunflower-2.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a young sunflower seedling with a straight green stem and four heart-shaped green leaves, no flower yet, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7101,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.5
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 2,
+      "species": "sunflower",
+      "stage": 2,
+      "label_ko": "해바라기 2 어린 나무"
+    },
+    {
+      "id": "sunflower-3",
+      "group": "plant",
+      "out": "plants/sunflower-3.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a tall sunflower plant with a thick green stem, large heart-shaped leaves and a closed green flower bud at the top, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7101,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.74
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 3,
+      "species": "sunflower",
+      "stage": 3,
+      "label_ko": "해바라기 3 자란 나무"
+    },
+    {
+      "id": "sunflower-4",
+      "group": "plant",
+      "out": "plants/sunflower-4.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a tall sunflower in full bloom with a big round brown seed center, bright golden yellow petals and large green leaves, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7101,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.88
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "sunflower",
+      "stage": 4,
+      "label_ko": "해바라기 4 꽃"
+    },
+    {
+      "id": "sunflower-5",
+      "group": "plant",
+      "out": "plants/sunflower-5.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a mature sunflower bowing slightly under a heavy round seed head full of seeds, warm golden petals, a few seeds fallen below, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7101,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.94
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "sunflower",
+      "stage": 5,
+      "label_ko": "해바라기 5 열매"
+    },
+    {
+      "id": "olive-0",
+      "group": "plant",
+      "out": "plants/olive-0.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a single oval brown olive pit seed, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7301,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.16
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 3,
+      "species": "olive",
+      "stage": 0,
+      "label_ko": "올리브나무 0 씨앗",
+      "add": "only the single seed lying on its side, no plant, no leaves, no sprout, no pot, no base"
+    },
+    {
+      "id": "olive-1",
+      "group": "plant",
+      "out": "plants/olive-1.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a tiny olive sprout with a short stem and a pair of small narrow silvery green leaves, rising from a small patch of dark soil, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7201,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.3
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "olive",
+      "stage": 1,
+      "label_ko": "올리브나무 1 싹"
+    },
+    {
+      "id": "olive-2",
+      "group": "plant",
+      "out": "plants/olive-2.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a young olive sapling with a thin light brown trunk and a few branches of narrow silver green leaves, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7301,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.5
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "olive",
+      "stage": 2,
+      "label_ko": "올리브나무 2 어린 나무",
+      "add": "a dense bushy cluster of many silver green leaves on short branches, compact sapling"
+    },
+    {
+      "id": "olive-3",
+      "group": "plant",
+      "out": "plants/olive-3.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a small olive tree with a gnarled light brown trunk and a dense rounded canopy of silver green leaves, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7201,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.74
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 2,
+      "species": "olive",
+      "stage": 3,
+      "label_ko": "올리브나무 3 자란 나무"
+    },
+    {
+      "id": "olive-4",
+      "group": "plant",
+      "out": "plants/olive-4.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "an olive tree with a gnarled trunk and a dense rounded silver green canopy dotted with tiny creamy white blossom clusters, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7201,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.88
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 2,
+      "species": "olive",
+      "stage": 4,
+      "label_ko": "올리브나무 4 꽃"
+    },
+    {
+      "id": "olive-5",
+      "group": "plant",
+      "out": "plants/olive-5.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "an olive tree with a gnarled trunk and a dense rounded silver green canopy full of plump dark purple and green olives, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7201,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.94
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "olive",
+      "stage": 5,
+      "label_ko": "올리브나무 5 열매"
+    },
+    {
+      "id": "fig-0",
+      "group": "plant",
+      "out": "plants/fig-0.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a single small plump brown teardrop shaped fig seed, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7401,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.16
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 2,
+      "species": "fig",
+      "stage": 0,
+      "label_ko": "무화과나무 0 씨앗",
+      "add": "only the single seed lying on its side, no plant, no leaves, no sprout, no pot, no base"
+    },
+    {
+      "id": "fig-1",
+      "group": "plant",
+      "out": "plants/fig-1.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a tiny fig sprout with a short stem and two small lobed green leaves, rising from a small patch of dark soil, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7301,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.3
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "fig",
+      "stage": 1,
+      "label_ko": "무화과나무 1 싹"
+    },
+    {
+      "id": "fig-2",
+      "group": "plant",
+      "out": "plants/fig-2.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a young fig sapling with a thin grey brown trunk and several large lobed green fig leaves, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7301,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.5
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "fig",
+      "stage": 2,
+      "label_ko": "무화과나무 2 어린 나무"
+    },
+    {
+      "id": "fig-3",
+      "group": "plant",
+      "out": "plants/fig-3.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a small fig tree with a sturdy grey brown trunk and a dense rounded canopy of big lobed green leaves, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7301,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.74
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "fig",
+      "stage": 3,
+      "label_ko": "무화과나무 3 자란 나무"
+    },
+    {
+      "id": "fig-4",
+      "group": "plant",
+      "out": "plants/fig-4.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a fig tree with a sturdy trunk and a dense rounded canopy of big lobed green leaves with tiny pale green young figs forming, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7301,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.88
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 2,
+      "species": "fig",
+      "stage": 4,
+      "label_ko": "무화과나무 4 꽃"
+    },
+    {
+      "id": "fig-5",
+      "group": "plant",
+      "out": "plants/fig-5.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "a fig tree with a sturdy trunk and a dense rounded canopy of big lobed green leaves full of ripe plump purple figs, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7301,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": {
+        "soil_y": 0.94,
+        "base": "bottom",
+        "fit": 0.94
+      },
+      "variants": [
+        "s"
+      ],
+      "pick": 1,
+      "species": "fig",
+      "stage": 5,
+      "label_ko": "무화과나무 5 열매"
+    },
+    {
+      "id": "char-pastor",
+      "group": "char",
+      "out": "chars/char-pastor.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        512,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a kind middle-aged Korean man with short black hair and round black glasses, wearing a mint green knit cardigan over a white collared shirt, light beige trousers and brown shoes, standing upright facing the viewer, gentle warm smile, arms relaxed at the sides, exactly two long legs with natural adult proportions, both feet in shoes flat on the ground slightly apart, both shoes clearly visible, the whole figure visible from head to shoes with empty space below the feet, centered, soft studio light, matte clay texture, highly detailed",
+      "seed": 8100,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "variants": [],
+      "pick": 2,
+      "label_ko": "목사님 서 있음"
+    },
+    {
+      "id": "sit-pastor",
+      "group": "char",
+      "out": "study/sit-pastor.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a kind middle-aged Korean man with short black hair and round black glasses, wearing a mint green knit cardigan over a white collared shirt, light beige trousers and brown shoes, sitting comfortably in a soft cream armchair with short wooden legs, holding an open book with both hands on the lap, facing the viewer, gentle warm smile. The armchair is plain cream fabric all over, no pattern. Both legs are stretched down in front of the armchair with long natural adult proportions, thighs on the seat, knees bent, long lower legs going straight down, both feet in shoes resting flat on the floor in front of the armchair, slightly apart, both shoes clearly visible side by side, the whole armchair visible including its legs, soft studio light, matte clay texture, highly detailed",
+      "seed": 9100,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.97
+      },
+      "variants": [],
+      "pick": 2,
+      "label_ko": "목사님 앉음"
+    },
+    {
+      "id": "char-m1",
+      "group": "char",
+      "out": "chars/char-m1.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        512,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean man with short black hair and round black glasses, wearing a mint green knit sweater, light beige chino trousers and white sneakers, standing upright facing the viewer, gentle warm smile, arms relaxed at the sides, exactly two long legs with natural adult proportions, both feet in shoes flat on the ground slightly apart, both shoes clearly visible, the whole figure visible from head to shoes with empty space below the feet, centered, soft studio light, matte clay texture, highly detailed",
+      "seed": 8110,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "variants": [],
+      "pick": 2,
+      "label_ko": "청년 남 1 서 있음"
+    },
+    {
+      "id": "sit-m1",
+      "group": "char",
+      "out": "study/sit-m1.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean man with short black hair and round black glasses, wearing a mint green knit sweater, light beige chino trousers and white sneakers, sitting comfortably in a soft cream armchair with short wooden legs, holding an open book with both hands on the lap, facing the viewer, gentle warm smile. The armchair is plain cream fabric all over, no pattern. Both legs are stretched down in front of the armchair with long natural adult proportions, thighs on the seat, knees bent, long lower legs going straight down, both feet in shoes resting flat on the floor in front of the armchair, slightly apart, both shoes clearly visible side by side, the whole armchair visible including its legs, soft studio light, matte clay texture, highly detailed",
+      "seed": 9110,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.97
+      },
+      "variants": [],
+      "pick": 2,
+      "label_ko": "청년 남 1 앉음"
+    },
+    {
+      "id": "char-m2",
+      "group": "char",
+      "out": "chars/char-m2.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        512,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a cheerful young Korean man with wavy brown hair, wearing a light sky blue hoodie, light gray jogger pants and white sneakers, standing upright facing the viewer, gentle warm smile, arms relaxed at the sides, exactly two long legs with natural adult proportions, both feet in shoes flat on the ground slightly apart, both shoes clearly visible, the whole figure visible from head to shoes with empty space below the feet, centered, soft studio light, matte clay texture, highly detailed",
+      "seed": 8120,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "variants": [],
+      "pick": 2,
+      "label_ko": "청년 남 2 서 있음"
+    },
+    {
+      "id": "sit-m2",
+      "group": "char",
+      "out": "study/sit-m2.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a cheerful young Korean man with wavy brown hair, wearing a light sky blue hoodie, light gray jogger pants and white sneakers, sitting comfortably in a soft cream armchair with short wooden legs, holding an open book with both hands on the lap, facing the viewer, gentle warm smile. The armchair is plain cream fabric all over, no pattern. Both legs are stretched down in front of the armchair with long natural adult proportions, thighs on the seat, knees bent, long lower legs going straight down, both feet in shoes resting flat on the floor in front of the armchair, slightly apart, both shoes clearly visible side by side, the whole armchair visible including its legs, soft studio light, matte clay texture, highly detailed",
+      "seed": 9120,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.97
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 남 2 앉음"
+    },
+    {
+      "id": "char-m3",
+      "group": "char",
+      "out": "chars/char-m3.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        512,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean man with short black hair, wearing a beige knit cardigan over a white shirt, dark charcoal slim trousers and cream sneakers, standing upright facing the viewer, gentle warm smile, arms relaxed at the sides, exactly two long legs with natural adult proportions, both feet in shoes flat on the ground slightly apart, both shoes clearly visible, the whole figure visible from head to shoes with empty space below the feet, centered, soft studio light, matte clay texture, highly detailed",
+      "seed": 8130,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 남 3 서 있음"
+    },
+    {
+      "id": "sit-m3",
+      "group": "char",
+      "out": "study/sit-m3.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean man with short black hair, wearing a beige knit cardigan over a white shirt, dark charcoal slim trousers and cream sneakers, sitting comfortably in a soft cream armchair with short wooden legs, holding an open book with both hands on the lap, facing the viewer, gentle warm smile. The armchair is plain cream fabric all over, no pattern. Both legs are stretched down in front of the armchair with long natural adult proportions, thighs on the seat, knees bent, long lower legs going straight down, both feet in shoes resting flat on the floor in front of the armchair, slightly apart, both shoes clearly visible side by side, the whole armchair visible including its legs, soft studio light, matte clay texture, highly detailed",
+      "seed": 9130,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.97
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 남 3 앉음"
+    },
+    {
+      "id": "char-m4",
+      "group": "char",
+      "out": "chars/char-m4.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        512,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean man with short black hair, wearing a light blue denim jacket over a cream t-shirt, blue jeans and gray sneakers, standing upright facing the viewer, gentle warm smile, arms relaxed at the sides, exactly two long legs with natural adult proportions, both feet in shoes flat on the ground slightly apart, both shoes clearly visible, the whole figure visible from head to shoes with empty space below the feet, centered, soft studio light, matte clay texture, highly detailed",
+      "seed": 8140,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 남 4 서 있음"
+    },
+    {
+      "id": "sit-m4",
+      "group": "char",
+      "out": "study/sit-m4.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean man with short black hair, wearing a light blue denim jacket over a cream t-shirt, blue jeans and gray sneakers, sitting comfortably in a soft cream armchair with short wooden legs, holding an open book with both hands on the lap, facing the viewer, gentle warm smile. The armchair is plain cream fabric all over, no pattern. Both legs are stretched down in front of the armchair with long natural adult proportions, thighs on the seat, knees bent, long lower legs going straight down, both feet in shoes resting flat on the floor in front of the armchair, slightly apart, both shoes clearly visible side by side, the whole armchair visible including its legs, soft studio light, matte clay texture, highly detailed",
+      "seed": 9140,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.97
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 남 4 앉음"
+    },
+    {
+      "id": "char-f1",
+      "group": "char",
+      "out": "chars/char-f1.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        512,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean woman with long straight black hair, wearing a soft peach knit cardigan over a cream blouse, a long cream skirt and beige flat shoes, standing upright facing the viewer, gentle warm smile, arms relaxed at the sides, exactly two long legs with natural adult proportions, both feet in shoes flat on the ground slightly apart, both shoes clearly visible, the whole figure visible from head to shoes with empty space below the feet, centered, soft studio light, matte clay texture, highly detailed",
+      "seed": 8150,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 여 1 서 있음"
+    },
+    {
+      "id": "sit-f1",
+      "group": "char",
+      "out": "study/sit-f1.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean woman with long straight black hair, wearing a soft peach knit cardigan over a cream blouse, a long cream skirt and beige flat shoes, sitting comfortably in a soft cream armchair with short wooden legs, holding an open book with both hands on the lap, facing the viewer, gentle warm smile. The armchair is plain cream fabric all over, no pattern. Both legs are stretched down in front of the armchair with long natural adult proportions, thighs on the seat, knees bent, long lower legs going straight down, both feet in shoes resting flat on the floor in front of the armchair, slightly apart, both shoes clearly visible side by side, the whole armchair visible including its legs, soft studio light, matte clay texture, highly detailed",
+      "seed": 9150,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.97
+      },
+      "variants": [],
+      "pick": 2,
+      "label_ko": "청년 여 1 앉음"
+    },
+    {
+      "id": "char-f2",
+      "group": "char",
+      "out": "chars/char-f2.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        512,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean woman with a short black bob haircut and bangs, wearing a soft yellow knit sweater, a mustard orange skirt and brown flat shoes, standing upright facing the viewer, gentle warm smile, arms relaxed at the sides, exactly two long legs with natural adult proportions, both feet in shoes flat on the ground slightly apart, both shoes clearly visible, the whole figure visible from head to shoes with empty space below the feet, centered, soft studio light, matte clay texture, highly detailed",
+      "seed": 8160,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "variants": [],
+      "pick": 2,
+      "label_ko": "청년 여 2 서 있음"
+    },
+    {
+      "id": "sit-f2",
+      "group": "char",
+      "out": "study/sit-f2.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean woman with a short black bob haircut and bangs, wearing a soft yellow knit sweater, a mustard orange skirt and brown flat shoes, sitting comfortably in a soft cream armchair with short wooden legs, holding an open book with both hands on the lap, facing the viewer, gentle warm smile. The armchair is plain cream fabric all over, no pattern. Both legs are stretched down in front of the armchair with long natural adult proportions, thighs on the seat, knees bent, long lower legs going straight down, both feet in shoes resting flat on the floor in front of the armchair, slightly apart, both shoes clearly visible side by side, the whole armchair visible including its legs, soft studio light, matte clay texture, highly detailed",
+      "seed": 9160,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.97
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 여 2 앉음"
+    },
+    {
+      "id": "char-f3",
+      "group": "char",
+      "out": "chars/char-f3.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        512,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a cheerful young Korean woman with brown hair tied in a low ponytail, wearing a sage green sweater, light beige trousers and white sneakers, standing upright facing the viewer, gentle warm smile, arms relaxed at the sides, exactly two long legs with natural adult proportions, both feet in shoes flat on the ground slightly apart, both shoes clearly visible, the whole figure visible from head to shoes with empty space below the feet, centered, soft studio light, matte clay texture, highly detailed",
+      "seed": 8170,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 여 3 서 있음"
+    },
+    {
+      "id": "sit-f3",
+      "group": "char",
+      "out": "study/sit-f3.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a cheerful young Korean woman with brown hair tied in a low ponytail, wearing a sage green sweater, light beige trousers and white sneakers, sitting comfortably in a soft cream armchair with short wooden legs, holding an open book with both hands on the lap, facing the viewer, gentle warm smile. The armchair is plain cream fabric all over, no pattern. Both legs are stretched down in front of the armchair with long natural adult proportions, thighs on the seat, knees bent, long lower legs going straight down, both feet in shoes resting flat on the floor in front of the armchair, slightly apart, both shoes clearly visible side by side, the whole armchair visible including its legs, soft studio light, matte clay texture, highly detailed",
+      "seed": 9170,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.97
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 여 3 앉음"
+    },
+    {
+      "id": "char-f4",
+      "group": "char",
+      "out": "chars/char-f4.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        512,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean woman with long wavy black hair and round black glasses, wearing a lavender knit sweater, light blue jeans and white sneakers, standing upright facing the viewer, gentle warm smile, arms relaxed at the sides, exactly two long legs with natural adult proportions, both feet in shoes flat on the ground slightly apart, both shoes clearly visible, the whole figure visible from head to shoes with empty space below the feet, centered, soft studio light, matte clay texture, highly detailed",
+      "seed": 8180,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 여 4 서 있음"
+    },
+    {
+      "id": "sit-f4",
+      "group": "char",
+      "out": "study/sit-f4.webp",
+      "gen": [
+        1024,
+        1024
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render character, full body, a young Korean woman with long wavy black hair and round black glasses, wearing a lavender knit sweater, light blue jeans and white sneakers, sitting comfortably in a soft cream armchair with short wooden legs, holding an open book with both hands on the lap, facing the viewer, gentle warm smile. The armchair is plain cream fabric all over, no pattern. Both legs are stretched down in front of the armchair with long natural adult proportions, thighs on the seat, knees bent, long lower legs going straight down, both feet in shoes resting flat on the floor in front of the armchair, slightly apart, both shoes clearly visible side by side, the whole armchair visible including its legs, soft studio light, matte clay texture, highly detailed",
+      "seed": 9180,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": {
+        "foot_y": 0.97
+      },
+      "variants": [],
+      "pick": 1,
+      "label_ko": "청년 여 4 앉음"
+    },
+    {
+      "id": "char-a",
+      "group": "char",
+      "out": "chars/char-a.webp",
+      "alias": "char-m1",
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "note": "1단계 키 a = char-m1 복사"
+    },
+    {
+      "id": "char-b",
+      "group": "char",
+      "out": "chars/char-b.webp",
+      "alias": "char-f1",
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "note": "1단계 키 b = char-f1 복사"
+    },
+    {
+      "id": "char-c",
+      "group": "char",
+      "out": "chars/char-c.webp",
+      "alias": "char-m2",
+      "anchor": {
+        "foot_y": 0.96
+      },
+      "note": "1단계 키 c = char-m2 복사"
+    },
+    {
+      "id": "coin",
+      "group": "ui",
+      "out": "ui/coin.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        256,
+        256
+      ],
+      "prompt": "A single round golden coin with a simple embossed wheat sprig symbol, slightly tilted toward the viewer, soft glossy highlight, centered, the whole coin fully visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9101,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "chest",
+      "group": "ui",
+      "out": "ui/chest.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        256,
+        256
+      ],
+      "prompt": "A small rounded wooden treasure chest with a slightly open lid, warm honey colored wood with brass bands and a round lock, a soft golden glow peeking from inside, centered, the whole chest fully visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9201,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": null,
+      "variants": [],
+      "pick": 2
+    },
+    {
+      "id": "seed-packet",
+      "group": "ui",
+      "out": "ui/seed-packet.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        256,
+        256
+      ],
+      "prompt": "A small cream colored paper seed packet with a simple picture of a sunflower on the front and three striped seeds spilling out beside it, blank label without any writing, centered, the whole packet fully visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9401,
+      "bg": "rembg",
+      "candidates": 3,
+      "anchor": null,
+      "variants": [],
+      "pick": 2,
+      "add": "the packet is made of warm kraft brown paper with a cream label, not white"
+    },
+    {
+      "id": "wx-sun",
+      "group": "ui",
+      "out": "ui/wx-sun.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        256,
+        256
+      ],
+      "prompt": "a small round soft yellow sun with short rounded rays, simple icon, centered, the whole object fully visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9401,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "optional": true
+    },
+    {
+      "id": "wx-cloud",
+      "group": "ui",
+      "out": "ui/wx-cloud.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        256,
+        256
+      ],
+      "prompt": "a single fluffy rounded white cloud, simple icon, centered, the whole object fully visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9402,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 2,
+      "optional": true
+    },
+    {
+      "id": "wx-fog",
+      "group": "ui",
+      "out": "ui/wx-fog.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        256,
+        256
+      ],
+      "prompt": "three soft horizontal rounded pale gray fog bands stacked, simple icon, centered, the whole object fully visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9403,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 2,
+      "optional": true
+    },
+    {
+      "id": "wx-rain",
+      "group": "ui",
+      "out": "ui/wx-rain.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        256,
+        256
+      ],
+      "prompt": "a fluffy rounded pale blue gray cloud with three round blue raindrops below it, simple icon, centered, the whole object fully visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9404,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "optional": true
+    },
+    {
+      "id": "wx-snow",
+      "group": "ui",
+      "out": "ui/wx-snow.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        256,
+        256
+      ],
+      "prompt": "a fluffy rounded white cloud with three round white snowballs below it, simple icon, centered, the whole object fully visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9405,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "optional": true
+    }
+  ],
+  "fallback_key": "black"
+}
