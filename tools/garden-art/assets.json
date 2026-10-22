@@ -1,5 +1,5 @@
 {
-  "version": "20261023gd2",
+  "version": "20261023gd3",
   "theme": "default",
   "out_root": "images/garden/default",
   "style_ref": {
@@ -421,10 +421,10 @@
         768,
         768
       ],
-      "prompt": "a single oval brown olive pit seed, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
-      "seed": 7301,
+      "prompt": "a single brown oval olive pit seed with a slightly wrinkled surface, lying on its side half buried in a small low patch of dark brown soil, only the seed and the soil, no sprout, no leaves, no stem, nothing green, front view, centered, soft contact shadow. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7401,
       "bg": "rembg",
-      "candidates": 3,
+      "candidates": 6,
       "anchor": {
         "soil_y": 0.94,
         "base": "bottom",
@@ -436,8 +436,7 @@
       "pick": 3,
       "species": "olive",
       "stage": 0,
-      "label_ko": "올리브나무 0 씨앗",
-      "add": "only the single seed lying on its side, no plant, no leaves, no sprout, no pot, no base"
+      "label_ko": "올리브나무 0 씨앗"
     },
     {
       "id": "olive-1",
@@ -597,10 +596,10 @@
         768,
         768
       ],
-      "prompt": "a single small plump brown teardrop shaped fig seed, a single plant only, no soil mound, no pot, no fence, no ground plane, front view, centered, the whole plant fully visible, soft contact shadow directly beneath. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
-      "seed": 7401,
+      "prompt": "a small dried fig fruit cut in half showing its pinkish seedy inside, with three tiny pale tan fig seeds beside it, resting half buried in a small low patch of dark brown soil, only the fruit, the seeds and the soil, no sprout, no leaves, no stem, nothing green, front view, centered, soft contact shadow. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 7501,
       "bg": "rembg",
-      "candidates": 3,
+      "candidates": 6,
       "anchor": {
         "soil_y": 0.94,
         "base": "bottom",
@@ -609,11 +608,10 @@
       "variants": [
         "s"
       ],
-      "pick": 2,
+      "pick": 6,
       "species": "fig",
       "stage": 0,
-      "label_ko": "무화과나무 0 씨앗",
-      "add": "only the single seed lying on its side, no plant, no leaves, no sprout, no pot, no base"
+      "label_ko": "무화과나무 0 씨앗"
     },
     {
       "id": "fig-1",
