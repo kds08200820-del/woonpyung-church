@@ -17,6 +17,37 @@
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Gowun+Batang:wght@400;700&family=Song+Myung&family=IBM+Plex+Sans+KR:wght@400;500;700&family=Gaegu:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20260927nm" />
   <style>
+    /* ── 목회 행정 앱 틀(2026-10-22): 왼쪽 메뉴 + 오른쪽 본문. 머리글(#header)은 늘 흰 바탕(히어로 없음) ── */
+    body.af-app{background:#f2f3f5}
+    body.af-app #header{transition:none}
+    .af-root{padding-top:var(--af-top,66px);min-height:100vh;box-sizing:border-box}
+    .af-root>.fin-card,.af-root>p{max-width:560px;margin:48px auto}
+    .af-shell{display:flex;align-items:stretch;min-height:calc(100vh - var(--af-top,66px))}
+    .af-side{flex:0 0 228px;width:228px;background:#16181c;color:#c4c7ce;position:sticky;top:var(--af-top,66px);height:calc(100vh - var(--af-top,66px));overflow-y:auto;z-index:20;scrollbar-width:thin;scrollbar-color:#3a3d44 transparent}
+    .af-brand{display:block;padding:22px 20px 18px;border-bottom:1px solid #2a2d33;text-decoration:none}
+    .af-brand-t{display:flex;align-items:center;gap:7px;font-size:1.32rem;font-weight:800;color:#fff;letter-spacing:-.01em;line-height:1.2}
+    .af-brand-t span{background:#b89b5e;color:#16181c;font-size:.86rem;padding:2px 7px 3px;border-radius:3px;font-weight:800;letter-spacing:0}
+    .af-brand-s{font-size:.74rem;color:#80848d;margin-top:6px}
+    .af-nav{padding:8px 0 28px}
+    .af-grp{font-size:.7rem;color:#6c7079;font-weight:600;padding:16px 20px 6px;letter-spacing:.02em}
+    .af-nav button,.af-nav a{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:10px 20px 10px 17px;background:none;border:0;border-left:3px solid transparent;color:#c4c7ce;font:inherit;font-size:.9rem;font-weight:500;text-align:left;cursor:pointer;text-decoration:none;transition:background .15s ease,color .15s ease}
+    .af-nav button:hover,.af-nav a:hover{background:#1f2227;color:#fff}
+    .af-nav button:focus-visible,.af-nav a:focus-visible{outline:2px solid #b89b5e;outline-offset:-2px}
+    .af-nav button.active{background:#262a31;color:#fff;font-weight:700;border-left-color:#b89b5e}
+    .af-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:#fff;color:#16181c;font-size:.72rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+    .af-badge[hidden]{display:none}
+    .af-ext{margin-left:auto;font-size:.75rem;color:#6c7079}
+    .af-main{flex:1;min-width:0;padding:26px 30px 70px}
+    @media(max-width:900px){
+      .af-shell{display:block;min-height:0}
+      .af-side{width:auto;height:auto;overflow:visible;z-index:40}
+      .af-brand,.af-grp,.af-nav a{display:none}
+      .af-nav{display:flex;overflow-x:auto;padding:0;scrollbar-width:none}
+      .af-nav::-webkit-scrollbar{display:none}
+      .af-nav button{width:auto;flex:none;padding:13px 14px 11px;border-left:0;border-bottom:3px solid transparent;white-space:nowrap}
+      .af-nav button.active{border-bottom-color:#b89b5e}
+      .af-main{padding:18px 14px 50px}
+    }
     .fin-wrap{max-width:1280px}
     .fin-tabs{display:flex;gap:6px;border-bottom:2px solid var(--line,#e3e7ee);margin:8px 0 20px;flex-wrap:wrap}
     .fin-tabs button{position:relative;background:none;border:none;padding:10px 16px;font-weight:700;color:var(--ink-soft,#7b8794);cursor:pointer;font-family:inherit;transition:color .2s ease,transform .2s ease}
@@ -25,7 +56,7 @@
     .fin-tabs button:hover::after{transform:scaleX(1)}
     .fin-tabs button.active{color:var(--accent,#032257)}
     .fin-tabs button.active::after{transform:scaleX(1)}
-    .fin-card{background:#fff;border:1px solid var(--line,#e3e7ee);border-radius:12px;padding:18px;margin-bottom:18px}
+    .fin-card{background:#fff;border:1px solid #e3e5e9;border-radius:4px;padding:18px;margin-bottom:18px}
     .fin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
     .fin-table{width:100%;border-collapse:collapse;font-size:.9rem}
     .fin-table th,.fin-table td{padding:8px 9px;border-bottom:1px solid var(--line,#eef1f5);text-align:left;vertical-align:top}
@@ -38,23 +69,65 @@
     .fin-sugg div{padding:8px 11px;cursor:pointer;font-size:.88rem;border-bottom:1px solid #f0f0f0}
     .fin-sugg div:last-child{border-bottom:none}
     .fin-sugg div:hover,.fin-sugg div.hi{background:#f5f8fc}
+    /* ── 대시보드(2026-10-22): 평평한 흰 카드 · 검은 숫자 · 오른쪽 알림 ── */
+    .dsh-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+    .dsh-title{margin:0;font-size:1.35rem;font-weight:800;color:#111;letter-spacing:-.01em}
+    .dsh-date{font-size:.84rem;color:#7a7f88;margin-top:4px}
+    .dsh-new{background:#111;color:#fff;border:0;border-radius:3px;padding:11px 18px;font:inherit;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .15s ease}
+    .dsh-new:hover{background:#363a40}
+    .dsh-body{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start}
+    .dsh-rail{margin-top:16px}
+    .dsh-rail .dsh-panel:first-child{margin-top:0}
+    /* 좁으면 한 줄로: 알림은 맨 위, 메모는 맨 아래 */
+    @media(max-width:1360px){.dsh-body{grid-template-columns:minmax(0,1fr)}.dsh-rail{display:contents}.dsh-alerts{order:-1}.dsh-memo{order:1}.dsh-rail .dsh-panel.dsh-alerts{margin-top:16px}.dsh-rail .dsh-panel.dsh-memo{margin-top:0}}
+    @media(min-width:601px) and (max-width:1360px){.dn{padding:10px 0}.dn-b{display:flex;align-items:center;justify-content:space-between;gap:14px}.dn-b .dn-btn{margin-top:0;white-space:nowrap}}
+    .dsh-sec{display:flex;align-items:baseline;gap:8px;font-size:1rem;font-weight:800;color:#111;margin:26px 0 10px}
+    .dsh-sec small{font-size:.76rem;color:#8a8f98;font-weight:500}
+    .dsh-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+    .dk{background:#fff;border:1px solid #e3e5e9;border-radius:3px;padding:14px 16px 13px;min-height:98px;box-sizing:border-box;display:flex;flex-direction:column;transition:border-color .15s ease,box-shadow .15s ease}
+    .dk.click{cursor:pointer}
+    .dk.click:hover{border-color:#b6bac2;box-shadow:0 2px 10px rgba(17,17,17,.06)}
+    .dk.click:focus-visible{outline:2px solid #111;outline-offset:1px}
+    .dk.hot{border-left:3px solid #111;padding-left:14px}
+    .dk-l{font-size:.78rem;color:#6b7079;font-weight:500}
+    .dk-n{font-size:1.6rem;font-weight:800;color:#111;line-height:1.15;margin-top:8px;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+    .dk-s{font-size:.73rem;color:#8a8f98;margin-top:5px;line-height:1.45;word-break:keep-all}
+    .dsh-panel{background:#fff;border:1px solid #e3e5e9;border-radius:3px;padding:18px 20px;margin-top:16px}
+    .dsh-ph{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .dsh-ph b{font-size:.98rem;color:#111;font-weight:800}
+    .dsh-ph small{font-size:.76rem;color:#8a8f98;font-weight:500;margin-left:6px}
+    .dsh-link{background:none;border:0;padding:0;font:inherit;font-size:.8rem;color:#555;cursor:pointer;white-space:nowrap}
+    .dsh-link:hover{color:#111;text-decoration:underline}
+    .dsh-seg{display:inline-flex;border:1px solid #d5d8dd;border-radius:3px;overflow:hidden}
+    .dsh-seg button{background:#fff;border:0;padding:5px 12px;font:inherit;font-size:.78rem;color:#555;cursor:pointer}
+    .dsh-seg button+button{border-left:1px solid #d5d8dd}
+    .dsh-seg button.on{background:#111;color:#fff}
+    .dsh-tbl{width:100%;border-collapse:collapse;font-size:.86rem;border:1px solid #e3e5e9}
+    .dsh-tbl td{padding:10px 12px;border-top:1px solid #eceef1;vertical-align:middle}
+    .dsh-tbl .d{color:#7a7f88;white-space:nowrap;font-variant-numeric:tabular-nums;width:1%}
+    .dsh-tbl .s{white-space:nowrap;width:1%}
+    .dsh-tbl .t{color:#111;font-weight:500;word-break:keep-all}
+    .dsh-tbl .r{color:#6b7079;white-space:nowrap;text-align:right;width:1%}
+    .dsh-chip{display:inline-block;padding:2px 8px;border:1px solid #d9dce1;border-radius:2px;font-size:.74rem;color:#444;background:#fafafa}
+    .dsh-bar{flex:1;background:#eef0f3;border-radius:2px;height:14px;overflow:hidden}
+    .dsh-bar i{display:block;height:100%;background:#2b2f36}
+    .dsh-notes{border-top:1px solid #eceef1}
+    .dn{display:flex;gap:10px;padding:13px 0;border-bottom:1px solid #eceef1}
+    .dn-tag{flex:none;align-self:flex-start;font-size:.7rem;font-weight:700;color:#333;border:1px solid #cfd3d9;border-radius:2px;padding:1px 6px;margin-top:2px}
+    .dn-b{flex:1;min-width:0;font-size:.85rem;color:#333;line-height:1.6;word-break:keep-all}
+    .dn-b b{color:#111}
+    .dn-btn{display:inline-block;margin-top:8px;background:#fff;border:1px solid #cfd3d9;border-radius:2px;padding:7px 12px;font:inherit;font-size:.8rem;font-weight:700;color:#111;cursor:pointer}
+    .dn-btn:hover{border-color:#111}
+    .dn-empty{font-size:.84rem;color:#8a8f98;padding:14px 0 2px}
+    @media(max-width:600px){.dsh-tbl .r,.dsh-tbl .s{display:none}.dsh-tbl td{padding:9px 8px}.dk{min-height:88px;padding:12px 13px}.dk-n{font-size:1.4rem}}
   </style>
 </head>
-<body>
-  <section class="page-hero">
-    <p class="ph-eyebrow">ADMIN</p>
-    <h1>목회 행정</h1>
-    <p>심방·상담·교육·설교·문서 기록 관리 (관리자 전용)</p>
-  </section>
-
-  <section class="block">
-    <div class="container fin-wrap">
-      <div id="afRoot"><p class="qt-loading">권한 확인 중입니다…</p></div>
-    </div>
-  </section>
+<body class="af-app">
+  <!-- 히어로 없이 앱 틀: 왼쪽 메뉴·본문은 affairs.js render() 가 그린다 -->
+  <main id="afRoot" class="af-root"><p class="qt-loading">권한 확인 중입니다…</p></main>
 
   <script src="js/config.js?v=20260908lib"></script>
-  <script src="js/bulletins.js?v=20261010sum1"></script>
+  <script src="js/bulletins.js?v=20261017sum1"></script>
   <script src="js/bulletins-live.js?v=20261010sum1"></script>
   <script src="js/layout.js?v=20261010drag1"></script>
   <script src="js/main.js?v=20261010sum1"></script>
@@ -69,6 +142,6 @@
   <script src="js/audiobook-data.js?v=20260906ab"></script>
   <script src="js/forms.js?v=20261010img1"></script>
   <script src="js/forms-admin.js?v=20261010img1"></script>
-  <script src="js/affairs.js?v=20261011lock1"></script>
+  <script src="js/affairs.js?v=20261022side1"></script>
 </body>
 </html>

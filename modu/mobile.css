@@ -315,3 +315,94 @@ body.hy-open #moTabs{z-index:85}
 #v-exeg .ex-sel{max-width:40vw}
 #v-exeg #exNote,#v-exeg #exHelp{display:none}
 @media (max-width:900px){ #v-exeg .ex-main{padding:12px 14px 60px;font-size:14px} #v-exeg .ex-vt{font-size:13px} #v-exeg .ex-td-m{width:38%} }
+/* ═════════ 파스텔 점토(clay) — 휴대폰 덧칠 (1.0.83, 2026-10-14) ═════════
+   style.css 맨 끝의 clay 덩어리는 데스크탑 배치(아이패드·PC 폭)용이다. 휴대폰 배치(≤900px)에서 어긋나는 곳을 여기서 맞춘다.
+   본문 위 띠는 세이지 + 갈색 글씨, 아래 탭·시트는 위 모서리만 둥글게, 창은 화면 가득(둥근 모서리 없음). */
+@media (max-width: 900px){
+html[data-theme="clay"]{
+  /* 아래 탭 자리 — clay 의 #shell 여백(12px)이 아래 탭 높이를 덮지 않게 */
+  & #shell{padding:0 0 calc(var(--mo-bar) + var(--sab));gap:0}
+  /* 본문 위 띠 */
+  & #v-read > .vhead{background:var(--sage);color:var(--fg);border-bottom:0;padding:8px 6px 8px 8px;box-shadow:0 6px 16px rgba(96,128,106,.18)}
+  & #v-read > .vhead h1.mo-title{display:block;font-size:17px;color:var(--fg)}
+  & #v-read > .vhead h1.mo-title::before{display:none}
+  & .mo-ib{color:var(--sage-ink)}
+  & .mo-ib:active{background:rgba(255,251,244,.6)}
+  & .mo-cnt{background:var(--coral)}
+  & #stephBtn{background:rgba(255,251,244,.6);color:var(--fg);border-color:transparent;box-shadow:none}
+  & #stephBtn.on{background:var(--coral);color:#fff}
+  & #v-read > .vhead #exegBtn{padding:5px 10px;font-size:13px;background:rgba(255,251,244,.6);border-color:transparent;box-shadow:none}   /* 제목 자리를 조금 더 남긴다 */
+  & .mo-home{border-radius:10px;box-shadow:var(--shadow-s)}
+  /* 본문 카드 — 글 폭을 아끼려 여백을 줄인다 */
+  & #reader{padding:8px 8px 40px}
+  & .readwrap{padding:12px 13px 16px;border-radius:20px;margin-bottom:12px}
+  & #reader :is(.vpara,.vrow):is(.mo-sel,.vpick){box-shadow:inset 4px 0 0 var(--coral)}
+  & .vrow{border-bottom-color:var(--line2)}
+  & .vrow[class*="hl-"]{border-radius:12px}
+  /* 다른 화면 머리 */
+  & .view:not(#v-read) .vhead h1::before{width:26px;height:26px}
+  /* 시트(메뉴·오른쪽 단추·드롭다운·낱말 뜻): 아래에 붙고 위 모서리만 둥글게 */
+  & :is(.mb-pop,.cmenu,.dropmenu){border-radius:24px 24px 0 0}
+  & #wordbox.mo-on{margin:0;border:0;border-radius:24px 24px 0 0;box-shadow:0 -12px 36px rgba(150,118,88,.28)}
+  /* 창은 화면 가득 */
+  & :is(.modal-card,.atlascard,.kg-card,.kgcard,.studycard){border-radius:0;box-shadow:none}
+  & .card{padding:16px;border-radius:20px}
+  & .setwrap{padding:14px 12px 60px;gap:14px}
+  /* 목차(책·장·절 고르기) */
+  & .mp-head{background:var(--sage);color:var(--fg)}
+  & .mp-grp{background:var(--soft);color:var(--sage-ink)}
+  & .mp-bk .mp-ab{color:var(--accent)}
+  & .mp-bk.on{background:var(--accent-bg)}
+  & :is(.mp-chs,.mp-vs) button.on{background:var(--hero);font-weight:700}
+  & .mp-foot input{border-radius:999px;background:#FFFDF9}
+  /* 더보기 시트 — 파스텔 타일 */
+  & #moMore{background:rgba(74,59,49,.32)}
+  & .mm-sheet{border-radius:26px 26px 0 0;background:var(--bg)}
+  & .mm-it{border:0;border-radius:18px;background:var(--panel);box-shadow:var(--shadow-s)}
+  & .mm-it:nth-child(6n+1 of .mm-it:not(.mm-menu)){background:var(--peach)}
+  & .mm-it:nth-child(6n+2 of .mm-it:not(.mm-menu)){background:var(--sky)}
+  & .mm-it:nth-child(6n+3 of .mm-it:not(.mm-menu)){background:var(--butter)}
+  & .mm-it:nth-child(6n+4 of .mm-it:not(.mm-menu)){background:var(--mint)}
+  & .mm-it:nth-child(6n+5 of .mm-it:not(.mm-menu)){background:var(--pink)}
+  & .mm-it:nth-child(6n+6 of .mm-it:not(.mm-menu)){background:var(--lilac)}
+  /* 아래 탭 — 고른 탭은 아이콘 뒤에 산호빛 알약 */
+  & #moTabs{background:var(--panel);border-top:0;border-radius:22px 22px 0 0;box-shadow:0 -6px 18px rgba(150,118,88,.16)}
+  & .mo-tab.on{color:var(--accent)}
+  & .mo-tab.on .ic{background:var(--accent-bg);border-radius:999px;padding:0 14px}
+  /* 떠 있는 것들 */
+  & #moInstallBar{border:0;border-radius:20px;box-shadow:var(--shadow2)}
+  & .mo-fab{box-shadow:0 6px 14px rgba(150,118,88,.35)}
+  & #moPal{border:0;box-shadow:var(--shadow2)}
+  & .mo-order .mm-sheet{background:var(--bg)}
+}
+}
+/* 로그인 문 (모든 폭) */
+html[data-theme="clay"]{
+  & #moGate{background:radial-gradient(circle at 28% 18%,#FADCC6 0,#F6EFE5 46%,#D4E5D9 100%)}
+  & .mo-card{background:#FFFAF3;border-radius:28px;box-shadow:0 30px 70px rgba(150,118,88,.30),0 1px 0 #fff inset;color:#4A3B31}
+  & .mo-brand{color:#B5553A}
+  & .mo-msg{color:#7C6A5D}
+  & .mo-btn{border-radius:999px;border-color:#EADFD0;background:#FFFDF9;color:#4A3B31}
+  & .mo-btn.primary{background:#E9805F;border-color:#E9805F;color:#fff}
+  & .mo-btn.kakao{background:#fee500;border-color:#fee500;color:#191919}
+  & .mo-in{border-radius:14px;border-color:#EADFD0;background:#FFFDF9}
+  & .mo-in:focus{border-color:#E9805F;box-shadow:0 0 0 4px rgba(233,128,95,.18)}
+  & .mo-foot{border-top-color:#F0E6D9;color:#A39282}
+}
+
+/* ── 둥근 단추 접기 (1.0.83): 평소에는 '도구' 단추 하나, 누르거나 절을 고르면 위로 펼쳐진다 ── */
+#moFab{align-items:flex-end}
+#moFab .mo-fab-tools{display:flex;flex-direction:column;gap:8px;transition:opacity .16s ease,transform .16s ease}
+#moFab:not(.open) .mo-fab-tools{opacity:0;transform:translateY(14px) scale(.92);pointer-events:none;visibility:hidden;height:0;overflow:hidden}
+.mo-fab.main{width:46px;height:46px;background:rgba(60,52,46,.62);font-size:9.5px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.mo-fab.main .ic{font-size:16px}
+#moFab.open .mo-fab.main{background:rgba(60,52,46,.82)}
+#moFab.has-sel .mo-fab.main{box-shadow:0 4px 12px rgba(0,0,0,.25)}
+html[data-theme="clay"] .mo-fab.main{background:rgba(233,128,95,.78)}
+html[data-theme="clay"] #moFab.open .mo-fab.main{background:#E9805F}
+
+/* ── 위 막대의 '원전 연구' 단추 (1.0.83): 막대가 강조색·흰 글씨라 단추 바탕(밝은 --bg)에 글씨가 하얗게 묻히던 것 ──
+   점토 바탕은 막대가 세이지·밤색 글씨라 따로(위 clay 덩어리) */
+html:not([data-theme="clay"]) #v-read > .vhead #exegBtn{background:rgba(255,255,255,.16);color:var(--accent-fg);border-color:rgba(255,255,255,.55);box-shadow:none}
+html:not([data-theme="clay"]) #v-read > .vhead #exegBtn:hover{background:rgba(255,255,255,.26);color:var(--accent-fg)}
+html[data-theme="clay"] #v-read > .vhead #exegBtn{color:var(--fg)}

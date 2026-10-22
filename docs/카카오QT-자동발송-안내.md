@@ -153,7 +153,7 @@ powershell -ExecutionPolicy Bypass -File "tools\register_kakao_qt_task.ps1"
 1. Supabase SQL Editor에서 **`supabase/20260921_2345_kakao_send_jobs.sql`** 을 1회 실행합니다.
    (실행 전에는 예약창에 "Supabase SQL Editor에서 … 실행해 주세요" 안내가 뜹니다)
 2. 발송을 맡을 PC에서 **`tools/카카오예약워커.bat`** 을 켜 둡니다.
-   30초마다 확인해서 예약 시각이 된 것을 보냅니다.
+   1분마다 확인해서 예약 시각이 된 것을 보냅니다(2026-10-18 30초 → 1분, Supabase 요청 줄이기).
    환경변수 `SUPABASE_SERVICE_ROLE_KEY` 가 있어야 하며, 다른 워커와 같은 값을 씁니다.
    집·교회 PC 두 대를 동시에 켜 두어도 한 건이 두 번 가지 않습니다.
 3. 매번 켜기 번거로우면 **`tools/카카오워커_자동시작_켜기.bat`** 을 한 번 실행하세요.

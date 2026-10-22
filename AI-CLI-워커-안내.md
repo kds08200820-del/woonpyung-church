@@ -34,6 +34,7 @@ for service: generativelanguage.googleapis.com"
       ▼
 [Supabase · ai_jobs 테이블]  pending
       │ ② claim_ai_job()  — 교회 PC가 가져감
+      │      (작업 뒤 3분은 1.5초, 조용하면 10초 → 25초 간격으로 확인 — 2026-10-18 사용량 절감)
       ▼
 [교회 PC · tools/ai_worker.py]  →  claude -p  (Claude 구독)
       │ ③ 답변을 ai_jobs 에 기록          done
@@ -88,7 +89,7 @@ claude auth status
 워커 'church-pc' / 모델 교인=haiku 관리=sonnet
 claude C:\Users\...\claude.exe
 큐 https://cetacttsdwzxjzkyozgd.supabase.co/rest/v1/ai_jobs
-대기 중… (1.5초 간격, Ctrl+C 로 종료)
+대기 중… (작업 뒤 3분은 1.5초, 조용하면 최대 25초 간격, Ctrl+C 로 종료)
 ```
 
 ## 5단계 — 재부팅해도 자동으로 켜지게

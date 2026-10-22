@@ -2,9 +2,13 @@
    · 앱 껍데기(html·css·js·글꼴)는 판(version)마다 새 저장소에 담고 옛것은 지운다
    · 큰 자료(R2 의 성경·사전·지도·주석)는 한 번 받으면 오래 둔다 (자료 판이 바뀌면 주소가 바뀐다)
    · Supabase(로그인·메모)는 늘 네트워크 */
-var VERSION = '1.0.82';
+var VERSION = '1.0.83';
 var SHELL = 'modu-shell-' + VERSION, DATA = 'modu-data-v2';   /* v2: crossOrigin 없이 받아 둔 불투명 응답을 버린다 */
-var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'worship-banner.js', 'mini.js', 'activity.js', 'compare.js', 'exeg-engine.js', 'exeg.js', 'hymn.js', 'hymn-data.js', 'ccm-data.js', 'gyodok.js', 'icon.png', 'manifest.webmanifest'];
+var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'worship-banner.js', 'mini.js', 'activity.js', 'compare.js', 'exeg-engine.js', 'exeg.js', 'hymn.js', 'hymn-data.js', 'ccm-data.js', 'gyodok.js', 'icon.png', 'manifest.webmanifest',
+  /* 1.0.83 파스텔 점토 바탕: 화면 글꼴(Pretendard subset 두 굵기)과 점토 아이콘 */
+  'fonts/Pretendard-Regular.subset.woff2', 'fonts/Pretendard-SemiBold.subset.woff2',
+  'img/clay/home.png', 'img/clay/diary.png', 'img/clay/day.png', 'img/clay/tasks.png', 'img/clay/brain.png', 'img/clay/stats.png',
+  'img/clay/settings.png', 'img/clay/sync.png', 'img/clay/mic.png', 'img/clay/pin.png', 'img/clay/smile.png'];
 
 self.addEventListener('install', function(e){
   self.skipWaiting();                                                    /* 새 판은 기다리지 않고 바로 갈아탄다 */

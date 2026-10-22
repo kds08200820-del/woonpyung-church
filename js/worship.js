@@ -781,11 +781,14 @@
       /* 주일 순서 (2026-10-09): 설교 매니저에서 블록으로 짠 순서(말씀 블록이 있는 콘티)가 있으면 그것을, 없으면 주보 순서를
          · 날짜 = 보관함에서 고른 날, 아니면 이번 주일(토요일이면 내일) — 주보가 아직 없어도 짠 순서로 예배를 연다
          · 반주자·목회자(관리자 포함)는 자기 블록도 함께 받는다 — 성도·로그인 전에는 부르지 않는다 */
-      var sd = ctx.date || sundayDate(), b0 = ctx.bulletin || bulletinOn(sd);
+      var sd = ctx.date || sundayDate();
       curDate = sd;
       setBody('<div class="ws-lock"><div class="ws-lock-t">예배 순서를 불러오는 중…</div></div>');
-      Promise.all([loadService(sd, ['주일 낮 예배']), loadRole(sd)]).then(function (rs) {
-        var rec = rs[0]; wsRole = rs[1];
+      /* 게시된 주보(js/bulletins-live.js)가 오기 전에 열면 그 주보의 설교 요약·주차가 빠졌다 — 받아 올 때까지(최대 4초) 기다린 뒤 주보를 고른다 (2026-10-17) */
+      var live = window.BULLETINS_LIVE && typeof window.BULLETINS_LIVE.then === 'function'
+        ? Promise.race([window.BULLETINS_LIVE, new Promise(function (r) { setTimeout(r, 4000); })]).catch(function () {}) : null;
+      Promise.all([loadService(sd, ['주일 낮 예배']), loadRole(sd), live]).then(function (rs) {
+        var rec = rs[0], b0 = ctx.bulletin || bulletinOn(sd); wsRole = rs[1];
         if (rec && hasSermonBlock(rec.conti)) {
           slides = sundayFromConti(rec, b0, sd, true);
           roleFull = wsRole ? sundayFromConti(rec, b0, sd, false) : null;

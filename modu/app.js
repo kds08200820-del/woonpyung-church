@@ -78,7 +78,7 @@ function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {'&':'&a
 /* ─────────────── 설정 ─────────────── */
 var SKEY = 'bibleApp.settings';
 var DEFAULTS = {
-  theme:'light', fs:17, lh:1.85, width:'normal',
+  theme:'clay', fs:17, lh:1.85, width:'normal',          /* 1.0.83: 저장된 바탕이 없는 새 사용자는 '파스텔 점토' — 이미 쓰던 사람은 저장된 바탕 그대로 */
   base:'gyr', extra:[], nonote:false, optNum:true, optSrc:true,
   showNav:true, font:'system', dictHover:true, hebAccent:false, bi:0, ci:0
 };
@@ -88,7 +88,8 @@ var FONTS = {
   gothic:  { name:'부크크고딕',        css:'"Bookk Gothic","맑은 고딕",sans-serif' }
 };
 var WIDTHS = { narrow:'860px', normal:'1180px', wide:'1600px' };
-var THEMES = ['light','sepia','dark','navy'];
+var THEMES = ['clay','light','sepia','dark','navy'];
+var THEME_NAMES = { clay:'파스텔 점토', light:'밝게', sepia:'세피아', dark:'어둡게', navy:'네이비' };
 function loadSettingsObj(){
   var out = {};
   for(var k in DEFAULTS) out[k] = DEFAULTS[k];
@@ -99,7 +100,7 @@ function loadSettingsObj(){
   if(!vinfoOrNull(out.base)) out.base = DEFAULTS.base;
   if(!Array.isArray(out.extra)) out.extra = [];
   out.extra = out.extra.filter(function(id){ return id !== out.base && !!vinfoOrNull(id); });
-  if(THEMES.indexOf(out.theme) < 0) out.theme = 'light';
+  if(THEMES.indexOf(out.theme) < 0) out.theme = DEFAULTS.theme;
   if(!FONTS[out.font]) out.font = 'system';
   if(!(out.bi >= 0 && out.bi < BOOKS.length)) out.bi = 0;
   if(!(out.ci >= 0 && out.ci < BOOKS[out.bi].c)) out.ci = 0;
@@ -121,6 +122,8 @@ function saveSettings(){
 function applySettings(){
   var d = document.documentElement;
   d.setAttribute('data-theme', S.theme);
+  /* 휴대폰 위 띠(상태 표시줄) 색 — 파스텔 점토는 세이지, 다른 바탕은 원래 색 */
+  try{ var mtc = document.querySelector('meta[name="theme-color"]'); if(mtc){ if(!mtc.getAttribute('data-orig')) mtc.setAttribute('data-orig', mtc.content); mtc.content = S.theme === 'clay' ? '#D4E5D9' : mtc.getAttribute('data-orig'); } }catch(e){}
   d.style.setProperty('--fs', S.fs + 'px');
   d.style.setProperty('--lh', S.lh);
   d.style.setProperty('--maxw', WIDTHS[S.width] || WIDTHS.normal);
@@ -1447,7 +1450,7 @@ function bumpFont(d){
 function cycleTheme(){
   S.theme = THEMES[(THEMES.indexOf(S.theme) + 1) % THEMES.length];
   saveSettings(); applySettings(); syncSettingsUI();
-  toast('바탕 — ' + ({light:'밝게',sepia:'세피아',dark:'어둡게',navy:'네이비'}[S.theme]));
+  toast('바탕 — ' + (THEME_NAMES[S.theme] || S.theme));
 }
 
 
@@ -3975,7 +3978,7 @@ window.APP.openAtlasAt = openAtlasAt;   /* 지식 그래프·명령창에서 메
     '|',
     ['fdown','','글자 작게','본문 글자를 줄입니다','Ctrl+-',function(){ bumpFont(-1); }],
     ['fup','','글자 크게','본문 글자를 키웁니다','Ctrl+=',function(){ bumpFont(1); }],
-    ['theme','','화면 색 바꾸기','밝은 색·종이 색·어두운 색을 차례로 바꿉니다','Ctrl+D',cycleTheme],
+    ['theme','','화면 색 바꾸기','파스텔 점토·밝은 색·종이 색·어두운 색을 차례로 바꿉니다','Ctrl+D',cycleTheme],
     ['gear','','설정','글자·성경·주석·음성·복사 설정을 엽니다','',function(){ showView('settings'); }],
     ['update','','최신 업데이트 확인','새 판이 나왔는지 확인하고, 있으면 내려받아 설치합니다','',function(){ if(window.UPD) UPD.manual(); }]
   ];
