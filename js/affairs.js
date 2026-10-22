@@ -268,6 +268,8 @@ console.log('[affairs.js] v20261023th1');
   window.addEventListener('resize', syncTop);
   syncTop(); setTimeout(syncTop, 700);
   if (document.getElementById('header')) document.getElementById('header').addEventListener('transitionend', syncTop);
+  // 로그인 정보가 늦게 붙거나 머리글이 햄버거 서랍(hdr-drawer)으로 바뀌면 크기 변경 없이도 높이가 달라진다
+  if (window.ResizeObserver && document.getElementById('header')) new ResizeObserver(syncTop).observe(document.getElementById('header'));
   // 탭 이동(메뉴·대시보드 카드 공용) — 뒤로가기로 직전 탭에 돌아온다
   function goTab(t) {
     if (t === tab) return;
