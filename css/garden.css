@@ -44,7 +44,11 @@ body.garden [hidden] { display: none !important; }
 .g-study { left: 16px; }
 .g-study.has-shelf { background: var(--g-shelf) center / cover no-repeat; }
 .g-study.has-shelf > * { position: relative; z-index: 1; }
-.g-study.has-shelf::before { content: ""; position: absolute; inset: 0; background: rgba(255,250,243,.84); }
+/* 책장 벽이 보이게(참고 그림의 왼쪽 서재) — 위쪽만 살짝 밝혀 제목을 읽게 하고, 카드·단추는 제 바탕을 갖는다 */
+.g-study.has-shelf::before { content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,250,243,.62) 0, rgba(255,250,243,.18) 110px, rgba(255,250,243,0) 45%); }
+.g-study.has-shelf .g-ptitle { display: inline-block; background: rgba(255,250,243,.88); padding: 4px 10px; border-radius: 999px; color: var(--g-fg2); }
+.g-study.has-shelf .g-link { background: rgba(255,250,243,.92); box-shadow: var(--g-shadow-s, 0 3px 9px rgba(185,164,140,.26)); }
 .g-rail { right: 16px; }
 .g-root[data-mode="gate"] .g-panel, .g-root[data-mode="gate"] .g-bar, .g-root[data-mode="gate"] .g-banner { display: none; }
 .g-root[data-mode="loading"] .g-panel, .g-root[data-mode="loading"] .g-bar { visibility: hidden; }

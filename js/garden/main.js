@@ -114,7 +114,8 @@
     var g = st.garden || {};
     return loadManifest().then(function () {
       var shelf = SCENE.asset('study/shelf-wall.webp');
-      if (shelf) { document.documentElement.style.setProperty('--g-shelf', 'url("' + shelf + '")'); document.getElementById('gStudy').classList.add('has-shelf'); }
+      /* CSS 변수 안의 상대 주소는 css/garden.css 기준으로 풀리므로(→ css/images/… 없음) 페이지 기준 절대 주소로 넣는다 */
+      if (shelf) { document.documentElement.style.setProperty('--g-shelf', 'url("' + new URL(shelf, document.baseURI).href + '")'); document.getElementById('gStudy').classList.add('has-shelf'); }
       return preloadFor(st);
     }).then(function () {
       mountScene(st);
