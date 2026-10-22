@@ -6144,46 +6144,30 @@ console.log('[affairs.js] v20261010form1');
         };
       })();
       var pdfBtn = ov.querySelector('#se_pdf');
+      // 내보내기(2026-10-13): Google 문서 변환(Apps Script exportSermonPdf)은 글꼴·쪽이 화면과 달라 버림.
+      // 저장한 뒤 sermon-print.html 을 새 탭으로 연다 — 편집 화면과 같은 쪽(js/sermon-doc.js)을 그려
+      // [인쇄 · PDF로 저장] 또는 [Google Drive 에 저장(교회 PC 워커)] 를 고른다. 자료는 sessionStorage 로 넘긴다.
       if (pdfBtn) pdfBtn.onclick = function () {
         var msg = ov.querySelector('#se_msg');
         var data = gather();
-        if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = 'PDF 내보내기 전에 일자와 제목을 입력해 주세요.'; return; }
-        if (!(window.WPF && window.FINANCE_API_URL)) { msg.style.color = '#c0392b'; msg.textContent = 'PDF 내보내기는 재정 API 설정 후 이용할 수 있습니다.'; return; }
+        if (!data.sermon_date || !data.title) { msg.style.color = '#c0392b'; msg.textContent = '내보내기 전에 일자와 제목을 입력해 주세요.'; return; }
         var old = pdfBtn.innerHTML; pdfBtn.disabled = true; pdfBtn.textContent = '저장 중…';
+        var win = window.open('', '_blank');   // 저장이 끝난 뒤 열면 팝업으로 막히므로 먼저 빈 창을 연다
         save(function (saved) {
-          pdfBtn.textContent = 'PDF 생성 중…';
-          // 편집기 화면과 같은 결과가 나오게: 용지·여백(리본 설정) + 문서 전체 글꼴·크기·줄간격·자간을 함께 보낸다
-          var PAPmm = { A4: [210, 297], iPad: [180, 240], Letter: [216, 279], B5: [176, 250] };
-          var pSel = ov.querySelector('#wd_paper'), mSel = ov.querySelector('#wd_margin');
-          var pk = (pSel && PAPmm[pSel.value]) ? pSel.value : 'A4';
-          var csEd = window.getComputedStyle(ed);
-          WPF.call('exportSermonPdf', {
-            date: saved.sermon_date,
-            title: saved.title || '',
-            service: saved.service || '',
-            preacher: saved.preacher || '',
-            scripture: saved.scripture || '',
-            bibleText: saved.bible_text || '',
-            contentHtml: saved.content || '',
-            seriesLine: seriesLineInfo(),   // 시리즈 · N번째 설교 (제목 왼쪽 위 출력)
-            hymnLine: hymnMetaLabel(saved.hymns, saved.service),   // 새벽·수요·금요 기도회: 제목 아래 '찬송가 N장'
-            paper: { w: PAPmm[pk][0], h: PAPmm[pk][1], margin: Number(mSel && mSel.value) || 20 },
-            docStyle: {
-              fontFamily: csEd.fontFamily || "'Noto Serif KR', serif",
-              lineHeight: ed.style.lineHeight || '',              // 리본 '줄간격'을 직접 바꾼 경우만 전달 — 비면 성경 본문과 같은 1.55
-              letterSpacing: parseFloat(ed.style.letterSpacing) || 0
-            }
-          }).then(function (r) {
-            pdfBtn.disabled = false; pdfBtn.innerHTML = old;
-            msg.style.color = 'green';
-            msg.innerHTML = '✓ PDF 저장됨 — "' + esc(r.folder) + '" 폴더 · <a href="' + esc(r.url) + '" target="_blank" rel="noopener">열어보기 →</a>';
-          }).catch(function (e) {
-            pdfBtn.disabled = false; pdfBtn.innerHTML = old;
-            msg.style.color = '#c0392b';
-            var m = (e && e.message) || '';
-            msg.textContent = /unknown action/i.test(m) ? 'PDF 내보내기는 Apps Script 재배포 후 이용할 수 있습니다.' : ('PDF 내보내기 실패: ' + m);
-          });
+          pdfBtn.disabled = false; pdfBtn.innerHTML = old;
+          var pSel = ov.querySelector('#wd_paper'), mSel = ov.querySelector('#wd_margin'), nSel = ov.querySelector('#wd_pgnum');
+          var payload = {
+            rec: saved,
+            settings: { paper: pSel ? pSel.value : 'A4', margin: Number(mSel && mSel.value) || 20, pgnum: nSel ? nSel.value : 'off', header: 'none' },
+            seriesLine: seriesLineInfo(),                               // 시리즈 · N번째 설교 (제목 왼쪽 위)
+            hymnLine: hymnMetaLabel(saved.hymns, saved.service)         // 새벽·수요·금요 기도회: 제목 아래 '찬송가 N장'
+          };
+          try { sessionStorage.setItem('wp_sermon_print', JSON.stringify(payload)); } catch (e) { }
+          if (win) win.location.href = 'sermon-print.html'; else window.open('sermon-print.html', '_blank');
+          msg.style.color = 'green';
+          msg.textContent = '저장했습니다. 인쇄 창에서 [인쇄 · PDF로 저장] 또는 [Google Drive에 저장]을 누르세요.';
         }, function (e) {
+          if (win) try { win.close(); } catch (err) { }
           pdfBtn.disabled = false; pdfBtn.innerHTML = old;
           msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + (e && e.message ? e.message : e);
         });

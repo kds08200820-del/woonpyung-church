@@ -10,6 +10,7 @@
   설교 매니저 · 마침 기도문 생성      → kind = prayer
   주보 편집기 · 표지 말씀 헤드라인    → kind = headline
   주보 편집기 · AI 주보 검수          → kind = review
+  설교 매니저 · 설교 PDF → Drive      → kind = sermon_pdf  (Claude 가 아니라 Edge 로 PDF 를 찍는다)
 
 흐름:
   브라우저 --ai_enqueue()--> ai_jobs(pending) --claim_ai_job()--> 이 워커
@@ -22,6 +23,10 @@
   CLAUDE_BIN                 claude 실행 파일 경로 (기본: 자동 탐지)
   AI_MODEL_COUNSEL           교인 질문용 모델 (기본 haiku — 빠른 응답)
   AI_MODEL_ADMIN             목회행정용 모델 (기본 sonnet — 문장 품질)
+  WP_WORKER_SECRET           설교 PDF 를 Drive 에 넣을 때 Apps Script 에 보이는 비밀값
+                             (Apps Script 프로젝트 설정 → 스크립트 속성 WORKER_SECRET 과 같은 값)
+  WP_APPS_SCRIPT_URL         Apps Script 웹앱 주소 (기본값 내장 = js/config.js 의 FINANCE_API_URL)
+  EDGE_BIN                   msedge.exe 경로 (기본: 자동 탐지, Chrome 도 됨)
 
 사용법:
   python ai_worker.py --watch          계속 대기하며 처리 (교회 PC 상시 실행)
@@ -46,6 +51,7 @@ import re
 import sys
 import json
 import time
+import base64
 import shutil
 import argparse
 import subprocess
@@ -105,15 +111,115 @@ WORKER = _env("AI_WORKER_NAME", "church-pc")
 MODEL_COUNSEL = _env("AI_MODEL_COUNSEL", "haiku")   # 교인 질문 — 빠른 응답이 중요
 MODEL_ADMIN = _env("AI_MODEL_ADMIN", "sonnet")      # 기도문·검수 — 문장 품질이 중요
 
-POLL_SEC = 1.5          # 사람이 화면에서 기다리는 중이므로 짧게
+# 큐 확인 간격 (2026-10-18 Supabase 사용량 절감)
+#  예전에는 밤낮없이 1.5초마다 확인해 하루 4만6천 번 — 홈페이지 전체 API 요청의 69% 였다.
+#  이제 작업을 마친 뒤(또는 워커를 켠 뒤) 3분 동안만 1.5초로 바짝 확인해 이어지는 질문을 바로 받고,
+#  조용해지면 10초, 10분이 지나면 25초 간격으로 늦춘다 → 하루 4~5천 번.
+#  가장 긴 간격은 목회행정 화면이 '워커가 꺼졌다'고 보는 45초(js/affairs.js AI_OFFLINE_MS)보다 넉넉히 짧아야 한다.
+POLL_STEPS = (          # (마지막 작업 뒤 지난 시간(초), 그동안의 확인 간격(초))
+    (3 * 60, 1.5),
+    (10 * 60, 10),
+)
+POLL_IDLE_SEC = 25      # 그 뒤로는 이 간격
 IDLE_LOG_SEC = 600      # 조용할 때 10분마다 "살아 있음" 한 줄
+
+
+def poll_interval(quiet_for):
+    """마지막 작업 뒤 quiet_for 초가 지났을 때 다음 확인까지 쉴 시간."""
+    for until, sec in POLL_STEPS:
+        if quiet_for < until:
+            return sec
+    return POLL_IDLE_SEC
 
 TIMEOUT = {             # 종류별 최대 생성 시간(초)
     "counsel": 180,
     "prayer": 240,
     "headline": 180,
     "review": 300,
+    "sermon_pdf": 240,
 }
+
+# ── 설교 PDF → Google Drive (kind = sermon_pdf) ───────────────
+#  설교 매니저 '내보내기' → sermon-print.html → [Google Drive 에 저장] 이 넣는 작업.
+#  payload = { html, date, title, service } — html 은 편집 화면과 똑같이 쪽을 그리는 독립 HTML 한 장.
+#  Edge(또는 Chrome)를 창 없이 띄워 PDF 로 찍고, Apps Script(saveSermonPdf)가 '{연도}설교/{예배명}/' 폴더에 넣는다.
+#  (예전 Google 문서 변환 방식은 글꼴·쪽 나눔이 화면과 달라 이 방식으로 바꿈 — 2026-10-13)
+APPS_SCRIPT_URL = _env("WP_APPS_SCRIPT_URL",
+                       "https://script.google.com/macros/s/AKfycbxdwH46NrPMVvkQHBKbyyfvO2UiuWTB8HarNx9UmcxGJsJR4xn6Ey166SWDMTPbVoQ/exec")
+WORKER_SECRET = _env("WP_WORKER_SECRET")
+
+
+def find_browser():
+    """PDF 를 찍을 Edge(없으면 Chrome) 실행 파일. EDGE_BIN 환경변수가 있으면 그것부터."""
+    cands = [_env("EDGE_BIN")]
+    for base in (os.environ.get("ProgramFiles(x86)"), os.environ.get("ProgramFiles"), os.environ.get("LocalAppData")):
+        if base:
+            cands.append(os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"))
+            cands.append(os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"))
+    cands += [shutil.which("msedge"), shutil.which("chrome"), shutil.which("google-chrome"), shutil.which("chromium")]
+    for c in cands:
+        if c and os.path.exists(c):
+            return c
+    return None
+
+
+def render_sermon_pdf(html):
+    """독립 HTML → PDF 바이트. 쪽 크기는 HTML 안의 @page 규칙(용지 설정)을 그대로 따른다."""
+    browser = find_browser()
+    if not browser:
+        raise RuntimeError("Edge(또는 Chrome)를 찾지 못했습니다 — 환경변수 EDGE_BIN 에 msedge.exe 경로를 넣어 주세요.")
+    work = tempfile.mkdtemp(prefix="wp-sermon-pdf-")
+    try:
+        html_path = os.path.join(work, "sermon.html")
+        pdf_path = os.path.join(work, "sermon.pdf")
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html)
+        args = [
+            browser, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+            "--disable-extensions", "--hide-scrollbars", "--run-all-compositor-stages-before-draw",
+            "--virtual-time-budget=30000",            # 글꼴 내려받기·쪽 나눔(비동기)이 끝날 때까지 기다린다
+            "--no-pdf-header-footer", "--print-to-pdf-no-header",
+            f"--print-to-pdf={pdf_path}", f"--user-data-dir={os.path.join(work, 'profile')}",
+            "file:///" + html_path.replace("\\", "/"),
+        ]
+        r = subprocess.run(args, capture_output=True, timeout=180)
+        if not os.path.exists(pdf_path) or os.path.getsize(pdf_path) < 500:
+            tail = (r.stderr or b"")[-400:].decode("utf-8", "replace")
+            raise RuntimeError(f"PDF 가 만들어지지 않았습니다 (브라우저 종료 코드 {r.returncode}) {tail}")
+        with open(pdf_path, "rb") as f:
+            return f.read()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def save_pdf_to_drive(pdf, date, title, service):
+    if not WORKER_SECRET:
+        raise RuntimeError("환경변수 WP_WORKER_SECRET 가 없습니다 — Apps Script 스크립트 속성 WORKER_SECRET 과 같은 값을 "
+                           'setx WP_WORKER_SECRET "값" 으로 넣고 워커를 다시 켜 주세요.')
+    body = {"action": "saveSermonPdf", "workerSecret": WORKER_SECRET, "date": date, "title": title,
+            "service": service, "pdfBase64": base64.b64encode(pdf).decode("ascii")}
+    # Apps Script 웹앱은 POST 뒤 302 로 결과 주소를 돌려준다 — urllib 이 따라가 GET 으로 JSON 을 받는다
+    st, raw = _req("POST", APPS_SCRIPT_URL, json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                   {"Content-Type": "text/plain;charset=utf-8"}, timeout=180)
+    try:
+        res = json.loads(raw.decode("utf-8", "replace"))
+    except Exception:
+        raise RuntimeError(f"Apps Script 응답을 읽지 못했습니다 ({st}): {raw[:200].decode('utf-8', 'replace')}")
+    if not res.get("ok"):
+        raise RuntimeError(res.get("error") or "Drive 저장에 실패했습니다.")
+    return res
+
+
+def process_sermon_pdf(payload):
+    html = payload.get("html") or ""
+    if "<html" not in html.lower():
+        raise RuntimeError("인쇄용 HTML 이 비어 있습니다.")
+    started = time.time()
+    pdf = render_sermon_pdf(html)
+    print(f"   · PDF 생성 {len(pdf) // 1024}KB ({time.time() - started:.1f}초)")
+    res = save_pdf_to_drive(pdf, str(payload.get("date") or "")[:10], payload.get("title") or "", payload.get("service") or "")
+    print(f"   · Drive 저장: {res.get('folder')}/{res.get('fileName')}")
+    return json.dumps({"url": res.get("url"), "folder": res.get("folder"), "fileName": res.get("fileName")}, ensure_ascii=False)
 
 # Claude 에게 절대 허용하지 않을 도구. 이 워커는 '글을 쓰는' 일만 한다.
 DENY_TOOLS = ",".join([
@@ -563,12 +669,14 @@ def _run_claude_once(args, prompt, workdir, timeout, env):
 # ── 작업 처리 ────────────────────────────────────────────────
 
 LABEL = {"counsel": "말씀지기", "prayer": "마침 기도문",
-         "headline": "표지 헤드라인", "review": "주보 검수"}
+         "headline": "표지 헤드라인", "review": "주보 검수", "sermon_pdf": "설교 PDF"}
 
 
 def process(job):
     kind = job.get("kind")
     payload = job.get("payload") or {}
+    if kind == "sermon_pdf":                      # Claude 를 부르지 않는 작업 — Edge 로 PDF 를 찍어 Drive 에
+        return process_sermon_pdf(payload)
     if kind not in SYSTEM:
         raise RuntimeError(f"알 수 없는 작업 종류: {kind}")
 
@@ -621,7 +729,8 @@ def run_once():
         print(LOGIN_HELP, file=sys.stderr)
     except Exception as e:
         # 화면에는 짧은 안내만 나가도록 — 자세한 원인은 이 창의 로그로 본다.
-        finish_job(jid, "error", error=f"AI 처리 중 문제가 생겼습니다. ({str(e)[:200]})")
+        what = "PDF" if job.get("kind") == "sermon_pdf" else "AI"
+        finish_job(jid, "error", error=f"{what} 처리 중 문제가 생겼습니다. ({str(e)[:200]})")
         print(f"❌ #{jid} 실패: {e}", file=sys.stderr)
     return True
 
@@ -664,12 +773,13 @@ def main():
             print("대기 중인 작업이 없습니다.")
         return
 
-    print(f"대기 중… ({POLL_SEC}초 간격, Ctrl+C 로 종료)")
+    print(f"대기 중… (작업 뒤 3분은 {POLL_STEPS[0][1]}초, 조용하면 최대 {POLL_IDLE_SEC}초 간격, Ctrl+C 로 종료)")
     idle_since = time.time()
+    last_job = time.time()                   # 켠 직후도 '방금 작업한 것'처럼 바짝 확인
     while True:
         try:
             if run_once():
-                idle_since = time.time()
+                idle_since = last_job = time.time()
             else:
                 if time.time() - idle_since >= IDLE_LOG_SEC:
                     print(f"   (대기 중 — {datetime.now().strftime('%m-%d %H:%M')})")
@@ -677,7 +787,7 @@ def main():
                     if claude_logged_in() is False:
                         print(LOGIN_HELP, file=sys.stderr)
                     idle_since = time.time()
-                time.sleep(POLL_SEC)
+                time.sleep(poll_interval(time.time() - last_job))
         except KeyboardInterrupt:
             print("\n종료합니다.")
             return

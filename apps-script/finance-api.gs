@@ -117,6 +117,7 @@ function doPost(e) {
     if (action === 'deleteVoucher') return json_(actionDeleteVoucher_(req));
     if (action === 'clearVouchers') return json_(actionClearVouchers_(req));
     if (action === 'exportSermonPdf') return json_(actionExportSermonPdf_(req));
+    if (action === 'saveSermonPdf') return json_(actionSaveSermonPdf_(req));
     return json_({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
@@ -465,6 +466,32 @@ function actionDeleteVoucher_(req) {
 // 편집기에서 작업한 서식(굵게·글자 크기·색·정렬·인용·줄간격 등)을 그대로 살리기 위해
 // 원고 HTML을 Google Docs로 변환(Drive API import)한 뒤 PDF로 뽑는다.
 // 변환이 실패하면 예전 평문 방식으로 대체해 내보내기 자체는 항상 성공하게 한다.
+// 설교 PDF 저장 (2026-10, 설교 매니저 '내보내기' → sermon-print.html → 교회 PC 워커)
+//  · 워커(tools/ai_worker.py)가 Edge 로 찍은 PDF(base64)를 '{연도}설교/{예배명}/{일자 제목}.pdf' 에 넣는다.
+//  · 인증: 스크립트 속성 WORKER_SECRET 과 같은 workerSecret 이거나, 관리자 로그인 토큰.
+//    (Apps Script 편집기 → 프로젝트 설정 → 스크립트 속성에 WORKER_SECRET 을 넣고, 교회 PC 에는 환경변수 WP_WORKER_SECRET 로 같은 값을 둔다)
+//  · 같은 이름의 예전 파일은 휴지통으로 보내고 새 파일로 바꾼다(다시 내보내도 파일이 쌓이지 않게).
+function actionSaveSermonPdf_(req) {
+  var secret = PropertiesService.getScriptProperties().getProperty('WORKER_SECRET') || '';
+  var byWorker = !!(secret && req.workerSecret && String(req.workerSecret) === secret);
+  if (!byWorker) { var user = verifyUser_(req.token); requireAdmin_(user.id); }
+  var date = String(req.date || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('일자 형식이 올바르지 않습니다(YYYY-MM-DD).');
+  var title = String(req.title || '(제목없음)').replace(/[\\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() || '(제목없음)';
+  var b64 = String(req.pdfBase64 || '');
+  if (!b64) throw new Error('PDF 자료가 비어 있습니다.');
+  var bytes = Utilities.base64Decode(b64);
+  var rootName = date.slice(0, 4) + '설교';
+  var svcName = String(req.service || '기타').replace(/[\\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim() || '기타';
+  var rootFolder = getOrCreateFolder_(DriveApp.getRootFolder(), rootName);
+  var targetFolder = getOrCreateFolder_(rootFolder, svcName);
+  var fileName = date + ' ' + title + '.pdf';
+  var old = targetFolder.getFilesByName(fileName);
+  while (old.hasNext()) old.next().setTrashed(true);
+  var file = targetFolder.createFile(Utilities.newBlob(bytes, 'application/pdf', fileName));
+  return { ok: true, url: file.getUrl(), fileName: fileName, folder: rootName + '/' + svcName, bytes: bytes.length };
+}
+
 function actionExportSermonPdf_(req) {
   var user = verifyUser_(req.token);
   requireAdmin_(user.id);
