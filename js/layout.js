@@ -5,6 +5,8 @@
 (function () {
   const NAV = [
     { href: "dashboard.html", label: "대시보드", memberOnly: true },
+    // 목회행정(2026-10-23): 교회행정 메뉴 밖으로 빼서 바로 — 관리자(admins)에게만 보인다
+    { href: "affairs.html", label: "목회행정", adminOnly: true, id: "navAffairs" },
     { href: "welcome.html", label: "처음 오셨나요", sub: [
       { href: "welcome.html#worship", label: "예배 안내" },
       { href: "welcome.html#directions", label: "교회 가는 길" },
@@ -46,7 +48,6 @@
     { href: "finance.html", label: "교회행정", adminOnly: true, sub: [
       { href: "finance.html", label: "재정관리" },
       { href: "gyojeok.html", label: "교적관리" },
-      { href: "affairs.html", label: "목회행정" },
     ] },
   ];
 
@@ -55,7 +56,7 @@
   // ===== 헤더 =====
   const navLinks = NAV.map((n) => {
     const active = path === n.href.split("#")[0] ? ' class="active"' : "";
-    const admAttr = n.adminOnly ? ' id="navAdmin" style="display:none"' : (n.memberOnly ? ' id="navMember" style="display:none"' : "");
+    const admAttr = n.adminOnly ? ` id="${n.id || "navAdmin"}" style="display:none"` : (n.memberOnly ? ' id="navMember" style="display:none"' : "");
     if (!n.sub) return `<div class="nav-item"${admAttr}><a href="${n.href}"${active}>${n.label}</a></div>`;
     const subs = n.sub.map((s) => `<a href="${s.href}">${s.label}</a>`).join("");
     return `<div class="nav-item has-sub"${admAttr}>
@@ -208,6 +209,25 @@
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
+  // ===== 머리글이 한 줄에 안 들어가면 좁게 (2026-10-23) =====
+  // 관리자·정회원은 대시보드·목회행정·모두의 성경 단추와 긴 이름까지 붙어 중간 폭(노트북·태블릿 가로)에서 넘친다.
+  // 실제로 넘칠 때만 hdr-tight(로고 글자 숨김·간격 축소)를 켠다. 모바일(760px 이하)은 햄버거 메뉴라 해당 없음.
+  const navInner = header.querySelector(".nav-inner");
+  let fitRaf = 0;
+  const fitHeader = () => {
+    cancelAnimationFrame(fitRaf);
+    fitRaf = requestAnimationFrame(() => {
+      header.classList.remove("hdr-tight");
+      if (window.innerWidth > 760 && navInner.scrollWidth > navInner.clientWidth + 1) header.classList.add("hdr-tight");
+    });
+  };
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(fitHeader);
+    ro.observe(navInner);
+    ["navMenu", "authSlot"].forEach((id) => { const el = document.getElementById(id); if (el) ro.observe(el); });
+  }
+  window.addEventListener("resize", fitHeader);
+
   // ===== 모바일 메뉴 =====
   const navToggle = document.getElementById("navToggle");
   const navMenu = document.getElementById("navMenu");
@@ -359,17 +379,17 @@
           .then((r) => (r.ok ? r.json() : null))
           .then((rows) => {
             if (rows && rows.length) {
-              const el = document.getElementById("navAdmin");
-              if (el) el.style.display = "";
+              ["navAdmin", "navAffairs"].forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = ""; });
               // auth-card 안에 목회행정 바로가기 버튼 추가 (중복 방지)
               const card = document.querySelector(".auth-card");
               if (card && !card.querySelector(".ac-admin-go")) {
                 const a = document.createElement("a");
                 a.href = "affairs.html";
                 a.className = "ac-admin-go";
-                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:#032257;color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:background .18s";
-                a.onmouseenter = function () { this.style.background = "#1a4080"; };
-                a.onmouseleave = function () { this.style.background = "#032257"; };
+                // 색은 페이지 테마(var(--accent))를 따른다 — 목회 행정 화면에서는 먹색
+                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#032257);color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
+                a.onmouseenter = function () { this.style.opacity = ".86"; };
+                a.onmouseleave = function () { this.style.opacity = ""; };
                 a.textContent = "목회행정";
                 card.appendChild(a);
               }
@@ -391,9 +411,9 @@
                 const a = document.createElement("a");
                 a.href = "dashboard.html";
                 a.className = "ac-dash-go";
-                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:#032257;color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:background .18s";
-                a.onmouseenter = function () { this.style.background = "#1a4080"; };
-                a.onmouseleave = function () { this.style.background = "#032257"; };
+                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#032257);color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
+                a.onmouseenter = function () { this.style.opacity = ".86"; };
+                a.onmouseleave = function () { this.style.opacity = ""; };
                 a.textContent = "대시보드";
                 card.appendChild(a);
               }

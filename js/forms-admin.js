@@ -17,7 +17,7 @@ window.WPCFormsAdmin = (function () {
     '.fa-head .fa-sub{color:#8a8a8a;font-size:.84rem}' +
     '.fa-head .fa-right{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}' +
     '.fa-list{display:flex;flex-direction:column;gap:10px}' +
-    '.fa-item{border:1px solid var(--line,#e6e3dd);border-radius:12px;padding:13px 15px;background:#fff;cursor:pointer;text-align:left;font:inherit;width:100%}' +
+    '.fa-item{border:1px solid var(--line,#e6e3dd);border-radius:5px;padding:13px 15px;background:#fff;cursor:pointer;text-align:left;font:inherit;width:100%}' +
     '.fa-item:hover{border-color:var(--accent-soft,#4a6a9c)}' +
     '.fa-item-hd{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}' +
     '.fa-item-hd b{color:var(--accent,#032257);font-size:1rem}' +
@@ -31,7 +31,7 @@ window.WPCFormsAdmin = (function () {
     '.fa-st-due{background:#fff;color:var(--accent,#032257);border:1px solid var(--gold,#b89b5e)}' +
     '.fa-st-paid{background:var(--accent,#032257);color:#fff}' +
     '.fa-st-ok{background:#eef2f7;color:var(--accent-soft,#4a6a9c)}' +
-    '.fa-stat{background:var(--paper-alt,#f7f5f0);border:1px solid var(--line,#e6e3dd);border-radius:10px;padding:10px 12px}' +
+    '.fa-stat{background:var(--paper-alt,#f7f5f0);border:1px solid var(--line,#e6e3dd);border-radius:4px;padding:10px 12px}' +
     '.fa-stat span{display:block;font-size:.78rem;color:#8a8a8a}' +
     '.fa-stat b{font-size:1.1rem;color:var(--accent,#032257)}' +
     '.fa-stat small{display:block;font-size:.76rem;color:#4a4a4a;margin-top:2px}' +
@@ -39,7 +39,7 @@ window.WPCFormsAdmin = (function () {
     '.fa-filter button{border:1px solid var(--line,#e6e3dd);background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-size:.82rem;cursor:pointer;color:#4a4a4a}' +
     '.fa-filter button.on{background:var(--accent,#032257);border-color:var(--accent,#032257);color:#fff}' +
     '.fa-ents{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}' +
-    '.fa-ent{border:1px solid var(--line,#e6e3dd);border-radius:12px;padding:12px 14px;background:#fff}' +
+    '.fa-ent{border:1px solid var(--line,#e6e3dd);border-radius:5px;padding:12px 14px;background:#fff}' +
     '.fa-ent.is-off{background:#fbfaf7;color:#8a8a8a}' +
     '.fa-ent-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}' +
     '.fa-ent-hd b{font-size:1rem;color:var(--accent,#032257)}' +
@@ -49,18 +49,18 @@ window.WPCFormsAdmin = (function () {
     '.fa-btns button{padding:5px 11px;font-size:.8rem}' +
     '.fa-warn{color:#c0392b}' +
     '.fa-note{font-size:.8rem;color:#8a8a8a;margin:6px 0 0}' +
-    '.fa-pay{margin-top:10px;padding:10px 12px;border-radius:10px;border:1px dashed var(--gold,#b89b5e);font-size:.86rem;background:#fff}' +
+    '.fa-pay{margin-top:10px;padding:10px 12px;border-radius:4px;border:1px dashed var(--gold,#b89b5e);font-size:.86rem;background:#fff}' +
     '.fa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}' +
     '.fa-sgrid{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}' +
     '.fa-sec{margin:18px 0 8px;font-size:.92rem;color:var(--accent,#032257);font-weight:700;border-bottom:1px solid var(--line,#e6e3dd);padding-bottom:6px}' +
     '.fa-check{display:flex;align-items:center;gap:8px;font-size:.9rem;cursor:pointer}' +
     '.fa-check input{width:18px;height:18px;accent-color:var(--accent,#032257)}' +
     '.fa-modal .modal-box{max-width:480px;padding:28px 24px 22px}' +
-    '.fa-modal textarea{width:100%;min-height:110px;padding:10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;box-sizing:border-box}' +
+    '.fa-modal textarea{width:100%;min-height:110px;padding:10px;border:1px solid #dfe5ee;border-radius:4px;font:inherit;box-sizing:border-box}' +
     '.fa-plist{margin:8px 0 0;padding-left:26px;columns:2 220px;column-gap:24px;font-size:.88rem}' +
     '.fa-plist li{break-inside:avoid;padding:2px 0;color:#1a1a1a}' +
     '.fa-plist li small{color:#8a8a8a}' +
-    '.fa-pdet{margin-top:14px;border:1px solid var(--line,#e6e3dd);border-radius:10px;padding:10px 14px;background:#fff}' +
+    '.fa-pdet{margin-top:14px;border:1px solid var(--line,#e6e3dd);border-radius:4px;padding:10px 14px;background:#fff}' +
     '.fa-pdet>summary{cursor:pointer;font-weight:700;color:var(--accent,#032257);font-size:.92rem}' +
     '@media (max-width:560px){.fa-ents{grid-template-columns:1fr}.fa-head .fa-right{margin-left:0}}';
 
@@ -381,7 +381,7 @@ window.WPCFormsAdmin = (function () {
       preview();
       if (hasImgCol) {   // 안내 그림: 올리기(교회 파일 서버) · 주소 붙여넣기 · 미리보기 · 빼기
         var imgIn = $('ff_img'), imgPv = $('ff_img_pv'), imgMsg = function (t) { imgPv.innerHTML = '<span style="font-size:.82rem;color:#c0392b">' + esc(t) + '</span>'; };
-        var paintImg = function () { var u = imgIn.value.trim(); imgPv.innerHTML = /^(https?:\/\/|images\/)/i.test(u) ? '<img src="' + esc(u) + '" alt="안내 그림 미리보기" style="max-width:100%;max-height:260px;border:1px solid var(--line,#e6e3dd);border-radius:8px">' : ''; };
+        var paintImg = function () { var u = imgIn.value.trim(); imgPv.innerHTML = /^(https?:\/\/|images\/)/i.test(u) ? '<img src="' + esc(u) + '" alt="안내 그림 미리보기" style="max-width:100%;max-height:260px;border:1px solid var(--line,#e6e3dd);border-radius:4px">' : ''; };
         imgIn.addEventListener('input', paintImg); paintImg();
         $('ff_img_rm').onclick = function () { imgIn.value = ''; paintImg(); };
         $('ff_img_up').onclick = function () {
