@@ -51,7 +51,7 @@
     ] },
   ];
 
-  const path = location.pathname.split("/").pop() || "index.html";
+  const path = location.pathname.split("/").pop() || "home.html";
 
   // ===== 헤더 =====
   const navLinks = NAV.map((n) => {
@@ -68,7 +68,7 @@
   const headerHTML = `
     <header id="header">
       <div class="nav-inner">
-        <a href="index.html" class="logo">
+        <a href="home.html" class="logo">
           <img src="images/icon-192.png?v=20260625e" alt="" class="logo-mark" />
           <span class="logo-kr">운평장로교회</span>
         </a>
@@ -89,7 +89,7 @@
           <span class="logo-kr">운평장로교회</span>
           <span class="logo-en">UNPYEONG PRESBYTERIAN CHURCH · SINCE 1964</span>
         </div>
-        <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="forms.html">신청서</a><a href="bylaws.html">정관</a><a href="terms.html">이용약관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a></nav>
+        <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="forms.html">신청서</a><a href="bylaws.html">정관</a><a href="terms.html">이용약관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a><a href="wechurch/">We Church</a><a href="./">K-LOGOS</a></nav>
         <div class="footer-actions">
           <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">카카오톡 채널 추가</a>
           <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">온라인헌금</a>
@@ -129,7 +129,7 @@
           <div class="form-field" id="nameField" hidden><label>이름</label><input type="text" name="name" placeholder="홍길동" /></div>
           <div class="form-field"><label>이메일</label><input type="email" name="email" required placeholder="name@example.com" /></div>
           <div class="form-field"><label>비밀번호</label><input type="password" name="password" id="authPassword" required minlength="6" placeholder="비밀번호" /></div>
-          <label class="auth-check" id="termsField" hidden><input type="checkbox" name="terms" id="termsConsent" /> <span><a href="terms.html" target="_blank" rel="noopener">이용약관</a>과 <a href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에 동의합니다 <em style="font-style:normal;color:#c0392b">(필수)</em></span></label>
+          <label class="auth-check" id="termsField" hidden><input type="checkbox" name="terms" id="termsConsent" /> <span><a href="terms.html" target="_blank" rel="noopener">이용약관</a>과 <a href="privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에 동의합니다 <em style="font-style:normal;color:#A33A2A">(필수)</em></span></label>
           <label class="auth-check" id="channelField" hidden><input type="checkbox" name="channel" id="channelConsent" checked /> <span>카카오톡 채널 추가에 동의합니다 (소식·QT 알림 받기)</span></label>
           <p class="auth-msg" id="authMsg" hidden></p>
           <button type="submit" class="btn btn-solid auth-submit" id="authSubmit">로그인</button>
@@ -187,7 +187,7 @@
       const t = document.createElement("div");
       t.className = "flash-toast";
       t.textContent = msg;
-      t.setAttribute("style", "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(3,34,87,.96);color:#fff;padding:12px 22px;border-radius:30px;font-size:.95rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999;opacity:0;transition:opacity .25s;");
+      t.setAttribute("style", "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(58,40,28,.96);color:#fff;padding:12px 22px;border-radius:30px;font-size:.95rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999;opacity:0;transition:opacity .25s;");
       document.body.appendChild(t);
       requestAnimationFrame(() => { t.style.opacity = "1"; });
       setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 2600);
@@ -200,14 +200,9 @@
   } catch (e) {}
 
   // ===== 헤더 스크롤 상태 =====
+  // 도서관 테마(2026-10-23): 머리글은 늘 크림 막대 — 어두운 히어로 위 흰 글씨 모드는 쓰지 않는다
   const header = document.getElementById("header");
-  const hasHero = !!document.querySelector(".hero, .page-hero");
-  const onScroll = () => {
-    if (window.scrollY > 60 || !hasHero) header.classList.add("scrolled");
-    else header.classList.remove("scrolled");
-  };
-  window.addEventListener("scroll", onScroll, { passive: true });
-  onScroll();
+  header.classList.add("scrolled");
 
   // ===== 모바일 메뉴 =====
   const navToggle = document.getElementById("navToggle");
@@ -401,7 +396,7 @@
                 a.href = "affairs.html";
                 a.className = "ac-admin-go";
                 // 색은 페이지 테마(var(--accent))를 따른다 — 목회 행정 화면에서는 먹색
-                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#032257);color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
+                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#3A281C);color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
                 a.onmouseenter = function () { this.style.opacity = ".86"; };
                 a.onmouseleave = function () { this.style.opacity = ""; };
                 a.textContent = "목회행정";
@@ -425,7 +420,7 @@
                 const a = document.createElement("a");
                 a.href = "dashboard.html";
                 a.className = "ac-dash-go";
-                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#032257);color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
+                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#3A281C);color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
                 a.onmouseenter = function () { this.style.opacity = ".86"; };
                 a.onmouseleave = function () { this.style.opacity = ""; };
                 a.textContent = "대시보드";
@@ -522,7 +517,7 @@
           try { slot0.innerHTML = '<button class="auth-btn">로그인</button>'; } catch (e) {}
           try { sessionStorage.setItem("flashMsg", "로그아웃되었습니다."); } catch (e) {}
           showFlash("로그아웃되었습니다.");
-          setTimeout(() => { location.href = "index.html"; }, 700);
+          setTimeout(() => { location.href = "home.html"; }, 700);
         });
         // 직분이 지정돼 있으면 이름 옆에 붙여 표시
         enhanceHeaderWithRole(cachedUser.id, name);

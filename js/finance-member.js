@@ -101,12 +101,12 @@ console.log('[finance-member.js] v20260701dj');
         var ongoing = (rows || []).filter(function (r) { return !r.end_date || r.end_date >= t; });
         if (!ongoing.length) { el.innerHTML = ''; return; }
         el.innerHTML = '<div class="form-card" style="margin-bottom:18px;padding:16px 18px;">' +
-          '<h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#032257);">📚 현재 수강 중인 교육</h3>' +
+          '<h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#3A281C);">📚 현재 수강 중인 교육</h3>' +
           ongoing.map(function (r) {
-            return '<div class="my-edu-item" data-id="' + esc(r.id) + '" style="border:1px solid #e8edf3;border-radius:10px;padding:10px 12px;margin-bottom:8px;">' +
+            return '<div class="my-edu-item" data-id="' + esc(r.id) + '" style="border:1px solid #F1EDEA;border-radius:10px;padding:10px 12px;margin-bottom:8px;">' +
               '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" class="my-edu-head">' +
               '<b style="font-size:.92rem">' + eduLabel(r) + '</b>' +
-              '<span style="font-size:.78rem;color:#9aa5b1">' + esc(r.teacher || '') + ' ▾</span></div>' +
+              '<span style="font-size:.78rem;color:#AFA49C">' + esc(r.teacher || '') + ' ▾</span></div>' +
               '<div class="my-edu-body" hidden style="margin-top:8px;font-size:.83rem"></div></div>';
           }).join('') + '</div>';
         Array.prototype.forEach.call(el.querySelectorAll('.my-edu-item'), function (box) {
@@ -126,11 +126,11 @@ console.log('[finance-member.js] v20260701dj');
       .then(function (r) { return r.ok ? r.json() : []; })
       .then(function (rows) {
         rows = rows || [];
-        if (!rows.length) { bodyEl.innerHTML = '<p style="color:#9aa5b1">등록된 자료가 없습니다.</p>'; return; }
+        if (!rows.length) { bodyEl.innerHTML = '<p style="color:#AFA49C">등록된 자료가 없습니다.</p>'; return; }
         bodyEl.innerHTML = rows.map(function (r) {
-          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid #f0f3f7">' +
-            '<span>📎 ' + esc(r.title) + (r.size ? ' <span style="color:#9aa5b1;font-size:.76rem">· ' + fmtSize(r.size) + '</span>' : '') + '</span>' +
-            '<a href="#" class="my-mat-dl" data-path="' + esc(r.path) + '" data-title="' + esc(r.title) + '" style="color:var(--accent,#032257)">다운로드</a></div>';
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid #F6F3F1">' +
+            '<span>📎 ' + esc(r.title) + (r.size ? ' <span style="color:#AFA49C;font-size:.76rem">· ' + fmtSize(r.size) + '</span>' : '') + '</span>' +
+            '<a href="#" class="my-mat-dl" data-path="' + esc(r.path) + '" data-title="' + esc(r.title) + '" style="color:var(--accent,#3A281C)">다운로드</a></div>';
         }).join('');
         Array.prototype.forEach.call(bodyEl.querySelectorAll('.my-mat-dl'), function (a) {
           a.onclick = function (e) {
@@ -145,7 +145,7 @@ console.log('[finance-member.js] v20260701dj');
           };
         });
       })
-      .catch(function () { bodyEl.innerHTML = '<p style="color:#9aa5b1">자료를 불러오지 못했습니다.</p>'; });
+      .catch(function () { bodyEl.innerHTML = '<p style="color:#AFA49C">자료를 불러오지 못했습니다.</p>'; });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', waitLogin);

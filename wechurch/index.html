@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>We Church | K-LOGOS</title>
+<meta name="description" content="We Church — 나로부터 집으로, 교회로, 세상으로. 내가 사는 고장의 실제 시각·날씨·계절이 흐르는 가상 공간에서 내면의 천국과 가정의 천국을 가꾸고 교회와 이웃을 잇습니다." />
+<link rel="canonical" href="https://k-logos.com/wechurch/" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="K-LOGOS" />
+<meta property="og:title" content="We Church" />
+<meta property="og:description" content="나로부터 집으로, 교회로, 세상으로 — 실제 세상과 이어진 가상 공간" />
+<meta property="og:image" content="https://k-logos.com/images/wechurch/world.webp" />
+<meta property="og:url" content="https://k-logos.com/wechurch/" />
+<meta property="og:locale" content="ko_KR" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#F6EFE5" />
+<link rel="icon" href="../images/k-logos/k-logos-favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="../images/k-logos/k-logos-favicon-32.png" sizes="32x32" />
+<link rel="apple-touch-icon" href="../images/k-logos/k-logos-icon-180.png" />
+<link rel="stylesheet" href="../css/library.css?v=20261023wc1" />
+<link rel="stylesheet" href="../css/wechurch.css?v=20261023wc1" />
+</head>
+<body class="lib">
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="K-LOGOS 첫 화면"><img src="../images/k-logos/k-logos-horizontal.svg" alt="K-LOGOS" width="124" height="28" /><span class="brand-sub">We Church</span></a>
+    <nav class="topnav" aria-label="We Church 메뉴">
+      <a class="plain hide-sm" href="#story">세계관</a>
+      <a class="plain hide-sm" href="#rules">실제 세상</a>
+      <a class="plain hide-sm" href="#map">지도</a>
+      <a class="btn small primary" href="../garden.html">내 정원</a>
+    </nav>
+  </div>
+</header>
+
+<!-- 살아 있는 장면: 하늘·해·달·별·구름·무지개·비·눈은 고른 고장의 지금 그대로 -->
+<div class="wc-hero">
+  <div class="wc-stage" id="wcStage" role="img" aria-label="바닷가 마을 그림. 하늘과 날씨는 고른 고장의 지금 모습을 따른다">
+    <div class="wc-layer wc-sky a" id="wcSkyA"></div>
+    <div class="wc-layer wc-sky b" id="wcSkyB"></div>
+    <div class="wc-layer wc-stars" id="wcStars"></div>
+    <div class="wc-layer wc-clouds" id="wcClouds"></div>
+    <div class="wc-body wc-sun" id="wcSun" hidden></div>
+    <div class="wc-body wc-moon" id="wcMoon" hidden></div>
+    <svg class="wc-layer wc-rainbow" id="wcRainbow" viewBox="0 0 1536 768" preserveAspectRatio="xMidYMax slice" aria-hidden="true"></svg>
+    <div class="wc-layer wc-land" id="wcLand"></div>
+    <div class="wc-layer wc-tint" id="wcTint"></div>
+    <div class="wc-layer wc-haze" id="wcHaze"></div>
+    <canvas class="wc-layer wc-fx" id="wcFx" aria-hidden="true"></canvas>
+    <div class="wc-chip" id="wcChip"><span class="dot" aria-hidden="true"></span><span id="wcChipText">고장의 지금을 불러오는 중</span></div>
+  </div>
+  <div class="wc-intro">
+    <div>
+      <span class="kicker">WE CHURCH</span>
+      <h1>We Church</h1>
+      <p class="tag">나로부터 집으로, 교회로, 세상으로</p>
+    </div>
+    <div>
+      <p>내가 사는 고장의 지금 시각과 날씨, 계절이 그대로 흐르는 가상 공간입니다. 내 안에서 시작된 하나님 나라가 가정과 교회, 이웃과 마을로 넓어집니다.</p>
+      <div class="acts">
+        <a class="btn primary" href="../garden.html">내 정원 들어가기</a>
+        <a class="btn" href="#story">세계관 보기</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- 지금, 이 고장 -->
+  <section class="sec" id="now" aria-labelledby="nowTitle">
+    <div class="now-head">
+      <div>
+        <span class="kicker">NOW</span>
+        <h2 id="nowTitle">지금, <span id="nowRegion">이 고장</span></h2>
+        <p class="lead" style="margin:0">위 장면과 아래 값은 고른 고장의 실제 값입니다. 1분마다 다시 셉니다.</p>
+      </div>
+      <div class="now-pick">
+        <label class="sr" for="regionSel">고장 고르기</label>
+        <select id="regionSel"></select>
+        <button type="button" class="btn" id="geoBtn">내 위치로</button>
+      </div>
+    </div>
+    <div class="now-grid" id="nowGrid" aria-live="polite"></div>
+    <h3 style="margin:22px 0 0">가상 세계에서 지금 일어나는 일</h3>
+    <ul class="fx-list" id="fxList"></ul>
+    <h3 style="margin:22px 0 0">이 고장의 나무 — 달력이 아니라 지난 1년 기온 기록으로</h3>
+    <div class="nature-row" id="natureRow"><div class="stat"><div class="s">기온 기록을 불러오는 중입니다.</div></div></div>
+    <p class="src-note">날씨·대기질·기온 기록: Open-Meteo. 해·달·절기·음력 명절은 천문 계산, 공휴일은 「관공서의 공휴일에 관한 규정」, 교회력은 부활절 계산에 따릅니다.</p>
+  </section>
+
+  <!-- 세계관 -->
+  <section class="sec" id="story" aria-labelledby="storyTitle">
+    <span class="kicker">STORY</span>
+    <h2 id="storyTitle">세계관 — 네 자리</h2>
+    <p class="lead">We Church의 이야기는 '나'에서 시작합니다. 내 안에 이루어진 천국이 가정을 바꾸고, 교회를 함께 세우고, 마을과 세상으로 이어집니다. 화면 속 공간도 이 차례로 넓어집니다.</p>
+    <div class="rings4">
+      <article class="ring">
+        <div class="pic" style="background-image:url(../images/wechurch/circle-me.webp?v=20261023wc1)" role="img" aria-label="올리브 나무 옆 벤치에서 책을 읽는 사람"></div>
+        <div class="body"><span class="no">하나 · 나</span><h3>내면의 천국</h3><p class="sub">내 정원</p>
+          <p>큐티, 성경 읽기, 예배와 기도가 내 정원의 식물을 키웁니다. 말씀으로 하루를 사는 만큼 정원이 자랍니다.</p>
+          <span class="badge ok">지금 열림 · 신앙 정원</span></div>
+      </article>
+      <article class="ring">
+        <div class="pic" style="background-image:url(../images/wechurch/circle-home.webp?v=20261023wc1)" role="img" aria-label="정원이 있는 집 앞에 선 가족"></div>
+        <div class="body"><span class="no">둘 · 집</span><h3>가정의 천국</h3><p class="sub">내 집</p>
+          <p>정원 옆에 집을 짓고 꾸밉니다. 가족이 함께 예배하고 말씀을 나누면 집이 함께 자랍니다.</p>
+          <span class="badge mute">2단계</span></div>
+      </article>
+      <article class="ring">
+        <div class="pic" style="background-image:url(../images/wechurch/circle-church.webp?v=20261023wc1)" role="img" aria-label="종탑이 있는 작은 교회와 모여드는 사람들"></div>
+        <div class="body"><span class="no">셋 · 교회</span><h3>함께 세우는 교회</h3><p class="sub">내 교회</p>
+          <p>성도는 자기 교회로 들어가 함께 예배하고 섬깁니다. 교회는 지도 위 땅에 예배당을 세우고 꾸밉니다.</p>
+          <span class="badge mute">3단계 · 운평장로교회 먼저</span></div>
+      </article>
+      <article class="ring">
+        <div class="pic" style="background-image:url(../images/wechurch/circle-world.webp?v=20261023wc1)" role="img" aria-label="집과 교회가 길로 이어진 작은 마을"></div>
+        <div class="body"><span class="no">넷 · 세상</span><h3>마을과 하나님 나라</h3><p class="sub">내 고장</p>
+          <p>교회와 교회, 마을과 마을이 길로 이어집니다. 내가 사는 실제 고장의 지도 위에서 지역이 넓어집니다.</p>
+          <span class="badge mute">4·5단계</span></div>
+      </article>
+    </div>
+    <div class="links-band">
+      <div class="card"><h3>관계가 이어지는 길</h3><p>내 정원에서 시작해 가족과 사는 집, 같은 교회 성도, 이웃 마을과 다른 교회로 관계가 넓어집니다.</p></div>
+      <div class="card"><h3>자라는 것은 신앙생활</h3><p>점수는 큐티 아멘, 성경 읽기, 예배 출석, 나눔처럼 실제 신앙생활에서만 쌓입니다. 사고파는 것으로 자라지 않습니다.</p></div>
+      <div class="card"><h3>실제 고장 그대로</h3><p>하늘과 날씨, 꽃 피는 때와 단풍, 공휴일과 교회력이 내가 사는 고장의 지금을 따릅니다.</p></div>
+      <div class="card"><h3>문은 내가 엽니다</h3><p>누가 내 정원과 집에 올 수 있는지는 내가 정합니다. 허락한 이웃만 구경하고 글을 남깁니다.</p></div>
+    </div>
+  </section>
+
+  <!-- 실제 세상과 같은 규칙 -->
+  <section class="sec" id="rules" aria-labelledby="rulesTitle">
+    <span class="kicker">REAL WORLD</span>
+    <h2 id="rulesTitle">실제 세상과 같은 규칙</h2>
+    <p class="lead">실물 자료가 들어오면 가상 공간의 하늘과 땅, 사람이 바로 그 영향을 받습니다. 지금 들어가 있는 것과 다음 단계를 나눠 적었습니다.</p>
+    <table class="rules">
+      <thead><tr><th>실물 자료</th><th>가상 공간에서 바뀌는 것</th><th>지금</th></tr></thead>
+      <tbody>
+        <tr><td>시각</td><td>그 고장 시간대의 낮과 밤, 창의 불빛, 예배 시간</td><td class="st"><span class="badge ok">적용</span></td></tr>
+        <tr><td>해와 달</td><td>하늘 빛깔, 해의 높이와 방향, 그림자 길이, 달 모양(월령)</td><td class="st"><span class="badge ok">적용</span></td></tr>
+        <tr><td>날씨</td><td>맑음·구름·안개·비·눈·뇌우, 바람에 기우는 빗줄기, 젖은 땅과 물웅덩이</td><td class="st"><span class="badge ok">적용</span></td></tr>
+        <tr><td>대기질</td><td>미세먼지가 나쁘면 먼 풍경이 흐려짐</td><td class="st"><span class="badge ok">적용</span></td></tr>
+        <tr><td>계절·절기</td><td>태양 황경으로 셈한 24절기와 계절</td><td class="st"><span class="badge ok">적용</span></td></tr>
+        <tr><td>자연 규칙</td><td>그 고장 1년 기온 기록으로 꽃 피는 때(600℃ 법칙), 단풍(최저 5℃), 서리, 쌓인 눈</td><td class="st"><span class="badge ok">계산</span> <span class="badge mute">정원 그림 2단계</span></td></tr>
+        <tr><td>공휴일</td><td>양력·음력 명절, 대체공휴일, 선거일 — 마을이 붐비고 이웃 방문이 늘어남</td><td class="st"><span class="badge ok">계산</span></td></tr>
+        <tr><td>교회력</td><td>대림절·사순절·부활절기·성령강림절, 맥추·추수감사주일 — 휘장과 강단 색</td><td class="st"><span class="badge ok">계산</span></td></tr>
+        <tr><td>지역</td><td>내 고장의 기후와 지형, 해안과 산</td><td class="st"><span class="badge ok">시·군 단위</span> <span class="badge mute">정밀 지도 5단계</span></td></tr>
+        <tr><td>물리</td><td>위도별 중력, 공기 밀도, 빗방울·눈송이 낙하 속도, 바람 압력에 흔들리는 나무</td><td class="st"><span class="badge ok">계산</span> <span class="badge mute">3D 정원 2단계</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 두 가지 문 -->
+  <section class="sec" id="doors" aria-labelledby="doorTitle">
+    <span class="kicker">TWO DOORS</span>
+    <h2 id="doorTitle">개인으로, 교회로</h2>
+    <p class="lead">We Church에는 개인과 교회가 각각 들어옵니다.</p>
+    <div class="grid2">
+      <div class="card door">
+        <h3>개인</h3>
+        <ul>
+          <li>가입하고 내 고장을 고르면 내 정원과 집이 생깁니다.</li>
+          <li>정원 가꾸기와 집 꾸미기는 운평장로교회의 신앙생활 방식을 따릅니다.</li>
+          <li>운평장로교회 정회원은 성경과 자료(모두의 성경 등)를 씁니다.</li>
+          <li>그 밖의 분께는 큐티, 신앙 강좌, 교리 강좌가 차례로 열립니다.</li>
+        </ul>
+        <div class="acts"><a class="btn primary" href="../garden.html">개인으로 들어가기</a></div>
+      </div>
+      <div class="card door">
+        <h3>교회</h3>
+        <ul>
+          <li>교회를 개설하면 내 고장 지도 안의 땅을 사서 예배당을 세우고 꾸밉니다.</li>
+          <li>교회마다 재정과 교적이 따로 만들어집니다.</li>
+          <li>담임목사는 목회 행정 관리자 화면을 씁니다. 운평장로교회가 쓰는 것과 같은 화면입니다.</li>
+          <li>성도는 We Church에서 자기 교회로 로그인해 들어와 그 교회의 신앙생활을 합니다.</li>
+        </ul>
+        <div class="acts"><span class="btn" aria-disabled="true">교회 개설 — 3단계에 열립니다</span><a class="btn" href="../home.html">운평장로교회</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 이웃 -->
+  <section class="sec" id="neighbors" aria-labelledby="nbTitle">
+    <div class="split">
+      <div class="art" style="background-image:url(../images/wechurch/neighbor.webp?v=20261023wc1)" role="img" aria-label="차고 앞에 작은 차가 서 있는 집"></div>
+      <div>
+        <span class="kicker">NEIGHBORS</span>
+        <h2 id="nbTitle">이웃에게 가는 길</h2>
+        <p class="lead">집을 꾸미고 차고를 지어 차를 마련하면 이웃에게 갈 수 있습니다.</p>
+        <ol class="steps">
+          <li><b>집 꾸미기</b><span>정원 옆 내 집을 짓고 방을 꾸밉니다.</span></li>
+          <li><b>차고 짓기 · 차 마련</b><span>신앙생활로 모은 달란트로 차고를 짓고 차를 들입니다.</span></li>
+          <li><b>방문 신청</b><span>지도에서 이웃 집을 골라 찾아가겠다고 알립니다.</span></li>
+          <li><b>허락한 이웃만</b><span>이웃이 허락하면 정원과 집을 구경하고 글을 남깁니다. 방문 허락(모두·같은 교회·허락한 사람·닫기)은 집 주인이 정합니다.</span></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 지도와 땅 -->
+  <section class="sec" id="map" aria-labelledby="mapTitle">
+    <div class="split">
+      <div>
+        <span class="kicker">MAP &amp; LAND</span>
+        <h2 id="mapTitle">지도와 땅</h2>
+        <p class="lead">We Church의 땅은 실제 지도입니다. 교회는 자기 고장 지도 안의 한정된 땅을 사서 쓰고, 그 위에 예배당을 세우고 길을 놓습니다. 길이 이어지면 이웃 마을과 다른 교회로 갈 수 있습니다.</p>
+        <ol class="steps">
+          <li><b>실제 지도 자료</b><span>건물·길·물길과 땅 높이를 공개 지도 자료에서 가져옵니다.</span></li>
+          <li><b>땅 나누기</b><span>고장마다 땅을 구획으로 나눕니다. 구획 수가 정해져 있어 땅은 한정됩니다.</span></li>
+          <li><b>짓고 잇기</b><span>교회는 땅을 사서 예배당을 짓고, 길을 놓아 이웃 구획과 마을을 잇습니다.</span></li>
+          <li><b>지역 넓히기</b><span>한 고장이 차면 이웃 고장이 열리고, 지역과 지역이 이어집니다.</span></li>
+        </ol>
+      </div>
+      <div class="art" style="background-image:url(../images/wechurch/land.webp?v=20261023wc1)" role="img" aria-label="구획으로 나뉜 땅 위에 짓고 있는 교회와 길"></div>
+    </div>
+    <div class="map-box" id="mapBox">
+      <div class="map" id="map3d"></div>
+      <div class="map-cover" id="mapCover">
+        <p>고른 고장을 실제 지도 자료로 세운 3D 화면입니다. 건물 높이와 땅 높이가 실제 값이고, 빛은 지금 해의 방향에서 들어옵니다.</p>
+        <button type="button" class="btn primary" id="mapBtn">내 고장 3D로 보기</button>
+      </div>
+    </div>
+    <p class="src-note">지도: © OpenStreetMap 기여자, OpenFreeMap · 땅 높이: Mapzen Terrain Tiles(AWS 공개 자료). 붉은 칸은 땅 구획을 보여 주는 예시이며 실제 소유를 뜻하지 않습니다.</p>
+  </section>
+
+  <!-- 단계 -->
+  <section class="sec" id="road" aria-labelledby="roadTitle">
+    <span class="kicker">ROADMAP</span>
+    <h2 id="roadTitle">차례대로 넓어집니다</h2>
+    <p class="lead">한 번에 다 만들지 않고 한 단계씩 열어 갑니다.</p>
+    <div class="road">
+      <div class="step now"><div class="when">1단계<br><span class="badge ok">지금</span></div><div><h3>나 — 신앙 정원</h3><p>운평장로교회 성도의 신앙 정원, 실제 세상과 잇는 계산(시각·해·달·날씨·절기·공휴일·교회력·물리), We Church 소개.</p></div></div>
+      <div class="step"><div class="when">2단계</div><div><h3>집 — 집 꾸미기와 이웃</h3><p>집 짓기와 꾸미기, 차고와 차, 허락한 이웃 방문과 댓글. 정원 식물에 자연 규칙 그림 적용, 3D 정원.</p></div></div>
+      <div class="step"><div class="when">3단계</div><div><h3>교회 — 교회 개설</h3><p>다른 교회의 개설과 로그인, 교회별 재정·교적·목회 행정, 성도 초대와 교회 꾸미기.</p></div></div>
+      <div class="step"><div class="when">4단계</div><div><h3>세상 — 땅과 길</h3><p>고장 지도의 땅 구획, 땅 사기와 예배당 짓기, 길 놓기.</p></div></div>
+      <div class="step"><div class="when">5단계</div><div><h3>지역 — 정밀 3D 지도</h3><p>정밀 지도 자료로 내 고장을 3D로 세우고, 지역과 지역을 잇습니다.</p></div></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>© 2026 K-LOGOS · We Church</span>
+    <a href="../">K-LOGOS 첫 화면</a>
+    <a href="../home.html">운평장로교회</a>
+    <a href="../terms.html">이용약관</a>
+    <a href="../privacy.html"><b>개인정보처리방침</b></a>
+  </div>
+</footer>
+
+<script src="../js/world/reality.js?v=20261023wc1"></script>
+<script src="../js/world/nature.js?v=20261023wc1"></script>
+<script src="../js/wechurch/world.js?v=20261023wc1"></script>
+<script src="../js/wechurch/map3d.js?v=20261023wc1"></script>
+</body>
+</html>

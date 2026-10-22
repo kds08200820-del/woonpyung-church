@@ -323,7 +323,7 @@
       <header class="ig-head">
         <span class="ig-avatar">${esc(initial(p.author_name))}</span>
         <div class="ig-who"><b>${esc(p.author_name || "성도")}</b><span>${esc(fmtDate(p))} · ${esc(timeAgo(p.created_at))}</span></div>
-        ${(canEdit || canDel) ? `<span style="margin-left:auto;display:inline-flex;gap:2px">${canEdit ? `<button type="button" class="ig-menu" data-act="editphoto" title="수정" style="margin-left:0;color:var(--accent,#032257)">수정</button>` : ""}${canDel ? `<button type="button" class="ig-menu" data-act="delphoto" title="삭제" style="margin-left:0">삭제</button>` : ""}</span>` : ""}
+        ${(canEdit || canDel) ? `<span style="margin-left:auto;display:inline-flex;gap:2px">${canEdit ? `<button type="button" class="ig-menu" data-act="editphoto" title="수정" style="margin-left:0;color:var(--accent,#3A281C)">수정</button>` : ""}${canDel ? `<button type="button" class="ig-menu" data-act="delphoto" title="삭제" style="margin-left:0">삭제</button>` : ""}</span>` : ""}
       </header>
       ${mediaHtml(p, i)}
       <div class="ig-actions">

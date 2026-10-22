@@ -9,34 +9,34 @@
   font-family: 'Noto Serif KR', serif;
   font-size: 18px;            /* 리본 글자 크기 기본값과 같음 */
   line-height: 2;             /* 리본 '줄간격'으로 바꾸면 래퍼(data-se-lh)에 실려 세 곳에 함께 적용 */
-  color: #1a1a1a;
+  color: #3A281C;
   word-break: keep-all;       /* 어절 단위 줄바꿈(워드와 같음) */
   overflow-wrap: break-word;
   -webkit-text-size-adjust: 100%;
 }
 .sdoc p { margin: .45em 0; }
-.sdoc h1 { font-size: 1.62em; font-weight: 800; margin: .6em 0 .3em; color: #08213f; line-height: 1.4; }
-.sdoc h2 { font-size: 1.42em; font-weight: 800; margin: .6em 0 .3em; color: #0a2c5c; line-height: 1.4; }
-.sdoc h3 { font-size: 1.18em; font-weight: 700; margin: .5em 0 .25em; color: #13314e; line-height: 1.5; }
-.sdoc blockquote { border-left: 4px solid #cdd7e3; margin: .5em 0; padding: .15em 0 .15em 14px; color: #475569; }
+.sdoc h1 { font-size: 1.62em; font-weight: 800; margin: .6em 0 .3em; color: #332114; line-height: 1.4; }
+.sdoc h2 { font-size: 1.42em; font-weight: 800; margin: .6em 0 .3em; color: #2E2016; line-height: 1.4; }
+.sdoc h3 { font-size: 1.18em; font-weight: 700; margin: .5em 0 .25em; color: #442E1D; line-height: 1.5; }
+.sdoc blockquote { border-left: 4px solid #E0D7D0; margin: .5em 0; padding: .15em 0 .15em 14px; color: #65564B; }
 .sdoc ul, .sdoc ol { margin: .45em 0; padding-left: 1.5em; }
 .sdoc li { margin: .15em 0; }
 .sdoc mark { padding: 0 1px; border-radius: 2px; }
-.sdoc hr { border: none; border-top: 1px solid #cdd7e3; margin: .9em 0; }
+.sdoc hr { border: none; border-top: 1px solid #E0D7D0; margin: .9em 0; }
 .sdoc img { max-width: 100%; height: auto; border-radius: 6px; vertical-align: middle; }
 .sdoc iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 8px; }
-.sdoc a { color: #1d4ed8; }
-.sdoc .se-video { color: #1d4ed8; font-weight: 600; }
-.sdoc .se-note { background: #fef3c7; border-bottom: 2px dotted #d4a53f; cursor: help; }
+.sdoc a { color: #B27343; }
+.sdoc .se-video { color: #B27343; font-weight: 600; }
+.sdoc .se-note { background: #fef3c7; border-bottom: 2px dotted #D26C41; cursor: help; }
 .sdoc .se-chk { font-family: 'Noto Sans KR', sans-serif; cursor: pointer; user-select: none; }
 .sdoc table { border-collapse: collapse; width: 100%; margin: .5em 0; table-layout: fixed; }
-.sdoc td, .sdoc th { border: 1px solid #b9c2cf; padding: 4px 8px; vertical-align: top; min-width: 2em; }
-.sdoc th { background: #eef3fa; font-weight: 700; }
+.sdoc td, .sdoc th { border: 1px solid #CCC3BC; padding: 4px 8px; vertical-align: top; min-width: 2em; }
+.sdoc th { background: #F8F3F0; font-weight: 700; }
 .sdoc sup, .sdoc sub { line-height: 1; }
 
 /* 수동 쪽 나눔(Ctrl+Enter) — 편집기에서는 점선+라벨, 인쇄·발표자에서는 쪽을 나누고 사라진다 */
-.sdoc .pg-manual-break { position: relative; height: 0; border-top: 1.5px dashed #9fb0cc; margin: 18px 0 20px; user-select: none; }
-.sdoc .pg-manual-break::after { content: "⌐ 쪽 나눔 ⌐"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: #fff; padding: 0 8px; font: 600 10px/1 'Noto Sans KR', sans-serif; color: #7a8aa8; white-space: nowrap; }
+.sdoc .pg-manual-break { position: relative; height: 0; border-top: 1.5px dashed #C5B3A6; margin: 18px 0 20px; user-select: none; }
+.sdoc .pg-manual-break::after { content: "⌐ 쪽 나눔 ⌐"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: #fff; padding: 0 8px; font: 600 10px/1 'Noto Sans KR', sans-serif; color: #A28F80; white-space: nowrap; }
 
 /* 쪽 경계에서 갈라진 문단: 앞조각 아래 여백 0, 뒷조각 위 여백 0·글머리 기호 없음 → 줄이 끊김 없이 이어진다 */
 .sdoc [data-sdoc-head] { margin-bottom: 0 !important; }
@@ -46,25 +46,25 @@
 .sdoc blockquote[data-sdoc-head] { padding-bottom: 0; }
 
 /* ── 앞부분(제목·본문 성경)·기도 — 예전 PDF(Apps Script) 양식을 그대로 ── */
-.sdoc .sdoc-series { font-size: .62em; font-weight: 700; color: #1f3a63; line-height: 1.5; margin: 0 0 .3em; font-family: 'Noto Sans KR', sans-serif; }
+.sdoc .sdoc-series { font-size: .62em; font-weight: 700; color: #573E2B; line-height: 1.5; margin: 0 0 .3em; font-family: 'Noto Sans KR', sans-serif; }
 .sdoc .sdoc-title { font-size: 1.6em; font-weight: 700; text-align: center; line-height: 1.35; margin: 0 0 .25em; }
-.sdoc .sdoc-meta { font-size: .68em; color: #8a8f99; text-align: center; line-height: 1.6; margin: 0 0 .5em; font-family: 'Noto Sans KR', sans-serif; }
-.sdoc .sdoc-hr { border: none; border-top: 1px solid #c9ced6; margin: .5em 0; }
-.sdoc .sdoc-h { font-size: .75em; font-weight: 700; color: #1f3a63; margin: .8em 0 .35em; line-height: 1.5; font-family: 'Noto Sans KR', sans-serif; }
-.sdoc .sdoc-bible { color: #33445c; line-height: 1.55; margin: 0 0 .15em; padding-left: 8px; }
-.sdoc .sdoc-empty { color: #9aa5b1; }
+.sdoc .sdoc-meta { font-size: .68em; color: #A39080; text-align: center; line-height: 1.6; margin: 0 0 .5em; font-family: 'Noto Sans KR', sans-serif; }
+.sdoc .sdoc-hr { border: none; border-top: 1px solid #D5CFCA; margin: .5em 0; }
+.sdoc .sdoc-h { font-size: .75em; font-weight: 700; color: #573E2B; margin: .8em 0 .35em; line-height: 1.5; font-family: 'Noto Sans KR', sans-serif; }
+.sdoc .sdoc-bible { color: #564639; line-height: 1.55; margin: 0 0 .15em; padding-left: 8px; }
+.sdoc .sdoc-empty { color: #AFA49C; }
 .sdoc .sdoc-prayer { margin-top: 1.2em; }
-.sdoc .sdoc-prayer-h { font-size: 1.18em; font-weight: 800; color: #7a5d27; margin: 1em 0 .35em; padding-top: .6em; border-top: 2px solid #e4dcc9; }
+.sdoc .sdoc-prayer-h { font-size: 1.18em; font-weight: 800; color: #7C3F25; margin: 1em 0 .35em; padding-top: .6em; border-top: 2px solid #E2D8CB; }
 
 /* ── 쪽(.sdoc-page): 용지 크기 그대로, 여백은 padding, 머리글·바닥글은 여백 안에 ── */
-.sdoc-page { position: relative; box-sizing: border-box; background: #fff; color: #1a1a1a; overflow: hidden; box-shadow: 0 6px 26px rgba(0, 0, 0, .35); margin: 0 auto 26px; }
+.sdoc-page { position: relative; box-sizing: border-box; background: #fff; color: #3A281C; overflow: hidden; box-shadow: 0 6px 26px rgba(0, 0, 0, .35); margin: 0 auto 26px; }
 .sdoc-page .sdoc-body { overflow: hidden; }
 .sdoc-page .sdoc-body > :first-child { margin-top: 0; }
-.sdoc-head, .sdoc-foot { position: absolute; text-align: center; font: 12px/1.2 'Noto Serif KR', serif; color: #8b96a5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.sdoc-head { border-bottom: 1px solid #e3e8f0; padding-bottom: 3px; }
+.sdoc-head, .sdoc-foot { position: absolute; text-align: center; font: 12px/1.2 'Noto Serif KR', serif; color: #A3978D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.sdoc-head { border-bottom: 1px solid #EEE9E5; padding-bottom: 3px; }
 
 /* 쪽 꺾쇠 여백 가이드(편집기·화면 전용) */
-.sdoc-crop { position: absolute; width: 17px; height: 17px; pointer-events: none; border: 0 solid #aeb7c4; }
+.sdoc-crop { position: absolute; width: 17px; height: 17px; pointer-events: none; border: 0 solid #C2B8B0; }
 .sdoc-crop.tl { border-right-width: 1px; border-bottom-width: 1px; }
 .sdoc-crop.tr { border-left-width: 1px; border-bottom-width: 1px; }
 .sdoc-crop.bl { border-right-width: 1px; border-top-width: 1px; }
@@ -95,12 +95,12 @@
 .sedit-gap { display: block; pointer-events: none; user-select: none; }
 .sedit-pagefirst, .sedit-pagefirst-x { margin-top: 0 !important; }
 .sedit-pm .pg-manual-break { cursor: default; }
-.sedit-pm .ProseMirror-selectednode.pg-manual-break { border-top-color: #032257; }
+.sedit-pm .ProseMirror-selectednode.pg-manual-break { border-top-color: #3A281C; }
 .sedit-pm .sdoc-video { position: relative; }
 .sedit-pm .sdoc-video iframe { pointer-events: none; }
-.sedit-pm .sdoc-video.ProseMirror-selectednode { outline: 2px solid #8cf; }
-.sedit-pm img.ProseMirror-selectednode { outline: 2px solid #8cf; }
-.sedit-pm:empty::before, .sedit-pm[data-empty="1"] > p:first-child:last-child::before { content: attr(data-ph); color: #aab3c0; pointer-events: none; }
+.sedit-pm .sdoc-video.ProseMirror-selectednode { outline: 2px solid #DEC0A9; }
+.sedit-pm img.ProseMirror-selectednode { outline: 2px solid #DEC0A9; }
+.sedit-pm:empty::before, .sedit-pm[data-empty="1"] > p:first-child:last-child::before { content: attr(data-ph); color: #BEB4AC; pointer-events: none; }
 
 /* ── ProseMirror 편집기 기본 스타일(prosemirror-view · tables · gapcursor 의 style/*.css 를 합침, MIT) ── */
 .ProseMirror { position: relative; word-wrap: break-word; white-space: pre-wrap; white-space: break-spaces; -webkit-font-variant-ligatures: none; font-variant-ligatures: none; font-feature-settings: "liga" 0; outline: none; }
@@ -110,17 +110,17 @@
 .ProseMirror-hideselection *::-moz-selection { background: transparent; }
 .ProseMirror-hideselection { caret-color: transparent; }
 .ProseMirror [draggable][contenteditable=false] { user-select: text; }
-.ProseMirror-selectednode { outline: 2px solid #8cf; }
+.ProseMirror-selectednode { outline: 2px solid #DEC0A9; }
 li.ProseMirror-selectednode { outline: none; }
-li.ProseMirror-selectednode:after { content: ""; position: absolute; left: -32px; right: -2px; top: -2px; bottom: -2px; border: 2px solid #8cf; pointer-events: none; }
+li.ProseMirror-selectednode:after { content: ""; position: absolute; left: -32px; right: -2px; top: -2px; bottom: -2px; border: 2px solid #DEC0A9; pointer-events: none; }
 img.ProseMirror-separator { display: inline !important; border: none !important; margin: 0 !important; }
 .ProseMirror .tableWrapper { overflow-x: auto; }
 .ProseMirror table { border-collapse: collapse; table-layout: fixed; width: 100%; overflow: hidden; }
 .ProseMirror td, .ProseMirror th { vertical-align: top; box-sizing: border-box; position: relative; }
 .ProseMirror td:not([data-colwidth]):not(.column-resize-dragging), .ProseMirror th:not([data-colwidth]):not(.column-resize-dragging) { min-width: var(--default-cell-min-width, 25px); }
-.ProseMirror .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; z-index: 20; background-color: #adf; pointer-events: none; }
+.ProseMirror .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; z-index: 20; background-color: #E8D2C1; pointer-events: none; }
 .ProseMirror.resize-cursor { cursor: ew-resize; cursor: col-resize; }
-.ProseMirror .selectedCell:after { z-index: 2; position: absolute; content: ''; left: 0; right: 0; top: 0; bottom: 0; background: rgba(200, 200, 255, 0.4); pointer-events: none; }
+.ProseMirror .selectedCell:after { z-index: 2; position: absolute; content: ''; left: 0; right: 0; top: 0; bottom: 0; background: rgba(240,226,215,0.4); pointer-events: none; }
 .ProseMirror-gapcursor { display: none; pointer-events: none; position: absolute; }
 .ProseMirror-gapcursor:after { content: ""; display: block; position: absolute; top: -2px; width: 20px; border-top: 1px solid black; animation: ProseMirror-cursor-blink 1.1s steps(2, start) infinite; }
 @keyframes ProseMirror-cursor-blink { to { visibility: hidden; } }

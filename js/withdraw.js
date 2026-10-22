@@ -46,14 +46,14 @@
         <p style="color:var(--ink-soft);font-size:.9rem;margin-bottom:14px;">카카오 계정으로 가입하셨습니다. 아래 버튼을 누르면 확인 절차 후 탈퇴가 진행됩니다.</p>`}
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <button type="button" class="btn btn-danger" id="wdGo">회원 탈퇴하기</button>
-          <a class="btn btn-line" href="index.html">취소</a>
+          <a class="btn btn-line" href="home.html">취소</a>
           <span class="profile-msg" id="wdMsg"></span>
         </div>
       </div>`;
 
     const goBtn = document.getElementById("wdGo");
     const wdMsg = document.getElementById("wdMsg");
-    const say = (t, err) => { wdMsg.textContent = t; wdMsg.style.color = err ? "#c0392b" : "var(--ink-soft)"; };
+    const say = (t, err) => { wdMsg.textContent = t; wdMsg.style.color = err ? "#A33A2A" : "var(--ink-soft)"; };
 
     goBtn.addEventListener("click", async () => {
       // 실수 방지 확인
@@ -86,7 +86,7 @@
       clearTokens();
       try { sb.auth.signOut().catch(() => {}); } catch (e) {}
       try { sessionStorage.setItem("flashMsg", "회원 탈퇴가 완료되었습니다. 그동안 함께해 주셔서 감사합니다."); } catch (e) {}
-      location.href = "index.html";
+      location.href = "home.html";
     });
   }
 

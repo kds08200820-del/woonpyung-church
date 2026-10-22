@@ -3,7 +3,9 @@
      · noindex 페이지(admin·affairs·dashboard·finance·gyojeok·reset·share·withdraw)는 제외
      · 대표주소(canonical)가 다른 곳을 가리키는 페이지(community·prayer → story)도 제외 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://k-logos.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://k-logos.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://k-logos.com/home.html</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://k-logos.com/wechurch/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://k-logos.com/word.html</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://k-logos.com/welcome.html</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://k-logos.com/story.html</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>

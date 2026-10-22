@@ -1,0 +1,292 @@
+{
+  "version": "20261023wc1",
+  "theme": "wechurch",
+  "out_root": "images/wechurch",
+  "style_ref": {
+    "source": "tools/garden-art/assets.json 의 style_ref 와 같은 도서관 홈페이지 화풍(STYLE·CLAY)",
+    "STYLE": "soft 3D clay pastel illustration, warm peach cream and soft sage palette, gentle rounded shapes, clean matte materials, soft natural daylight, rich fine detail, crisp edges, high quality",
+    "CLAY": "cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed"
+  },
+  "comfy": {
+    "url": "http://127.0.0.1:8188",
+    "output_dir": "C:\\ComfyUI\\output",
+    "run_bat": "C:\\ComfyUI\\run_comfyui.bat",
+    "unet": "flux1-schnell-Q4_K_S.gguf",
+    "clip1": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+    "clip2": "clip_l.safetensors",
+    "vae": "flux_ae.safetensors",
+    "steps": 4,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "scheduler": "simple"
+  },
+  "style_prefix": "",
+  "style_suffix": "",
+  "sprite_suffix": "isolated on a flat solid evenly lit pure white background, nothing else in the frame",
+  "chroma_suffix": "the entire background is one solid flat vivid saturated neon magenta chroma-key background (#FF00FF), perfectly even, nothing else in the frame",
+  "chroma_suffix_black": "the entire background is solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame",
+  "chroma_key": {
+    "color": [
+      255,
+      0,
+      255
+    ],
+    "t0": 70,
+    "t1": 150,
+    "feather": 0.8
+  },
+  "webp": {
+    "quality": 82,
+    "method": 6
+  },
+  "margin": 0.04,
+  "fallback_key": "black",
+  "notes": [
+    "We Church 그림(2026-10-23). 만드는 법: GARDEN_ASSETS=tools/wechurch-art/assets.json python tools/garden-art/gen_garden_assets.py gen|pick|export",
+    "wc-world 는 하늘을 검정으로 그려 지운다 — 화면이 그 고장 지금 시각·날씨의 하늘을 뒤에 그린다(살아 있는 창과 같은 방식)",
+    "섬(ui) 그림은 흰 바탕 rembg, 실패하면 검정 크로마키로 다시",
+    "후보는 1장씩(교회PC 8GB 에서 한 장 6~7분). wc-icon 은 선택 항목(--optional)"
+  ],
+  "assets": [
+    {
+      "id": "wc-world",
+      "group": "bg",
+      "out": "world.webp",
+      "gen": [
+        1536,
+        768
+      ],
+      "final": [
+        1536,
+        768
+      ],
+      "prompt": "Cute stylized 3D clay render diorama, soft pastel colors, matte clay texture, rounded simple toy-like shapes, miniature, gentle soft light. Wide eye-level panoramic view of a peaceful small Korean countryside town, open outdoors only, no window, no frame. In the left foreground a cozy small cream house with a tidy front garden, a little garage and a small rounded mint car on the driveway. A gently winding road leads through the middle to a small white country church with a modest bell steeple and a simple cross, standing on a low green hill. Scattered small houses with gardens along little roads, patchwork green rice fields, round fluffy trees with dense rounded canopies. On the right a calm pastel blue sea bay with a tiny harbor. Layered rounded clay hills leading to distant soft clay mountains at the horizon. Summer: lush soft greens. The sky above the mountains is solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame.",
+      "seed": 9101,
+      "bg": "chroma",
+      "key": "black",
+      "key_sides": "top",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [
+        "768"
+      ],
+      "pick": 2,
+      "post": "크로마키 대신 tools/wechurch-art/key_sky.py out/raw/wc-world_c2.png images/wechurch/world.webp --step 4 --w768 (하늘이 회녹색 그라데이션으로 그려져 색 키가 언덕을 먹음)"
+    },
+    {
+      "id": "wc-hub",
+      "group": "bg",
+      "out": "hub.webp",
+      "gen": [
+        1536,
+        512
+      ],
+      "final": [
+        1536,
+        512
+      ],
+      "prompt": "A cozy warm reading room interior. On the left a tall wooden bookshelf wall full of colorful books, a small wooden desk with an open book and a warm desk lamp. In the center-left a large window looking out over a tiny peaceful village with a small white church with a steeple, little houses with gardens and soft green hills under a clear sky. The right half of the image is a calm plain warm cream wall with nothing on it, empty space. soft 3D clay pastel illustration, warm peach cream and soft sage palette, gentle rounded shapes, clean matte materials, soft natural daylight, rich fine detail, crisp edges, high quality",
+      "seed": 9201,
+      "bg": "none",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [
+        "768"
+      ],
+      "pick": null
+    },
+    {
+      "id": "wc-me",
+      "group": "ui",
+      "out": "circle-me.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "A small round floating grassy garden island seen from slightly above. On it a young olive tree with a soft fluffy rounded canopy of tiny silver-green clay leaves, a small wooden bench where a young Korean woman sits quietly reading an open book, little pastel flowers and a few stepping stones around. Centered, the whole island visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9301,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "label_ko": "나 — 내면의 천국"
+    },
+    {
+      "id": "wc-home",
+      "group": "ui",
+      "out": "circle-home.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "A small round floating grassy island seen from slightly above. On it a cozy two-story cream clay house with a soft terracotta roof and warm lit windows, a tidy front garden with flowers and a little vegetable bed, a Korean family of three, father, mother and a small child, standing together smiling in front of the door. Centered, the whole island visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9401,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "label_ko": "집 — 가정의 천국"
+    },
+    {
+      "id": "wc-church",
+      "group": "ui",
+      "out": "circle-church.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "A small round floating grassy island seen from slightly above. On it a small white country church with a modest bell steeple and a simple cross on top, an arched wooden door, a few small Korean people gathering at the door, two round fluffy trees and a short stone path. Centered, the whole island visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9501,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "label_ko": "교회"
+    },
+    {
+      "id": "wc-town",
+      "group": "ui",
+      "out": "circle-world.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "A round floating miniature town island seen from slightly above: several small houses with gardens, a small white church with a steeple in the middle, little roads connecting the houses, a small river with a stone bridge, green fields and round fluffy trees, a few tiny people walking on the roads. Centered, the whole island visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9601,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "label_ko": "세상 — 지역"
+    },
+    {
+      "id": "wc-garage",
+      "group": "ui",
+      "out": "neighbor.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "A small round floating grassy island seen from slightly above. On it a cozy small cream house with a little garage beside it, a cute rounded pastel mint small car parked on a short driveway in front of the open garage, a low wooden garden fence with flowers and a mailbox. Centered, the whole island visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9701,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "label_ko": "차고와 차"
+    },
+    {
+      "id": "wc-land",
+      "group": "ui",
+      "out": "land.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        768,
+        768
+      ],
+      "prompt": "A square floating miniature land tile seen from above at a three-quarter angle: green land divided into neat square plots by low hedges and little dirt roads, on one plot a small white church under construction with tiny wooden scaffolding, on another plot a small house with a garden, several empty plots marked with little wooden stakes and string, a small road being paved with a tiny roller. Centered, the whole tile visible. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, gentle warm daylight, soft shadows, clean and tidy, same style as a cozy pastel 3D illustration, highly detailed",
+      "seed": 9801,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "label_ko": "땅과 길"
+    },
+    {
+      "id": "wc-icon",
+      "group": "ui",
+      "out": "icon.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        512,
+        512
+      ],
+      "prompt": "An app icon illustration: a tiny cozy cream clay house and a small white church with a steeple side by side on a round green grass island with two round trees, centered, filling most of the frame, on a plain flat warm cream background (#F6EFE5), nothing else. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, gentle warm daylight, soft shadows, clean and tidy, highly detailed",
+      "seed": 9901,
+      "bg": "none",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "optional": true
+    },
+    {
+      "id": "wc-church-hero",
+      "group": "bg",
+      "out": "church-hero.webp",
+      "gen": [
+        1536,
+        512
+      ],
+      "final": [
+        1536,
+        512
+      ],
+      "prompt": "Cute stylized 3D clay render diorama, soft pastel colors, matte clay texture, rounded simple toy-like shapes, miniature, gentle warm daylight. Wide view: on the left third a small white Korean country church with a modest bell steeple and a simple cross stands on a gentle green hill with a winding path, a few round fluffy trees and a low stone wall, autumn rice fields below and a calm pastel sea in the distance. The right two thirds are an open soft pale warm cream sky with nothing in it, empty space. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, miniature diorama feel, gentle warm daylight, soft shadows, clean and tidy, highly detailed",
+      "seed": 9151,
+      "bg": "none",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [
+        "768"
+      ],
+      "pick": null,
+      "label_ko": "운평 홈 히어로"
+    },
+    {
+      "id": "wc-hub2",
+      "group": "bg",
+      "out": "hub.webp",
+      "gen": [
+        1536,
+        512
+      ],
+      "final": [
+        1536,
+        512
+      ],
+      "prompt": "Cute stylized 3D clay render diorama of a cozy warm reading room, soft pastel colors, matte clay texture, rounded simple toy-like shapes, miniature, gentle warm daylight. On the left a rounded wooden bookshelf full of colorful clay books and a small round desk with an open book and a little lamp. Next to it a large arched window looking out over a tiny clay village with a small white church with a steeple, little houses and soft green hills. The right half of the image is a plain smooth warm cream clay wall with nothing on it, empty space. cute stylized 3D clay render, soft pastel peach cream and sage palette, matte clay texture, rounded simple shapes, soft shadows, clean and tidy, highly detailed",
+      "seed": 9251,
+      "bg": "none",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [
+        "768"
+      ],
+      "pick": null,
+      "label_ko": "허브 히어로(점토 다시)"
+    }
+  ]
+}

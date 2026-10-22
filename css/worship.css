@@ -3,14 +3,14 @@
    ============================================================ */
 /* 히어로 슬라이드 */
 .hero-worship-only .hero-verse, .hero-worship-only .hero-dots, .hero-worship-only .hero-since { display: none !important; }
-.hero-worship .hw-eyebrow { font-size: .78rem; letter-spacing: .3em; color: var(--gold, #c9a961); margin: 0 0 14px; }
+.hero-worship .hw-eyebrow { font-size: .78rem; letter-spacing: .3em; color: var(--gold, #CC7F5E); margin: 0 0 14px; }
 .hero-worship .hw-date { margin-top: 10px !important; font-size: 1rem; opacity: .92; }
 .hw-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 26px; }
 .hero-cta.hw-btn { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; min-width: 200px; padding: 14px 26px; font: inherit; cursor: pointer; line-height: 1.35; background: rgba(255,255,255,.12); margin-top: 0; }
-.hero-cta.hw-btn:hover { background: #fff; color: var(--accent, #032257); }
+.hero-cta.hw-btn:hover { background: #fff; color: var(--accent, #3A281C); }
 .hero-cta.hw-btn b { font-size: 1.05rem; font-weight: 700; }
 .hero-cta.hw-btn small { font-size: .8rem; opacity: .85; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hw-sermon { margin-top: 12px; font-size: 1rem; color: var(--gold, #c9a961); }
+.hw-sermon { margin-top: 12px; font-size: 1rem; color: var(--gold, #CC7F5E); }
 .hw-count { display: flex; justify-content: center; gap: 22px; margin-top: 26px; font-variant-numeric: tabular-nums; }
 .hw-count span { font-size: .85rem; color: rgba(255,255,255,.75); text-align: center; }
 .hw-count b { display: block; font-size: 2.8rem; font-weight: 700; color: #fff; line-height: 1.1; }
@@ -22,56 +22,56 @@
 body.ws-open { overflow: hidden; }
 #wsOverlay { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
 #wsOverlay[hidden] { display: none; }
-.ws-card { width: min(920px, 100%); height: min(900px, 96vh); background: #fffdf8; color: #1d1d1d; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
-.ws-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #032257; color: #fff; }
+.ws-card { width: min(920px, 100%); height: min(900px, 96vh); background: #fffdf8; color: #201D1A; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.ws-top { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #3A281C; color: #fff; }
 .ws-top b { font-size: 1.05rem; }
 .ws-step { font-size: .85rem; opacity: .8; }
 .ws-sp { flex: 1; }
 .ws-ib { border: 0; background: rgba(255,255,255,.14); color: #fff; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
 .ws-ib.ws-x { font-size: 1.3rem; line-height: 1; padding: 4px 10px; }
-.ws-strip { display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px; border-bottom: 1px solid #ebe5d8; scrollbar-width: none; background: #f7f3ea; }
+.ws-strip { display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px; border-bottom: 1px solid #EAE2D9; scrollbar-width: none; background: #F6F1EB; }
 .ws-strip::-webkit-scrollbar { display: none; }
-.ws-chip { flex: 0 0 auto; border: 1px solid #ddd3bf; background: #fff; color: #5a5346; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .8rem; white-space: nowrap; cursor: pointer; }
-.ws-chip.on { background: #032257; color: #fff; border-color: #032257; font-weight: 700; }
+.ws-chip { flex: 0 0 auto; border: 1px solid #DBCFC1; background: #fff; color: #5A4C46; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .8rem; white-space: nowrap; cursor: pointer; }
+.ws-chip.on { background: #3A281C; color: #fff; border-color: #3A281C; font-weight: 700; }
 .ws-body { flex: 1; min-height: 0; overflow: auto; padding: 18px 20px 30px; line-height: 1.75; font-size: 100%; -webkit-overflow-scrolling: touch; touch-action: pan-y; }   /* 옆으로 미는 손짓은 화면 넘기기(worship.js swipe) — 브라우저가 가로채지 않게 pan-y 만 */
-.ws-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #ebe5d8; background: #fff; }
-.ws-btn { flex: 1; padding: 13px 10px; border-radius: 10px; border: 1px solid #cfc6b3; background: #fff; color: #032257; font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; }
-.ws-btn.primary { background: #032257; color: #fff; border-color: #032257; }
+.ws-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #EAE2D9; background: #fff; }
+.ws-btn { flex: 1; padding: 13px 10px; border-radius: 10px; border: 1px solid #CDC2B5; background: #fff; color: #3A281C; font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.ws-btn.primary { background: #3A281C; color: #fff; border-color: #3A281C; }
 .ws-btn:disabled { opacity: .35; cursor: default; }
 
-.ws-head { font-size: .82em; letter-spacing: .08em; color: #8a7d5c; font-weight: 700; margin-bottom: 8px; }
-.ws-title { font-size: 1.35em; font-weight: 700; color: #032257; margin-bottom: 14px; }
+.ws-head { font-size: .82em; letter-spacing: .08em; color: #8B695B; font-weight: 700; margin-bottom: 8px; }
+.ws-title { font-size: 1.35em; font-weight: 700; color: #3A281C; margin-bottom: 14px; }
 .ws-item-t { font-size: 1.15em; margin-bottom: 10px; }
-.ws-item-t b { color: #032257; margin-right: 6px; }
+.ws-item-t b { color: #3A281C; margin-right: 6px; }
 .ws-lines p { margin: 0 0 .5em; font-size: 1.15em; word-break: keep-all; }
 .ws-lines.ws-big p { font-size: 1.4em; text-align: center; }
 .ws-lines.ws-creed p { font-size: 1.22em; }
 .ws-verses p { display: flex; gap: 10px; margin: 0 0 .55em; font-size: 1.18em; word-break: keep-all; }
-.ws-vn { flex: 0 0 auto; color: #a08a4a; font-size: .8em; padding-top: .3em; min-width: 1.6em; }
-.ws-tip { font-size: .78em; color: #9a9a9a; text-align: center; margin-top: 12px; }
-.ws-none { padding: 40px 12px; text-align: center; color: #777; }
+.ws-vn { flex: 0 0 auto; color: #A26348; font-size: .8em; padding-top: .3em; min-width: 1.6em; }
+.ws-tip { font-size: .78em; color: #AA998A; text-align: center; margin-top: 12px; }
+.ws-none { padding: 40px 12px; text-align: center; color: #83766B; }
 .ws-cover { text-align: center; padding: 30px 8px; }
-.ws-cover-k { font-size: .9em; letter-spacing: .25em; color: #a08a4a; font-weight: 700; }
-.ws-cover-date { font-size: .95em; color: #777; margin: 8px 0 18px; }
-.ws-cover-t { font-family: "Noto Serif KR", serif; font-size: 1.7em; font-weight: 700; color: #032257; line-height: 1.35; margin-bottom: 10px; }
-.ws-cover-s { font-size: 1.05em; color: #555; }
-.ws-cover-q { margin: 22px auto 0; max-width: 560px; font-family: "Noto Serif KR", serif; font-size: 1.05em; line-height: 1.7; color: #3a3a3a; background: #f5f1e6; border: 1px solid #e3d9bd; border-radius: 10px; padding: 14px 18px; }
-.ws-img { overflow: auto; background: #fff; border: 1px solid #e6e0d0; border-radius: 8px; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
+.ws-cover-k { font-size: .9em; letter-spacing: .25em; color: #A26348; font-weight: 700; }
+.ws-cover-date { font-size: .95em; color: #83766B; margin: 8px 0 18px; }
+.ws-cover-t { font-family: "Noto Serif KR", serif; font-size: 1.7em; font-weight: 700; color: #3A281C; line-height: 1.35; margin-bottom: 10px; }
+.ws-cover-s { font-size: 1.05em; color: #5E544C; }
+.ws-cover-q { margin: 22px auto 0; max-width: 560px; font-family: "Noto Serif KR", serif; font-size: 1.05em; line-height: 1.7; color: #403A34; background: #F3EADF; border: 1px solid #E0D2C0; border-radius: 10px; padding: 14px 18px; }
+.ws-img { overflow: auto; background: #fff; border: 1px solid #E4DCD2; border-radius: 8px; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
 .ws-img img { display: block; width: 100%; max-width: none; height: auto; }
 /* 교독문 */
-.ws-gd .gd-line { display: flex; gap: 12px; margin: 0; padding: 8px 0; border-bottom: 1px solid #efece2; font-size: 1.12em; word-break: keep-all; }
-.ws-gd .gd-who { flex: 0 0 50px; font-size: .75em; color: #9a9a9a; padding-top: .35em; text-align: right; }
+.ws-gd .gd-line { display: flex; gap: 12px; margin: 0; padding: 8px 0; border-bottom: 1px solid #EEE9E3; font-size: 1.12em; word-break: keep-all; }
+.ws-gd .gd-who { flex: 0 0 50px; font-size: .75em; color: #AA998A; padding-top: .35em; text-align: right; }
 .ws-gd .gd-txt { flex: 1; min-width: 0; }
-.ws-gd .gd-leader .gd-txt { color: #444; }
-.ws-gd .gd-people .gd-txt { color: #111; font-weight: 700; }
-.ws-gd .gd-people .gd-who { color: #032257; }
-.ws-gd .gd-all { background: #f5f1e6; border-radius: 8px; padding: 10px; margin-top: 6px; border-bottom: none; }
-.ws-gd .gd-all .gd-txt, .ws-gd .gd-all .gd-who { color: #032257; font-weight: 700; }
-.ws-gd .gd-ref { display: inline-block; margin-left: 6px; font-size: .75em; color: #9a9a9a; font-weight: 400; }
+.ws-gd .gd-leader .gd-txt { color: #4B443D; }
+.ws-gd .gd-people .gd-txt { color: #13110F; font-weight: 700; }
+.ws-gd .gd-people .gd-who { color: #3A281C; }
+.ws-gd .gd-all { background: #F3EADF; border-radius: 8px; padding: 10px; margin-top: 6px; border-bottom: none; }
+.ws-gd .gd-all .gd-txt, .ws-gd .gd-all .gd-who { color: #3A281C; font-weight: 700; }
+.ws-gd .gd-ref { display: inline-block; margin-left: 6px; font-size: .75em; color: #AA998A; font-weight: 400; }
 /* 문 */
 .ws-lock { text-align: center; padding: 50px 14px; }
-.ws-lock-t { font-size: 1.3em; font-weight: 700; color: #032257; margin-bottom: 10px; }
-.ws-lock p { color: #666; margin-bottom: 20px; }
+.ws-lock-t { font-size: 1.3em; font-weight: 700; color: #3A281C; margin-bottom: 10px; }
+.ws-lock p { color: #70655C; margin-bottom: 20px; }
 .ws-lock .ws-btn { flex: none; padding: 12px 28px; }
 @media (max-width: 640px) {
   #wsOverlay { padding: 0; }
@@ -83,25 +83,25 @@ body.ws-open { overflow: hidden; }
 /* ── 예배순서 보관함 (worship.html) ── */
 .wa-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .wa-bar h2 { margin: 0; font-size: 1.4rem; min-width: 150px; text-align: center; }
-.wa-nav { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #cfc6b3; background: #fff; font-size: 1.3rem; cursor: pointer; color: #032257; }
-.wa-today { margin-left: auto; padding: 8px 14px; border-radius: 8px; border: 1px solid #cfc6b3; background: #fff; font: inherit; font-size: .85rem; cursor: pointer; color: #032257; }
-.wa-help { font-size: .85rem; color: #777; margin: 0 0 22px; }
-.wa-loading { color: #999; padding: 30px 0; text-align: center; }
-.wa-week { margin-bottom: 26px; border: 1px solid #e6e0d0; border-radius: 12px; overflow: hidden; background: #fff; }
-.wa-week h3 { margin: 0; padding: 12px 16px; background: #f5f1e6; color: #032257; font-size: 1.02rem; display: flex; align-items: baseline; gap: 10px; }
-.wa-week h3 small { font-weight: 400; color: #8a7d5c; font-size: .82rem; }
-.wa-row { display: grid; grid-template-columns: 86px 82px 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 11px 16px; border: 0; border-top: 1px solid #efece2; background: #fff; text-align: left; font: inherit; cursor: pointer; color: #222; }
-.wa-row:hover { background: #fbf8f1; }
-.wa-row.off { cursor: default; color: #aaa; }
-.wa-row.today { background: #eef3fb; }
-.wa-date { font-size: .85rem; color: #666; white-space: nowrap; }
-.wa-row.today .wa-date { color: #032257; font-weight: 700; }
-.wa-kind { font-size: .8rem; font-weight: 700; color: #a08a4a; white-space: nowrap; }
+.wa-nav { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #CDC2B5; background: #fff; font-size: 1.3rem; cursor: pointer; color: #3A281C; }
+.wa-today { margin-left: auto; padding: 8px 14px; border-radius: 8px; border: 1px solid #CDC2B5; background: #fff; font: inherit; font-size: .85rem; cursor: pointer; color: #3A281C; }
+.wa-help { font-size: .85rem; color: #83766B; margin: 0 0 22px; }
+.wa-loading { color: #A99889; padding: 30px 0; text-align: center; }
+.wa-week { margin-bottom: 26px; border: 1px solid #E4DCD2; border-radius: 12px; overflow: hidden; background: #fff; }
+.wa-week h3 { margin: 0; padding: 12px 16px; background: #F3EADF; color: #3A281C; font-size: 1.02rem; display: flex; align-items: baseline; gap: 10px; }
+.wa-week h3 small { font-weight: 400; color: #8B695B; font-size: .82rem; }
+.wa-row { display: grid; grid-template-columns: 86px 82px 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 11px 16px; border: 0; border-top: 1px solid #EEE9E3; background: #fff; text-align: left; font: inherit; cursor: pointer; color: #25221F; }
+.wa-row:hover { background: #FBF5EC; }
+.wa-row.off { cursor: default; color: #B8A99C; }
+.wa-row.today { background: #F9F4F0; }
+.wa-date { font-size: .85rem; color: #70655C; white-space: nowrap; }
+.wa-row.today .wa-date { color: #3A281C; font-weight: 700; }
+.wa-kind { font-size: .8rem; font-weight: 700; color: #A26348; white-space: nowrap; }
 .wa-text { min-width: 0; display: flex; flex-direction: column; }
 .wa-text b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wa-text small { color: #888; font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wa-row.off .wa-text b, .wa-row.off .wa-text small { color: #bbb; }
-.wa-go { font-size: .82rem; color: #032257; white-space: nowrap; }
+.wa-text small { color: #9B8775; font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wa-row.off .wa-text b, .wa-row.off .wa-text small { color: #C6BAB0; }
+.wa-go { font-size: .82rem; color: #3A281C; white-space: nowrap; }
 @media (max-width: 640px) {
   .wa-row { grid-template-columns: 70px 1fr auto; }
   .wa-kind { grid-column: 1; grid-row: 2; }
@@ -111,56 +111,56 @@ body.ws-open { overflow: hidden; }
 }
 
 /* 헌금봉헌 — 온라인 헌금(토스 이체) */
-.ws-give { margin-top: 18px; padding: 22px 20px; border: 1px solid #e2d9c4; border-radius: 16px; background: #fbf8f1; text-align: center; }
-.ws-give-t { font-size: 1.25em; font-weight: 700; color: #032257; margin-bottom: 8px; }
-.ws-give-p { font-size: .98em; color: #4b4740; margin: 0 0 16px; word-break: keep-all; }
-.ws-give-acct { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 14px; border-radius: 12px; background: #fff; border: 1px solid #e6dfcd; margin-bottom: 14px; }
-.ws-give-bank { font-size: .9em; color: #6b675f; letter-spacing: .08em; }
-.ws-give-no { font-size: 1.45em; font-weight: 800; color: #032257; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-.ws-give-holder { font-size: .9em; color: #6b675f; }
+.ws-give { margin-top: 18px; padding: 22px 20px; border: 1px solid #E0D4C6; border-radius: 16px; background: #FBF5EC; text-align: center; }
+.ws-give-t { font-size: 1.25em; font-weight: 700; color: #3A281C; margin-bottom: 8px; }
+.ws-give-p { font-size: .98em; color: #4C453F; margin: 0 0 16px; word-break: keep-all; }
+.ws-give-acct { display: flex; flex-direction: column; gap: 4px; align-items: center; padding: 14px; border-radius: 12px; background: #fff; border: 1px solid #E4DBCF; margin-bottom: 14px; }
+.ws-give-bank { font-size: .9em; color: #6F645B; letter-spacing: .08em; }
+.ws-give-no { font-size: 1.45em; font-weight: 800; color: #3A281C; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.ws-give-holder { font-size: .9em; color: #6F645B; }
 .ws-give-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .ws-give-btns .ws-btn { flex: 0 1 220px; text-decoration: none; text-align: center; display: inline-block; }
-.ws-give-toss { background: #0064ff !important; border-color: #0064ff !important; color: #fff !important; }
+.ws-give-toss { background: #B97846 !important; border-color: #B97846 !important; color: #fff !important; }
 
 /* 말씀 순서 — 이번 주 설교 요약 */
 .ws-sum { margin-top: 22px; text-align: left; }
-.ws-sum-t { font-size: 1.05em; font-weight: 700; color: #8a5a2b; letter-spacing: .02em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2d9c4; }
+.ws-sum-t { font-size: 1.05em; font-weight: 700; color: #8C4729; letter-spacing: .02em; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #E0D4C6; }
 .ws-sum-p { margin-bottom: 14px; }
-.ws-sum-lead { font-weight: 700; color: #032257; font-size: 1.08em; margin-bottom: 4px; display: flex; gap: 8px; align-items: baseline; }
-.ws-sum-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: #032257; color: #fff; font-size: .78em; display: inline-flex; align-items: center; justify-content: center; }
-.ws-sum p { margin: 0; font-size: 1.05em; line-height: 1.75; word-break: keep-all; color: #2b2721; }
+.ws-sum-lead { font-weight: 700; color: #3A281C; font-size: 1.08em; margin-bottom: 4px; display: flex; gap: 8px; align-items: baseline; }
+.ws-sum-n { flex: none; width: 22px; height: 22px; border-radius: 50%; background: #3A281C; color: #fff; font-size: .78em; display: inline-flex; align-items: center; justify-content: center; }
+.ws-sum p { margin: 0; font-size: 1.05em; line-height: 1.75; word-break: keep-all; color: #2B2421; }
 .ws-sum-txt p + p { margin-top: 12px; }
-.ws-sum-apply { margin-top: 16px; padding: 14px 16px; background: #fbf8f1; border-left: 4px solid #c9a961; border-radius: 0 10px 10px 0; }
+.ws-sum-apply { margin-top: 16px; padding: 14px 16px; background: #FBF5EC; border-left: 4px solid #CC7F5E; border-radius: 0 10px 10px 0; }
 
 /* 관리자 편집 */
-.ws-ib.ws-edit-btn { font-size: .9rem; padding: 6px 12px; background: #c9a961; color: #1b1608; border-radius: 8px; }
-.ws-edit-h { font-size: 1.15em; font-weight: 700; color: #032257; margin-bottom: 12px; }
-.ws-edit-h small { display: block; font-weight: 400; font-size: .8rem; color: #6b675f; margin-top: 4px; }
+.ws-ib.ws-edit-btn { font-size: .9rem; padding: 6px 12px; background: #CC7F5E; color: #1B0E08; border-radius: 8px; }
+.ws-edit-h { font-size: 1.15em; font-weight: 700; color: #3A281C; margin-bottom: 12px; }
+.ws-edit-h small { display: block; font-weight: 400; font-size: .8rem; color: #6F645B; margin-top: 4px; }
 .ws-edit-list { list-style: none; margin: 0; padding: 0; }
-.ws-edit-list li { border: 1px solid #e2d9c4; border-radius: 12px; background: #fff; margin-bottom: 8px; }
+.ws-edit-list li { border: 1px solid #E0D4C6; border-radius: 12px; background: #fff; margin-bottom: 8px; }
 .ws-edit-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
-.ws-edit-n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: #032257; color: #fff; font-size: .8rem; display: inline-flex; align-items: center; justify-content: center; }
-.ws-edit-lbl { flex: 1; min-width: 0; font-weight: 700; color: #032257; }
-.ws-edit-lbl small { display: block; font-weight: 400; color: #6b675f; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-edit-n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: #3A281C; color: #fff; font-size: .8rem; display: inline-flex; align-items: center; justify-content: center; }
+.ws-edit-lbl { flex: 1; min-width: 0; font-weight: 700; color: #3A281C; }
+.ws-edit-lbl small { display: block; font-weight: 400; color: #6F645B; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ws-edit-ops { display: flex; gap: 4px; flex: none; }
-.ws-edit-ops button { border: 1px solid #cfc6b3; background: #fbf8f1; border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .9rem; cursor: pointer; }
-.ws-edit-ops button:hover { background: #032257; color: #fff; }
-.ws-edit-form { padding: 6px 12px 12px; border-top: 1px dashed #e2d9c4; display: grid; gap: 10px; }
-.ws-edit-form label { display: block; font-size: .85rem; color: #4b4740; font-weight: 600; }
-.ws-edit-form label small { font-weight: 400; color: #8a8478; }
-.ws-edit-form input:not([type=checkbox]), .ws-edit-form textarea { display: block; width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid #cfc6b3; border-radius: 8px; font: inherit; font-size: 1rem; box-sizing: border-box; }
+.ws-edit-ops button { border: 1px solid #CDC2B5; background: #FBF5EC; border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .9rem; cursor: pointer; }
+.ws-edit-ops button:hover { background: #3A281C; color: #fff; }
+.ws-edit-form { padding: 6px 12px 12px; border-top: 1px dashed #E0D4C6; display: grid; gap: 10px; }
+.ws-edit-form label { display: block; font-size: .85rem; color: #4C453F; font-weight: 600; }
+.ws-edit-form label small { font-weight: 400; color: #95806D; }
+.ws-edit-form input:not([type=checkbox]), .ws-edit-form textarea { display: block; width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid #CDC2B5; border-radius: 8px; font: inherit; font-size: 1rem; box-sizing: border-box; }
 .ws-edit-chk { display: flex !important; align-items: center; gap: 8px; }
 .ws-edit-fbtns { display: flex; gap: 8px; }
 .ws-edit-fbtns .ws-btn { flex: 0 1 140px; padding: 9px 10px; }
 .ws-edit-btns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .ws-edit-btns .ws-btn { flex: 1 1 200px; }
-.ws-note { margin-top: 18px; padding: 14px 16px; background: #fbf8f1; border-left: 4px solid #032257; border-radius: 0 10px 10px 0; }
+.ws-note { margin-top: 18px; padding: 14px 16px; background: #FBF5EC; border-left: 4px solid #3A281C; border-radius: 0 10px 10px 0; }
 .ws-note .ws-lines p { font-size: 1.1em; }
-.ws-toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #032257; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: .95rem; z-index: 10000; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+.ws-toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: #3A281C; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: .95rem; z-index: 10000; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
 
 /* 방송실: 예배 전 카운트 전체 보기 (방송실 관리자·관리자) — Esc 로 끝 */
 .hw-fsbtn { position: absolute; right: 22px; bottom: 26px; z-index: 3; display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; background: rgba(255,255,255,.1); color: #fff; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
-.hw-fsbtn:hover { background: #fff; color: var(--accent, #032257); }
+.hw-fsbtn:hover { background: #fff; color: var(--accent, #3A281C); }
 .hw-fsbtn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 @media (max-width: 560px) { .hw-fsbtn { right: 12px; bottom: 76px; } }
 .hero.hw-fs { width: 100vw; height: 100vh; min-height: 0; cursor: none; }
@@ -205,23 +205,23 @@ body.hw-fs-body { overflow: hidden; }
 
 /* 권한별 화면 — 반주자·목회자 (2026-10-09) · 색은 테마 금색·연남색 */
 .ws-view { border: 0; background: rgba(255,255,255,.14); color: #fff; border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; max-width: 9.5em; }
-.ws-view option { color: #1d1d1d; background: #fff; }
+.ws-view option { color: #201D1A; background: #fff; }
 .ws-role { display: inline-block; font-size: .8em; letter-spacing: 0; font-weight: 700; border: 1px solid currentColor; border-radius: 5px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; }
-.ws-role-accomp { color: #9a7b3e; }
-.ws-role-pastor { color: #4a6a9c; }
-.ws-chip.ws-chip-accomp { border-color: #b89b5e; color: #7a6a45; }
-.ws-chip.ws-chip-pastor { border-color: #4a6a9c; color: #4a6a9c; }
-.ws-chip.on.ws-chip-accomp, .ws-chip.on.ws-chip-pastor { color: #fff; border-color: #032257; }
-.ws-prayer { margin-top: 18px; padding: 14px 16px; background: #f5f8fc; border-left: 4px solid #4a6a9c; border-radius: 0 10px 10px 0; }
-.ws-prayer-t { font-size: .82em; font-weight: 700; color: #4a6a9c; margin-bottom: 8px; }
-.ws-prayer-txt p { margin: 0 0 .8em; font-family: "Noto Serif KR", serif; font-size: 1.15em; line-height: 1.9; word-break: keep-all; color: #2b2721; }
-.ws-role-tip { color: #9a7b3e; }
+.ws-role-accomp { color: #9C593C; }
+.ws-role-pastor { color: #6E523C; }
+.ws-chip.ws-chip-accomp { border-color: #B5562F; color: #7B5444; }
+.ws-chip.ws-chip-pastor { border-color: #6E523C; color: #6E523C; }
+.ws-chip.on.ws-chip-accomp, .ws-chip.on.ws-chip-pastor { color: #fff; border-color: #3A281C; }
+.ws-prayer { margin-top: 18px; padding: 14px 16px; background: #FBF8F6; border-left: 4px solid #6E523C; border-radius: 0 10px 10px 0; }
+.ws-prayer-t { font-size: .82em; font-weight: 700; color: #6E523C; margin-bottom: 8px; }
+.ws-prayer-txt p { margin: 0 0 .8em; font-family: "Noto Serif KR", serif; font-size: 1.15em; line-height: 1.9; word-break: keep-all; color: #2B2421; }
+.ws-role-tip { color: #9C593C; }
 @media (max-width: 560px) { .ws-view { max-width: 7.5em; font-size: .8rem; } }
 
 /* 설교하기 (관리자·담임목사, 2026-10-10) — 오늘의 예배 단추 아래, 발표자 모드로 */
 .hw-preach-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
-.hero-cta.hw-preach { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; min-width: 200px; padding: 10px 22px; margin-top: 0; font: inherit; font-weight: 700; cursor: pointer; line-height: 1.35; background: transparent; border-color: var(--gold, #b89b5e); color: #f3e3bd; }
-.hero-cta.hw-preach:hover { background: var(--gold, #b89b5e); color: #10203f; }
+.hero-cta.hw-preach { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; min-width: 200px; padding: 10px 22px; margin-top: 0; font: inherit; font-weight: 700; cursor: pointer; line-height: 1.35; background: transparent; border-color: var(--gold, #B5562F); color: #EFDAC1; }
+.hero-cta.hw-preach:hover { background: var(--gold, #B5562F); color: #372518; }
 .hero-cta.hw-preach small { font-size: .74rem; font-weight: 400; opacity: .85; }
 .hero.hw-fs .hw-preach-row { display: none !important; }
 @media (max-width: 560px) { .hero-cta.hw-preach { width: 100%; min-width: 0; } }

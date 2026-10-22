@@ -176,11 +176,11 @@
         row.style.cssText = "display:flex;gap:8px;margin-bottom:8px;align-items:center;";
         const sel = document.createElement("select");
         sel.className = "fam-rel";
-        sel.style.cssText = "flex:0 0 130px;padding:9px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;background:#fff;";
+        sel.style.cssText = "flex:0 0 130px;padding:9px;border:1px solid #ECE6E1;border-radius:8px;font:inherit;background:#fff;";
         sel.innerHTML = '<option value="">관계 선택</option>' + REL_OPTS.map((o) => "<option" + (o === rel ? " selected" : "") + ">" + o + "</option>").join("");
         const inp = document.createElement("input");
         inp.type = "text"; inp.className = "fam-name"; inp.maxLength = 40; inp.placeholder = "이름";
-        inp.value = nm || ""; inp.style.cssText = "flex:1;min-width:0;padding:9px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;";
+        inp.value = nm || ""; inp.style.cssText = "flex:1;min-width:0;padding:9px;border:1px solid #ECE6E1;border-radius:8px;font:inherit;";
         const del = document.createElement("button");
         del.type = "button"; del.className = "btn btn-line"; del.textContent = "✕";
         del.style.cssText = "flex:0 0 auto;padding:8px 12px;";
@@ -231,7 +231,7 @@
           if (slotName && name) slotName.textContent = name + (role ? " " + role : "") + "님 ▾";
         } catch (err) {
           pMsg.textContent = "오류: " + err.message;
-          pMsg.style.color = "#c0392b";
+          pMsg.style.color = "#A33A2A";
         }
         setTimeout(() => { pMsg.textContent = ""; }, 3000);
       };
@@ -281,8 +281,8 @@
     return `<div class="child-card" data-id="${esc(k.id)}" style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
         <b style="color:var(--accent);font-size:1rem;">${esc(k.name)}</b>
-        <span style="font-size:.78rem;background:#eef3fb;color:#2b5797;border-radius:999px;padding:2px 10px;">${esc(k.relation || "자녀")}</span>
-        ${k.member_key ? "" : '<span style="font-size:.78rem;background:#fff3d6;color:#8a6d1f;border-radius:999px;padding:2px 10px;">생년월일 필요</span>'}
+        <span style="font-size:.78rem;background:#F9F4F0;color:#845C3E;border-radius:999px;padding:2px 10px;">${esc(k.relation || "자녀")}</span>
+        ${k.member_key ? "" : '<span style="font-size:.78rem;background:#fff3d6;color:#894020;border-radius:999px;padding:2px 10px;">생년월일 필요</span>'}
       </div>
       <div class="form-grid" style="gap:12px;">
         <div class="form-field"><label>생년월일</label><input type="text" class="c-birth" maxlength="10" inputmode="numeric" placeholder="예: 2016-05-03" value="${esc(birth)}" /></div>
@@ -310,7 +310,7 @@
     wrap.hidden = false;
     rowsEl.querySelectorAll(".child-card").forEach((card) => {
       const msg = card.querySelector(".c-msg");
-      const say = (t, ok) => { msg.textContent = t; msg.style.color = ok ? "var(--accent)" : "#c0392b"; };
+      const say = (t, ok) => { msg.textContent = t; msg.style.color = ok ? "var(--accent)" : "#A33A2A"; };
       // 생년월일: 숫자만 쳐도 2016-05-03 형태로 맞춰 준다
       const bi = card.querySelector(".c-birth");
       bi.addEventListener("blur", () => {
@@ -345,15 +345,15 @@
   // ===== 회원 목록 테이블 =====
   // 상태 표시: 정상 / 정지(사유 메모) / 탈퇴
   function statTag(r) {
-    if (r.withdrawn_at) return `<span class="prov-tag" style="background:#ececec;color:#666">탈퇴</span>`;
-    if (r.suspended_at) return `<span class="prov-tag" style="background:#fdecea;color:#c0392b">정지</span>`;
+    if (r.withdrawn_at) return `<span class="prov-tag" style="background:#F2ECE6;color:#70655C">탈퇴</span>`;
+    if (r.suspended_at) return `<span class="prov-tag" style="background:#FBEDEA;color:#A33A2A">정지</span>`;
     return `<span class="prov-tag" style="background:#e8f3ec;color:#2f7d46">정상</span>`;
   }
   function suspendBtn(r, meId) {
     if (r.withdrawn_at || r.id === meId) return "";
     return r.suspended_at
       ? `<button type="button" class="btn btn-line susp-btn" data-act="unsuspend" style="padding:4px 12px;font-size:.8rem;">정지 해제</button>`
-      : `<button type="button" class="btn btn-line susp-btn" data-act="suspend" style="padding:4px 12px;font-size:.8rem;color:#c0392b;border-color:#e4b6b0;">정지</button>`;
+      : `<button type="button" class="btn btn-line susp-btn" data-act="suspend" style="padding:4px 12px;font-size:.8rem;color:#A33A2A;border-color:#e4b6b0;">정지</button>`;
   }
   function memberTable(list, admin, meId) {
     return `
@@ -379,7 +379,7 @@
 
   function renderAdminTable(rows, meId) {
     box.innerHTML = `<p class="member-role-note">관리자 모드 — 전체 회원을 보고, 직분 수정과 계정 정지를 할 수 있습니다.</p>
-      <div style="margin:10px 0 14px;max-width:420px;"><input type="search" id="memberSearch" placeholder="🔍 이름·이메일 검색 (일부만 입력해도 됩니다)" style="width:100%;padding:10px 14px;border:1px solid #dfe5ee;border-radius:10px;font:inherit;" /></div>`
+      <div style="margin:10px 0 14px;max-width:420px;"><input type="search" id="memberSearch" placeholder="🔍 이름·이메일 검색 (일부만 입력해도 됩니다)" style="width:100%;padding:10px 14px;border:1px solid #ECE6E1;border-radius:10px;font:inherit;" /></div>`
       + memberTable(rows, true, meId);
 
     // 이름·이메일 부분 일치 검색
@@ -410,7 +410,7 @@
           setTimeout(() => { btn.textContent = old; btn.disabled = false; }, 2000);
         } catch (err) {
           btn.textContent = "오류";
-          btn.style.color = "#c0392b";
+          btn.style.color = "#A33A2A";
           setTimeout(() => { btn.textContent = old; btn.style.color = ""; btn.disabled = false; }, 2500);
         }
       });
@@ -493,7 +493,7 @@
       };
       if (!payload.name || !payload.phone || !payload.birth || !payload.rrn_front || !payload.address) {
         taxMsg.textContent = "모든 항목을 입력해 주세요.";
-        taxMsg.style.color = "#c0392b";
+        taxMsg.style.color = "#A33A2A";
         return;
       }
       taxMsg.textContent = "제출 중…";
@@ -504,7 +504,7 @@
         taxMsg.textContent = /tax_requests|does not exist|relation|schema cache/i.test(err.message)
           ? "신청 테이블이 아직 준비되지 않았습니다. 관리자에게 문의해 주세요."
           : "오류: " + err.message;
-        taxMsg.style.color = "#c0392b";
+        taxMsg.style.color = "#A33A2A";
         return;
       }
       notifyAdminEmail(payload.name);

@@ -290,7 +290,7 @@ var WPCTts = (function () {
     seekEl.setAttribute("aria-label", "낭독 위치 이동");
     seekEl.style.cssText = "flex:1;height:6px;cursor:pointer;accent-color:#2f5d3a";
     timeEl = document.createElement("span");
-    timeEl.style.cssText = "font-size:.8rem;color:#7b8794;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:84px;text-align:right";
+    timeEl.style.cssText = "font-size:.8rem;color:#93867C;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:84px;text-align:right";
     timeEl.textContent = "0:00 / 0:00";
     barWrap.appendChild(seekEl); barWrap.appendChild(timeEl);
     function applySeek() { if (audio && audio.duration) { audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration; updateBar(); } }
@@ -749,7 +749,7 @@ window.WPCQtText = (function () {
       return (uid && token) ? { uid, token } : null;
     } catch (e) { return null; }
   }
-  const AMEN_NOTE = "margin-top:16px;padding:12px 15px;background:#f4f1ea;border-radius:11px;color:#5b6b7d;font-size:.9rem;line-height:1.55;text-align:center";
+  const AMEN_NOTE = "margin-top:16px;padding:12px 15px;background:#F3EFEB;border-radius:11px;color:#796A5F;font-size:.9rem;line-height:1.55;text-align:center";
   const AMEN_DONE = "margin-top:16px;padding:13px 15px;background:#e7f4ea;border:1px solid #bfe0c8;border-radius:11px;color:#1e7a45;font-weight:700;font-size:.95rem;text-align:center";
   function amenDoneBox(box, cd, sess, rankMsg) {
     box.innerHTML = `<div style="${AMEN_DONE}">${escQt(rankMsg || "✓ 오늘의 큐티를 마치고 아멘 하셨습니다")}</div>`;
@@ -765,7 +765,7 @@ window.WPCQtText = (function () {
     const cd = dotToDash(date), SB = window.SUPABASE_URL, AK = window.SUPABASE_ANON_KEY;
     const sess = qtSession();
     if (!SB || !AK) { box.innerHTML = ""; return; }
-    if (!sess) { box.innerHTML = `<div style="${AMEN_NOTE}"><b>로그인</b>하시면 오늘의 큐티에 <b>아멘</b> 체크를 할 수 있어요. <span style="color:#9aa5b1">(화면 오른쪽 위 로그인)</span></div>`; return; }
+    if (!sess) { box.innerHTML = `<div style="${AMEN_NOTE}"><b>로그인</b>하시면 오늘의 큐티에 <b>아멘</b> 체크를 할 수 있어요. <span style="color:#AFA49C">(화면 오른쪽 위 로그인)</span></div>`; return; }
     const H = { apikey: AK, Authorization: "Bearer " + sess.token };
     box.innerHTML = `<div style="${AMEN_NOTE}">확인 중…</div>`;
     // 본인(user_id) 것만 조회 — 관리자는 전체 qt_checks를 읽을 수 있어 필터 없으면 남의 아멘이 잡힘
@@ -784,8 +784,8 @@ window.WPCQtText = (function () {
               chk.disabled = false; chk.checked = false;
               const m = (e && e.message) || "";
               box.innerHTML = /does not exist|42P01|schema cache|Could not find/i.test(m)
-                ? `<div style="${AMEN_NOTE};color:#c0392b">아멘 저장 테이블이 아직 없습니다 — 관리자는 supabase/qt_checks.sql 을 1회 실행해 주세요.</div>`
-                : `<div style="${AMEN_NOTE};color:#c0392b">저장에 실패했습니다. 다시 시도해 주세요.</div>`;
+                ? `<div style="${AMEN_NOTE};color:#A33A2A">아멘 저장 테이블이 아직 없습니다 — 관리자는 supabase/qt_checks.sql 을 1회 실행해 주세요.</div>`
+                : `<div style="${AMEN_NOTE};color:#A33A2A">저장에 실패했습니다. 다시 시도해 주세요.</div>`;
             });
         });
       })
@@ -1167,7 +1167,7 @@ if (modal) {
     let m = document.getElementById("iosGuideModal");
     if (!m) {
       const shareSvg =
-        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#032257" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="M8.5 7.5 12 4l3.5 3.5"/><rect x="5" y="11" width="14" height="9" rx="2"/></svg>';
+        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3A281C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="M8.5 7.5 12 4l3.5 3.5"/><rect x="5" y="11" width="14" height="9" rx="2"/></svg>';
       const safariSteps =
         '<li><span class="ios-step-no">1</span><div>화면 아래(아이패드는 위)의 <b>공유 버튼</b> <span class="ios-share">' + shareSvg + '</span> 을 누릅니다.</div></li>' +
         '<li><span class="ios-step-no">2</span><div>메뉴를 내려 <b>‘홈 화면에 추가’</b> 를 누릅니다.</div></li>' +

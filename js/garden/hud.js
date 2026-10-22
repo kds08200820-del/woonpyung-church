@@ -14,8 +14,8 @@ window.GardenHud = (function () {
   var SEED_ICON = { sunflower: '🌻', olive: '🫒', fig: '🍐', grape: '🍇', mustard: '🌼', lily: '🌷' };
   var WX_ICON = { clear: '☀️', night: '🌙', cloudy: '☁️', fog: '🌫️', rain: '🌧️', snow: '❄️' };
   /* 예배 묶음 — index.html 이 쓰는 ?v= 그대로(이미 올라간 파일은 건너뜀) */
-  var BUNDLE_CSS = ['css/worship.css?v=20261011full1'];
-  var BUNDLE_JS = ['js/bulletins.js?v=20261017sum1', 'js/bulletins-live.js?v=20261010sum1', 'js/gyodok-data.js?v=20260926ws', 'js/hymn-data.js?v=20260927meta', 'modu/ccm-data.js?v=20260928ccm2', 'js/worship.js?v=20261017live1'];
+  var BUNDLE_CSS = ['css/worship.css?v=20261023lib1'];
+  var BUNDLE_JS = ['js/bulletins.js?v=20261017sum1', 'js/bulletins-live.js?v=20261010sum1', 'js/gyodok-data.js?v=20260926ws', 'js/hymn-data.js?v=20260927meta', 'modu/ccm-data.js?v=20260928ccm2', 'js/worship.js?v=20261023lib1'];
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -579,7 +579,7 @@ window.GardenHud = (function () {
     function add(tag, cls, text, fn, href) { var b = document.createElement(tag); b.className = 'g-btn ' + cls; b.textContent = text; if (href) b.href = href; else b.type = 'button'; if (fn) b.addEventListener('click', fn); acts.appendChild(b); return b; }
     if (kind === 'login') add('button', 'g-btn-primary', t('gate.login.btn'), function () { var lb = document.getElementById('loginBtnInit') || document.querySelector('#authSlot .auth-btn'); if (lb) lb.click(); else location.href = 'account.html'; });
     if (kind === 'error') add('button', 'g-btn-primary', t('gate.retry'), o.retry);
-    if (kind !== 'signing') add('a', 'g-btn-line', t('gate.home'), null, 'index.html?home=1');
+    if (kind !== 'signing') add('a', 'g-btn-line', t('gate.home'), null, 'home.html?home=1');
     g.hidden = false; $('gRoot').setAttribute('data-mode', 'gate');
   }
   function hideGate() { var g = $('gGate'); if (g) g.hidden = true; $('gRoot').setAttribute('data-mode', 'garden'); }

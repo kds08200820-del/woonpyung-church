@@ -42,7 +42,7 @@
           </div>
         </form>`;
 
-      const say = (el, text, ok) => { el.textContent = text; el.style.color = ok ? "var(--accent)" : "#c0392b"; };
+      const say = (el, text, ok) => { el.textContent = text; el.style.color = ok ? "var(--accent)" : "#A33A2A"; };
 
       // ── 이메일 변경 ──
       const emailForm = document.getElementById("emailForm");

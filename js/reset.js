@@ -33,7 +33,7 @@
   function renderError(text, sub) {
     box.innerHTML = `<div class="member-lock"><div class="lock-icon">⏱️</div><h3>${text}</h3>
       <p>${sub || '홈으로 이동해 로그인 창의 "비밀번호를 잊으셨나요?"를 눌러 재설정 메일을 다시 받아 주세요.<br>메일이 안 보이면 <b>스팸함</b>도 확인해 주세요. 링크는 1회만 사용할 수 있습니다.'}</p>
-      <a class="btn btn-solid" href="index.html" style="margin-top:14px;">홈으로</a></div>`;
+      <a class="btn btn-solid" href="home.html" style="margin-top:14px;">홈으로</a></div>`;
   }
 
   function renderForm(sb) {
@@ -54,8 +54,8 @@
       e.preventDefault();
       const fd = new FormData(form);
       const pw1 = fd.get("pw1"), pw2 = fd.get("pw2");
-      if (String(pw1).length < 8) { msg.textContent = "비밀번호는 8자 이상이어야 합니다."; msg.style.color = "#c0392b"; return; }
-      if (pw1 !== pw2) { msg.textContent = "두 비밀번호가 서로 다릅니다."; msg.style.color = "#c0392b"; return; }
+      if (String(pw1).length < 8) { msg.textContent = "비밀번호는 8자 이상이어야 합니다."; msg.style.color = "#A33A2A"; return; }
+      if (pw1 !== pw2) { msg.textContent = "두 비밀번호가 서로 다릅니다."; msg.style.color = "#A33A2A"; return; }
       go.disabled = true; msg.textContent = "변경 중…"; msg.style.color = "var(--ink-soft)";
       try {
         const { error } = await sb.auth.updateUser({ password: pw1 });
@@ -63,7 +63,7 @@
         msg.textContent = "";
         box.innerHTML = `<div class="member-lock"><div class="lock-icon">✅</div><h3>비밀번호가 변경되었습니다</h3>
           <p>새 비밀번호로 로그인된 상태입니다. 홈으로 이동해 이용해 주세요.</p>
-          <a class="btn btn-solid" href="index.html" style="margin-top:14px;">홈으로</a></div>`;
+          <a class="btn btn-solid" href="home.html" style="margin-top:14px;">홈으로</a></div>`;
       } catch (err) {
         go.disabled = false;
         const m = (err && err.message) || "";
@@ -73,7 +73,7 @@
         else if (/rate limit|too many/i.test(m)) t = "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.";
         else if (/session|not.?logged|missing/i.test(m)) t = "확인 시간이 지났습니다. 재설정 메일을 다시 받아 주세요.";
         msg.textContent = t;
-        msg.style.color = "#c0392b";
+        msg.style.color = "#A33A2A";
       }
     });
   }

@@ -13,55 +13,55 @@ console.log('[forms-admin.js] v20261010form6');
 window.WPCFormsAdmin = (function () {
   var CSS =
     '.fa-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}' +
-    '.fa-head h3{margin:0;color:var(--accent,#032257);font-size:1.15rem}' +
-    '.fa-head .fa-sub{color:#8a8a8a;font-size:.84rem}' +
+    '.fa-head h3{margin:0;color:var(--accent,#3A281C);font-size:1.15rem}' +
+    '.fa-head .fa-sub{color:#8B7B6C;font-size:.84rem}' +
     '.fa-head .fa-right{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}' +
     '.fa-list{display:flex;flex-direction:column;gap:10px}' +
-    '.fa-item{border:1px solid var(--line,#e6e3dd);border-radius:5px;padding:13px 15px;background:#fff;cursor:pointer;text-align:left;font:inherit;width:100%}' +
-    '.fa-item:hover{border-color:var(--accent-soft,#4a6a9c)}' +
+    '.fa-item{border:1px solid var(--line,#E6D8C6);border-radius:5px;padding:13px 15px;background:#fff;cursor:pointer;text-align:left;font:inherit;width:100%}' +
+    '.fa-item:hover{border-color:var(--accent-soft,#6E523C)}' +
     '.fa-item-hd{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}' +
-    '.fa-item-hd b{color:var(--accent,#032257);font-size:1rem}' +
-    '.fa-meta{font-size:.84rem;color:#4a4a4a;margin-top:3px}' +
-    '.fa-stats{font-size:.84rem;color:var(--accent,#032257);margin-top:6px;font-weight:600}' +
+    '.fa-item-hd b{color:var(--accent,#3A281C);font-size:1rem}' +
+    '.fa-meta{font-size:.84rem;color:#4A3628;margin-top:3px}' +
+    '.fa-stats{font-size:.84rem;color:var(--accent,#3A281C);margin-top:6px;font-weight:600}' +
     '.fa-st{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.74rem;font-weight:700;white-space:nowrap}' +
-    '.fa-st-open{background:var(--accent,#032257);color:#fff}' +
-    '.fa-st-soon{background:#fff;color:var(--accent,#032257);border:1px solid var(--gold,#b89b5e)}' +
-    '.fa-st-closed{background:#eef2f7;color:var(--accent-soft,#4a6a9c)}' +
-    '.fa-st-hidden{background:#f1efea;color:#8a8a8a}' +
-    '.fa-st-due{background:#fff;color:var(--accent,#032257);border:1px solid var(--gold,#b89b5e)}' +
-    '.fa-st-paid{background:var(--accent,#032257);color:#fff}' +
-    '.fa-st-ok{background:#eef2f7;color:var(--accent-soft,#4a6a9c)}' +
-    '.fa-stat{background:var(--paper-alt,#f7f5f0);border:1px solid var(--line,#e6e3dd);border-radius:4px;padding:10px 12px}' +
-    '.fa-stat span{display:block;font-size:.78rem;color:#8a8a8a}' +
-    '.fa-stat b{font-size:1.1rem;color:var(--accent,#032257)}' +
-    '.fa-stat small{display:block;font-size:.76rem;color:#4a4a4a;margin-top:2px}' +
+    '.fa-st-open{background:var(--accent,#3A281C);color:#fff}' +
+    '.fa-st-soon{background:#fff;color:var(--accent,#3A281C);border:1px solid var(--gold,#B5562F)}' +
+    '.fa-st-closed{background:#F6F2EF;color:var(--accent-soft,#6E523C)}' +
+    '.fa-st-hidden{background:#F0EEEB;color:#8B7B6C}' +
+    '.fa-st-due{background:#fff;color:var(--accent,#3A281C);border:1px solid var(--gold,#B5562F)}' +
+    '.fa-st-paid{background:var(--accent,#3A281C);color:#fff}' +
+    '.fa-st-ok{background:#F6F2EF;color:var(--accent-soft,#6E523C)}' +
+    '.fa-stat{background:var(--paper-alt,#F6EFE5);border:1px solid var(--line,#E6D8C6);border-radius:4px;padding:10px 12px}' +
+    '.fa-stat span{display:block;font-size:.78rem;color:#8B7B6C}' +
+    '.fa-stat b{font-size:1.1rem;color:var(--accent,#3A281C)}' +
+    '.fa-stat small{display:block;font-size:.76rem;color:#4A3628;margin-top:2px}' +
     '.fa-filter{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 10px}' +
-    '.fa-filter button{border:1px solid var(--line,#e6e3dd);background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-size:.82rem;cursor:pointer;color:#4a4a4a}' +
-    '.fa-filter button.on{background:var(--accent,#032257);border-color:var(--accent,#032257);color:#fff}' +
+    '.fa-filter button{border:1px solid var(--line,#E6D8C6);background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-size:.82rem;cursor:pointer;color:#4A3628}' +
+    '.fa-filter button.on{background:var(--accent,#3A281C);border-color:var(--accent,#3A281C);color:#fff}' +
     '.fa-ents{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}' +
-    '.fa-ent{border:1px solid var(--line,#e6e3dd);border-radius:5px;padding:12px 14px;background:#fff}' +
-    '.fa-ent.is-off{background:#fbfaf7;color:#8a8a8a}' +
+    '.fa-ent{border:1px solid var(--line,#E6D8C6);border-radius:5px;padding:12px 14px;background:#fff}' +
+    '.fa-ent.is-off{background:#FBF9F7;color:#8B7B6C}' +
     '.fa-ent-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}' +
-    '.fa-ent-hd b{font-size:1rem;color:var(--accent,#032257)}' +
-    '.fa-ent p{margin:3px 0 0;font-size:.84rem;color:#4a4a4a;word-break:keep-all}' +
-    '.fa-ent .fa-msg{margin-top:8px;border-left:3px solid var(--gold,#b89b5e);background:#fbf8f1;padding:7px 10px;border-radius:6px;font-size:.82rem}' +
+    '.fa-ent-hd b{font-size:1rem;color:var(--accent,#3A281C)}' +
+    '.fa-ent p{margin:3px 0 0;font-size:.84rem;color:#4A3628;word-break:keep-all}' +
+    '.fa-ent .fa-msg{margin-top:8px;border-left:3px solid var(--gold,#B5562F);background:#FBF5EC;padding:7px 10px;border-radius:6px;font-size:.82rem}' +
     '.fa-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}' +
     '.fa-btns button{padding:5px 11px;font-size:.8rem}' +
-    '.fa-warn{color:#c0392b}' +
-    '.fa-note{font-size:.8rem;color:#8a8a8a;margin:6px 0 0}' +
-    '.fa-pay{margin-top:10px;padding:10px 12px;border-radius:4px;border:1px dashed var(--gold,#b89b5e);font-size:.86rem;background:#fff}' +
+    '.fa-warn{color:#A33A2A}' +
+    '.fa-note{font-size:.8rem;color:#8B7B6C;margin:6px 0 0}' +
+    '.fa-pay{margin-top:10px;padding:10px 12px;border-radius:4px;border:1px dashed var(--gold,#B5562F);font-size:.86rem;background:#fff}' +
     '.fa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}' +
     '.fa-sgrid{grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}' +
-    '.fa-sec{margin:18px 0 8px;font-size:.92rem;color:var(--accent,#032257);font-weight:700;border-bottom:1px solid var(--line,#e6e3dd);padding-bottom:6px}' +
+    '.fa-sec{margin:18px 0 8px;font-size:.92rem;color:var(--accent,#3A281C);font-weight:700;border-bottom:1px solid var(--line,#E6D8C6);padding-bottom:6px}' +
     '.fa-check{display:flex;align-items:center;gap:8px;font-size:.9rem;cursor:pointer}' +
-    '.fa-check input{width:18px;height:18px;accent-color:var(--accent,#032257)}' +
+    '.fa-check input{width:18px;height:18px;accent-color:var(--accent,#3A281C)}' +
     '.fa-modal .modal-box{max-width:480px;padding:28px 24px 22px}' +
-    '.fa-modal textarea{width:100%;min-height:110px;padding:10px;border:1px solid #dfe5ee;border-radius:4px;font:inherit;box-sizing:border-box}' +
+    '.fa-modal textarea{width:100%;min-height:110px;padding:10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;box-sizing:border-box}' +
     '.fa-plist{margin:8px 0 0;padding-left:26px;columns:2 220px;column-gap:24px;font-size:.88rem}' +
-    '.fa-plist li{break-inside:avoid;padding:2px 0;color:#1a1a1a}' +
-    '.fa-plist li small{color:#8a8a8a}' +
-    '.fa-pdet{margin-top:14px;border:1px solid var(--line,#e6e3dd);border-radius:4px;padding:10px 14px;background:#fff}' +
-    '.fa-pdet>summary{cursor:pointer;font-weight:700;color:var(--accent,#032257);font-size:.92rem}' +
+    '.fa-plist li{break-inside:avoid;padding:2px 0;color:#3A281C}' +
+    '.fa-plist li small{color:#8B7B6C}' +
+    '.fa-pdet{margin-top:14px;border:1px solid var(--line,#E6D8C6);border-radius:4px;padding:10px 14px;background:#fff}' +
+    '.fa-pdet>summary{cursor:pointer;font-weight:700;color:var(--accent,#3A281C);font-size:.92rem}' +
     '@media (max-width:560px){.fa-ents{grid-template-columns:1fr}.fa-head .fa-right{margin-left:0}}';
 
   function injectCss() {
@@ -169,7 +169,7 @@ window.WPCFormsAdmin = (function () {
       var html = '<div class="fin-card"><div class="fa-head"><h3>신청서</h3><span class="fa-sub">만든 신청서가 차례로 쌓입니다. 신청 기간에는 홈페이지 공지사항 맨 위에 저절로 뜹니다.</span>' +
         '<div class="fa-right"><button class="btn btn-solid" id="fa_new" style="padding:8px 16px;font-size:.86rem">새 신청서</button></div></div>';
       if (!HASPARTS) html += '<p class="fa-pay" style="margin:0 0 12px"><span class="fa-warn">참가자 이름 기능이 아직 준비되지 않았습니다.</span> Supabase → SQL Editor 에서 supabase/20261010_1300_app_participants.sql 을 한 번 실행해 주십시오. 그 전에는 새 신청을 받을 수 없습니다.</p>';
-      if (!FORMS.length) html += '<p style="color:#8a8a8a;margin:0">아직 만든 신청서가 없습니다.</p>';
+      if (!FORMS.length) html += '<p style="color:#8B7B6C;margin:0">아직 만든 신청서가 없습니다.</p>';
       html += '<div class="fa-list">' + FORMS.map(function (f) {
         var st = stateOf(f), s = sum(entriesOf(f.id));
         return '<button type="button" class="fa-item" data-id="' + f.id + '"><div class="fa-item-hd"><b>' + esc(f.title) + '</b><span class="fa-st fa-st-' + st[0] + '">' + st[1] + '</span></div>' +
@@ -204,7 +204,7 @@ window.WPCFormsAdmin = (function () {
         '<button class="btn btn-line" id="fa_copy" style="padding:6px 13px;font-size:.84rem">이 양식으로 새 신청서</button>' +
         '<button class="btn btn-line" id="fa_csv" style="padding:6px 13px;font-size:.84rem">명단 내려받기</button>' +
         '<a class="btn btn-line" href="forms.html?f=' + f.id + '" target="_blank" rel="noopener" style="padding:6px 13px;font-size:.84rem">홈페이지에서 보기</a></div></div>' +
-        '<div class="fa-item-hd"><b style="font-size:1.2rem;color:var(--accent,#032257)">' + esc(f.title) + '</b><span class="fa-st fa-st-' + st[0] + '">' + st[1] + '</span></div>' +
+        '<div class="fa-item-hd"><b style="font-size:1.2rem;color:var(--accent,#3A281C)">' + esc(f.title) + '</b><span class="fa-st fa-st-' + st[0] + '">' + st[1] + '</span></div>' +
         (eventText(f) || f.place ? '<div class="fa-meta">행사 ' + esc([eventText(f), f.place].filter(Boolean).join(' · ')) + '</div>' : '') +
         '<div class="fa-meta">신청 기간 ' + esc(dt(f.open_at)) + ' ~ ' + esc(f.close_at ? dt(f.close_at) : '마감 없음') + (f.show_hero ? ' · 이 기간에 공지사항에 뜸' : ' · 공지사항에 띄우지 않음') + '</div>' +
         '<div class="fa-meta">신청비 ' + esc(feeText(f)) + '</div>' +
@@ -222,7 +222,7 @@ window.WPCFormsAdmin = (function () {
         '<div class="fa-filter">' + [['all', '전체'], ['due', '미납'], ['claimed', '납부 완료(확인 전)'], ['conf', '교회 확인'], ['off', '취소']].map(function (t) {
           return '<button type="button" data-f="' + t[0] + '" class="' + (filter === t[0] ? 'on' : '') + '">' + t[1] + '</button>';
         }).join('') + '</div>' +
-        (shown.length ? '<div class="fa-ents">' + shown.map(entHTML).join('') + '</div>' : '<p style="color:#8a8a8a;margin:6px 0 0">해당하는 신청이 없습니다.</p>') +
+        (shown.length ? '<div class="fa-ents">' + shown.map(entHTML).join('') + '</div>' : '<p style="color:#8B7B6C;margin:6px 0 0">해당하는 신청이 없습니다.</p>') +
         '<p class="fa-note">‘입금 확인’은 통장 내역과 맞춰 본 뒤 누릅니다. 맞지 않으면 ‘납부 취소’로 미납으로 되돌리고, 신청한 분에게 확인을 부탁하는 안내를 함께 보냅니다(신청한 분의 대시보드·신청서 화면 맨 위에 나옵니다).</p>' +
         '</div>';
       panel.innerHTML = html;
@@ -271,9 +271,9 @@ window.WPCFormsAdmin = (function () {
       return '<div class="fa-ent' + (off ? ' is-off' : '') + '" data-id="' + e.id + '"><div class="fa-ent-hd"><b>' + esc(e.name) + '</b><span class="fa-st fa-st-' + p[0] + '">' + p[1] + '</span></div>' +
         '<p>' + esc(e.phone || '연락처 없음') + '</p>' +
         '<p>' + (f.ask_minor === false ? (e.adults + e.minors) + '명' : '성인 ' + e.adults + '명 · 미성년자 ' + e.minors + '명') + ' · ' + (e.fee_total > 0 ? won(e.fee_total) + '원' : '신청비 없음') + '</p>' +
-        (partLine(e, f) ? '<p>참가자: ' + esc(partLine(e, f)) + '</p>' : '<p style="color:#8a8a8a">참가자: 명단 없음</p>') +
+        (partLine(e, f) ? '<p>참가자: ' + esc(partLine(e, f)) + '</p>' : '<p style="color:#8B7B6C">참가자: 명단 없음</p>') +
         (e.memo ? '<p>' + esc((f.memo_label || '메모') + (/[?？.]$/.test(f.memo_label || '') ? ' ' : ': ') + e.memo) + '</p>' : '') +
-        '<p style="color:#8a8a8a">신청 ' + esc(day(e.created_at)) + (e.paid_at ? ' · ' + (e.paid_by === 'admin' ? '납부 처리 ' : '납부했습니다 ') + esc(day(e.paid_at)) : '') + (e.confirmed_at ? ' · 교회 확인 ' + esc(day(e.confirmed_at)) : '') + '</p>' +
+        '<p style="color:#8B7B6C">신청 ' + esc(day(e.created_at)) + (e.paid_at ? ' · ' + (e.paid_by === 'admin' ? '납부 처리 ' : '납부했습니다 ') + esc(day(e.paid_at)) : '') + (e.confirmed_at ? ' · 교회 확인 ' + esc(day(e.confirmed_at)) : '') + '</p>' +
         (e.admin_msg ? '<div class="fa-msg">보낸 안내(' + esc(day(e.admin_msg_at)) + ', ' + (e.msg_read_at ? '읽음' : '아직 안 읽음') + '): ' + esc(e.admin_msg) + '</div>' : '') +
         '<div class="fa-btns">' + btn.map(function (b) { return '<button type="button" class="btn ' + b[2] + '" data-act="' + b[0] + '">' + b[1] + '</button>'; }).join('') + '</div></div>';
     }
@@ -286,10 +286,10 @@ window.WPCFormsAdmin = (function () {
         ? e.name + '님, ‘' + f.title + '’ 신청비 ' + won(e.fee_total) + '원의 입금이 아직 확인되지 않았습니다. 납부 상태를 다시 확인해 주십시오. 보내셨다면 보낸 날과 보낸 분 이름을 알려 주십시오.'
         : '';
       m.innerHTML = '<div class="modal-backdrop" data-x></div><div class="modal-box" role="dialog" aria-modal="true"><button class="modal-close" data-x aria-label="닫기">&times;</button>' +
-        '<h3 style="margin:0 0 6px;color:var(--accent,#032257)">' + (act === 'unpaid' ? '납부 취소 · 안내 보내기' : '안내 보내기') + '</h3>' +
-        '<p style="margin:0 0 10px;font-size:.88rem;color:#4a4a4a">' + (act === 'unpaid' ? esc(e.name) + '님의 신청을 <b>미납</b>으로 되돌리고 아래 안내를 보냅니다.' : esc(e.name) + '님에게 아래 안내를 보냅니다.') + ' 안내는 그분의 대시보드와 신청서 화면 맨 위에 나옵니다.</p>' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">' + (act === 'unpaid' ? '납부 취소 · 안내 보내기' : '안내 보내기') + '</h3>' +
+        '<p style="margin:0 0 10px;font-size:.88rem;color:#4A3628">' + (act === 'unpaid' ? esc(e.name) + '님의 신청을 <b>미납</b>으로 되돌리고 아래 안내를 보냅니다.' : esc(e.name) + '님에게 아래 안내를 보냅니다.') + ' 안내는 그분의 대시보드와 신청서 화면 맨 위에 나옵니다.</p>' +
         '<textarea id="fa_msg" maxlength="1000">' + esc(def) + '</textarea>' +
-        '<p id="fa_merr" style="color:#c0392b;font-size:.84rem;margin:6px 0 0" hidden></p>' +
+        '<p id="fa_merr" style="color:#A33A2A;font-size:.84rem;margin:6px 0 0" hidden></p>' +
         '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap"><button class="btn btn-line" data-x style="padding:7px 14px;font-size:.86rem">닫기</button>' +
         '<button class="btn btn-solid" id="fa_send" style="padding:7px 16px;font-size:.86rem">' + (act === 'unpaid' ? '미납으로 되돌리고 보내기' : '보내기') + '</button></div></div>';
       document.body.appendChild(m);
@@ -380,8 +380,8 @@ window.WPCFormsAdmin = (function () {
       ['ff_fa', 'ff_toss', 'ff_bank', 'ff_acct'].forEach(function (id) { $(id).addEventListener('input', preview); });
       preview();
       if (hasImgCol) {   // 안내 그림: 올리기(교회 파일 서버) · 주소 붙여넣기 · 미리보기 · 빼기
-        var imgIn = $('ff_img'), imgPv = $('ff_img_pv'), imgMsg = function (t) { imgPv.innerHTML = '<span style="font-size:.82rem;color:#c0392b">' + esc(t) + '</span>'; };
-        var paintImg = function () { var u = imgIn.value.trim(); imgPv.innerHTML = /^(https?:\/\/|images\/)/i.test(u) ? '<img src="' + esc(u) + '" alt="안내 그림 미리보기" style="max-width:100%;max-height:260px;border:1px solid var(--line,#e6e3dd);border-radius:4px">' : ''; };
+        var imgIn = $('ff_img'), imgPv = $('ff_img_pv'), imgMsg = function (t) { imgPv.innerHTML = '<span style="font-size:.82rem;color:#A33A2A">' + esc(t) + '</span>'; };
+        var paintImg = function () { var u = imgIn.value.trim(); imgPv.innerHTML = /^(https?:\/\/|images\/)/i.test(u) ? '<img src="' + esc(u) + '" alt="안내 그림 미리보기" style="max-width:100%;max-height:260px;border:1px solid var(--line,#E6D8C6);border-radius:4px">' : ''; };
         imgIn.addEventListener('input', paintImg); paintImg();
         $('ff_img_rm').onclick = function () { imgIn.value = ''; paintImg(); };
         $('ff_img_up').onclick = function () {

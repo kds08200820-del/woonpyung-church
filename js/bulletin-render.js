@@ -25,61 +25,61 @@
     return [
       page,
       '*{box-sizing:border-box}html,body{margin:0;padding:0}',
-      'body{font-family:"Noto Serif KR",serif;background:#d9dade;color:#1b1b1b;-webkit-print-color-adjust:exact;print-color-adjust:exact}',
-      '.bar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #ddd;padding:8px 14px;display:flex;gap:8px;align-items:center;justify-content:flex-end}',
-      '.bar .info{margin-right:auto;font-size:.8rem;color:#8a8a8a}',
-      '.bar button{font:inherit;border:0;background:#0a2c5c;color:#fff;border-radius:8px;padding:8px 18px;cursor:pointer}',
+      'body{font-family:"Noto Serif KR",serif;background:#E6DBD1;color:#1E1B18;-webkit-print-color-adjust:exact;print-color-adjust:exact}',
+      '.bar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #E7DCD3;padding:8px 14px;display:flex;gap:8px;align-items:center;justify-content:flex-end}',
+      '.bar .info{margin-right:auto;font-size:.8rem;color:#8B7B6C}',
+      '.bar button{font:inherit;border:0;background:#2E2016;color:#fff;border-radius:8px;padding:8px 18px;cursor:pointer}',
       // 용지
       '.page{width:211mm;min-height:380mm;margin:16px auto;background:#fff;padding:14mm 13mm 12mm;box-shadow:0 4px 26px rgba(0,0,0,.20);position:relative}',
       // 머리글
-      '.hd{text-align:center;padding-bottom:6mm;margin-bottom:7mm;border-bottom:2.4pt solid #0a2c5c;position:relative}',
-      '.hd::after{content:"";position:absolute;left:0;right:0;bottom:-3.4pt;height:.9pt;background:#0a2c5c}',
-      '.hd .eng{font-family:"Noto Sans KR",sans-serif;font-size:8pt;letter-spacing:.34em;color:#a8915c;font-weight:600}',
-      '.hd .ch{font-family:"Noto Serif KR",serif;font-weight:700;font-size:25pt;letter-spacing:.26em;color:#0a2c5c;margin:2.5mm 0 1.5mm}',
-      '.hd .sub{font-family:"Noto Sans KR",sans-serif;font-size:8.5pt;color:#777}',
+      '.hd{text-align:center;padding-bottom:6mm;margin-bottom:7mm;border-bottom:2.4pt solid #2E2016;position:relative}',
+      '.hd::after{content:"";position:absolute;left:0;right:0;bottom:-3.4pt;height:.9pt;background:#2E2016}',
+      '.hd .eng{font-family:"Noto Sans KR",sans-serif;font-size:8pt;letter-spacing:.34em;color:#AA725A;font-weight:600}',
+      '.hd .ch{font-family:"Noto Serif KR",serif;font-weight:700;font-size:25pt;letter-spacing:.26em;color:#2E2016;margin:2.5mm 0 1.5mm}',
+      '.hd .sub{font-family:"Noto Sans KR",sans-serif;font-size:8.5pt;color:#83766B}',
       // 표지 말씀 헤드라인 배너
-      '.hl{text-align:center;font-family:"Noto Serif KR",serif;font-size:1.12em;line-height:1.65;color:#0a2c5c;background:#f5f1e6;border:1px solid #e3d9bd;border-radius:8px;padding:14px 18px;margin:0 0 16px}',
+      '.hl{text-align:center;font-family:"Noto Serif KR",serif;font-size:1.12em;line-height:1.65;color:#2E2016;background:#F3EADF;border:1px solid #E0D2C0;border-radius:8px;padding:14px 18px;margin:0 0 16px}',
       'body.l3 .hl{font-size:9.5pt;line-height:1.5;padding:4mm 5mm;margin-bottom:4mm}',
       // 섹션
       'section{margin-bottom:6mm;page-break-inside:avoid}',
-      'h2{font-family:"Noto Sans KR",sans-serif;font-size:10.5pt;font-weight:700;color:#0a2c5c;margin:0 0 3mm;padding-bottom:1.4mm;border-bottom:1pt solid #d9cfb3;display:flex;align-items:baseline;gap:7px}',
-      'h2 .en{font-size:7.5pt;font-weight:400;color:#b6a273;letter-spacing:.04em}',
+      'h2{font-family:"Noto Sans KR",sans-serif;font-size:10.5pt;font-weight:700;color:#2E2016;margin:0 0 3mm;padding-bottom:1.4mm;border-bottom:1pt solid #D6C8B6;display:flex;align-items:baseline;gap:7px}',
+      'h2 .en{font-size:7.5pt;font-weight:400;color:#B88671;letter-spacing:.04em}',
       // 설교 강조
-      '.serm{text-align:center;background:#f8f4ea;border:1pt solid #e3d9bd;border-radius:3mm;padding:6mm 4mm;margin-bottom:6mm}',
-      '.serm .lab{font-family:"Noto Sans KR",sans-serif;font-size:8pt;letter-spacing:.26em;color:#a8895a}',
-      '.serm .t{font-family:"Noto Serif KR",serif;font-size:17pt;font-weight:700;color:#1a1a1a;margin:2.4mm 0;line-height:1.32}',
-      '.serm .m{font-family:"Noto Sans KR",sans-serif;font-size:9pt;color:#5a5346}',
+      '.serm{text-align:center;background:#F7F2EB;border:1pt solid #E0D2C0;border-radius:3mm;padding:6mm 4mm;margin-bottom:6mm}',
+      '.serm .lab{font-family:"Noto Sans KR",sans-serif;font-size:8pt;letter-spacing:.26em;color:#AA7158}',
+      '.serm .t{font-family:"Noto Serif KR",serif;font-size:17pt;font-weight:700;color:#3A281C;margin:2.4mm 0;line-height:1.32}',
+      '.serm .m{font-family:"Noto Sans KR",sans-serif;font-size:9pt;color:#5A4C46}',
       // 예배 순서
       'table{width:100%;border-collapse:collapse}',
-      '.ord td{padding:1.5mm 2mm;font-size:9.5pt;border-bottom:.5pt solid #efece2;vertical-align:top}',
-      '.ord .bno{width:8mm;text-align:center;color:#b6a273;font-family:"Noto Sans KR",sans-serif;font-size:8pt}',
-      '.ord .bn{width:30mm;font-weight:600;font-family:"Noto Sans KR",sans-serif;color:#34415c}',
-      '.ord .bd{color:#3a3a3a}',
+      '.ord td{padding:1.5mm 2mm;font-size:9.5pt;border-bottom:.5pt solid #EEE9E3;vertical-align:top}',
+      '.ord .bno{width:8mm;text-align:center;color:#B88671;font-family:"Noto Sans KR",sans-serif;font-size:8pt}',
+      '.ord .bn{width:30mm;font-weight:600;font-family:"Noto Sans KR",sans-serif;color:#56463A}',
+      '.ord .bd{color:#403A34}',
       '.ord-spacer td{border-bottom:none;padding:2mm 0;height:4mm}',
       // 2단
       '.two{display:grid;grid-template-columns:1fr 1fr;gap:1.2mm 8mm}',
-      '.ofg{font-size:9pt;padding:1.3mm 0;border-bottom:.5pt dotted #e7e1d1;line-height:1.5}',
-      '.ofg b{font-family:"Noto Sans KR",sans-serif;color:#7a5d27;font-weight:600;margin-right:5px;font-size:8.5pt}',
+      '.ofg{font-size:9pt;padding:1.3mm 0;border-bottom:.5pt dotted #E5DDD3;line-height:1.5}',
+      '.ofg b{font-family:"Noto Sans KR",sans-serif;color:#7C3F25;font-weight:600;margin-right:5px;font-size:8.5pt}',
       // 금액
-      '.amt{margin-top:4mm;border:1pt solid #e6dcbe;border-radius:2mm;overflow:hidden}',
-      '.amt td{padding:1.6mm 4mm;font-family:"Noto Sans KR",sans-serif;font-size:9pt;border-bottom:.5pt solid #efe7d0}',
-      '.amt tr:last-child td{border-bottom:0;font-weight:700;background:#faf6ea}',
+      '.amt{margin-top:4mm;border:1pt solid #E3D4C1;border-radius:2mm;overflow:hidden}',
+      '.amt td{padding:1.6mm 4mm;font-family:"Noto Sans KR",sans-serif;font-size:9pt;border-bottom:.5pt solid #EDE1D2}',
+      '.amt tr:last-child td{border-bottom:0;font-weight:700;background:#F9F3EB}',
       '.amt .num{text-align:right}',
       // 주중
       '.wk{font-size:9.5pt;line-height:1.95}',
-      '.lbl{display:inline-block;min-width:24mm;color:#7a5d27;font-weight:600;font-family:"Noto Sans KR",sans-serif;font-size:9pt}',
+      '.lbl{display:inline-block;min-width:24mm;color:#7C3F25;font-weight:600;font-family:"Noto Sans KR",sans-serif;font-size:9pt}',
       // 칼럼
       '.col{font-size:9.5pt;line-height:1.85;white-space:pre-wrap;text-align:justify}',
-      '.col .ct{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:10pt;color:#7a5d27;margin-bottom:2mm;text-align:left}',
+      '.col .ct{font-family:"Noto Sans KR",sans-serif;font-weight:700;font-size:10pt;color:#7C3F25;margin-bottom:2mm;text-align:left}',
       // 광고
       '.news{margin:0;padding:0;list-style:none;counter-reset:n}',
-      '.news li{position:relative;padding:1.5mm 0 1.5mm 9mm;font-size:9.5pt;line-height:1.6;border-bottom:.5pt dotted #eee;counter-increment:n}',
-      '.news li::before{content:counter(n,decimal-leading-zero);position:absolute;left:0;top:1.7mm;font-family:"Noto Sans KR",sans-serif;font-size:8pt;font-weight:700;color:#b6a273}',
+      '.news li{position:relative;padding:1.5mm 0 1.5mm 9mm;font-size:9.5pt;line-height:1.6;border-bottom:.5pt dotted #F3EEE9;counter-increment:n}',
+      '.news li::before{content:counter(n,decimal-leading-zero);position:absolute;left:0;top:1.7mm;font-family:"Noto Sans KR",sans-serif;font-size:8pt;font-weight:700;color:#B88671}',
       '.news li.sp{counter-increment:none;border-bottom:none;padding:1.5mm 0;height:2mm}',
       '.news li.sp::before{content:none}',
       // 꼬리
-      '.foot{margin-top:7mm;padding-top:3.5mm;border-top:1pt solid #ddd;text-align:center;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;color:#9a9a9a;line-height:1.7}',
-      '.note{font-size:7.5pt;color:#aaa;text-align:center;margin-top:3mm}',
+      '.foot{margin-top:7mm;padding-top:3.5mm;border-top:1pt solid #E7DCD3;text-align:center;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;color:#AA998A;line-height:1.7}',
+      '.note{font-size:7.5pt;color:#B8A99C;text-align:center;margin-top:3mm}',
       // ── 인쇄용 3단 양면 레이아웃(실제 주보 211×380mm · 신문식 3단) ──
       // 여백은 실제 인쇄 주보를 실측해 맞췄다(위 6.5mm·좌우 8mm 안팎).
       // 단을 나누던 점선(column-rule)은 뺐다 — 그만큼 단 사이 간격을 넓혀 공백만으로 구분한다.
@@ -90,7 +90,7 @@
       'body.l3 .hd .ch{font-size:18pt;letter-spacing:.18em;margin:2mm 0 1.2mm}.body.l3 .hd .eng{font-size:8pt}body.l3 .hd .sub{font-size:8pt}',
       'body.l3 h2{font-size:10.5pt;margin-bottom:2.4mm;padding-bottom:1.2mm;gap:5px}body.l3 h2 .en{font-size:7.5pt}',
       // 섹션 앞의 큰 번호(01~10) — 원본 실측 20pt를 3단 인쇄 축소 비율에 맞췄다.
-      'h2 .secno{font-family:"Noto Serif KR",serif;font-weight:400;color:#0a2c5c;margin-right:2px}',
+      'h2 .secno{font-family:"Noto Serif KR",serif;font-weight:400;color:#2E2016;margin-right:2px}',
       'body.l3 h2 .secno{font-size:15pt;margin-right:1px}',
       'body.l3 .serm{padding:4mm 3mm;margin-bottom:4mm}body.l3 .serm .lab{font-size:7.5pt;letter-spacing:.18em}body.l3 .serm .t{font-size:14pt;margin:1.8mm 0}body.l3 .serm .m{font-size:9pt}',
       'body.l3 .ord td{font-size:9.5pt;padding:1.1mm 1.2mm}body.l3 .ord .bno{width:6mm;font-size:8pt}body.l3 .ord .bn{width:19mm;font-size:8.5pt}',
@@ -108,18 +108,18 @@
       // 줘서 "아래쪽에 붙어 보이는" 정도로만 밀어낸다 — 안전한 절충.
       'body.l3 .cover{-webkit-column-break-inside:avoid;break-inside:avoid;-webkit-column-break-before:always;break-before:column;text-align:center}',
       'body.l3 .cv-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4mm}',
-      'body.l3 .cv-since{font-family:"Noto Sans KR",sans-serif;font-size:8pt;font-weight:700;color:#c0392b;text-align:left;line-height:1.6}',
+      'body.l3 .cv-since{font-family:"Noto Sans KR",sans-serif;font-size:8pt;font-weight:700;color:#A33A2A;text-align:left;line-height:1.6}',
       'body.l3 .cv-date{text-align:right;line-height:1}',
-      'body.l3 .cv-date .day{font-family:"Noto Serif KR",serif;font-size:26pt;font-weight:600;color:#3a4a63}',
+      'body.l3 .cv-date .day{font-family:"Noto Serif KR",serif;font-size:26pt;font-weight:600;color:#5D4D40}',
       'body.l3 .cv-date .my{display:block;margin-top:.6mm}',
-      'body.l3 .cv-date .mo,body.l3 .cv-date .wd{display:block;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;font-weight:700;color:#c0392b}',
+      'body.l3 .cv-date .mo,body.l3 .cv-date .wd{display:block;font-family:"Noto Sans KR",sans-serif;font-size:7.5pt;font-weight:700;color:#A33A2A}',
       'body.l3 .cv-spacer{height:30mm}',
       'body.l3 .cv-brand{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:3mm}',
       'body.l3 .cv-logo{height:15mm;width:auto}',
-      'body.l3 .cover .big{font-family:"Noto Serif KR",serif;font-weight:700;font-size:18pt;letter-spacing:.12em;color:#0a2c5c;margin:0}',
-      'body.l3 .cover .ld{font-family:"Noto Sans KR",sans-serif;font-size:9pt;color:#333;line-height:1.75}',
-      'body.l3 .cv-foot-line{border-top:1pt solid #0a2c5c;margin:4mm 0 3mm}',
-      'body.l3 .cover .ad{font-family:"Noto Sans KR",sans-serif;font-size:8pt;color:#888;line-height:1.65}',
+      'body.l3 .cover .big{font-family:"Noto Serif KR",serif;font-weight:700;font-size:18pt;letter-spacing:.12em;color:#2E2016;margin:0}',
+      'body.l3 .cover .ld{font-family:"Noto Sans KR",sans-serif;font-size:9pt;color:#38332E;line-height:1.75}',
+      'body.l3 .cv-foot-line{border-top:1pt solid #2E2016;margin:4mm 0 3mm}',
+      'body.l3 .cover .ad{font-family:"Noto Sans KR",sans-serif;font-size:8pt;color:#9B8775;line-height:1.65}',
       'body.l3 .foot{display:none}',
       // 양면: 앞면(front) 다음에 새 페이지
       'body.l3 .front{page-break-after:always;break-after:page}',
@@ -127,15 +127,15 @@
       '.hl-img{display:block;width:100%;height:auto;border-radius:6px;margin:0 0 16px}',
       'body.l3 .hl-img{margin-bottom:4mm}',
       '.svcRow{font-size:9.5pt;padding:1mm 0;line-height:1.6}',
-      '.svcRow b{font-family:"Noto Sans KR",sans-serif;color:#34415c;font-weight:600;margin-right:6px}',
+      '.svcRow b{font-family:"Noto Sans KR",sans-serif;color:#56463A;font-weight:600;margin-right:6px}',
       '.wkgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:1.2mm;margin-top:3mm}',
-      '.wkgrid .wd{text-align:center;font-size:8pt;line-height:1.5;border:.5pt solid #e7e1d1;border-radius:2mm;padding:2mm 1mm;font-family:"Noto Sans KR",sans-serif;color:#5a5346}',
-      '.wkgrid .wd b{display:block;color:#7a5d27;font-size:8.5pt;margin-bottom:1mm}',
+      '.wkgrid .wd{text-align:center;font-size:8pt;line-height:1.5;border:.5pt solid #E5DDD3;border-radius:2mm;padding:2mm 1mm;font-family:"Noto Sans KR",sans-serif;color:#5A4C46}',
+      '.wkgrid .wd b{display:block;color:#7C3F25;font-size:8.5pt;margin-bottom:1mm}',
       '.staffRow{font-size:9pt;padding:1.2mm 0;line-height:1.55}',
-      '.staffRow b{font-family:"Noto Sans KR",sans-serif;color:#7a5d27;font-weight:600;margin-right:5px;font-size:8.5pt}',
-      '.misRow{font-size:9pt;padding:1.6mm 0;border-bottom:.5pt dotted #e7e1d1;line-height:1.55}',
-      '.misRow b{font-family:"Noto Serif KR",serif;color:#0a2c5c;font-weight:700;display:block;font-size:9.5pt}',
-      '.misRow span{color:#8a8578;font-size:8.5pt}',
+      '.staffRow b{font-family:"Noto Sans KR",sans-serif;color:#7C3F25;font-weight:600;margin-right:5px;font-size:8.5pt}',
+      '.misRow{font-size:9pt;padding:1.6mm 0;border-bottom:.5pt dotted #E5DDD3;line-height:1.55}',
+      '.misRow b{font-family:"Noto Serif KR",serif;color:#2E2016;font-weight:700;display:block;font-size:9.5pt}',
+      '.misRow span{color:#95806D;font-size:8.5pt}',
       // 05 시간표·09 섬기는사람들·10 선교지는 원본 실측도 8pt다(명단류는
       // 작게 써서 정보를 압축한다). 본문(10pt)과 똑같이 키우면 2쪽에 안 들어간다.
       'body.l3 .svcRow,body.l3 .staffRow,body.l3 .misRow{font-size:8pt;padding:.9mm 0}',
@@ -227,7 +227,7 @@
       '<table class="ord"><tbody>' + orderHtml + '</tbody></table></section>';
     var midSec = (d.wed_title || d.wed_series || d.dawn || d.qt)
       ? ('<section>' + h2Html('02', '주중 · 새벽 · QT', 'PRAYER MEETINGS') + '<div class="wk">' +
-        ((d.wed_series || d.wed_title) ? '<div><span class="lbl">수요기도회</span>' + esc([d.wed_series, d.wed_title].filter(Boolean).join(' — ')) + (d.wed_dateline ? '<br><span class="lbl"></span><span style="color:#6a6a6a;font-size:8.5pt">' + esc(d.wed_dateline) + '</span>' : '') + '</div>' : '') +
+        ((d.wed_series || d.wed_title) ? '<div><span class="lbl">수요기도회</span>' + esc([d.wed_series, d.wed_title].filter(Boolean).join(' — ')) + (d.wed_dateline ? '<br><span class="lbl"></span><span style="color:#75695F;font-size:8.5pt">' + esc(d.wed_dateline) + '</span>' : '') + '</div>' : '') +
         (d.dawn ? '<div><span class="lbl">새벽기도회</span>' + esc(d.dawn) + '</div>' : '') +
         (d.qt ? '<div><span class="lbl">매일 QT</span>' + esc(d.qt) + '</div>' : '') + '</div></section>') : '';
     var svcSec = svcScheduleHTML(d.service_schedule);

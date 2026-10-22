@@ -168,7 +168,7 @@
       <span class="ri-name">${icon(row.title)} ${esc(row.title)}${row.size ? ` <small style="color:var(--ink-soft);font-weight:400;">· ${fmtSize(row.size)}</small>` : ""}</span>
       <span style="display:flex;gap:8px;align-items:center;">
         <button type="button" class="ri-go res-dl" style="background:none;border:0;cursor:pointer;font:inherit;">다운로드 ↓</button>
-        ${admin ? `<button type="button" class="btn res-del" style="padding:4px 12px;font-size:.8rem;background:#c0392b;color:#fff;border:0;">삭제</button>` : ""}
+        ${admin ? `<button type="button" class="btn res-del" style="padding:4px 12px;font-size:.8rem;background:#A33A2A;color:#fff;border:0;">삭제</button>` : ""}
       </span>
     </div>`;
   }
@@ -235,7 +235,7 @@
         if (!arr.length) return;
         for (const f of arr) {
           msg.textContent = `‘${f.name}’ 업로드 중…`; msg.style.color = "var(--ink-soft)";
-          try { await uploadOne(cat, f); } catch (e) { msg.textContent = "업로드 오류: " + e.message; msg.style.color = "#c0392b"; return; }
+          try { await uploadOne(cat, f); } catch (e) { msg.textContent = "업로드 오류: " + e.message; msg.style.color = "#A33A2A"; return; }
         }
         msg.textContent = "업로드 완료 ✓"; msg.style.color = "var(--accent)";
         load();

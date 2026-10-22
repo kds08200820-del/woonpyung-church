@@ -972,7 +972,7 @@
         (s.tip ? '<div class="ws-tip ws-role-tip">' + esc(s.tip) + '</div>' : '') +
         '<div class="ws-tip">옆으로 밀거나 [다음]을 누르면 순서대로 이어집니다</div></div>';
     } else if (s.type === 'joy') {
-      h = head + '<div class="ws-item-t"><b>' + s.no + '번</b> ' + esc(s.title || '') + ' <span style="font-size:.78em;color:#9a9a9a">모두의 찬양</span></div><div class="ws-img" id="wsImgBox"><img id="wsImg" src="' + JOY_IMG + ('00' + s.no).slice(-3) + '.webp" alt="모두의 찬양 ' + s.no + '번"></div><div class="ws-tip">두 손가락으로 벌리면 커집니다</div>';
+      h = head + '<div class="ws-item-t"><b>' + s.no + '번</b> ' + esc(s.title || '') + ' <span style="font-size:.78em;color:#AA998A">모두의 찬양</span></div><div class="ws-img" id="wsImgBox"><img id="wsImg" src="' + JOY_IMG + ('00' + s.no).slice(-3) + '.webp" alt="모두의 찬양 ' + s.no + '번"></div><div class="ws-tip">두 손가락으로 벌리면 커집니다</div>';
     } else if (s.type === 'hymn') {
       h = head + '<div class="ws-item-t"><b>' + s.no + '장</b> ' + esc(s.title || '') + '</div><div class="ws-img" id="wsImgBox"><img id="wsImg" src="' + HYMN_IMG + ('00' + s.no).slice(-3) + '.webp" alt="새찬송가 ' + s.no + '장"></div><div class="ws-tip">두 손가락으로 벌리면 커집니다</div>';
     } else if (s.type === 'gyodok') {

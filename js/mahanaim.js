@@ -110,7 +110,7 @@ console.log('[mahanaim.js] v20260716mah');
     var songs = songsOf(row);
     var d = fmtDate(row.service_date);
     var dateBox = d ? '<div class="conti-date"><div class="cd-md">' + esc(d.md) + '</div><div class="cd-y">' + esc(d.y) + '</div></div>'
-                    : '<div class="conti-date" style="background:#9aa5b1"><div class="cd-md">♪</div></div>';
+                    : '<div class="conti-date" style="background:#AFA49C"><div class="cd-md">♪</div></div>';
     var meta = [row.service, row.leader ? '인도 ' + row.leader : ''].filter(Boolean).map(esc).join(' · ');
     return '<div class="conti" data-id="' + esc(row.id) + '">' +
       '<div class="conti-head">' + dateBox +
@@ -121,14 +121,14 @@ console.log('[mahanaim.js] v20260716mah');
       (songs.length ? songs.map(songHTML).join('') : '<p class="placeholder-note" style="margin:6px 0">등록된 찬양이 없습니다.</p>') +
       (row.memo ? '<div class="conti-notememo">' + esc(row.memo) + '</div>' : '') +
       (admin ? '<div class="conti-actions"><button class="btn btn-line conti-edit" style="padding:5px 14px;font-size:.85rem">수정</button>' +
-               '<button class="btn conti-del" style="padding:5px 14px;font-size:.85rem;background:#c0392b;color:#fff;border:0">삭제</button></div>' : '') +
+               '<button class="btn conti-del" style="padding:5px 14px;font-size:.85rem;background:#A33A2A;color:#fff;border:0">삭제</button></div>' : '') +
       '</div></div>';
   }
 
   var ROWS = [];
   function render() {
     if (!ROWS.length) {
-      listEl.innerHTML = '<div class="fin-card" style="text-align:center;color:var(--ink-soft,#7b8794);padding:34px 16px">아직 등록된 콘티가 없습니다.' +
+      listEl.innerHTML = '<div class="fin-card" style="text-align:center;color:var(--ink-soft,#93867C);padding:34px 16px">아직 등록된 콘티가 없습니다.' +
         (admin ? '<br>위 <b>＋ 새 콘티</b> 버튼으로 첫 콘티를 만들어 보세요.' : '') + '</div>';
       return;
     }
@@ -173,8 +173,8 @@ console.log('[mahanaim.js] v20260716mah');
       ROWS = rows || []; render();
     }).catch(function (e) {
       if (/praise_setlists|relation|does not exist|schema cache|404/i.test(e.message) || e.status === 404) {
-        listEl.innerHTML = '<div class="fin-card" style="text-align:center;padding:30px 16px"><h3 style="color:var(--accent,#032257);margin:0 0 6px">콘티 기능 준비 필요</h3>' +
-          '<p style="color:var(--ink-soft,#7b8794)">관리자가 Supabase SQL Editor에서 <b>supabase/praise.sql</b> 을 한 번 실행하면 콘티를 이용할 수 있습니다.<br>(악보·음원 공유는 지금 바로 사용 가능합니다.)</p></div>';
+        listEl.innerHTML = '<div class="fin-card" style="text-align:center;padding:30px 16px"><h3 style="color:var(--accent,#3A281C);margin:0 0 6px">콘티 기능 준비 필요</h3>' +
+          '<p style="color:var(--ink-soft,#93867C)">관리자가 Supabase SQL Editor에서 <b>supabase/praise.sql</b> 을 한 번 실행하면 콘티를 이용할 수 있습니다.<br>(악보·음원 공유는 지금 바로 사용 가능합니다.)</p></div>';
       } else {
         listEl.innerHTML = '<p class="qt-loading">불러오기 오류: ' + esc(e.message) + '</p>';
       }
@@ -186,13 +186,13 @@ console.log('[mahanaim.js] v20260716mah');
   function songEditRow(s, i) {
     s = s || {};
     return '<div class="song-edit"><div class="se-top"><span class="se-num">' + (i + 1) + '</span>' +
-      '<span style="color:var(--ink-soft,#7b8794);font-size:.8rem">번째 찬양</span>' +
+      '<span style="color:var(--ink-soft,#93867C);font-size:.8rem">번째 찬양</span>' +
       '<button type="button" class="se-del">삭제</button></div>' +
       '<div class="se-grid" style="margin-bottom:8px"><input type="text" class="se-title" placeholder="찬양 제목" value="' + esc(s.title || '') + '">' +
       '<input type="text" class="se-key" placeholder="Key (예: G, Em)" value="' + esc(s.key || '') + '">' +
       '<input type="text" class="se-bpm" inputmode="numeric" placeholder="BPM" value="' + esc(s.bpm || '') + '"></div>' +
-      '<input type="text" class="se-yt" placeholder="유튜브 연습 영상 링크 (선택)" value="' + esc(s.youtube || '') + '" style="width:100%;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit;margin-bottom:8px">' +
-      '<input type="text" class="se-memo" placeholder="메모 (예: 1절 후 간주, 조옮김 등)" value="' + esc(s.memo || '') + '" style="width:100%;padding:8px 10px;border:1px solid #dfe5ee;border-radius:8px;font:inherit"></div>';
+      '<input type="text" class="se-yt" placeholder="유튜브 연습 영상 링크 (선택)" value="' + esc(s.youtube || '') + '" style="width:100%;padding:8px 10px;border:1px solid #ECE6E1;border-radius:8px;font:inherit;margin-bottom:8px">' +
+      '<input type="text" class="se-memo" placeholder="메모 (예: 1절 후 간주, 조옮김 등)" value="' + esc(s.memo || '') + '" style="width:100%;padding:8px 10px;border:1px solid #ECE6E1;border-radius:8px;font:inherit"></div>';
   }
   function openEditor(row) {
     row = row || {};
@@ -205,12 +205,12 @@ console.log('[mahanaim.js] v20260716mah');
     ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
     var svcList = SERVICE_OPTS.map(function (o) { return '<option value="' + esc(o) + '">'; }).join('');
     box.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="margin:0;color:var(--accent,#032257)">' + (row.id ? '콘티 수정' : '＋ 새 콘티') + '</h3><button class="btn btn-line" id="ce_cancel" style="padding:4px 12px">취소</button></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="margin:0;color:var(--accent,#3A281C)">' + (row.id ? '콘티 수정' : '＋ 새 콘티') + '</h3><button class="btn btn-line" id="ce_cancel" style="padding:4px 12px">취소</button></div>' +
       '<div class="af-row"><div class="af-field"><label>날짜</label><input type="date" id="ce_date" value="' + esc(row.service_date ? String(row.service_date).slice(0, 10) : '') + '"></div>' +
       '<div class="af-field"><label>예배·모임 구분</label><input type="text" id="ce_service" list="ce_svc" placeholder="예: 주일 3부" value="' + esc(row.service || '') + '"><datalist id="ce_svc">' + svcList + '</datalist></div>' +
       '<div class="af-field"><label>인도자</label><input type="text" id="ce_leader" placeholder="예: 홍길동" value="' + esc(row.leader || '') + '"></div></div>' +
-      '<div class="af-field"><label>콘티 제목 <span style="color:#9aa5b1;font-weight:400">(비우면 날짜·구분으로 자동 생성)</span></label><input type="text" id="ce_title" placeholder="예: 7/20 주일 3부 찬양" value="' + esc(row.title || '') + '"></div>' +
-      '<div style="border-top:1px solid #eef1f5;margin:12px 0 10px;padding-top:12px"><b style="color:var(--accent,#032257)">찬양 목록</b></div>' +
+      '<div class="af-field"><label>콘티 제목 <span style="color:#AFA49C;font-weight:400">(비우면 날짜·구분으로 자동 생성)</span></label><input type="text" id="ce_title" placeholder="예: 7/20 주일 3부 찬양" value="' + esc(row.title || '') + '"></div>' +
+      '<div style="border-top:1px solid #F4F1EF;margin:12px 0 10px;padding-top:12px"><b style="color:var(--accent,#3A281C)">찬양 목록</b></div>' +
       '<div id="ce_songs">' + songs.map(songEditRow).join('') + '</div>' +
       '<button type="button" class="btn btn-line" id="ce_addsong" style="padding:7px 14px;margin-bottom:12px">＋ 찬양 추가</button>' +
       '<div class="af-field"><label>콘티 메모/전달사항 (선택)</label><textarea id="ce_memo" rows="2" placeholder="찬양단 전체 전달사항">' + esc(row.memo || '') + '</textarea></div>' +
@@ -251,16 +251,16 @@ console.log('[mahanaim.js] v20260716mah');
         else if (service) title = service + ' 찬양';
         else title = '새 콘티';
       }
-      if (!songArr.length) { msg.style.color = '#c0392b'; msg.textContent = '찬양을 1곡 이상 입력해 주세요.'; return; }
+      if (!songArr.length) { msg.style.color = '#A33A2A'; msg.textContent = '찬양을 1곡 이상 입력해 주세요.'; return; }
       var body = { service_date: date, title: title, service: service || null, leader: leader || null, songs: songArr, memo: memo || null };
-      msg.style.color = 'var(--ink-soft,#7b8794)'; msg.textContent = '저장 중…';
+      msg.style.color = 'var(--ink-soft,#93867C)'; msg.textContent = '저장 중…';
       var url = SB() + '/rest/v1/praise_setlists', opts;
       if (row.id) { url += '?id=eq.' + row.id; body.updated_at = new Date().toISOString(); opts = { method: 'PATCH', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }), body: JSON.stringify(body) }; }
       else { opts = { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }), body: JSON.stringify(body) }; }
       jsonFetch(url, opts).then(function () {
         msg.style.color = 'green'; msg.textContent = '✓ 저장되었습니다';
         setTimeout(function () { close(); load(); }, 500);
-      }).catch(function (e) { msg.style.color = '#c0392b'; msg.textContent = '저장 실패: ' + e.message; });
+      }).catch(function (e) { msg.style.color = '#A33A2A'; msg.textContent = '저장 실패: ' + e.message; });
     };
     setTimeout(function () { var f = box.querySelector('#ce_date'); if (f) f.focus(); }, 50);
   }

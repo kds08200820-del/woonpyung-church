@@ -14,7 +14,7 @@
   if (!payload) { try { payload = JSON.parse(sessionStorage.getItem('wp_sermon_print') || 'null'); } catch (e) { payload = null; } }
   var standalone = !!window.__SERMON_PRINT__;   // 워커가 여는 파일 — 도구 막대 없이 쪽만
 
-  function msg(t, bad) { if (st) { st.textContent = t; st.style.color = bad ? '#c0392b' : ''; } }
+  function msg(t, bad) { if (st) { st.textContent = t; st.style.color = bad ? '#A33A2A' : ''; } }
   function fit() {   // 화면 폭에 맞춰 쪽을 축소해 보여 준다(인쇄에는 영향 없음)
     if (standalone || !mount.firstChild) return;
     var pw = mount.firstChild.offsetWidth || 794, avail = Math.min(window.innerWidth - 24, 1100);

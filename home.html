@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <script>
+  /* 신앙 정원(2026-10-23): 로그인한 사람은 첫 화면이 '내 정원'(garden.html).
+     · ?home=1 = 원래 첫 화면(교회 소개 보기) · ?worship= 방송실 예배 미리 보기는 그대로
+     · 카카오 로그인 복귀(#access_token=…)는 auth.js 가 세션을 만든 뒤(sb-ready → SIGNED_IN) 보낸다
+     · 로그인 전 방문자·검색엔진에는 아무 변화 없음. 저장소 오류가 나도 홈은 그대로 열린다 */
+  (function () { try {
+    var q = location.search;
+    if (/[?&](home=1|worship=)/.test(q)) return;
+    if (/(^|[#&])(access_token|error)=/.test(location.hash) || /[?&]code=/.test(q)) {
+      // 세션이 이미 만들어진 뒤에 구독하면 SIGNED_IN 대신 INITIAL_SESSION 이 오므로 둘 다 받는다. 오류(#error=)면 세션이 없어 홈에 남는다
+      window.addEventListener('sb-ready', function (e) {
+        try {
+          var sb = (e.detail && e.detail.sb) || window.__sb;
+          sb.auth.onAuthStateChange(function (ev, s) {
+            if ((ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') && s && s.user) location.replace('garden.html');
+          });
+        } catch (_) {}
+      });
+      return;
+    }
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i); if (!/^sb-.*-auth-token$/.test(k)) continue;
+      var s = JSON.parse(localStorage.getItem(k)); s = (s && s.currentSession) || s;
+      if (s && s.access_token && s.user) { location.replace('garden.html' + q + location.hash); return; }
+    }
+  } catch (e) {} })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>운평장로교회 | UNPYEONG CHURCH</title>
+  <meta name="description" content="1964년부터 이어온 믿음의 공동체, 운평장로교회입니다. 성경을 따라, 은혜로 살아가는 공동체로 여러분을 환영합니다." />
+  <meta name="keywords" content="운평장로교회, 운평교회, k-logos, 화성 교회, 우정읍 교회, 삼괴 교회, 장로교회, 김동석 목사, 화성시 교회" />
+  <link rel="canonical" href="https://k-logos.com/home.html" />
+  <!-- Google Search Console 소유확인 -->
+  <meta name="google-site-verification" content="E02UIGzhGGBKjjgz4Yyj0EmhcEm5yP8u48eUpvb7wp4" />
+  <!-- 네이버 서치어드바이저 소유확인 -->
+  <meta name="naver-site-verification" content="4375bca7c2b5ca62fb51d88e065c5d2eace3ec2d" />
+
+  <!-- Open Graph (카카오톡·SNS 미리보기) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="운평장로교회" />
+  <meta property="og:title" content="운평장로교회 | UNPYEONG CHURCH" />
+  <meta property="og:description" content="1964년부터 이어온 믿음의 공동체. 예배 안내·주보·매일 말씀(QT)·나눔터까지, 운평장로교회에 오신 것을 환영합니다." />
+  <meta property="og:image" content="https://k-logos.com/images/icon-512.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:url" content="https://k-logos.com/home.html" />
+  <meta name="twitter:card" content="summary" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json?v=20261023lib1" />
+  <meta name="theme-color" content="#F6EFE5" />
+  <link rel="icon" href="images/favicon-32.png?v=20260906lib13" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260906lib13" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="운평장로교회" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
+  <link rel="stylesheet" href="css/worship.css?v=20261023lib1" />
+  <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
+  <style>
+    .hb-card{max-width:860px;margin:0 auto;border:1px solid var(--line,#ECE8E5);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(58,40,28,.07)}
+    .hb-hd{display:flex;justify-content:space-between;align-items:center;background:var(--accent,#3A281C);color:#fff;padding:14px 26px}
+    .hb-hd-week{font-weight:700;font-size:.9rem;letter-spacing:.04em}
+    .hb-hd-date{font-size:.84rem;color:rgba(255,255,255,.75)}
+    .hb-body{display:grid;grid-template-columns:1fr 1fr;background:#fff}
+    .hb-col{padding:22px 24px}
+    .hb-col:first-child{border-right:1px solid var(--line,#ECE8E5)}
+    .hb-col-title{font-size:.74rem;font-weight:700;color:var(--accent,#3A281C);text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line,#ECE8E5)}
+    .hb-order{margin:0;padding-left:18px;font-size:.84rem;line-height:1.9;color:var(--ink,#2E251E)}
+    .hb-extra{margin:0 0 14px;padding-left:0;list-style:none;font-size:.83rem;line-height:1.85;color:var(--ink-soft,#93867C)}
+    .hb-extra li::before{content:"▸ ";color:var(--accent,#3A281C);font-size:.8rem}
+    .hb-news{margin:0;padding-left:0;list-style:none;font-size:.82rem;line-height:1.75}
+    .hb-news li{padding:3px 0;border-bottom:1px dashed #F4F1EF}
+    .hb-news li:last-child{border-bottom:none}
+    .hb-news strong{color:var(--accent,#3A281C);margin-right:5px}
+    .hb-ft{border-top:1px solid var(--line,#ECE8E5);padding:14px 24px;text-align:center;background:#fafbfd}
+    @media(max-width:640px){.hb-body{grid-template-columns:1fr}.hb-col:first-child{border-right:none;border-bottom:1px solid var(--line,#ECE8E5)}}
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Church",
+    "name": "운평장로교회",
+    "alternateName": "Unpyeong Presbyterian Church",
+    "url": "https://k-logos.com/",
+    "logo": "https://k-logos.com/images/icon-512.png",
+    "image": "https://k-logos.com/images/icon-512.png",
+    "telephone": "+82-10-4032-2903",
+    "foundingDate": "1964",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "우정읍 운평길 47",
+      "addressLocality": "화성시",
+      "addressRegion": "경기도",
+      "addressCountry": "KR"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- ===== Hero ===== -->
+  <section id="home" class="hero">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <p class="hero-since">SINCE 1964</p>
+      <div class="hero-rotator" id="heroRotator">
+        <div class="hero-slide is-active">
+          <h1 class="hero-title">날마다<br />십자가 복음 앞에 서다</h1>
+          <p class="hero-sub">운평장로교회에 오신 당신을 환영합니다.</p>
+        </div>
+        <div class="hero-slide">
+          <h1 class="hero-title">내가 믿는 것은<br />무엇인가?</h1>
+          <a class="hero-cta" href="word.html?hc=open">하이델베르크 교리문답 바로 가기 →</a>
+        </div>
+        <div class="hero-slide">
+          <h1 class="hero-title">함께 기도해요</h1>
+          <a class="hero-cta" href="story.html#request">함께 드리는 기도 바로가기 →</a>
+        </div>
+      </div>
+      <div class="hero-verse">
+        “주의 말씀은 내 발에 등이요 내 길에 빛이니이다” <span>— 시편 119:105</span>
+      </div>
+      <div class="hero-dots" id="heroDots" aria-label="슬라이드 이동"></div>
+    </div>
+    <a href="#qt" class="hero-scroll" aria-label="아래로">↓</a>
+  </section>
+
+  <!-- ===== 공지사항 ===== -->
+  <section class="section" id="homeNotice">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">NOTICE</span>
+        <h2>공지사항</h2>
+      </div>
+      <div class="nt-wrap" id="homeNoticeBox"><p class="qt-loading">공지를 불러오는 중…</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 오늘의 QT ===== -->
+  <section id="qt" class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">DAILY QT</span>
+        <h2>오늘의 말씀</h2>
+      </div>
+      <div class="qt-today" id="qtToday">
+        <p class="qt-loading">오늘의 말씀을 불러오는 중…</p>
+      </div>
+      <div class="qt-listen-wrap">
+        <button type="button" class="qt-listen-btn" id="qtHomeTts" style="border:0;cursor:pointer;font:inherit">오늘의 말씀 듣기</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 이번 주 말씀 하이라이트 ===== -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">THIS SUNDAY</span>
+        <h2>이번 주 말씀</h2>
+      </div>
+      <div class="home-sermon" id="homeSermon"></div>
+    </div>
+  </section>
+
+  <!-- ===== 이번 주 주보 미리보기 ===== -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">THIS WEEK</span>
+        <h2>이번 주 주보</h2>
+      </div>
+      <div id="homeBulletin"></div>
+    </div>
+  </section>
+
+  <!-- ===== 우리들 소식 (앨범 미리보기) ===== -->
+  <section class="section" id="homeNews">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">ALBUM & NEWS</span>
+        <h2>우리들 소식</h2>
+      </div>
+      <div class="hn-box" id="hnBox">
+        <div class="hn-carousel" id="hnCarousel"><p class="qt-loading">소식을 불러오는 중…</p></div>
+        <div class="hn-actions">
+          <button type="button" class="btn btn-line" id="hnMore">소식 더 보기</button>
+          <button type="button" class="hn-add" id="hnAdd" hidden>＋ 사진 올리기</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 주일학교 성장기 (어린이 QT·필사 성장 기록 — 우리들 소식과 별도 섹션) ===== -->
+  <section class="section" id="ssGrowth">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">GROWING IN FAITH</span>
+        <h2>주일학교 성장기</h2>
+        <p>우리 어린이들이 QT와 필사로 말씀 안에서 자라가는 기록입니다.</p>
+      </div>
+      <div id="ssGrowthBody"><p class="qt-loading">성장 기록을 불러오는 중…</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 운평 말씀지기 (AI 질문창) — 묵상 후 질문 ===== -->
+  <section id="askai" class="section askai">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">ASK · 말씀지기</span>
+        <h2>말씀, 더 궁금한 점이 있나요?</h2>
+        <p>묵상하다가 궁금한 용어나 뜻이 있으면 ‘운평 말씀지기’에게 물어보십시오.<br class="askai-br" />김동석 목사님의 가르침을 학습한 AI가 답합니다.</p>
+      </div>
+      <div class="askai-box">
+        <form class="askai-form" id="askForm" autocomplete="off">
+          <input type="text" id="askInput" placeholder="예: 이번 주 본문은 어떤 뜻인가요?" maxlength="300" aria-label="질문 입력" />
+          <button type="submit" id="askSend">물어보기</button>
+        </form>
+        <div class="askai-thread" id="askThread" hidden></div>
+        <div class="askai-suggest" id="askSuggest" aria-label="추천 질문"></div>
+        <p class="askai-note">참고: 위급하거나 중요한 일은 목사님께 직접 전화하십시오(010-4032-2903). ‘운평 말씀지기’는 목사님이 아니라 AI 도우미입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 김동석 목사 저서 ===== -->
+  <section class="section">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">BOOKS</span>
+        <h2>김동석 목사 저서</h2>
+      </div>
+      <div class="book-feature">
+        <a class="book-cover book-cover-clickable" href="https://bookk.co.kr/bookStore/6a51391e531e8c373d86c582"
+           target="_blank" rel="noopener"
+           aria-label="레위기에서 만난 예수 그리스도 — 부크크에서 구매하기 (새 창)">
+          <img src="images/book-leviticus.png?v=20260906lib13" alt="레위기에서 만난 예수그리스도 — 김동석 지음" loading="lazy" />
+          <span class="book-badge">출간 · 판매 중</span>
+          <span class="book-peek">구매하러 가기 →</span>
+        </a>
+        <div class="book-info">
+          <p class="book-eyebrow">JESUS CHRIST IN LEVITICUS</p>
+          <h3 class="book-title">레위기에서 만난<br class="book-br" />예수그리스도</h3>
+          <p class="book-sub">그림자에서 실체로, 평신도를 위한 레위기 강해</p>
+          <p class="book-author"><strong>김동석</strong> 지음</p>
+          <p class="book-note">드디어 출간되었습니다.</p>
+          <div class="book-actions">
+            <a class="book-buy-btn" href="https://bookk.co.kr/bookStore/6a51391e531e8c373d86c582" target="_blank" rel="noopener">책 구매하기</a>
+            <a class="book-store-btn book-store-yes24" href="https://www.yes24.com/product/goods/194522365" target="_blank" rel="noopener"
+               aria-label="레위기에서 만난 예수 그리스도 — YES24에서 구매하기 (새 창)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+              YES24에서 구매
+            </a>
+            <a class="book-store-btn book-store-aladin" href="https://www.aladin.co.kr/shop/wproduct.aspx?ItemId=399875387" target="_blank" rel="noopener"
+               aria-label="레위기에서 만난 예수 그리스도 — 알라딘에서 구매하기 (새 창)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+              알라딘에서 구매
+            </a>
+            <a class="book-preview-btn" href="book.html">책 속으로 들어가기 →</a>
+            <a class="book-preview-btn" href="audiobook.html">🎧 오디오북 듣기 (정회원 무료)</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 5개 진입점 (흐름) ===== -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="flow-narrative">
+        <span class="eyebrow">WELCOME</span>
+        <p class="flow-line">처음 온 사람이 말씀을 만나고, 공동체 안에서 자라고, 세상으로 나아갑니다.</p>
+        <p>밖에서 안으로, 그리고 다시 밖으로 — 그 여정의 어디쯤에 계신가요?</p>
+      </div>
+
+      <div class="entry-grid">
+        <a class="entry-card" href="welcome.html">
+          <span class="entry-num">01</span>
+          <h3>처음 오셨나요</h3>
+          <p>예배 시간, 오시는 길, 새가족 등록을 안내합니다.</p>
+          <span class="entry-go">둘러보기 →</span>
+        </a>
+        <a class="entry-card" href="word.html">
+          <span class="entry-num">02</span>
+          <h3>온전한 예배</h3>
+          <p>주일 설교, 교리 공부, 매일 묵상을 읽고 들을 수 있습니다.</p>
+          <span class="entry-go">말씀 보기 →</span>
+        </a>
+        <a class="entry-card" href="story.html">
+          <span class="entry-num">03</span>
+          <h3>우리 이야기</h3>
+          <p>성도들의 삶과 간증을 담은 이야기를 읽을 수 있습니다.</p>
+          <span class="entry-go">이야기 →</span>
+        </a>
+        <a class="entry-card" href="story.html#board">
+          <span class="entry-num">04</span>
+          <h3>나눔터</h3>
+          <p>기도 요청, 간증, 일상 이야기를 글로 올리고 함께 읽습니다.</p>
+          <span class="entry-go">나누러 가기 →</span>
+        </a>
+        <a class="entry-card" href="story.html#request">
+          <span class="entry-num">05</span>
+          <h3>기도나눔</h3>
+          <p>이번 주 기도 제목을 보고 함께 기도합니다.</p>
+          <span class="entry-go">기도하기 →</span>
+        </a>
+        <a class="entry-card" href="world.html">
+          <span class="entry-num">06</span>
+          <h3>지역과 세상 속에서</h3>
+          <p>교회가 지역과 열방을 섬기는 이야기를 읽을 수 있습니다.</p>
+          <span class="entry-go">섬김 보기 →</span>
+        </a>
+        <a class="entry-card" href="library.html">
+          <span class="entry-num">07</span>
+          <h3>자료실</h3>
+          <p>새가족반, 양육반, 제자훈련 교육 자료를 내려받습니다. 로그인한 교인만 쓸 수 있습니다.</p>
+          <span class="entry-go">자료 보기 →</span>
+        </a>
+        <a class="entry-card" href="admin.html#tax">
+          <span class="entry-num">08</span>
+          <h3>연말정산</h3>
+          <p>연말정산용 기부금 영수증을 온라인으로 신청하십시오.</p>
+          <span class="entry-go">신청하기 →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 시작 CTA ===== -->
+  <section class="section">
+    <div class="container">
+      <div class="cta-flow">
+        <span class="cta-eyebrow">START HERE</span>
+        <h3>처음이라 어색하셔도 괜찮습니다</h3>
+        <div class="cta-btns">
+          <a class="btn btn-line" href="welcome.html">처음 방문 안내</a>
+          <a class="btn btn-line" href="word.html">이번 주 말씀 듣기</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== QT Modal ===== -->
+  <div class="modal" id="qtModal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-box modal-box-qt" role="dialog" aria-modal="true" aria-label="매일 말씀 묵상">
+      <button class="modal-close" data-close aria-label="닫기">&times;</button>
+      <div class="qt-modal-v2">
+        <div class="qt-datebar" id="qtDateList"></div>
+        <div class="qt-detail" id="qtDetail"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=20260908lib"></script>
+  <script src="js/bulletins.js?v=20261017sum1"></script>
+  <script src="js/bulletins-live.js?v=20261010sum1"></script>
+  <script src="js/gyodok-data.js?v=20260926ws"></script>
+  <script src="js/hymn-data.js?v=20260927meta"></script>
+  <script src="modu/ccm-data.js?v=20260928ccm2"></script>
+  <script src="js/worship.js?v=20261023lib1"></script>
+  <script src="js/layout.js?v=20261023lib1"></script>
+  <script src="js/counsel.js?v=20260906fix"></script>
+  <script src="js/main.js?v=20261023lib1"></script>
+  <script src="js/forms.js?v=20261023lib1"></script>
+  <script src="js/upload.js?v=20260906news1"></script>
+  <script src="js/categories.js?v=20260906news2"></script>
+  <script src="js/notices.js?v=20260906clean"></script>
+  <script src="js/home-news.js?v=20261023lib1"></script>
+  <script src="js/ss-growth.js?v=20261023lib1"></script>
+</body>
+</html>
