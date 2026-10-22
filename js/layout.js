@@ -209,25 +209,6 @@
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
-  // ===== 머리글이 한 줄에 안 들어가면 좁게 (2026-10-23) =====
-  // 관리자·정회원은 대시보드·목회행정·모두의 성경 단추와 긴 이름까지 붙어 중간 폭(노트북·태블릿 가로)에서 넘친다.
-  // 실제로 넘칠 때만 hdr-tight(로고 글자 숨김·간격 축소)를 켠다. 모바일(760px 이하)은 햄버거 메뉴라 해당 없음.
-  const navInner = header.querySelector(".nav-inner");
-  let fitRaf = 0;
-  const fitHeader = () => {
-    cancelAnimationFrame(fitRaf);
-    fitRaf = requestAnimationFrame(() => {
-      header.classList.remove("hdr-tight");
-      if (window.innerWidth > 760 && navInner.scrollWidth > navInner.clientWidth + 1) header.classList.add("hdr-tight");
-    });
-  };
-  if (window.ResizeObserver) {
-    const ro = new ResizeObserver(fitHeader);
-    ro.observe(navInner);
-    ["navMenu", "authSlot"].forEach((id) => { const el = document.getElementById(id); if (el) ro.observe(el); });
-  }
-  window.addEventListener("resize", fitHeader);
-
   // ===== 모바일 메뉴 =====
   const navToggle = document.getElementById("navToggle");
   const navMenu = document.getElementById("navMenu");
@@ -257,16 +238,49 @@
   navMenu.querySelectorAll("a").forEach((a) =>
     a.addEventListener("click", closeMenu)
   );
-  // 모바일: 상위 메뉴의 ⌄ 캐럿을 누르면 하위 메뉴 펼침/접힘 (텍스트는 그대로 이동)
+  // 모바일(또는 hdr-drawer 서랍): 상위 메뉴의 ⌄ 캐럿을 누르면 하위 메뉴 펼침/접힘 (텍스트는 그대로 이동)
   navMenu.querySelectorAll(".nav-item.has-sub > a .nav-caret").forEach((c) =>
     c.addEventListener("click", (e) => {
-      if (window.matchMedia("(max-width: 760px)").matches) {
+      if (header.classList.contains("hdr-drawer") || window.matchMedia("(max-width: 760px)").matches) {
         e.preventDefault();
         e.stopPropagation();
         c.closest(".nav-item").classList.toggle("open");
       }
     })
   );
+
+  // ===== 머리글이 한 줄에 안 들어가면 좁게 → 그래도 넘치면 햄버거 서랍 (2026-10-23) =====
+  // 관리자·정회원은 대시보드·목회행정·모두의 성경 단추와 긴 이름까지 붙어 중간 폭(노트북·태블릿)에서 넘친다.
+  // 1단계 hdr-tight: 로고 글자 숨김·간격 축소. 2단계 hdr-drawer: 760px 이하와 같은 햄버거 서랍 메뉴.
+  // 매번 두 단계를 다 떼고 한 줄 상태에서 다시 재므로 넓어지면 저절로 풀린다. 모바일(760px 이하)은 원래 햄버거라 해당 없음.
+  const navInner = header.querySelector(".nav-inner");
+  let fitRaf = 0;
+  const fitHeader = () => {
+    cancelAnimationFrame(fitRaf);
+    fitRaf = requestAnimationFrame(() => {
+      const wide = window.innerWidth > 760;
+      const wasDrawer = header.classList.contains("hdr-drawer");
+      if (!wide) { header.classList.remove("hdr-tight", "hdr-drawer"); return; }   // 760px 이하는 원래 서랍
+      // 재는 동안 클래스를 뗐다 붙이므로 전환 효과를 끈다 — 안 끄면 서랍 딤이 한순간 검게 번쩍인다
+      header.classList.add("hdr-measure");
+      header.classList.remove("hdr-tight", "hdr-drawer");
+      const overflows = () => navInner.scrollWidth > navInner.clientWidth + 1;
+      if (overflows()) {
+        header.classList.add("hdr-tight");
+        if (overflows()) header.classList.replace("hdr-tight", "hdr-drawer");
+      }
+      void navInner.offsetWidth;   // 전환 효과가 꺼진 채로 최종 모양을 확정한 뒤 다시 켠다
+      header.classList.remove("hdr-measure");
+      // 서랍이 열린 채 한 줄 머리글로 돌아가면 닫아 둔다(본문 스크롤 잠금 풀기)
+      if (wasDrawer && !header.classList.contains("hdr-drawer")) closeMenu();
+    });
+  };
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(fitHeader);
+    ro.observe(navInner);
+    ["navMenu", "authSlot"].forEach((id) => { const el = document.getElementById(id); if (el) ro.observe(el); });
+  }
+  window.addEventListener("resize", fitHeader);
 
   // ===== 알림 설정 버튼(🔔) — 클릭 시 휴대폰/브라우저 알림 권한 요청 =====
   const notifyBtn = document.getElementById("notifyBtn");

@@ -638,6 +638,78 @@ ul { list-style: none; }
   #header.hdr-tight .nav-menu { gap: 11px; }
   #header.hdr-tight .nav-menu a { font-size: .8rem; }
 }
+/* hdr-tight 로도 넘치면(관리자·정회원 머리글, 761~1000px 쯤) fitHeader 가 hdr-drawer 를 붙인다 (2026-10-23)
+   → 760px 이하와 같은 햄버거 서랍 메뉴. 아래는 760px 이하 규칙(이 파일의 @media (max-width: 760px) 블록들)을 그대로 옮긴 것 */
+#header.hdr-measure * { transition: none !important; }   /* fitHeader 가 재는 동안만 */
+@media (min-width: 761px) {
+  #header.hdr-drawer .nav-menu {
+    position: fixed; top: 0; right: -100%; width: 80%; max-width: 330px; height: 100vh; height: 100dvh;
+    background: #fff; flex-direction: column; gap: 0; padding: 92px 32px 150px;
+    box-shadow: -10px 0 40px rgba(0,0,0,.12); transition: right .4s ease;
+    z-index: 106; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  }
+  #header.hdr-drawer .nav-menu.open { right: 0; }
+  #header.hdr-drawer .nav-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.58); z-index: 104;
+    opacity: 0; visibility: hidden; transition: opacity .35s ease, visibility .35s ease;
+  }
+  #header.hdr-drawer .nav-backdrop.show { opacity: 1; visibility: visible; }
+  body.menu-lock { overflow: hidden; }   /* menu-lock 은 서랍을 열 때만 붙는다 */
+  #header.hdr-drawer .nav-menu a { color: var(--ink) !important; padding: 16px 0; border-bottom: 1px solid var(--line); font-size: 1.05rem; }
+  #header.hdr-drawer .nav-menu a::after { display: none; }
+  #header.hdr-drawer .nav-toggle { display: block; z-index: 110; }
+  #header.hdr-drawer.menu-open .nav-toggle span { background: var(--ink); }
+  #header.hdr-drawer.menu-open .nav-toggle span:nth-child(1){ top: 10px; transform: rotate(45deg); }
+  #header.hdr-drawer.menu-open .nav-toggle span:nth-child(2){ opacity: 0; }
+  #header.hdr-drawer.menu-open .nav-toggle span:nth-child(3){ top: 10px; transform: rotate(-45deg); }
+  /* 로그인 영역(이름·로그아웃)은 서랍 아래쪽으로 */
+  #header.hdr-drawer .auth-slot {
+    position: fixed; right: -100%; bottom: 0;
+    width: 80%; max-width: 330px; margin: 0; padding: 18px 32px calc(18px + env(safe-area-inset-bottom)); box-sizing: border-box;
+    flex-direction: column; align-items: stretch; gap: 12px;
+    background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -6px 18px rgba(0,0,0,.06);
+    z-index: 107; transition: right .4s ease;
+  }
+  #header.hdr-drawer.menu-open .auth-slot { right: 0; }
+  #header.hdr-drawer .auth-slot .auth-wrap { width: 100%; display: block; }
+  #header.hdr-drawer .auth-slot a.auth-name {
+    display: block; width: 100%; box-sizing: border-box; text-align: center;
+    color: var(--accent) !important; background: var(--paper-alt) !important;
+    border: 1px solid var(--line) !important; text-shadow: none !important;
+    padding: 13px; border-radius: 12px; font-size: 1rem;
+  }
+  #header.hdr-drawer .auth-slot .auth-card { display: none !important; }
+  #header.hdr-drawer .auth-slot .auth-btn {
+    width: 100%; padding: 13px; border-radius: 24px; font-size: 1rem;
+    color: #fff !important; background: var(--accent); border: 1px solid var(--accent);
+  }
+  /* 하위 메뉴: ⌄ 를 누르면 펼침(아코디언) */
+  #header.hdr-drawer .nav-item { display: block; width: 100%; }
+  #header.hdr-drawer .nav-item > a { display: block; position: relative; }
+  #header.hdr-drawer .nav-caret { position: absolute; right: 0; top: 50%; transform: translateY(-50%); margin: 0; padding: 6px 10px; font-size: 1.05em; opacity: .8; }
+  #header.hdr-drawer .nav-item.open .nav-caret { transform: translateY(-50%) rotate(180deg); }
+  #header.hdr-drawer .nav-dropdown {
+    position: static !important; left: auto !important; right: auto !important; top: auto !important; bottom: auto !important;
+    transform: none !important; width: 100% !important; min-width: 0 !important; max-width: none !important;
+    margin: 0 !important; padding-top: 0; overflow: hidden; transition: none;
+    opacity: 1 !important; visibility: visible !important; pointer-events: auto !important;
+    display: none;
+  }
+  #header.hdr-drawer .nav-item.open > .nav-dropdown { display: block !important; max-height: none !important; }
+  #header.hdr-drawer .nav-dropdown-inner {
+    position: static !important; transform: none !important; width: 100% !important; min-width: 0 !important;
+    background: transparent; border: 0; box-shadow: none; padding: 0 0 6px 14px; gap: 0;
+  }
+  #header.hdr-drawer .nav-dropdown-inner a {
+    display: block !important; white-space: normal !important; text-align: left !important;
+    color: var(--muted) !important; font-size: .95rem !important; font-weight: 400 !important;
+    padding: 12px 0 !important; border-bottom: 1px solid var(--line); border-radius: 0;
+  }
+  #header.hdr-drawer .nav-dropdown-inner a:hover { background: transparent; color: var(--accent) !important; }
+  /* 성경·대시보드 단추는 교회 이름과 메뉴 단추 사이 가운데로(대시보드 단추는 아래 #hdrDash 규칙 참고) */
+  #header.hdr-drawer .hdr-bible-btn { margin-left: auto; margin-right: 0; }
+  #header.hdr-drawer #hdrDash { margin-left: 6px; margin-right: auto; }
+}
 
 @media (max-width: 760px) {
   .nav-menu {
@@ -1859,7 +1931,7 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 
 /* 넓은 화면(가로 메뉴가 보일 때)에는 메뉴 안에 대시보드가 있으므로 둥근 대시보드 단추는 숨긴다 · 교회 이름은 한 줄로 */
 .logo-kr { white-space: nowrap; }
-@media (min-width: 761px) { #hdrDash { display: none !important; } .hdr-bible-btn { margin-left: 16px; margin-right: 6px; } }
+@media (min-width: 761px) { #header:not(.hdr-drawer) #hdrDash { display: none !important; } .hdr-bible-btn { margin-left: 16px; margin-right: 6px; } }
 
 /* 휴대폰: 성경·대시보드 단추를 교회 이름과 메뉴 단추 사이 가운데에 */
 @media (max-width: 760px) { .hdr-bible-btn { margin-left: auto; } #hdrDash { margin-left: 6px; margin-right: auto; } }
