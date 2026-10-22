@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Garden</title>
+  <meta name="robots" content="noindex" />
+  <link rel="manifest" href="manifest.json?v=20260906lib13" />
+  <meta name="theme-color" content="#F6EFE5" />
+  <link rel="icon" href="images/favicon-32.png?v=20260906lib13" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260906lib13" />
+  <meta name="apple-mobile-web-app-title" content="운평장로교회" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20261023hdr2" />
+  <link rel="stylesheet" href="css/garden.css?v=20261023gd2" />
+</head>
+<body class="garden" data-church="woonpyung">
+
+  <div class="g-root" id="gRoot" data-mode="loading">
+    <!-- 장면(층): scene.js 가 채운다 -->
+    <div class="g-scene" id="gScene" aria-hidden="true"></div>
+
+    <!-- 왼쪽 서재(개인) -->
+    <aside class="g-study g-panel" id="gStudy" aria-labelledby="gStudyTitle">
+      <h2 class="g-ptitle" id="gStudyTitle" data-i18n="study.title"></h2>
+      <div class="g-qtcard" id="gQtCard" hidden>
+        <span class="g-qt-badge" id="gQtBadge"></span>
+        <h3 class="g-qt-title" id="gQtTitle"></h3>
+        <p class="g-qt-ref" id="gQtRef"></p>
+        <div class="g-qt-actions">
+          <button type="button" class="g-btn g-btn-primary" id="gQtOpen" data-i18n="qt.read"></button>
+          <button type="button" class="g-btn g-btn-line" id="gQtListen" data-i18n="qt.listen"></button>
+        </div>
+        <p class="g-qt-done" id="gQtDone" hidden></p>
+      </div>
+      <p class="g-empty" id="gQtLoading" data-i18n="qt.loading"></p>
+      <p class="g-empty" id="gQtEmpty" hidden data-i18n="qt.none"></p>
+      <div class="g-study-links">
+        <a class="g-link" href="dashboard.html" data-i18n="study.dashboard"></a>
+        <a class="g-link" href="audiobook.html" data-i18n="study.audiobook"></a>
+      </div>
+    </aside>
+
+    <!-- 오른쪽 레일: 달란트·날씨·연속·오늘의 할 일·내 식물 -->
+    <aside class="g-rail g-panel" id="gRail" aria-labelledby="gRailTitle">
+      <h2 class="g-ptitle g-sr" id="gRailTitle" data-i18n="rail.title"></h2>
+      <div class="g-chips">
+        <button type="button" class="g-pill g-pill-talent" id="gTalentBtn" aria-haspopup="dialog" data-i18n-title="talent.open"><span class="g-pill-ic" aria-hidden="true">🪙</span><b id="gTalentNum">0</b><span class="g-pill-unit" id="gTalentUnit"></span></button>
+        <div class="g-chip g-chip-wx" id="gWx" hidden><span class="g-chip-ic" id="gWxIc" aria-hidden="true"></span><span id="gWxText"></span></div>
+        <div class="g-chip g-chip-streak" id="gStreak" hidden><span class="g-chip-ic" aria-hidden="true">🔥</span><span id="gStreakText"></span></div>
+        <div class="g-chip g-chip-off" id="gOffline" hidden data-i18n="rail.offline"></div>
+      </div>
+      <section class="g-todo" aria-labelledby="gTodoTitle">
+        <h3 class="g-stitle" id="gTodoTitle" data-i18n="todo.title"></h3>
+        <ul class="g-todo-list" id="gTodoList"></ul>
+        <p class="g-empty" id="gTodoEmpty" hidden data-i18n="todo.empty"></p>
+      </section>
+      <section class="g-growth" aria-labelledby="gGrowTitle">
+        <h3 class="g-stitle" id="gGrowTitle" data-i18n="growth.title"></h3>
+        <div class="g-grow-row"><span class="g-grow-stage" id="gGrowStage"></span><span class="g-grow-xp" id="gGrowXp"></span></div>
+        <div class="g-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="g-bar-fill" id="gGrowFill"></div></div>
+        <p class="g-grow-done" id="gGrowDone"></p>
+      </section>
+    </aside>
+
+    <!-- 예배 띠 -->
+    <a class="g-banner" id="gBanner" href="#" role="button" hidden><span class="g-bn-t" id="gBnT"></span><span class="g-bn-c" id="gBnC"></span><span class="g-bn-go" aria-hidden="true">›</span></a>
+
+    <!-- 하단 바 -->
+    <nav class="g-bar" id="gBar" data-i18n-aria="bar.label">
+      <button type="button" class="g-tab is-on" data-tab="mine"><span class="g-tab-ic" aria-hidden="true">🌱</span><span data-i18n="bar.mine"></span></button>
+      <button type="button" class="g-tab" data-tab="church"><span class="g-tab-ic" aria-hidden="true">⛪</span><span data-i18n="bar.church"></span></button>
+      <button type="button" class="g-tab" data-tab="world"><span class="g-tab-ic" aria-hidden="true">🌍</span><span data-i18n="bar.world"></span></button>
+      <a class="g-tab" href="index.html?home=1"><span class="g-tab-ic" aria-hidden="true">📖</span><span data-i18n="bar.about"></span></a>
+    </nav>
+
+    <!-- 안내판(세션 없음·오류·준비 중·로그인 중) -->
+    <div class="g-gate" id="gGate" hidden>
+      <div class="g-gate-box" role="region" aria-labelledby="gGateT">
+        <div class="g-gate-ic" aria-hidden="true">🌱</div>
+        <h2 class="g-gate-t" id="gGateT"></h2>
+        <p class="g-gate-m" id="gGateM"></p>
+        <div class="g-gate-actions" id="gGateActions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 큐티 팝업 (데스크톱: 캐릭터 오른쪽 말풍선 / 폰: 시트) -->
+  <div class="g-modal g-modal-qt" id="gmQt" hidden>
+    <div class="g-backdrop" data-close></div>
+    <div class="g-mbox g-mbox-qt" role="dialog" aria-modal="true" aria-labelledby="gmQtTitle">
+      <span class="g-grab" aria-hidden="true"></span>
+      <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
+      <div class="g-mhead">
+        <span class="g-qt-badge" id="gmQtBadge"></span>
+        <h2 class="g-mtitle" id="gmQtTitle"></h2>
+        <p class="g-qt-ref" id="gmQtRef"></p>
+      </div>
+      <div class="g-mbody g-qt-body" id="gmQtBody"></div>
+      <div class="g-amen" id="gmAmen"></div>
+    </div>
+  </div>
+
+  <!-- 창고 -->
+  <div class="g-modal" id="gmStore" hidden>
+    <div class="g-backdrop" data-close></div>
+    <div class="g-mbox g-mbox-store" role="dialog" aria-modal="true" aria-labelledby="gmStoreTitle">
+      <span class="g-grab" aria-hidden="true"></span>
+      <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
+      <div class="g-mhead">
+        <h2 class="g-mtitle" id="gmStoreTitle" data-i18n="store.title"></h2>
+        <p class="g-msub" data-i18n="store.sub"></p>
+        <div class="g-store-bal"><span class="g-pill-ic" aria-hidden="true">🪙</span><b id="gmStoreNum">0</b><span id="gmStoreUnit"></span></div>
+      </div>
+      <ul class="g-led-list" id="gmStoreList"></ul>
+      <p class="g-empty" id="gmStoreEmpty" hidden></p>
+      <p class="g-led-total" id="gmStoreTotal"></p>
+      <div class="g-mfoot"><button type="button" class="g-btn g-btn-line" id="gmStoreMore" hidden data-i18n="store.more"></button></div>
+    </div>
+  </div>
+
+  <!-- 첫 심기 -->
+  <div class="g-modal" id="gmPlant" hidden>
+    <div class="g-backdrop" data-close></div>
+    <div class="g-mbox g-mbox-plant" role="dialog" aria-modal="true" aria-labelledby="gmPlantTitle">
+      <span class="g-grab" aria-hidden="true"></span>
+      <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
+      <div class="g-mhead">
+        <span class="g-step" id="gObStepNum"></span>
+        <h2 class="g-mtitle" id="gmPlantTitle"></h2>
+      </div>
+      <div class="g-ob-step" id="gObStep1">
+        <label class="g-field"><span class="g-flabel" data-i18n="onboard.nick.label"></span><input type="text" id="gObNick" maxlength="20" autocomplete="nickname" data-i18n-ph="onboard.nick.ph" /></label>
+        <div class="g-field"><span class="g-flabel" data-i18n="onboard.avatar.label"></span><div class="g-avatars" id="gObAvatars" role="radiogroup"></div></div>
+        <div class="g-mfoot"><button type="button" class="g-btn g-btn-primary" id="gObNext" data-i18n="onboard.next"></button></div>
+      </div>
+      <div class="g-ob-step" id="gObStep2" hidden>
+        <div class="g-field"><span class="g-flabel" data-i18n="onboard.seed.label"></span><div class="g-seeds" id="gObSeeds" role="radiogroup"></div></div>
+        <label class="g-field"><span class="g-flabel" data-i18n="onboard.name.label"></span><input type="text" id="gObName" maxlength="12" data-i18n-ph="onboard.name.ph" /></label>
+        <div class="g-mfoot g-mfoot-2">
+          <button type="button" class="g-btn g-btn-line" id="gObBack" data-i18n="onboard.back"></button>
+          <button type="button" class="g-btn g-btn-primary" id="gObPlant" data-i18n="onboard.plant"></button>
+        </div>
+      </div>
+      <p class="g-ferr" id="gObErr" hidden></p>
+    </div>
+  </div>
+
+  <div class="g-toast" id="gToast" role="status" aria-live="polite" hidden></div>
+
+  <script src="js/config.js?v=20260908lib"></script>
+  <script src="js/bulletins.js?v=20261017sum1"></script>
+  <script src="js/bulletins-live.js?v=20261010sum1"></script>
+  <script src="js/layout.js?v=20261023hdr2"></script>
+  <script src="js/main.js?v=20261010sum1"></script>
+  <script src="js/garden/i18n.js?v=20261023gd1"></script>
+  <script src="js/garden/sdk.js?v=20261023gd1"></script>
+  <script src="js/garden/scene.js?v=20261023gd1"></script>
+  <script src="js/garden/hud.js?v=20261023gd1"></script>
+  <script src="js/garden/main.js?v=20261023gd2"></script>
+</body>
+</html>

@@ -1,0 +1,242 @@
+{
+ "version": "20261023gd2",
+ "theme": "default",
+ "files": {
+  "chars/char-a.webp": 52374,
+  "chars/char-b.webp": 37750,
+  "chars/char-c.webp": 42996,
+  "chars/char-f1.webp": 37750,
+  "chars/char-f2.webp": 49554,
+  "chars/char-f3.webp": 43324,
+  "chars/char-f4.webp": 49756,
+  "chars/char-m1.webp": 52374,
+  "chars/char-m2.webp": 42996,
+  "chars/char-m3.webp": 41658,
+  "chars/char-m4.webp": 41910,
+  "chars/char-pastor.webp": 52954,
+  "floor/floor-tiles.webp": 140556,
+  "mid/hills-768.webp": 33384,
+  "mid/hills.webp": 112172,
+  "plants/fig-0-s.webp": 1210,
+  "plants/fig-0.webp": 5936,
+  "plants/fig-1-s.webp": 1932,
+  "plants/fig-1.webp": 11362,
+  "plants/fig-2-s.webp": 4752,
+  "plants/fig-2.webp": 31632,
+  "plants/fig-3-s.webp": 8598,
+  "plants/fig-3.webp": 59356,
+  "plants/fig-4-s.webp": 10470,
+  "plants/fig-4.webp": 73074,
+  "plants/fig-5-s.webp": 11424,
+  "plants/fig-5.webp": 84112,
+  "plants/olive-0-s.webp": 1166,
+  "plants/olive-0.webp": 6308,
+  "plants/olive-1-s.webp": 2196,
+  "plants/olive-1.webp": 14250,
+  "plants/olive-2-s.webp": 5080,
+  "plants/olive-2.webp": 43498,
+  "plants/olive-3-s.webp": 8598,
+  "plants/olive-3.webp": 73054,
+  "plants/olive-4-s.webp": 13302,
+  "plants/olive-4.webp": 122480,
+  "plants/olive-5-s.webp": 13220,
+  "plants/olive-5.webp": 105770,
+  "plants/sunflower-0-s.webp": 1622,
+  "plants/sunflower-0.webp": 8088,
+  "plants/sunflower-1-s.webp": 2118,
+  "plants/sunflower-1.webp": 11932,
+  "plants/sunflower-2-s.webp": 4548,
+  "plants/sunflower-2.webp": 29318,
+  "plants/sunflower-3-s.webp": 6182,
+  "plants/sunflower-3.webp": 43428,
+  "plants/sunflower-4-s.webp": 9708,
+  "plants/sunflower-4.webp": 72434,
+  "plants/sunflower-5-s.webp": 12888,
+  "plants/sunflower-5.webp": 92558,
+  "sky/clouds-overlay.webp": 25690,
+  "sky/sky-dawn-768.webp": 2510,
+  "sky/sky-dawn.webp": 6916,
+  "sky/sky-day-768.webp": 1876,
+  "sky/sky-day.webp": 5290,
+  "sky/sky-dusk-768.webp": 3898,
+  "sky/sky-dusk.webp": 10672,
+  "sky/sky-night-768.webp": 14944,
+  "sky/sky-night.webp": 32950,
+  "study/shelf-wall.webp": 107274,
+  "study/sit-f1.webp": 55464,
+  "study/sit-f2.webp": 61734,
+  "study/sit-f3.webp": 58974,
+  "study/sit-f4.webp": 70892,
+  "study/sit-m1.webp": 63582,
+  "study/sit-m2.webp": 57674,
+  "study/sit-m3.webp": 60814,
+  "study/sit-m4.webp": 67100,
+  "study/sit-pastor.webp": 63874,
+  "ui/chest.webp": 13670,
+  "ui/coin.webp": 12578,
+  "ui/seed-packet.webp": 13042,
+  "ui/wx-cloud.webp": 9692,
+  "ui/wx-fog.webp": 11054,
+  "ui/wx-rain.webp": 12734,
+  "ui/wx-snow.webp": 15030,
+  "ui/wx-sun.webp": 15496
+ },
+ "variants": {
+  "season": []
+ },
+ "anchors": {
+  "sunflower-0": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.16
+  },
+  "sunflower-1": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.3
+  },
+  "sunflower-2": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.5
+  },
+  "sunflower-3": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.74
+  },
+  "sunflower-4": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.88
+  },
+  "sunflower-5": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.94
+  },
+  "olive-0": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.16
+  },
+  "olive-1": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.3
+  },
+  "olive-2": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.5
+  },
+  "olive-3": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.74
+  },
+  "olive-4": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.88
+  },
+  "olive-5": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.94
+  },
+  "fig-0": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.16
+  },
+  "fig-1": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.3
+  },
+  "fig-2": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.5
+  },
+  "fig-3": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.74
+  },
+  "fig-4": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.88
+  },
+  "fig-5": {
+   "soil_y": 0.94,
+   "base": "bottom",
+   "fit": 0.94
+  },
+  "char-pastor": {
+   "foot_y": 0.96
+  },
+  "sit-pastor": {
+   "foot_y": 0.97
+  },
+  "char-m1": {
+   "foot_y": 0.96
+  },
+  "sit-m1": {
+   "foot_y": 0.97
+  },
+  "char-m2": {
+   "foot_y": 0.96
+  },
+  "sit-m2": {
+   "foot_y": 0.97
+  },
+  "char-m3": {
+   "foot_y": 0.96
+  },
+  "sit-m3": {
+   "foot_y": 0.97
+  },
+  "char-m4": {
+   "foot_y": 0.96
+  },
+  "sit-m4": {
+   "foot_y": 0.97
+  },
+  "char-f1": {
+   "foot_y": 0.96
+  },
+  "sit-f1": {
+   "foot_y": 0.97
+  },
+  "char-f2": {
+   "foot_y": 0.96
+  },
+  "sit-f2": {
+   "foot_y": 0.97
+  },
+  "char-f3": {
+   "foot_y": 0.96
+  },
+  "sit-f3": {
+   "foot_y": 0.97
+  },
+  "char-f4": {
+   "foot_y": 0.96
+  },
+  "sit-f4": {
+   "foot_y": 0.97
+  },
+  "char-a": {
+   "foot_y": 0.96
+  },
+  "char-b": {
+   "foot_y": 0.96
+  },
+  "char-c": {
+   "foot_y": 0.96
+  }
+ }
+}
