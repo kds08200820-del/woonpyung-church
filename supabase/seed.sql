@@ -302,3 +302,68 @@ insert into public.bible_reading (user_id, day_no) values
   ('00000000-0000-0000-0000-000000000003', 1),
   ('00000000-0000-0000-0000-000000000004', 1)
 on conflict (user_id, day_no) do nothing;
+
+-- ════════════════════════════════════════════════════════════
+-- 신앙 정원 (garden_*, 20261023_1200_garden_phase1.sql) — 소급 동기화가 읽을 원천 기록 + 정원 만들기
+--   전부 '테스트_' 가짜 자료. 0002 는 열심히 한 성도, 0003 은 조금, 0004 는 준회원(교적 연결 없음 → 출석 점수 없음)
+-- ════════════════════════════════════════════════════════════
+-- 큐티 아멘: 0002 는 10일 연속(→ 7일 연속 보너스 1번), 0003 은 3일
+insert into public.qt_checks (user_id, check_date, created_at)
+select '00000000-0000-0000-0000-000000000002'::uuid, current_date - n, now() - (n || ' days')::interval from generate_series(0, 9) n
+union all
+select '00000000-0000-0000-0000-000000000003'::uuid, current_date - n, now() - (n || ' days')::interval from generate_series(0, 2) n
+on conflict (user_id, check_date) do nothing;
+
+-- 성경읽기: 0002 가 3~12일차를 하루에 몰아 체크 (하루 상한 3 → 3건만 점수)
+insert into public.bible_reading (user_id, day_no, done_at)
+select '00000000-0000-0000-0000-000000000002'::uuid, n, now() - interval '2 days' from generate_series(3, 12) n
+on conflict (user_id, day_no) do nothing;
+
+-- 출석: 테스트_김철수(0002, 0001 과 같은 교적 키) 주일 4주 + 수요 1회, 테스트_이영희(0003) 주일 2주
+insert into public.attendance (att_date, service, member_key, member_name, user_id, method)
+select current_date - extract(dow from current_date)::int - 7 * n, '주일 2부', '테스트_김철수|19800315', '테스트_김철수',
+       '00000000-0000-0000-0000-000000000002'::uuid, 'hero'
+  from generate_series(0, 3) n
+union all
+select current_date - extract(dow from current_date)::int + 3 - 7, '수요기도회', '테스트_김철수|19800315', '테스트_김철수',
+       '00000000-0000-0000-0000-000000000002'::uuid, 'hero'
+union all
+select current_date - extract(dow from current_date)::int - 7 * n, '주일 1부', '테스트_이영희|19820720', '테스트_이영희',
+       '00000000-0000-0000-0000-000000000003'::uuid, 'hero'
+  from generate_series(0, 1) n
+on conflict (att_date, service, member_key) do nothing;
+
+-- 오디오북 완청 (0002, 2장)
+insert into public.audiobook_progress (user_id, chapter_id, sec, dur, done) values
+  ('00000000-0000-0000-0000-000000000002', 'book-00', 0, 600, true),
+  ('00000000-0000-0000-0000-000000000002', 'book-01', 0, 600, true)
+on conflict (user_id, chapter_id) do nothing;
+
+-- 모두의 성경 활동 (0002, 이틀 → modu_day 2건)
+insert into public.modu_activity (user_id, kind, ref, book, device, at) values
+  ('00000000-0000-0000-0000-000000000002', 'read',   '창세기 1:1', '창세기', '웹', now() - interval '1 day'),
+  ('00000000-0000-0000-0000-000000000002', 'search', '',           '',       '웹', now() - interval '1 day'),
+  ('00000000-0000-0000-0000-000000000002', 'read',   '창세기 2:1', '창세기', '웹', now());
+
+-- 성장기 인증(가짜 어린이 테스트_정하늘) + 0002·0003 의 하트 (liked_uids 는 jsonb 문자열 배열)
+insert into public.ss_submissions (member_key, child_name, stype, photo_url, liked_by, liked_uids)
+values ('테스트_정하늘|20100101', '테스트_정하늘', 'QT', 'https://example.com/ss1.jpg',
+        '["테스트_김철수","테스트_이영희"]'::jsonb,
+        '["00000000-0000-0000-0000-000000000002","00000000-0000-0000-0000-000000000003"]'::jsonb);
+
+-- 행사 신청 (0002 — 마이그레이션이 넣은 첫 신청서가 있을 때만)
+insert into public.app_entries (form_id, user_id, name, phone, adults, fee_total)
+select f.id, '00000000-0000-0000-0000-000000000002'::uuid, '테스트_김철수', '010-0000-0000', 1, f.fee_adult
+  from public.app_forms f order by f.id limit 1
+on conflict (form_id, user_id) do nothing;
+
+-- 정원 만들기 + 소급 동기화 (4명 모두). 0002 ≈ 300 XP 안팎(싹), garden_plots 는 0번(교회) + 4
+select public.garden_sync_user(u, public.garden_default_church())
+  from unnest(array['00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
+                    '00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004']::uuid[]) u;
+
+-- 0002 는 공개 정원(둘러보기 시험)·포도나무는 아직 그림이 없어 해바라기, 0003 은 비공개
+update public.garden_profiles set visibility = 'public', nickname = '테스트_철수정원' where user_id = '00000000-0000-0000-0000-000000000002';
+update public.garden_profiles set visibility = 'private' where user_id = '00000000-0000-0000-0000-000000000003';
+update public.garden_gardens  set species = 'sunflower', plant_name = '테스트_첫 해바라기', chosen_at = now()
+ where user_id = '00000000-0000-0000-0000-000000000002';
