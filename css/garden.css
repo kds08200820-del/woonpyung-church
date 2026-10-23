@@ -438,8 +438,9 @@ body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 74px); }
 .g-fold:hover { background: var(--g-soft); }
 .g-fold:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
 .g-fold-n { font-size: .76rem; font-weight: 800; color: var(--g-sage-ink); background: var(--g-mint); border-radius: 999px; padding: 3px 9px; font-variant-numeric: tabular-nums; }
-.g-fold-ic { margin-left: auto; width: 9px; height: 9px; border-right: 2px solid var(--g-fg2); border-bottom: 2px solid var(--g-fg2); transform: translateY(-2px) rotate(45deg); transition: transform .2s ease; }
-.g-fold[aria-expanded="false"] .g-fold-ic { transform: translateY(1px) rotate(-135deg); }
+/* 펼쳐져 있으면 위(∧ 접기), 접혀 있으면 아래(∨ 펼치기) — 2026-10-23 담임목사 */
+.g-fold-ic { margin-left: auto; width: 9px; height: 9px; border-right: 2px solid var(--g-fg2); border-bottom: 2px solid var(--g-fg2); transform: translateY(2px) rotate(-135deg); transition: transform .2s ease; }
+.g-fold[aria-expanded="false"] .g-fold-ic { transform: translateY(-2px) rotate(45deg); }
 @media (max-width: 1000px) { .g-wx-float { right: 16px; top: calc(var(--g-hdr) + 12px); } }
 @media (max-width: 760px) {
   .g-wx-float { position: absolute; top: calc(var(--g-hdr) + 10px); right: 12px; }

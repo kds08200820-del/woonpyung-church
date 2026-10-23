@@ -9,7 +9,8 @@ window.GardenHud = (function () {
   'use strict';
   var I, SDK, SCENE, t, P = {};
   var H = { state: null, offline: false, qt: null, qtDate: '', amenDone: false, rankMsg: '', doneKinds: {}, talentLabel: '', svcForce: '', onPlanted: null };
-  var TASK_KINDS = ['water', 'login', 'qt_amen', 'bible_day', 'worship_sunday', 'worship_weekday', 'audiobook_chapter', 'heart_given', 'modu_day'];
+  // 모두의 성경 읽기(modu_day)는 할 일에서 뺐다(2026-10-23 담임목사) — 보상 규칙은 그대로라 읽으면 달란트·XP 는 들어온다
+  var TASK_KINDS = ['water', 'login', 'qt_amen', 'bible_day', 'worship_sunday', 'worship_weekday', 'audiobook_chapter', 'heart_given'];
   var TASK_HREF = { bible_day: 'dashboard.html', audiobook_chapter: 'audiobook.html', heart_given: 'home.html#ssGrowth', modu_day: 'modu/' };
   var SEED_ICON = { sunflower: '🌻', olive: '🫒', fig: '🍐', grape: '🍇', mustard: '🌼', lily: '🌷' };
   var WX_ICON = { clear: '☀️', night: '🌙', cloudy: '☁️', fog: '🌫️', rain: '🌧️', snow: '❄️' };
