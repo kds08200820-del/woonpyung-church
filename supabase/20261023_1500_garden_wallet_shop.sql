@@ -5,6 +5,9 @@
 --   · 마이월렛: 화폐 단위 달란트. 잔액·받은 곳·쓴 곳을 장부(garden_ledger)로 보여 준다(garden_wallet RPC)
 --   · 보상(플랫폼 규칙 값 바꿈): 주일 낮 예배·새벽기도회·수요기도회 출석 각 10 · 큐티 아멘 5 · 매일 정원에 물 주기 2(새 '물 주기')
 --     · 성경 읽기 하루 10(하루 1번) · 하트 하나에 1(하루 20번까지) · 교육 이수 = 교육마다 정한 달란트(edu_records.talent_reward)
+--   · 마음(XP) = 신앙생활. 꽃집 품목은 심었다고 자라지 않고, 심은 뒤 쌓인 마음(XP)만큼 자란다(2026-10-23 담임목사 지시)
+--     하루 마음 10(큐티 한 번)이면 실제 날수만큼 자라고, 덜 쌓이면 그만큼 늦다: 자란 날 = least(심은 지 날수, 심은 뒤 XP ÷ 10)
+--     하루 기준(10)은 garden_churches.settings.xp_day 로 바꿀 수 있다
 --     · 정원 들르기(로그인)는 달란트 0 — 물 주기로 옮김. 이미 적힌 지난 기록의 값은 바꾸지 않는다(장부는 그대로)
 --   · 주일학교 달란트(ss_talents)를 그 어린이 계정의 마이월렛에 그대로 — 지금까지 모은 것 전부와 앞으로 받는 것(차감 포함)
 --   · 땅 종류: 전(밭) — 사서 작물을 심는다(칸당 10) · 대(대지) — 전을 '대지로 바꾸기'(칸당 100), 집 지을 자리
@@ -23,7 +26,8 @@
 --      public.garden_farm_convert(text, jsonb), public.garden_shop(text), public.garden_shop_buy(text, text, int),
 --      public.garden_farm_plant_item(text, int, int, text), public.garden_farm_harvest(text, int, int, int), public.garden_farm_clear(text, int, int),
 --      public.garden_admin_set_land_prices(text, numeric, numeric), public.garden_admin_set_item_price(text, text, numeric),
---      public.garden_candidates_v2(uuid, uuid), public.garden_land_prices(uuid), public.garden_inventory_json(uuid, uuid);
+--      public.garden_candidates_v2(uuid, uuid), public.garden_land_prices(uuid), public.garden_inventory_json(uuid, uuid),
+--      public.garden_xp_since(uuid, uuid, timestamptz), public.garden_xp_day(uuid);
 --    alter table public.garden_inventory rename to garden_inventory_archived;
 --    alter table public.garden_shop_items rename to garden_shop_items_archived;
 --    alter table public.garden_tiles rename column land to land_archived;
@@ -113,6 +117,20 @@ language sql stable security definer set search_path = public as $$
     from public.garden_churches c where c.id = p_church
 $$;
 
+-- 심은 뒤 쌓인 마음(XP): 그 시각 뒤에 신앙생활(예배·QT·성경·물 주기·하트·교육 …)로 받은 XP 합
+create or replace function public.garden_xp_since(p_church uuid, p_uid uuid, p_at timestamptz) returns integer
+language sql stable security definer set search_path = public as $$
+  select coalesce(sum(l.xp), 0)::int from public.garden_ledger l
+   where l.church_id = p_church and l.user_id = p_uid and l.at >= p_at and l.xp > 0
+$$;
+-- 하루치 마음(XP) — 이만큼 쌓이면 실제 하루만큼 자란다(기본 10)
+create or replace function public.garden_xp_day(p_church uuid) returns numeric
+language sql stable security definer set search_path = public as $$
+  select greatest(coalesce((select (c.settings->>'xp_day')::numeric from public.garden_churches c where c.id = p_church), 10), 1)
+$$;
+revoke all on function public.garden_xp_since(uuid, uuid, timestamptz) from public, anon, authenticated;
+revoke all on function public.garden_xp_day(uuid) from public, anon, authenticated;
+
 create or replace function public.garden_inventory_json(p_church uuid, p_uid uuid) returns json
 language sql stable security definer set search_path = public as $$
   select coalesce(json_agg(json_build_object('item', i.item, 'qty', i.qty) order by s.sort), '[]'::json)
@@ -167,6 +185,7 @@ language sql stable security definer set search_path = public as $$
     'stage', (select g.stage from public.garden_gardens g where g.church_id = p_church and g.user_id = p_uid),
     'tiles', coalesce((select json_agg(json_build_object('x', t.x, 'y', t.y, 'land', t.land, 'crop', t.crop, 'planted_at', t.planted_at,
                          'ripe_at', t.ripe_at, 'picked', to_json(t.picked), 'item', t.item, 'item_at', t.item_at,
+                         'xp_since', case when t.item is null then null else public.garden_xp_since(p_church, p_uid, t.item_at) end,
                          -- 오늘 이 품목에서 거둔 번호(장부 ref = 'x,y@심은시각ms#오늘#n')
                          'harvested', (select coalesce(json_agg(split_part(l.ref, '#', 3)::int), '[]'::json)
                                          from public.garden_ledger l, public.garden_churches ch
@@ -181,6 +200,7 @@ language sql stable security definer set search_path = public as $$
     'prices', public.garden_land_prices(p_church),
     'price', (public.garden_land_prices(p_church)->>'jeon')::numeric,
     'max', 4,
+    'xp_day', public.garden_xp_day(p_church),
     'crops', coalesce((select json_agg(json_build_object('slug', c.slug, 'name', c.name, 'grow_sec', c.grow_sec,
                          'seed_cost', c.seed_cost, 'fruits', c.fruits, 'fruit_value', c.fruit_value, 'min_stage', c.min_stage)
                          order by c.sort) from public.garden_crops c where c.active), '[]'::json),
@@ -217,9 +237,11 @@ begin
                   from (select l.kind, sum(greatest(l.talent, 0)) as inn, -sum(least(l.talent, 0)) as outt, count(*) as n
                           from public.garden_ledger l where l.church_id = v_church and l.user_id = v_uid and l.talent <> 0 group by l.kind) k
                   left join public.garden_rules_eff(v_church) r on r.kind = k.kind),
-    'rules', (select coalesce(json_agg(json_build_object('kind', r.kind, 'label', r.label, 'talent', r.talent, 'daily_cap', r.daily_cap)
+    -- 받는 법: 달란트와 마음(XP)을 함께 (마음은 심은 것을 자라게 한다)
+    'rules', (select coalesce(json_agg(json_build_object('kind', r.kind, 'label', r.label, 'talent', r.talent, 'xp', r.xp, 'daily_cap', r.daily_cap)
                        order by r.sort), '[]'::json)
-                from public.garden_rules_eff(v_church) r where r.active and (r.talent > 0 or r.kind in ('edu_done', 'ss_talent'))));
+                from public.garden_rules_eff(v_church) r where r.active and (r.talent > 0 or r.xp > 0 or r.kind in ('edu_done', 'ss_talent'))),
+    'xp_day', public.garden_xp_day(v_church));
 end $$;
 
 -- 정원에 물 주기: 하루 한 번(교회 시간대). 규칙 값만큼 적립하고, 그날 물 준 기록은 식물 건강 계산에 쓴다
@@ -381,6 +403,7 @@ begin
     'items', (select coalesce(json_agg(json_build_object('slug', s.slug, 'category', s.category, 'name', s.name, 'price', s.price,
                        'fit', s.fit, 'specs', s.specs, 'model', s.model) order by s.category, s.sort), '[]'::json)
                 from public.garden_shop_items s where s.active),
+    'xp_day', public.garden_xp_day(v_church),
     'inventory', public.garden_inventory_json(v_church, v_uid));
 end $$;
 
@@ -432,12 +455,14 @@ begin
   return json_build_object('ok', true, 'farm', public.garden_farm_json(v_church, v_uid));
 end $$;
 
--- 꽃집 품목 수확: 먹거리는 심고 first_days 뒤부터 window_days 동안, 과일나무는 years_to_fruit 해 뒤 harvest_months 에.
+-- 꽃집 품목 수확: 먹거리는 자란 날이 first_days 부터 window_days 동안, 과일나무는 자란 날이 years_to_fruit 해를 넘고 harvest_months 에.
+-- 자란 날 = least(심은 지 날수, 심은 뒤 마음(XP) ÷ 하루치) — 날은 찼는데 마음이 모자라면 why 'xp' 와 모자란 XP(need)
 -- 하루 per_day 개까지, 한 개에 value 달란트. 장부 ref = 'x,y@심은시각ms#날짜#n'
 create or replace function public.garden_farm_harvest(p_church text, p_x int, p_y int, p_n int) returns json
 language plpgsql security definer set search_path = public as $$
 declare v_church uuid; v_uid uuid := auth.uid(); t public.garden_tiles; s public.garden_shop_items; m jsonb; v_tz text; v_day date;
         v_ok boolean := false; v_per int; v_val numeric; v_ins int;
+        v_age int; v_xp int; v_xd numeric; v_eff int; v_lo int; v_hi int; v_mon boolean := true;
 begin
   if v_uid is null then return json_build_object('ok', false, 'why', 'login'); end if;
   v_church := public.garden_resolve_church(p_church);
@@ -452,15 +477,25 @@ begin
   v_day := (now() at time zone coalesce(v_tz, 'Asia/Seoul'))::date;
   v_per := coalesce((m->>'per_day')::int, 0); v_val := coalesce((m->>'value')::numeric, 0.1);
   if v_per < 1 then return json_build_object('ok', false, 'why', 'no_harvest'); end if;
+  v_age := v_day - (t.item_at at time zone coalesce(v_tz, 'Asia/Seoul'))::date;
+  v_xp := public.garden_xp_since(v_church, v_uid, t.item_at);
+  v_xd := public.garden_xp_day(v_church);
+  v_eff := least(v_age, floor(v_xp / v_xd)::int);
   if m->>'type' = 'tree' then
-    v_ok := now() >= t.item_at + make_interval(years => coalesce((m->>'years_to_fruit')::int, 3))
-            and extract(month from (now() at time zone coalesce(v_tz, 'Asia/Seoul')))::int
-                in (select jsonb_array_elements_text(coalesce(m->'harvest_months', '[]'::jsonb))::int);
+    v_lo := ceil(coalesce((m->>'years_to_fruit')::numeric, 3) * 365.25)::int; v_hi := null;
+    v_mon := extract(month from (now() at time zone coalesce(v_tz, 'Asia/Seoul')))::int
+             in (select jsonb_array_elements_text(coalesce(m->'harvest_months', '[]'::jsonb))::int);
   else
-    v_ok := now() >= t.item_at + make_interval(days => coalesce((m->>'first_days')::int, 60))
-            and now() < t.item_at + make_interval(days => coalesce((m->>'first_days')::int, 60) + coalesce((m->>'window_days')::int, 30));
+    v_lo := coalesce((m->>'first_days')::int, 60); v_hi := v_lo + coalesce((m->>'window_days')::int, 30);
   end if;
-  if not v_ok then return json_build_object('ok', false, 'why', 'not_ready'); end if;
+  v_ok := v_mon and v_eff >= v_lo and (v_hi is null or v_eff < v_hi);
+  if not v_ok then
+    -- 날도 철도 맞는데 마음이 모자람
+    if v_mon and v_age >= v_lo and v_eff < v_lo then
+      return json_build_object('ok', false, 'why', 'xp', 'need', ceil(v_lo * v_xd - v_xp)::int, 'xp', v_xp);
+    end if;
+    return json_build_object('ok', false, 'why', 'not_ready');
+  end if;
   if p_n is null or p_n < 1 or p_n > v_per then return json_build_object('ok', false, 'why', 'range'); end if;
   insert into public.garden_ledger (church_id, user_id, kind, ref, xp, talent, at, source, meta)
   values (v_church, v_uid, 'harvest', p_x || ',' || p_y || '@' || floor(extract(epoch from t.item_at) * 1000)::bigint || '#' || v_day || '#' || p_n,

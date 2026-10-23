@@ -61,6 +61,1455 @@
       "anchor": null,
       "variants": [],
       "pick": 1
+    },
+    {
+      "id": "cherry-tomato",
+      "group": "ui",
+      "out": "cherry-tomato.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A bushy green cherry tomato plant with many small serrated green clay leaves tied to a thin wooden stake, a few tiny yellow star flowers, absolutely no tomatoes and nothing red, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13100,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "cherry-tomato-fruit",
+      "group": "ui",
+      "out": "cherry-tomato-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A small cluster of three shiny round ripe red cherry tomatoes on a short green vine, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13105,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "tomato",
+      "group": "ui",
+      "out": "tomato.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A tall green tomato plant with broad serrated green clay leaves climbing a wooden stake, a few small yellow flowers, absolutely no tomatoes and nothing red, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13110,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "tomato-fruit",
+      "group": "ui",
+      "out": "tomato-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single large ripe round red tomato with a green star-shaped stem cap, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13115,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "pepper",
+      "group": "ui",
+      "out": "pepper.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A small upright Korean chili pepper plant with glossy narrow green clay leaves and a few tiny white flowers, no peppers at all, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13120,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "pepper-fruit",
+      "group": "ui",
+      "out": "pepper-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single long slender glossy ripe red Korean chili pepper with a green stem, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13125,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "cucumber",
+      "group": "ui",
+      "out": "cucumber.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young cucumber vine with broad heart-shaped green clay leaves and curly tendrils climbing a small wooden trellis, a few yellow flowers, no cucumbers at all, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13130,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "cucumber-fruit",
+      "group": "ui",
+      "out": "cucumber-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single long slim fresh green Korean cucumber with tiny bumps and a small yellow flower at the tip, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13135,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "lettuce",
+      "group": "ui",
+      "out": "lettuce.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A loose open head of green Korean leaf lettuce (sangchu) with many soft wavy bright green clay leaves with slightly reddish tips, growing low on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 14111,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "lettuce-fruit",
+      "group": "ui",
+      "out": "lettuce-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single fresh ruffled green lettuce leaf with a reddish edge, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13145,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "potato",
+      "group": "ui",
+      "out": "potato.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A bushy potato plant with dark green compound clay leaves and a few small white flowers with yellow centers, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13150,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "potato-fruit",
+      "group": "ui",
+      "out": "potato-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single round light brown potato tuber with a few tiny eyes and a little soil on it, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13155,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "sweet-potato",
+      "group": "ui",
+      "out": "sweet-potato.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A spreading sweet potato vine with heart-shaped green clay leaves and purple-tinged stems trailing over a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13160,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "sweet-potato-fruit",
+      "group": "ui",
+      "out": "sweet-potato-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single plump reddish purple sweet potato with tapered ends, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13165,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "corn",
+      "group": "ui",
+      "out": "corn.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A tall young corn stalk with long arching green clay leaves and a small tassel on top, no corn ears visible, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13170,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "corn-fruit",
+      "group": "ui",
+      "out": "corn-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single ear of yellow corn with the green husk peeled back, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13175,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "pumpkin",
+      "group": "ui",
+      "out": "pumpkin.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A sprawling Korean pumpkin vine with large round lobed green clay leaves and one big yellow trumpet flower, no pumpkins, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13180,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "pumpkin-fruit",
+      "group": "ui",
+      "out": "pumpkin-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single small round green Korean squash (aehobak style young pumpkin), centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13185,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "eggplant",
+      "group": "ui",
+      "out": "eggplant.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A small eggplant plant with broad soft gray-green clay leaves and a few purple star flowers, no eggplants, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13190,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "eggplant-fruit",
+      "group": "ui",
+      "out": "eggplant-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single long glossy dark purple eggplant with a green cap, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13195,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "apple",
+      "group": "ui",
+      "out": "apple.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young apple tree about two meters tall with a short brown trunk and a rounded crown of green clay leaves, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13200,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "apple-fruit",
+      "group": "ui",
+      "out": "apple-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single shiny ripe red apple with a short stem and one green leaf, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13205,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "pear",
+      "group": "ui",
+      "out": "pear.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young Korean pear tree with a straight brown trunk and an upright crown of glossy oval green clay leaves, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13210,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "pear-fruit",
+      "group": "ui",
+      "out": "pear-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single large perfectly round golden brown Korean nashi pear, round like an apple, with tiny pale speckles and a short brown stem, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 14171,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "peach",
+      "group": "ui",
+      "out": "peach.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young peach tree with an open vase-shaped crown of long narrow green clay leaves on a short brown trunk, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13220,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "peach-fruit",
+      "group": "ui",
+      "out": "peach-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single fuzzy ripe peach, cream colored with a pink blush, with one narrow green leaf, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13225,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "grape",
+      "group": "ui",
+      "out": "grape.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young grapevine with a twisting brown trunk and broad lobed green clay leaves trained on a small wooden trellis, no grapes, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13230,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "grape-fruit",
+      "group": "ui",
+      "out": "grape-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single small bunch of ripe dark purple Campbell grapes with a tiny green leaf, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13235,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "plum",
+      "group": "ui",
+      "out": "plum.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young plum tree with a rounded crown of small oval green clay leaves on a slim brown trunk, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13240,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "plum-fruit",
+      "group": "ui",
+      "out": "plum-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single small smooth oval deep purple-red plum with a faint whitish bloom and a very short stem, no leaf, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 14181,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "persimmon",
+      "group": "ui",
+      "out": "persimmon.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young persimmon tree with a sturdy dark brown trunk and broad glossy oval green clay leaves. Only green leaves, absolutely no fruit, no berries, no nuts, nothing orange or red. On a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 14121,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "persimmon-fruit",
+      "group": "ui",
+      "out": "persimmon-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single ripe orange persimmon with a four-lobed green calyx cap, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13255,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "sweet-persimmon",
+      "group": "ui",
+      "out": "sweet-persimmon.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young sweet persimmon tree with a sturdy dark brown trunk and broad glossy oval green clay leaves, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13260,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "sweet-persimmon-fruit",
+      "group": "ui",
+      "out": "sweet-persimmon-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single flat round ripe orange sweet persimmon with a green calyx cap, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13265,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "jujube",
+      "group": "ui",
+      "out": "jujube.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young jujube tree with zigzag thorny brown branches and small shiny oval green clay leaves, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13270,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "jujube-fruit",
+      "group": "ui",
+      "out": "jujube-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A small cluster of three glossy reddish brown jujube fruits on a short twig, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13275,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "blueberry",
+      "group": "ui",
+      "out": "blueberry.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A rounded blueberry bush with many small oval green clay leaves on thin reddish stems. Only green leaves, absolutely no berries, nothing blue. On a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 14151,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "blueberry-fruit",
+      "group": "ui",
+      "out": "blueberry-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A small cluster of five dusty blue ripe blueberries with tiny crowns, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13285,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "maesil",
+      "group": "ui",
+      "out": "maesil.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young Korean maesil apricot tree with a graceful dark brown trunk and oval green clay leaves. Only green leaves, absolutely no fruit, no berries, no nuts, nothing orange or red. On a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 14141,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "maesil-fruit",
+      "group": "ui",
+      "out": "maesil-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A small cluster of three round green maesil plums on a twig, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13295,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "fig",
+      "group": "ui",
+      "out": "fig.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A small fig tree with smooth gray branches and large lobed green clay leaves, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13300,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "fig-fruit",
+      "group": "ui",
+      "out": "fig-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single ripe purple fig fruit, teardrop shaped, with a tiny stem, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13305,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "nanking-cherry",
+      "group": "ui",
+      "out": "nanking-cherry.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A rounded nanking cherry shrub with many small fuzzy oval green clay leaves on thin brown stems, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13310,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "nanking-cherry-fruit",
+      "group": "ui",
+      "out": "nanking-cherry-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A small cluster of three tiny shiny bright red round cherries on very short stems, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13315,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "cherry",
+      "group": "ui",
+      "out": "cherry.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young sweet cherry tree with smooth reddish brown bark and an upright crown of serrated oval green clay leaves, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13320,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "cherry-fruit",
+      "group": "ui",
+      "out": "cherry-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A pair of glossy dark red sweet cherries joined at long green stems, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13325,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "apricot",
+      "group": "ui",
+      "out": "apricot.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young apricot tree with a rounded crown of heart-shaped green clay leaves on a brown trunk, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13330,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "apricot-fruit",
+      "group": "ui",
+      "out": "apricot-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single round orange apricot with a soft red blush, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13335,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "hardy-kiwi",
+      "group": "ui",
+      "out": "hardy-kiwi.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young hardy kiwi (darae) vine with twisting brown stems and round green clay leaves climbing a small wooden trellis, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13340,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "hardy-kiwi-fruit",
+      "group": "ui",
+      "out": "hardy-kiwi-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A small cluster of three smooth grape-sized green hardy kiwi berries, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13345,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null,
+      "batch": 2
+    },
+    {
+      "id": "chestnut",
+      "group": "ui",
+      "out": "chestnut.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young chestnut tree with long serrated glossy green clay leaves on a sturdy brown trunk. Only green leaves, absolutely no fruit, no berries, no nuts, nothing orange or red. No burs. On a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 14131,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "chestnut-fruit",
+      "group": "ui",
+      "out": "chestnut-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single spiky green chestnut bur split open showing two shiny brown chestnuts, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13355,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "sunflower",
+      "group": "ui",
+      "out": "sunflower.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A tall sunflower in full bloom with one big golden yellow flower head and broad green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13360,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "cosmos",
+      "group": "ui",
+      "out": "cosmos.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A clump of cosmos in full bloom with many pink, white and magenta daisy-like flowers on thin feathery green stems, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13370,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "marigold",
+      "group": "ui",
+      "out": "marigold.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A compact marigold plant in full bloom with many round ruffled orange and yellow pompom flowers and fine green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13380,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "zinnia",
+      "group": "ui",
+      "out": "zinnia.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A zinnia plant in full bloom with several bright layered red, orange and pink flowers on upright stems with oval green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13390,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "balsam",
+      "group": "ui",
+      "out": "balsam.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A Korean garden balsam (bongseonhwa) plant in full bloom with many small pink and red flowers tucked along an upright stem with narrow serrated green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13400,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "portulaca",
+      "group": "ui",
+      "out": "portulaca.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A low spreading moss rose (portulaca) in full bloom with many small bright pink, yellow and orange cup flowers and tiny fleshy green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13410,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "mum",
+      "group": "ui",
+      "out": "mum.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A rounded cushion of small yellow and white Korean chrysanthemum (sogguk) flowers in full bloom with lobed green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13420,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "hydrangea",
+      "group": "ui",
+      "out": "hydrangea.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A rounded hydrangea shrub in full bloom with three big round clusters of soft blue and pink flowers and broad green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13430,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "rose",
+      "group": "ui",
+      "out": "rose.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A climbing rose in full bloom with many small red roses on arching green stems with small leaves, on a small wooden arch over a dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13440,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "lavender",
+      "group": "ui",
+      "out": "lavender.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A rounded lavender bush in full bloom with many slender purple flower spikes over narrow silvery green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13450,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "tulip",
+      "group": "ui",
+      "out": "tulip.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A small clump of three red and yellow tulips in full bloom with broad smooth green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13460,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "daffodil",
+      "group": "ui",
+      "out": "daffodil.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A small clump of bright yellow daffodils in full bloom with trumpet centers and long strap-like green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13470,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "lily",
+      "group": "ui",
+      "out": "lily.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A tall lily in full bloom with three large white trumpet flowers on an upright stem with narrow green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13480,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "celosia",
+      "group": "ui",
+      "out": "celosia.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A cockscomb celosia plant in full bloom with a velvety crested deep red flower head and green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13490,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "morning-glory",
+      "group": "ui",
+      "out": "morning-glory.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A morning glory vine in full bloom with several blue and purple trumpet flowers and heart-shaped green clay leaves climbing a thin bamboo stick, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13500,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "mugunghwa",
+      "group": "ui",
+      "out": "mugunghwa.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A small upright rose of Sharon (mugunghwa) shrub in full bloom with several pink flowers with deep red centers and serrated green clay leaves, growing from a clearly visible small dome-shaped mound of brown soil at the bottom, front three-quarter view, centered, the whole shrub and mound fully in frame. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 14161,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
+    },
+    {
+      "id": "azalea",
+      "group": "ui",
+      "out": "azalea.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A rounded royal azalea (cheoljjuk) shrub in full bloom covered with soft pink flowers and small green clay leaves, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13520,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "batch": 1
     }
   ]
 }

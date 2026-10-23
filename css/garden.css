@@ -570,6 +570,8 @@ button.gf-buy.is-picked .gf-top-buy { background-color: rgba(233, 128, 95, .35);
 .gs-tab { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--g-line); background: var(--g-panel); color: var(--g-fg2); font: inherit; font-weight: 800; font-size: .86rem; cursor: pointer; }
 .gs-tab.is-on { background: var(--g-fg); border-color: var(--g-fg); color: #fff; }
 .gs-tab.gs-soon { cursor: default; opacity: .6; font-weight: 700; }
+.g-wl-note { margin: 4px 0 8px; font-size: .8rem; line-height: 1.55; color: var(--g-fg3); }
+.gf-tag.gf-xp { background: #F3E6D2; color: #8A5A2E; }
 .gs-when { display: block; margin-top: 4px; font-size: .76rem; font-weight: 700; color: var(--g-fg3); }
 .gs-when.is-now { color: #4E7A4A; }
 .gf-crop.gf-off small { color: #9A5A3A; }

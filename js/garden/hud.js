@@ -399,7 +399,8 @@ window.GardenHud = (function () {
         '<div><span>' + esc(t('wallet.spent')) + '</span><b>' + esc(fmtTal(w.spent)) + '</b></div>' +
         '<div><span>' + esc(t('wallet.month')) + '</span><b>' + esc(fmtTal(w.month)) + '</b></div></div>';
       var rules = (w.rules || []).map(function (r) {
-        var v = r.kind === 'edu_done' ? t('wallet.rule.edu') : r.kind === 'ss_talent' ? t('wallet.rule.ss') : '+' + fmtTal(r.talent) + ' ' + L;
+        var v = r.kind === 'edu_done' ? t('wallet.rule.edu') : r.kind === 'ss_talent' ? t('wallet.rule.ss') : (+r.talent ? '+' + fmtTal(r.talent) + ' ' + L : '');
+        if (+r.xp) v += (v ? ' · ' : '') + t('wallet.rule.xp', { n: r.xp });
         return '<li><span>' + esc(label(r.label) || r.kind) + (r.daily_cap ? ' <small>' + esc(t('wallet.cap', { n: r.daily_cap })) + '</small>' : '') + '</span><b>' + esc(v) + '</b></li>';
       }).join('');
       var by = (w.by_kind || []).map(function (k) {
@@ -407,7 +408,7 @@ window.GardenHud = (function () {
         return '<li><span>' + esc(k.label) + ' <small>' + esc(t('wallet.n', { n: k.n })) + '</small></span><b class="' + (+k['in'] >= +k.out ? 'is-in' : 'is-out') + '">' + esc(v) + '</b></li>';
       }).join('');
       top.innerHTML = sum +
-        '<details class="g-wl-box" open><summary>' + esc(t('wallet.rules')) + '</summary><ul class="g-wl-list">' + rules + '</ul></details>' +
+        '<details class="g-wl-box" open><summary>' + esc(t('wallet.rules')) + '</summary><p class="g-wl-note">' + esc(t('wallet.xp.note', { n: w.xp_day || 10 })) + '</p><ul class="g-wl-list">' + rules + '</ul></details>' +
         (by ? '<details class="g-wl-box"><summary>' + esc(t('wallet.by')) + '</summary><ul class="g-wl-list">' + by + '</ul></details>' : '') +
         '<h3 class="g-wl-h">' + esc(t('wallet.history')) + '</h3>';
     }).catch(function () { top.innerHTML = ''; });

@@ -7,7 +7,9 @@
    · 과습: 큰비(20mm↑)나 흙이 꽉 찬 채 비 오는 날이 이어지면(wet: low 3일·mid 6일) 뿌리가 썩는다
    · 서리·추위: frost_kill 품목은 최저 −1℃ 이하에서, 모든 품목은 min_temp 아래에서 죽는다
    · 꽃: 꽃 피는 달에 피고, 사흘 내리 해가 6시간 넘게 나면 만개
-   GardenPlant.weather(lat, lng) → Promise<rows> · GardenPlant.state(item, tile, rows, waterDays, now)
+   · 마음(XP): 심었다고 자라지 않는다. 자란 날 = least(심은 지 날수, 심은 뒤 쌓인 XP ÷ 하루치(10)) — 신앙생활이 곧 관심
+     (날씨·물은 실제 날수로 셈하고, 자람·꽃·열매는 자란 날로 셈한다. 서버 garden_farm_harvest 와 같은 셈)
+   GardenPlant.weather(lat, lng) → Promise<rows> · GardenPlant.state(item, tile, rows, waterDays, now, tz, xpDay)
    ============================================================ */
 window.GardenPlant = (function () {
   'use strict';
@@ -46,14 +48,17 @@ window.GardenPlant = (function () {
 
   /* ── 상태 ── */
   function inMonths(list, m) { return (list || []).indexOf(m) >= 0; }
-  function state(item, tile, rows, waterDays, now, tz) {
+  function state(item, tile, rows, waterDays, now, tz, xpDay) {
     var m = (item && item.model) || {}, type = m.type || (item && item.category === 'tree' ? 'tree' : 'annual');
     now = now || new Date();
     var today = ymdOf(now, tz), month = +today.slice(5, 7);
     var planted = tile && tile.item_at ? ymdOf(new Date(tile.item_at), tz) : today;
     var age = Math.max(0, days(planted, today));
+    // 마음(XP)으로 자란 날 — tile.xp_since 가 없으면(옛 서버) 날수 그대로
+    var xd = Math.max(1, +xpDay || 10), xp = tile && tile.xp_since != null ? +tile.xp_since : null;
+    var grown = xp == null ? age : Math.min(age, Math.floor(xp / xd));
     var water = {}; (waterDays || []).forEach(function (d) { water[d] = 1; });
-    var out = { age: age, alive: true, cause: '', stage: 'grow', label: '', needWater: false, moisture: CAP, ready: false, full: false, bloom: false, dryDays: 0, wetDays: 0 };
+    var out = { age: age, grown: grown, xp: xp, xpDay: xd, needXp: 0, alive: true, cause: '', stage: 'grow', label: '', needWater: false, moisture: CAP, ready: false, full: false, bloom: false, dryDays: 0, wetDays: 0 };
 
     // 물통을 심은 날부터(최근 92일 안에서) 하루씩
     var mm = 30, dry = 0, wet = 0, lastWet = planted, sunRun = 0;
@@ -86,26 +91,31 @@ window.GardenPlant = (function () {
 
     if (item.category === 'flower') {
       var firstBloom = m.first_bloom_days || 30;
-      var bloomNow = inMonths(m.bloom_months, month) && age >= firstBloom;
+      var bloomNow = inMonths(m.bloom_months, month) && grown >= firstBloom;
+      if (inMonths(m.bloom_months, month) && age >= firstBloom && grown < firstBloom) out.needXp = Math.ceil(firstBloom * xd - xp);
       out.bloom = bloomNow; out.full = bloomNow && sunRun >= 3;
       var lastBloom = Math.max.apply(null, (m.bloom_months || [0]));
-      if (type === 'annual' && age > firstBloom && !bloomNow && month > lastBloom) { out.stage = 'done'; return out; }
-      out.stage = bloomNow ? (out.full ? 'full' : 'bloom') : (age < 14 ? 'sprout' : 'grow');
+      if (type === 'annual' && grown > firstBloom && !bloomNow && month > lastBloom) { out.stage = 'done'; return out; }
+      out.stage = bloomNow ? (out.full ? 'full' : 'bloom') : (grown < 14 ? 'sprout' : 'grow');
       return out;
     }
     if (type === 'tree') {
-      var years = age / 365.25, yf = m.years_to_fruit || 3;
-      out.years = Math.floor(years) + 1;
-      if (years < yf) { out.stage = age < 30 ? 'sapling' : 'young'; out.yearsLeft = Math.ceil(yf - years); return out; }
+      var years = grown / 365.25, yf = m.years_to_fruit || 3;
+      out.years = Math.floor(age / 365.25) + 1;
+      if (years < yf) {
+        if (age / 365.25 >= yf) out.needXp = Math.ceil(yf * 365.25) * xd - xp;
+        out.stage = grown < 30 ? 'sapling' : 'young'; out.yearsLeft = Math.ceil(yf - years); return out;
+      }
       out.stage = inMonths(m.harvest_months, month) ? 'fruit' : (month === 12 || month <= 2 ? 'rest' : 'grow');
       out.ready = out.stage === 'fruit';
       return out;
     }
     // 먹거리(한해살이)
     var fd = m.first_days || 60, wd = m.window_days || 30;
-    if (age < fd * 0.3) out.stage = 'sprout';
-    else if (age < fd) { out.stage = 'grow'; out.daysLeft = fd - age; }
-    else if (age < fd + wd) { out.stage = 'harvest'; out.ready = true; }
+    if (age >= fd && grown < fd) out.needXp = Math.ceil(fd * xd - xp);
+    if (grown < fd * 0.3) out.stage = 'sprout';
+    else if (grown < fd) { out.stage = 'grow'; out.daysLeft = fd - grown; }
+    else if (grown < fd + wd) { out.stage = 'harvest'; out.ready = true; }
     else out.stage = 'done';
     return out;
   }

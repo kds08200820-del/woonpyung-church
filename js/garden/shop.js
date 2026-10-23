@@ -60,10 +60,20 @@ window.GardenShop = (function () {
     var on = pm.indexOf(new Date().getMonth() + 1) >= 0, sp = it.specs || {};
     return '<small class="gs-when' + (on ? ' is-now' : '') + '">' + esc(on ? t('shop.when.now') : t('shop.when.off', { when: sp.plant || '' })) + '</small>';
   }
+  // 첫 수확·첫 꽃까지 드는 마음(XP): 자란 날 × 하루치(10)
+  function xpNeed(it) {
+    var m = it.model || {}, xd = +(S.data && S.data.xp_day) || 10, d = 0;
+    if (it.category === 'tree') d = Math.ceil((m.years_to_fruit || 0) * 365.25);
+    else if (it.category === 'flower') d = m.first_bloom_days || 0;
+    else d = m.first_days || 0;
+    return d ? { d: d, xp: d * xd, xd: xd } : null;
+  }
   function card(it) {
     var sp = it.specs || {}, q = S.qty[it.slug] || 1, no = it.fit === 'no', have = invOf(it.slug), afford = +S.data.balance >= +it.price * q;
     var fit = '<span class="gs-fit gs-fit-' + it.fit + '">' + esc(t('shop.fit.' + it.fit)) + '</span>';
     var rows = SPEC_ORDER.filter(function (k) { return sp[k[0]]; }).map(function (k) { return '<div><dt>' + esc(t(k[1])) + '</dt><dd>' + esc(sp[k[0]]) + '</dd></div>'; }).join('');
+    var xn = no ? null : xpNeed(it);
+    if (xn) rows += '<div><dt>' + esc(t('shop.spec.xp')) + '</dt><dd>' + esc(t('shop.xp.' + it.category, { xp: I.fmtNum(xn.xp), d: I.fmtNum(xn.d), n: xn.xd })) + '</dd></div>';
     var head = '<div class="gs-card-h"><img alt="" loading="lazy" src="' + ART + esc(it.slug) + '.webp" onerror="this.style.visibility=\'hidden\'">' +
       '<div class="gs-card-t"><b>' + esc(nameOf(it.name)) + '</b>' + fit + (sp.fitwhy ? '<small>' + esc(sp.fitwhy) + '</small>' : '') + (no ? '' : season(it)) + '</div>' +
       '<div class="gs-price">' + (S.data.admin ? '<label class="gs-admin"><span class="g-sr">' + esc(t('shop.admin.price')) + '</span><input type="number" min="0" step="0.1" value="' + esc(it.price) + '" data-price="' + esc(it.slug) + '"></label>' : '<b>' + esc(tal(it.price)) + '</b>') +

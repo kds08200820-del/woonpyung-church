@@ -76,7 +76,7 @@ window.GardenFarm = (function () {
   function convertible(tl) { return tl && tl.land !== 'dae' && !(tl.x === 0 && tl.y === 0) && !tl.crop && !tl.item; }
   function plantView(tl) {
     var it = item(tl.item); if (!it || !PLANT) return null;
-    return PLANT.state(it, tl, F.wx, F.farm.water_days || [], new Date(now()), tz());
+    return PLANT.state(it, tl, F.wx, F.farm.water_days || [], new Date(now()), tz(), F.farm.xp_day);
   }
   function render() {
     var f = F.farm, board = $('gfBoard'); if (!f || !board) return;
@@ -157,6 +157,7 @@ window.GardenFarm = (function () {
         }
         if (v.stage === 'dead') inner += '<span class="gf-tag gf-warn">' + esc(t('plant.st.dead')) + '</span>';
         else if (v.needWater) inner += '<span class="gf-tag gf-water">' + esc(t('plant.thirsty')) + '</span>';
+        else if (v.needXp > 0 || v.age - v.grown >= 3) inner += '<span class="gf-tag gf-xp">' + esc(t('plant.wantXp')) + '</span>';
       }
     } else if (tl.land !== 'dae') { cls += ' gf-empty'; label = t('farm.empty.aria'); }
     if (picked) cls += ' is-picked';
@@ -246,6 +247,7 @@ window.GardenFarm = (function () {
     if (w === 'far') return t('farm.why.far');
     if (w === 'growing' || w === 'not_ready') return t('farm.why.growing');
     if (w === 'busy') return t('farm.why.busy');
+    if (w === 'xp') return t('farm.why.xp', { need: I.fmtNum(r.need) });
     if (w === 'dae') return t('farm.dae.msg');
     if (w === 'already') return t('farm.why.already');
     if (w === 'admin') return t('farm.why.admin');
@@ -317,9 +319,12 @@ window.GardenFarm = (function () {
     var sp = it.specs || {}, lines = [];
     if (v) {
       lines.push(t('plant.age', { d: v.age }) + ' · ' + t('plant.st.' + v.stage));
+      if (v.xp != null) lines.push(t('plant.grown', { g: v.grown, xp: I.fmtNum(v.xp) }));
+      if (v.needXp > 0) lines.push(t('plant.needXp', { n: I.fmtNum(v.needXp) }));
+      else if (v.age - v.grown >= 3) lines.push(t('plant.slowXp', { n: v.xpDay }));
       if (v.stage === 'dead') lines.push(PLANT.CAUSE[v.cause] || '');
-      if (v.yearsLeft) lines.push(t('plant.yearsLeft', { n: v.yearsLeft }));
-      if (v.daysLeft) lines.push(t('plant.daysLeft', { n: v.daysLeft }));
+      if (v.yearsLeft) lines.push(t(v.xp != null ? 'plant.yearsLeftXp' : 'plant.yearsLeft', { n: v.yearsLeft, x: v.xpDay }));
+      if (v.daysLeft) lines.push(t(v.xp != null ? 'plant.daysLeftXp' : 'plant.daysLeft', { n: v.daysLeft, x: v.xpDay }));
       if (v.full) lines.push(t('plant.full'));
       lines.push(v.needWater ? t('plant.needWater', { d: v.sinceWater }) : t('plant.moist', { mm: v.moisture }));
     }
