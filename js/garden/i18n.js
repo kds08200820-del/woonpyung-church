@@ -19,6 +19,8 @@ window.GardenI18n = (function () {
     'rail.title': '오늘',
     'rail.streak': '큐티 {n}일 연속',
     'rail.offline': '오프라인 · 마지막 상태',
+    'rail.gallery': '갤러리',
+    'rail.gallery.sub': '우리들 소식 — 공동체의 사진과 이야기',
     'rail.loading': '정원을 불러오는 중…',
     'talent.unit': '달란트',
     'talent.open': '창고 열기',

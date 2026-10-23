@@ -447,6 +447,12 @@ body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 74px); }
    ============================================================ */
 .g-farm-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .g-farm-acts .g-btn { flex: 1 1 auto; }
+.g-gallery { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-top: 16px; padding: 14px 16px; border-radius: 16px;
+  border: 1px solid var(--g-line2); background: var(--g-soft); color: var(--g-fg); text-decoration: none; transition: border-color .2s; }
+.g-gallery:hover, .g-gallery:focus-visible { border-color: var(--g-coral); }
+.g-gallery-t { font-weight: 800; font-size: .98rem; }
+.g-gallery-go { margin-left: auto; font-size: 1.3rem; line-height: 1; color: var(--g-fg3); }
+.g-gallery-s { flex: 1 1 100%; font-size: .82rem; color: var(--g-fg3); }
 .g-mbox-farm { width: min(1100px, calc(100vw - 32px)); max-width: none; height: min(860px, calc(100dvh - 40px)); display: flex; flex-direction: column; padding: 18px 18px 14px; }
 .gf-head { flex: 0 0 auto; }
 .gf-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
