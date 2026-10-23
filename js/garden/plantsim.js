@@ -2,10 +2,13 @@
    신앙 정원 — 꽃집 식물의 하루하루 (2026-10-23)
    그 고장의 실제 일별 날씨(Open-Meteo: 최고·최저기온, 비, 햇빛 시간)와 내가 물 준 날로
    흙 속 물(물통 모형)을 하루씩 셈해 식물이 지금 어떤지 정한다. 서버는 수확 시기만 확인하고, 시듦·꽃 핌은 여기서 같은 자료로 늘 같게 나온다.
-   · 물통: 뿌리 둘레 흙이 머금는 물 40mm. 비 + 물 주기(15mm)로 차고, 증발산(기온·햇빛 따라)으로 준다
-   · 가뭄: 흙이 마른(8mm 아래) 날이 품목의 drought_days 를 넘으면 시든다
-   · 과습: 큰비(20mm↑)나 흙이 꽉 찬 채 비 오는 날이 이어지면(wet: low 3일·mid 6일) 뿌리가 썩는다
-   · 서리·추위: frost_kill 품목은 최저 −1℃ 이하에서, 모든 품목은 min_temp 아래에서 죽는다
+   · 물통: 뿌리 둘레 흙이 머금는 물(한해살이 40mm · 구근 45 · 여러해살이 60 · 관목 70 · 나무 90, 여러해 자란 것은 한 해에 걸쳐 두 배까지 —
+     뿌리가 깊어진다). 비로 차고, 증발산(기온·햇빛 따라)으로 준다. 물 주기는 흙을 75%까지 촉촉하게 채우고 넘치는 물은 빠진다(매일 줘도 과습이 아님)
+   · 가뭄: 흙이 20% 아래로 마른 날이 품목의 drought_days 를 넘으면 시든다(35% 넘게 젖으면 다시 0)
+   · 과습: 큰비(20mm↑)나 흙이 꽉 찬 채 비 오는 날이 이어지면(wet: low 4일·mid 6일) 뿌리가 썩는다
+   · 서리·추위: frost_kill 품목은 최저 −1℃ 이하에서, 모든 품목은 min_temp 아래에서 죽는다. 땅속(씨·씨감자·알뿌리)은 emerge_days 동안 안전
+   · 물 주기 알림: 흙이 45% 아래이거나, 비·물을 받은 지 water_every 일이 지났을 때
+   · 우정읍 2001~2024 실제 날씨로 품목마다 돌려 맞춘 값이다(알림대로 물 주면 대부분 해에 살고, 큰 장마·혹한 몇 해에만 죽는다)
    · 꽃: 꽃 피는 달에 피고, 사흘 내리 해가 6시간 넘게 나면 만개
    · 마음(XP): 심었다고 자라지 않는다. 자란 날 = least(심은 지 날수, 심은 뒤 쌓인 XP ÷ 하루치(10)) — 신앙생활이 곧 관심
      (날씨·물은 실제 날수로 셈하고, 자람·꽃·열매는 자란 날로 셈한다. 서버 garden_farm_harvest 와 같은 셈)
@@ -13,7 +16,7 @@
    ============================================================ */
 window.GardenPlant = (function () {
   'use strict';
-  var CAP = 40, WATER_MM = 15;
+  var ROOT = { annual: 40, bulb: 45, perennial: 60, shrub: 70, tree: 90 };
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function ymdOf(d, tz) {
     try { var p = new Intl.DateTimeFormat('en-CA', { timeZone: tz || 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); return p; }
@@ -58,34 +61,37 @@ window.GardenPlant = (function () {
     var xd = Math.max(1, +xpDay || 10), xp = tile && tile.xp_since != null ? +tile.xp_since : null;
     var grown = xp == null ? age : Math.min(age, Math.floor(xp / xd));
     var water = {}; (waterDays || []).forEach(function (d) { water[d] = 1; });
-    var out = { age: age, grown: grown, xp: xp, xpDay: xd, needXp: 0, alive: true, cause: '', stage: 'grow', label: '', needWater: false, moisture: CAP, ready: false, full: false, bloom: false, dryDays: 0, wetDays: 0 };
+    var base = m.root_mm || ROOT[type] || 40, deep = type !== 'annual' && type !== 'bulb', cap = base;
+    var out = { age: age, grown: grown, xp: xp, xpDay: xd, needXp: 0, alive: true, cause: '', stage: 'grow', label: '', needWater: false, moisture: base, ready: false, full: false, bloom: false, dryDays: 0, wetDays: 0 };
 
     // 물통을 심은 날부터(최근 92일 안에서) 하루씩
-    var mm = 30, dry = 0, wet = 0, lastWet = planted, sunRun = 0;
+    var mm = base * 0.75, dry = 0, wet = 0, lastWet = planted, sunRun = 0;
     var start = rows.length ? rows[0].date : today;
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       if (r.date < planted) continue;
-      var w = water[r.date] ? WATER_MM : 0;
+      var w = !!water[r.date], dayAge = days(planted, r.date);
       var mon = +r.date.slice(5, 7), dormant = (type === 'tree' || type === 'shrub' || type === 'perennial' || type === 'bulb') && (mon === 12 || mon <= 2);
-      mm = Math.min(CAP, mm + r.prcp + w);
+      cap = deep ? base * (1 + Math.min(1, dayAge / 365)) : base;
+      mm = Math.min(cap, mm + r.prcp);
+      if (w) mm = Math.max(mm, cap * 0.75);
       if (r.prcp >= 5 || w) lastWet = r.date;
       var tmean = (r.tmax + r.tmin) / 2, sunFrac = Math.min(1, r.sun / 12);
       var et = (tmean > 0 ? 0.6 + 0.12 * Math.max(0, r.tmax) : 0.2) * (0.5 + 0.5 * sunFrac) * (dormant ? 0.3 : 1);
       mm = Math.max(0, mm - et);
-      if (mm < 8) dry++; else if (mm > 14) dry = 0;
-      if (r.prcp >= 20 || (mm >= CAP - 1 && r.prcp >= 5)) wet++; else if (r.prcp < 1) wet = Math.max(0, wet - 1);
+      if (mm < cap * 0.2) dry++; else if (mm > cap * 0.35) dry = 0;
+      if (r.prcp >= 20 || (mm >= cap - 1 && r.prcp >= 5)) wet++; else if (r.prcp < 1) wet = Math.max(0, wet - 1);
       sunRun = r.sun >= 6 && r.prcp < 10 ? sunRun + 1 : 0;
-      var drought = m.drought_days || 10, wetLimit = m.wet === 'low' ? 3 : m.wet === 'mid' ? 6 : 99;
-      if (!out.cause && !dormant && dry > drought) out.cause = 'drought';
+      var drought = m.drought_days || 10, wetLimit = m.wet === 'low' ? 4 : m.wet === 'mid' ? 6 : 99, up = dayAge >= (m.emerge_days || 0);
+      if (!out.cause && !dormant && up && dry > drought) out.cause = 'drought';
       if (!out.cause && wet >= wetLimit) out.cause = 'wet';
-      if (!out.cause && m.frost_kill && r.tmin <= -1) out.cause = 'frost';
-      if (!out.cause && m.min_temp != null && r.tmin < m.min_temp) out.cause = 'cold';
+      if (!out.cause && up && m.frost_kill && r.tmin <= -1) out.cause = 'frost';
+      if (!out.cause && up && m.min_temp != null && r.tmin < m.min_temp) out.cause = 'cold';
       if (out.cause) { out.alive = false; out.diedOn = r.date; break; }
     }
-    out.moisture = Math.round(mm); out.dryDays = dry; out.wetDays = wet; out.simFrom = planted < start ? start : planted;
+    out.moisture = Math.round(mm); out.cap = Math.round(cap); out.dryDays = dry; out.wetDays = wet; out.simFrom = planted < start ? start : planted;
     var sinceWet = days(lastWet, today), every = m.water_every || 3;
-    out.needWater = out.alive && sinceWet >= every && !((type !== 'annual') && (month === 12 || month <= 2));
+    out.needWater = out.alive && (mm < cap * 0.45 || sinceWet >= every) && !((type !== 'annual') && (month === 12 || month <= 2));
     out.sinceWater = sinceWet;
     if (!out.alive) { out.stage = 'dead'; return out; }
 

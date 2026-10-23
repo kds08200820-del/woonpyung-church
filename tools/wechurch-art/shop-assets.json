@@ -80,8 +80,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "cherry-tomato-fruit",
@@ -101,8 +100,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "tomato",
@@ -122,8 +120,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "tomato-fruit",
@@ -143,8 +140,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "pepper",
@@ -164,8 +160,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "pepper-fruit",
@@ -185,8 +180,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "cucumber",
@@ -206,8 +200,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "cucumber-fruit",
@@ -227,8 +220,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "lettuce",
@@ -248,8 +240,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "lettuce-fruit",
@@ -269,8 +260,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "potato",
@@ -290,8 +280,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "potato-fruit",
@@ -311,8 +300,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "sweet-potato",
@@ -332,8 +320,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "sweet-potato-fruit",
@@ -353,8 +340,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "corn",
@@ -374,8 +360,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "corn-fruit",
@@ -395,50 +380,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
-    },
-    {
-      "id": "pumpkin",
-      "group": "ui",
-      "out": "pumpkin.webp",
-      "gen": [
-        768,
-        768
-      ],
-      "final": [
-        384,
-        384
-      ],
-      "prompt": "A sprawling Korean pumpkin vine with large round lobed green clay leaves and one big yellow trumpet flower, no pumpkins, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
-      "seed": 13180,
-      "bg": "rembg",
-      "candidates": 1,
-      "anchor": null,
-      "variants": [],
-      "pick": null,
-      "batch": 2
-    },
-    {
-      "id": "pumpkin-fruit",
-      "group": "ui",
-      "out": "pumpkin-fruit.webp",
-      "gen": [
-        512,
-        512
-      ],
-      "final": [
-        160,
-        160
-      ],
-      "prompt": "A single small round green Korean squash (aehobak style young pumpkin), centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
-      "seed": 13185,
-      "bg": "rembg",
-      "candidates": 1,
-      "anchor": null,
-      "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": 1
     },
     {
       "id": "eggplant",
@@ -458,8 +400,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "eggplant-fruit",
@@ -479,8 +420,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "apple",
@@ -500,8 +440,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "apple-fruit",
@@ -521,8 +460,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "pear",
@@ -542,8 +480,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "pear-fruit",
@@ -563,8 +500,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "peach",
@@ -584,8 +520,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "peach-fruit",
@@ -605,8 +540,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "grape",
@@ -626,8 +560,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "grape-fruit",
@@ -647,8 +580,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "plum",
@@ -668,8 +600,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "plum-fruit",
@@ -689,8 +620,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "persimmon",
@@ -710,8 +640,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "persimmon-fruit",
@@ -731,8 +660,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "sweet-persimmon",
@@ -752,29 +680,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
-    },
-    {
-      "id": "sweet-persimmon-fruit",
-      "group": "ui",
-      "out": "sweet-persimmon-fruit.webp",
-      "gen": [
-        512,
-        512
-      ],
-      "final": [
-        160,
-        160
-      ],
-      "prompt": "A single flat round ripe orange sweet persimmon with a green calyx cap, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
-      "seed": 13265,
-      "bg": "rembg",
-      "candidates": 1,
-      "anchor": null,
-      "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "jujube",
@@ -794,8 +700,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "jujube-fruit",
@@ -815,8 +720,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "blueberry",
@@ -836,8 +740,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "blueberry-fruit",
@@ -857,8 +760,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "maesil",
@@ -878,8 +780,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "maesil-fruit",
@@ -899,8 +800,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "fig",
@@ -920,29 +820,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
-    },
-    {
-      "id": "fig-fruit",
-      "group": "ui",
-      "out": "fig-fruit.webp",
-      "gen": [
-        512,
-        512
-      ],
-      "final": [
-        160,
-        160
-      ],
-      "prompt": "A single ripe purple fig fruit, teardrop shaped, with a tiny stem, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
-      "seed": 13305,
-      "bg": "rembg",
-      "candidates": 1,
-      "anchor": null,
-      "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "nanking-cherry",
@@ -962,8 +840,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "nanking-cherry-fruit",
@@ -983,8 +860,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "cherry",
@@ -1004,8 +880,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "cherry-fruit",
@@ -1025,8 +900,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "apricot",
@@ -1046,8 +920,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "apricot-fruit",
@@ -1067,8 +940,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "hardy-kiwi",
@@ -1088,8 +960,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "hardy-kiwi-fruit",
@@ -1109,8 +980,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null,
-      "batch": 2
+      "pick": null
     },
     {
       "id": "chestnut",
@@ -1130,8 +1000,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "chestnut-fruit",
@@ -1151,8 +1020,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "sunflower",
@@ -1172,8 +1040,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "cosmos",
@@ -1193,8 +1060,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "marigold",
@@ -1214,8 +1080,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "zinnia",
@@ -1235,8 +1100,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "balsam",
@@ -1256,8 +1120,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "portulaca",
@@ -1277,8 +1140,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "mum",
@@ -1298,8 +1160,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "hydrangea",
@@ -1319,8 +1180,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "rose",
@@ -1340,8 +1200,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "lavender",
@@ -1361,8 +1220,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "tulip",
@@ -1382,8 +1240,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "daffodil",
@@ -1403,8 +1260,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "lily",
@@ -1424,8 +1280,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "celosia",
@@ -1445,8 +1300,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "morning-glory",
@@ -1466,8 +1320,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "mugunghwa",
@@ -1487,8 +1340,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
     },
     {
       "id": "azalea",
@@ -1508,8 +1360,47 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": 1,
-      "batch": 1
+      "pick": 1
+    },
+    {
+      "id": "kiwi",
+      "group": "ui",
+      "out": "kiwi.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young kiwifruit vine with fuzzy reddish brown stems and large round green clay leaves climbing a small wooden trellis, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 15250,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null
+    },
+    {
+      "id": "jindallae",
+      "group": "ui",
+      "out": "jindallae.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A rounded Korean azalea (jindallae) shrub in early spring full bloom, covered with soft magenta-pink flowers on thin brown branches before the leaves come out, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 15420,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": null
     }
   ]
 }

@@ -151,7 +151,14 @@ await as(ADM, `select public.garden_admin_set_land_prices('woonpyung', 10, 100)`
 
 // 7) 꽃집: 사기 → 가방 → 심기 → 수확 시기
 let sh = await as(U1, `select public.garden_shop('woonpyung')`);
-ok('shop list', sh.ok && sh.items.length === 4 && near(sh.balance, B2), sh.items && sh.items.length);
+ok('shop list', sh.ok && sh.items.length === 48 && sh.items.some((i) => i.slug === 't-tomato') && near(sh.balance, B2), sh.items && sh.items.length);
+// 실제 품목: 44개, 값(먹거리 5·묘목 50·꽃 20), 안 맞음 3개, 모두 출처, 파는 것은 심는 달·자람 값
+const real = sh.items.filter((i) => !i.slug.startsWith('t-'));
+const priceOk = real.every((i) => +i.price === { food: 5, tree: 50, flower: 20 }[i.category]);
+const modelOk = real.filter((i) => i.fit !== 'no').every((i) => i.model.plant_months && i.model.plant_months.length &&
+  (i.category === 'tree' ? i.model.years_to_fruit && i.model.harvest_months : i.category === 'food' ? i.model.first_days && i.model.per_day : i.model.bloom_months));
+ok('real items 44 · prices · unfit 3 · sources · models', real.length === 44 && priceOk && real.filter((i) => i.fit === 'no').length === 3 && real.every((i) => i.specs.src) && modelOk,
+  { n: real.length, priceOk, no: real.filter((i) => i.fit === 'no').map((i) => i.slug), modelOk });
 let by = await as(U1, `select public.garden_shop_buy('woonpyung', 't-olive', 1)`);
 ok('unfit not sold', !by.ok && by.why === 'unfit', by);
 by = await as(U1, `select public.garden_shop_buy('woonpyung', 't-tomato', 2)`);
@@ -209,6 +216,12 @@ let ip = await as(U1, `select public.garden_admin_set_item_price('woonpyung', 't
 ok('non-admin item price', !ip.ok && ip.why === 'admin', ip);
 ip = await as(ADM, `select public.garden_admin_set_item_price('woonpyung', 't-rose', 25)`);
 ok('admin item price', ip.ok && near(ip.price, 25), ip);
+
+// 7-1) 마이그레이션을 다시 실행해도 안전 — 관리자가 바꾼 품목 값은 그대로
+await as(ADM, `select public.garden_admin_set_item_price('woonpyung', 'apple', 45)`);
+await db.exec(sql3);
+const apRow = await pg(`select price from public.garden_shop_items where slug = 'apple'`);
+ok('rerun keeps admin price', +apRow[0].price === 45, apRow);
 
 // 8) 잔액 = 장부 합, 권한
 s = await as(U1, `select public.garden_sync('woonpyung')`);
