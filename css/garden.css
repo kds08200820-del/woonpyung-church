@@ -394,7 +394,9 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
    ============================================================ */
 @media (max-width: 760px) {
   :root { --g-bar: 66px; }
-  .g-root { display: block; padding: 0 0 calc(var(--g-bar) + env(safe-area-inset-bottom, 0px) + 18px); }
+  /* 폰: 장면 → 달란트·할 일(레일) → 서재 (2026-10-23 담임목사 지시: 서재는 아래로) */
+  .g-root { display: flex; flex-direction: column; padding: 0 0 calc(var(--g-bar) + env(safe-area-inset-bottom, 0px) + 18px); }
+  .g-scene { order: 0; } .g-rail { order: 1; } .g-study { order: 2; }
   .g-scene { position: relative; height: 56dvh; min-height: 320px; top: auto; left: auto; right: auto; border-radius: 0 0 26px 26px; }
   .g-panel { margin: 12px 14px 0; padding: 16px 16px 18px; }
   .g-banner { top: calc(var(--g-hdr) + 6px); left: 12px; right: 12px; transform: none; max-width: none; justify-content: space-between; font-size: .86rem; }
