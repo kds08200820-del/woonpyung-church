@@ -22,8 +22,6 @@ window.KLOGOS_SERVICES = [
     img: 'modu/icon-192.png', imgKind: 'icon',
     desc: '개역개정 성경, 역본 대조, 원어 낱말 사전, 주석, 성경 지도, 찬송가와 교독문.',
     cta: '열기'
-  },
-  { id: 'qt', name: '큐티', status: 'soon', tag: '준비 중', who: '누구나', desc: '날마다 말씀을 읽고 묵상합니다. 운평장로교회 정회원이 아닌 분께도 열 예정입니다.' },
-  { id: 'lecture', name: '신앙 강좌', status: 'soon', tag: '준비 중', who: '누구나', desc: '성경과 신앙생활을 주제별로 차례차례 배우는 강좌입니다.' },
-  { id: 'doctrine', name: '교리 강좌', status: 'soon', tag: '준비 중', who: '누구나', desc: '하이델베르크 교리문답과 웨스트민스터 신앙고백을 함께 공부합니다.' }
+  }
+  // 큐티·신앙 강좌·교리 강좌 '준비 중' 상자는 2026-10-23 담임목사 지시로 첫 화면에서 뺐다 — 열 때 status 'open' 으로 다시 더한다
 ];
