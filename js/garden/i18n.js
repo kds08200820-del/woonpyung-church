@@ -163,6 +163,8 @@ window.GardenI18n = (function () {
     'visit.err': '잠시 뒤 다시 해 주세요.',
     'visit.why.self': '내 정원에는 이웃 신청을 할 수 없습니다.',
     'nb.title': '이웃',
+    'nb.family': '가족',
+    'nb.state.family': '가족입니다 — 신청 없이 서로 이웃입니다',
     'gift.open': '선물',
     'gift.title': '{name}님께 달란트 선물',
     'gift.amount': '보낼 달란트',

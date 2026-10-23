@@ -903,3 +903,5 @@ button.g-chip-wx:focus-visible { outline: 3px solid var(--g-coral-ring); outline
   .gw-day { grid-template-columns: 52px 30px 1fr auto; grid-template-areas: "d ic k t" "d ic r r" "d ic w w" "warn warn warn warn"; }
   .gw-ic { width: 30px; height: 30px; }
 }
+/* 부부(가족) 이웃 */
+.gv-fam { margin-left: 4px; padding: 1px 7px; border-radius: 6px; background: var(--g-mint); color: var(--g-sage-ink); font-size: .7rem; font-weight: 800; vertical-align: 1px; }

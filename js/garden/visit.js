@@ -132,7 +132,7 @@ window.GardenVisit = (function () {
   function nbRow(n, acts) {
     var src = avatarSrc(n.avatar_key, n.avatar_url);
     return '<li class="gv-nbi" data-id="' + esc(n.id) + '" data-plot="' + esc(n.plot_no) + '"><span class="gv-av">' + (src ? '<img alt="" src="' + esc(src) + '">' : '') + '</span>' +
-      '<span class="gv-nbt"><b>' + esc(n.nickname) + '</b>' + (n.species ? '<small>' + esc(plantLabel(n).text) + '</small>' : '') + '</span><span class="gv-nba">' + acts + '</span></li>';
+      '<span class="gv-nbt"><b>' + esc(n.nickname) + (n.family ? ' <span class="gv-fam">' + esc(t('nb.family')) + '</span>' : '') + '</b>' + (n.species ? '<small>' + esc(plantLabel(n).text) + '</small>' : '') + '</span><span class="gv-nba">' + acts + '</span></li>';
   }
   function drawNeighbors(r) {
     var box = $('gvNb'), inc = r.incoming || [], nb = r.neighbors || [], out = r.outgoing || [], h = '';
@@ -144,7 +144,7 @@ window.GardenVisit = (function () {
     h += nb.length ? '<ul class="gv-nbl">' + nb.map(function (n) {
       return nbRow(n, '<button type="button" class="g-btn g-btn-line gv-nb-b" data-act="go">' + esc(t('nb.go')) + '</button>' +
         (SDK.gift ? '<button type="button" class="g-btn g-btn-line gv-nb-b" data-act="gift">' + esc(t('gift.open')) + '</button>' : '') +
-        '<button type="button" class="gv-hide" data-act="cut">' + esc(t('nb.cut')) + '</button>');
+        (n.family ? '' : '<button type="button" class="gv-hide" data-act="cut">' + esc(t('nb.cut')) + '</button>'));   // 부부(가족)는 끊기 없음
     }).join('') + '</ul>' : '<p class="g-empty">' + esc(t('nb.none')) + '</p>';
     if (out.length) h += '<h4 class="gv-nbh">' + esc(t('nb.outgoing')) + '</h4><ul class="gv-nbl">' + out.map(function (n) {
       return nbRow(n, '<button type="button" class="gv-hide" data-act="cancel">' + esc(t('nb.cancel')) + '</button>');
@@ -263,7 +263,7 @@ window.GardenVisit = (function () {
       nb = x; if (!x || !SDK.neighborRequest) { nbBar.hidden = true; return; }
       var st = x.status || 'none';
       nbBar.hidden = false; nbBtn.disabled = false; nbBtn.classList.remove('is-arm');
-      nbText.textContent = t('nb.state.' + st);
+      nbText.textContent = t(x.family ? 'nb.state.family' : 'nb.state.' + st);
       nbBtn.hidden = st === 'neighbor';
       giftBtn.hidden = st !== 'neighbor' || !SDK.gift; giftBtn.textContent = t('gift.open');
       nbBtn.textContent = t(st === 'sent' ? 'nb.cancel' : st === 'received' ? 'nb.accept' : 'nb.request');

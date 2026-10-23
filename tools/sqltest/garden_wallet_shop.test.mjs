@@ -79,7 +79,8 @@ await db.exec(fs.readFileSync(path.join(ROOT, 'supabase/20261023_1200_garden_pha
 await db.exec(fs.readFileSync(path.join(ROOT, 'supabase/20261023_1300_garden_farm.sql'), 'utf8'));
 const sql3 = fs.readFileSync(path.join(ROOT, 'supabase/20261023_1500_garden_wallet_shop.sql'), 'utf8')
   + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_1900_garden_hearts.sql'), 'utf8')   // 하트 고침(1900)은 1500 뒤에 늘 함께
-  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_2100_garden_visits.sql'), 'utf8');   // 초대·방문·방명록
+  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_2100_garden_visits.sql'), 'utf8')   // 초대·방문·방명록
+  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_2330_garden_region.sql'), 'utf8');   // 부부는 서로 이웃(2100 뒤에 늘 함께)
 await db.exec(sql3);
 await db.exec(sql3);
 ok('rerun safe', true);
@@ -414,6 +415,44 @@ await pg(`update public.garden_memberships set status = 'active' where church_id
 ok('owner update → still once', (await sg(KID, NEWC)).n === 1);
 await pg(`update public.profiles set role = '집사' where id = '${OUT}'`);
 ok('role change keeps grant row (no delete)', (await sg(OUT)).n === 1);
+
+// 7-9) 부부는 서로 이웃(가족) — 교적 배우자 연결로, 신청·수락 없이
+const nbOf = async (u2) => (await as(u2, `select public.garden_neighbor_list('woonpyung')`));
+const PA = (await as(ADM, `select public.garden_visit_list('woonpyung')`)).me.plot_no;
+ok('before: U1·ADM not neighbors', !(await nbOf(U1)).neighbors.some((n) => n.plot_no === PA));
+await pg(`insert into public.member_links (user_id, member_key, spouse_key) values ('${ADM}', '테스트_배우자|19820202', '테스트_성도|19800101') on conflict (user_id) do update set member_key = excluded.member_key, spouse_key = excluded.spouse_key`);
+let fam = await nbOf(U1);
+const famRow = fam.neighbors.find((n) => n.plot_no === PA);
+ok('spouse listed as family neighbor first', famRow && famRow.family === true && famRow.id === null && fam.neighbors[0].family === true, fam.neighbors);
+ok('spouse side sees it too', (await nbOf(ADM)).neighbors.some((n) => n.plot_no === P1 && n.family));
+let fv = await as(ADM, `select public.garden_visit_view('woonpyung', ${P1})`);
+ok('spouse visits closed garden, status neighbor·family', fv.ok && fv.neighbor.status === 'neighbor' && fv.neighbor.family === true, fv && fv.neighbor);
+ok('spouse garden in visit list', (await as(ADM, `select public.garden_visit_list('woonpyung')`)).gardens.some((g) => g.plot_no === P1 && g.neighbor));
+ok('request to spouse → already neighbor, no new row', (await as(ADM, `select public.garden_neighbor_request('woonpyung', ${P1})`)).neighbor.family === true);
+ok('spouse request made no pending row', !(await nbOf(U1)).incoming.some((n) => n.plot_no === PA));
+
+// 7-10) 내 지역(교적 주소에서 시·도/시·군·구/읍·면·동만, 본인 것만 — 20261023_2330)
+await pg(`alter table public.gyojeok add column if not exists address text`);
+await pg(`insert into public.gyojeok (member_key, name, head, address) values ('테스트_배우자|19820202', '테스트_배우자', '', '')`);
+const setAddr = (k, a) => pg(`update public.gyojeok set address = '${a}' where member_key = '${k}'`);
+const myReg = (u2) => as(u2, `select public.garden_my_region()`);
+await setAddr('테스트_성도|19800101', '경기도 화성시 우정읍 쌍봉로 123, 101동 202호');
+let rg = await myReg(U1);
+ok('region: 경기도 화성시 우정읍', rg.ok && rg.sido === '경기도' && rg.sigungu === '화성시' && rg.dong === '우정읍', rg);
+ok('region: no street/number/name leaked', !/쌍봉로|123|101동|테스트/.test(JSON.stringify(rg)), rg);
+rg = await myReg(ADM);
+ok('region: own address empty → spouse row', rg.ok && rg.dong === '우정읍', rg);
+ok('region: no address → none', (await myReg(KID)).why === 'none');
+ok('region: no link → none', (await myReg(OUT)).why === 'none');
+ok('region: anon refused', !!(await asErr(null, `select public.garden_my_region()`)));
+for (const [addr, sido, sgg, dong] of [['경기 수원시 팔달구 행궁동 정조로 825', '경기', '수원시 팔달구', '행궁동'], ['서울특별시 강남구 역삼동 테헤란로 152', '서울특별시', '강남구', '역삼동'],
+    ['충남 아산시 배방읍 (북수리) 배방로 10', '충남', '아산시', '배방읍'], ['화성시 남양읍 시청로 159', null, '화성시', '남양읍']]) {
+  await setAddr('테스트_성도|19800101', addr);
+  rg = await myReg(U1);
+  ok('region parse: ' + addr, rg.ok && rg.sido === sido && rg.sigungu === sgg && rg.dong === dong, rg);
+}
+await setAddr('테스트_성도|19800101', '123번지');
+ok('region parse fail → parse', (await myReg(U1)).why === 'parse');
 
 // 7-1) 마이그레이션을 다시 실행해도 안전 — 관리자가 바꾼 품목 값은 그대로
 await as(ADM, `select public.garden_admin_set_item_price('woonpyung', 'apple', 45)`);
