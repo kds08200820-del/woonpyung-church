@@ -1,13 +1,16 @@
 /* ============================================================
    신앙 정원 — 나의 정원에 들어가기 (입체)
-   2026-10-23 담임목사: "정원을 크게 입체적으로 볼 수 있어야 합니다", "모바일은 전체 화면이 되게"
-   · 도서관 프로그램 '정원 가꾸기'와 같은 2.5D 클레이: 땅·빛·그림자·바람·비·눈은 three.js 3D,
-     나무·꽃·작물·인물·먼 언덕·구름은 정원과 같은 클레이 그림 판(늘 보는 쪽으로 돈다). 코드로 그린 나무는 쓰지 않는다
+   2026-10-23 담임목사: "정원을 크게 입체적으로 볼 수 있어야", "모바일은 전체 화면이 되게",
+     "이런 식으로 보여야 합니다. 확대 축소 해서 볼 수 있어야" (농장 게임처럼 땅 전체를 마름모로 내려다보는 그림)
+   · 보기: 내 땅 전체(산 칸 + 앞으로 살 수 있는 칸)를 도톰한 잔디 판으로 놓고 남동쪽 위에서 마름모로 내려다본다.
+     끌면 옮겨 보고, 휠·두 손가락으로 확대·축소(가까울수록 눈높이로 내려온다), 돌리기 단추·오른쪽 끌기·두 손가락 비틀기로 돈다
+   · 2.5D 클레이(도서관 프로그램 '정원 가꾸기'와 같은 방식): 땅·빛·그림자·바람·비·눈은 three.js 3D,
+     나무·꽃·작물·인물은 정원과 같은 클레이 그림 판(늘 보는 쪽으로 돈다). 코드로 그린 나무는 쓰지 않는다
    · 해: 교회 자리의 지금 해 방위·고도 → 빛 방향과 그림자 길이. 해가 지면 달빛과 별
-   · 칸: '내 땅' 마름모 창과 같은 칸(가운데 0,0 = 믿음 나무). 전은 흙 무늬, 대지는 대지 무늬
+   · 거둘 때가 된 작물·열매 나무 위에는 열매 말풍선 — 누르면 거두러 간다(o.onBubble)
    · 그리기만 한다: 자료는 여는 쪽(main.js)이 넘긴다. 받는 것은 three.js 와 그림뿐
-   Garden3D.open({ title, sub, place, plant:{src,name}, character:{src,name}, tiles:[{x,y,land,src,h,dead,name}] | Promise,
-                   lat, lng, wx:{code,temp,wind,isDay}, art:{hills,clouds,soil,dae}, t(key,vars), reduce, opener, onClose })
+   Garden3D.open({ title, sub, place, plant:{src,name,bubble}, character:{src,name}, land:{tiles:[{x,y,land,src,h,dead,name,bubble}], max} | Promise,
+                   lat, lng, wx:{code,temp,wind}, art:{hills,clouds,soil,dae}, t(key,vars), reduce, opener, onBubble(kind), onClose })
    ============================================================ */
 window.Garden3D = (function () {
   'use strict';
@@ -16,7 +19,7 @@ window.Garden3D = (function () {
     'https://unpkg.com/three@0.160.0/build/three.module.min.js'
   ];
   var TS = 2.2;                 // 칸 한 변(m)
-  var HILL_R = 45;              // 먼 언덕 둘레 반지름(m)
+  var HILL_R = 90;              // 먼 언덕 둘레 반지름(m)
   var T = null, CUR = null, OK = null;
 
   function loadThree() {
@@ -73,15 +76,6 @@ window.Garden3D = (function () {
     if (r < 0) return { l: 0, r: 1, t: 0, b: 1 };
     return { l: l / n, r: (r + 1) / n, t: tp / n, b: (b + 1) / n };
   }
-  function avgColor(im, y0, y1) {   // 그림 한 띠(위에서 y0~y1, 0~1)의 평균 색
-    var c = document.createElement('canvas'); c.width = 16; c.height = 2;
-    var g = c.getContext('2d', { willReadFrequently: true });
-    g.drawImage(im, 0, im.height * y0, im.width, Math.max(1, im.height * (y1 - y0)), 0, 0, 16, 2);
-    var d, r = 0, gg = 0, b = 0, n = 0;
-    try { d = g.getImageData(0, 0, 16, 2).data; } catch (e) { return null; }
-    for (var i = 0; i < d.length; i += 4) { if (d[i + 3] < 128) continue; r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++; }
-    return n ? [r / n / 255, gg / n / 255, b / n / 255] : null;
-  }
 
   function open(o) {
     if (CUR) return CUR;
@@ -92,15 +86,18 @@ window.Garden3D = (function () {
     var phone = false; try { phone = matchMedia('(max-width: 760px)').matches; } catch (e) { }
 
     /* ── 화면 ── */
-    var canvas = h('canvas', { class: 'g3d-cv', 'aria-label': t('g3d.canvas') });
+    var canvas = h('canvas', { class: 'g3d-cv', tabindex: '0', 'aria-label': t('g3d.canvas') });
     var load = h('div', { class: 'g3d-load', role: 'status', text: t('g3d.loading') });
     var wxLine = h('div', { class: 'g3d-wx', hidden: '' });
     var hint = h('div', { class: 'g3d-hint', text: t(touch ? 'g3d.hint.touch' : 'g3d.hint') });
     var tip = h('div', { class: 'g3d-tip', role: 'status', 'aria-live': 'polite', hidden: '' });
+    function ctl(key, txt) { return h('button', { type: 'button', class: 'g3d-ctl-b', 'aria-label': t(key), title: t(key), text: txt }); }
+    var zIn = ctl('g3d.zoomIn', '+'), zOut = ctl('g3d.zoomOut', '−'), rL = ctl('g3d.rotL', '↺'), rR = ctl('g3d.rotR', '↻');
+    var ctls = h('div', { class: 'g3d-ctl' }, [zIn, zOut, rL, rR]);
     var fullBtn = (document.fullscreenEnabled && !phone) ? h('button', { type: 'button', class: 'g3d-btn', text: t('g3d.full') }) : null;
     var resetBtn = h('button', { type: 'button', class: 'g3d-btn', text: t('g3d.reset') });
     var closeBtn = h('button', { type: 'button', class: 'g3d-btn g3d-btn-close', text: t('g3d.close') });
-    var stage = h('div', { class: 'g3d-stage' }, [canvas, load, wxLine, hint, tip]);
+    var stage = h('div', { class: 'g3d-stage' }, [canvas, load, wxLine, hint, tip, ctls]);
     var root = h('div', { class: 'g3d' + (phone ? ' is-phone' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || t('g3d.title') }, [
       h('header', { class: 'g3d-top' }, [h('b', { class: 'g3d-title', text: o.title || t('g3d.title') }), o.sub ? h('span', { class: 'g3d-sub', text: o.sub }) : null, h('span', { class: 'g3d-grow' }), resetBtn, fullBtn, closeBtn]),
       stage
@@ -121,7 +118,10 @@ window.Garden3D = (function () {
       else root.requestFullscreen().catch(function () { });
     };
     closeBtn.onclick = function () { close(); };
-    function onKey(e) { if (e.key === 'Escape' && !document.fullscreenElement) close(); }
+    function onKey(e) {
+      if (e.key === 'Escape' && !document.fullscreenElement) { close(); return; }
+      if (R && R.key && !e.altKey && !e.ctrlKey && !e.metaKey && R.key(e.key)) e.preventDefault();
+    }
     document.addEventListener('keydown', onKey);
     function onPop() { pushed = false; close(true); }
     window.addEventListener('popstate', onPop);
@@ -154,14 +154,14 @@ window.Garden3D = (function () {
     }
     var ro = null;
     if (window.ResizeObserver) { ro = new ResizeObserver(onResize); ro.observe(stage); } else window.addEventListener('resize', onResize);
-    function onVis() { if (!document.hidden && R && !raf) raf = requestAnimationFrame(R.tick); }
+    function onVis() { if (!document.hidden && R && R.tick && !raf) raf = requestAnimationFrame(R.tick); }
     document.addEventListener('visibilitychange', onVis);
 
     var art = o.art || {};
-    Promise.all([loadThree(), loadImage(art.hills), loadImage(art.clouds), null, loadImage(art.soil), loadImage(art.dae), loadImage(o.plant && o.plant.src), loadImage(o.character && o.character.src)])
+    Promise.all([loadThree(), loadImage(art.hills), loadImage(art.clouds), loadImage(art.soil), loadImage(art.dae), loadImage(o.plant && o.plant.src), loadImage(o.character && o.character.src)])
       .then(function (rs) {
         if (dead) return;
-        try { build({ hills: rs[1], clouds: rs[2], soil: rs[4], dae: rs[5], plant: rs[6], character: rs[7] }); }
+        try { build({ hills: rs[1], clouds: rs[2], soil: rs[3], dae: rs[4], plant: rs[5], character: rs[6] }); }
         catch (e) { load.textContent = t('g3d.fail'); return; }
         load.remove();
       }, function () { if (!dead) load.textContent = t('g3d.fail'); });
@@ -174,12 +174,11 @@ window.Garden3D = (function () {
       var cloud = { clear: 0.12, cloudy: 0.72, fog: 0.8, rain: 0.95, snow: 0.85 }[kind];
       var wind = clamp((+wx.wind || 6) / 30, 0, 1.3);
 
-      var hillCol = (img.hills && avgColor(img.hills, 0.83, 0.93)) || [0.8, 0.84, 0.5];
       var renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: 'high-performance' });
       renderer.setPixelRatio(Math.min(phone ? 1.75 : 2, window.devicePixelRatio || 1));
       renderer.outputColorSpace = T.SRGBColorSpace;
       renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
-      var scene = new T.Scene(), camera = new T.PerspectiveCamera(46, 1, 0.1, 400);
+      var scene = new T.Scene(), camera = new T.PerspectiveCamera(32, 1, 0.1, 500);
       R = { renderer: renderer, scene: scene, camera: camera };
       onResize();
 
@@ -190,13 +189,13 @@ window.Garden3D = (function () {
         return tx;
       }
 
-      // 하늘: 해 고도·구름양으로 색(낮 파랑 → 노을 → 밤)
+      // 하늘: 해 고도·구름양으로 색(낮 파랑 → 노을 → 밤). 멀리 물러나면 땅 끝 너머로 보인다
       var dusk = clamp(1 - Math.abs(sun.alt - 2) / 10, 0, 1);
       var zen = new T.Color().setRGB(mix(0.05, 0.36, day), mix(0.09, 0.62, day), mix(0.2, 0.86, day));
       var hor = new T.Color().setRGB(mix(0.16, 0.82, day), mix(0.2, 0.9, day), mix(0.32, 0.96, day)).lerp(new T.Color(0.98, 0.72, 0.52), dusk * 0.7);
       var grey = new T.Color(0.72, 0.74, 0.78).multiplyScalar(mix(0.25, 1, day));
       zen.lerp(grey, cloud * 0.7); hor.lerp(grey, cloud * 0.6);
-      var sky = new T.Mesh(new T.SphereGeometry(190, 32, 16), new T.ShaderMaterial({
+      var sky = new T.Mesh(new T.SphereGeometry(300, 32, 16), new T.ShaderMaterial({
         side: T.BackSide, depthWrite: false, uniforms: { zen: { value: zen }, hor: { value: hor } },
         vertexShader: 'varying vec3 vp; void main(){ vp = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
         fragmentShader: 'uniform vec3 zen; uniform vec3 hor; varying vec3 vp; void main(){ float k = clamp(vp.y*1.5, 0.0, 1.0); gl_FragColor = vec4(mix(hor, zen, pow(k, 0.7)), 1.0); }'
@@ -204,12 +203,12 @@ window.Garden3D = (function () {
       sky.renderOrder = -3; scene.add(sky);
       // 안개 색은 하늘 지평선과 같게(하늘은 색 변환 없이 그리므로 안개 쪽을 거꾸로 맞춘다)
       var fogCol = hor.clone().convertSRGBToLinear();
-      scene.fog = kind === 'fog' ? new T.Fog(fogCol, 6, 48) : new T.Fog(fogCol, 34, 170);
+      scene.fog = kind === 'fog' ? new T.Fog(fogCol, 25, 110) : new T.Fog(fogCol, 80, 280);
       // 별: 해가 지고 하늘이 개면
       var nightK = clamp((-sun.alt - 4) / 8, 0, 1) * (1 - cloud);
       if (nightK > 0.05) {
         var sp = new Float32Array(700 * 3);
-        for (var s = 0; s < 700; s++) { var th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 0.92 + 0.08); sp.set([Math.sin(ph) * Math.cos(th) * 170, Math.cos(ph) * 170, Math.sin(ph) * Math.sin(th) * 170], s * 3); }
+        for (var s = 0; s < 700; s++) { var th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 0.92 + 0.08); sp.set([Math.sin(ph) * Math.cos(th) * 280, Math.cos(ph) * 280, Math.sin(ph) * Math.sin(th) * 280], s * 3); }
         var sg = new T.BufferGeometry(); sg.setAttribute('position', new T.BufferAttribute(sp, 3));
         var stars = new T.Points(sg, new T.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85 * nightK, fog: false, depthWrite: false }));
         stars.renderOrder = -2; scene.add(stars);
@@ -221,14 +220,15 @@ window.Garden3D = (function () {
       var warm = clamp(sun.alt / 25, 0, 1);
       var sl = new T.DirectionalLight(new T.Color(1, mix(0.78, 0.97, warm), mix(0.62, 0.92, warm)), sunUp ? clamp(Math.sin(alt) * 2.6 + 0.4, 0.4, 2.4) * (1 - cloud * 0.55) : 0);
       if (!sunUp) { sl.color.setRGB(0.62, 0.7, 0.92); sl.intensity = 0.45; sunDir.set(-0.4, 0.75, -0.5).normalize(); }
-      sl.position.copy(sunDir.clone().multiplyScalar(50)); sl.target.position.set(0, 0, 0);
+      sl.position.copy(sunDir.clone().multiplyScalar(60)); sl.target.position.set(0, 0, 0);
       sl.castShadow = true; sl.shadow.mapSize.set(phone ? 1024 : 2048, phone ? 1024 : 2048);
       sl.shadow.bias = -0.0006; sl.shadow.normalBias = 0.02; sl.shadow.radius = 3;
+      var sc0 = sl.shadow.camera; sc0.near = 1; sc0.far = 160;
       scene.add(sl, sl.target);
       scene.add(new T.HemisphereLight(hor.clone().lerp(new T.Color(1, 1, 1), 0.35), new T.Color(0.42, 0.38, 0.3), mix(0.35, 1.0, day)));
       scene.add(new T.AmbientLight(0xffffff, mix(0.18, 0.12, day)));
 
-      // 먼 언덕: 정원 언덕 그림의 먼 산 부분(왼쪽 큰 나무를 뺀 오른쪽 75%, 위 58%)을 둘레 원통 안쪽에 여섯 번, 거울로 이어 이음매가 없다
+      // 먼 언덕(땅 끝 너머): 정원 언덕 그림의 먼 산 부분(큰 나무를 뺀 오른쪽 75%, 위 58%)을 둘레에 여섯 번, 거울로 이어 이음매가 없다
       if (img.hills) {
         var hc2 = document.createElement('canvas'), hw = Math.round(img.hills.width * 0.75), hh2 = Math.round(img.hills.height * 0.58);
         hc2.width = hw; hc2.height = hh2; hc2.getContext('2d').drawImage(img.hills, img.hills.width - hw, 0, hw, hh2, 0, 0, hw, hh2);
@@ -236,38 +236,41 @@ window.Garden3D = (function () {
         htx.wrapS = T.MirroredRepeatWrapping; htx.repeat.set(-6, 1); htx.offset.set(4.25, 0); htx.needsUpdate = true;
         var BH = HILL_R * (Math.PI / 3) * hh2 / hw;
         var hills = new T.Mesh(new T.CylinderGeometry(HILL_R, HILL_R, BH, 128, 1, true), new T.MeshBasicMaterial({ map: htx, transparent: true, side: T.BackSide, depthWrite: false }));
-        hills.position.y = BH / 2 - 0.4; hills.renderOrder = -1;
+        hills.position.y = BH / 2 - 1.2; hills.renderOrder = -1;
         hills.material.color.setScalar(mix(0.38, 1, day) * (1 - cloud * 0.12));
         scene.add(hills);
       }
-      // 구름: 정원 구름 그림 띠, 바람 따라 천천히 돈다
       var clouds = null;
       if (img.clouds) {
         var ctx2 = tex(img.clouds); ctx2.wrapS = T.MirroredRepeatWrapping; ctx2.repeat.set(-4, 1); ctx2.offset.set(3, 0); ctx2.needsUpdate = true;
-        var CR = 100, CH = CR * (Math.PI / 2) / 3 * 0.6;   // 조금 납작하게 — 먼 언덕 바로 위로 떠 간다
+        var CR = 200, CH = CR * (Math.PI / 2) / 3 * 0.6;
         clouds = new T.Mesh(new T.CylinderGeometry(CR, CR, CH, 96, 1, true), new T.MeshBasicMaterial({ map: ctx2, transparent: true, side: T.BackSide, depthWrite: false, fog: false, opacity: (kind === 'clear' ? 0.75 : 0.95) * mix(0.25, 1, day) }));
-        clouds.position.y = CH / 2 - 2; clouds.renderOrder = -2;
+        clouds.position.y = CH / 2 - 4; clouds.renderOrder = -2;
         clouds.material.color.setScalar(mix(0.35, 1, day)).lerp(new T.Color(0.7, 0.72, 0.76), cloud * 0.5);
         scene.add(clouds);
       }
 
-      // 땅: 언덕 그림 앞쪽 잔디(그림 아래 83~93%, 왼쪽 40%)를 떼어 거울로 이어 깐다 → 먼 언덕과 같은 점토 잔디
+      // 잔디: 언덕 그림 앞쪽 잔디(아래 83~93%, 왼쪽 40%)를 떼어 거울로 이어 깐다 → 정원 장면과 같은 점토 잔디
       var wet = (kind === 'rain') ? 1 : 0, snowK = kind === 'snow' ? 0.7 : 0;
       function tint(c) { return c.multiplyScalar(1 - wet * 0.2).lerp(new T.Color(0.95, 0.96, 1), snowK); }
-      var groundMat = new T.MeshStandardMaterial({ roughness: 1, emissive: new T.Color(1, 1, 1), emissiveIntensity: 0.05 + 0.22 * day });   // 먼 언덕(빛 없이 그린 그림)과 밝기를 맞춘다
+      var lawnCv = null;
       if (img.hills) {
-        var lc = document.createElement('canvas'); lc.width = 256; lc.height = 128;
-        lc.getContext('2d').drawImage(img.hills, 0, img.hills.height * 0.83, img.hills.width * 0.4, img.hills.height * 0.1, 0, 0, 256, 128);
-        var ltx = new T.CanvasTexture(lc); ltx.colorSpace = T.SRGBColorSpace; ltx.wrapS = ltx.wrapT = T.MirroredRepeatWrapping;
-        ltx.repeat.set((HILL_R + 2) * 2 / 7, (HILL_R + 2) * 2 / 3.5); ltx.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-        groundMat.map = ltx; groundMat.emissiveMap = ltx;
-      } else groundMat.color.setRGB(hillCol[0], hillCol[1], hillCol[2], T.SRGBColorSpace);
-      tint(groundMat.color);
-      var ground = new T.Mesh(new T.CircleGeometry(HILL_R + 2, 96), groundMat);
-      ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+        lawnCv = document.createElement('canvas'); lawnCv.width = 256; lawnCv.height = 128;
+        lawnCv.getContext('2d').drawImage(img.hills, 0, img.hills.height * 0.83, img.hills.width * 0.4, img.hills.height * 0.1, 0, 0, 256, 128);
+      }
+      function lawnMat(rep, color, glow) {
+        var m = new T.MeshStandardMaterial({ roughness: 1, color: color, emissive: new T.Color(1, 1, 1), emissiveIntensity: glow * (0.25 + 0.75 * day) });
+        if (lawnCv) { var lt = new T.CanvasTexture(lawnCv); lt.colorSpace = T.SRGBColorSpace; lt.wrapS = lt.wrapT = T.MirroredRepeatWrapping; lt.repeat.set(rep, rep * 2); lt.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); m.map = lt; m.emissiveMap = lt; }
+        else m.color.multiply(new T.Color(0.8, 0.84, 0.5));
+        tint(m.color);
+        return m;
+      }
+      // 바깥 땅: 내 땅보다 짙은 풀색 (게임 그림처럼 판이 또렷하게)
+      var outer = new T.Mesh(new T.CircleGeometry(HILL_R + 2, 96), lawnMat((HILL_R + 2) / 4, new T.Color(0.5, 0.64, 0.4), 0.12));
+      outer.rotation.x = -Math.PI / 2; outer.position.y = -0.7; outer.receiveShadow = true; scene.add(outer);
 
       // 그림 판(나무·꽃·작물·인물): 보이는 판은 늘 카메라 쪽, 그림자 판은 늘 해 쪽 → 어느 쪽에서 봐도 그림자가 온전하다
-      var items = [], shadowYaw = Math.atan2(sunDir.x, sunDir.z), plantGroup = new T.Group(); scene.add(plantGroup);
+      var items = [], bubbles = [], shadowYaw = Math.atan2(sunDir.x, sunDir.z), plantGroup = new T.Group(); scene.add(plantGroup);
       function sprite(im, s) {
         // s: { x, z, y, h: 모양 높이(m) | size: 그림 높이(m), center, stiff, dead, name }
         var bb = bbox(im), ar = im.width / im.height;
@@ -283,19 +286,36 @@ window.Garden3D = (function () {
         var shm = new T.Mesh(geo, new T.MeshBasicMaterial({ map: tx, alphaTest: 0.5, side: T.DoubleSide, colorWrite: false, depthWrite: false }));
         shm.rotation.order = 'YXZ'; shm.scale.set(W, H, 1); shm.rotation.y = shadowYaw; shm.castShadow = true;
         var g = new T.Group(); g.position.set(s.x, s.y || 0, s.z); g.add(mesh, shm); plantGroup.add(g);
-        var it = { g: g, mesh: mesh, shm: shm, im: im, ph: Math.random() * 6.28, stiff: s.stiff == null ? (H > 2.4 ? 0.4 : 1) : s.stiff, name: s.name || '', drop: 0, vy: 0 };
+        var it = { g: g, mesh: mesh, shm: shm, im: im, ph: Math.random() * 6.28, stiff: s.stiff == null ? (H > 2.4 ? 0.4 : 1) : s.stiff, name: s.name || '', drop: 0, vy: 0, top: H * (bb.b - bb.t) };
         items.push(it);
         return it;
+      }
+      // 열매 말풍선: 흰 말풍선 안에 열매 그림. 늘 보이고(depthTest 끔) 살짝 떠 오르내린다
+      function bubble(src, x, y, z, kind2) {
+        loadImage(src).then(function (im) {
+          if (dead || !im) return;
+          var c = document.createElement('canvas'); c.width = 128; c.height = 148;
+          var g = c.getContext('2d');
+          g.beginPath(); g.arc(64, 60, 52, 0, Math.PI * 2); g.moveTo(50, 104); g.lineTo(64, 132); g.lineTo(78, 104); g.closePath();
+          g.shadowColor = 'rgba(80,60,40,.28)'; g.shadowBlur = 10; g.shadowOffsetY = 3; g.fillStyle = '#fffaf3'; g.fill();
+          g.shadowColor = 'transparent'; g.lineWidth = 3; g.strokeStyle = '#e6d6c3'; g.stroke();
+          var k = 78 / Math.max(im.width, im.height); g.drawImage(im, 64 - im.width * k / 2, 60 - im.height * k / 2, im.width * k, im.height * k);
+          var bt = new T.CanvasTexture(c); bt.colorSpace = T.SRGBColorSpace;
+          var sp2 = new T.Sprite(new T.SpriteMaterial({ map: bt, depthTest: false, depthWrite: false, fog: false }));
+          sp2.center.set(0.5, 0); sp2.scale.set(0.95, 0.95 * 148 / 128, 1); sp2.position.set(x, y, z); sp2.renderOrder = 10;
+          scene.add(sp2);
+          bubbles.push({ s: sp2, y: y, ph: Math.random() * 6.28, kind: kind2 });
+        });
       }
       function plateMat(map, color) { var m = new T.MeshStandardMaterial({ roughness: 1, color: color || 0xffffff }); if (map) m.map = map; return m; }
       var soilTx = img.soil ? tex(img.soil, { repeat: 2.5 }) : null, daeTx = img.dae ? tex(img.dae) : null;
       var M = {
         jeonTop: plateMat(soilTx, soilTx ? 0xd2bfae : 0x8a6a4a), jeonSide: plateMat(null, 0x6a5036),
         daeTop: plateMat(daeTx, daeTx ? 0xffffff : 0xe6d8bc), daeSide: plateMat(null, 0xc4b08a),
-        homeTop: plateMat(groundMat.map || null, groundMat.map ? 0xe8ecd8 : 0x8fa66a), homeSide: plateMat(null, 0x7d8c58)
+        homeTop: plateMat(null, 0xb9a98e), homeSide: plateMat(null, 0x8f7f66)
       };
       [M.jeonTop, M.daeTop, M.homeTop].forEach(function (m) { tint(m.color); });
-      var gJeon = new T.BoxGeometry(TS * 0.94, 0.16, TS * 0.94), gDae = new T.BoxGeometry(TS * 0.94, 0.09, TS * 0.94), gHome = new T.BoxGeometry(TS * 0.94, 0.11, TS * 0.94);
+      var gJeon = new T.BoxGeometry(TS * 0.94, 0.16, TS * 0.94), gDae = new T.BoxGeometry(TS * 0.94, 0.09, TS * 0.94), gHome = new T.BoxGeometry(TS * 0.94, 0.07, TS * 0.94);
       function plate(x, y, kind2) {
         var geo = kind2 === 'dae' ? gDae : kind2 === 'home' ? gHome : gJeon, top = M[kind2 + 'Top'] || M.jeonTop, side = M[kind2 + 'Side'] || M.jeonSide;
         var m = new T.Mesh(geo, [side, side, top, side, side, side]);
@@ -304,16 +324,40 @@ window.Garden3D = (function () {
         return geo.parameters.height;
       }
 
+      // 내 땅 판: 앞으로 살 수 있는 칸까지(-max~max) 도톰한 잔디 판, 칸 금은 옅게. 산 칸은 그 위에 밭·대지로
+      var landGroup = new T.Group(); scene.add(landGroup);
+      var half = TS * 4.5, extent = TS * 1.5;
+      function makeLand(max) {
+        landGroup.children.slice().forEach(function (c) { landGroup.remove(c); if (c.geometry) c.geometry.dispose(); });
+        var n = 2 * max + 1, size = n * TS; half = size / 2;
+        var top = lawnMat(size / 4, new T.Color(1, 1, 1), 0.2), side = plateMat(null, 0x8a6a48); tint(side.color);
+        var base = new T.Mesh(new T.BoxGeometry(size, 0.7, size), [side, side, top, side, side, side]);
+        base.position.y = -0.35; base.receiveShadow = true; landGroup.add(base);
+        var lp = [];
+        for (var i = 0; i <= n; i++) { var v = -half + i * TS; lp.push(v, 0.01, -half, v, 0.01, half, -half, 0.01, v, half, 0.01, v); }
+        var lg = new T.BufferGeometry(); lg.setAttribute('position', new T.Float32BufferAttribute(lp, 3));
+        landGroup.add(new T.LineSegments(lg, new T.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false })));
+        var sc = sl.shadow.camera, ext = half + 4; sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.updateProjectionMatrix();
+      }
+      makeLand(4);
+
       // 가운데 칸: 믿음 나무 + 흙 둔덕, 그 앞 왼쪽에 나
       var homeH = plate(0, 0, 'home');
       var mound = new T.Mesh(new T.CylinderGeometry(TS * 0.3, TS * 0.36, 0.08, 40), plateMat(null, 0x7a5c40));
       mound.position.set(0, homeH + 0.04, 0); mound.receiveShadow = true; scene.add(mound);
-      if (img.plant) sprite(img.plant, { x: 0, z: 0, y: homeH + 0.06, size: 3.9, center: true, name: o.plant.name });
+      if (img.plant) {
+        var tree = sprite(img.plant, { x: 0, z: 0, y: homeH + 0.06, size: 3.9, center: true, name: o.plant.name });
+        if (o.plant.bubble) bubble(o.plant.bubble, 0, homeH + tree.top + 0.3, 0, 'tree');
+      }
       if (img.character) sprite(img.character, { x: -TS * 0.36, z: TS * 0.36, y: homeH, h: 1.62, stiff: 0, name: o.character.name });
 
       // 칸들(내 땅)
-      Promise.resolve(o.tiles).then(function (tiles) {
-        if (dead || !Array.isArray(tiles)) return;
+      Promise.resolve(o.land).then(function (land) {
+        if (dead || !land) return;
+        var tiles = Array.isArray(land) ? land : land.tiles || [];
+        var max = Math.max(1, Math.min(12, (land.max | 0) || 0));
+        tiles.forEach(function (tl) { if (tl) max = Math.max(max, Math.abs(tl.x), Math.abs(tl.y)); });
+        makeLand(max);
         tiles.forEach(function (tl) {
           if (!tl || (tl.x === 0 && tl.y === 0)) return;
           var top = plate(tl.x, tl.y, tl.land === 'dae' ? 'dae' : 'jeon');
@@ -322,25 +366,24 @@ window.Garden3D = (function () {
             if (dead || !im) return;
             var it = sprite(im, { x: tl.x * TS, z: tl.y * TS, y: top, h: Math.max(0.35, (+tl.h || 60) / 100 * 1.5), dead: !!tl.dead, name: tl.name });
             if (!reduce) { it.drop = 1.2 + Math.random(); it.vy = 0; }   // 처음 열 때 살짝 내려앉는다
+            if (tl.bubble) bubble(tl.bubble, tl.x * TS, top + it.top + 0.25, tl.y * TS, 'tile');
           });
         });
-        var sc = sl.shadow.camera, ext = extent + 4; sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.near = 1; sc.far = 120; sc.updateProjectionMatrix();
         R.refit();
       });
-      var sc0 = sl.shadow.camera; sc0.left = -8; sc0.right = 8; sc0.top = 8; sc0.bottom = -8; sc0.near = 1; sc0.far = 120;
 
       // 비·눈: 지금 날씨대로(중력 + 바람)
-      var rain = null, snow = null, wv = wind;
+      var rain = null, snow = null, wv = wind, SPAN = 44;
       if (kind === 'rain') {
-        var n = phone ? 1200 : 2200, pos = new Float32Array(n * 6);
-        for (var k = 0; k < n; k++) { var x = (Math.random() - 0.5) * 40, yy = Math.random() * 18, z = (Math.random() - 0.5) * 40; pos.set([x, yy, z, x - wv * 0.3, yy + 0.5, z], k * 6); }
+        var n = phone ? 1400 : 2600, pos = new Float32Array(n * 6);
+        for (var k = 0; k < n; k++) { var x = (Math.random() - 0.5) * SPAN, yy = Math.random() * 20, z = (Math.random() - 0.5) * SPAN; pos.set([x, yy, z, x - wv * 0.3, yy + 0.5, z], k * 6); }
         var rg = new T.BufferGeometry(); rg.setAttribute('position', new T.BufferAttribute(pos, 3));
         rain = new T.LineSegments(rg, new T.LineBasicMaterial({ color: 0xd7e3f1, transparent: true, opacity: 0.5 })); scene.add(rain);
       } else if (kind === 'snow') {
-        var m2 = phone ? 900 : 1600, sp2 = new Float32Array(m2 * 3);
-        for (var q = 0; q < m2; q++) sp2.set([(Math.random() - 0.5) * 40, Math.random() * 18, (Math.random() - 0.5) * 40], q * 3);
+        var m2 = phone ? 1000 : 1800, sp2 = new Float32Array(m2 * 3);
+        for (var q = 0; q < m2; q++) sp2.set([(Math.random() - 0.5) * SPAN, Math.random() * 20, (Math.random() - 0.5) * SPAN], q * 3);
         var sg2 = new T.BufferGeometry(); sg2.setAttribute('position', new T.BufferAttribute(sp2, 3));
-        snow = new T.Points(sg2, new T.PointsMaterial({ color: 0xffffff, size: 0.1, transparent: true, opacity: 0.9 })); scene.add(snow);
+        snow = new T.Points(sg2, new T.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.9 })); scene.add(snow);
       }
       var bits = [];
       if (o.place) bits.push(o.place);
@@ -349,73 +392,122 @@ window.Garden3D = (function () {
       if (wx.wind != null && +wx.wind >= 8) bits.push(t('g3d.wind', { n: Math.round(+wx.wind) }));
       wxLine.textContent = bits.join(' · '); wxLine.hidden = false;
 
-      // 카메라: '내 땅' 마름모 창처럼 남동쪽 위에서 내려다본다. 끌면 둘레를 돌고, 휠·두 손가락으로 가까이
-      var homeCam = { az: Math.PI / 4, pol: 1.26, dist: 12, ty: 1.2 }, extent = TS * 1.5, touched = false;
-      // 밭 넓이와 화면 비율에 맞는 거리 — 세로 화면(휴대폰)은 시야를 넓히고 조금 물러서 양옆이 잘리지 않게
+      /* ── 카메라: 남동쪽 위에서 마름모로 내려다본다 ──
+         cam = { tx, tz: 보는 곳, az: 방위, dist: 거리 }. 기울기는 거리로 정한다 — 멀면 위에서(지도처럼), 가까우면 눈높이로 */
+      var cam = null, fly = null, touched = false, lim = { min: 4, max: 60, fit: 16 };
+      function distFor(w) {   // 가로 w(m) 마름모가 화면에 들어오는 거리
+        var tv = Math.tan(camera.fov * Math.PI / 360), th = tv * (camera.aspect || 1);
+        return Math.max(w / 2 / th, w * 0.62 / 2 / tv);
+      }
       R.refit = function () {
-        var a = camera.aspect || 1, fov = a < 0.8 ? 54 : 46;
+        var a = camera.aspect || 1, fov = a < 0.8 ? 44 : 32;
         if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
-        homeCam.dist = clamp(5.5 + extent * 1.4, 8.5, 30) * (a < 1 ? Math.pow(Math.min(2.1, 1 / a), 0.7) : 1);
-        if (!touched && !fly && cam) cam.dist = homeCam.dist;
+        lim.max = clamp(distFor(half * 2 * 1.414 + 3) * 1.1, 20, 140);
+        lim.fit = clamp(distFor((extent + TS * (a < 0.8 ? 0.25 : 0.8)) * 2 * 1.414), lim.min + 4, lim.max);   // 산 땅 + 둘레 한 칸쯤(넓힐 땅이 보이게)
+        if (cam && !touched && !fly) cam.dist = lim.fit;
+        if (cam) cam.dist = clamp(cam.dist, lim.min, lim.max);
       };
-      var cam = null, fly = null;
       R.refit();
-      cam = reduce ? Object.assign({}, homeCam) : { az: homeCam.az - 0.7, pol: 0.72, dist: homeCam.dist * 1.7, ty: homeCam.ty };
-      fly = reduce ? null : { from: Object.assign({}, cam), t0: performance.now(), dur: 1900 };
-      var vel = { az: 0, pol: 0 };
+      var home = function () { return { tx: 0, tz: 0, az: Math.PI / 4, dist: lim.fit }; };
+      cam = reduce ? home() : { tx: 0, tz: 0, az: Math.PI / 4 - 0.5, dist: lim.max };
+      fly = reduce ? null : { from: Object.assign({}, cam), to: null, t0: performance.now(), dur: 1800 };
+      var vel = { x: 0, z: 0, az: 0 };
+      function zoomK() { return clamp((lim.max - cam.dist) / Math.max(1, lim.max - lim.min), 0, 1); }
       function placeCam() {
-        var s1 = Math.sin(cam.pol);
-        camera.position.set(cam.dist * s1 * Math.sin(cam.az), cam.ty + cam.dist * Math.cos(cam.pol), cam.dist * s1 * Math.cos(cam.az));
-        camera.lookAt(0, cam.ty, 0);
+        var k = Math.pow(zoomK(), 2.2), pol = mix(0.8, 1.2, k), ty = mix(0.2, 1.1, k), s1 = Math.sin(pol);
+        camera.position.set(cam.tx + cam.dist * s1 * Math.sin(cam.az), ty + cam.dist * Math.cos(pol), cam.tz + cam.dist * s1 * Math.cos(cam.az));
+        camera.lookAt(cam.tx, ty, cam.tz);
+        R.pitch = Math.PI / 2 - pol;
       }
       placeCam();
-      resetBtn.onclick = function () { fly = { from: Object.assign({}, cam), t0: performance.now(), dur: reduce ? 1 : 900 }; vel.az = vel.pol = 0; };
+      function goTo(to, dur) { touched = true; vel.x = vel.z = vel.az = 0; fly = { from: Object.assign({}, cam), to: to, t0: performance.now(), dur: reduce ? 1 : dur || 450 }; }
+      function zoomBy(f) { var c = fly && fly.to ? fly.to : cam; goTo(Object.assign({}, c, { dist: clamp(c.dist * f, lim.min, lim.max) }), 320); }
+      function rotBy(a) { var c = fly && fly.to ? fly.to : cam; goTo(Object.assign({}, c, { az: c.az + a }), 450); }
+      resetBtn.onclick = function () { touched = false; goTo(home(), 800); touched = false; };
+      zIn.onclick = function () { zoomBy(0.7); };
+      zOut.onclick = function () { zoomBy(1 / 0.7); };
+      rL.onclick = function () { rotBy(-Math.PI / 2); };
+      rR.onclick = function () { rotBy(Math.PI / 2); };
+      function pan(dx, dy) {   // 화면에서 끈 만큼 땅을 옮긴다
+        var wpp = 2 * cam.dist * Math.tan(camera.fov * Math.PI / 360) / Math.max(1, canvas.clientHeight);
+        var fx = -Math.sin(cam.az), fz = -Math.cos(cam.az), rx = Math.cos(cam.az), rz = -Math.sin(cam.az), fwd = dy * wpp / Math.max(0.35, Math.sin(R.pitch || 0.6));
+        var mx = -rx * dx * wpp + fx * fwd, mz = -rz * dx * wpp + fz * fwd;
+        cam.tx = clamp(cam.tx + mx, -half, half); cam.tz = clamp(cam.tz + mz, -half, half);
+        return { x: mx, z: mz };
+      }
+      R.key = function (key) {
+        var step = 40;
+        if (key === '+' || key === '=') zoomBy(0.8);
+        else if (key === '-' || key === '_') zoomBy(1.25);
+        else if (key === 'ArrowLeft') pan(step, 0); else if (key === 'ArrowRight') pan(-step, 0);
+        else if (key === 'ArrowUp') pan(0, step); else if (key === 'ArrowDown') pan(0, -step);
+        else if (key === 'q' || key === 'Q') rotBy(-Math.PI / 2); else if (key === 'e' || key === 'E') rotBy(Math.PI / 2);
+        else return false;
+        touched = true; fly = fly && fly.to ? fly : null;
+        return true;
+      };
 
-      // 끌기·누르기
-      var ray = new T.Raycaster(), ndc = new T.Vector2(), pointers = {}, pinch = 0, drag = null;
+      // 끌기(옮기기) · 오른쪽 끌기(돌리기) · 두 손가락(확대·축소·돌리기·옮기기) · 누르기(이름, 말풍선)
+      var ray = new T.Raycaster(), ndc = new T.Vector2(), pointers = {}, two = null, drag = null;
       var alphaCv = document.createElement('canvas'), alphaG = alphaCv.getContext('2d', { willReadFrequently: true });
       function alphaAt(im, u, v) { alphaCv.width = 1; alphaCv.height = 1; alphaG.clearRect(0, 0, 1, 1); alphaG.drawImage(im, Math.floor(u * im.width), Math.floor((1 - v) * im.height), 1, 1, 0, 0, 1, 1); return alphaG.getImageData(0, 0, 1, 1).data[3]; }
+      function setRay(e) { var r = canvas.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); }
       function pick(e) {
-        var r = canvas.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera);
+        setRay(e);
+        var bh = ray.intersectObjects(bubbles.map(function (b) { return b.s; }), false);
+        if (bh.length) { var b = bubbles.filter(function (x) { return x.s === bh[0].object; })[0]; if (b) return { bubble: b }; }
         var hits = ray.intersectObjects(items.map(function (it) { return it.mesh; }), false);
         for (var j = 0; j < hits.length; j++) {
           var ht = hits[j], it = items.filter(function (x) { return x.mesh === ht.object; })[0];
-          if (it && ht.uv && alphaAt(it.im, ht.uv.x, ht.uv.y) > 40) return it;
+          if (it && ht.uv && alphaAt(it.im, ht.uv.x, ht.uv.y) > 40) return { item: it };
         }
         return null;
       }
       var tipTimer = 0;
       function showTip(text) { clearTimeout(tipTimer); tip.textContent = text; tip.hidden = !text; if (text) tipTimer = setTimeout(function () { tip.hidden = true; }, 2600); }
+      function twoState() { var ps = Object.values(pointers); return { d: Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y), a: Math.atan2(ps[1].y - ps[0].y, ps[1].x - ps[0].x), x: (ps[0].x + ps[1].x) / 2, y: (ps[0].y + ps[1].y) / 2 }; }
+      canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
       canvas.addEventListener('pointerdown', function (e) {
         canvas.setPointerCapture(e.pointerId); pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
-        touched = true; fly = null; vel.az = vel.pol = 0; hint.classList.add('is-gone');
-        var ps = Object.values(pointers);
-        if (ps.length === 2) { pinch = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y); drag = null; return; }
-        drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: 0 };
+        touched = true; fly = null; vel.x = vel.z = vel.az = 0; hint.classList.add('is-gone');
+        if (Object.keys(pointers).length === 2) { two = twoState(); drag = null; return; }
+        drag = { x: e.clientX, y: e.clientY, moved: 0, rot: e.button === 2 || e.shiftKey };
         canvas.classList.add('is-drag');
       });
       canvas.addEventListener('pointermove', function (e) {
         if (!pointers[e.pointerId]) return;
         pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
-        var ps = Object.values(pointers);
-        if (ps.length === 2 && pinch) { var d = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y); cam.dist = clamp(cam.dist * pinch / Math.max(1, d), 4.5, 42); pinch = d; return; }
+        if (Object.keys(pointers).length === 2 && two) {
+          var n2 = twoState(), da = n2.a - two.a;
+          if (da > Math.PI) da -= Math.PI * 2; if (da < -Math.PI) da += Math.PI * 2;
+          cam.dist = clamp(cam.dist * two.d / Math.max(1, n2.d), lim.min, lim.max);
+          cam.az -= da; pan(n2.x - two.x, n2.y - two.y);
+          two = n2; return;
+        }
         if (!drag) return;
         var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         drag.moved += Math.abs(dx) + Math.abs(dy);
-        vel.az = -dx * 0.006; vel.pol = -dy * 0.005;
-        cam.az += vel.az; cam.pol = clamp(cam.pol + vel.pol, 0.32, 1.48);
+        if (drag.rot) { vel.az = -dx * 0.006; cam.az += vel.az; }
+        else { var mv = pan(dx, dy); vel.x = mv.x; vel.z = mv.z; }
         drag.x = e.clientX; drag.y = e.clientY;
       });
       function up(e) {
         var wasTap = drag && drag.moved < 8 && Object.keys(pointers).length === 1;
-        delete pointers[e.pointerId]; pinch = 0;
-        if (wasTap) { vel.az = vel.pol = 0; var it = pick(e); showTip(it ? it.name : ''); if (it) { it.drop = 0.25; it.vy = 0; } }
+        delete pointers[e.pointerId];
+        if (Object.keys(pointers).length < 2) two = null;
+        if (wasTap) {
+          vel.x = vel.z = vel.az = 0;
+          var p = pick(e);
+          if (p && p.bubble && o.onBubble) { var kd = p.bubble.kind; close(); o.onBubble(kd); return; }
+          showTip(p && p.item ? p.item.name : '');
+          if (p && p.item) { p.item.drop = 0.25; p.item.vy = 0; }
+        }
         drag = null; canvas.classList.remove('is-drag');
       }
       canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
-      canvas.addEventListener('wheel', function (e) { e.preventDefault(); touched = true; fly = null; cam.dist = clamp(cam.dist * (e.deltaY > 0 ? 1.08 : 0.93), 4.5, 42); }, { passive: false });
+      canvas.addEventListener('wheel', function (e) { e.preventDefault(); touched = true; fly = null; cam.dist = clamp(cam.dist * (e.deltaY > 0 ? 1.1 : 0.91), lim.min, lim.max); }, { passive: false });
 
-      // 움직임: 날아 들어오기 · 끌기 관성 · 바람(흔들림) · 내려앉기(중력) · 비·눈 · 구름
+      // 움직임: 날아 들어오기 · 끌기 관성 · 바람(흔들림) · 내려앉기(중력) · 말풍선 · 비·눈 · 구름
       var last = performance.now();
       function ease(k) { return 1 - Math.pow(1 - k, 3); }
       R.tick = function tick(ts) {
@@ -424,11 +516,12 @@ window.Garden3D = (function () {
         raf = requestAnimationFrame(tick);
         var dt = Math.min(0.05, (ts - last) / 1000), tt = ts / 1000; last = ts;
         if (fly) {
-          var k = clamp((ts - fly.t0) / fly.dur, 0, 1), e2 = ease(k), toAz = homeCam.az + Math.round((fly.from.az - homeCam.az) / (Math.PI * 2)) * Math.PI * 2;
-          cam.az = mix(fly.from.az, toAz, e2); cam.pol = mix(fly.from.pol, homeCam.pol, e2); cam.dist = mix(fly.from.dist, homeCam.dist, e2); cam.ty = mix(fly.from.ty, homeCam.ty, e2);
+          var to = fly.to || home(), k = clamp((ts - fly.t0) / fly.dur, 0, 1), e2 = ease(k);
+          cam.tx = mix(fly.from.tx, to.tx, e2); cam.tz = mix(fly.from.tz, to.tz, e2); cam.dist = mix(fly.from.dist, to.dist, e2); cam.az = mix(fly.from.az, to.az, e2);
           if (k >= 1) fly = null;
-        } else if (!drag && (Math.abs(vel.az) > 1e-4 || Math.abs(vel.pol) > 1e-4)) {
-          cam.az += vel.az; cam.pol = clamp(cam.pol + vel.pol, 0.32, 1.48); vel.az *= 0.9; vel.pol *= 0.9;
+        } else if (!drag && !two) {
+          if (Math.abs(vel.x) + Math.abs(vel.z) > 1e-4) { cam.tx = clamp(cam.tx + vel.x, -half, half); cam.tz = clamp(cam.tz + vel.z, -half, half); vel.x *= 0.88; vel.z *= 0.88; }
+          if (Math.abs(vel.az) > 1e-4) { cam.az += vel.az; vel.az *= 0.88; }
         }
         placeCam();
         items.forEach(function (it) {
@@ -442,18 +535,19 @@ window.Garden3D = (function () {
           var sway = reduce ? 0 : wind * it.stiff * (0.035 * Math.sin(tt * 1.3 + it.ph) + 0.02 * Math.sin(tt * 0.47 + it.ph * 2) + 0.015);
           it.mesh.rotation.z = it.shm.rotation.z = sway;
         });
+        if (!reduce) bubbles.forEach(function (b) { b.s.position.y = b.y + Math.sin(tt * 2.2 + b.ph) * 0.08; });
         if (clouds && !reduce) clouds.rotation.y += dt * (0.002 + wind * 0.006);
         if (rain) {
           var a = rain.geometry.attributes.position.array, fall = 18 * dt, dx = wv * 5 * dt;
           for (var k2 = 0; k2 < a.length; k2 += 6) {
             a[k2 + 1] -= fall; a[k2 + 4] -= fall; a[k2] += dx; a[k2 + 3] += dx;
-            if (a[k2 + 1] < 0) { var x0 = (Math.random() - 0.5) * 40, z0 = (Math.random() - 0.5) * 40; a[k2] = x0; a[k2 + 1] = 18; a[k2 + 2] = z0; a[k2 + 3] = x0 - wv * 0.3; a[k2 + 4] = 18.5; a[k2 + 5] = z0; }
+            if (a[k2 + 1] < 0) { var x0 = (Math.random() - 0.5) * SPAN, z0 = (Math.random() - 0.5) * SPAN; a[k2] = x0; a[k2 + 1] = 20; a[k2 + 2] = z0; a[k2 + 3] = x0 - wv * 0.3; a[k2 + 4] = 20.5; a[k2 + 5] = z0; }
           }
           rain.geometry.attributes.position.needsUpdate = true;
         }
         if (snow) {
-          var b = snow.geometry.attributes.position.array;
-          for (var k3 = 0; k3 < b.length; k3 += 3) { b[k3 + 1] -= 1.1 * dt; b[k3] += (Math.sin(tt + k3) * 0.3 + wv * 2) * dt; if (b[k3 + 1] < 0) { b[k3 + 1] = 18; b[k3] = (Math.random() - 0.5) * 40; } }
+          var b2 = snow.geometry.attributes.position.array;
+          for (var k3 = 0; k3 < b2.length; k3 += 3) { b2[k3 + 1] -= 1.1 * dt; b2[k3] += (Math.sin(tt + k3) * 0.3 + wv * 2) * dt; if (b2[k3 + 1] < 0) { b2[k3 + 1] = 20; b2[k3] = (Math.random() - 0.5) * SPAN; } }
           snow.geometry.attributes.position.needsUpdate = true;
         }
         renderer.render(scene, camera);

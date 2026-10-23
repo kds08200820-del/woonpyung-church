@@ -186,6 +186,9 @@ window.GardenScene = (function () {
     var pl = el('div', 'g-plant-anchor'); pl.style.left = A.plant.x + 'px'; pl.style.top = A.plant.y + 'px';
     pl.appendChild(el('div', 'g-plant')); S.el.plantAnchor = pl; S.el.plant = pl.firstChild;
     var np = el('div', 'g-np-anchor'); np.style.left = A.nameplate.x + 'px'; np.style.top = A.nameplate.y + 'px'; S.el.np = np;
+    /* 이름판은 평소 숨기고 나무를 누르면 잠깐 보인다 (2026-10-23 담임목사: "이 문구 삭제, 클릭하면 보여주세요") */
+    pl.addEventListener('click', function (e) { e.stopPropagation(); peekName(); });
+    soil.addEventListener('click', function (e) { e.stopPropagation(); peekName(); });
     S.el.plot.appendChild(soil); S.el.plot.appendChild(ch); S.el.plot.appendChild(pl); S.el.plot.appendChild(np);
   }
 
@@ -355,7 +358,7 @@ window.GardenScene = (function () {
   function stageUp(species, stage) {
     sparkle(18, true);
     if (S.el.fx) { var ring = el('div', 'g-ring'); var A = anchors(); ring.style.left = A.plant.x + 'px'; ring.style.top = (A.plant.y - 120) + 'px'; S.el.fx.appendChild(ring); setTimeout(function () { ring.remove(); }, 1400); }
-    return new Promise(function (res) { setTimeout(function () { setPlant(species, stage, { animate: true }).then(res); }, S.reduce ? 0 : 320); });
+    return new Promise(function (res) { setTimeout(function () { setPlant(species, stage, { animate: true }).then(function () { peekName(4500); res(); }); }, S.reduce ? 0 : 320); });
   }
   function sparkle(n, big) {
     if (!S.el.fx) return;
@@ -400,6 +403,12 @@ window.GardenScene = (function () {
     box.appendChild(ph);
   }
 
+  function peekName(ms) {
+    if (!S.el.np) return;
+    S.el.np.classList.add('is-show'); clearTimeout(S.npT);
+    S.npT = setTimeout(function () { S.el.np.classList.remove('is-show'); }, ms || 3500);
+  }
+
   /* ── 이름판(SVG 고리) ── */
   function setNameplate(name, sub) {
     S.plantName = name || '';
@@ -437,7 +446,7 @@ window.GardenScene = (function () {
   return {
     W: W, H: H, mount: mount, layout: layout, project: project, anchors: anchors, world: function () { return world; }, setWorld: setWorld, setField: setField,
     setSky: setSky, setSeason: setSeason, setPlant: setPlant, stageUp: stageUp, setCharacter: setCharacter, floatXp: floatXp, sparkle: sparkle,
-    setNameplate: setNameplate, setReducedMotion: setReducedMotion, preview: preview,
+    setNameplate: setNameplate, peekName: peekName, setReducedMotion: setReducedMotion, preview: preview,
     phaseOf: phaseOf, weatherOf: weatherOf, seasonOf: seasonOf, toMin: toMin,
     asset: asset, has: has, preload: preload, assetsFor: assetsFor, setManifest: function (m, base) { S.manifest = m || null; if (base) S.base = base; },
     mounted: function () { return S.mounted; }, phase: function () { return S.phase; }, weather: function () { return S.weather; }

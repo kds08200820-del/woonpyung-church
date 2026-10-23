@@ -103,14 +103,18 @@
     var st = M.state || {}, g = HUD.garden() || {}, me = st.me || {}, ch = M.church || {}, FARM = window.GardenFarm;
     var sp = g.species || 'sunflower', stg = Math.max(0, Math.min(5, g.stage | 0));
     var pic = document.querySelector('#gMePic img'), nick = me.nickname || '';
-    var tiles = null;
-    if (FARM && st.fruit !== undefined && !M.offline) tiles = FARM.state() ? Promise.resolve(FARM.sceneList()) : FARM.reload().then(function () { return FARM.sceneList(); }, function () { return []; });
+    var land = null, fr = st.fruit;
+    function landNow() { var f = FARM.state() || {}; return { tiles: FARM.sceneList(), max: f.max || 4 }; }
+    if (FARM && fr !== undefined && !M.offline) land = FARM.state() ? Promise.resolve(landNow()) : FARM.reload().then(landNow, function () { return null; });
+    var treeFruit = fr && fr.per_day > 0 && (fr.picked || []).length < fr.per_day ? 'images/garden/farm/fruit-' + sp + '.webp' : '';
     window.Garden3D.open({
       title: t('g3d.title'), sub: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg),
       place: ch.name || '', lat: ch.lat, lng: ch.lng, wx: M.wx, t: t, reduce: reduceMotion(), opener: btn,
-      plant: { src: SCENE.asset('plants/' + sp + '-' + stg + '.webp'), name: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg) },
+      plant: { src: SCENE.asset('plants/' + sp + '-' + stg + '.webp'), name: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg), bubble: treeFruit },
       character: pic ? { src: pic.getAttribute('src'), name: nick ? t('g3d.me', { name: nick }) : '' } : null,
-      tiles: tiles || [],
+      land: land,
+      // 열매 말풍선: 믿음 나무면 열매 따기, 밭이면 내 땅 창
+      onBubble: function (kind) { setTimeout(function () { var fb = document.getElementById('gFruitBtn'); if (kind === 'tree' && fb && !fb.hidden && !fb.disabled) fb.click(); else if (FARM) FARM.open(); }, 60); },
       art: { hills: SCENE.asset('mid/hills.webp'), clouds: SCENE.asset('sky/clouds-overlay.webp'), soil: 'images/garden/farm/tex-soil.webp', dae: 'images/garden/farm/tex-dae.webp' }
     });
   }

@@ -79,12 +79,14 @@ window.GardenFarm = (function () {
       if (c && tl.ripe_at) {
         var prog = 1 - Math.max(0, new Date(tl.ripe_at).getTime() - now()) / (c.grow_sec * 1000);
         o.src = F.art + 'crop-' + c.slug + '-' + (prog < 0.5 ? 1 : 2) + '.webp'; o.h = prog < 0.5 ? 60 : 82; o.planted = true; o.name = nameOf(c.name);
+        if (prog >= 1 && (tl.picked || []).length < c.fruits) o.bubble = F.art + 'fruit-' + c.slug + '.webp';   // 입체 정원의 열매 말풍선
       } else if (tl.item) {
         var it = item(tl.item), v = plantView(tl), cat = (it && it.category) || 'flower', stage = v ? v.stage : 'grow';
         var bud = cat === 'flower' && (stage === 'sprout' || stage === 'grow');
         o.src = bud || stage === 'sprout' ? F.shopArt + '_sprout.webp' : F.shopArt + tl.item + '.webp';
         o.h = Math.round((bud || stage === 'sprout' ? 44 : SPR_BASE[cat] || 90) * (bud ? 1 : (SPR_STAGE[stage] || 1)));
         o.dead = stage === 'dead'; o.planted = true; o.name = it ? nameOf(it.name) : '';
+        if (v && v.ready && it && it.model && it.model.per_day && (tl.harvested || []).length < it.model.per_day) o.bubble = F.shopArt + tl.item + '-fruit.webp';
       }
       out.push(o);
     });

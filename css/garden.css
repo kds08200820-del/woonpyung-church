@@ -336,7 +336,9 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
 .g-fspr { position: absolute; width: auto; transform: translate(-50%, -100%); filter: drop-shadow(0 4px 4px rgba(80,60,40,.2)); }
 .g-fspr.is-dead { filter: grayscale(.85) brightness(.92); opacity: .8; }
 .g-field.is-open .g-fbed, .g-field.is-open .g-fspr { pointer-events: auto; cursor: pointer; }
-.g-np-anchor { position: absolute; transform: translate(-50%, 0); }
+.g-np-anchor { position: absolute; transform: translate(-50%, 0); opacity: 0; transition: opacity .25s ease; pointer-events: none; }
+.g-np-anchor.is-show { opacity: 1; }   /* 나무를 누르면 잠깐 (scene.js peekName) */
+.g-plant-anchor, .g-soil { cursor: pointer; }
 .g-char { position: relative; width: 220px; height: 330px; animation: g-bob 3.4s ease-in-out infinite; transform-origin: 50% 100%; }
 .g-char-img { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); height: 330px; width: auto; filter: drop-shadow(0 14px 10px rgba(80,60,40,.22)); }
 .g-char-ph { position: absolute; left: 0; bottom: 0; width: 220px; height: 330px; }
@@ -691,10 +693,18 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
 .g3d-hint.is-gone { opacity: 0; }
 .g3d-tip { left: 50%; top: 14px; transform: translateX(-50%); font-weight: 800; white-space: nowrap; }
 .g3d-tip[hidden], .g3d-wx[hidden] { display: none; }
+/* 확대·축소·돌리기 단추 (오른쪽 아래) */
+.g3d-ctl { position: absolute; z-index: 1; right: 14px; bottom: 14px; display: grid; grid-template-columns: 44px 44px; gap: 8px; }
+.g3d-ctl-b { width: 44px; height: 44px; padding: 0; border: 1px solid var(--g-line); border-radius: 50%; background: rgba(255,250,243,.94); box-shadow: var(--g-shadow-s);
+  color: var(--g-fg); font: inherit; font-size: 1.35rem; font-weight: 700; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.g3d-ctl-b:hover { background: var(--g-soft); }
+.g3d-ctl-b:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
 /* 휴대폰: 막대를 그림 위에 얹어 그림이 화면 전체를 쓴다 */
 .g3d.is-phone .g3d-top { position: absolute; left: 0; right: 0; top: 0; min-height: 0; padding: max(8px, env(safe-area-inset-top)) 10px 8px; gap: 6px; background: linear-gradient(rgba(255,250,243,.92), rgba(255,250,243,.78)); border-bottom: 0; }
 .g3d.is-phone .g3d-sub { display: none; }
 .g3d.is-phone .g3d-btn { min-height: 38px; padding: 0 12px; font-size: .84rem; }
 .g3d.is-phone .g3d-tip { top: calc(max(8px, env(safe-area-inset-top)) + 58px); }
 .g3d.is-phone .g3d-wx { left: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); font-size: .78rem; }
-.g3d.is-phone .g3d-hint { bottom: calc(52px + env(safe-area-inset-bottom)); white-space: normal; width: max-content; max-width: calc(100% - 24px); text-align: center; font-size: .78rem; }
+.g3d.is-phone .g3d-ctl { right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); grid-template-columns: 44px; }
+.g3d.is-phone .g3d-wx { max-width: calc(100% - 80px); }
+.g3d.is-phone .g3d-hint { bottom: calc(52px + env(safe-area-inset-bottom)); left: 10px; transform: none; white-space: normal; width: max-content; max-width: calc(100% - 80px); font-size: .78rem; }
