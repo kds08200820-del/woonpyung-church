@@ -779,7 +779,7 @@ window.GardenHud = (function () {
   function init(o) {
     I = o.i18n; SDK = o.sdk; SCENE = o.scene; t = I.t; P = o.params || {};
     I.apply(document);
-    ['gmQt', 'gmStore', 'gmPlant', 'gmFarm', 'gmShop'].forEach(function (id) { if ($(id)) bindModal(id); });
+    ['gmQt', 'gmStore', 'gmPlant', 'gmFarm', 'gmShop', 'gmInvite', 'gmVisit'].forEach(function (id) { if ($(id)) bindModal(id); });
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);

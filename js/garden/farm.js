@@ -67,11 +67,12 @@ window.GardenFarm = (function () {
   }
 
   /* ── 메인 장면의 밭 (2026-10-23 담임목사: 산 땅·심은 꽃이 메인 화면에도 보이게) ──
-     칸마다 { x, y, land, src, h, dead } — 나무 칸(0,0)은 빼고, 그림 고르기는 위 cellHtml 과 같다. 그리기는 scene.setField */
+     칸마다 { x, y, land, src, h, dead } — 나무 칸(0,0)은 빼고, 그림 고르기는 위 cellHtml 과 같다. 그리기는 scene.setField
+     fm 을 주면 그 밭(이웃 정원 방문: { tiles, water_days, xp_day })으로 — 남의 밭에는 열매 말풍선을 띄우지 않는다 */
   var SPR_BASE = { tree: 140, flower: 92, food: 84 };
   var SPR_STAGE = { sprout: .45, sapling: .55, young: .75, grow: .85, bloom: 1, full: 1.08, harvest: 1, fruit: 1, rest: .9, done: .8, dead: .8 };
-  function sceneList() {
-    var ts = (F.farm && F.farm.tiles) || [], out = [];
+  function sceneList(fm) {
+    var src0 = fm || F.farm, ts = (src0 && src0.tiles) || [], out = [];
     ts.forEach(function (tl) {
       if (tl.x === 0 && tl.y === 0) return;
       var o = { x: tl.x, y: tl.y, land: tl.land === 'dae' ? 'dae' : 'jeon', src: '', h: 0, dead: false };
@@ -79,14 +80,14 @@ window.GardenFarm = (function () {
       if (c && tl.ripe_at) {
         var prog = 1 - Math.max(0, new Date(tl.ripe_at).getTime() - now()) / (c.grow_sec * 1000);
         o.src = F.art + 'crop-' + c.slug + '-' + (prog < 0.5 ? 1 : 2) + '.webp'; o.h = prog < 0.5 ? 60 : 82; o.planted = true; o.name = nameOf(c.name);
-        if (prog >= 1 && (tl.picked || []).length < c.fruits) o.bubble = F.art + 'fruit-' + c.slug + '.webp';   // 입체 정원의 열매 말풍선
+        if (!fm && prog >= 1 && (tl.picked || []).length < c.fruits) o.bubble = F.art + 'fruit-' + c.slug + '.webp';   // 입체 정원의 열매 말풍선
       } else if (tl.item) {
-        var it = item(tl.item), v = plantView(tl), cat = (it && it.category) || 'flower', stage = v ? v.stage : 'grow';
+        var it = item(tl.item), v = plantView(tl, fm), cat = (it && it.category) || 'flower', stage = v ? v.stage : 'grow';
         var bud = cat === 'flower' && (stage === 'sprout' || stage === 'grow');
         o.src = bud || stage === 'sprout' ? F.shopArt + '_sprout.webp' : F.shopArt + tl.item + '.webp';
         o.h = Math.round((bud || stage === 'sprout' ? 44 : SPR_BASE[cat] || 90) * (bud ? 1 : (SPR_STAGE[stage] || 1)));
         o.dead = stage === 'dead'; o.planted = true; o.name = it ? nameOf(it.name) : '';
-        if (v && v.ready && it && it.model && it.model.per_day && (tl.harvested || []).length < it.model.per_day) o.bubble = F.shopArt + tl.item + '-fruit.webp';
+        if (!fm && v && v.ready && it && it.model && it.model.per_day && (tl.harvested || []).length < it.model.per_day) o.bubble = F.shopArt + tl.item + '-fruit.webp';
       }
       out.push(o);
     });
@@ -109,10 +110,12 @@ window.GardenFarm = (function () {
     return !!(F.pick[(x + 1) + ',' + y] || F.pick[(x - 1) + ',' + y] || F.pick[x + ',' + (y + 1)] || F.pick[x + ',' + (y - 1)]);
   }
   function convertible(tl) { return tl && tl.land !== 'dae' && !(tl.x === 0 && tl.y === 0) && !tl.crop && !tl.item; }
-  function plantView(tl) {
-    var it = item(tl.item); if (!it || !PLANT) return null;
-    return PLANT.state(it, tl, F.wx, F.farm.water_days || [], new Date(now()), tz(), F.farm.xp_day);
+  function plantView(tl, fm) {
+    var it = item(tl.item), f = fm || F.farm; if (!it || !PLANT || !f) return null;
+    return PLANT.state(it, tl, F.wx, f.water_days || [], new Date(now()), tz(), f.xp_day);
   }
+  // 품목·날씨를 받아 두었는지(이웃 정원을 그리기 전에) — 없으면 내 밭과 함께 받는다
+  function ready() { return F.items && F.farm ? Promise.resolve(true) : load().then(function () { return true; }, function () { return false; }); }
   function render() {
     var f = F.farm, board = $('gfBoard'); if (!f || !board) return;
     var P = prices();
@@ -417,5 +420,5 @@ window.GardenFarm = (function () {
     var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (F.rec) render(); }, 150); });
     setInterval(pushScene, 60 * 1000);   // 창이 닫혀 있어도 작물이 자라는 모습을 1분마다
   }
-  return { init: init, open: open, reload: load, pushScene: pushScene, sceneList: sceneList, state: function () { return F.farm; } };
+  return { init: init, open: open, reload: load, ready: ready, pushScene: pushScene, sceneList: sceneList, state: function () { return F.farm; } };
 })();

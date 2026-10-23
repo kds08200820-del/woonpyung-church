@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261023g3d2" />
+  <link rel="stylesheet" href="css/garden.css?v=20261023vis1" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -61,6 +61,11 @@
           <button type="button" class="g-link g-profile-btn" id="gProfileBtn" data-i18n="profile.open"></button>
         </div>
       </section>
+      <!-- 정원 초대하기 · 이웃 정원 방문 (2026-10-23 담임목사) — 서버 기능이 있을 때만 visit.js 가 보인다 -->
+      <div class="g-visit-row" id="gVisitRow" hidden>
+        <button type="button" class="g-btn g-btn-line g-visit-b" id="gInviteBtn" aria-haspopup="dialog"><span data-i18n="invite.open"></span><span class="g-vbadge" id="gInviteBadge" hidden></span></button>
+        <button type="button" class="g-btn g-btn-line g-visit-b" id="gVisitBtn" aria-haspopup="dialog" data-i18n="visit.open"></button>
+      </div>
       <div class="g-chips">
         <button type="button" class="g-pill g-pill-talent" id="gTalentBtn" aria-haspopup="dialog" data-i18n-title="talent.open"><span class="g-pill-ic" aria-hidden="true">🪙</span><b id="gTalentNum">0</b><span class="g-pill-unit" id="gTalentUnit"></span></button>
         <div class="g-chip g-chip-streak" id="gStreak" hidden><span class="g-chip-ic" aria-hidden="true">🔥</span><span id="gStreakText"></span></div>
@@ -207,6 +212,43 @@
     </div>
   </div>
 
+  <!-- 정원 초대하기 -->
+  <div class="g-modal" id="gmInvite" hidden>
+    <div class="g-backdrop" data-close></div>
+    <div class="g-mbox g-mbox-invite" role="dialog" aria-modal="true" aria-labelledby="gmInviteTitle">
+      <span class="g-grab" aria-hidden="true"></span>
+      <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
+      <div class="g-mhead">
+        <h2 class="g-mtitle" id="gmInviteTitle" data-i18n="invite.title"></h2>
+        <p class="g-msub" data-i18n="invite.sub"></p>
+      </div>
+      <div class="gv-inv-state"><span class="gv-state" id="gvState"></span><button type="button" class="g-btn g-btn-primary" id="gvSwitch" aria-pressed="false"></button></div>
+      <div class="gv-share" id="gvShare" hidden>
+        <label class="g-sr" for="gvUrl" data-i18n="invite.url"></label>
+        <input type="text" id="gvUrl" readonly>
+        <div class="gv-share-b"><button type="button" class="g-btn g-btn-line" id="gvCopy" data-i18n="invite.copy"></button><button type="button" class="g-btn g-btn-line" id="gvSend" data-i18n="invite.share"></button></div>
+      </div>
+      <button type="button" class="g-link gv-preview" id="gvPreview" data-i18n="invite.preview" hidden></button>
+      <h3 class="g-stitle gv-myt" data-i18n="invite.gb"></h3>
+      <ul class="gv-gb" id="gvMyGb"></ul>
+      <p class="g-empty" id="gvMyGbNone" hidden data-i18n="invite.gb.none"></p>
+    </div>
+  </div>
+
+  <!-- 이웃 정원 방문 -->
+  <div class="g-modal" id="gmVisit" hidden>
+    <div class="g-backdrop" data-close></div>
+    <div class="g-mbox g-mbox-visit" role="dialog" aria-modal="true" aria-labelledby="gmVisitTitle">
+      <span class="g-grab" aria-hidden="true"></span>
+      <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
+      <div class="g-mhead">
+        <h2 class="g-mtitle" id="gmVisitTitle" data-i18n="visit.title.list"></h2>
+        <p class="g-msub" data-i18n="visit.sub"></p>
+      </div>
+      <div class="gv-list" id="gvList"></div>
+    </div>
+  </div>
+
   <div class="g-toast" id="gToast" role="status" aria-live="polite" hidden></div>
 
   <script src="js/config.js?v=20260908lib"></script>
@@ -214,14 +256,15 @@
   <script src="js/bulletins-live.js?v=20261010sum1"></script>
   <script src="js/layout.js?v=20261023lib1"></script>
   <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/garden/i18n.js?v=20261023g3d2"></script>
-  <script src="js/garden/sdk.js?v=20261023g3d1"></script>
+  <script src="js/garden/i18n.js?v=20261023vis1"></script>
+  <script src="js/garden/sdk.js?v=20261023vis1"></script>
   <script src="js/garden/scene.js?v=20261023g3d2"></script>
-  <script src="js/garden/hud.js?v=20261023g3d1"></script>
+  <script src="js/garden/hud.js?v=20261023vis1"></script>
   <script src="js/garden/plantsim.js?v=20261023ws3"></script>
   <script src="js/garden/shop.js?v=20261023ws3"></script>
-  <script src="js/garden/farm.js?v=20261023g3d2"></script>
-  <script src="js/garden/garden3d.js?v=20261023g3d2"></script>
-  <script src="js/garden/main.js?v=20261023g3d2"></script>
+  <script src="js/garden/farm.js?v=20261023vis1"></script>
+  <script src="js/garden/garden3d.js?v=20261023vis1"></script>
+  <script src="js/garden/visit.js?v=20261023vis1"></script>
+  <script src="js/garden/main.js?v=20261023vis1"></script>
 </body>
 </html>

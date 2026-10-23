@@ -10,7 +10,9 @@
    · 거둘 때가 된 작물·열매 나무 위에는 열매 말풍선 — 누르면 거두러 간다(o.onBubble)
    · 그리기만 한다: 자료는 여는 쪽(main.js)이 넘긴다. 받는 것은 three.js 와 그림뿐
    Garden3D.open({ title, sub, place, plant:{src,name,bubble}, character:{src,name}, land:{tiles:[{x,y,land,src,h,dead,name,bubble}], max} | Promise,
-                   lat, lng, wx:{code,temp,wind}, art:{hills,clouds,soil,dae}, t(key,vars), reduce, opener, onBubble(kind), onClose })
+                   lat, lng, wx:{code,temp,wind}, art:{hills,clouds,soil,dae}, t(key,vars), reduce, opener, onBubble(kind), onClose,
+                   prep: Promise<{위 칸들 일부 | error}> — 누른 순간 창부터 열고(휴대폰 전체 화면은 누른 순간에만 된다) 자료는 뒤에 채운다(이웃 정원 방문),
+                   side: 오른쪽 칸(방명록 등, 휴대폰은 아래에서 올라오는 칸), sideLabel })
    ============================================================ */
 window.Garden3D = (function () {
   'use strict';
@@ -98,10 +100,23 @@ window.Garden3D = (function () {
     var resetBtn = h('button', { type: 'button', class: 'g3d-btn', text: t('g3d.reset') });
     var closeBtn = h('button', { type: 'button', class: 'g3d-btn g3d-btn-close', text: t('g3d.close') });
     var stage = h('div', { class: 'g3d-stage' }, [canvas, load, wxLine, hint, tip, ctls]);
+    var titleEl = h('b', { class: 'g3d-title', text: o.title || t('g3d.title') }), subEl = h('span', { class: 'g3d-sub', text: o.sub || '' });
+    var sideBtn = h('button', { type: 'button', class: 'g3d-btn g3d-side-btn', hidden: '', 'aria-expanded': 'false' });
+    var body = h('div', { class: 'g3d-body' }, [stage]);
     var root = h('div', { class: 'g3d' + (phone ? ' is-phone' : ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || t('g3d.title') }, [
-      h('header', { class: 'g3d-top' }, [h('b', { class: 'g3d-title', text: o.title || t('g3d.title') }), o.sub ? h('span', { class: 'g3d-sub', text: o.sub }) : null, h('span', { class: 'g3d-grow' }), resetBtn, fullBtn, closeBtn]),
-      stage
+      h('header', { class: 'g3d-top' }, [titleEl, subEl, h('span', { class: 'g3d-grow' }), sideBtn, resetBtn, fullBtn, closeBtn]),
+      body
     ]);
+    // 오른쪽 칸(방명록): 넓은 화면은 늘 펼침, 휴대폰은 단추로 아래에서 올린다
+    function setSide(el, label) {
+      if (!el) return;
+      el.classList.add('g3d-side'); body.append(el); root.classList.add('has-side');
+      sideBtn.textContent = label || ''; sideBtn.hidden = !phone || !label;
+      sideBtn.onclick = function () { var on = !root.classList.contains('is-side'); root.classList.toggle('is-side', on); sideBtn.setAttribute('aria-expanded', String(on)); setTimeout(onResize, 30); };
+      setTimeout(onResize, 30);
+    }
+    function setHead() { titleEl.textContent = o.title || t('g3d.title'); subEl.textContent = o.sub || ''; subEl.hidden = !o.sub; root.setAttribute('aria-label', o.title || t('g3d.title')); }
+    setHead();
     document.body.append(root);
     document.documentElement.classList.add('g3d-open');
     // 휴대폰은 화면 전체로(주소창까지 숨김). 누른 그 순간에만 허락되므로 여기서 바로 부른다
@@ -146,6 +161,7 @@ window.Garden3D = (function () {
       if (o.opener && o.opener.focus) o.opener.focus({ preventScroll: true });
       if (o.onClose) o.onClose();
     }
+    CUR = { close: function () { close(); }, side: function (label) { if (label != null) { sideBtn.textContent = label; } } };
     function onResize() {
       if (!R) return;
       var w = stage.clientWidth || 1, hh = stage.clientHeight || 1;
@@ -158,13 +174,18 @@ window.Garden3D = (function () {
     document.addEventListener('visibilitychange', onVis);
 
     var art = o.art || {};
-    Promise.all([loadThree(), loadImage(art.hills), loadImage(art.clouds), loadImage(art.soil), loadImage(art.dae), loadImage(o.plant && o.plant.src), loadImage(o.character && o.character.src)])
-      .then(function (rs) {
+    Promise.resolve(o.prep).then(function (x) {
+      if (dead) return Promise.reject(null);
+      if (x && x.error) { load.textContent = x.error; return Promise.reject(null); }
+      if (x) for (var k in x) o[k] = x[k];
+      setHead(); setSide(o.side, o.sideLabel);
+      return Promise.all([loadThree(), loadImage(art.hills), loadImage(art.clouds), loadImage(art.soil), loadImage(art.dae), loadImage(o.plant && o.plant.src), loadImage(o.character && o.character.src)]);
+    }).then(function (rs) {
         if (dead) return;
         try { build({ hills: rs[1], clouds: rs[2], soil: rs[3], dae: rs[4], plant: rs[5], character: rs[6] }); }
         catch (e) { load.textContent = t('g3d.fail'); return; }
         load.remove();
-      }, function () { if (!dead) load.textContent = t('g3d.fail'); });
+      }, function (e) { if (!dead && e !== null) load.textContent = t('g3d.fail'); });
 
     /* ── 3D ── */
     function build(img) {
@@ -346,10 +367,10 @@ window.Garden3D = (function () {
       var mound = new T.Mesh(new T.CylinderGeometry(TS * 0.3, TS * 0.36, 0.08, 40), plateMat(null, 0x7a5c40));
       mound.position.set(0, homeH + 0.04, 0); mound.receiveShadow = true; scene.add(mound);
       if (img.plant) {
-        var tree = sprite(img.plant, { x: 0, z: 0, y: homeH + 0.06, size: 3.9, center: true, name: o.plant.name });
+        var tree = sprite(img.plant, { x: 0, z: 0, y: homeH + 0.06, size: 3.9, center: true, name: o.plant.name || '' });
         if (o.plant.bubble) bubble(o.plant.bubble, 0, homeH + tree.top + 0.3, 0, 'tree');
       }
-      if (img.character) sprite(img.character, { x: -TS * 0.36, z: TS * 0.36, y: homeH, h: 1.62, stiff: 0, name: o.character.name });
+      if (img.character) sprite(img.character, { x: -TS * 0.36, z: TS * 0.36, y: homeH, h: 1.62, stiff: 0, name: o.character.name || '' });
 
       // 칸들(내 땅)
       Promise.resolve(o.land).then(function (land) {
@@ -554,7 +575,6 @@ window.Garden3D = (function () {
       };
       raf = requestAnimationFrame(R.tick);
     }
-    CUR = { close: function () { close(); } };
     return CUR;
   }
 
