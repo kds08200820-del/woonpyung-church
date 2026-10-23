@@ -2,6 +2,7 @@
 
 담임목사 지시(2026-10-23)로 만든 길잡이. 정원이 커질 때마다 이 문서를 보고 **다음 한 단계만** 고른다.
 세계관 전체는 `docs/we-church-세계관.md`, 지금 만든 것은 `supabase/20261023_1500_garden_wallet_shop.sql`.
+플랫폼 이전 계획(Next.js·Vercel, 도메인·저장소·Supabase·교회별 주소·결제·비용)은 [We Church 플랫폼 이전 계획](https://claude.ai/artifact/P969mwXuaNWrMMRxcNUTXh) (2026-10-23).
 
 ## 0. 지키는 원칙
 
