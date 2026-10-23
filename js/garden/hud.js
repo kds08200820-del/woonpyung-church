@@ -241,7 +241,20 @@ window.GardenHud = (function () {
     var streak = st.qt_streak | 0;
     show($('gStreak'), streak > 0); $('gStreakText').textContent = t('rail.streak', { n: I.fmtNum(streak) });
     show($('gOffline'), H.offline);
-    renderGrowth(); renderTodo();
+    renderGrowth(); renderTodo(); renderLevel();
+  }
+  // 정원 레벨 — 모은 마음(xp_total)으로. 레벨 1에서 시작, 다음 레벨까지 마음 100 × 지금 레벨 (2026-10-23 담임목사: 내 모습 위에)
+  function gardenLevel(xp) {
+    var lv = 1, need = 100; xp = Math.max(0, +xp || 0);
+    while (xp >= need) { xp -= need; lv++; need = 100 * lv; }
+    return { lv: lv, left: need - xp };
+  }
+  function renderLevel() {
+    var el = $('gMeLv'); if (!el) return;
+    var L = gardenLevel(garden().xp_total);
+    el.querySelector('b').textContent = t('me.level', { n: I.fmtNum(L.lv) });
+    el.querySelector('small').textContent = t('me.level.next', { n: I.fmtNum(L.left) });
+    el.hidden = false;
   }
   function renderGrowth() {
     var g = garden(), sp = speciesOf(g.species) || {}, th = Array.isArray(sp.stage_xp) ? sp.stage_xp : [0, 150, 500, 1000, 1600, 2200], done = sp.done_xp || 2800;
@@ -877,7 +890,7 @@ window.GardenHud = (function () {
 
   return {
     init: init, render: render, state: function () { return H.state; }, setState: function (s) { H.state = s; },
-    toast: toast, openModal: openModal, closeModal: closeModal, closeThen: closeThen,openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
+    gardenLevel: gardenLevel, toast: toast, openModal: openModal, closeModal: closeModal, closeThen: closeThen,openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
     loadQt: loadQt, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
     syncPlot: syncPlot, renderTodo: renderTodo, garden: garden, speciesName: speciesName, stageName: stageName,
     todoItems: todoItems, growthInfo: growthInfo, qt: function () { return H.qt || null; }, fruitRefresh: renderFruitBtn,

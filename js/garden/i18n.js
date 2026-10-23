@@ -21,6 +21,8 @@ window.GardenI18n = (function () {
     'rail.offline': '오프라인 · 마지막 상태',
     'rail.gallery': '갤러리',
     'me.title': '내 모습',
+    'me.level': '정원 레벨 {n}',
+    'me.level.next': '다음 레벨까지 마음 {n}',
     'wallet.harvest': '수확과 투자',
     'wallet.h.qty': '수확량',
     'wallet.h.amt': '수확 금액',
