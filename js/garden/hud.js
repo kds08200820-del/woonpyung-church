@@ -827,11 +827,22 @@ window.GardenHud = (function () {
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);
-    bindOnboarding(); bindBanner(); bindBar(); bindTodoFold(); bindRailToggle();
+    bindOnboarding(); bindBanner(); bindBar(); bindTodoFold(); bindRailToggle(); bindFieldRotate();
     if ($('gFruitBtn')) $('gFruitBtn').addEventListener('click', function () { fruitMode(!FR.on); renderFruitBtn(); });
     if ($('gWaterBtn')) $('gWaterBtn').addEventListener('click', doWater);
     if ($('gShopBtn')) $('gShopBtn').addEventListener('click', function () { if (window.GardenShop) window.GardenShop.open(); });
     if ($('gFarmBtn') && window.GardenFarm) $('gFarmBtn').addEventListener('click', function () { fruitMode(false); renderFruitBtn(); window.GardenFarm.open(); });
+  }
+  /* 화면 돌리기 — 메인 장면의 밭을 90°씩 돌려 본다(2026-10-23 담임목사). 이 기기에서 기억, 밭이 있을 때만 단추가 보인다 */
+  function bindFieldRotate() {
+    var b = $('gRotate'); if (!b || !SCENE || !SCENE.rotateField) return;
+    document.addEventListener('g:field', function (e) { b.hidden = !(e.detail && e.detail.n > 0); });
+    var saved = 0; try { saved = +localStorage.getItem('g_field_rot') || 0; } catch (e) { }
+    SCENE.rotateField(saved);
+    b.addEventListener('click', function () {
+      var n = SCENE.rotateField(SCENE.fieldRot() + 1);
+      try { localStorage.setItem('g_field_rot', String(n)); } catch (e) { }
+    });
   }
   /* 오늘의 할 일 접기 — 접어 두면 다음에도 접힌 채로(이 기기에 기억) */
   // 오른쪽 메뉴를 오른쪽으로 숨기고 다시 꺼낸다(넓은 화면만). 이 기기에서 기억

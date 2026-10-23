@@ -216,6 +216,7 @@ window.GardenI18n = (function () {
     'g3d.me': '나 · {name}',
     'rail.hide': '오른쪽 메뉴 숨기기',
     'rail.show': '오른쪽 메뉴 꺼내기',
+    'field.rotate': '화면 돌리기',
     'rail.gallery.sub': '우리들 소식 — 공동체의 사진과 이야기',
     'rail.loading': '정원을 불러오는 중…',
     'talent.unit': '달란트',
