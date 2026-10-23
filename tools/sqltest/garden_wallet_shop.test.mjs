@@ -11,7 +11,7 @@ function ok(name, cond, extra) { if (cond) pass++; else { fail++; console.log('F
 const num = (x) => Number(x);
 const near = (a, b) => Math.abs(num(a) - b) < 1e-9;
 
-const U1 = '11111111-1111-4111-8111-111111111111', KID = '33333333-3333-4333-8333-333333333333', ADM = '44444444-4444-4444-8444-444444444444';
+const U1 = '11111111-1111-4111-8111-111111111111', KID = '33333333-3333-4333-8333-333333333333', ADM = '44444444-4444-4444-8444-444444444444', OUT = '55555555-5555-4555-8555-555555555555';
 await db.exec(`
   create role anon nologin; create role authenticated nologin;
   create schema auth;
@@ -47,7 +47,7 @@ await db.exec(`
     if j is null or jsonb_typeof(j) <> 'array' then return; end if;
     return query select e->>'key' from jsonb_array_elements(j) e where jsonb_typeof(e) = 'object' and coalesce(e->>'key', '') <> '';
   end $$;
-  insert into auth.users values ('${U1}'), ('${KID}'), ('${ADM}');
+  insert into auth.users values ('${U1}'), ('${KID}'), ('${ADM}'), ('${OUT}');
   insert into public.admins values ('${ADM}');
   insert into public.profiles values ('${U1}', '테스트_성도'), ('${KID}', '테스트_어린이'), ('${ADM}', '테스트_목사');
   insert into public.member_links (user_id, member_key) values ('${U1}', '테스트_성도|19800101'), ('${KID}', '테스트_어린이|20150101');
@@ -78,7 +78,8 @@ await db.exec(`
 await db.exec(fs.readFileSync(path.join(ROOT, 'supabase/20261023_1200_garden_phase1.sql'), 'utf8'));
 await db.exec(fs.readFileSync(path.join(ROOT, 'supabase/20261023_1300_garden_farm.sql'), 'utf8'));
 const sql3 = fs.readFileSync(path.join(ROOT, 'supabase/20261023_1500_garden_wallet_shop.sql'), 'utf8')
-  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_1900_garden_hearts.sql'), 'utf8');   // 하트 고침(1900)은 1500 뒤에 늘 함께
+  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_1900_garden_hearts.sql'), 'utf8')   // 하트 고침(1900)은 1500 뒤에 늘 함께
+  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_2100_garden_visits.sql'), 'utf8');   // 초대·방문·방명록
 await db.exec(sql3);
 await db.exec(sql3);
 ok('rerun safe', true);
@@ -289,6 +290,47 @@ ok('post heart reaction = 1 talent, other reaction 0', hk('reaction_heart', '601
 ok('growth heart counted today', hk('heart_given') && hk('heart_given').today === true && +hk('heart_given').talent === 1, hl);
 const todayKinds = (await as(U1, `select public.garden_state('woonpyung')`)).today;
 ok('heart shows in today', JSON.stringify(todayKinds).includes('heart_given'), todayKinds);
+
+// 7-5) 정원 초대하기 · 방문하기 · 방명록
+await as(U1, `select public.garden_sync('woonpyung')`); await as(KID, `select public.garden_sync('woonpyung')`); await as(ADM, `select public.garden_sync('woonpyung')`);
+let vl = await as(U1, `select public.garden_visit_list('woonpyung')`);
+const P1 = vl.me && vl.me.plot_no;
+ok('visit list: mine closed by default', vl.ok && vl.me.open === false && Number.isInteger(P1), vl);
+let vk = await as(KID, `select public.garden_visit_list('woonpyung')`);
+ok('closed garden not listed', vk.ok && !vk.gardens.some((g) => g.plot_no === P1), vk);
+ok('closed garden not viewable', (await as(KID, `select public.garden_visit_view('woonpyung', ${P1})`)).why === 'closed');
+ok('closed garden no post', (await as(KID, `select public.garden_guestbook_post('woonpyung', ${P1}, '안녕')`)).why === 'closed');
+let vs = await as(U1, `select public.garden_visit_set('woonpyung', true)`);
+ok('open my garden', vs.ok && vs.open === true && vs.plot_no === P1, vs);
+vk = await as(KID, `select public.garden_visit_list('woonpyung')`);
+const lg = vk.gardens.find((g) => g.plot_no === P1);
+ok('open garden listed with nickname only', lg && lg.nickname && !('user_id' in lg) && lg.species, lg);
+let vv = await as(KID, `select public.garden_visit_view('woonpyung', ${P1})`);
+ok('visit view', vv.ok && vv.mine === false && vv.owner.nickname && Array.isArray(vv.farm.tiles) && vv.farm.tiles.length >= 9 && Array.isArray(vv.guestbook) && vv.guestbook.length === 0, vv && vv.why);
+let gp = await as(KID, `select public.garden_guestbook_post('woonpyung', ${P1}, '  정원이   참 예쁩니다 ')`);
+ok('post comment (spaces tidied)', gp.ok && gp.guestbook.length === 1 && gp.guestbook[0].body === '정원이 참 예쁩니다' && gp.guestbook[0].mine && gp.guestbook[0].can_hide, gp);
+ok('empty comment refused', (await as(KID, `select public.garden_guestbook_post('woonpyung', ${P1}, '   ')`)).why === 'length');
+ok('long comment refused', (await as(KID, `select public.garden_guestbook_post('woonpyung', ${P1}, '${'가'.repeat(301)}')`)).why === 'length');
+vl = await as(U1, `select public.garden_visit_list('woonpyung')`);
+ok('owner sees unread 1', vl.me.unread === 1 && vl.me.open === true, vl.me);
+let own = await as(U1, `select public.garden_visit_view('woonpyung', ${P1})`);
+ok('owner view: can hide, not mine', own.ok && own.mine === true && own.guestbook[0].can_hide === true && own.guestbook[0].mine === false, own.guestbook);
+ok('unread cleared after owner view', (await as(U1, `select public.garden_visit_list('woonpyung')`)).me.unread === 0);
+ok('non-member cannot visit', (await as(OUT, `select public.garden_visit_view('woonpyung', ${P1})`)).why === 'member');
+const cid = gp.guestbook[0].id;
+ok('admin can hide', (await as(ADM, `select public.garden_guestbook_hide('woonpyung', ${cid})`)).ok === true);
+gp = await as(KID, `select public.garden_guestbook_post('woonpyung', ${P1}, '두 번째 인사')`);
+const cid2 = gp.guestbook[0].id;
+let gh = await as(U1, `select public.garden_guestbook_hide('woonpyung', ${cid2})`);
+ok('owner hides comment', gh.ok && gh.guestbook.length === 0, gh);
+ok('hidden twice → none', (await as(KID, `select public.garden_guestbook_hide('woonpyung', ${cid2})`)).why === 'none');
+ok('guestbook rows kept (hidden, not deleted)', (await pg(`select count(*)::int n from public.garden_guestbook where hidden_at is not null`))[0].n === 2);
+await pg(`insert into public.garden_guestbook (church_id, owner_id, author_id, body) select public.garden_default_church(), '${U1}', '${KID}', '채우기' from generate_series(1, 30)`);
+ok('30 a day limit', (await as(KID, `select public.garden_guestbook_post('woonpyung', ${P1}, '하나 더')`)).why === 'limit');
+await as(U1, `select public.garden_visit_set('woonpyung', false)`);
+ok('closed again → not viewable', (await as(KID, `select public.garden_visit_view('woonpyung', ${P1})`)).why === 'closed');
+ok('admin can view closed garden', (await as(ADM, `select public.garden_visit_view('woonpyung', ${P1})`)).ok === true);
+ok('no direct table read', !!(await asErr(KID, `select count(*) from public.garden_guestbook`)));
 
 // 7-1) 마이그레이션을 다시 실행해도 안전 — 관리자가 바꾼 품목 값은 그대로
 await as(ADM, `select public.garden_admin_set_item_price('woonpyung', 'apple', 45)`);
