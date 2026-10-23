@@ -1,5 +1,5 @@
 {
- "version": "20261023gd3",
+ "version": "20261023gd4",
  "theme": "default",
  "files": {
   "chars/char-a.webp": 52374,
@@ -15,8 +15,8 @@
   "chars/char-m4.webp": 41910,
   "chars/char-pastor.webp": 52954,
   "floor/floor-tiles.webp": 140556,
-  "mid/hills-768.webp": 33384,
-  "mid/hills.webp": 112172,
+  "mid/hills-768.webp": 37766,
+  "mid/hills.webp": 118676,
   "plants/fig-0-s.webp": 1250,
   "plants/fig-0.webp": 7304,
   "plants/fig-1-s.webp": 1932,

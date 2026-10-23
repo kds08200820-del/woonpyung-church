@@ -152,24 +152,49 @@ window.GardenFarm = (function () {
   }
   /* 오른쪽 '내 식물' 칸에 내 땅에 심은 것 — 종류(수량), 나무·꽃·채소·빠른 작물 순 (2026-10-23 담임목사) */
   var CAT_RANK = { tree: 0, flower: 1, food: 2, crop: 3 };
+  /* 꽃·나무는 자람 게이지로(담임목사 "꽃과 나무는 게이지 표기를 해주세요") — 꽃은 첫 꽃까지, 나무는 첫 열매까지 자란 날(마음으로 자란 날) 비율 */
+  function growPct(it, v) {
+    var m = (it && it.model) || {};
+    if (it.category === 'flower') {
+      if (v.bloom || v.stage === 'done') return { p: 1, k: v.stage === 'done' ? 'growth.g.flowerDone' : 'growth.g.bloom' };
+      return { p: Math.min(1, v.grown / (m.first_bloom_days || 30)), k: 'growth.g.toBloom' };
+    }
+    var p = Math.min(1, v.grown / ((m.years_to_fruit || 3) * 365.25));
+    return { p: p, k: p >= 1 ? 'growth.g.fruiting' : 'growth.g.toFruit' };
+  }
+  function pctText(p) { var v = p * 100; return (v > 0 && v < 10 ? v.toFixed(1) : String(Math.floor(v))) + '%'; }
   function renderMine() {
-    var box = document.getElementById('gGrowMine'); if (!box || !F.farm) return;
+    var box = document.getElementById('gGrowMine'), gbox = document.getElementById('gGrowGauges'); if (!box || !F.farm) return;
     var by = {}, dead = 0;
     (F.farm.tiles || []).forEach(function (tl) {
       if (tl.x === 0 && tl.y === 0) return;
-      var nm = '', cat = 'crop';
+      var nm = '', cat = 'crop', gp = null;
       if (tl.crop) { var c = crop(tl.crop); nm = c ? nameOf(c.name) : ''; }
       else if (tl.item) {
         var it = item(tl.item), v = plantView(tl);
         if (v && (v.stage === 'dead' || v.stage === 'over')) { dead++; return; }
         nm = it ? nameOf(it.name) : ''; cat = (it && it.category) || 'flower';
+        if (v && (cat === 'flower' || cat === 'tree')) gp = growPct(it, v);
       }
       if (!nm) return;
-      var g = by[nm] || (by[nm] = { name: nm, n: 0, rank: CAT_RANK[cat] != null ? CAT_RANK[cat] : 2 });
+      var g = by[nm] || (by[nm] = { name: nm, n: 0, rank: CAT_RANK[cat] != null ? CAT_RANK[cat] : 2, sum: 0, gn: 0, keys: {} });
       g.n++;
+      if (gp) { g.sum += gp.p; g.gn++; g.keys[gp.k] = 1; }
     });
     var list = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.rank - b.rank || b.n - a.n || (a.name < b.name ? -1 : 1); });
-    var parts = list.map(function (g) { return t('growth.mine.one', { name: g.name, n: I.fmtNum(g.n) }); });
+    var gauges = list.filter(function (g) { return g.gn; }), rest = list.filter(function (g) { return !g.gn; });
+    if (gbox) {
+      gbox.hidden = !gauges.length;
+      gbox.innerHTML = gauges.map(function (g) {
+        var p = g.sum / g.gn, ks = Object.keys(g.keys), k = ks.length === 1 ? ks[0] : (p >= 1 ? 'growth.g.full' : 'growth.g.avg');
+        var label = t(k, { p: pctText(p) });
+        return '<div class="g-gauge"><div class="g-grow-row"><span class="g-gauge-n">' + esc(t('growth.mine.one', { name: g.name, n: I.fmtNum(g.n) })) + '</span>' +
+          '<span class="g-grow-xp">' + esc(label) + '</span></div>' +
+          '<div class="g-gauge-track" role="progressbar" aria-label="' + esc(g.name + ' ' + label) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(p * 100) + '">' +
+          '<div class="g-gauge-fill" style="width:' + (p * 100).toFixed(1) + '%"></div></div></div>';
+      }).join('');
+    }
+    var parts = (gbox ? rest : list).map(function (g) { return t('growth.mine.one', { name: g.name, n: I.fmtNum(g.n) }); });
     if (dead) parts.push(t('growth.mine.dead', { n: I.fmtNum(dead) }));
     box.hidden = !parts.length;
     box.textContent = parts.length ? t('growth.mine', { list: parts.join(' · ') }) : '';
@@ -234,7 +259,7 @@ window.GardenFarm = (function () {
       }
     });
     if (f.max != null && F.mode !== 'home') for (var y = -f.max; y <= f.max; y++) for (var x = -f.max; x <= f.max; x++) if (buyable(x, y)) buy.push({ x: x, y: y, label: tal(prices().jeon) });
-    if (F.mode === 'convert') (f.tiles || []).forEach(function (tl) { if (convertible(tl)) pickable[tl.x + ',' + tl.y] = 1; });
+    if (F.mode === 'convert' || F.mode === 'plant') (f.tiles || []).forEach(function (tl) { if (convertible(tl)) pickable[tl.x + ',' + tl.y] = 1; });
     if (F.mode === 'home') (f.tiles || []).forEach(function (tl) { if (homeFree(tl)) pickable[tl.x + ',' + tl.y] = 1; });
     return { tiles: list, max: f.max || 4, buyable: buy, picks: picks, pickable: pickable, mode: F.mode, homes: BLD() ? BLD().homes3d() : [] };
   }
@@ -299,6 +324,11 @@ window.GardenFarm = (function () {
       else HUD.toast(t(tl && homeAt(x, y) ? 'farm.why.taken' : 'farm.why.homecell'));
       return;
     }
+    // 심을 빈 밭 고르기: 빈 밭을 누를 때마다 넣고 빼고, 다른 칸을 누르면 고르기를 마치고 그 칸을 본다 (담임목사 "한 번에 여러 땅을 고르게")
+    if (F.mode === 'plant') {
+      if (convertible(tl)) { if (F.pick[key]) delete F.pick[key]; else F.pick[key] = 1; render(); openSide(); return; }
+      F.mode = 'normal'; F.pick = {}; closeSheet(); render();
+    }
     if (!tl) {
       if (!buyable(x, y)) return;
       if (F.farm.prices) { F.mode = 'buy'; F.pick = {}; F.pick[key] = 1; render(); }
@@ -318,7 +348,7 @@ window.GardenFarm = (function () {
       return;
     }
     if (tl.item) { sheetItem(tl); openSide(); return; }
-    sheetPlant(x, y); openSide();
+    F.mode = 'plant'; F.pick = {}; F.pick[key] = 1; render(); openSide();
   }
   // 산 칸에 붙은 것만 남긴다(고른 칸을 빼면 그 칸에만 붙어 있던 칸도 빠진다)
   function prune() {
@@ -364,6 +394,29 @@ window.GardenFarm = (function () {
         if (r.picked) { total += +r.gain || 0; cnt++; }
         last = r.farm || last; next(i + 1);
       }, function () { F.busy = false; if (last) setFarm(last); HUD.toast(t('farm.err')); });
+    })(0);
+  }
+  // 고른 빈 밭마다 차례로 심는다(서버가 칸마다 씨앗 값·보관함을 확인) — 보관함 것은 가진 만큼만
+  function plantMany(cells, cr, itm, b) {
+    cells = cells.slice().sort(function (a, c) { return a.y - c.y || a.x - c.x; });
+    var bag = itm ? (F.farm.inventory || []).filter(function (i) { return i.item === itm; })[0] : null, cut = false;
+    if (itm && cells.length > (bag ? bag.qty : 0)) { cells = cells.slice(0, bag ? bag.qty : 0); cut = true; }
+    if (!cells.length || F.busy) return;
+    F.busy = true; if (b) b.disabled = true;
+    var done = 0, last = null;
+    function finish(r) {
+      F.busy = false; F.mode = 'normal'; F.pick = {}; closeSheet();
+      if (last) setFarm(last); else render();
+      if (done) used();
+      HUD.toast(!done ? why(r) : r ? t('farm.planted.part', { n: done, why: why(r) }) : cut ? t('farm.planted.bag', { n: done }) : done > 1 ? t('farm.planted.many', { n: done }) : t('farm.planted'));
+    }
+    (function next(i) {
+      if (i >= cells.length) { finish(null); return; }
+      var c = cells[i];
+      (cr ? SDK.farmPlant(c.x, c.y, cr) : SDK.farmPlantItem(c.x, c.y, itm)).then(function (r) {
+        if (!r || !r.ok) { finish(r || {}); return; }
+        done++; last = r.farm || last; next(i + 1);
+      }, function () { finish({}); });
     })(0);
   }
   // 믿음 나무 열매(하루 몇 개)를 모두 딴다
@@ -469,6 +522,7 @@ window.GardenFarm = (function () {
   }
   function sheetPick() {
     if (F.mode === 'home') { sheetHome(); return; }
+    if (F.mode === 'plant') { sheetPlant(); return; }
     var n = Object.keys(F.pick).length, P = prices(), buy = F.mode === 'buy', per = buy ? P.jeon : P.dae, total = Math.round(per * n * 10) / 10, can = n > 0 && +F.farm.balance >= total;
     F.sel = { kind: F.mode };
     sheet('<p class="gf-s-t">' + esc(t(buy ? 'farm.pick.buy.t' : 'farm.pick.convert.t')) + '</p>' +
@@ -482,27 +536,33 @@ window.GardenFarm = (function () {
     sheet('<p class="gf-s-t">' + esc(t('farm.buy.t')) + '</p><p class="gf-s-m">' + esc(t('farm.buy.m', { p: tal(p), have: tal(F.farm.balance) })) + '</p>' +
       acts('<button type="button" class="g-btn g-btn-primary" data-act="buy"' + (can ? '' : ' disabled') + '>' + esc(can ? t('farm.buy.go', { p: tal(p) }) : t('farm.buy.short')) + '</button>'));
   }
-  function sheetPlant(x, y) {
-    F.sel = { x: x, y: y, kind: 'plant' };
-    var stage = +F.farm.stage || 1, bal = +F.farm.balance;
+  function sheetPlant() {
+    F.sel = { kind: 'plant' };
+    var stage = +F.farm.stage || 1, bal = +F.farm.balance, n = Object.keys(F.pick).length;
+    var empty = ((F.farm.tiles || []).filter(convertible)).length;
+    var pickH = '<p class="gf-s-m">' + esc(n ? t('farm.plant.picked', { n: n }) : t('farm.plant.none')) + '</p>' +
+      (empty > n ? '<div class="gf-s-acts gf-s-acts-l"><button type="button" class="g-btn g-btn-line" data-act="pickall">' + esc(t('farm.plant.pickall', { n: empty })) + '</button></div>' : '');
     var quick = (F.farm.crops || []).map(function (c) {
       var lock = stage < c.min_stage, poor = bal < +c.seed_cost, yieldV = Math.round(c.fruits * c.fruit_value * 10) / 10;
-      return '<button type="button" class="gf-crop" data-crop="' + esc(c.slug) + '"' + (lock || poor ? ' disabled' : '') + '>' +
+      var meta = lock ? t('farm.crop.lock', { n: c.min_stage }) : t('farm.crop.meta', { time: left(c.grow_sec * 1000), cost: tal(c.seed_cost), n: c.fruits, y: tal(yieldV) }) +
+        (n > 1 ? ' · ' + t('farm.crop.total', { n: n, total: tal(Math.round(c.seed_cost * n * 10) / 10) }) : '');
+      return '<button type="button" class="gf-crop" data-crop="' + esc(c.slug) + '"' + (lock || poor || !n ? ' disabled' : '') + '>' +
         '<img alt="" src="' + F.art + 'crop-' + esc(c.slug) + '-2.webp" onerror="this.style.visibility=\'hidden\'">' +
-        '<span class="gf-crop-t"><b>' + esc(nameOf(c.name)) + '</b><small>' + esc(lock ? t('farm.crop.lock', { n: c.min_stage }) : t('farm.crop.meta', { time: left(c.grow_sec * 1000), cost: tal(c.seed_cost), n: c.fruits, y: tal(yieldV) })) + '</small></span></button>';
+        '<span class="gf-crop-t"><b>' + esc(nameOf(c.name)) + '</b><small>' + esc(meta) + '</small></span></button>';
     }).join('');
     var inv = (F.farm.inventory || []).map(function (i) {
       var it = item(i.item); if (!it) return '';
       var pm = it.model && it.model.plant_months, off = pm && pm.length && pm.indexOf(new Date(Date.now() + F.skew).getMonth() + 1) < 0;
       var noPlant = off && it.model.harvest === 'timber';   // 건축용 나무는 심는 달에만(서버가 막는다)
-      return '<button type="button" class="gf-crop' + (off ? ' gf-off' : '') + '" data-item="' + esc(i.item) + '"' + (noPlant ? ' disabled' : '') + '><img alt="" src="' + F.shopArt + esc(i.item) + '.webp" onerror="this.style.visibility=\'hidden\'">' +
+      return '<button type="button" class="gf-crop' + (off ? ' gf-off' : '') + '" data-item="' + esc(i.item) + '"' + (n && !noPlant ? '' : ' disabled') + '><img alt="" src="' + F.shopArt + esc(i.item) + '.webp" onerror="this.style.visibility=\'hidden\'">' +
         '<span class="gf-crop-t"><b>' + esc(nameOf(it.name)) + ' <em>×' + i.qty + '</em></b><small>' + esc(noPlant ? t('farm.bag.noplant', { when: (it.specs && it.specs.plant) || '' }) : off ? t('farm.bag.off', { when: (it.specs && it.specs.plant) || '' }) : (it.specs && (it.specs.first || it.specs.bloom)) || '') + '</small></span></button>';
     }).join('');
     var bagH = F.farm.inventory ? '<p class="gf-s-t gf-s-t2">' + esc(t('farm.bag.t')) + '</p>' + (inv ? '<div class="gf-crops">' + inv + '</div>' : '<p class="gf-s-m">' + esc(t('farm.bag.empty')) + '</p>') : '';
-    // 빠른 작물: 칸마다 하루 2번까지 제값, 그 뒤는 직판장 값 (2026-10-23 담임목사 — 게임에 빠지지 않게)
-    var mk = F.farm.market, tl0 = tile(x, y), pt = tl0 ? tl0.picks_today | 0 : 0, off = mk ? Math.round((1 - (+mk.rate || 0.7)) * 100) : 0;
+    // 빠른 작물: 칸마다 하루 2번까지 제값, 그 뒤는 직판장 값 (2026-10-23 담임목사 — 게임에 빠지지 않게). 여러 칸을 고르면 오늘 가장 많이 거둔 칸 기준
+    var mk = F.farm.market, pt = 0, off = mk ? Math.round((1 - (+mk.rate || 0.7)) * 100) : 0;
+    Object.keys(F.pick).forEach(function (k) { var a = k.split(','), tq = tile(+a[0], +a[1]); if (tq) pt = Math.max(pt, tq.picks_today | 0); });
     var mkNote = mk ? '<p class="gf-s-m gf-mk' + (pt >= mk.free ? ' is-on' : '') + '">' + esc(pt >= mk.free ? t('farm.market.now', { n: pt, r: off }) : t('farm.market.rule', { n: mk.free, r: off, done: pt })) + '</p>' : '';
-    sheet(bagH + '<p class="gf-s-t gf-s-t2">' + esc(t('farm.plant.t')) + '</p>' + mkNote + '<div class="gf-crops">' + quick + '</div>' +
+    sheet('<p class="gf-s-t">' + esc(t('farm.plant.pick.t')) + '</p>' + pickH + bagH + '<p class="gf-s-t gf-s-t2">' + esc(t('farm.plant.t')) + '</p>' + mkNote + '<div class="gf-crops">' + quick + '</div>' +
       acts(SHOP && F.farm.inventory ? '<button type="button" class="g-btn g-btn-line" data-act="shop">' + esc(t('shop.open')) + '</button>' : ''));
   }
   // 서버가 셈한 상태(st)를 한 줄로: 거두면 받을 값 · 벨 목재와 팔 값 · 아직이면 언제 무엇을
@@ -566,7 +626,9 @@ window.GardenFarm = (function () {
     if (act === 'water') { water(null); closeSheet(); return; }
     if (act === 'harvest') { var ht = tile(sel.x, sel.y); closeSheet(); if (ht) harvestTile(ht); return; }
     if (act === 'dig') { var dt = tile(sel.x, sel.y); if (dt) sheetItem(dt, true); return; }   // 한 번 더 눌러야 캐낸다(값이 든다)
+    if (act === 'pickall') { (F.farm.tiles || []).forEach(function (tl) { if (convertible(tl)) F.pick[tl.x + ',' + tl.y] = 1; }); render(); return; }
     var p = null, cells = Object.keys(F.pick).map(function (k) { var a = k.split(','); return { x: +a[0], y: +a[1] }; });
+    if (sel.kind === 'plant' && (cr || itm)) { plantMany(cells, cr, itm, b); return; }
     if (act === 'buy') p = SDK.farmBuy(sel.x, sel.y);
     else if (act === 'buymany') p = SDK.farmBuyMany(cells);
     else if (act === 'convert') p = SDK.farmConvert(cells);
@@ -580,8 +642,6 @@ window.GardenFarm = (function () {
       if (!(j >= 0 && d >= 0)) { HUD.toast(t('shop.admin.bad')); return; }
       p = SDK.adminSetLandPrices(j, d).then(function (r) { if (r && r.ok) { F.farm.prices = r.prices; return { ok: true, farm: F.farm, prices: r.prices }; } return r; });
     }
-    else if (cr) p = SDK.farmPlant(sel.x, sel.y, cr);
-    else if (itm) p = SDK.farmPlantItem(sel.x, sel.y, itm);
     if (!p) return;
     F.busy = true; b.disabled = true;
     p.then(function (r) {
