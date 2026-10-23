@@ -848,3 +848,21 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
 .gv-nba .gv-nb-b { white-space: nowrap; }
 .gd-grant { margin: 0; font-size: .92rem; line-height: 1.6; word-break: keep-all; }
 .gd-gift { margin: 0; }
+/* ============================================================
+   내 땅 가꾸기를 입체 정원 안에서 (2026-10-23) — js/garden/farm.js 의 오른쪽 칸
+   입체 창 위로도 스토어·안내 창·알림이 보이게 한다
+   ============================================================ */
+html.g3d-open .g-modal { z-index: 1100; }
+html.g3d-open .g-toast { z-index: 1200; }
+.gf3 { gap: 12px; }
+.gf3-head { display: flex; flex-direction: column; gap: 10px; }
+.gf3-t { margin: 0; font-family: "Noto Serif KR", serif; font-size: 1.15rem; }
+.gf3 .gf-stats { display: flex; flex-wrap: wrap; gap: 6px; }
+.gf3 .gf-stats .g-chip { min-height: 36px; padding: 0 12px; font-size: .84rem; }
+.gf3 .gf-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.gf3 .gf-tools[hidden] { display: none; }
+.gf3 .gf-tools .g-btn { min-height: 38px; padding: 0 12px; font-size: .84rem; }
+.gf3-sheet { position: static !important; display: block !important; max-height: none; margin: 0; padding: 12px; border-radius: 16px; background: var(--g-soft); border: 1px solid var(--g-line2); box-shadow: none; transform: none !important; }
+.gf3-sheet:empty { display: none !important; }
+.gf3-hint { margin: 0; color: var(--g-fg2); line-height: 1.6; }
+.gf3 .gf-crops { grid-template-columns: 1fr; }

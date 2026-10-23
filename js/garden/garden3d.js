@@ -13,7 +13,10 @@
    Garden3D.open({ title, sub, place, plant:{src,name,bubble}, land:{tiles:[{x,y,land,src,h,dead,name,bubble}], max} | Promise,
                    lat, lng, wx:{code,temp,wind}, art:{hills,clouds,soil,dae}, t(key,vars), reduce, opener, onBubble(kind), onClose,
                    prep: Promise<{위 칸들 일부 | error}> — 누른 순간 창부터 열고(휴대폰 전체 화면은 누른 순간에만 된다) 자료는 뒤에 채운다(이웃 정원 방문),
-                   side: 오른쪽 칸(방명록 등, 휴대폰은 아래에서 올라오는 칸), sideLabel })
+                   side: 오른쪽 칸(방명록 등, 휴대폰은 아래에서 올라오는 칸), sideLabel,
+                   onTile(cell{x,y,owned}) · fmtLeft(ms) · onExpire() — 내 땅 가꾸기(farm.js)가 칸 누르기·남은 시간을 받는다 })
+   돌려주는 것: { close, side(label), openSide(on), setLand(land), setTreeBubble(src), flash(cell, text) }
+   land = { tiles:[{x,y,land,planted,src,h,dead,name,bubble,until,tag}], max, buyable:[{x,y,label}], picks:{'x,y':1}, pickable:{'x,y':1}, mode }
    ============================================================ */
 window.Garden3D = (function () {
   'use strict';
@@ -44,7 +47,12 @@ window.Garden3D = (function () {
   }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function mix(a, b, k) { return a + (b - a) * k; }
-  function loadImage(src) { return new Promise(function (res) { if (!src) return res(null); var i = new Image(); i.decoding = 'async'; i.onload = function () { res(i); }; i.onerror = function () { res(null); }; i.src = src; }); }
+  var IMG = {};
+  function loadImage(src) {
+    if (!src) return Promise.resolve(null);
+    if (!IMG[src]) IMG[src] = new Promise(function (res) { var i = new Image(); i.decoding = 'async'; i.onload = function () { res(i); }; i.onerror = function () { delete IMG[src]; res(null); }; i.src = src; });
+    return IMG[src];
+  }
 
   /* 해 위치(저정밀 천문 계산, 오차 1° 안쪽): 고도·방위(북 0°, 동 90°) */
   function sunPos(date, lat, lng) {
@@ -163,7 +171,21 @@ window.Garden3D = (function () {
       if (o.opener && o.opener.focus) o.opener.focus({ preventScroll: true });
       if (o.onClose) o.onClose();
     }
-    CUR = { close: function () { close(); }, side: function (label) { if (label != null) { sideBtn.textContent = label; } } };
+    var pendingLand = null;
+    CUR = {
+      close: function () { close(); },
+      side: function (label) { if (label != null) { sideBtn.textContent = label; } },
+      openSide: function (on) { if (!phone) return; root.classList.toggle('is-side', !!on); sideBtn.setAttribute('aria-expanded', String(!!on)); },
+      setLand: function (land) { if (R && R.drawLand) R.drawLand(land); else pendingLand = land; },
+      setTreeBubble: function (src) { if (R && R.treeBubble) R.treeBubble(src); },
+      flash: function (cell, text) { if (R && R.flash) R.flash(cell, text); },
+      // 칸 가운데의 화면 좌표(시험·도움말용)
+      project: function (cx, cy, hh) {
+        if (!R || !T) return null;
+        var v = new T.Vector3(cx * TS, hh || 0, cy * TS).project(R.camera), r = canvas.getBoundingClientRect();
+        return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height };
+      }
+    };
     function onResize() {
       if (!R) return;
       var w = stage.clientWidth || 1, hh = stage.clientHeight || 1;
@@ -181,10 +203,10 @@ window.Garden3D = (function () {
       if (x && x.error) { load.textContent = x.error; return Promise.reject(null); }
       if (x) for (var k in x) o[k] = x[k];
       setHead(); setSide(o.side, o.sideLabel);
-      return Promise.all([loadThree(), loadImage(art.hills), loadImage(art.clouds), loadImage(art.soil), loadImage(art.dae), loadImage(o.plant && o.plant.src)]);
+      return Promise.all([loadThree(), loadImage(art.hills), loadImage(art.clouds), loadImage(art.soil), loadImage(art.dae), loadImage(o.plant && o.plant.src), loadImage(art.grass)]);
     }).then(function (rs) {
         if (dead) return;
-        try { build({ hills: rs[1], clouds: rs[2], soil: rs[3], dae: rs[4], plant: rs[5] }); }
+        try { build({ hills: rs[1], clouds: rs[2], soil: rs[3], dae: rs[4], plant: rs[5], grass: rs[6] }); }
         catch (e) { load.textContent = t('g3d.fail'); return; }
         load.remove();
       }, function (e) { if (!dead && e !== null) load.textContent = t('g3d.fail'); });
@@ -308,15 +330,15 @@ window.Garden3D = (function () {
         // 그림자 판: 화면에는 안 그리고(colorWrite false) 그림자 지도에만 — three 는 그림자를 그릴 때 이 재질의 map·alphaTest·side 를 쓴다
         var shm = new T.Mesh(geo, new T.MeshBasicMaterial({ map: tx, alphaTest: 0.5, side: T.DoubleSide, colorWrite: false, depthWrite: false }));
         shm.rotation.order = 'YXZ'; shm.scale.set(W, H, 1); shm.rotation.y = shadowYaw; shm.castShadow = true;
-        var g = new T.Group(); g.position.set(s.x, s.y || 0, s.z); g.add(mesh, shm); plantGroup.add(g);
-        var it = { g: g, mesh: mesh, shm: shm, im: im, ph: Math.random() * 6.28, stiff: s.stiff == null ? (H > 2.4 ? 0.4 : 1) : s.stiff, name: s.name || '', drop: 0, vy: 0, top: H * (bb.b - bb.t) };
+        var g = new T.Group(); g.position.set(s.x, s.y || 0, s.z); g.add(mesh, shm); (s.parent || plantGroup).add(g);
+        var it = { g: g, mesh: mesh, shm: shm, im: im, ph: Math.random() * 6.28, stiff: s.stiff == null ? (H > 2.4 ? 0.4 : 1) : s.stiff, name: s.name || '', drop: 0, vy: 0, top: H * (bb.b - bb.t), cell: s.cell || null, tile: !!s.cell };
         items.push(it);
         return it;
       }
       // 열매 말풍선: 흰 말풍선 안에 열매 그림. 늘 보이고(depthTest 끔) 살짝 떠 오르내린다
-      function bubble(src, x, y, z, kind2) {
+      function bubble(src, x, y, z, kind2, data, gen) {
         loadImage(src).then(function (im) {
-          if (dead || !im) return;
+          if (dead || !im || (gen != null && gen !== landGen)) return;
           var c = document.createElement('canvas'); c.width = 128; c.height = 148;
           var g = c.getContext('2d');
           g.beginPath(); g.arc(64, 60, 52, 0, Math.PI * 2); g.moveTo(50, 104); g.lineTo(64, 132); g.lineTo(78, 104); g.closePath();
@@ -327,7 +349,7 @@ window.Garden3D = (function () {
           var sp2 = new T.Sprite(new T.SpriteMaterial({ map: bt, depthTest: false, depthWrite: false, fog: false }));
           sp2.center.set(0.5, 0); sp2.scale.set(0.95, 0.95 * 148 / 128, 1); sp2.position.set(x, y, z); sp2.renderOrder = 10;
           scene.add(sp2);
-          bubbles.push({ s: sp2, y: y, ph: Math.random() * 6.28, kind: kind2 });
+          bubbles.push({ s: sp2, y: y, ph: Math.random() * 6.28, kind: kind2, data: data || null, tile: kind2 === 'tile' });
         });
       }
       function plateMat(map, color) { var m = new T.MeshStandardMaterial({ roughness: 1, color: color || 0xffffff }); if (map) m.map = map; return m; }
@@ -335,15 +357,18 @@ window.Garden3D = (function () {
       var M = {
         jeonTop: plateMat(soilTx, soilTx ? 0xd2bfae : 0x8a6a4a), jeonSide: plateMat(null, 0x6a5036),
         daeTop: plateMat(daeTx, daeTx ? 0xffffff : 0xe6d8bc), daeSide: plateMat(null, 0xc4b08a),
-        homeTop: plateMat(null, 0xb9a98e), homeSide: plateMat(null, 0x8f7f66)
+        homeTop: plateMat(null, 0xb9a98e), homeSide: plateMat(null, 0x8f7f66),
+        grassTop: plateMat(img.grass ? tex(img.grass) : null, img.grass ? 0xffffff : 0x9cb46c), grassSide: plateMat(null, 0x7d6a4c)   // 빈 밭(2D 내 땅과 같은 잔디 무늬)
       };
-      [M.jeonTop, M.daeTop, M.homeTop].forEach(function (m) { tint(m.color); });
-      var gJeon = new T.BoxGeometry(TS * 0.94, 0.16, TS * 0.94), gDae = new T.BoxGeometry(TS * 0.94, 0.09, TS * 0.94), gHome = new T.BoxGeometry(TS * 0.94, 0.07, TS * 0.94);
-      function plate(x, y, kind2) {
-        var geo = kind2 === 'dae' ? gDae : kind2 === 'home' ? gHome : gJeon, top = M[kind2 + 'Top'] || M.jeonTop, side = M[kind2 + 'Side'] || M.jeonSide;
+      [M.jeonTop, M.daeTop, M.homeTop, M.grassTop].forEach(function (m) { tint(m.color); });
+      var gJeon = new T.BoxGeometry(TS * 0.94, 0.16, TS * 0.94), gDae = new T.BoxGeometry(TS * 0.94, 0.09, TS * 0.94), gHome = new T.BoxGeometry(TS * 0.94, 0.07, TS * 0.94), gGrass = new T.BoxGeometry(TS * 0.94, 0.1, TS * 0.94);
+      var tileMeshes = [];
+      function plate(x, y, kind2, parent, cell) {
+        var geo = kind2 === 'dae' ? gDae : kind2 === 'home' ? gHome : kind2 === 'grass' ? gGrass : gJeon, top = M[kind2 + 'Top'] || M.jeonTop, side = M[kind2 + 'Side'] || M.jeonSide;
         var m = new T.Mesh(geo, [side, side, top, side, side, side]);
         m.position.set(x * TS, geo.parameters.height / 2, y * TS); m.castShadow = true; m.receiveShadow = true;
-        scene.add(m);
+        if (cell) { m.userData.cell = cell; tileMeshes.push(m); }
+        (parent || scene).add(m);
         return geo.parameters.height;
       }
 
@@ -365,34 +390,116 @@ window.Garden3D = (function () {
       makeLand(4);
 
       // 가운데 칸: 믿음 나무 + 흙 둔덕 (사람은 세우지 않는다 — 2026-10-23 담임목사 "사람을 삭제해 주세요")
-      var homeH = plate(0, 0, 'home');
+      var homeH = plate(0, 0, 'home', null, { x: 0, y: 0, owned: true, home: true });
       var mound = new T.Mesh(new T.CylinderGeometry(TS * 0.3, TS * 0.36, 0.08, 40), plateMat(null, 0x7a5c40));
       mound.position.set(0, homeH + 0.04, 0); mound.receiveShadow = true; scene.add(mound);
       if (img.plant) {
         var tree = sprite(img.plant, { x: 0, z: 0, y: homeH + 0.06, size: 3.9, center: true, name: o.plant.name || '' });
+        tree.cell = { x: 0, y: 0, owned: true, home: true };
         if (o.plant.bubble) bubble(o.plant.bubble, 0, homeH + tree.top + 0.3, 0, 'tree');
       }
+      R.treeBubble = function (src) {   // 믿음 나무 열매를 다 따면 말풍선을 뗀다
+        bubbles = bubbles.filter(function (b) { if (b.kind === 'tree') { scene.remove(b.s); b.s.material.map.dispose(); b.s.material.dispose(); return false; } return true; });
+        if (src && tree) bubble(src, 0, homeH + tree.top + 0.3, 0, 'tree');
+      };
 
-      // 칸들(내 땅)
-      Promise.resolve(o.land).then(function (land) {
+      // 글 딱지(남은 시간·목말라요·값·✓): 캔버스 글씨 판, 늘 보이게
+      function tagTex(text, tone) {
+        var c = document.createElement('canvas'), g = c.getContext('2d'), fs = 30;
+        g.font = '700 ' + fs + 'px "Noto Sans KR", sans-serif';
+        var w = Math.ceil(g.measureText(text).width) + 32, hh = fs + 22;
+        c.width = w; c.height = hh; g.font = '700 ' + fs + 'px "Noto Sans KR", sans-serif';
+        var bg = tone === 'warn' ? '#fbe3da' : tone === 'buy' ? '#fffaf3' : tone === 'pick' ? '#e9805f' : '#fffaf3';
+        var fg = tone === 'warn' ? '#b5523a' : tone === 'pick' ? '#ffffff' : tone === 'buy' ? '#b5523a' : '#4a3b31';
+        g.fillStyle = bg; g.strokeStyle = tone === 'pick' ? '#cc6546' : '#e6d6c3'; g.lineWidth = 3;
+        var r = hh / 2 - 2; g.beginPath(); g.moveTo(r + 2, 2); g.arcTo(w - 2, 2, w - 2, hh - 2, r); g.arcTo(w - 2, hh - 2, 2, hh - 2, r); g.arcTo(2, hh - 2, 2, 2, r); g.arcTo(2, 2, w - 2, 2, r); g.closePath(); g.fill(); g.stroke();
+        g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, w / 2, hh / 2 + 1);
+        var tx = new T.CanvasTexture(c); tx.colorSpace = T.SRGBColorSpace;
+        return { tx: tx, w: w, h: hh };
+      }
+      var tags = [];
+      function tagAt(x, y, z, text, tone, until, parent) {
+        var tt = tagTex(text, tone), sp = new T.Sprite(new T.SpriteMaterial({ map: tt.tx, depthTest: false, depthWrite: false, fog: false }));
+        var k = 0.0105; sp.center.set(0.5, 0); sp.scale.set(tt.w * k, tt.h * k, 1); sp.position.set(x, y, z); sp.renderOrder = 9;
+        (parent || scene).add(sp);
+        var tg = { s: sp, text: text, tone: tone, until: until || 0, fired: false }; tags.push(tg);
+        return tg;
+      }
+      function retag(tg, text) {
+        if (tg.text === text) return;
+        var tt = tagTex(text, tg.tone); tg.s.material.map.dispose(); tg.s.material.map = tt.tx; tg.s.material.needsUpdate = true;
+        tg.s.scale.set(tt.w * 0.0105, tt.h * 0.0105, 1); tg.text = text;
+      }
+      // 거둔 뒤 떠오르는 글씨(+0.4 달란트)
+      var flashes = [];
+      R.flash = function (cell, text) {
+        if (!cell) return;
+        var tg = tagAt(cell.x * TS, 1.2, cell.y * TS, text, 'pick');
+        tags.splice(tags.indexOf(tg), 1); flashes.push({ s: tg.s, t0: performance.now(), y: 1.2 });
+      };
+
+      // 칸들(내 땅) — 한 묶음(tileGroup)에 두고, 내 땅 가꾸기(farm.js)가 바뀔 때마다 setLand 로 다시 그린다
+      var tileGroup = new T.Group(); scene.add(tileGroup);
+      var landGen = 0, curMax = 4, firstLand = true;
+      var cellGeo = new T.PlaneGeometry(TS * 0.92, TS * 0.92);
+      var buyMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, depthWrite: false });
+      var buyLine = new T.LineDashedMaterial({ color: 0xd9826a, dashSize: 0.22, gapSize: 0.14, transparent: true, opacity: 0.9 });
+      var pickMat = new T.MeshBasicMaterial({ color: 0xe9805f, transparent: true, opacity: 0.45, depthWrite: false });
+      var canMat = new T.MeshBasicMaterial({ color: 0xe9805f, transparent: true, opacity: 0.16, depthWrite: false });
+      var edgeGeo = new T.EdgesGeometry(cellGeo);
+      function clearTiles() {
+        landGen++;
+        items = items.filter(function (it) { if (!it.tile) return true; it.mesh.material.map.dispose(); it.mesh.material.dispose(); it.shm.material.dispose(); it.mesh.geometry.dispose(); return false; });
+        bubbles = bubbles.filter(function (b) { if (!b.tile) return true; scene.remove(b.s); b.s.material.map.dispose(); b.s.material.dispose(); return false; });
+        tags = tags.filter(function (tg) { if (tg.s.parent !== tileGroup) return true; tg.s.material.map.dispose(); tg.s.material.dispose(); return false; });
+        tileMeshes = tileMeshes.filter(function (m) { return m.parent !== tileGroup; });
+        tileGroup.children.slice().forEach(function (c) { tileGroup.remove(c); });
+      }
+      function overlay(x, y, h, mat) {
+        var m = new T.Mesh(cellGeo, mat); m.rotation.x = -Math.PI / 2; m.position.set(x * TS, h + 0.012, y * TS); m.renderOrder = 2; tileGroup.add(m);
+      }
+      function drawLand(land) {
         if (dead || !land) return;
-        var tiles = Array.isArray(land) ? land : land.tiles || [];
+        clearTiles();
+        var gen = landGen, tiles = Array.isArray(land) ? land : land.tiles || [], picks = land.picks || {}, can = land.pickable || {}, mode = land.mode || 'normal';
         var max = Math.max(1, Math.min(12, (land.max | 0) || 0));
         tiles.forEach(function (tl) { if (tl) max = Math.max(max, Math.abs(tl.x), Math.abs(tl.y)); });
-        makeLand(max);
+        if (max !== curMax || firstLand) { makeLand(max); curMax = max; }
+        extent = TS * 1.5;
         tiles.forEach(function (tl) {
           if (!tl || (tl.x === 0 && tl.y === 0)) return;
-          var top = plate(tl.x, tl.y, tl.land === 'dae' ? 'dae' : 'jeon');
+          var key = tl.x + ',' + tl.y, cell = { x: tl.x, y: tl.y, owned: true };
+          var top = plate(tl.x, tl.y, tl.land === 'dae' ? 'dae' : tl.planted ? 'jeon' : 'grass', tileGroup, cell);
           extent = Math.max(extent, (Math.max(Math.abs(tl.x), Math.abs(tl.y)) + 0.5) * TS);
+          if (picks[key]) overlay(tl.x, tl.y, top, pickMat); else if (can[key]) overlay(tl.x, tl.y, top, canMat);
+          if (picks[key]) tagAt(tl.x * TS, top + 0.15, tl.y * TS, '✓', 'pick', 0, tileGroup);
+          var label = function (y0) {
+            if (tl.until) tagAt(tl.x * TS, y0, tl.y * TS, o.fmtLeft ? o.fmtLeft(tl.until - Date.now()) : '', 'time', tl.until, tileGroup);
+            else if (tl.tag) tagAt(tl.x * TS, y0, tl.y * TS, tl.tag, 'warn', 0, tileGroup);
+          };
           if (tl.src) loadImage(tl.src).then(function (im) {
-            if (dead || !im) return;
-            var it = sprite(im, { x: tl.x * TS, z: tl.y * TS, y: top, h: Math.max(0.35, (+tl.h || 60) / 100 * 1.5), dead: !!tl.dead, name: tl.name });
-            if (!reduce) { it.drop = 1.2 + Math.random(); it.vy = 0; }   // 처음 열 때 살짝 내려앉는다
-            if (tl.bubble) bubble(tl.bubble, tl.x * TS, top + it.top + 0.25, tl.y * TS, 'tile');
+            if (dead || !im || gen !== landGen) return;
+            var it = sprite(im, { x: tl.x * TS, z: tl.y * TS, y: top, h: Math.max(0.35, (+tl.h || 60) / 100 * 1.5), dead: !!tl.dead, name: tl.name, cell: cell, parent: tileGroup });
+            if (firstDrop && !reduce) { it.drop = 1.2 + Math.random(); it.vy = 0; }   // 처음 열 때 살짝 내려앉는다
+            if (tl.bubble) bubble(tl.bubble, tl.x * TS, top + it.top + 0.25, tl.y * TS, 'tile', cell, gen);
+            else label(top + it.top + 0.15);
           });
+          else label(top + 0.2);
         });
+        (land.buyable || []).forEach(function (b) {
+          var key = b.x + ',' + b.y, m = new T.Mesh(cellGeo, buyMat);
+          m.rotation.x = -Math.PI / 2; m.position.set(b.x * TS, 0.012, b.y * TS); m.userData.cell = { x: b.x, y: b.y, owned: false }; m.renderOrder = 1;
+          tileGroup.add(m); tileMeshes.push(m);
+          var ln = new T.LineSegments(edgeGeo, buyLine); ln.computeLineDistances(); ln.rotation.x = -Math.PI / 2; ln.position.set(b.x * TS, 0.02, b.y * TS); tileGroup.add(ln);
+          if (picks[key]) { overlay(b.x, b.y, 0, pickMat); tagAt(b.x * TS, 0.1, b.y * TS, '✓', 'pick', 0, tileGroup); }
+          else if (mode === 'buy' && b.label) tagAt(b.x * TS, 0.1, b.y * TS, b.label, 'buy', 0, tileGroup);
+        });
+        firstLand = false; setTimeout(function () { firstDrop = false; }, 2500);
         R.refit();
-      });
+      }
+      var firstDrop = true;
+      R.drawLand = drawLand;
+      Promise.resolve(o.land).then(function (land) { drawLand(pendingLand || land); pendingLand = null; });
 
       // 비·눈: 지금 날씨대로(중력 + 바람)
       var rain = null, snow = null, wv = wind, SPAN = 44;
@@ -485,8 +592,10 @@ window.Garden3D = (function () {
         var hits = ray.intersectObjects(items.map(function (it) { return it.mesh; }), false);
         for (var j = 0; j < hits.length; j++) {
           var ht = hits[j], it = items.filter(function (x) { return x.mesh === ht.object; })[0];
-          if (it && ht.uv && alphaAt(it.im, ht.uv.x, ht.uv.y) > 40) return { item: it };
+          if (it && ht.uv && alphaAt(it.im, ht.uv.x, ht.uv.y) > 40) return { item: it, cell: it.cell };
         }
+        var th = ray.intersectObjects(tileMeshes, false);
+        if (th.length) return { cell: th[0].object.userData.cell };
         return null;
       }
       var tipTimer = 0;
@@ -494,7 +603,8 @@ window.Garden3D = (function () {
       function twoState() { var ps = Object.values(pointers); return { d: Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y), a: Math.atan2(ps[1].y - ps[0].y, ps[1].x - ps[0].x), x: (ps[0].x + ps[1].x) / 2, y: (ps[0].y + ps[1].y) / 2 }; }
       canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
       canvas.addEventListener('pointerdown', function (e) {
-        canvas.setPointerCapture(e.pointerId); pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+        try { canvas.setPointerCapture(e.pointerId); } catch (er) { }
+        pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
         touched = true; fly = null; vel.x = vel.z = vel.az = 0; hint.classList.add('is-gone');
         if (Object.keys(pointers).length === 2) { two = twoState(); drag = null; return; }
         drag = { x: e.clientX, y: e.clientY, moved: 0, rot: e.button === 2 || e.shiftKey };
@@ -525,9 +635,14 @@ window.Garden3D = (function () {
         if (wasTap) {
           vel.x = vel.z = vel.az = 0;
           var p = pick(e);
-          if (p && p.bubble && o.onBubble) { var kd = p.bubble.kind; close(); o.onBubble(kd); return; }
-          showTip(p && p.item ? p.item.name : '');
+          if (p && p.bubble && o.onBubble) {   // onBubble 이 true 를 돌려주면 창을 닫지 않는다(내 땅에서 바로 거두기)
+            var kd = p.bubble.kind, dd = p.bubble.data;
+            if (o.onBubble(kd, dd) !== true) close();
+            drag = null; canvas.classList.remove('is-drag'); return;
+          }
           if (p && p.item) { p.item.drop = 0.25; p.item.vy = 0; }
+          if (p && p.cell && o.onTile) o.onTile(p.cell);
+          else showTip(p && p.item ? p.item.name : '');
         }
         drag = null; canvas.classList.remove('is-drag');
       }
@@ -563,6 +678,21 @@ window.Garden3D = (function () {
           it.mesh.rotation.z = it.shm.rotation.z = sway;
         });
         if (!reduce) bubbles.forEach(function (b) { b.s.position.y = b.y + Math.sin(tt * 2.2 + b.ph) * 0.08; });
+        if (ts - (R.tagT || 0) > 1000) {   // 남은 시간은 1초마다, 다 되면 내 땅에 알린다
+          R.tagT = ts;
+          tags.forEach(function (tg) {
+            if (!tg.until) return;
+            var ms = tg.until - Date.now();
+            if (ms <= 0) { if (!tg.fired) { tg.fired = true; if (o.onExpire) setTimeout(o.onExpire, 50); } return; }
+            if (o.fmtLeft) retag(tg, o.fmtLeft(ms));
+          });
+        }
+        flashes = flashes.filter(function (f) {
+          var k = (ts - f.t0) / 1200;
+          if (k >= 1) { scene.remove(f.s); f.s.material.map.dispose(); f.s.material.dispose(); return false; }
+          f.s.position.y = f.y + k * 1.4; f.s.material.opacity = 1 - k * k; f.s.material.transparent = true;
+          return true;
+        });
         if (clouds && !reduce) clouds.rotation.y += dt * (0.002 + wind * 0.006);
         if (rain) {
           var a = rain.geometry.attributes.position.array, fall = 18 * dt, dx = wv * 5 * dt;

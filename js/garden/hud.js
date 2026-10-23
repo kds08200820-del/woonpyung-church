@@ -811,7 +811,7 @@ window.GardenHud = (function () {
   function init(o) {
     I = o.i18n; SDK = o.sdk; SCENE = o.scene; t = I.t; P = o.params || {};
     I.apply(document);
-    ['gmQt', 'gmStore', 'gmPlant', 'gmFarm', 'gmShop', 'gmInvite', 'gmVisit', 'gmGuide'].forEach(function (id) { if ($(id)) bindModal(id); });
+    ['gmQt', 'gmStore', 'gmPlant', 'gmShop', 'gmInvite', 'gmVisit', 'gmGuide'].forEach(function (id) { if ($(id)) bindModal(id); });
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);
@@ -857,7 +857,7 @@ window.GardenHud = (function () {
     toast: toast, openModal: openModal, closeModal: closeModal, openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
     loadQt: loadQt, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
     syncPlot: syncPlot, renderTodo: renderTodo, garden: garden, speciesName: speciesName, stageName: stageName,
-    todoItems: todoItems, growthInfo: growthInfo, qt: function () { return H.qt || null; },
+    todoItems: todoItems, growthInfo: growthInfo, qt: function () { return H.qt || null; }, fruitRefresh: renderFruitBtn,
     setTalent: setTalent, talentLabel: function () { return H.talentLabel; }, afterWater: afterWater
   };
 })();

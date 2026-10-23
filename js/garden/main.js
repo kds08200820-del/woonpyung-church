@@ -103,23 +103,24 @@
   function base3d() {
     var ch = M.church || {};
     return { place: ch.name || '', lat: ch.lat, lng: ch.lng, wx: M.wx, t: t, reduce: reduceMotion(),
-      art: { hills: SCENE.asset('mid/hills.webp'), clouds: SCENE.asset('sky/clouds-overlay.webp'), soil: 'images/garden/farm/tex-soil.webp', dae: 'images/garden/farm/tex-dae.webp' } };
+      art: { hills: SCENE.asset('mid/hills.webp'), clouds: SCENE.asset('sky/clouds-overlay.webp'), soil: 'images/garden/farm/tex-soil.webp', dae: 'images/garden/farm/tex-dae.webp', grass: 'images/garden/farm/tex-grass.webp' } };
   }
+  // 내 정원(입체) — 내 땅 가꾸기(심기·거두기·땅 사기·메뉴)를 이 창 하나에서 (2D 내 땅 창은 없앴다, 2026-10-23)
   function open3d(btn) {
+    if (!window.Garden3D || !window.Garden3D.supported()) { HUD.toast(t('g3d.fail')); return; }
+    if (window.Garden3D.isOpen()) return;
     var st = M.state || {}, g = HUD.garden() || {}, FARM = window.GardenFarm;
-    var sp = g.species || 'sunflower', stg = Math.max(0, Math.min(5, g.stage | 0));
-    var land = null, fr = st.fruit;
-    function landNow() { var f = FARM.state() || {}; return { tiles: FARM.sceneList(), max: f.max || 4 }; }
-    if (FARM && fr !== undefined && !M.offline) land = FARM.state() ? Promise.resolve(landNow()) : FARM.reload().then(landNow, function () { return null; });
+    var sp = g.species || 'sunflower', stg = Math.max(0, Math.min(5, g.stage | 0)), fr = st.fruit;
     var treeFruit = fr && fr.per_day > 0 && (fr.picked || []).length < fr.per_day ? 'images/garden/farm/fruit-' + sp + '.webp' : '';
-    window.Garden3D.open(Object.assign(base3d(), {
+    var opts = Object.assign(base3d(), {
       title: t('g3d.title'), sub: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg),
-      opener: btn,
-      plant: { src: SCENE.asset('plants/' + sp + '-' + stg + '.webp'), name: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg), bubble: treeFruit },
-      land: land,
-      // 열매 말풍선: 믿음 나무면 열매 따기, 밭이면 내 땅 창
-      onBubble: function (kind) { setTimeout(function () { var fb = document.getElementById('gFruitBtn'); if (kind === 'tree' && fb && !fb.hidden && !fb.disabled) fb.click(); else if (FARM) FARM.open(); }, 60); },
-    }));
+      opener: btn && btn.focus ? btn : null,
+      plant: { src: SCENE.asset('plants/' + sp + '-' + stg + '.webp'), name: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg), bubble: treeFruit }
+    });
+    var farmOn = FARM && FARM.attach3d && fr !== undefined && !M.offline;   // 내 땅 기능이 있는 서버(state.fruit)일 때만
+    if (farmOn) FARM.attach3d(opts);
+    var view = window.Garden3D.open(opts);
+    if (farmOn) FARM.bindView(view);
   }
 
   /* ── 카카오 로그인 복귀(#access_token=…): sb-ready → SIGNED_IN 뒤 garden.html 로 ── */
@@ -203,6 +204,6 @@
       });
   }
 
-  window.GardenApp = { preview: SCENE.preview, state: function () { return M.state; }, sync: doSync, applySky: applySky, params: P, hud: HUD, scene: SCENE, sdk: SDK };
+  window.GardenApp = { open3d: open3d, preview: SCENE.preview, state: function () { return M.state; }, sync: doSync, applySky: applySky, params: P, hud: HUD, scene: SCENE, sdk: SDK };
   boot();
 })();

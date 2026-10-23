@@ -1,20 +1,20 @@
 /* ============================================================
    신앙 정원 — 내 땅(밭) (2026-10-23 담임목사 지시)
-   · 마름모 칸(아이소메트릭). 가운데(0,0)는 믿음 나무
-   · 땅 종류: 전(밭, 작물을 심는다) · 대(대지, 집 지을 자리). 붙은 칸을 여러 개 골라 한 번에 '전'으로 사고(칸당 전 값),
-     빈 전을 여러 개 골라 '대지로 바꾸기'(칸당 대지 값). 값은 관리자가 바꾼다
-   · 빈 전 → 빠른 작물(분 단위) 또는 내 가방(꽃집에서 산 씨앗·묘목·꽃) 심기
-   · 꽃집 품목은 실제 날씨와 물 준 날로 하루씩 셈해(plantsim.js) 자람·꽃·시듦을 보여 주고, 거둘 때가 되면 열매를 하나씩 거둔다
+   · 입체 정원(garden3d.js) 하나에서 가꾼다 — "화면이 2개면 혼동이 있습니다. 둘째 화면으로 통합해서 그곳에서 심고 거두기,
+     첫째 화면의 메뉴도 둘째 화면으로" (같은 날). 예전 마름모 2D 창(gmFarm)은 없앴다
+   · 가운데(0,0)는 믿음 나무. 땅 종류: 전(밭, 작물을 심는다) · 대(대지, 집 지을 자리)
+   · 칸 누르기: 빈 전 → 심기(빠른 작물 · 내 가방) / 익은 작물·열매 → 거두기 / 꽃집 품목 → 상태 / 점선 칸 → 땅 사기
+   · 메뉴(땅 사기 · 대지로 바꾸기 · 물 주기 · 달란트 스토어 · 땅 값 바꾸기)와 심기 목록은 입체 창 오른쪽 칸(휴대폰은 아래 칸)
+   · 꽃집 품목은 실제 날씨와 물 준 날로 하루씩 셈해(plantsim.js) 자람·꽃·시듦을 보여 주고, 거둘 때가 되면 열매를 거둔다
    · 서버가 시간·값·중복을 모두 확인한다. 화면은 받은 상태를 그리기만
-   GardenFarm.init({ i18n, sdk, hud, shop, plant }) · GardenFarm.open()
+   GardenFarm.init({ i18n, sdk, hud, shop, plant }) · open() · attach3d(opts) · bindView(view)
    ============================================================ */
 window.GardenFarm = (function () {
   'use strict';
   var I, SDK, HUD, SHOP, PLANT, t;
-  var F = { farm: null, skew: 0, timer: 0, rec: null, busy: false, sel: null, mode: 'normal', pick: {}, items: null, wx: [], art: 'images/garden/farm/', shopArt: 'images/garden/shop/' };
-  var TW = 132, TH = 66, DEPTH = 14;          // 칸 너비·높이·두께(px, 화면에 맞춰 줄인다)
-  function $(id) { return document.getElementById(id); }
+  var F = { farm: null, skew: 0, view: null, ui: null, busy: false, sel: null, mode: 'normal', pick: {}, items: null, wx: [], art: 'images/garden/farm/', shopArt: 'images/garden/shop/' };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function ui(id) { return F.ui ? F.ui.querySelector('#' + id) : null; }
   function nameOf(v) { if (v && typeof v === 'object') { var l = String(I.locale() || 'ko'); return v[l] || v[l.split('-')[0]] || v.ko || v.en || ''; } return v || ''; }
   function tal(n) { return I.fmtNum(Math.round((+n || 0) * 10) / 10); }
   function now() { return Date.now() + F.skew; }
@@ -29,20 +29,33 @@ window.GardenFarm = (function () {
     if (s >= 60) return t('farm.left.m', { m: Math.ceil(s / 60) });
     return t('farm.left.s', { s: s });
   }
-  // 정해진 자리(같은 칸·같은 번호면 늘 같은 곳)에 열매를 흩어 놓는다
-  function spot(n, total, seed) {
-    var a = (n * 2.39996 + seed) % (Math.PI * 2), r = 0.25 + 0.7 * Math.sqrt((n + 0.5) / Math.max(total, 1));
-    return { x: 50 + Math.cos(a) * r * 30, y: 38 + Math.sin(a) * r * 22 };
-  }
 
-  /* ── 열기·닫기 ── */
+  /* ── 열기: 입체 정원으로 (메인 장면의 밭·식물, '내 땅 가꾸기', 안내 도우미가 모두 여기로) ── */
   function open() {
-    if (F.rec) return;
-    F.mode = 'normal'; F.pick = {};
-    F.rec = HUD.openModal('gmFarm', { onClose: function () { F.rec = null; clearInterval(F.timer); F.timer = 0; closeSheet(); F.mode = 'normal'; F.pick = {}; } });
-    $('gfBoard').innerHTML = '<p class="g-empty gf-loading">' + esc(t('farm.loading')) + '</p>';
-    load();
+    if (window.GardenApp && window.GardenApp.open3d) window.GardenApp.open3d();
+    else HUD.toast(t('g3d.fail'));
   }
+  // 입체 창을 열기 전에 붙인다: 내 땅 그림·오른쪽 칸(메뉴·심기 목록)·칸 누르기
+  function attach3d(opts) {
+    F.mode = 'normal'; F.pick = {};
+    opts.side = panel(); opts.sideLabel = t('farm.menu');
+    opts.land = (F.farm && F.items ? Promise.resolve() : load()).then(function () { return F.farm ? land3d() : null; });
+    opts.onTile = onCell;
+    opts.onBubble = function (kind, data) {
+      if (kind === 'tree') pickTree();
+      else if (data) { var tl = tile(data.x, data.y); if (tl) harvestTile(tl); }
+      return true;   // 창은 그대로
+    };
+    opts.fmtLeft = left;
+    opts.onExpire = function () { render(); pushScene(); };
+    var prev = opts.onClose;
+    opts.onClose = function () { F.view = null; F.mode = 'normal'; F.pick = {}; closeSheet(); if (prev) prev(); };
+    closeSheet(); renderPanel();
+    return opts;
+  }
+  function bindView(v) { F.view = v; }
+  function openSide() { if (F.view && F.view.openSide) F.view.openSide(true); }
+
   function load() {
     var st = HUD.state ? HUD.state() : null, ch = (st && st.church) || {};
     var shopP = SHOP && SHOP.load ? SHOP.load().then(function () { F.items = SHOP.items(); }).catch(function () { }) : Promise.resolve();
@@ -50,24 +63,23 @@ window.GardenFarm = (function () {
     return SDK.farm().then(function (r) {
       if (!r || !r.ok) throw new Error((r && r.why) || 'farm');
       setFarm(r.farm);
-      return Promise.all([shopP, wxP]).then(function () { if (F.rec) render(); pushScene(); });
+      return Promise.all([shopP, wxP]).then(function () { render(); pushScene(); });
     }).catch(function (e) {
-      $('gfBoard').innerHTML = '<p class="g-empty">' + esc(SDK.notReady(e) ? t('farm.notready') : t('farm.err')) + '</p>';
+      if (F.view) HUD.toast(SDK.notReady(e) ? t('farm.notready') : t('farm.err'));
     });
   }
-  // 꽃집에서 산 뒤 돌아오면 남은 달란트·가방을 새로 받는다
-  function afterShop() { if (F.rec) { closeSheet(); load(); } }
+  // 스토어에서 산 뒤 돌아오면 남은 달란트·가방을 새로 받는다
+  function afterShop() { if (F.view) { closeSheet(); load(); } }
   function setFarm(f) {
     F.farm = f;
     if (f.now) F.skew = new Date(f.now).getTime() - Date.now();
     HUD.setTalent(f.balance);
     render();
-    if (F.rec && !F.timer) F.timer = setInterval(tick, 1000);
     pushScene();
   }
 
   /* ── 메인 장면의 밭 (2026-10-23 담임목사: 산 땅·심은 꽃이 메인 화면에도 보이게) ──
-     칸마다 { x, y, land, src, h, dead } — 나무 칸(0,0)은 빼고, 그림 고르기는 위 cellHtml 과 같다. 그리기는 scene.setField
+     칸마다 { x, y, land, src, h, dead, name, planted, bubble } — 나무 칸(0,0)은 뺀다. 그리기는 scene.setField · garden3d
      fm 을 주면 그 밭(이웃 정원 방문: { tiles, water_days, xp_day })으로 — 남의 밭에는 열매 말풍선을 띄우지 않는다 */
   var SPR_BASE = { tree: 140, flower: 92, food: 84 };
   var SPR_STAGE = { sprout: .45, sapling: .55, young: .75, grow: .85, bloom: 1, full: 1.08, harvest: 1, fruit: 1, rest: .9, done: .8, dead: .8 };
@@ -120,7 +132,7 @@ window.GardenFarm = (function () {
     SC.setField(list, { onOpen: open, label: t('farm.open') });
   }
 
-  /* ── 그리기 ── */
+  /* ── 칸 규칙 ── */
   function owned(x, y) { return !!tile(x, y); }
   function buyable(x, y) {
     if (owned(x, y) || Math.abs(x) > F.farm.max || Math.abs(y) > F.farm.max) return false;
@@ -135,32 +147,60 @@ window.GardenFarm = (function () {
   }
   // 품목·날씨를 받아 두었는지(이웃 정원을 그리기 전에) — 없으면 내 밭과 함께 받는다
   function ready() { return F.items && F.farm ? Promise.resolve(true) : load().then(function () { return true; }, function () { return false; }); }
+  function remaining(tl) {
+    var c = tl.crop ? crop(tl.crop) : null, it = tl.item ? item(tl.item) : null, out = [], n;
+    if (c && tl.ripe_at && now() >= new Date(tl.ripe_at).getTime()) { for (n = 1; n <= c.fruits; n++) if ((tl.picked || []).indexOf(n) < 0) out.push(n); }
+    else if (it && it.model && it.model.per_day) { var v = plantView(tl); if (v && v.ready) for (n = 1; n <= it.model.per_day; n++) if ((tl.harvested || []).indexOf(n) < 0) out.push(n); }
+    return out;
+  }
+
+  /* ── 입체 정원에 넘길 땅 ── */
+  function land3d() {
+    var f = F.farm || {}, list = sceneList(), picks = F.pick, pickable = {}, buy = [];
+    list.forEach(function (o) {
+      var tl = tile(o.x, o.y); if (!tl) return;
+      if (tl.crop && tl.ripe_at) { var ms = new Date(tl.ripe_at).getTime(); if (ms > now()) o.until = ms - F.skew; }
+      else if (tl.item) {
+        var v = plantView(tl);
+        if (v) o.tag = v.stage === 'dead' ? t('plant.st.dead') : v.needWater ? t('plant.thirsty') : (v.needXp > 0 || v.age - v.grown >= 3) ? t('plant.wantXp') : '';
+      }
+    });
+    if (f.max != null) for (var y = -f.max; y <= f.max; y++) for (var x = -f.max; x <= f.max; x++) if (buyable(x, y)) buy.push({ x: x, y: y, label: tal(prices().jeon) });
+    if (F.mode === 'convert') (f.tiles || []).forEach(function (tl) { if (convertible(tl)) pickable[tl.x + ',' + tl.y] = 1; });
+    return { tiles: list, max: f.max || 4, buyable: buy, picks: picks, pickable: pickable, mode: F.mode };
+  }
   function render() {
-    var f = F.farm, board = $('gfBoard'); if (!f || !board) return;
+    renderPanel();
+    if (F.view && F.farm) F.view.setLand(land3d());
+    if (F.mode !== 'normal' && F.ui) sheetPick();
+  }
+
+  /* ── 오른쪽 칸(휴대폰은 아래 칸): 잔액·땅·값 · 메뉴 · 그때그때 판 ── */
+  function panel() {
+    if (F.ui) return F.ui;
+    var d = document.createElement('aside');
+    d.className = 'gf3'; d.setAttribute('aria-label', t('farm.title'));
+    d.innerHTML = '<div class="gf3-head"><h2 class="gf3-t">' + esc(t('farm.title')) + '</h2>' +
+      '<div class="gf-stats"><span class="g-chip gf-bal"><b id="gfBal">0</b><span id="gfUnit"></span></span><span class="g-chip" id="gfCount"></span><span class="g-chip" id="gfPrice"></span></div>' +
+      '<div class="gf-tools" id="gfTools" hidden></div></div>' +
+      '<div class="gf-sheet gf3-sheet" id="gfSheet"></div>';
+    d.querySelector('#gfTools').addEventListener('click', onTools);
+    d.querySelector('#gfSheet').addEventListener('click', onSheet);
+    F.ui = d;
+    return d;
+  }
+  function renderPanel() {
+    var f = F.farm; if (!F.ui || !f) return;
     var P = prices();
-    $('gfBal').textContent = tal(f.balance);
-    $('gfCount').textContent = t('farm.count2', { n: I.fmtNum(f.count), d: I.fmtNum((f.tiles || []).filter(function (x) { return x.land === 'dae'; }).length) });
-    $('gfPrice').textContent = t('farm.price2', { j: tal(P.jeon), d: tal(P.dae) });
+    ui('gfBal').textContent = tal(f.balance); ui('gfUnit').textContent = HUD.talentLabel();
+    ui('gfCount').textContent = t('farm.count2', { n: I.fmtNum(f.count), d: I.fmtNum((f.tiles || []).filter(function (x) { return x.land === 'dae'; }).length) });
+    ui('gfPrice').textContent = t('farm.price2', { j: tal(P.jeon), d: tal(P.dae) });
     renderTools();
-    var cells = [], lo = -f.max, hi = f.max, x, y;
-    for (y = lo; y <= hi; y++) for (x = lo; x <= hi; x++) if (owned(x, y) || buyable(x, y)) cells.push({ x: x, y: y });
-    var minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
-    cells.forEach(function (c) { var sx = (c.x - c.y) * TW / 2, sy = (c.x + c.y) * TH / 2; minX = Math.min(minX, sx); maxX = Math.max(maxX, sx); minY = Math.min(minY, sy); maxY = Math.max(maxY, sy); });
-    var wrap = board.parentNode, availW = Math.max(280, (wrap.clientWidth || 600) - 24), availH = Math.max(260, (wrap.clientHeight || 500) - 24);
-    var needW = maxX - minX + TW, needH = maxY - minY + TH + DEPTH + 120, scale = Math.max(0.45, Math.min(1.7, availW / needW, availH / needH));
-    board.style.width = needW * scale + 'px'; board.style.height = needH * scale + 'px';
-    board.style.setProperty('--gf-s', scale);
-    board.classList.toggle('is-buying', F.mode === 'buy'); board.classList.toggle('is-converting', F.mode === 'convert');
-    board.innerHTML = cells.sort(function (a, b) { return (a.x + a.y) - (b.x + b.y) || a.x - b.x; }).map(function (c) {
-      return cellHtml(c.x, c.y, ((c.x - c.y) * TW / 2 - minX) * scale, ((c.x + c.y) * TH / 2 - minY + 110) * scale, scale);
-    }).join('');
-    if (F.mode !== 'normal') sheetPick();
   }
   function renderTools() {
-    var f = F.farm, el = $('gfTools'); if (!el) return;
-    var phase3 = !!f.prices;
+    var f = F.farm, el = ui('gfTools'); if (!el || !f) return;
     var h = '';
-    if (phase3) {
+    if (f.prices) {
       h += '<button type="button" class="g-btn ' + (F.mode === 'buy' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="buy">' + esc(t('farm.tool.buy')) + '</button>';
       h += '<button type="button" class="g-btn ' + (F.mode === 'convert' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="convert">' + esc(t('farm.tool.convert')) + '</button>';
       h += '<button type="button" class="g-btn g-btn-line" data-tool="water"' + (f.watered ? ' disabled' : '') + '>' + esc(f.watered ? t('water.done') : t('water.go')) + '</button>';
@@ -169,102 +209,36 @@ window.GardenFarm = (function () {
     }
     el.innerHTML = h; el.hidden = !h;
   }
-  function cellHtml(x, y, lx, ty, s) {
-    var tl = tile(x, y), key = x + ',' + y, picked = !!F.pick[key];
-    var st = 'left:' + lx.toFixed(1) + 'px;top:' + ty.toFixed(1) + 'px;width:' + (TW * s).toFixed(1) + 'px;height:' + (TH * s).toFixed(1) + 'px;z-index:' + (100 + x + y);
-    if (!tl) {
-      return '<button type="button" class="gf-cell gf-buy' + (picked ? ' is-picked' : '') + '" data-x="' + x + '" data-y="' + y + '" style="' + st + '" aria-pressed="' + picked + '" aria-label="' + esc(t('farm.buy.aria', { p: tal(prices().jeon) })) + '">' +
-        '<span class="gf-top gf-top-buy"></span><span class="gf-tag">' + esc(picked ? '✓' : tal(prices().jeon)) + '</span></button>';
-    }
-    var tree = x === 0 && y === 0, c = tl.crop ? crop(tl.crop) : null, inner = '', cls = 'gf-cell', label = '', top = 'gf-top-grass';
-    if (tl.land === 'dae') { cls += ' gf-dae'; top = 'gf-top-dae'; label = t('farm.dae.aria'); }
-    if (tree) {
-      var g = HUD.garden ? HUD.garden() : {}, stage = Math.max(0, Math.min(5, +(g && g.stage) || 0));   // 장면(scene.setPlant)과 같은 그림
-      inner = '<img class="gf-spr gf-tree" alt="" draggable="false" src="images/garden/default/plants/' + esc((g && g.species) || 'sunflower') + '-' + stage + '.webp" onerror="this.remove()">';
-      cls += ' gf-is-tree'; label = t('farm.tree.aria');
-    } else if (c) {
-      top = 'gf-top-soil';
-      var ripe = now() >= new Date(tl.ripe_at).getTime(), prog = 1 - Math.max(0, new Date(tl.ripe_at).getTime() - now()) / (c.grow_sec * 1000);
-      inner = '<img class="gf-spr" alt="" draggable="false" src="' + F.art + 'crop-' + c.slug + '-' + (prog < 0.5 ? 1 : 2) + '.webp" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'gf-ph\'}))">';
-      if (ripe) {
-        cls += ' gf-ripe'; label = t('farm.ripe.aria', { name: nameOf(c.name) });
-        for (var n = 1; n <= c.fruits; n++) {
-          if ((tl.picked || []).indexOf(n) >= 0) continue;
-          inner += fruitHtml('crop', n, spot(n, c.fruits, x * 7 + y * 3), F.art + 'fruit-' + c.slug + '.webp');
-        }
-      } else {
-        cls += ' gf-growing'; label = t('farm.grow.aria', { name: nameOf(c.name) });
-        inner += '<span class="gf-tag gf-time" data-ripe="' + esc(tl.ripe_at) + '">' + esc(left(new Date(tl.ripe_at).getTime() - now())) + '</span>';
-      }
-    } else if (tl.item) {
-      top = 'gf-top-soil';
-      var it = item(tl.item), v = plantView(tl);
-      var nm = it ? nameOf(it.name) : tl.item;
-      if (!v) { inner = '<span class="gf-ph"></span>'; label = nm; }
-      else {
-        var size = { sprout: 45, sapling: 55, young: 70, grow: 80, bloom: 100, full: 108, harvest: 100, fruit: 100, rest: 85, done: 85, dead: 85 }[v.stage] || 85;
-        var flowerBud = it.category === 'flower' && (v.stage === 'sprout' || v.stage === 'grow');
-        var src = flowerBud || v.stage === 'sprout' ? F.shopArt + '_sprout.webp' : F.shopArt + tl.item + '.webp';
-        inner = '<img class="gf-spr gf-st-' + v.stage + '" style="height:' + size + '%" alt="" draggable="false" src="' + src + '" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{className:\'gf-ph\'}))">';
-        cls += ' gf-item gf-item-' + v.stage + (v.needWater ? ' gf-thirsty' : '');
-        label = nm + ' — ' + t('plant.st.' + v.stage);
-        if (v.ready && it.model && it.model.per_day) {
-          var done = tl.harvested || [], per = it.model.per_day;
-          for (var k = 1; k <= per; k++) if (done.indexOf(k) < 0) inner += fruitHtml('item', k, spot(k, per, x * 5 + y * 11), F.shopArt + tl.item + '-fruit.webp');
-        }
-        if (v.stage === 'dead') inner += '<span class="gf-tag gf-warn">' + esc(t('plant.st.dead')) + '</span>';
-        else if (v.needWater) inner += '<span class="gf-tag gf-water">' + esc(t('plant.thirsty')) + '</span>';
-        else if (v.needXp > 0 || v.age - v.grown >= 3) inner += '<span class="gf-tag gf-xp">' + esc(t('plant.wantXp')) + '</span>';
-      }
-    } else if (tl.land !== 'dae') { cls += ' gf-empty'; label = t('farm.empty.aria'); }
-    if (picked) cls += ' is-picked';
-    if (F.mode === 'convert' && convertible(tl)) cls += ' is-pickable';
-    return '<div class="' + cls + '" data-x="' + x + '" data-y="' + y + '" style="' + st + '">' +
-      '<span class="gf-side' + (tl.land === 'dae' ? ' gf-side-dae' : '') + '"></span><button type="button" class="gf-hit" aria-label="' + esc(label) + '"' + (F.mode === 'convert' ? ' aria-pressed="' + picked + '"' : '') + '><span class="gf-top ' + top + '"></span></button>' +
-      '<span class="gf-stand">' + inner + '</span>' + (picked ? '<span class="gf-tag gf-pick">✓</span>' : '') + '</div>';
-  }
-  function fruitHtml(kind, n, p, src) {
-    return '<span class="gf-fruit" role="button" tabindex="0" data-kind="' + kind + '" data-n="' + n + '" style="left:' + p.x.toFixed(1) + '%;top:' + p.y.toFixed(1) + '%" aria-label="' + esc(t('farm.fruit.aria', { n: n })) + '"><img alt="" draggable="false" src="' + src + '" onerror="this.parentNode.classList.add(\'noimg\');this.remove()"></span>';
-  }
-  function tick() {
-    if (!F.farm) return;
-    var flip = false;
-    Array.prototype.forEach.call(document.querySelectorAll('#gfBoard .gf-time'), function (el) {
-      var ms = new Date(el.getAttribute('data-ripe')).getTime() - now();
-      if (ms <= 0) flip = true; else el.textContent = left(ms);
-    });
-    if (flip) { render(); pushScene(); }
-  }
 
-  /* ── 누르기 ── */
-  function onBoard(e) {
-    var fr = e.target.closest('.gf-fruit');
-    if (fr && F.mode === 'normal') { pick(fr); return; }
-    var cell = e.target.closest('.gf-cell'); if (!cell) return;
-    var x = +cell.getAttribute('data-x'), y = +cell.getAttribute('data-y'), key = x + ',' + y, tl = tile(x, y);
+  /* ── 칸 누르기 ── */
+  function onCell(c) {
+    if (!F.farm || F.busy) return;
+    var x = c.x, y = c.y, key = x + ',' + y, tl = tile(x, y);
     if (F.mode === 'buy') {
-      if (!tl) { if (F.pick[key]) delete F.pick[key]; else F.pick[key] = 1; prune(); render(); }
+      if (!tl && buyable(x, y)) { if (F.pick[key]) delete F.pick[key]; else F.pick[key] = 1; prune(); render(); openSide(); }
       return;
     }
     if (F.mode === 'convert') {
-      if (convertible(tl)) { if (F.pick[key]) delete F.pick[key]; else F.pick[key] = 1; render(); }
+      if (convertible(tl)) { if (F.pick[key]) delete F.pick[key]; else F.pick[key] = 1; render(); openSide(); }
       else HUD.toast(t(tl && tl.land === 'dae' ? 'farm.why.already' : 'farm.why.convert'));
       return;
     }
     if (!tl) {
+      if (!buyable(x, y)) return;
       if (F.farm.prices) { F.mode = 'buy'; F.pick = {}; F.pick[key] = 1; render(); }
       else sheetBuyOne(x, y);
+      openSide();
       return;
     }
-    if (cell.classList.contains('gf-is-tree')) { HUD.toast(t('farm.tree.msg')); return; }
+    if (x === 0 && y === 0) { pickTree(); return; }
     if (tl.land === 'dae') { HUD.toast(t('farm.dae.msg')); return; }
     if (tl.crop) {
       if (now() < new Date(tl.ripe_at).getTime()) HUD.toast(t('farm.growing.msg', { name: nameOf((crop(tl.crop) || {}).name), left: left(new Date(tl.ripe_at).getTime() - now()) }));
-      else HUD.toast(t('farm.ripe.msg'));
+      else harvestTile(tl);
       return;
     }
-    if (tl.item) { sheetItem(tl); return; }
-    sheetPlant(x, y);
+    if (tl.item) { sheetItem(tl); openSide(); return; }
+    sheetPlant(x, y); openSide();
   }
   // 산 칸에 붙은 것만 남긴다(고른 칸을 빼면 그 칸에만 붙어 있던 칸도 빠진다)
   function prune() {
@@ -280,22 +254,48 @@ window.GardenFarm = (function () {
     }
     F.pick = keep;
   }
-  function pick(fr) {
-    if (fr.classList.contains('is-going')) return;
-    var cell = fr.closest('.gf-cell'), x = +cell.getAttribute('data-x'), y = +cell.getAttribute('data-y'), n = +fr.getAttribute('data-n');
-    var p = fr.getAttribute('data-kind') === 'item' ? SDK.farmHarvest(x, y, n) : SDK.farmPick(x, y, n);
-    fr.classList.add('is-going');
-    p.then(function (r) {
-      if (!r || !r.ok) { fr.classList.remove('is-going'); HUD.toast(why(r)); if (r && (r.why === 'growing' || r.why === 'not_ready')) load(); return; }
-      if (r.picked) gain(fr, r.gain);
-      setTimeout(function () { setFarm(r.farm); }, 380);
-    }).catch(function () { fr.classList.remove('is-going'); HUD.toast(t('farm.err')); });
+  // 한 칸의 남은 열매를 모두 거둔다(서버는 하나씩 확인)
+  function harvestTile(tl) {
+    var ns = remaining(tl); if (!ns.length || F.busy) { if (!ns.length) HUD.toast(t('farm.why.growing')); return; }
+    F.busy = true;
+    var total = 0, cnt = 0, last = null, x = tl.x, y = tl.y, isCrop = !!tl.crop;
+    (function next(i) {
+      if (i >= ns.length) {
+        F.busy = false; if (last) setFarm(last);
+        if (cnt) { HUD.toast(t('farm.harvested', { n: cnt, p: tal(total) })); if (F.view) F.view.flash({ x: x, y: y }, '+' + tal(total) + ' ' + HUD.talentLabel()); }
+        return;
+      }
+      (isCrop ? SDK.farmPick(x, y, ns[i]) : SDK.farmHarvest(x, y, ns[i])).then(function (r) {
+        if (!r || !r.ok) { F.busy = false; if (last) setFarm(last); HUD.toast(why(r)); if (r && (r.why === 'growing' || r.why === 'not_ready')) load(); return; }
+        if (r.picked) { total += +r.gain || 0; cnt++; }
+        last = r.farm || last; next(i + 1);
+      }, function () { F.busy = false; if (last) setFarm(last); HUD.toast(t('farm.err')); });
+    })(0);
   }
-  function gain(fr, amount) {
-    var d = document.createElement('span'); d.className = 'gf-gain'; d.textContent = '+' + tal(amount) + ' ' + HUD.talentLabel();
-    var r = fr.getBoundingClientRect(), b = $('gfBoard').getBoundingClientRect();
-    d.style.left = (r.left - b.left + r.width / 2) + 'px'; d.style.top = (r.top - b.top) + 'px';
-    $('gfBoard').appendChild(d); setTimeout(function () { d.remove(); }, 1100);
+  // 믿음 나무 열매(하루 몇 개)를 모두 딴다
+  function pickTree() {
+    var st = HUD.state ? HUD.state() : null, fr = st && st.fruit, ns = [];
+    if (fr && fr.per_day) for (var n = 1; n <= fr.per_day; n++) if ((fr.picked || []).indexOf(n) < 0) ns.push(n);
+    if (!ns.length) { HUD.toast(t('farm.tree.msg')); return; }
+    if (F.busy) return;
+    F.busy = true;
+    var total = 0, cnt = 0;
+    (function next(i) {
+      if (i >= ns.length) {
+        F.busy = false;
+        if (HUD.fruitRefresh) HUD.fruitRefresh();
+        if (F.view) F.view.setTreeBubble(null);
+        if (cnt) { HUD.toast(t('farm.tree.picked', { n: cnt, p: tal(total) })); if (F.view) F.view.flash({ x: 0, y: 0 }, '+' + tal(total) + ' ' + HUD.talentLabel()); }
+        return;
+      }
+      SDK.pickFruit(ns[i]).then(function (r) {
+        if (!r || !r.ok) { F.busy = false; HUD.toast(t('fruit.err')); return; }
+        if (r.picked) { total += +r.gain || 0; cnt++; }
+        if (st) st.fruit = r.fruit || st.fruit;
+        if (r.talent_balance != null) { HUD.setTalent(r.talent_balance); if (F.farm) { F.farm.balance = r.talent_balance; renderPanel(); } }
+        next(i + 1);
+      }, function () { F.busy = false; HUD.toast(t('fruit.err')); });
+    })(0);
   }
   function why(r) {
     var w = (r && r.why) || '';
@@ -311,7 +311,7 @@ window.GardenFarm = (function () {
     return t('farm.err');
   }
 
-  /* ── 위 단추 ── */
+  /* ── 메뉴 ── */
   function onTools(e) {
     var b = e.target.closest('[data-tool]'); if (!b || b.disabled) return;
     var k = b.getAttribute('data-tool');
@@ -321,20 +321,20 @@ window.GardenFarm = (function () {
     if (k === 'prices') { sheetPrices(); return; }
   }
   function water(b) {
-    b.disabled = true;
+    if (b) b.disabled = true;
     SDK.water().then(function (r) {
-      if (!r || !r.ok) { b.disabled = false; HUD.toast(t('water.err')); return; }
+      if (!r || !r.ok) { if (b) b.disabled = false; HUD.toast(t('water.err')); return; }
       HUD.afterWater(r);
       F.farm.watered = true;
       if (r.day && (F.farm.water_days || []).indexOf(r.day) < 0) (F.farm.water_days = F.farm.water_days || []).push(r.day);
       if (r.talent_balance != null) F.farm.balance = r.talent_balance;
       render();
-    }).catch(function () { b.disabled = false; HUD.toast(t('water.err')); });
+    }).catch(function () { if (b) b.disabled = false; HUD.toast(t('water.err')); });
   }
 
-  /* ── 아래 판 ── */
-  function closeSheet() { var s = $('gfSheet'); if (s) { s.hidden = true; s.innerHTML = ''; } F.sel = null; }
-  function sheet(html) { var s = $('gfSheet'); s.innerHTML = html; s.hidden = false; }
+  /* ── 그때그때 판(오른쪽 칸 아래) ── */
+  function closeSheet() { var s = ui('gfSheet'); if (s) s.innerHTML = '<p class="gf-s-m gf3-hint">' + esc(t('farm.hint3d')) + '</p>'; F.sel = null; }
+  function sheet(html) { var s = ui('gfSheet'); if (s) s.innerHTML = html; }
   function acts(main) { return '<div class="gf-s-acts"><button type="button" class="g-btn g-btn-line" data-act="cancel">' + esc(t('farm.cancel')) + '</button>' + (main || '') + '</div>'; }
   function sheetPick() {
     var n = Object.keys(F.pick).length, P = prices(), buy = F.mode === 'buy', per = buy ? P.jeon : P.dae, total = Math.round(per * n * 10) / 10, can = n > 0 && +F.farm.balance >= total;
@@ -386,9 +386,10 @@ window.GardenFarm = (function () {
       lines.push(v.needWater ? t('plant.needWater', { d: v.sinceWater }) : t('plant.moist', { mm: v.moisture }));
     }
     if (sp.water) lines.push(t('shop.spec.water') + ': ' + sp.water);
-    var clear = v && (v.stage === 'dead' || v.stage === 'done');
+    var clear = v && (v.stage === 'dead' || v.stage === 'done'), ripe = remaining(tl).length > 0;
     sheet('<p class="gf-s-t">' + esc(nameOf(it.name)) + '</p><ul class="gf-s-list">' + lines.filter(Boolean).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' +
       acts((F.farm.watered ? '' : '<button type="button" class="g-btn g-btn-line" data-act="water">' + esc(t('water.go')) + '</button>') +
+        (ripe ? '<button type="button" class="g-btn g-btn-primary" data-act="harvest">' + esc(t('farm.harvest.go')) + '</button>' : '') +
         (clear ? '<button type="button" class="g-btn g-btn-primary" data-act="clear">' + esc(t('farm.clear')) + '</button>' : '')));
   }
   function sheetPrices() {
@@ -398,20 +399,22 @@ window.GardenFarm = (function () {
       '<label>' + esc(t('farm.prices.jeon')) + '<input type="number" id="gfPJ" min="0" step="0.1" value="' + esc(P.jeon) + '"></label>' +
       '<label>' + esc(t('farm.prices.dae')) + '<input type="number" id="gfPD" min="0" step="0.1" value="' + esc(P.dae) + '"></label></div>' +
       acts('<button type="button" class="g-btn g-btn-primary" data-act="prices">' + esc(t('farm.prices.save')) + '</button>'));
+    openSide();
   }
   function onSheet(e) {
     var b = e.target.closest('button'); if (!b || b.disabled || F.busy || !F.sel) return;
     var act = b.getAttribute('data-act'), cr = b.getAttribute('data-crop'), itm = b.getAttribute('data-item'), sel = F.sel;
     if (act === 'cancel') { if (F.mode !== 'normal') { F.mode = 'normal'; F.pick = {}; render(); } closeSheet(); return; }
     if (act === 'shop') { if (SHOP) SHOP.open(null, afterShop); return; }
-    if (act === 'water') { water(b); closeSheet(); return; }
+    if (act === 'water') { water(null); closeSheet(); return; }
+    if (act === 'harvest') { var ht = tile(sel.x, sel.y); closeSheet(); if (ht) harvestTile(ht); return; }
     var p = null, cells = Object.keys(F.pick).map(function (k) { var a = k.split(','); return { x: +a[0], y: +a[1] }; });
     if (act === 'buy') p = SDK.farmBuy(sel.x, sel.y);
     else if (act === 'buymany') p = SDK.farmBuyMany(cells);
     else if (act === 'convert') p = SDK.farmConvert(cells);
     else if (act === 'clear') p = SDK.farmClear(sel.x, sel.y);
     else if (act === 'prices') {
-      var j = Math.round(+$('gfPJ').value * 10) / 10, d = Math.round(+$('gfPD').value * 10) / 10;
+      var j = Math.round(+ui('gfPJ').value * 10) / 10, d = Math.round(+ui('gfPD').value * 10) / 10;
       if (!(j >= 0 && d >= 0)) { HUD.toast(t('shop.admin.bad')); return; }
       p = SDK.adminSetLandPrices(j, d).then(function (r) { if (r && r.ok) { F.farm.prices = r.prices; return { ok: true, farm: F.farm, prices: r.prices }; } return r; });
     }
@@ -431,13 +434,7 @@ window.GardenFarm = (function () {
 
   function init(o) {
     I = o.i18n; SDK = o.sdk; HUD = o.hud; SHOP = o.shop || window.GardenShop || null; PLANT = o.plant || window.GardenPlant || null; t = I.t;
-    var board = $('gfBoard'); if (!board) return;
-    board.addEventListener('click', onBoard);
-    board.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('.gf-fruit')) { e.preventDefault(); pick(e.target.closest('.gf-fruit')); } });
-    $('gfSheet').addEventListener('click', onSheet);
-    if ($('gfTools')) $('gfTools').addEventListener('click', onTools);
-    var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (F.rec) render(); }, 150); });
-    setInterval(pushScene, 60 * 1000);   // 창이 닫혀 있어도 작물이 자라는 모습을 1분마다
+    setInterval(pushScene, 60 * 1000);   // 입체 창을 열지 않아도 작물이 자라는 모습을 1분마다 메인 장면에
   }
-  return { init: init, open: open, reload: load, ready: ready, pushScene: pushScene, sceneList: sceneList, summary: summary, state: function () { return F.farm; } };
+  return { init: init, open: open, attach3d: attach3d, bindView: bindView, reload: load, ready: ready, pushScene: pushScene, sceneList: sceneList, summary: summary, state: function () { return F.farm; } };
 })();
