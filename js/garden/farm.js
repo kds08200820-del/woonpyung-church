@@ -125,8 +125,34 @@ window.GardenFarm = (function () {
     });
     return out;
   }
+  /* 오른쪽 '내 식물' 칸에 내 땅에 심은 것 — 종류(수량), 나무·꽃·채소·빠른 작물 순 (2026-10-23 담임목사) */
+  var CAT_RANK = { tree: 0, flower: 1, food: 2, crop: 3 };
+  function renderMine() {
+    var box = document.getElementById('gGrowMine'); if (!box || !F.farm) return;
+    var by = {}, dead = 0;
+    (F.farm.tiles || []).forEach(function (tl) {
+      if (tl.x === 0 && tl.y === 0) return;
+      var nm = '', cat = 'crop';
+      if (tl.crop) { var c = crop(tl.crop); nm = c ? nameOf(c.name) : ''; }
+      else if (tl.item) {
+        var it = item(tl.item), v = plantView(tl);
+        if (v && v.stage === 'dead') { dead++; return; }
+        nm = it ? nameOf(it.name) : ''; cat = (it && it.category) || 'flower';
+      }
+      if (!nm) return;
+      var g = by[nm] || (by[nm] = { name: nm, n: 0, rank: CAT_RANK[cat] != null ? CAT_RANK[cat] : 2 });
+      g.n++;
+    });
+    var list = Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.rank - b.rank || b.n - a.n || (a.name < b.name ? -1 : 1); });
+    var parts = list.map(function (g) { return t('growth.mine.one', { name: g.name, n: I.fmtNum(g.n) }); });
+    if (dead) parts.push(t('growth.mine.dead', { n: I.fmtNum(dead) }));
+    box.hidden = !parts.length;
+    box.textContent = parts.length ? t('growth.mine', { list: parts.join(' · ') }) : '';
+  }
   function pushScene() {
-    var SC = window.GardenScene; if (!SC || !SC.setField || !F.farm) return;
+    var SC = window.GardenScene; if (!F.farm) return;
+    renderMine();
+    if (!SC || !SC.setField) return;
     var list = sceneList(), sig = JSON.stringify(list);
     if (sig === F.sceneSig) return;
     F.sceneSig = sig;

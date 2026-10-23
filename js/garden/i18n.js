@@ -226,6 +226,9 @@ window.GardenI18n = (function () {
     'growth.xp': '{cur} / {next} XP',
     'growth.done': '거둔 열매 {n}그루',
     'growth.first': '첫 그루를 키우는 중',
+    'growth.mine': '심은 것 {list}',
+    'growth.mine.one': '{name}({n})',
+    'growth.mine.dead': '시든 것({n})',
 
     'todo.title': '오늘의 할 일',
     'todo.count': '{done}/{total}',
