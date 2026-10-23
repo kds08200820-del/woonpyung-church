@@ -566,6 +566,12 @@ window.GardenHud = (function () {
         .then(function () { ob.busy = false; btn.disabled = false; btn.textContent = ob.mode === 'profile' ? t('profile.save') : t('onboard.next'); });
     });
     if ($('gProfileBtn')) $('gProfileBtn').addEventListener('click', openProfile);
+    // 내 모습 칸: 장면이 인물 그림을 정할 때마다 같은 그림 + 이름
+    document.addEventListener('g-character', function (e) {
+      var d = e.detail || {}, pic = $('gMePic'), nm = $('gMeName'); if (!pic) return;
+      pic.innerHTML = d.src ? '<img alt="" draggable="false" src="' + esc(d.src) + '">' : '';
+      if (nm) { nm.textContent = d.nickname || ''; nm.hidden = !d.nickname; }
+    });
     $('gObNick').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('gObNext').click(); } });
     $('gObBack').addEventListener('click', function () { showStep(1); });
     $('gObName').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('gObPlant').click(); } });
@@ -777,13 +783,27 @@ window.GardenHud = (function () {
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);
-    bindOnboarding(); bindBanner(); bindBar(); bindTodoFold();
+    bindOnboarding(); bindBanner(); bindBar(); bindTodoFold(); bindRailToggle();
     if ($('gFruitBtn')) $('gFruitBtn').addEventListener('click', function () { fruitMode(!FR.on); renderFruitBtn(); });
     if ($('gWaterBtn')) $('gWaterBtn').addEventListener('click', doWater);
     if ($('gShopBtn')) $('gShopBtn').addEventListener('click', function () { if (window.GardenShop) window.GardenShop.open(); });
     if ($('gFarmBtn') && window.GardenFarm) $('gFarmBtn').addEventListener('click', function () { fruitMode(false); renderFruitBtn(); window.GardenFarm.open(); });
   }
   /* 오늘의 할 일 접기 — 접어 두면 다음에도 접힌 채로(이 기기에 기억) */
+  // 오른쪽 메뉴를 오른쪽으로 숨기고 다시 꺼낸다(넓은 화면만). 이 기기에서 기억
+  function bindRailToggle() {
+    var b = $('gRailTog'), root = $('gRoot'); if (!b || !root) return;
+    function set(open, save) {
+      root.classList.toggle('is-rail-hidden', !open);
+      b.setAttribute('aria-expanded', String(open));
+      b.setAttribute('aria-label', t(open ? 'rail.hide' : 'rail.show')); b.title = t(open ? 'rail.hide' : 'rail.show');
+      if ($('gRail')) $('gRail').inert = !open;
+      if (save) { try { localStorage.setItem('g_rail_open', open ? '1' : '0'); } catch (e) { } }
+    }
+    var saved = null; try { saved = localStorage.getItem('g_rail_open'); } catch (e) { }
+    set(saved !== '0', false);
+    b.addEventListener('click', function () { set(b.getAttribute('aria-expanded') !== 'true', true); });
+  }
   function bindTodoFold() {
     var b = $('gTodoFold'), body = $('gTodoBody'); if (!b || !body) return;
     function set(open, save) {

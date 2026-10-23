@@ -391,6 +391,8 @@ window.GardenScene = (function () {
     if (o.avatarUrl && /^(https?:)?\/\//.test(o.avatarUrl)) src = o.avatarUrl;
     else if (o.avatarUrl && has(o.avatarUrl.replace(/^images\/garden\/default\//, ''))) src = url(o.avatarUrl.replace(/^images\/garden\/default\//, ''));
     else src = asset('chars/char-' + k + '.webp');
+    /* 인물은 장면이 아니라 오른쪽 메뉴의 '내 모습' 칸에 보인다(2026-10-23) — 같은 그림을 알려 준다 */
+    try { document.dispatchEvent(new CustomEvent('g-character', { detail: { key: k, src: src, nickname: S.nickname } })); } catch (e) { }
     if (src) { var im = el('img', 'g-char-img'); im.src = src; im.alt = ''; im.draggable = false; box.appendChild(im); return; }
     var c = CHAR_COLOR[k] || CHAR_COLOR.a, ph = el('div', 'g-char-ph');
     ph.style.setProperty('--skin', c.skin); ph.style.setProperty('--body', c.body);

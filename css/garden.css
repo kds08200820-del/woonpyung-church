@@ -49,7 +49,16 @@ body.garden [hidden] { display: none !important; }
   background: linear-gradient(180deg, rgba(255,250,243,.62) 0, rgba(255,250,243,.18) 110px, rgba(255,250,243,0) 45%); }
 .g-study.has-shelf .g-ptitle { display: inline-block; background: rgba(255,250,243,.88); padding: 4px 10px; border-radius: 999px; color: var(--g-fg2); }
 .g-study.has-shelf .g-link { background: rgba(255,250,243,.92); box-shadow: var(--g-shadow-s, 0 3px 9px rgba(185,164,140,.26)); }
-.g-rail { right: 16px; }
+.g-rail { right: 16px; transition: transform .3s ease; }
+/* 오른쪽 메뉴 손잡이: 메뉴 왼쪽 가장자리에 붙어 있고, 숨기면 메뉴는 오른쪽 밖으로, 손잡이는 화면 오른쪽 끝으로 */
+.g-rail-tog { position: fixed; z-index: 3; top: 50%; right: calc(16px + var(--g-panel-w)); width: 26px; height: 64px; margin-top: -32px; padding: 0; border: 1px solid var(--g-line2); border-right: 0;
+  border-radius: 12px 0 0 12px; background: var(--g-panel); box-shadow: -4px 4px 12px rgba(80,60,40,.12); cursor: pointer; transition: right .3s ease; }
+.g-rail-tog-ic { display: block; width: 8px; height: 8px; margin: 0 auto; border-right: 2px solid var(--g-fg2); border-top: 2px solid var(--g-fg2); transform: translateX(-1px) rotate(45deg); }
+.g-root.is-rail-hidden .g-rail { transform: translateX(calc(100% + 24px)); }
+.g-root.is-rail-hidden .g-rail-tog { right: 0; }
+.g-root.is-rail-hidden .g-rail-tog-ic { transform: translateX(2px) rotate(-135deg); }
+.g-root[data-mode="gate"] .g-rail-tog, .g-root[data-mode="loading"] .g-rail-tog { display: none; }
+@media (max-width: 1000px) { .g-rail-tog { display: none; } .g-root.is-rail-hidden .g-rail { transform: none; } }
 .g-root[data-mode="gate"] .g-panel, .g-root[data-mode="gate"] .g-bar, .g-root[data-mode="gate"] .g-banner { display: none; }
 .g-root[data-mode="loading"] .g-panel, .g-root[data-mode="loading"] .g-bar { visibility: hidden; }
 .g-root[data-mode="loading"]::after {
@@ -461,6 +470,14 @@ body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 74px); }
    ============================================================ */
 .g-farm-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .g-farm-acts .g-btn { flex: 1 1 auto; }
+/* 내 모습 칸(오른쪽 메뉴) — 장면에 서 있던 인물을 여기에. 장면의 인물은 숨긴다 */
+.g-char-anchor { display: none; }
+.g-me { display: flex; align-items: flex-end; gap: 14px; margin: 0 0 14px; padding: 12px 16px 0; border-radius: 16px; border: 1px solid var(--g-line2); background: var(--g-soft); overflow: hidden; }
+.g-me-pic { position: relative; flex: 0 0 auto; width: 104px; height: 168px; }
+.g-me-pic img { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); height: 178px; width: auto; filter: drop-shadow(0 8px 8px rgba(80,60,40,.18)); }
+.g-me-txt { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding-bottom: 18px; min-width: 0; }
+.g-me-txt .g-stitle { margin: 0; }
+.g-me-name { font-size: 1.02rem; font-weight: 800; color: var(--g-fg); word-break: keep-all; }
 .g-gallery { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-top: 16px; padding: 14px 16px; border-radius: 16px;
   border: 1px solid var(--g-line2); background: var(--g-soft); color: var(--g-fg); text-decoration: none; transition: border-color .2s; }
 .g-gallery:hover, .g-gallery:focus-visible { border-color: var(--g-coral); }

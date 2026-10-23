@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261023ws9" />
+  <link rel="stylesheet" href="css/garden.css?v=20261023ch1" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -49,6 +49,15 @@
     <!-- 오른쪽 레일: 달란트·날씨·연속·오늘의 할 일·내 식물 -->
     <aside class="g-rail g-panel" id="gRail" aria-labelledby="gRailTitle">
       <h2 class="g-ptitle g-sr" id="gRailTitle" data-i18n="rail.title"></h2>
+      <!-- 내 모습: 장면의 인물을 오른쪽 메뉴 맨 위로, 그 아래에 메뉴 (2026-10-23 담임목사) -->
+      <section class="g-me" id="gMe" aria-labelledby="gMeTitle">
+        <div class="g-me-pic" id="gMePic" aria-hidden="true"></div>
+        <div class="g-me-txt">
+          <h3 class="g-stitle" id="gMeTitle" data-i18n="me.title"></h3>
+          <b class="g-me-name" id="gMeName"></b>
+          <button type="button" class="g-link g-profile-btn" id="gProfileBtn" data-i18n="profile.open"></button>
+        </div>
+      </section>
       <div class="g-chips">
         <button type="button" class="g-pill g-pill-talent" id="gTalentBtn" aria-haspopup="dialog" data-i18n-title="talent.open"><span class="g-pill-ic" aria-hidden="true">🪙</span><b id="gTalentNum">0</b><span class="g-pill-unit" id="gTalentUnit"></span></button>
         <div class="g-chip g-chip-streak" id="gStreak" hidden><span class="g-chip-ic" aria-hidden="true">🔥</span><span id="gStreakText"></span></div>
@@ -66,7 +75,6 @@
         <div class="g-grow-row"><span class="g-grow-stage" id="gGrowStage"></span><span class="g-grow-xp" id="gGrowXp"></span></div>
         <div class="g-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="g-bar-fill" id="gGrowFill"></div></div>
         <p class="g-grow-done" id="gGrowDone"></p>
-        <button type="button" class="g-link g-profile-btn" id="gProfileBtn" data-i18n="profile.open"></button>
         <div class="g-farm-acts">
           <button type="button" class="g-btn g-btn-primary" id="gWaterBtn" hidden></button>
           <button type="button" class="g-btn g-btn-primary" id="gFruitBtn" hidden></button>
@@ -77,6 +85,8 @@
       <!-- 갤러리(우리들 소식) 바로 가기 -->
       <a class="g-gallery" href="story.html#album"><span class="g-gallery-t" data-i18n="rail.gallery"></span><span class="g-gallery-go" aria-hidden="true">›</span><span class="g-gallery-s" data-i18n="rail.gallery.sub"></span></a>
     </aside>
+    <!-- 오른쪽 메뉴 숨기기/꺼내기 손잡이 (2026-10-23 담임목사: 오른쪽으로 숨기고 다시 빼기) -->
+    <button type="button" class="g-rail-tog" id="gRailTog" aria-controls="gRail" aria-expanded="true"><span class="g-rail-tog-ic" aria-hidden="true"></span></button>
 
     <!-- 예배 띠 -->
     <a class="g-banner" id="gBanner" href="#" role="button" hidden><span class="g-bn-t" id="gBnT"></span><span class="g-bn-c" id="gBnC"></span><span class="g-bn-go" aria-hidden="true">›</span></a>
@@ -201,10 +211,10 @@
   <script src="js/bulletins-live.js?v=20261010sum1"></script>
   <script src="js/layout.js?v=20261023lib1"></script>
   <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/garden/i18n.js?v=20261023ws7"></script>
+  <script src="js/garden/i18n.js?v=20261023ch1"></script>
   <script src="js/garden/sdk.js?v=20261023ws3"></script>
-  <script src="js/garden/scene.js?v=20261023ws9"></script>
-  <script src="js/garden/hud.js?v=20261023ws8"></script>
+  <script src="js/garden/scene.js?v=20261023ch1"></script>
+  <script src="js/garden/hud.js?v=20261023ch1"></script>
   <script src="js/garden/plantsim.js?v=20261023ws3"></script>
   <script src="js/garden/shop.js?v=20261023ws3"></script>
   <script src="js/garden/farm.js?v=20261023ws9"></script>
