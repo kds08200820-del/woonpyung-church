@@ -183,6 +183,7 @@
     HUD.init({ i18n: I, sdk: SDK, scene: SCENE, params: P });
     if (window.GardenShop) window.GardenShop.init({ i18n: I, sdk: SDK, hud: HUD });
     if (window.GardenFarm) window.GardenFarm.init({ i18n: I, sdk: SDK, hud: HUD, shop: window.GardenShop, plant: window.GardenPlant });
+    if (window.GardenStorage) window.GardenStorage.init({ i18n: I, sdk: SDK, hud: HUD, farm: window.GardenFarm, shop: window.GardenShop });
     if (window.GardenVisit) window.GardenVisit.init({ i18n: I, sdk: SDK, hud: HUD, scene: SCENE, farm: window.GardenFarm, base3d: base3d });
     if (window.GardenRegion) {
       window.GardenRegion.init({ sdk: SDK });

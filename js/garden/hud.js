@@ -476,11 +476,11 @@ window.GardenHud = (function () {
       var K = {}; (w.by_kind || []).forEach(function (k) { K[k.kind] = k; });
       function kv(kind, f) { var k = K[kind]; return k ? +k[f] || 0 : 0; }
       var hIn = 0, hN = 0, gOut = 0;
-      var hRows = [['crop_pick', 'wallet.h.crop'], ['harvest', 'wallet.h.item'], ['fruit_pick', 'wallet.h.tree']].map(function (x) {
+      var hRows = [['crop_pick', 'wallet.h.crop'], ['harvest', 'wallet.h.item'], ['fruit_pick', 'wallet.h.tree'], ['tree_sell', 'wallet.h.sell']].map(function (x) {
         var n = K[x[0]] ? K[x[0]].n | 0 : 0, v = kv(x[0], 'in'); hIn += v; hN += n;
         return n ? '<li><span>' + esc(t(x[1])) + ' <small>' + esc(t('wallet.h.n', { n: I.fmtNum(n) })) + '</small></span><b class="is-in">+' + esc(fmtTal(v)) + '</b></li>' : '';
       }).join('');
-      var iRows = [['seed', 'wallet.i.seed'], ['shop_buy', 'wallet.i.shop'], ['land_buy', 'wallet.i.land'], ['land_convert', 'wallet.i.dae']].map(function (x) {
+      var iRows = [['seed', 'wallet.i.seed'], ['shop_buy', 'wallet.i.shop'], ['land_buy', 'wallet.i.land'], ['land_convert', 'wallet.i.dae'], ['tree_buy', 'wallet.i.treebuy'], ['dig', 'wallet.i.dig']].map(function (x) {
         var n = K[x[0]] ? K[x[0]].n | 0 : 0, v = kv(x[0], 'out'); if (x[0] === 'seed' || x[0] === 'shop_buy') gOut += v;
         return n && v ? '<li><span>' + esc(t(x[1])) + ' <small>' + esc(t('wallet.n', { n: n })) + '</small></span><b class="is-out">−' + esc(fmtTal(v)) + '</b></li>' : '';
       }).join('');
@@ -844,7 +844,7 @@ window.GardenHud = (function () {
   function init(o) {
     I = o.i18n; SDK = o.sdk; SCENE = o.scene; t = I.t; P = o.params || {};
     I.apply(document);
-    ['gmQt', 'gmStore', 'gmPlant', 'gmShop', 'gmInvite', 'gmVisit', 'gmGuide', 'gmWeather'].forEach(function (id) { if ($(id)) bindModal(id); });
+    ['gmQt', 'gmStore', 'gmPlant', 'gmShop', 'gmStorage', 'gmInvite', 'gmVisit', 'gmGuide', 'gmWeather'].forEach(function (id) { if ($(id)) bindModal(id); });
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);

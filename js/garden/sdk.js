@@ -135,6 +135,13 @@
   function farmClear(x, y) { return rpc('garden_farm_clear', { p_church: SLUG, p_x: x, p_y: y }); }
   function adminSetLandPrices(j, d) { return rpc('garden_admin_set_land_prices', { p_church: SLUG, p_jeon: j, p_dae: d }); }
   function adminSetItemPrice(item, price) { return rpc('garden_admin_set_item_price', { p_church: SLUG, p_item: item, p_price: price }); }
+  /* 경제 가격표 · 나무 스토어 재고 · 나의 보관함 · 건축 미션 (20261024_0010_garden_economy_build.sql) */
+  function farmCut(x, y) { return rpc('garden_farm_cut', { p_church: SLUG, p_x: x, p_y: y }); }
+  function farmDig(x, y, dead) { return rpc('garden_farm_dig', { p_church: SLUG, p_x: x, p_y: y, p_dead: !!dead }); }
+  function treeSell(x, y) { return rpc('garden_tree_sell', { p_church: SLUG, p_x: x, p_y: y }); }
+  function treeBuy(item, qty) { return rpc('garden_tree_buy', { p_church: SLUG, p_item: item, p_qty: qty || 1 }); }
+  function storage() { return rpc('garden_storage', { p_church: SLUG }); }
+  function adminSetStock(item, qty) { return rpc('garden_admin_set_stock', { p_church: SLUG, p_item: item, p_qty: qty | 0 }); }
   function history(limit, offset) { return rpc('garden_history', { p_church: SLUG, p_limit: Math.min(Math.max(+limit || 30, 1), 100), p_offset: Math.max(+offset || 0, 0) }); }
 
   /* ── 큐티 (dashboard.js 897 방식: 오늘 이전 최근 1건) ── */
@@ -227,6 +234,7 @@
     gift: gift, neighborRequest: neighborRequest, neighborRespond: neighborRespond, neighborRemove: neighborRemove, neighborList: neighborList,
     wallet: wallet, water: water, farmBuyMany: farmBuyMany, farmConvert: farmConvert, shop: shop, shopBuy: shopBuy,
     farmPlantItem: farmPlantItem, farmHarvest: farmHarvest, farmClear: farmClear, adminSetLandPrices: adminSetLandPrices, adminSetItemPrice: adminSetItemPrice,
+    farmCut: farmCut, farmDig: farmDig, treeSell: treeSell, treeBuy: treeBuy, storage: storage, adminSetStock: adminSetStock,
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,
     attend: attend, hasSermon: hasSermon, weather: weather,
     lastState: lastState, saveState: saveState, notReady: notReady, isNetwork: isNetwork
