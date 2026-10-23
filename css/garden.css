@@ -487,11 +487,17 @@ body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 74px); }
 .g-rotate-ic { width: 18px; height: 18px; flex: 0 0 auto; }
 body.g-has-banner .g-rotate { top: calc(var(--g-hdr) + 74px); }
 .g-root[data-mode="gate"] .g-rotate, .g-root[data-mode="loading"] .g-rotate { display: none !important; }
+/* 1001~1279px: 두 패널 사이(1024px 에서 312px)가 좁아 '나의 정원에 들어가기'·날씨와 겹친다 → 한 줄 아래로 */
+@media (min-width: 1001px) and (max-width: 1279px) {
+  .g-rotate { top: calc(var(--g-hdr) + 68px); }
+  body.g-has-banner .g-rotate { top: calc(var(--g-hdr) + 128px); }
+}
 @media (max-width: 1000px) { .g-rotate { left: 16px; top: calc(var(--g-hdr) + 12px); } }
 @media (max-width: 760px) {
   .g-rotate { position: absolute; left: 12px; top: calc(var(--g-hdr) + 10px); width: 40px; min-height: 40px; height: 40px; padding: 0; justify-content: center; }
   .g-rotate-t { display: none; }
   body.g-has-banner .g-rotate { top: calc(var(--g-hdr) + 66px); }
+  .g-wx-float { left: 60px; }   /* 돌리기 단추(12~52px) 자리를 비운다 — 좁으면 날씨가 다음 줄로 */
 }
 
 /* ============================================================
