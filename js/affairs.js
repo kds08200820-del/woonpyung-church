@@ -11468,6 +11468,12 @@ console.log('[affairs.js] v20261023th1');
       '</div>' +
       '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><button class="btn btn-solid" id="set_save_pay" style="padding:8px 16px;font-size:.85rem">계좌 저장</button> <span id="set_pmsg" class="fin-msg"></span></div>' +
       '</div>' +
+      // 신앙 정원 보상 (2026-10-23) — garden_admin_rules · garden_admin_set_rule 등 (20261023_1500 SQL)
+      '<div class="fin-card" id="set_garden"><h3 style="margin:0 0 4px;color:var(--accent,#3A281C)">신앙 정원 보상 (달란트 · XP)</h3>' +
+      '<p style="margin:0 0 12px;color:var(--ink-soft,#93867C);font-size:.9rem">성도가 정원 \'오늘의 할 일\'에서 받는 <b>달란트</b>와 <b>XP(마음)</b>를 정합니다. 바꾼 값은 저장한 뒤 새로 쌓이는 것부터 적용되고, 이미 받은 것은 그대로입니다. 하루 최대 0 은 제한 없음입니다.</p>' +
+      '<div id="set_g_body"><p class="qt-loading">불러오는 중…</p></div>' +
+      '<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><button class="btn btn-solid" id="set_save_garden" style="padding:8px 16px;font-size:.85rem" disabled>보상 저장</button> <span id="set_g_msg" class="fin-msg"></span></div>' +
+      '</div>' +
       '<div class="fin-card"><h3 style="margin:0 0 4px;color:var(--accent,#3A281C)">연간 봉사위원</h3>' +
       '<p style="margin:0 0 12px;color:var(--ink-soft,#93867C);font-size:.9rem">월별 봉사위원을 한 번 입력해 두면, <b>주보 제작 → 데이터 불러오기</b> 시 해당 월 봉사위원이 자동으로 채워집니다. 그 달 <b>마지막 주일</b> 주보에는 다음 달 봉사위원도 함께 표기됩니다.</p>' +
       '<div id="set_rows"></div>' +
@@ -11555,6 +11561,68 @@ console.log('[affairs.js] v20261023th1');
           .catch(function (e) { pmsg(/42P01|PGRST205|does not exist|schema cache/i.test(e.message) ? 'church_settings.sql 실행 필요' : '저장 실패: ' + e.message, '#A33A2A'); })
           .then(function () { b.disabled = false; });
       };
+    })();
+    // 신앙 정원 보상 — 할 일마다 달란트·XP·하루 최대·켜기, 주일학교 QT·필사 인증 달란트, 땅 값, 하루치 마음
+    (function () {
+      var body = panel.querySelector('#set_g_body'), btn = panel.querySelector('#set_save_garden'), data = null;
+      var NOTE = { edu_done: '달란트는 교육마다 (교육 개설 화면)', ss_mission: '달란트는 미션마다 (대시보드 미션 카드)', ss_qt: '달란트는 아래 주일학교 칸', ss_pilsa: '달란트는 아래 주일학교 칸' };
+      function gm(tx, c) { var e = panel.querySelector('#set_g_msg'); if (e) { e.style.color = c || '#93867C'; e.textContent = tx; } }
+      function lab(l) { return (l && (l.ko || l.en)) || ''; }
+      var ist = 'width:72px;padding:5px 7px;border:1px solid #ECE6E1;border-radius:7px;font:inherit;font-size:.86rem;box-sizing:border-box;text-align:right';
+      function draw() {
+        var d = data, P = d.prices || {};
+        body.innerHTML = '<div style="overflow:auto"><table class="fin-table" style="width:100%;min-width:560px"><thead><tr><th style="text-align:left">할 일</th><th>달란트</th><th>XP(마음)</th><th>하루 최대</th><th>켜기</th></tr></thead><tbody>' +
+          d.rules.map(function (r, i) {
+            var fixed = NOTE[r.kind];
+            return '<tr data-i="' + i + '"><td style="text-align:left">' + esc(lab(r.label)) + (r.custom ? ' <span style="font-size:.72rem;color:#9E664E">교회 값</span>' : '') +
+              (fixed ? '<div style="font-size:.74rem;color:#AFA49C">' + esc(fixed) + '</div>' : '') + '</td>' +
+              '<td style="text-align:center">' + (fixed ? '<span style="color:#AFA49C">—</span>' : '<input type="number" class="g-tal" min="0" max="1000" step="1" value="' + esc(r.talent) + '" style="' + ist + '">') + '</td>' +
+              '<td style="text-align:center"><input type="number" class="g-xp" min="0" max="1000" step="1" value="' + esc(r.xp) + '" style="' + ist + '"></td>' +
+              '<td style="text-align:center"><input type="number" class="g-cap" min="0" max="100" step="1" value="' + esc(r.daily_cap) + '" style="' + ist + '"></td>' +
+              '<td style="text-align:center"><input type="checkbox" class="g-on"' + (r.active ? ' checked' : '') + '></td></tr>';
+          }).join('') + '</tbody></table></div>' +
+          '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end;margin-top:14px">' +
+          (d.ss ? '<div class="af-field"><label>주일학교 QT 인증 달란트</label><input type="number" id="set_g_ssqt" min="0" max="100" value="' + esc(d.ss.qt == null ? '' : d.ss.qt) + '"></div>' +
+                  '<div class="af-field"><label>주일학교 필사 인증 달란트</label><input type="number" id="set_g_sspil" min="0" max="100" value="' + esc(d.ss.pilsa == null ? '' : d.ss.pilsa) + '"></div>' : '') +
+          '<div class="af-field"><label>땅 값 · 전 칸당</label><input type="number" id="set_g_jeon" min="0" step="0.1" value="' + esc(P.jeon) + '"></div>' +
+          '<div class="af-field"><label>땅 값 · 대지로 바꾸기 칸당</label><input type="number" id="set_g_dae" min="0" step="0.1" value="' + esc(P.dae) + '"></div>' +
+          '<div class="af-field"><label>하루치 마음(XP)</label><input type="number" id="set_g_xpday" min="1" max="1000" step="1" value="' + esc(d.xp_day) + '"></div>' +
+          '</div><p style="margin:8px 0 0;color:#AFA49C;font-size:.78rem">하루치 마음: 심은 나무·식물·꽃은 이만큼의 XP 가 쌓일 때 실제 하루만큼 자랍니다(기본 10 = 큐티 한 번). 꽃집 품목 값은 정원 꽃집에서 관리자가 바로 고칩니다.</p>';
+        btn.disabled = false;
+      }
+      function load() {
+        api('POST', 'rpc/garden_admin_rules', { p_church: 'woonpyung' }).then(function (d) {
+          if (!d || !d.ok) { body.innerHTML = '<p style="color:#A33A2A;font-size:.88rem">' + (d && d.why === 'admin' ? '관리자만 정할 수 있습니다.' : '불러오지 못했습니다.') + '</p>'; return; }
+          data = d; draw();
+        }).catch(function (e) {
+          body.innerHTML = '<p style="color:#A33A2A;font-size:.88rem">' + (/PGRST202|404|Could not find the function/i.test(e.message) ? '신앙 정원 3단계 SQL(20261023_1500) 실행 뒤 쓸 수 있습니다.' : '불러오지 못했습니다: ' + esc(e.message)) + '</p>';
+        });
+      }
+      btn.onclick = function () {
+        if (!data) return;
+        var jobs = [], bad = false;
+        Array.prototype.forEach.call(body.querySelectorAll('tbody tr'), function (tr) {
+          var r = data.rules[Number(tr.dataset.i)], ti = tr.querySelector('.g-tal');
+          var tv = ti ? Number(ti.value) : r.talent, xv = Number(tr.querySelector('.g-xp').value), cv = Number(tr.querySelector('.g-cap').value), on = tr.querySelector('.g-on').checked;
+          if (!(tv >= 0 && xv >= 0 && cv >= 0)) { bad = true; return; }
+          if (tv !== r.talent || xv !== r.xp || cv !== r.daily_cap || on !== r.active)
+            jobs.push(function () { return api('POST', 'rpc/garden_admin_set_rule', { p_church: 'woonpyung', p_kind: r.kind, p_talent: tv, p_xp: xv, p_daily_cap: cv, p_active: on }); });
+        });
+        if (bad) { gm('숫자를 확인해 주십시오.', '#A33A2A'); return; }
+        var P = data.prices || {}, jv = Number(panel.querySelector('#set_g_jeon').value), dv = Number(panel.querySelector('#set_g_dae').value);
+        if (jv !== Number(P.jeon) || dv !== Number(P.dae)) jobs.push(function () { return api('POST', 'rpc/garden_admin_set_land_prices', { p_church: 'woonpyung', p_jeon: jv, p_dae: dv }); });
+        var xd = Number(panel.querySelector('#set_g_xpday').value);
+        if (xd !== Number(data.xp_day)) jobs.push(function () { return api('POST', 'rpc/garden_admin_set_xp_day', { p_church: 'woonpyung', p_n: xd }); });
+        var q = panel.querySelector('#set_g_ssqt'), pl = panel.querySelector('#set_g_sspil');
+        if (q && pl && (Number(q.value) !== data.ss.qt || Number(pl.value) !== data.ss.pilsa))
+          jobs.push(function () { return api('POST', 'rpc/garden_admin_set_ss_talent', { p_church: 'woonpyung', p_qt: Number(q.value), p_pilsa: Number(pl.value) }); });
+        if (!jobs.length) { gm('바뀐 값이 없습니다.'); return; }
+        btn.disabled = true; gm('저장 중…');
+        jobs.reduce(function (pr, fn) { return pr.then(function (acc) { return fn().then(function (r) { if (!r || r.ok === false) acc.push(r && r.why); return acc; }); }); }, Promise.resolve([]))
+          .then(function (fails) { if (fails.length) gm('일부를 저장하지 못했습니다 (' + fails.join(', ') + ')', '#A33A2A'); else gm('저장했습니다 — 정원 보상에 바로 적용됩니다.', 'green'); load(); })
+          .catch(function (e) { gm('저장 실패: ' + e.message, '#A33A2A'); btn.disabled = false; });
+      };
+      load();
     })();
     panel.querySelector('#set_add').onclick = function () { coms.push({ month: '', offering: '', guide: '', parking: '' }); renderRows(); };
     panel.querySelector('#set_save').onclick = function () {

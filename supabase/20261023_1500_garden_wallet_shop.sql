@@ -8,6 +8,10 @@
 --   · 마음(XP) = 신앙생활. 꽃집 품목은 심었다고 자라지 않고, 심은 뒤 쌓인 마음(XP)만큼 자란다(2026-10-23 담임목사 지시)
 --     하루 마음 10(큐티 한 번)이면 실제 날수만큼 자라고, 덜 쌓이면 그만큼 늦다: 자란 날 = least(심은 지 날수, 심은 뒤 XP ÷ 10)
 --     하루 기준(10)은 garden_churches.settings.xp_day 로 바꿀 수 있다
+--   · 목회 행정 > 설정에서 관리자가 보상(달란트·XP·하루 한도·켜기)과 주일학교 QT·필사 인증 달란트, 땅 값, 하루치 마음을 정한다
+--     (교회별 줄 garden_rules(church_id=교회)로 저장 — 플랫폼 기본값은 그대로 둔다. 바꾼 값은 그 뒤 동기화부터 적용, 지난 장부는 그대로)
+--   · 주일학교 인증(QT·필사·미션, ss_submissions): 오늘의 할 일에 안 한 인증을 보여 주고(어린이 본인·보호자), 인증하면 마음(XP)이 쌓인다
+--     (달란트는 지금처럼 ss_talents 로 어린이에게 — 마이월렛에는 주일학교 달란트로 들어온다). 보호자도 자녀 인증을 함께하면 마음이 쌓인다
 --     · 정원 들르기(로그인)는 달란트 0 — 물 주기로 옮김. 이미 적힌 지난 기록의 값은 바꾸지 않는다(장부는 그대로)
 --   · 주일학교 달란트(ss_talents)를 그 어린이 계정의 마이월렛에 그대로 — 지금까지 모은 것 전부와 앞으로 받는 것(차감 포함)
 --   · 땅 종류: 전(밭) — 사서 작물을 심는다(칸당 10) · 대(대지) — 전을 '대지로 바꾸기'(칸당 100), 집 지을 자리
@@ -27,7 +31,11 @@
 --      public.garden_farm_plant_item(text, int, int, text), public.garden_farm_harvest(text, int, int, int), public.garden_farm_clear(text, int, int),
 --      public.garden_admin_set_land_prices(text, numeric, numeric), public.garden_admin_set_item_price(text, text, numeric),
 --      public.garden_candidates_v2(uuid, uuid), public.garden_land_prices(uuid), public.garden_inventory_json(uuid, uuid),
---      public.garden_xp_since(uuid, uuid, timestamptz), public.garden_xp_day(uuid);
+--      public.garden_xp_since(uuid, uuid, timestamptz), public.garden_xp_day(uuid), public.garden_ss_kids(uuid), public.garden_ss_todo(uuid, uuid),
+--      public.garden_admin_rules(text), public.garden_admin_set_rule(text, text, numeric, int, int, boolean), public.garden_admin_set_ss_talent(text, int, int),
+--      public.garden_admin_set_xp_day(text, numeric);
+--    교회별로 바꾼 보상 줄은 지우지 않고 플랫폼 값으로 되돌린다: update garden_rules r set xp = b.xp, talent = b.talent, daily_cap = b.daily_cap, active = b.active
+--      from garden_rules b where r.church_id is not null and b.church_id is null and b.kind = r.kind;
 --    alter table public.garden_inventory rename to garden_inventory_archived;
 --    alter table public.garden_shop_items rename to garden_shop_items_archived;
 --    alter table public.garden_tiles rename column land to land_archived;
@@ -70,7 +78,11 @@ insert into public.garden_rules (church_id, kind, label, xp, talent, daily_cap, 
   (null, 'ss_talent',    '{"ko":"주일학교 달란트","en":"Sunday school"}',       0, 0, 0, true, 86),
   (null, 'land_convert', '{"ko":"대지로 바꾸기","en":"Building site"}',        0, 0, 0, true, 114),
   (null, 'shop_buy',     '{"ko":"꽃집에서 사기","en":"Flower shop"}',          0, 0, 0, true, 115),
-  (null, 'harvest',      '{"ko":"수확","en":"Harvest"}',                       0, 0, 0, true, 116)
+  (null, 'harvest',      '{"ko":"수확","en":"Harvest"}',                       0, 0, 0, true, 116),
+  -- 주일학교 인증: 마음(XP)만 — 달란트는 주일학교 항목값으로 ss_talents 에 따로 들어온다
+  (null, 'ss_qt',        '{"ko":"주일학교 QT 인증","en":"Sunday school QT"}',  10, 0, 0, true, 87),
+  (null, 'ss_pilsa',     '{"ko":"주일학교 필사 인증","en":"Sunday school copying"}', 15, 0, 0, true, 88),
+  (null, 'ss_mission',   '{"ko":"주일학교 미션 인증","en":"Sunday school mission"}', 15, 0, 0, true, 89)
 on conflict (kind) where church_id is null do nothing;
 
 -- ──────────────────────────────────────────────────────────────
@@ -139,6 +151,29 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 -- 값이 정해진 후보(주일학교 달란트·교육 이수) + 1단계 후보. amount 가 있으면 규칙 값 대신 그 값을 적는다
+-- 주일학교 인증을 볼 어린이: 내 계정의 교적이 학생이면 나(self), 보호자면 같은 세대의 학생 자녀 (ss_my_children 과 같은 셈, 계정을 인자로)
+create or replace function public.garden_ss_kids(p_uid uuid)
+returns table (member_key text, name text, self boolean)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if to_regclass('public.member_links') is null or to_regclass('public.gyojeok') is null
+     or to_regprocedure('public.ss_student_roles()') is null then return; end if;
+  return query execute $q$
+    with mykeys as (
+      select ml.member_key as k from public.member_links ml where ml.user_id = $1 and coalesce(ml.member_key, '') <> ''
+      union select ml.spouse_key from public.member_links ml where ml.user_id = $1 and coalesce(ml.spouse_key, '') <> ''),
+    me as (select g.head, g.name from public.gyojeok g where g.member_key in (select k from mykeys) order by g.id limit 1),
+    myhead as (select coalesce(nullif((select head from me), ''), (select name from me)) as h)
+    select g.member_key::text, g.name::text, true from public.gyojeok g
+     where g.member_key in (select k from mykeys) and g.ss_role = any (public.ss_student_roles())
+    union all
+    select g.member_key::text, g.name::text, false from public.gyojeok g
+     where coalesce(nullif(g.head, ''), g.name) = (select h from myhead) and g.ss_role = any (public.ss_student_roles())
+       and coalesce(g.member_key, '') <> '' and g.member_key not in (select k from mykeys)
+       -- 학생 본인 계정이면 형제자매는 넣지 않는다(자기 인증만)
+       and not exists (select 1 from public.gyojeok g2 where g2.member_key in (select k from mykeys) and g2.ss_role = any (public.ss_student_roles()))$q$ using p_uid;
+end $$;
+
 create or replace function public.garden_candidates_v2(p_uid uuid, p_church uuid)
 returns table (kind text, ref text, happened_at timestamptz, source text, amount numeric)
 language plpgsql stable security definer set search_path = public as $$
@@ -166,11 +201,52 @@ begin
           and $1 in (select public.edu_participant_keys(e.participants::text))'
       using v_key, c.timezone;
   end if;
+  -- 주일학교 인증: 나(어린이) 또는 내 자녀의 QT·필사·미션 인증 한 건 = 마음(XP) 한 줄
+  if to_regclass('public.ss_submissions') is not null then
+    return query execute
+      'select case s.stype when ''QT'' then ''ss_qt'' when ''필사'' then ''ss_pilsa'' else ''ss_mission'' end::text,
+              ''ss'' || s.id::text, ((s.sub_date + time ''12:00'') at time zone $2), ''woonpyung_adapter''::text, null::numeric
+         from public.ss_submissions s
+        where s.stype in (''QT'', ''필사'', ''미션'') and s.member_key in (select k.member_key from public.garden_ss_kids($1) k)'
+      using p_uid, c.timezone;
+  end if;
   return;
 end $$;
 
-revoke all on function public.garden_land_prices(uuid), public.garden_inventory_json(uuid, uuid), public.garden_candidates_v2(uuid, uuid)
-  from public, anon, authenticated;
+-- 오늘의 할 일 — 주일학교 인증: 어린이마다 오늘 QT·이번 주 필사·이번 주 미션을 했는지, 달란트(주일학교 항목값·미션 값)
+-- (대시보드 인증 카드와 같은 셈: QT 하루 한 번, 필사 한 주 한 번(주일 시작), 미션은 이번 주 미션 — 연속미션은 하루 한 장씩 daily_days 일)
+create or replace function public.garden_ss_todo(p_church uuid, p_uid uuid) returns json
+language plpgsql stable security definer set search_path = public as $$
+declare v_tz text; v_day date; v_week date; v_m json; v_qt int; v_pil int; v_out json;
+begin
+  if to_regclass('public.ss_submissions') is null then return null; end if;
+  select coalesce(c.timezone, 'Asia/Seoul') into v_tz from public.garden_churches c where c.id = p_church;
+  v_day := (now() at time zone coalesce(v_tz, 'Asia/Seoul'))::date;
+  v_week := v_day - extract(dow from v_day)::int;
+  if to_regprocedure('public.ss_current_mission()') is not null then execute 'select public.ss_current_mission()' into v_m; end if;
+  if to_regclass('public.ss_talent_items') is not null then
+    execute 'select (select amount from public.ss_talent_items where name = ''QT 인증'' order by id limit 1),
+                    (select amount from public.ss_talent_items where name = ''필사 인증'' order by id limit 1)' into v_qt, v_pil;
+  end if;
+  execute $q$
+    select coalesce(json_agg(json_build_object('key', k.member_key, 'name', k.name, 'self', k.self,
+             'qt', exists (select 1 from public.ss_submissions s where s.member_key = k.member_key and s.stype = 'QT' and s.sub_date = $1),
+             'pilsa', exists (select 1 from public.ss_submissions s where s.member_key = k.member_key and s.stype = '필사' and s.sub_date >= $2),
+             'mission_n', (select count(*) from public.ss_submissions s where s.member_key = k.member_key and s.stype = '미션'
+                             and $3 is not null and s.mission_id::text = ($3->>'id')),
+             'mission_today', exists (select 1 from public.ss_submissions s where s.member_key = k.member_key and s.stype = '미션'
+                             and $3 is not null and s.mission_id::text = ($3->>'id') and s.sub_date = $1))
+             order by k.self desc, k.name), '[]'::json)
+      from public.garden_ss_kids($4) k$q$
+    into v_out using v_day, v_week, v_m, p_uid;
+  if json_array_length(v_out) = 0 then return null; end if;
+  return json_build_object('kids', v_out, 'qt_talent', v_qt, 'pilsa_talent', v_pil,
+    'mission', case when v_m is null then null else json_build_object('id', v_m->>'id', 'title', v_m->>'title',
+                 'talent', (v_m->>'amount')::numeric, 'daily_days', coalesce((v_m->>'daily_days')::int, 0)) end);
+end $$;
+
+revoke all on function public.garden_land_prices(uuid), public.garden_inventory_json(uuid, uuid), public.garden_candidates_v2(uuid, uuid),
+  public.garden_ss_kids(uuid), public.garden_ss_todo(uuid, uuid) from public, anon, authenticated;
 
 -- ──────────────────────────────────────────────────────────────
 -- 5) 내 땅 JSON — 땅 값(전·대)·땅 종류·심은 품목·내 가방·관리자 여부를 더했다
@@ -552,6 +628,90 @@ begin
   return json_build_object('ok', true, 'item', p_item, 'price', round(p_price, 1));
 end $$;
 
+-- 관리자(목회 행정 > 설정): 보상 규칙 · 주일학교 인증 달란트 · 땅 값 · 하루치 마음
+create or replace function public.garden_admin_rules(p_church text default null) returns json
+language plpgsql stable security definer set search_path = public as $$
+declare v_church uuid; v_qt int; v_pil int; v_ss boolean := false;
+begin
+  if auth.uid() is null then return json_build_object('ok', false, 'why', 'login'); end if;
+  v_church := public.garden_resolve_church(p_church);
+  if v_church is null then return json_build_object('ok', false, 'why', 'church'); end if;
+  if not public.garden_is_admin(v_church) then return json_build_object('ok', false, 'why', 'admin'); end if;
+  if to_regclass('public.ss_talent_items') is not null then
+    v_ss := true;
+    execute 'select (select amount from public.ss_talent_items where name = ''QT 인증'' order by id limit 1),
+                    (select amount from public.ss_talent_items where name = ''필사 인증'' order by id limit 1)' into v_qt, v_pil;
+  end if;
+  return json_build_object('ok', true,
+    -- 성도가 받는 보상만(내부 장부 종류·들르기·주일학교 달란트 옮김은 빼고)
+    'rules', (select coalesce(json_agg(json_build_object('kind', e.kind, 'label', e.label, 'xp', e.xp, 'talent', e.talent,
+                 'daily_cap', e.daily_cap, 'active', e.active,
+                 'custom', exists (select 1 from public.garden_rules r where r.church_id = v_church and r.kind = e.kind),
+                 'base', (select json_build_object('xp', b.xp, 'talent', b.talent, 'daily_cap', b.daily_cap, 'active', b.active)
+                            from public.garden_rules b where b.church_id is null and b.kind = e.kind)) order by e.sort), '[]'::json)
+                from public.garden_rules_eff(v_church) e where e.sort < 100 and e.kind not in ('login', 'ss_talent')),
+    'prices', public.garden_land_prices(v_church),
+    'xp_day', public.garden_xp_day(v_church),
+    'ss', case when v_ss then json_build_object('qt', v_qt, 'pilsa', v_pil) else null end);
+end $$;
+
+-- 보상 한 줄 정하기 — 교회 줄로 넣거나 고친다(플랫폼 기본 줄은 건드리지 않는다)
+create or replace function public.garden_admin_set_rule(p_church text, p_kind text, p_talent numeric, p_xp int, p_daily_cap int, p_active boolean default true)
+returns json language plpgsql security definer set search_path = public as $$
+declare v_church uuid; b public.garden_rules;
+begin
+  if auth.uid() is null then return json_build_object('ok', false, 'why', 'login'); end if;
+  v_church := public.garden_resolve_church(p_church);
+  if v_church is null then return json_build_object('ok', false, 'why', 'church'); end if;
+  if not public.garden_is_admin(v_church) then return json_build_object('ok', false, 'why', 'admin'); end if;
+  select * into b from public.garden_rules where church_id is null and kind = p_kind;
+  if not found or b.sort >= 100 or p_kind in ('login', 'ss_talent') then return json_build_object('ok', false, 'why', 'kind'); end if;
+  if p_talent is null or p_xp is null or p_daily_cap is null or p_talent < 0 or p_talent > 1000 or p_xp < 0 or p_xp > 1000
+     or p_daily_cap < 0 or p_daily_cap > 100 then return json_build_object('ok', false, 'why', 'range'); end if;
+  insert into public.garden_rules (church_id, kind, label, xp, talent, daily_cap, active, sort)
+  values (v_church, p_kind, b.label, p_xp, round(p_talent)::int, p_daily_cap, coalesce(p_active, true), b.sort)
+  on conflict (church_id, kind) where church_id is not null
+  do update set xp = excluded.xp, talent = excluded.talent, daily_cap = excluded.daily_cap, active = excluded.active, updated_at = now();
+  return json_build_object('ok', true, 'kind', p_kind, 'talent', round(p_talent)::int, 'xp', p_xp, 'daily_cap', p_daily_cap, 'active', coalesce(p_active, true));
+end $$;
+
+-- 주일학교 QT·필사 인증 달란트(주일학교 지급 항목 'QT 인증'·'필사 인증' 값 — 대시보드 교사 화면과 같은 값)
+create or replace function public.garden_admin_set_ss_talent(p_church text, p_qt int, p_pilsa int) returns json
+language plpgsql security definer set search_path = public as $$
+declare v_church uuid;
+begin
+  if auth.uid() is null then return json_build_object('ok', false, 'why', 'login'); end if;
+  v_church := public.garden_resolve_church(p_church);
+  if v_church is null then return json_build_object('ok', false, 'why', 'church'); end if;
+  if not public.garden_is_admin(v_church) then return json_build_object('ok', false, 'why', 'admin'); end if;
+  if to_regclass('public.ss_talent_items') is null then return json_build_object('ok', false, 'why', 'no_ss'); end if;
+  if p_qt is null or p_pilsa is null or p_qt < 0 or p_qt > 100 or p_pilsa < 0 or p_pilsa > 100 then return json_build_object('ok', false, 'why', 'range'); end if;
+  execute 'update public.ss_talent_items set amount = $1 where name = ''QT 인증''' using p_qt;
+  execute 'insert into public.ss_talent_items (name, amount) select ''QT 인증'', $1 where not exists (select 1 from public.ss_talent_items where name = ''QT 인증'')' using p_qt;
+  execute 'update public.ss_talent_items set amount = $1 where name = ''필사 인증''' using p_pilsa;
+  execute 'insert into public.ss_talent_items (name, amount) select ''필사 인증'', $1 where not exists (select 1 from public.ss_talent_items where name = ''필사 인증'')' using p_pilsa;
+  return json_build_object('ok', true, 'qt', p_qt, 'pilsa', p_pilsa);
+end $$;
+
+-- 하루치 마음(XP): 이만큼 쌓이면 심은 것이 실제 하루만큼 자란다(기본 10)
+create or replace function public.garden_admin_set_xp_day(p_church text, p_n numeric) returns json
+language plpgsql security definer set search_path = public as $$
+declare v_church uuid;
+begin
+  if auth.uid() is null then return json_build_object('ok', false, 'why', 'login'); end if;
+  v_church := public.garden_resolve_church(p_church);
+  if v_church is null then return json_build_object('ok', false, 'why', 'church'); end if;
+  if not public.garden_is_admin(v_church) then return json_build_object('ok', false, 'why', 'admin'); end if;
+  if p_n is null or p_n < 1 or p_n > 1000 then return json_build_object('ok', false, 'why', 'range'); end if;
+  update public.garden_churches set settings = jsonb_set(coalesce(settings, '{}'::jsonb), '{xp_day}', to_jsonb(round(p_n, 1))) where id = v_church;
+  return json_build_object('ok', true, 'xp_day', round(p_n, 1));
+end $$;
+
+revoke all on function public.garden_admin_rules(text), public.garden_admin_set_rule(text, text, numeric, int, int, boolean),
+  public.garden_admin_set_ss_talent(text, int, int), public.garden_admin_set_xp_day(text, numeric) from public, anon;
+grant execute on function public.garden_admin_rules(text), public.garden_admin_set_rule(text, text, numeric, int, int, boolean),
+  public.garden_admin_set_ss_talent(text, int, int), public.garden_admin_set_xp_day(text, numeric) to authenticated;
+
 revoke all on function public.garden_wallet(text), public.garden_water(text), public.garden_farm_buy_many(text, jsonb), public.garden_farm_buy(text, int, int),
   public.garden_farm_convert(text, jsonb), public.garden_farm_plant(text, int, int, text), public.garden_shop(text), public.garden_shop_buy(text, text, int),
   public.garden_farm_plant_item(text, int, int, text), public.garden_farm_harvest(text, int, int, int), public.garden_farm_clear(text, int, int),
@@ -692,6 +852,7 @@ language sql stable security definer set search_path = public as $$
     'watered', exists (select 1 from public.garden_ledger l where l.church_id = c.id and l.user_id = p_uid and l.kind = 'water'
                           and l.ref = ((now() at time zone c.timezone)::date)::text),
     'admin', public.garden_is_admin(c.id),
+    'ss', public.garden_ss_todo(c.id, p_uid),
     'wallet', true)
     from public.garden_churches c where c.id = p_church
 $$;

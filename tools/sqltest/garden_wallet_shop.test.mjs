@@ -24,7 +24,16 @@ await db.exec(`
   alter default privileges in schema public grant execute on functions to anon, authenticated;
   create table public.admins (uid uuid primary key);
   create table public.profiles (id uuid primary key, name text);
-  create table public.member_links (user_id uuid primary key, member_key text, member_status text default '정회원');
+  create table public.member_links (user_id uuid primary key, member_key text, spouse_key text, member_status text default '정회원');
+  create table public.gyojeok (id serial primary key, member_key text, name text, head text, ss_role text, birth date);
+  create or replace function public.ss_student_roles() returns text[] language sql immutable as $$ select array['어린이', '중학생', '고등학생']::text[] $$;
+  create table public.ss_submissions (id bigint generated always as identity primary key, member_key text not null, child_name text, stype text not null default 'QT',
+    sub_date date not null default current_date, mission_id bigint, liked_uids jsonb not null default '[]'::jsonb);
+  create table public.ss_missions (id bigint generated always as identity primary key, week_start date, title text, amount int default 1, daily_days int default 0);
+  create or replace function public.ss_current_mission() returns json language sql stable as $$
+    select json_build_object('id', m.id, 'title', m.title, 'amount', m.amount, 'daily_days', m.daily_days) from public.ss_missions m
+     where m.week_start = (now() at time zone 'Asia/Seoul')::date - extract(dow from (now() at time zone 'Asia/Seoul')::date)::int limit 1 $$;
+  create table public.ss_talent_items (id bigint generated always as identity primary key, name text, amount int);
   create table public.qt_checks (user_id uuid, check_date date, created_at timestamptz default now());
   create table public.bible_reading (user_id uuid, day_no int, done_at timestamptz);
   create table public.attendance (att_date date, service text, member_key text);
@@ -40,6 +49,16 @@ await db.exec(`
   insert into public.admins values ('${ADM}');
   insert into public.profiles values ('${U1}', '테스트_성도'), ('${KID}', '테스트_어린이'), ('${ADM}', '테스트_목사');
   insert into public.member_links (user_id, member_key) values ('${U1}', '테스트_성도|19800101'), ('${KID}', '테스트_어린이|20150101');
+  -- 교적: 성도(세대주) · 어린이(계정 있음) · 막내(계정 없음) — 같은 세대
+  insert into public.gyojeok (member_key, name, head, ss_role) values ('테스트_성도|19800101', '테스트_성도', '', null),
+    ('테스트_어린이|20150101', '테스트_어린이', '테스트_성도', '어린이'), ('테스트_막내|20180101', '테스트_막내', '테스트_성도', '어린이'),
+    ('테스트_남의아이|20160101', '테스트_남의아이', '테스트_이웃', '어린이');
+  insert into public.ss_talent_items (name, amount) values ('QT 인증', 1), ('필사 인증', 2);
+  insert into public.ss_missions (week_start, title, amount) values
+    ((now() at time zone 'Asia/Seoul')::date - extract(dow from (now() at time zone 'Asia/Seoul')::date)::int, '테스트_미션', 3);
+  -- 어린이: 오늘 QT 인증, 막내: 아직 없음, 남의 아이: 오늘 QT(보이면 안 됨)
+  insert into public.ss_submissions (member_key, stype, sub_date) values ('테스트_어린이|20150101', 'QT', (now() at time zone 'Asia/Seoul')::date),
+    ('테스트_남의아이|20160101', 'QT', (now() at time zone 'Asia/Seoul')::date);
   -- 어린이 주일학교 달란트: +30, +12, -5(달란트 시장)
   insert into public.ss_talents (member_key, amount, reason, created_at) values
     ('테스트_어린이|20150101', 30, '출석', now() - interval '20 days'), ('테스트_어린이|20150101', 12, '암송', now() - interval '10 days'),
@@ -216,6 +235,43 @@ let ip = await as(U1, `select public.garden_admin_set_item_price('woonpyung', 't
 ok('non-admin item price', !ip.ok && ip.why === 'admin', ip);
 ip = await as(ADM, `select public.garden_admin_set_item_price('woonpyung', 't-rose', 25)`);
 ok('admin item price', ip.ok && near(ip.price, 25), ip);
+
+// 7-2) 오늘의 할 일 — 주일학교 인증: 보호자는 자녀 둘, 어린이는 자기만, 관계없는 사람은 없음. 인증 한 건 = 마음 10
+let ssU = (await as(U1, `select public.garden_state('woonpyung')`)).ss;
+const kidRow = ssU && ssU.kids.find((k) => k.key === '테스트_어린이|20150101'), babyRow = ssU && ssU.kids.find((k) => k.key === '테스트_막내|20180101');
+ok('ss todo for guardian', ssU && ssU.kids.length === 2 && kidRow.qt === true && !kidRow.self && babyRow.qt === false && kidRow.pilsa === false
+  && ssU.qt_talent === 1 && ssU.pilsa_talent === 2 && ssU.mission && ssU.mission.title === '테스트_미션' && +ssU.mission.talent === 3 && kidRow.mission_n === 0, ssU);
+let ssK = (await as(KID, `select public.garden_state('woonpyung')`)).ss;
+ok('ss todo for child', ssK && ssK.kids.length === 1 && ssK.kids[0].self === true && ssK.kids[0].qt === true, ssK);
+ok('ss todo none for others', (await as(ADM, `select public.garden_state('woonpyung')`)).ss === null);
+await as(U1, `select public.garden_sync('woonpyung')`); await as(KID, `select public.garden_sync('woonpyung')`);
+const ssLed = await pg(`select user_id, kind, xp, talent from public.garden_ledger where kind like 'ss\_%' and kind <> 'ss_talent' order by user_id`);
+ok('ss cert gives xp to child and guardian', ssLed.length === 2 && ssLed.every((r) => r.kind === 'ss_qt' && r.xp === 10 && +r.talent === 0), ssLed);
+await pg(`insert into public.ss_submissions (member_key, stype, sub_date, mission_id) select '테스트_막내|20180101', '미션', (now() at time zone 'Asia/Seoul')::date, id from public.ss_missions`);
+ssU = (await as(U1, `select public.garden_state('woonpyung')`)).ss;
+ok('mission counted', ssU.kids.find((k) => k.key === '테스트_막내|20180101').mission_n === 1 && ssU.kids.find((k) => k.key === '테스트_막내|20180101').mission_today === true, ssU);
+
+// 7-3) 목회 행정 > 설정: 관리자만 보상·주일학교 인증 달란트·하루치 마음을 정한다
+let ar = await as(U1, `select public.garden_admin_rules('woonpyung')`);
+ok('admin rules: non-admin refused', !ar.ok && ar.why === 'admin', ar);
+ar = await as(ADM, `select public.garden_admin_rules('woonpyung')`);
+const qtRule = ar.rules && ar.rules.find((r) => r.kind === 'qt_amen');
+ok('admin rules list', ar.ok && qtRule && qtRule.talent === 5 && qtRule.xp === 10 && !qtRule.custom && !ar.rules.some((r) => ['login', 'ss_talent', 'land_buy', 'harvest'].includes(r.kind))
+  && ar.rules.some((r) => r.kind === 'ss_qt') && ar.ss && ar.ss.qt === 1 && ar.ss.pilsa === 2 && +ar.xp_day === 10, ar);
+let sr = await as(U1, `select public.garden_admin_set_rule('woonpyung', 'qt_amen', 7, 12, 0, true)`);
+ok('set rule: non-admin refused', !sr.ok && sr.why === 'admin', sr);
+sr = await as(ADM, `select public.garden_admin_set_rule('woonpyung', 'qt_amen', 7, 12, 0, true)`);
+const effQt = (await as(U1, `select public.garden_state('woonpyung')`)).rules.find((r) => r.kind === 'qt_amen');
+ok('set rule applies to church only', sr.ok && effQt.talent === 7 && effQt.xp === 12 && (await pg(`select talent from public.garden_rules where church_id is null and kind = 'qt_amen'`))[0].talent === 5, { sr, effQt });
+sr = await as(ADM, `select public.garden_admin_set_rule('woonpyung', 'qt_amen', 6, 12, 0, true)`);
+ok('set rule twice = update', sr.ok && (await pg(`select count(*)::int n from public.garden_rules where church_id is not null and kind = 'qt_amen'`))[0].n === 1);
+ok('set rule: internal kind refused', (await as(ADM, `select public.garden_admin_set_rule('woonpyung', 'land_buy', 1, 1, 0, true)`)).why === 'kind');
+ok('set rule: range', (await as(ADM, `select public.garden_admin_set_rule('woonpyung', 'qt_amen', -1, 1, 0, true)`)).why === 'range');
+const st2 = await as(ADM, `select public.garden_admin_set_ss_talent('woonpyung', 3, 4)`);
+ok('set ss talent', st2.ok && (await as(U1, `select public.garden_state('woonpyung')`)).ss.qt_talent === 3, st2);
+const xd2 = await as(ADM, `select public.garden_admin_set_xp_day('woonpyung', 8)`);
+ok('set xp day', xd2.ok && +(await as(U1, `select public.garden_farm('woonpyung')`)).farm.xp_day === 8, xd2);
+await as(ADM, `select public.garden_admin_set_xp_day('woonpyung', 10)`);
 
 // 7-1) 마이그레이션을 다시 실행해도 안전 — 관리자가 바꾼 품목 값은 그대로
 await as(ADM, `select public.garden_admin_set_item_price('woonpyung', 'apple', 45)`);

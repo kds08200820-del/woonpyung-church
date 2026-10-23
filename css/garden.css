@@ -116,6 +116,11 @@ body.garden [hidden] { display: none !important; }
 .g-todo-item.is-done .g-todo-label { color: var(--g-fg3); text-decoration: line-through; }
 .g-todo-label { flex: 1 1 auto; font-weight: 600; }
 .g-todo-xp { flex: 0 0 auto; font-size: .76rem; font-weight: 800; color: var(--g-accent); background: var(--g-accent-bg); border-radius: 999px; padding: 4px 9px; }
+.g-todo-rw { flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.g-todo-tal { font-size: .76rem; font-weight: 800; color: #8A6A1E; background: var(--g-butter); border-radius: 999px; padding: 4px 9px; white-space: nowrap; }
+.g-todo-rw .g-todo-xp { white-space: nowrap; }
+.g-todo-label small { display: block; margin-top: 2px; font-size: .74rem; font-weight: 600; color: var(--g-fg3); text-decoration: none; }
+.g-todo-item.is-done .g-todo-tal { opacity: .7; }
 .g-todo-item.is-done .g-todo-xp { color: var(--g-sage-ink); background: var(--g-mint); }
 
 .g-grow-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .86rem; }

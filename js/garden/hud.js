@@ -257,25 +257,50 @@ window.GardenHud = (function () {
       if (k === 'worship_sunday' && dow !== 0) return;
       if (k === 'login' && rules.water) return;
       if (k === 'worship_weekday' && dow === 0) return;
-      items.push({ kind: k, rule: r, done: isDone(k) });
+      items.push({ kind: k, rule: r, done: isDone(k), talent: +r.talent || 0, xp: r.xp | 0 });
     });
+    ssTasks(rules).forEach(function (x) { items.push(x); });
     ul.innerHTML = '';
     show($('gTodoEmpty'), !items.length);
     var cnt = $('gTodoCount');
     if (cnt) { cnt.textContent = t('todo.count', { done: items.filter(function (x) { return x.done; }).length, total: items.length }); show(cnt, items.length > 0); }
     items.forEach(function (it) {
       var li = document.createElement('li'); li.className = 'g-todo-item' + (it.done ? ' is-done' : '');
-      var href = TASK_HREF[it.kind], tag = href ? 'a' : 'button';
-      var inner = '<span class="g-todo-chk" aria-hidden="true">' + (it.done ? '✓' : '') + '</span><span class="g-todo-label">' + esc(kindLabel(it.kind, rules)) + '</span><span class="g-todo-xp">+' + esc(I.fmtNum(it.rule.xp | 0)) + ' XP</span>';
+      var href = it.href || TASK_HREF[it.kind], tag = href ? 'a' : 'button', lab = it.label || kindLabel(it.kind, rules);
+      // 받는 것: 달란트와 XP 를 함께 (주일학교 인증의 달란트는 어린이에게)
+      var rw = (it.talent > 0 ? '<span class="g-todo-tal">+' + esc(fmtTal(it.talent)) + ' ' + esc(H.talentLabel) + '</span>' : '') +
+        (it.xp > 0 ? '<span class="g-todo-xp">+' + esc(I.fmtNum(it.xp)) + ' XP</span>' : '');
+      var inner = '<span class="g-todo-chk" aria-hidden="true">' + (it.done ? '✓' : '') + '</span><span class="g-todo-label">' + esc(lab) +
+        (it.sub ? '<small>' + esc(it.sub) + '</small>' : '') + '</span>' + (rw ? '<span class="g-todo-rw">' + rw + '</span>' : '');
       var b = document.createElement(tag); b.className = 'g-todo-btn'; b.innerHTML = inner;
       if (href) b.href = href; else b.type = 'button';
-      b.setAttribute('aria-label', kindLabel(it.kind, rules) + (it.done ? ' · ' + t('todo.done') : ''));
+      b.setAttribute('aria-label', lab + (it.done ? ' · ' + t('todo.done') : ''));
       if (it.kind === 'qt_amen') b.addEventListener('click', function () { if (H.qt) openQt(); else toast(t('qt.none')); });
       else if (it.kind === 'login') b.addEventListener('click', function () { toast(it.done ? t('todo.login.done') : t('todo.login.todo')); });
       else if (it.kind === 'water') b.addEventListener('click', function () { if (it.done) toast(t('water.done.msg')); else doWater(); });
       else if (it.kind.indexOf('worship') === 0) b.addEventListener('click', function () { var bn = $('gBanner'); if (bn && !bn.hidden) bn.click(); else toast(t('todo.worship.none')); });
       li.appendChild(b); ul.appendChild(li);
     });
+  }
+  /* 주일학교 인증(어린이 본인·보호자): 오늘 QT · 이번 주 필사 · 이번 주 미션 중 아직 안 한 것만 — 누르면 대시보드 인증 칸으로 */
+  function ssTasks(rules) {
+    var ss = H.state && H.state.ss, out = []; if (!ss || !ss.kids) return out;
+    var ms = ss.mission;
+    ss.kids.forEach(function (k) {
+      var who = k.self ? '' : k.name, href = k.self ? 'dashboard.html' : 'dashboard.html#kids';
+      function add(kind, label, talent, sub) {
+        var r = rules[kind] || {};
+        out.push({ kind: kind, label: label + (who ? ' · ' + who : ''), sub: sub || '', href: href, done: false, talent: +talent || 0, xp: r.xp | 0, rule: r });
+      }
+      if (!k.qt) add('ss_qt', t('todo.ss.qt'), ss.qt_talent);
+      if (!k.pilsa) add('ss_pilsa', t('todo.ss.pilsa'), ss.pilsa_talent, t('todo.ss.week'));
+      if (ms) {
+        var dd = ms.daily_days | 0, n = k.mission_n | 0;
+        var need = dd > 0 ? (n < dd && !k.mission_today) : n === 0;
+        if (need) add('ss_mission', t('todo.ss.mission'), ms.talent, ms.title + (dd > 0 ? ' · ' + t('todo.ss.daily', { n: n, d: dd }) : ''));
+      }
+    });
+    return out;
   }
   function setWeather(wx, phase) {
     var chip = $('gWx'); if (!chip) return;

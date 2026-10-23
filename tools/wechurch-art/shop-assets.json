@@ -400,7 +400,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "eggplant-fruit",
@@ -420,7 +420,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "apple",
@@ -680,7 +680,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "jujube",
@@ -820,7 +820,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "nanking-cherry",
@@ -840,7 +840,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "nanking-cherry-fruit",
@@ -860,7 +860,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "cherry",
@@ -880,7 +880,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "cherry-fruit",
@@ -900,7 +900,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "apricot",
@@ -920,7 +920,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "apricot-fruit",
@@ -934,13 +934,13 @@
         160,
         160
       ],
-      "prompt": "A single round orange apricot with a soft red blush, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
-      "seed": 13335,
+      "prompt": "A single small round ripe apricot, golden orange with a soft red blush, a visible vertical seam groove, a short brown stem and one small green leaf, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16001,
       "bg": "rembg",
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "hardy-kiwi",
@@ -960,7 +960,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "hardy-kiwi-fruit",
@@ -980,7 +980,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "chestnut",
@@ -1380,7 +1380,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     },
     {
       "id": "jindallae",
@@ -1400,7 +1400,7 @@
       "candidates": 1,
       "anchor": null,
       "variants": [],
-      "pick": null
+      "pick": 1
     }
   ]
 }
