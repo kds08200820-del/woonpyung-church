@@ -775,3 +775,17 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
   .g-mbox-invite, .g-mbox-visit { width: 100vw; max-height: 88dvh; }
   .gv-list { grid-template-columns: 1fr; }
 }
+/* 이웃 신청 */
+.gv-sign.is-nb { background: var(--g-peach); color: var(--g-coral-p); }
+.gv-nbh { margin: 12px 0 6px; font-size: .86rem; color: var(--g-fg2); }
+.gv-nbl { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.gv-nbi { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 14px; background: var(--g-panel); border: 1px solid var(--g-line2); }
+.gv-nbt { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.gv-nbt b { font-size: .9rem; }
+.gv-nbt small { color: var(--g-fg2); font-size: .78rem; }
+.gv-nba { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.gv-nb-b { min-height: 36px; padding: 0 12px; font-size: .84rem; }
+.gv-nb-b[hidden] { display: none; }
+.gv-nbbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--g-soft); border: 1px solid var(--g-line2); font-size: .84rem; color: var(--g-fg2); }
+.gv-nbbar[hidden] { display: none; }
+.gv-nbbar .gv-nb-b.is-arm { border-color: var(--g-coral); color: var(--g-coral-p); }

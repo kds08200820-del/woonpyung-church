@@ -332,6 +332,48 @@ ok('closed again → not viewable', (await as(KID, `select public.garden_visit_v
 ok('admin can view closed garden', (await as(ADM, `select public.garden_visit_view('woonpyung', ${P1})`)).ok === true);
 ok('no direct table read', !!(await asErr(KID, `select count(*) from public.garden_guestbook`)));
 
+// 7-6) 이웃 신청 — 신청·수락·거절·끊기, 이웃은 닫힌 정원도 방문
+const PK = (await as(KID, `select public.garden_visit_list('woonpyung')`)).me.plot_no;
+ok('self request refused', (await as(U1, `select public.garden_neighbor_request('woonpyung', ${P1})`)).why === 'self');
+ok('non-member request refused', (await as(OUT, `select public.garden_neighbor_request('woonpyung', ${P1})`)).why === 'member');
+let nr = await as(KID, `select public.garden_neighbor_request('woonpyung', ${P1})`);
+ok('request sent', nr.ok && nr.neighbor.status === 'sent', nr);
+ok('request again → still one row', (await as(KID, `select public.garden_neighbor_request('woonpyung', ${P1})`)).neighbor.status === 'sent' && (await pg(`select count(*)::int n from public.garden_neighbors`))[0].n === 1);
+let lk = await as(KID, `select public.garden_neighbor_list('woonpyung')`);
+ok('kid outgoing 1', lk.ok && lk.outgoing.length === 1 && lk.outgoing[0].plot_no === P1 && !('from_id' in lk.outgoing[0]), lk);
+let lu = await as(U1, `select public.garden_neighbor_list('woonpyung')`);
+ok('owner incoming 1', lu.ok && lu.incoming.length === 1 && lu.incoming[0].plot_no === PK, lu);
+ok('owner sees requests count', (await as(U1, `select public.garden_visit_list('woonpyung')`)).me.requests === 1);
+ok('closed + not yet neighbor → closed', (await as(KID, `select public.garden_visit_view('woonpyung', ${P1})`)).why === 'closed');
+ok('requester cannot accept own request', (await as(KID, `select public.garden_neighbor_respond('woonpyung', ${lu.incoming[0].id}, true)`)).why === 'denied');
+let rs = await as(U1, `select public.garden_neighbor_respond('woonpyung', ${lu.incoming[0].id}, true)`);
+ok('accept → neighbors', rs.ok && rs.accepted === true && rs.neighbors.length === 1 && rs.incoming.length === 0, rs);
+let nv = await as(KID, `select public.garden_visit_view('woonpyung', ${P1})`);
+ok('neighbor visits closed garden', nv.ok && nv.open === false && nv.neighbor.status === 'neighbor', nv && nv.why);
+ok('neighbor post passes the open check (hits day limit)', (await as(KID, `select public.garden_guestbook_post('woonpyung', ${P1}, '이웃 인사')`)).why === 'limit');
+let vk2 = await as(KID, `select public.garden_visit_list('woonpyung')`);
+ok('neighbor garden listed though closed', vk2.gardens.some((g) => g.plot_no === P1 && g.neighbor === true && g.open === false), vk2.gardens);
+ok('owner view: neighbor null for own garden', (await as(U1, `select public.garden_visit_view('woonpyung', ${P1})`)).neighbor === null);
+let rm = await as(KID, `select public.garden_neighbor_remove('woonpyung', ${rs.neighbors[0].id})`);
+ok('remove → no neighbors', rm.ok && rm.neighbors.length === 0, rm);
+ok('after remove closed again', (await as(KID, `select public.garden_visit_view('woonpyung', ${P1})`)).why === 'closed');
+ok('row kept (status removed)', (await pg(`select status from public.garden_neighbors`))[0].status === 'removed');
+// 서로 신청하면 바로 이웃
+ok('owner requests kid', (await as(U1, `select public.garden_neighbor_request('woonpyung', ${PK})`)).neighbor.status === 'sent');
+ok('kid sees received', (await as(KID, `select public.garden_visit_view('woonpyung', ${P1})`)).why === 'closed' && (await as(KID, `select public.garden_neighbor_list('woonpyung')`)).incoming.length === 1);
+ok('mutual request → neighbor', (await as(KID, `select public.garden_neighbor_request('woonpyung', ${P1})`)).neighbor.status === 'neighbor');
+// 거절 뒤 다시 신청
+await as(ADM, `select public.garden_sync('woonpyung')`);
+let nar = await as(ADM, `select public.garden_neighbor_request('woonpyung', ${P1})`);
+ok('admin request sent', nar.ok && nar.neighbor.status === 'sent', nar);
+let inc = (await as(U1, `select public.garden_neighbor_list('woonpyung')`)).incoming;
+let dc = await as(U1, `select public.garden_neighbor_respond('woonpyung', ${inc[0].id}, false)`);
+ok('decline', dc.ok && dc.accepted === false && dc.incoming.length === 0, dc);
+ok('declined → none for requester', (await as(ADM, `select public.garden_neighbor_list('woonpyung')`)).outgoing.length === 0);
+ok('request again after decline', (await as(ADM, `select public.garden_neighbor_request('woonpyung', ${P1})`)).neighbor.status === 'sent');
+ok('no direct neighbors read', !!(await asErr(KID, `select count(*) from public.garden_neighbors`)));
+ok('neighbor rows never deleted', (await pg(`select count(*)::int n from public.garden_neighbors`))[0].n === 2);
+
 // 7-1) 마이그레이션을 다시 실행해도 안전 — 관리자가 바꾼 품목 값은 그대로
 await as(ADM, `select public.garden_admin_set_item_price('woonpyung', 'apple', 45)`);
 await db.exec(sql3);

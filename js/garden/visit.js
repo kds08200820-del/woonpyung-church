@@ -4,6 +4,8 @@
      구경하러 갈 수 있습니다. 그리고 댓글도 달고 소통할 수 있도록 해주세요."
    · 초대하기: 내 정원을 열고 닫는다(garden_visit_set). 열면 주소(garden.html?visit=자리 번호)를 보내거나 복사하고, 내 방명록을 읽고 숨긴다
    · 방문하기: 정원을 연 성도 목록(garden_visit_list) → 누르면 그 정원을 입체(garden3d.js)로, 옆에 방명록(쓰기·숨기기)
+   · 이웃 신청(같은 날 지시 "이웃신청하기도 만들어주세요"): 방문한 정원에서 신청 → 받은 사람이 초대 창에서 수락·거절.
+     이웃끼리는 초대를 꺼도 서로 방문·방명록. 방문 목록 맨 위는 내 이웃
    · 서버(20261023_2100 SQL)가 없으면 단추를 숨긴다. 이름은 정원 별명만 보인다(실명·연락처 없음)
    GardenVisit.init({ i18n, sdk, hud, scene, farm, base3d }) · GardenVisit.start() · GardenVisit.visit(plotNo)
    ============================================================ */
@@ -69,7 +71,7 @@ window.GardenVisit = (function () {
 
   /* ── 오른쪽 메뉴 단추 ── */
   function setBadge() {
-    var bd = $('gInviteBadge'), n = (V.me && V.me.unread) | 0; if (!bd) return;
+    var bd = $('gInviteBadge'), n = ((V.me && V.me.unread) | 0) + ((V.me && V.me.requests) | 0); if (!bd) return;
     bd.hidden = !n; bd.textContent = t('invite.badge', { n: n });
   }
   function start() {
@@ -91,6 +93,51 @@ window.GardenVisit = (function () {
     if (!V.inv) return;
     drawInvite();
     loadMyBook();
+    loadNeighbors();
+  }
+  /* 이웃: 받은 신청(수락·거절) · 내 이웃(방문·끊기) · 보낸 신청(취소) */
+  function loadNeighbors() {
+    var box = $('gvNb'); if (!box || !SDK.neighborList) return;
+    SDK.neighborList().then(function (r) { if (r && r.ok) drawNeighbors(r); }, function () { box.innerHTML = ''; });
+  }
+  function nbRow(n, acts) {
+    var src = avatarSrc(n.avatar_key, n.avatar_url);
+    return '<li class="gv-nbi" data-id="' + esc(n.id) + '" data-plot="' + esc(n.plot_no) + '"><span class="gv-av">' + (src ? '<img alt="" src="' + esc(src) + '">' : '') + '</span>' +
+      '<span class="gv-nbt"><b>' + esc(n.nickname) + '</b>' + (n.species ? '<small>' + esc(plantLabel(n).text) + '</small>' : '') + '</span><span class="gv-nba">' + acts + '</span></li>';
+  }
+  function drawNeighbors(r) {
+    var box = $('gvNb'), inc = r.incoming || [], nb = r.neighbors || [], out = r.outgoing || [], h = '';
+    if (V.me) { V.me.requests = inc.length; setBadge(); }
+    if (inc.length) h += '<h4 class="gv-nbh">' + esc(t('nb.incoming')) + '</h4><ul class="gv-nbl">' + inc.map(function (n) {
+      return nbRow(n, '<button type="button" class="g-btn g-btn-primary gv-nb-b" data-act="yes">' + esc(t('nb.accept')) + '</button><button type="button" class="g-btn g-btn-line gv-nb-b" data-act="no">' + esc(t('nb.decline')) + '</button>');
+    }).join('') + '</ul>';
+    h += '<h4 class="gv-nbh">' + esc(t('nb.mine')) + ' <span class="gv-n">' + (nb.length ? I.fmtNum(nb.length) : '') + '</span></h4>';
+    h += nb.length ? '<ul class="gv-nbl">' + nb.map(function (n) {
+      return nbRow(n, '<button type="button" class="g-btn g-btn-line gv-nb-b" data-act="go">' + esc(t('nb.go')) + '</button><button type="button" class="gv-hide" data-act="cut">' + esc(t('nb.cut')) + '</button>');
+    }).join('') + '</ul>' : '<p class="g-empty">' + esc(t('nb.none')) + '</p>';
+    if (out.length) h += '<h4 class="gv-nbh">' + esc(t('nb.outgoing')) + '</h4><ul class="gv-nbl">' + out.map(function (n) {
+      return nbRow(n, '<button type="button" class="gv-hide" data-act="cancel">' + esc(t('nb.cancel')) + '</button>');
+    }).join('') + '</ul>';
+    box.innerHTML = h;
+  }
+  function bindNeighbors() {
+    var box = $('gvNb'); if (!box) return;
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-act]'); if (!b || b.disabled) return;
+      var li = b.closest('.gv-nbi'), id = +li.getAttribute('data-id'), act = b.getAttribute('data-act');
+      if (act === 'go') { if (V.inv) HUD.closeModal(V.inv); visit(+li.getAttribute('data-plot')); return; }
+      if ((act === 'cut' || act === 'cancel') && !b.classList.contains('is-arm')) {   // 끊기·취소는 두 번 눌러야
+        b.classList.add('is-arm'); b.textContent = t('nb.sure');
+        setTimeout(function () { if (document.contains(b)) { b.classList.remove('is-arm'); b.textContent = t(act === 'cut' ? 'nb.cut' : 'nb.cancel'); } }, 3000);
+        return;
+      }
+      b.disabled = true;
+      var p = act === 'yes' || act === 'no' ? SDK.neighborRespond(id, act === 'yes') : SDK.neighborRemove(id);
+      p.then(function (r) {
+        if (!r || !r.ok) { b.disabled = false; HUD.toast(whyText(r)); return; }
+        drawNeighbors(r); if (act === 'yes') HUD.toast(t('nb.accepted'));
+      }, function (er) { b.disabled = false; HUD.toast(whyText(null, er)); });
+    });
   }
   function drawInvite() {
     var me = V.me || {}, on = !!me.open;
@@ -135,6 +182,7 @@ window.GardenVisit = (function () {
     });
     $('gvPreview').addEventListener('click', function () { var p = V.me && V.me.plot_no; if (!p) return; if (V.inv) HUD.closeModal(V.inv); visit(p); });
     bindHide($('gvMyGb'), drawMyBook);
+    bindNeighbors();
   }
 
   /* ── 방문하기 창: 정원을 연 성도 목록 ── */
@@ -149,7 +197,7 @@ window.GardenVisit = (function () {
       box.innerHTML = V.list.map(function (g) {
         var pl = plantLabel(g), src = avatarSrc(g.avatar_key, g.avatar_url), tree = SCENE.asset('plants/' + pl.sp + '-' + pl.si + '-s.webp') || SCENE.asset('plants/' + pl.sp + '-' + pl.si + '.webp');
         return '<button type="button" class="gv-card" data-plot="' + esc(g.plot_no) + '">' +
-          '<span class="gv-sign">' + esc(t('visit.sign')) + '</span>' +
+          '<span class="gv-sign' + (g.neighbor ? ' is-nb' : '') + '">' + esc(t(g.neighbor ? 'nb.sign' : 'visit.sign')) + '</span>' +
           '<span class="gv-pics"><span class="gv-av gv-av-lg">' + (src ? '<img alt="" src="' + esc(src) + '">' : '') + '</span>' + (tree ? '<img class="gv-tree" alt="" src="' + esc(tree) + '">' : '') + '</span>' +
           '<span class="gv-cardt"><b>' + esc(g.nickname) + '</b><small>' + esc(pl.text) + '</small>' +
           '<small class="gv-meta">' + esc(t('visit.comments', { n: I.fmtNum(g.comments | 0) })) + (g.plants_done ? ' · ' + esc(t('visit.done', { n: I.fmtNum(g.plants_done) })) : '') + '</small></span></button>';
@@ -170,13 +218,38 @@ window.GardenVisit = (function () {
     if (!window.Garden3D || !window.Garden3D.supported() || window.Garden3D.isOpen()) return;
     var side = document.createElement('aside');
     side.className = 'gv-side'; side.setAttribute('aria-label', t('visit.gb'));
-    side.innerHTML = '<div class="gv-side-h"><b>' + esc(t('visit.gb')) + '</b><span class="gv-n" id="gvN"></span></div>' +
+    side.innerHTML = '<div class="gv-nbbar" id="gvNbBar" hidden><span id="gvNbText"></span><button type="button" class="g-btn g-btn-primary gv-nb-b" id="gvNbBtn"></button></div>' +
+      '<div class="gv-side-h"><b>' + esc(t('visit.gb')) + '</b><span class="gv-n" id="gvN"></span></div>' +
       '<form class="gv-form" id="gvForm"><label class="g-sr" for="gvBody">' + esc(t('visit.gb.ph')) + '</label>' +
       '<textarea id="gvBody" maxlength="300" rows="3" placeholder="' + esc(t('visit.gb.ph')) + '"></textarea>' +
       '<div class="gv-form-row"><small id="gvCnt">0/300</small><button type="submit" class="g-btn g-btn-primary" id="gvSendBtn">' + esc(t('visit.gb.send')) + '</button></div></form>' +
       '<ul class="gv-gb" id="gvGb"></ul><p class="g-empty" id="gvGbNone" hidden>' + esc(t('visit.gb.none')) + '</p>';
     var ul = side.querySelector('#gvGb'), none = side.querySelector('#gvGbNone'), form = side.querySelector('#gvForm'), ta = side.querySelector('#gvBody'), cnt = side.querySelector('#gvCnt'), nEl = side.querySelector('#gvN');
-    var view = null;
+    var view = null, nbBar = side.querySelector('#gvNbBar'), nbBtn = side.querySelector('#gvNbBtn'), nbText = side.querySelector('#gvNbText'), nb = null;
+    // 이웃 사이 단추: none → 신청 / sent → 신청 취소(두 번) / received → 수락 / neighbor → 단추 없음(끊기는 초대 창에서)
+    function drawNb(x) {
+      nb = x; if (!x || !SDK.neighborRequest) { nbBar.hidden = true; return; }
+      var st = x.status || 'none';
+      nbBar.hidden = false; nbBtn.disabled = false; nbBtn.classList.remove('is-arm');
+      nbText.textContent = t('nb.state.' + st);
+      nbBtn.hidden = st === 'neighbor';
+      nbBtn.textContent = t(st === 'sent' ? 'nb.cancel' : st === 'received' ? 'nb.accept' : 'nb.request');
+      nbBtn.className = 'g-btn gv-nb-b ' + (st === 'sent' ? 'g-btn-line' : 'g-btn-primary');
+    }
+    nbBtn.addEventListener('click', function () {
+      if (!nb) return;
+      var st = nb.status, p;
+      if (st === 'sent' && !nbBtn.classList.contains('is-arm')) { nbBtn.classList.add('is-arm'); nbBtn.textContent = t('nb.sure'); return; }
+      nbBtn.disabled = true;
+      if (st === 'sent') p = SDK.neighborRemove(nb.id).then(function (r) { return r && r.ok ? { ok: true, neighbor: { id: null, status: 'none' } } : r; });
+      else if (st === 'received') p = SDK.neighborRespond(nb.id, true).then(function (r) { return r && r.ok ? { ok: true, neighbor: { id: nb.id, status: 'neighbor' } } : r; });
+      else p = SDK.neighborRequest(plot);
+      p.then(function (r) {
+        if (!r || !r.ok) { nbBtn.disabled = false; HUD.toast(whyText(r)); return; }
+        drawNb(r.neighbor);
+        HUD.toast(t(r.neighbor.status === 'neighbor' ? 'nb.accepted' : r.neighbor.status === 'sent' ? 'nb.sent' : 'nb.cancelled'));
+      }, function (er) { nbBtn.disabled = false; HUD.toast(whyText(null, er)); });
+    });
     function draw(list) {
       ul.innerHTML = gbHtml(list); none.hidden = !!list.length; nEl.textContent = list.length ? I.fmtNum(list.length) : '';
       if (view) view.side(t('visit.gb.btn', { n: list.length }));
@@ -202,6 +275,7 @@ window.GardenVisit = (function () {
       var mine = (FARM && FARM.state && FARM.state()) || {}, max = mine.max || 4;
       if (r.mine && V.me) { V.me.unread = 0; setBadge(); }
       draw(r.guestbook || []);
+      drawNb(r.mine ? null : r.neighbor);
       return {
         title: r.mine ? t('visit.title.mine') : t('visit.title', { name: own.nickname || '' }), sub: pl.text,
         plant: { src: SCENE.asset('plants/' + pl.sp + '-' + pl.si + '.webp'), name: pl.text },
