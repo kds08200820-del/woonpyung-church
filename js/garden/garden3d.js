@@ -16,7 +16,9 @@
                    side: 오른쪽 칸(방명록 등, 휴대폰은 아래에서 올라오는 칸), sideLabel,
                    onTile(cell{x,y,owned}) · fmtLeft(ms) · onExpire() — 내 땅 가꾸기(farm.js)가 칸 누르기·남은 시간을 받는다 })
    돌려주는 것: { close, side(label), openSide(on), setLand(land), setTreeBubble(src), flash(cell, text) }
-   land = { tiles:[{x,y,land,planted,src,h,dead,name,bubble,until,tag}], max, buyable:[{x,y,label}], picks:{'x,y':1}, pickable:{'x,y':1}, mode }
+   land = { tiles:[{x,y,land,planted,src,h,dead,name,bubble,until,tag}], max, buyable:[{x,y,label}], picks:{'x,y':1}, pickable:{'x,y':1}, mode,
+            homes:[{x,y,w,h,src,name}] — 지은 집(대지 여러 칸에 걸친 그림 하나) }
+   o.church = { src, name, site:{src,name} } — 성도들의 건축헌금으로 지은 교회와 짓는 중인 공사 터. 내 땅 뒤편(처음 카메라 반대쪽) 언덕에
    ============================================================ */
 window.Garden3D = (function () {
   'use strict';
@@ -419,6 +421,16 @@ window.Garden3D = (function () {
         tree.cell = { x: 0, y: 0, owned: true, home: true };
         if (o.plant.bubble) bubble(o.plant.bubble, 0, homeH + tree.top + 0.3, 0, 'tree');
       }
+      // 교회(모든 성도에게 같은 교회)와 공사 터: 내 땅 뒤편 — 처음 카메라(남동쪽)의 반대쪽, 바깥 잔디(y −0.7) 위
+      if (o.church) {
+        var cd = TS * 4.5 + 9, ccx = -cd / Math.SQRT2, ccz = -cd / Math.SQRT2;
+        [[o.church.src, o.church.name, 9.5, 0], [o.church.site && o.church.site.src, o.church.site && o.church.site.name, 6.5, o.church.src ? 1 : 0]].forEach(function (c) {
+          if (!c[0]) return;
+          loadImage(c[0]).then(function (im) {   // 교회 옆 공사 터는 땅 가장자리와 나란히 한쪽으로 비켜 선다
+            if (!dead && im) sprite(im, { x: ccx + c[3] * 8, z: ccz - c[3] * 8, y: -0.7, size: c[2], center: true, stiff: 0, name: c[1] || '' });
+          });
+        });
+      }
       R.treeBubble = function (src) {   // 믿음 나무 열매를 다 따면 말풍선을 뗀다
         bubbles = bubbles.filter(function (b) { if (b.kind === 'tree') { scene.remove(b.s); b.s.material.map.dispose(); b.s.material.dispose(); return false; } return true; });
         if (src && tree) bubble(src, 0, homeH + tree.top + 0.3, 0, 'tree');
@@ -506,6 +518,15 @@ window.Garden3D = (function () {
             else label(top + it.top + 0.15);
           });
           else label(top + 0.2);
+        });
+        // 지은 집: 앉은 대지 칸들의 가운데에 그림 하나(여러 칸이면 그만큼 크게). 누르면 첫 칸을 누른 것으로
+        (land.homes || []).forEach(function (hm) {
+          loadImage(hm.src).then(function (im) {
+            if (dead || !im || gen !== landGen) return;
+            var w = Math.max(1, hm.w | 0), d = Math.max(1, hm.h | 0);
+            sprite(im, { x: (hm.x + (w - 1) / 2) * TS, z: (hm.y + (d - 1) / 2) * TS, y: 0.09, size: TS * Math.max(w, d) * 1.2, center: true, stiff: 0,
+              name: hm.name || '', cell: { x: hm.x, y: hm.y, owned: true }, parent: tileGroup });
+          });
         });
         (land.buyable || []).forEach(function (b) {
           var key = b.x + ',' + b.y, m = new T.Mesh(cellGeo, buyMat);
@@ -638,7 +659,7 @@ window.Garden3D = (function () {
           var n2 = twoState(), da = n2.a - two.a;
           if (da > Math.PI) da -= Math.PI * 2; if (da < -Math.PI) da += Math.PI * 2;
           cam.dist = clamp(cam.dist * two.d / Math.max(1, n2.d), lim.min, lim.max);
-          cam.az -= da;
+          cam.az += da;   // 손가락을 시계 방향으로 비틀면 땅도 시계 방향으로(돌리기 단추 ↺·↻ 와 같은 방향) — 2026-10-23 담임목사 "반대로 돌아갑니다"
           cam.pol = clamp(cam.pol - (n2.y - two.y) * 0.006, POL.min, POL.max);   // 두 손가락을 함께 위로 밀면 눕고(눈높이), 아래로 당기면 위에서
           two = n2; return;
         }

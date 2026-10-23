@@ -985,3 +985,54 @@ button.g-chip-wx:focus-visible { outline: 3px solid var(--g-coral-ring); outline
 .gs-grown .gs-have { display: none; }
 .gs-grown .gs-go { white-space: nowrap; }
 .gs-admin-stock { flex: 1 0 100%; }
+
+/* ── 건축(build.js): 건재상 모델하우스 · 교회 건축헌금 · 첫 화면 교회 (2026-10-23) ── */
+.gb-model { display: grid; grid-template-columns: 132px 1fr; gap: 12px; align-items: start; }
+.gb-model-img img { width: 132px; height: 132px; object-fit: contain; }
+.gb-model-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.gb-model-t { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.gb-model-t b { font-size: 1.02rem; }
+.gb-model-t small { color: var(--g-fg2); font-size: .8rem; line-height: 1.4; }
+.gb-need { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .84rem; color: var(--g-fg2); }
+.gb-need li { display: flex; gap: 6px; align-items: baseline; }
+.gb-need li.is-ok { color: #2F6B4F; }
+.gb-chk { display: inline-block; width: 1em; flex: 0 0 1em; font-weight: 700; }
+.gb-note { margin-top: 4px; }
+.gb-church { grid-column: 1 / -1; }
+.gb-church-imgs { display: flex; align-items: flex-end; justify-content: center; gap: 10px; }
+.gb-church-imgs .gb-site { width: 150px; height: 150px; object-fit: contain; }
+.gb-church-imgs .gb-goal { width: 96px; height: 96px; object-fit: contain; opacity: .55; }
+.gb-bar { display: block; }
+.gb-bar .g-bar-fill { display: block; }
+.gb-sum, .gb-mine { margin: 0; font-size: .9rem; }
+.gb-sum { font-weight: 700; }
+.gb-mine { color: var(--g-fg2); }
+.gb-offer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gb-amt input { width: 120px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1.5px solid var(--g-line); background: #fff; font: inherit; font-size: 1rem; color: var(--g-fg); }
+.gb-u { color: var(--g-fg2); font-size: .88rem; }
+.gb-admin { border-top: 1px dashed var(--g-line); margin-top: 6px; padding-top: 10px; display: grid; gap: 8px; }
+.gb-stop { justify-self: start; }
+.gb-none { grid-column: 1 / -1; }
+.gb-plans { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.gb-plan { align-items: center; text-align: center; }
+.gb-plan img { width: 100%; max-width: 140px; aspect-ratio: 1; object-fit: contain; }
+.gb-plan .gb-model-t { align-items: center; }
+.gb-plan.is-open { grid-column: 1 / -1; }
+.gb-start { display: grid; gap: 8px; justify-items: center; }
+.gb-start label { display: flex; align-items: center; gap: 8px; font-size: .88rem; color: var(--g-fg2); }
+.gb-start input { width: 130px; min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1.5px solid var(--g-line); background: #fff; font: inherit; font-size: 1rem; }
+.gb-built { grid-column: 1 / -1; }
+.gb-mine-s { color: var(--g-fg2); margin-left: 6px; }
+@media (max-width: 560px) {
+  .gb-model { grid-template-columns: 96px 1fr; }
+  .gb-model-img img { width: 96px; height: 96px; }
+  .gb-plans { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .gb-plan { padding: 8px; }
+  .gb-plan .gb-pick { font-size: .78rem; padding: 6px 8px; white-space: normal; }
+}
+/* 첫 화면 먼 언덕 위 교회(누르면 교회 건축) */
+.g-church { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: flex-end; gap: 6px; }
+.g-church-img { width: auto; filter: drop-shadow(0 4px 5px rgba(80,60,40,.22)); }
+.g-church.is-open { cursor: pointer; }
+.g-church.is-open:focus-visible { outline: 3px solid var(--g-coral); outline-offset: 4px; border-radius: 8px; }
+.g-church-tag { position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%); white-space: nowrap; font-size: 15px; font-weight: 700; color: #4a3b31; background: rgba(255,250,243,.92); border: 1px solid #e6d6c3; border-radius: 999px; padding: 2px 10px; }

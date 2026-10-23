@@ -1,0 +1,17 @@
+{
+ "version": "20261024bd1",
+ "theme": "build",
+ "files": {
+  "church-brick.webp": 29690,
+  "church-site.webp": 29744,
+  "church-small.webp": 39056,
+  "church-stone.webp": 35064,
+  "house-big.webp": 26052,
+  "house-hanok.webp": 30508,
+  "house-small.webp": 46142
+ },
+ "variants": {
+  "season": []
+ },
+ "anchors": {}
+}

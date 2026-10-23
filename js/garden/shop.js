@@ -6,7 +6,8 @@
    · 관리자는 값을 바로 고친다(garden_admin_set_item_price)
    · 건축용 나무(2026-10-23 담임목사): 묘목을 사서 길러 베면 목재. 다 자란 나무를 성도들이 스토어에 팔면 재고가 쌓이고,
      재고가 보이며 남은 수량까지만 산다(심은 값의 2배, 산 나무는 바로 목재로 보관함에) — 겨울에도 건축을 준비하게
-   · 다른 가게(꾸미기·옷·건재상·가구가전·차고)는 '준비 중' — docs/we-church-로드맵-상점.md
+   · 건재상(모델하우스)·교회 건축은 build.js 가 탭을 더한다(addTab — 서버에 기능이 없으면 '준비 중' 그대로)
+   · 다른 가게(꾸미기·옷·가구가전·차고)는 '준비 중' — docs/we-church-로드맵-상점.md
    GardenShop.init({ i18n, sdk, hud }) · GardenShop.open(tab, 닫힌 뒤 할 일)
    ============================================================ */
 window.GardenShop = (function () {
@@ -42,16 +43,32 @@ window.GardenShop = (function () {
       S.data = r; HUD.setTalent(r.balance); render();
     }).catch(function (e) { $('gsList').innerHTML = '<p class="g-empty">' + esc(SDK.notReady(e) ? t('shop.notready') : t('shop.err')) + '</p>'; });
   }
+  // 다른 모듈이 더하는 탭(건재상·교회 건축 — build.js). 서버에 기능이 없으면(ready false) 탭을 숨기고 '준비 중' 칸을 그대로 둔다
+  //   { key, label, soon(대신하는 '준비 중' 키), ready(), render(목록 칸, api), click(e, api) → true 면 처리함 }
+  var EXTRA = [];
+  function extra(key) { for (var i = 0; i < EXTRA.length; i++) if (EXTRA[i].key === key && EXTRA[i].ready()) return EXTRA[i]; return null; }
+  var api = {
+    balance: function () { return S.data ? +S.data.balance || 0 : 0; },
+    setBalance: function (v) { if (S.data) S.data.balance = v; HUD.setTalent(v); if ($('gsBal')) $('gsBal').textContent = tal(v); },
+    close: function (fn) { if (S.rec) HUD.closeThen(S.rec, fn); else if (fn) fn(); },
+    render: function () { render(); },
+    tab: function (k) { S.tab = k; renderTabs(); render(); }
+  };
   function renderTabs() {
-    $('gsTabs').innerHTML = TABS.map(function (tb) {
+    var ex = EXTRA.filter(function (x) { return x.ready(); }), hide = {};
+    ex.forEach(function (x) { if (x.soon) hide[x.soon] = 1; });
+    if (!TABS.some(function (tb) { return tb[0] === S.tab; }) && !extra(S.tab)) S.tab = 'food';
+    $('gsTabs').innerHTML = TABS.concat(ex.map(function (x) { return [x.key, x.label]; })).map(function (tb) {
       return '<button type="button" class="gs-tab' + (S.tab === tb[0] ? ' is-on' : '') + '" role="tab" aria-selected="' + (S.tab === tb[0]) + '" data-tab="' + tb[0] + '">' + esc(t(tb[1])) + '</button>';
-    }).join('') + SOON.map(function (k) { return '<span class="gs-tab gs-soon" aria-disabled="true">' + esc(t(k)) + '<small>' + esc(t('shop.soon')) + '</small></span>'; }).join('');
+    }).join('') + SOON.filter(function (k) { return !hide[k]; }).map(function (k) { return '<span class="gs-tab gs-soon" aria-disabled="true">' + esc(t(k)) + '<small>' + esc(t('shop.soon')) + '</small></span>'; }).join('');
   }
   function render() {
     var d = S.data; if (!d) return;
     $('gsBal').textContent = tal(d.balance);
     var bag = (d.inventory || []).map(function (i) { var it = find(i.item); return it ? esc(nameOf(it.name)) + ' ' + i.qty : ''; }).filter(Boolean);
     $('gsBag').textContent = bag.length ? t('shop.bag', { list: bag.join(' · ') }) : t('shop.bag.empty');
+    var ext = extra(S.tab);
+    if (ext) { ext.render($('gsList'), api); return; }
     var items = (d.items || []).filter(function (it) { return tabOf(it) === S.tab; });
     var sell = items.filter(function (it) { return it.fit !== 'no'; }), no = items.filter(function (it) { return it.fit === 'no'; });
     var html = '<p class="gs-lead">' + esc(t('shop.lead.' + S.tab)) + '</p>' +
@@ -116,6 +133,8 @@ window.GardenShop = (function () {
   function onClick(e) {
     var tb = e.target.closest('.gs-tab[data-tab]');
     if (tb) { S.tab = tb.getAttribute('data-tab'); renderTabs(); render(); $('gsList').scrollTop = 0; return; }
+    var ext = extra(S.tab);
+    if (ext && ext.click && $('gsList').contains(e.target) && ext.click(e, api)) return;
     var sqb = e.target.closest('[data-sq]');
     if (sqb) { var s2 = sqb.getAttribute('data-slug'); S.sq[s2] = Math.max(1, Math.min(Math.min(20, stockOf(s2) || 1), (S.sq[s2] || 1) + (+sqb.getAttribute('data-sq')))); render(); return; }
     var gb = e.target.closest('[data-grown]');
@@ -176,5 +195,6 @@ window.GardenShop = (function () {
     $('gmShop').addEventListener('click', onClick);
     $('gmShop').addEventListener('change', onPrice);
   }
-  return { init: init, open: open, items: function () { return (S.data && S.data.items) || null; }, load: load, find: find };
+  return { init: init, open: open, items: function () { return (S.data && S.data.items) || null; }, load: load, find: find,
+    addTab: function (x) { EXTRA.push(x); if (S.rec) renderTabs(); }, refreshTabs: function () { if (S.rec) { renderTabs(); render(); } } };
 })();

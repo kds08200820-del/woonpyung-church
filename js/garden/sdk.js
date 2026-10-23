@@ -142,6 +142,14 @@
   function treeBuy(item, qty) { return rpc('garden_tree_buy', { p_church: SLUG, p_item: item, p_qty: qty || 1 }); }
   function storage() { return rpc('garden_storage', { p_church: SLUG }); }
   function adminSetStock(item, qty) { return rpc('garden_admin_set_stock', { p_church: SLUG, p_item: item, p_qty: qty | 0 }); }
+  /* 건축: 집 짓기 · 교회 건축헌금 (20261024_0200_garden_build.sql) */
+  function home() { return rpc('garden_home', { p_church: SLUG }); }
+  function homeBuild(kind, cells) { return rpc('garden_home_build', { p_church: SLUG, p_kind: kind, p_cells: cells || [] }); }
+  function church() { return rpc('garden_church', { p_church: SLUG }); }
+  function churchOffer(build, amount) { return rpc('garden_church_offer', { p_church: SLUG, p_build: build, p_amount: amount }); }
+  function adminChurchStart(kind, goal) { return rpc('garden_admin_church_start', { p_church: SLUG, p_kind: kind, p_goal: goal == null ? null : goal }); }
+  function adminChurchGoal(goal) { return rpc('garden_admin_church_goal', { p_church: SLUG, p_goal: goal }); }
+  function adminChurchStop() { return rpc('garden_admin_church_stop', { p_church: SLUG }); }
   function history(limit, offset) { return rpc('garden_history', { p_church: SLUG, p_limit: Math.min(Math.max(+limit || 30, 1), 100), p_offset: Math.max(+offset || 0, 0) }); }
 
   /* ── 큐티 (dashboard.js 897 방식: 오늘 이전 최근 1건) ── */
@@ -235,6 +243,7 @@
     wallet: wallet, water: water, farmBuyMany: farmBuyMany, farmConvert: farmConvert, shop: shop, shopBuy: shopBuy,
     farmPlantItem: farmPlantItem, farmHarvest: farmHarvest, farmClear: farmClear, adminSetLandPrices: adminSetLandPrices, adminSetItemPrice: adminSetItemPrice,
     farmCut: farmCut, farmDig: farmDig, treeSell: treeSell, treeBuy: treeBuy, storage: storage, adminSetStock: adminSetStock,
+    home: home, homeBuild: homeBuild, church: church, churchOffer: churchOffer, adminChurchStart: adminChurchStart, adminChurchGoal: adminChurchGoal, adminChurchStop: adminChurchStop,
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,
     attend: attend, hasSermon: hasSermon, weather: weather,
     lastState: lastState, saveState: saveState, notReady: notReady, isNetwork: isNetwork
