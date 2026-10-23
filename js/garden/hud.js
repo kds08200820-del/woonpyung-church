@@ -323,7 +323,8 @@ window.GardenHud = (function () {
     var w = SCENE.weatherOf(wx.code), ic = (w === 'clear' && phase === 'night') ? WX_ICON.night : WX_ICON[w];
     $('gWxIc').textContent = ic || '';
     $('gWxText').textContent = (wx.temp != null ? Math.round(wx.temp) + '°' : '') + ' ' + t('wx.' + w);
-    chip.setAttribute('aria-label', t('wx.label', { w: t('wx.' + w), temp: wx.temp != null ? Math.round(wx.temp) : '' }));
+    chip.setAttribute('aria-label', t('wx.label', { w: t('wx.' + w), temp: wx.temp != null ? Math.round(wx.temp) : '' }) + ' · ' + t('wx.open'));
+    chip.title = t('wx.open');
     chip.hidden = false;
   }
 
@@ -811,7 +812,7 @@ window.GardenHud = (function () {
   function init(o) {
     I = o.i18n; SDK = o.sdk; SCENE = o.scene; t = I.t; P = o.params || {};
     I.apply(document);
-    ['gmQt', 'gmStore', 'gmPlant', 'gmShop', 'gmInvite', 'gmVisit', 'gmGuide'].forEach(function (id) { if ($(id)) bindModal(id); });
+    ['gmQt', 'gmStore', 'gmPlant', 'gmShop', 'gmInvite', 'gmVisit', 'gmGuide', 'gmWeather'].forEach(function (id) { if ($(id)) bindModal(id); });
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);

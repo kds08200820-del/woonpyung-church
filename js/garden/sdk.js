@@ -190,6 +190,26 @@
       return data;
     }).catch(function () { return null; });
   }
+  /* 7일 예보(Open-Meteo, 바람은 m/s) — [{date, code, tmax, tmin, rain, pop, wind, gust}] | null, 1시간 저장 */
+  function forecast(lat, lng, tz) {
+    if (!(isFinite(+lat) && isFinite(+lng))) return Promise.resolve(null);
+    var key = 'g_fc:' + (+lat).toFixed(2) + ',' + (+lng).toFixed(2);
+    try { var c = JSON.parse(sessionStorage.getItem(key) || 'null'); if (c && c.at && Date.now() - c.at < 60 * 60 * 1000 && c.data) return Promise.resolve(c.data); } catch (e) { }
+    var u = WX_URL + '?latitude=' + encodeURIComponent(+lat) + '&longitude=' + encodeURIComponent(+lng) +
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max' +
+      '&wind_speed_unit=ms&forecast_days=7&timezone=' + encodeURIComponent(tz || 'auto');
+    return fetch(u).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      var d = j && j.daily; if (!d || !d.time) return null;
+      var out = d.time.map(function (ds, i) {
+        return { date: ds, code: d.weather_code[i], tmax: d.temperature_2m_max[i], tmin: d.temperature_2m_min[i], rain: d.precipitation_sum[i] || 0,
+          pop: d.precipitation_probability_max ? d.precipitation_probability_max[i] : null, wind: d.wind_speed_10m_max[i], gust: d.wind_gusts_10m_max ? d.wind_gusts_10m_max[i] : null };
+      });
+      try { sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), data: out })); } catch (e) { }
+      return out;
+    }).catch(function () { return null; });
+  }
+  // 교적 주소의 시·도/시·군·구/읍·면·동 (본인 것만, 20261023_2330 SQL)
+  function myRegion() { return rpc('garden_my_region', {}); }
   function hhmm(iso) { var m = String(iso || '').match(/T(\d{2}):(\d{2})/); return m ? m[1] + ':' + m[2] : null; }
 
   /* ── 오프라인 대비: 마지막 상태 ── */
@@ -203,7 +223,7 @@
     init: init, slug: function () { return SLUG; }, session: sess, hasConfig: function () { return !!(SB && AK); },
     state: state, sync: sync, setPlant: setPlant, setProfile: setProfile, history: history,
     farm: farm, farmBuy: farmBuy, farmPlant: farmPlant, farmPick: farmPick, pickFruit: pickFruit,
-    notices: notices, visitSet: visitSet, visitList: visitList, visitView: visitView, guestbookPost: guestbookPost, guestbookHide: guestbookHide,
+    notices: notices, forecast: forecast, myRegion: myRegion, visitSet: visitSet, visitList: visitList, visitView: visitView, guestbookPost: guestbookPost, guestbookHide: guestbookHide,
     gift: gift, neighborRequest: neighborRequest, neighborRespond: neighborRespond, neighborRemove: neighborRemove, neighborList: neighborList,
     wallet: wallet, water: water, farmBuyMany: farmBuyMany, farmConvert: farmConvert, shop: shop, shopBuy: shopBuy,
     farmPlantItem: farmPlantItem, farmHarvest: farmHarvest, farmClear: farmClear, adminSetLandPrices: adminSetLandPrices, adminSetItemPrice: adminSetItemPrice,

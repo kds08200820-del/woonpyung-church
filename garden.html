@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261023f3d1" />
+  <link rel="stylesheet" href="css/garden.css?v=20261023wx1" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -25,7 +25,7 @@
     <!-- 장면 하늘 위 (오른쪽 패널 왼쪽 위): 나의 정원에 들어가기(입체, 2026-10-23 담임목사) + 날씨 -->
     <div class="g-wx-float" id="gTopActs">
       <button type="button" class="g-enter3d" id="gEnter3d" hidden><svg class="g-enter3d-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m0 0 8-4.5M12 12 4 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span data-i18n="g3d.enter"></span></button>
-      <div class="g-chip g-chip-wx" id="gWx" hidden><span class="g-chip-ic" id="gWxIc" aria-hidden="true"></span><span id="gWxText"></span></div>
+      <button type="button" class="g-chip g-chip-wx" id="gWx" hidden aria-haspopup="dialog"><span class="g-chip-ic" id="gWxIc" aria-hidden="true"></span><span id="gWxText"></span></button>
     </div>
 
     <!-- 왼쪽 서재(개인) -->
@@ -214,6 +214,22 @@
     </div>
   </div>
 
+  <!-- 주간 날씨 (날씨 칩을 누르면) -->
+  <div class="g-modal" id="gmWeather" hidden>
+    <div class="g-backdrop" data-close></div>
+    <div class="g-mbox g-mbox-weather" role="dialog" aria-modal="true" aria-labelledby="gmWeatherTitle">
+      <span class="g-grab" aria-hidden="true"></span>
+      <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
+      <div class="g-mhead">
+        <h2 class="g-mtitle" id="gmWeatherTitle" data-i18n="wx.week"></h2>
+        <p class="g-msub" id="gwPlace"></p>
+        <div class="gw-region"><button type="button" class="g-btn g-btn-line" id="gwPick" data-i18n="wx.region.pick"></button><button type="button" class="g-btn g-btn-line" id="gwReset" data-i18n="wx.region.reset" hidden></button></div>
+        <p class="g-wl-note" data-i18n="wx.region.note"></p>
+      </div>
+      <div id="gwBody"></div>
+    </div>
+  </div>
+
   <!-- 정원 초대하기 -->
   <div class="g-modal" id="gmInvite" hidden>
     <div class="g-backdrop" data-close></div>
@@ -260,16 +276,18 @@
   <script src="js/bulletins-live.js?v=20261010sum1"></script>
   <script src="js/layout.js?v=20261023lib1"></script>
   <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/garden/i18n.js?v=20261023f3d1"></script>
-  <script src="js/garden/sdk.js?v=20261023gf1"></script>
+  <script src="js/garden/i18n.js?v=20261023wx1"></script>
+  <script src="js/garden/sdk.js?v=20261023wx1"></script>
   <script src="js/garden/scene.js?v=20261023g3d2"></script>
-  <script src="js/garden/hud.js?v=20261023f3d1"></script>
+  <script src="js/garden/hud.js?v=20261023wx1"></script>
   <script src="js/garden/plantsim.js?v=20261023ws3"></script>
   <script src="js/garden/shop.js?v=20261023ns1"></script>
-  <script src="js/garden/farm.js?v=20261023f3d1"></script>
-  <script src="js/garden/garden3d.js?v=20261023f3d1"></script>
+  <script src="js/garden/farm.js?v=20261023wx1"></script>
+  <script src="js/garden/garden3d.js?v=20261023wx1"></script>
   <script src="js/garden/visit.js?v=20261023gf1"></script>
-  <script src="js/garden/guide.js?v=20261023gf1"></script>
-  <script src="js/garden/main.js?v=20261023f3d1"></script>
+  <script src="js/garden/guide.js?v=20261023wx1"></script>
+  <script src="js/garden/region.js?v=20261023wx1"></script>
+  <script src="js/garden/weather.js?v=20261023wx1"></script>
+  <script src="js/garden/main.js?v=20261023wx1"></script>
 </body>
 </html>

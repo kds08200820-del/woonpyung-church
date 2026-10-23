@@ -692,6 +692,7 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
 .g3d-wx { left: 14px; bottom: 14px; }
 .g3d-hint { left: 14px; bottom: 60px; max-width: calc(100% - 140px); transition: opacity .6s ease; }
 .g3d-hint.is-gone { opacity: 0; }
+.g3d-hint[hidden] { display: none; }
 .g3d-tip { left: 50%; top: 14px; transform: translateX(-50%); font-weight: 800; white-space: nowrap; }
 .g3d-tip[hidden], .g3d-wx[hidden] { display: none; }
 /* 확대·축소·돌리기 단추 (오른쪽 아래) */
@@ -866,3 +867,39 @@ html.g3d-open .g-toast { z-index: 1200; }
 .gf3-sheet:empty { display: none !important; }
 .gf3-hint { margin: 0; color: var(--g-fg2); line-height: 1.6; }
 .gf3 .gf-crops { grid-template-columns: 1fr; }
+/* ============================================================
+   주간 날씨 · 내 지역 — js/garden/weather.js · region.js (2026-10-23)
+   ============================================================ */
+button.g-chip-wx { font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button.g-chip-wx:hover { background: #d9e8f6; }
+button.g-chip-wx:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+.g-mbox-weather { width: min(640px, calc(100vw - 32px)); max-height: min(860px, calc(100dvh - 40px)); overflow-y: auto; }
+.gw-region { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 6px; }
+.gw-region .g-btn { min-height: 40px; padding: 0 14px; font-size: .86rem; }
+.gw-region .g-btn[hidden] { display: none; }
+.gw-alert { margin: 0 0 10px; padding: 12px 14px; border-radius: 14px; background: #f9ece7; border: 1px solid #f1c9b8; color: #9b4a33; font-weight: 700; font-size: .92rem; line-height: 1.55; word-break: keep-all; }
+.gw-days { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.gw-day { display: grid; grid-template-columns: 64px 34px 52px 82px 1fr; grid-template-areas: "d ic k t r" "d ic k t w" "warn warn warn warn warn"; align-items: center; column-gap: 8px; row-gap: 2px;
+  padding: 10px 12px; border-radius: 14px; background: var(--g-panel); border: 1px solid var(--g-line2); }
+.gw-day.is-sun { border-color: var(--g-coral); background: #fffaf3; }
+.gw-day.is-warn1 { background: #f9eeda; }
+.gw-day.is-warn2 { background: #fbebeb; border-color: #e7b3a8; }
+.gw-d { grid-area: d; display: flex; flex-direction: column; }
+.gw-d b { font-size: .98rem; }
+.gw-d small { color: var(--g-fg2); font-size: .76rem; }
+.gw-day.is-sun .gw-d b { color: var(--g-coral-p); }
+.gw-ic { grid-area: ic; width: 34px; height: 34px; object-fit: contain; }
+.gw-k { grid-area: k; font-size: .86rem; color: var(--g-fg2); }
+.gw-t { grid-area: t; font-variant-numeric: tabular-nums; color: var(--g-fg2); font-size: .9rem; }
+.gw-t b { color: var(--g-fg); font-size: 1.02rem; }
+.gw-r { grid-area: r; font-size: .82rem; color: var(--g-fg2); }
+.gw-w { grid-area: w; font-size: .82rem; color: var(--g-fg2); }
+.gw-warn { grid-area: warn; margin-top: 4px; font-size: .82rem; font-weight: 800; color: #b5523a; }
+.gw-credit { margin-top: 10px; }
+.gd-alert { margin: 0 0 6px; font-weight: 700; color: #9b4a33; line-height: 1.55; }
+.gd-alert[hidden] { display: none; }
+.g-region-ov { z-index: 1300; }
+@media (max-width: 520px) {
+  .gw-day { grid-template-columns: 52px 30px 1fr auto; grid-template-areas: "d ic k t" "d ic r r" "d ic w w" "warn warn warn warn"; }
+  .gw-ic { width: 30px; height: 30px; }
+}

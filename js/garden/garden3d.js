@@ -34,6 +34,25 @@ window.Garden3D = (function () {
     function next() { return import(THREE_URLS[i]).then(function (m) { T = m; return m; }, function (e) { i++; if (i < THREE_URLS.length) return next(); throw e; }); }
     return next();
   }
+  /* 쓰는 법 안내: 하루 한 번, 10초 — 사흘 잇달아 들어와 가꾸었으면(심기·거두기 등) 더는 안 보인다 (2026-10-23 담임목사) */
+  function dayKey(d) { return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function markUsed() {
+    try {
+      var now = new Date(), today = dayKey(now), y = new Date(now.getTime() - 86400000), st = JSON.parse(localStorage.getItem('g3d_use') || 'null') || { last: '', n: 0 };
+      if (st.last === today) return;
+      st.n = st.last === dayKey(y) ? st.n + 1 : 1; st.last = today;
+      localStorage.setItem('g3d_use', JSON.stringify(st));
+    } catch (e) { }
+  }
+  function hintWanted() {
+    try {
+      var st = JSON.parse(localStorage.getItem('g3d_use') || 'null');
+      if (st && st.n >= 3) return false;
+      var today = dayKey(new Date()), seen = localStorage.getItem('g3d_hint_day');
+      localStorage.setItem('g3d_hint_day', today);
+      return seen !== today;
+    } catch (e) { return true; }
+  }
   function supported() {
     if (OK !== null) return OK;
     try { var c = document.createElement('canvas'); OK = !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl'))); } catch (e) { OK = false; }
@@ -134,7 +153,9 @@ window.Garden3D = (function () {
     // 뒤로 가기 = 닫기
     try { history.pushState({ g3d: 1 }, ''); pushed = true; } catch (e) { }
     closeBtn.focus({ preventScroll: true });
-    setTimeout(function () { hint.classList.add('is-gone'); }, 7000);
+    // 쓰는 법 안내는 하루에 한 번만, 10초 뒤(또는 처음 만질 때) 사라진다 — 2026-10-23 담임목사
+    function hideHint() { if (hint.hidden || hint.classList.contains('is-gone')) return; hint.classList.add('is-gone'); setTimeout(function () { hint.hidden = true; }, 700); }
+    if (!hintWanted()) hint.hidden = true; else setTimeout(hideHint, 10000);
 
     function onFs() { if (fullBtn) fullBtn.textContent = t(document.fullscreenElement === root ? 'g3d.fullExit' : 'g3d.full'); setTimeout(onResize, 60); }
     document.addEventListener('fullscreenchange', onFs);
@@ -605,7 +626,7 @@ window.Garden3D = (function () {
       canvas.addEventListener('pointerdown', function (e) {
         try { canvas.setPointerCapture(e.pointerId); } catch (er) { }
         pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
-        touched = true; fly = null; vel.x = vel.z = vel.az = 0; hint.classList.add('is-gone');
+        touched = true; fly = null; vel.x = vel.z = vel.az = 0; hideHint();
         if (Object.keys(pointers).length === 2) { two = twoState(); drag = null; return; }
         drag = { x: e.clientX, y: e.clientY, moved: 0, rot: e.button === 2 || e.shiftKey };
         canvas.classList.add('is-drag');
@@ -714,5 +735,5 @@ window.Garden3D = (function () {
     return CUR;
   }
 
-  return { open: open, supported: supported, sunPos: sunPos, isOpen: function () { return !!CUR; } };
+  return { open: open, supported: supported, sunPos: sunPos, markUsed: markUsed, isOpen: function () { return !!CUR; } };
 })();

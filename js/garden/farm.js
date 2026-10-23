@@ -54,6 +54,7 @@ window.GardenFarm = (function () {
     return opts;
   }
   function bindView(v) { F.view = v; }
+  function used() { if (window.Garden3D && window.Garden3D.markUsed) window.Garden3D.markUsed(); }   // 가꾼 날 — 사흘 잇달아면 쓰는 법 안내를 그만
   function openSide() { if (F.view && F.view.openSide) F.view.openSide(true); }
 
   function load() {
@@ -262,7 +263,7 @@ window.GardenFarm = (function () {
     (function next(i) {
       if (i >= ns.length) {
         F.busy = false; if (last) setFarm(last);
-        if (cnt) { HUD.toast(t('farm.harvested', { n: cnt, p: tal(total) })); if (F.view) F.view.flash({ x: x, y: y }, '+' + tal(total) + ' ' + HUD.talentLabel()); }
+        if (cnt) { used(); HUD.toast(t('farm.harvested', { n: cnt, p: tal(total) })); if (F.view) F.view.flash({ x: x, y: y }, '+' + tal(total) + ' ' + HUD.talentLabel()); }
         return;
       }
       (isCrop ? SDK.farmPick(x, y, ns[i]) : SDK.farmHarvest(x, y, ns[i])).then(function (r) {
@@ -285,7 +286,7 @@ window.GardenFarm = (function () {
         F.busy = false;
         if (HUD.fruitRefresh) HUD.fruitRefresh();
         if (F.view) F.view.setTreeBubble(null);
-        if (cnt) { HUD.toast(t('farm.tree.picked', { n: cnt, p: tal(total) })); if (F.view) F.view.flash({ x: 0, y: 0 }, '+' + tal(total) + ' ' + HUD.talentLabel()); }
+        if (cnt) { used(); HUD.toast(t('farm.tree.picked', { n: cnt, p: tal(total) })); if (F.view) F.view.flash({ x: 0, y: 0 }, '+' + tal(total) + ' ' + HUD.talentLabel()); }
         return;
       }
       SDK.pickFruit(ns[i]).then(function (r) {
@@ -324,7 +325,7 @@ window.GardenFarm = (function () {
     if (b) b.disabled = true;
     SDK.water().then(function (r) {
       if (!r || !r.ok) { if (b) b.disabled = false; HUD.toast(t('water.err')); return; }
-      HUD.afterWater(r);
+      HUD.afterWater(r); used();
       F.farm.watered = true;
       if (r.day && (F.farm.water_days || []).indexOf(r.day) < 0) (F.farm.water_days = F.farm.water_days || []).push(r.day);
       if (r.talent_balance != null) F.farm.balance = r.talent_balance;
@@ -427,7 +428,7 @@ window.GardenFarm = (function () {
       var msg = act === 'buy' ? t('farm.bought', { p: tal(r.spent) }) : act === 'buymany' ? t('farm.bought.many', { n: r.n, p: tal(r.spent) })
         : act === 'convert' ? t('farm.converted', { n: r.n, p: tal(r.spent) }) : act === 'clear' ? t('farm.cleared') : act === 'prices' ? t('farm.prices.saved') : t('farm.planted');
       F.mode = 'normal'; F.pick = {}; closeSheet(); setFarm(r.farm);
-      HUD.toast(msg);
+      HUD.toast(msg); used();
     }).catch(function () { HUD.toast(t('farm.err')); b.disabled = false; })
       .then(function () { F.busy = false; });
   }

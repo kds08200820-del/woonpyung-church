@@ -42,9 +42,14 @@
       .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
       .then(function (m) { M.manifest = (m && typeof m === 'object') ? m : null; SCENE.setManifest(M.manifest, BASE); return M.manifest; });
   }
+  // 날씨를 볼 곳: 내가 고른 지역 → 교적 주소 → 교회 (js/garden/region.js)
+  function spot() {
+    var ch = M.church || {}, r = window.GardenRegion && window.GardenRegion.current();
+    if (r) return { lat: +r.lat, lng: +r.lng, name: r.label };
+    return { lat: ch.lat != null ? +ch.lat : 37.09, lng: ch.lng != null ? +ch.lng : 126.80, name: ch.name || '' };
+  }
   function refreshWeather() {
-    var ch = M.church;
-    var lat = ch && ch.lat != null ? +ch.lat : 37.09, lng = ch && ch.lng != null ? +ch.lng : 126.80;
+    var sp = spot(), lat = sp.lat, lng = sp.lng;
     return SDK.weather(lat, lng, I.timezone()).then(function (w) { M.wx = w; applySky(); return w; });
   }
   function preloadFor(st) {
@@ -101,8 +106,8 @@
   }
   // 입체 창 공통(날씨·해·그림) — 내 정원과 이웃 정원 방문이 같이 쓴다
   function base3d() {
-    var ch = M.church || {};
-    return { place: ch.name || '', lat: ch.lat, lng: ch.lng, wx: M.wx, t: t, reduce: reduceMotion(),
+    var sp = spot();
+    return { place: sp.name || '', lat: sp.lat, lng: sp.lng, wx: M.wx, t: t, reduce: reduceMotion(),
       art: { hills: SCENE.asset('mid/hills.webp'), clouds: SCENE.asset('sky/clouds-overlay.webp'), soil: 'images/garden/farm/tex-soil.webp', dae: 'images/garden/farm/tex-dae.webp', grass: 'images/garden/farm/tex-grass.webp' } };
   }
   // 내 정원(입체) — 내 땅 가꾸기(심기·거두기·땅 사기·메뉴)를 이 창 하나에서 (2D 내 땅 창은 없앴다, 2026-10-23)
@@ -163,6 +168,7 @@
       return needPlant ? HUD.openOnboarding(st).then(function (planted) { if (!planted) HUD.syncPlot(false); return planted; }) : null;
     }).then(function () { return doSync(); }).then(function () {
       timers();
+      if (window.GardenRegion && !M.offline) window.GardenRegion.ensure();   // 교적 주소로 기본 지역(바뀌면 onChange 가 날씨를 다시)
       if (window.GardenVisit && !M.offline) window.GardenVisit.start();   // 초대하기·방문하기 (서버에 기능이 있을 때만 단추가 보인다)
       // 내 땅(밭)을 메인 장면에도 — 땅 기능이 있는 서버(state.fruit)일 때만, 창을 열지 않고 조용히 불러온다
       var s2 = M.state || st;
@@ -178,6 +184,11 @@
     if (window.GardenShop) window.GardenShop.init({ i18n: I, sdk: SDK, hud: HUD });
     if (window.GardenFarm) window.GardenFarm.init({ i18n: I, sdk: SDK, hud: HUD, shop: window.GardenShop, plant: window.GardenPlant });
     if (window.GardenVisit) window.GardenVisit.init({ i18n: I, sdk: SDK, hud: HUD, scene: SCENE, farm: window.GardenFarm, base3d: base3d });
+    if (window.GardenRegion) {
+      window.GardenRegion.init({ sdk: SDK });
+      window.GardenRegion.onChange(function () { refreshWeather(); });   // 지역이 바뀌면 날씨·하늘도
+    }
+    if (window.GardenWeather) window.GardenWeather.init({ i18n: I, sdk: SDK, hud: HUD, region: window.GardenRegion, place: function () { var c = M.church || {}; return { lat: c.lat != null ? +c.lat : 37.09, lng: c.lng != null ? +c.lng : 126.80, name: c.name || '' }; } });
     if (window.GardenGuide) window.GardenGuide.init({ i18n: I, sdk: SDK, hud: HUD, scene: SCENE, farm: window.GardenFarm, ctx: function () { return { wx: M.wx, church: M.church, offline: M.offline }; } });
     if (reduceMotion()) document.documentElement.classList.add('g-reduce');
     M.bootDay = I.todayStr();

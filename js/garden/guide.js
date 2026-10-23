@@ -87,7 +87,8 @@ window.GardenGuide = (function () {
       if (k === 'clear' || k === 'cloudy') { if (wx.temp != null && wx.temp >= 28) tip = 'hot'; else if (wx.temp != null && wx.temp <= 2) tip = 'cold'; }
       wl = '<p class="gd-wx"><b>' + esc(t('guide.wx.now', { w: t('wx.' + k), temp: wx.temp != null ? Math.round(wx.temp) : '' })) + '</b> ' + esc(t('guide.wx.' + tip)) + '</p>';
     }
-    h += sec('wx', wl + '<p class="gd-tip">' + esc(t('guide.tip.' + I.nowParts().m)) + '</p>');
+    h += sec('wx', '<p class="gd-alert" id="gdWxAlert" hidden></p>' + wl + '<p class="gd-tip">' + esc(t('guide.tip.' + I.nowParts().m)) + '</p>' +
+      '<button type="button" class="g-link" data-do="week">' + esc(t('wx.open')) + '</button>');
 
     // 교회 소식 — 공지 제목(뒤에 채운다) + 예배 띠
     var bn = $('gBanner'), bt = bn && !bn.hidden ? (bn.textContent || '').replace(/\s+/g, ' ').trim() : '';
@@ -106,6 +107,11 @@ window.GardenGuide = (function () {
     $('gdBody').innerHTML = h;
     $('gdDaily').checked = get(KEY_OFF) !== '1';
     loadNews();
+    if (window.GardenWeather) window.GardenWeather.alerts().then(function (a) {   // 태풍·강풍·많은 비가 예보된 날(주일 먼저)
+      var el = $('gdWxAlert'); if (!el || !a.length) return;
+      var x = a.filter(function (v) { return v.sunday; })[0] || a[0];
+      el.textContent = x.text; el.hidden = false;
+    });
   }
   function loadNews() {
     var ul = $('gdNews'); if (!ul) return;
@@ -153,6 +159,7 @@ window.GardenGuide = (function () {
       if (what === 'qt') { if (HUD.qt()) HUD.openQt(); }
       else if (what === 'farm') { if (FARM) FARM.open(); }
       else if (what === 'visit') { if (window.GardenVisit) window.GardenVisit.openList(); }
+      else if (what === 'week') { if (window.GardenWeather) window.GardenWeather.open(); }
       else if (what === 'todo') { var tb = document.querySelector('.g-todo-btn[data-kind="' + kind + '"]'); if (tb) tb.click(); }
     }, 80);
   }
