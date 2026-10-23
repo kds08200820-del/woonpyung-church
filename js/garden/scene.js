@@ -189,6 +189,36 @@ window.GardenScene = (function () {
     S.el.plot.appendChild(soil); S.el.plot.appendChild(ch); S.el.plot.appendChild(pl); S.el.plot.appendChild(np);
   }
 
+  /* ── 내 땅(밭): 산 칸마다 밭두둑, 심은 것은 그 위에 (2026-10-23) ──
+     정면 장면이라 '내 땅' 창의 마름모 대신 나무 뒤 땅(설계 y 600~660)에 줄지어 놓는다: 뒷줄은 작고 위, 앞줄은 크고 아래.
+     x 는 나무(0,0) 기준 좌우. 누르면 내 땅 가꾸기 창(o.onOpen) */
+  function setField(list, o) {
+    o = o || {};
+    if (!S.el.plot) return;
+    if (S.el.field) { S.el.field.remove(); S.el.field = null; }
+    if (!list || !list.length) return;
+    var A = anchors(), minX = 0, maxX = 0, minY = 0, maxY = 0;
+    list.forEach(function (c) { minX = Math.min(minX, c.x); maxX = Math.max(maxX, c.x); minY = Math.min(minY, c.y); maxY = Math.max(maxY, c.y); });
+    var rows = maxY - minY + 1, cols = maxX - minX + 1, colW = Math.min(120, 600 / cols), yBack = 600, yFront = 662;
+    var box = el('div', 'g-field');
+    list.slice().sort(function (a, b) { return a.y - b.y || a.x - b.x; }).forEach(function (c) {
+      var r = rows > 1 ? (c.y - minY) / (rows - 1) : 1, k = 0.62 + 0.38 * r;
+      var x = A.plant.x + c.x * colW * k, y = yBack + (yFront - yBack) * r, w = colW * k * 0.88;
+      var bed = el('div', 'g-fbed' + (c.land === 'dae' ? ' is-dae' : c.planted ? '' : ' is-empty'));
+      bed.style.left = x.toFixed(1) + 'px'; bed.style.top = y.toFixed(1) + 'px'; bed.style.width = w.toFixed(1) + 'px'; bed.style.height = (w * 0.3).toFixed(1) + 'px';
+      box.appendChild(bed);
+      if (c.src) {
+        var im = el('img', 'g-fspr' + (c.dead ? ' is-dead' : '')); im.src = c.src; im.alt = ''; im.draggable = false;
+        im.style.left = x.toFixed(1) + 'px'; im.style.top = (y + w * 0.06).toFixed(1) + 'px'; im.style.height = Math.round(c.h * k) + 'px';
+        im.onerror = function () { im.remove(); };
+        box.appendChild(im);
+      }
+    });
+    if (o.onOpen) { box.classList.add('is-open'); box.setAttribute('role', 'button'); box.setAttribute('aria-label', o.label || ''); box.addEventListener('click', function (e) { e.stopPropagation(); o.onOpen(); }); }
+    S.el.plot.insertBefore(box, S.el.plot.firstChild);   // 흙·인물·나무보다 뒤
+    S.el.field = box;
+  }
+
   /* ── 입자(비·눈) ── */
   function startParticles(type) {
     S.pType = type;
@@ -403,7 +433,7 @@ window.GardenScene = (function () {
   }
 
   return {
-    W: W, H: H, mount: mount, layout: layout, project: project, anchors: anchors, world: function () { return world; }, setWorld: setWorld,
+    W: W, H: H, mount: mount, layout: layout, project: project, anchors: anchors, world: function () { return world; }, setWorld: setWorld, setField: setField,
     setSky: setSky, setSeason: setSeason, setPlant: setPlant, stageUp: stageUp, setCharacter: setCharacter, floatXp: floatXp, sparkle: sparkle,
     setNameplate: setNameplate, setReducedMotion: setReducedMotion, preview: preview,
     phaseOf: phaseOf, weatherOf: weatherOf, seasonOf: seasonOf, toMin: toMin,

@@ -128,7 +128,12 @@
       refreshWeather();
       var needPlant = (P.isNew || !g.chosen_at) && !M.offline;
       return needPlant ? HUD.openOnboarding(st).then(function (planted) { if (!planted) HUD.syncPlot(false); return planted; }) : null;
-    }).then(function () { return doSync(); }).then(function () { timers(); });
+    }).then(function () { return doSync(); }).then(function () {
+      timers();
+      // 내 땅(밭)을 메인 장면에도 — 땅 기능이 있는 서버(state.fruit)일 때만, 창을 열지 않고 조용히 불러온다
+      var s2 = M.state || st;
+      if (window.GardenFarm && s2 && s2.fruit !== undefined && !M.offline) window.GardenFarm.reload();
+    });
   }
   function boot() {
     SDK.init();

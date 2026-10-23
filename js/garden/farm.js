@@ -50,7 +50,7 @@ window.GardenFarm = (function () {
     return SDK.farm().then(function (r) {
       if (!r || !r.ok) throw new Error((r && r.why) || 'farm');
       setFarm(r.farm);
-      return Promise.all([shopP, wxP]).then(function () { if (F.rec) render(); });
+      return Promise.all([shopP, wxP]).then(function () { if (F.rec) render(); pushScene(); });
     }).catch(function (e) {
       $('gfBoard').innerHTML = '<p class="g-empty">' + esc(SDK.notReady(e) ? t('farm.notready') : t('farm.err')) + '</p>';
     });
@@ -62,7 +62,40 @@ window.GardenFarm = (function () {
     if (f.now) F.skew = new Date(f.now).getTime() - Date.now();
     HUD.setTalent(f.balance);
     render();
-    if (!F.timer) F.timer = setInterval(tick, 1000);
+    if (F.rec && !F.timer) F.timer = setInterval(tick, 1000);
+    pushScene();
+  }
+
+  /* ── 메인 장면의 밭 (2026-10-23 담임목사: 산 땅·심은 꽃이 메인 화면에도 보이게) ──
+     칸마다 { x, y, land, src, h, dead } — 나무 칸(0,0)은 빼고, 그림 고르기는 위 cellHtml 과 같다. 그리기는 scene.setField */
+  var SPR_BASE = { tree: 140, flower: 92, food: 84 };
+  var SPR_STAGE = { sprout: .45, sapling: .55, young: .75, grow: .85, bloom: 1, full: 1.08, harvest: 1, fruit: 1, rest: .9, done: .8, dead: .8 };
+  function sceneList() {
+    var ts = (F.farm && F.farm.tiles) || [], out = [];
+    ts.forEach(function (tl) {
+      if (tl.x === 0 && tl.y === 0) return;
+      var o = { x: tl.x, y: tl.y, land: tl.land === 'dae' ? 'dae' : 'jeon', src: '', h: 0, dead: false };
+      var c = tl.crop ? crop(tl.crop) : null;
+      if (c && tl.ripe_at) {
+        var prog = 1 - Math.max(0, new Date(tl.ripe_at).getTime() - now()) / (c.grow_sec * 1000);
+        o.src = F.art + 'crop-' + c.slug + '-' + (prog < 0.5 ? 1 : 2) + '.webp'; o.h = prog < 0.5 ? 60 : 82; o.planted = true;
+      } else if (tl.item) {
+        var it = item(tl.item), v = plantView(tl), cat = (it && it.category) || 'flower', stage = v ? v.stage : 'grow';
+        var bud = cat === 'flower' && (stage === 'sprout' || stage === 'grow');
+        o.src = bud || stage === 'sprout' ? F.shopArt + '_sprout.webp' : F.shopArt + tl.item + '.webp';
+        o.h = Math.round((bud || stage === 'sprout' ? 44 : SPR_BASE[cat] || 90) * (bud ? 1 : (SPR_STAGE[stage] || 1)));
+        o.dead = stage === 'dead'; o.planted = true;
+      }
+      out.push(o);
+    });
+    return out;
+  }
+  function pushScene() {
+    var SC = window.GardenScene; if (!SC || !SC.setField || !F.farm) return;
+    var list = sceneList(), sig = JSON.stringify(list);
+    if (sig === F.sceneSig) return;
+    F.sceneSig = sig;
+    SC.setField(list, { onOpen: open, label: t('farm.open') });
   }
 
   /* ── 그리기 ── */
@@ -176,7 +209,7 @@ window.GardenFarm = (function () {
       var ms = new Date(el.getAttribute('data-ripe')).getTime() - now();
       if (ms <= 0) flip = true; else el.textContent = left(ms);
     });
-    if (flip) render();
+    if (flip) { render(); pushScene(); }
   }
 
   /* ── 누르기 ── */
@@ -380,6 +413,7 @@ window.GardenFarm = (function () {
     $('gfSheet').addEventListener('click', onSheet);
     if ($('gfTools')) $('gfTools').addEventListener('click', onTools);
     var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (F.rec) render(); }, 150); });
+    setInterval(pushScene, 60 * 1000);   // 창이 닫혀 있어도 작물이 자라는 모습을 1분마다
   }
-  return { init: init, open: open, reload: load, state: function () { return F.farm; } };
+  return { init: init, open: open, reload: load, pushScene: pushScene, state: function () { return F.farm; } };
 })();

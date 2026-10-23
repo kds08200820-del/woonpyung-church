@@ -319,6 +319,14 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
 
 /* 내 자리: 캐릭터 */
 .g-char-anchor, .g-plant-anchor { position: absolute; transform: translate(-50%, -100%); }
+/* 메인 장면의 내 땅(밭) — 나무 뒤 땅에 밭두둑과 심은 것 */
+.g-field { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; pointer-events: none; }
+.g-fbed { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, #8a6a4a, #6a5036); box-shadow: 0 3px 6px rgba(80,60,40,.18); }
+.g-fbed.is-empty { background: radial-gradient(ellipse at 50% 40%, #9a7a56, #7d6043); opacity: .85; }
+.g-fbed.is-dae { background: radial-gradient(ellipse at 50% 40%, #e6d8bc, #cdbb97); }
+.g-fspr { position: absolute; width: auto; transform: translate(-50%, -100%); filter: drop-shadow(0 4px 4px rgba(80,60,40,.2)); }
+.g-fspr.is-dead { filter: grayscale(.85) brightness(.92); opacity: .8; }
+.g-field.is-open .g-fbed, .g-field.is-open .g-fspr { pointer-events: auto; cursor: pointer; }
 .g-np-anchor { position: absolute; transform: translate(-50%, 0); }
 .g-char { position: relative; width: 220px; height: 330px; animation: g-bob 3.4s ease-in-out infinite; transform-origin: 50% 100%; }
 .g-char-img { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); height: 330px; width: auto; filter: drop-shadow(0 14px 10px rgba(80,60,40,.22)); }
