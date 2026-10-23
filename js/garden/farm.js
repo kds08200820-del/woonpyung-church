@@ -517,7 +517,7 @@ window.GardenFarm = (function () {
   }
   function sheetHomeInfo(hm) {
     F.sel = { kind: 'homeinfo', x: hm.x, y: hm.y };
-    sheet('<p class="gf-s-t">' + esc(hm.name) + '</p><ul class="gf-s-list"><li>' + esc(t('farm.home.built', { d: I.fmtDate(new Date(hm.built_at)) })) + '</li>' +
+    sheet('<p class="gf-s-t">' + esc(t('house.' + hm.kind)) + '</p><ul class="gf-s-list"><li>' + esc(t('farm.home.built', { d: I.fmtDate(new Date(hm.built_at)) })) + '</li>' +
       '<li>' + esc(t('farm.home.size', { w: hm.w, h: hm.h })) + '</li></ul>' + acts());
   }
   function sheetPick() {
