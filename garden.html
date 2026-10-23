@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261023ch1" />
+  <link rel="stylesheet" href="css/garden.css?v=20261023g3d1" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -22,8 +22,11 @@
     <!-- 장면(층): scene.js 가 채운다 -->
     <div class="g-scene" id="gScene" aria-hidden="true"></div>
 
-    <!-- 날씨: 장면 하늘 위 (오른쪽 패널 왼쪽 위) -->
-    <div class="g-chip g-chip-wx g-wx-float" id="gWx" hidden><span class="g-chip-ic" id="gWxIc" aria-hidden="true"></span><span id="gWxText"></span></div>
+    <!-- 장면 하늘 위 (오른쪽 패널 왼쪽 위): 나의 정원에 들어가기(입체, 2026-10-23 담임목사) + 날씨 -->
+    <div class="g-wx-float" id="gTopActs">
+      <button type="button" class="g-enter3d" id="gEnter3d" hidden><svg class="g-enter3d-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m0 0 8-4.5M12 12 4 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span data-i18n="g3d.enter"></span></button>
+      <div class="g-chip g-chip-wx" id="gWx" hidden><span class="g-chip-ic" id="gWxIc" aria-hidden="true"></span><span id="gWxText"></span></div>
+    </div>
 
     <!-- 왼쪽 서재(개인) -->
     <aside class="g-study g-panel" id="gStudy" aria-labelledby="gStudyTitle">
@@ -211,13 +214,14 @@
   <script src="js/bulletins-live.js?v=20261010sum1"></script>
   <script src="js/layout.js?v=20261023lib1"></script>
   <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/garden/i18n.js?v=20261023ch1"></script>
-  <script src="js/garden/sdk.js?v=20261023ws3"></script>
+  <script src="js/garden/i18n.js?v=20261023g3d1"></script>
+  <script src="js/garden/sdk.js?v=20261023g3d1"></script>
   <script src="js/garden/scene.js?v=20261023ch1"></script>
-  <script src="js/garden/hud.js?v=20261023ch1"></script>
+  <script src="js/garden/hud.js?v=20261023g3d1"></script>
   <script src="js/garden/plantsim.js?v=20261023ws3"></script>
   <script src="js/garden/shop.js?v=20261023ws3"></script>
-  <script src="js/garden/farm.js?v=20261023ws9"></script>
-  <script src="js/garden/main.js?v=20261023ws9"></script>
+  <script src="js/garden/farm.js?v=20261023g3d1"></script>
+  <script src="js/garden/garden3d.js?v=20261023g3d1"></script>
+  <script src="js/garden/main.js?v=20261023g3d1"></script>
 </body>
 </html>

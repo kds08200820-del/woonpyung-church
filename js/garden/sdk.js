@@ -165,12 +165,12 @@
       if (c && c.at && (Date.now() - c.at) < WX_TTL && c.data) return Promise.resolve(c.data);
     } catch (e) { }
     var u = WX_URL + '?latitude=' + encodeURIComponent(+lat) + '&longitude=' + encodeURIComponent(+lng) +
-      '&current=temperature_2m,weather_code,is_day&daily=sunrise,sunset&timezone=' + encodeURIComponent(tz || 'auto') + '&forecast_days=1';
+      '&current=temperature_2m,weather_code,is_day,wind_speed_10m&daily=sunrise,sunset&timezone=' + encodeURIComponent(tz || 'auto') + '&forecast_days=1';
     return fetch(u).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       if (!j || !j.current) return null;
       var d = j.daily || {};
       var data = {
-        temp: j.current.temperature_2m, code: j.current.weather_code, isDay: j.current.is_day !== 0,
+        temp: j.current.temperature_2m, code: j.current.weather_code, isDay: j.current.is_day !== 0, wind: j.current.wind_speed_10m,
         sunrise: hhmm(d.sunrise && d.sunrise[0]), sunset: hhmm(d.sunset && d.sunset[0]),
         utcOffset: j.utc_offset_seconds || 0, at: Date.now()
       };

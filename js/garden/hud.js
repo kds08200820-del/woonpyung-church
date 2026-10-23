@@ -824,7 +824,7 @@ window.GardenHud = (function () {
     init: init, render: render, state: function () { return H.state; }, setState: function (s) { H.state = s; },
     toast: toast, openModal: openModal, closeModal: closeModal, openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
     loadQt: loadQt, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
-    syncPlot: syncPlot, renderTodo: renderTodo, garden: garden,
+    syncPlot: syncPlot, renderTodo: renderTodo, garden: garden, speciesName: speciesName, stageName: stageName,
     setTalent: setTalent, talentLabel: function () { return H.talentLabel; }, afterWater: afterWater
   };
 })();

@@ -91,6 +91,30 @@
     window.addEventListener('pageshow', function (ev) { if (ev.persisted && Date.now() - M.lastSync > 5 * 1000) doSync(); });
   }
 
+  /* ── 나의 정원에 들어가기(입체, 2026-10-23 담임목사) ──
+     장면과 같은 그림(나무 단계·내 모습·언덕·구름)과 '내 땅' 칸을 넘겨 garden3d.js 가 그린다. 내 땅을 아직 안 불렀으면 불러서 넘긴다 */
+  function bind3d() {
+    var b = document.getElementById('gEnter3d');
+    if (!b || !window.Garden3D || !window.Garden3D.supported()) return;
+    b.hidden = false;
+    b.addEventListener('click', function () { open3d(b); });
+  }
+  function open3d(btn) {
+    var st = M.state || {}, g = HUD.garden() || {}, me = st.me || {}, ch = M.church || {}, FARM = window.GardenFarm;
+    var sp = g.species || 'sunflower', stg = Math.max(0, Math.min(5, g.stage | 0));
+    var pic = document.querySelector('#gMePic img'), nick = me.nickname || '';
+    var tiles = null;
+    if (FARM && st.fruit !== undefined && !M.offline) tiles = FARM.state() ? Promise.resolve(FARM.sceneList()) : FARM.reload().then(function () { return FARM.sceneList(); }, function () { return []; });
+    window.Garden3D.open({
+      title: t('g3d.title'), sub: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg),
+      place: ch.name || '', lat: ch.lat, lng: ch.lng, wx: M.wx, t: t, reduce: reduceMotion(), opener: btn,
+      plant: { src: SCENE.asset('plants/' + sp + '-' + stg + '.webp'), name: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg) },
+      character: pic ? { src: pic.getAttribute('src'), name: nick ? t('g3d.me', { name: nick }) : '' } : null,
+      tiles: tiles || [],
+      art: { hills: SCENE.asset('mid/hills.webp'), clouds: SCENE.asset('sky/clouds-overlay.webp'), soil: 'images/garden/farm/tex-soil.webp', dae: 'images/garden/farm/tex-dae.webp' }
+    });
+  }
+
   /* ── 카카오 로그인 복귀(#access_token=…): sb-ready → SIGNED_IN 뒤 garden.html 로 ── */
   function signing() {
     HUD.showGate('signing'); mountDemo();
@@ -123,6 +147,7 @@
     }).then(function () {
       mountScene(st);
       HUD.render(st, { offline: M.offline });
+      bind3d();
       HUD.startBanner(P.svc);
       HUD.loadQt();
       refreshWeather();

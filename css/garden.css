@@ -446,7 +446,17 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
 /* ===== 2026-10-23 담임목사 요청 =====
    · 날씨(기온)는 장면 하늘 위 — 오른쪽 패널 왼쪽 위. 예배 띠가 떠 있으면 그 아래로
    · 오늘의 할 일은 접을 수 있다(제목 단추, 완료 수 표시) */
-.g-wx-float { position: fixed; z-index: 3; top: calc(var(--g-hdr) + 14px); right: calc(var(--g-panel-w) + 36px); box-shadow: var(--g-shadow-s); }
+.g-wx-float { position: fixed; z-index: 3; top: calc(var(--g-hdr) + 14px); right: calc(var(--g-panel-w) + 36px); display: flex; align-items: center; gap: 8px; }
+.g-wx-float { pointer-events: none; }
+.g-wx-float > * { pointer-events: auto; }
+.g-wx-float > .g-chip { box-shadow: var(--g-shadow-s); }
+/* 나의 정원에 들어가기(입체) — 날씨 왼쪽 */
+.g-enter3d { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 16px 0 13px; border: 0; border-radius: 999px; background: var(--g-coral); color: #fff;
+  font: inherit; font-size: .9rem; font-weight: 800; box-shadow: var(--g-shadow-s); cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.g-enter3d:hover { background: var(--g-coral-h); }
+.g-enter3d:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+.g-enter3d-ic { width: 18px; height: 18px; flex: 0 0 auto; }
+.g-enter3d[hidden] { display: none; }
 body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 74px); }
 .g-root[data-mode="gate"] .g-wx-float, .g-root[data-mode="loading"] .g-wx-float { display: none !important; }
 .g-fold-h { margin: 14px 0 6px; }
@@ -460,7 +470,8 @@ body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 74px); }
 .g-fold[aria-expanded="false"] .g-fold-ic { transform: translateY(-2px) rotate(45deg); }
 @media (max-width: 1000px) { .g-wx-float { right: 16px; top: calc(var(--g-hdr) + 12px); } }
 @media (max-width: 760px) {
-  .g-wx-float { position: absolute; top: calc(var(--g-hdr) + 10px); right: 12px; }
+  .g-wx-float { position: absolute; top: calc(var(--g-hdr) + 10px); right: 12px; left: 12px; justify-content: flex-end; flex-wrap: wrap; }
+  .g-enter3d { min-height: 40px; padding: 0 14px 0 11px; font-size: .86rem; }
   body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 66px); }
 }
 
@@ -653,3 +664,37 @@ button.gf-buy.is-picked .gf-top-buy { background-color: rgba(233, 128, 95, .35);
   .gs-list { grid-template-columns: 1fr; }
   .g-wl-sum b { font-size: 1rem; }
 }
+
+/* ============================================================
+   나의 정원에 들어가기(입체) — js/garden/garden3d.js (2026-10-23 담임목사)
+   넓은 화면: 창 전체를 덮는다(+ 전체 화면 단추). 휴대폰: 화면 전체(주소창까지), 위 막대는 그림 위에 얹는다
+   ============================================================ */
+html.g3d-open, html.g3d-open body { overflow: hidden; }
+.g3d { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; height: 100vh; height: 100dvh; background: #cfdcea; color: var(--g-fg); }
+.g3d:fullscreen { width: 100%; height: 100%; }
+.g3d-top { position: relative; z-index: 2; display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 8px 16px; background: var(--g-panel); border-bottom: 1px solid var(--g-line2); }
+.g3d-title { font-size: 1.05rem; font-weight: 800; white-space: nowrap; }
+.g3d-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--g-fg2); font-size: .88rem; }
+.g3d-grow { flex: 1 1 auto; }
+.g3d-btn { flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 1px solid var(--g-line); border-radius: 999px; background: var(--g-panel); color: var(--g-fg); font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; }
+.g3d-btn:hover { background: var(--g-soft); }
+.g3d-btn:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+.g3d-btn-close { background: var(--g-coral); border-color: var(--g-coral); color: #fff; }
+.g3d-btn-close:hover { background: var(--g-coral-h); }
+.g3d-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.g3d-cv { display: block; width: 100%; height: 100%; cursor: grab; outline: none; }
+.g3d-cv.is-drag { cursor: grabbing; }
+.g3d-load { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-weight: 700; color: var(--g-fg2); }
+.g3d-wx, .g3d-tip, .g3d-hint { position: absolute; z-index: 1; padding: 7px 14px; border-radius: 999px; background: rgba(255,250,243,.9); border: 1px solid var(--g-line2); box-shadow: var(--g-shadow-s); font-size: .84rem; font-weight: 600; color: var(--g-fg); pointer-events: none; }
+.g3d-wx { left: 14px; bottom: 14px; }
+.g3d-hint { left: 50%; bottom: 14px; transform: translateX(-50%); white-space: nowrap; transition: opacity .6s ease; }
+.g3d-hint.is-gone { opacity: 0; }
+.g3d-tip { left: 50%; top: 14px; transform: translateX(-50%); font-weight: 800; white-space: nowrap; }
+.g3d-tip[hidden], .g3d-wx[hidden] { display: none; }
+/* 휴대폰: 막대를 그림 위에 얹어 그림이 화면 전체를 쓴다 */
+.g3d.is-phone .g3d-top { position: absolute; left: 0; right: 0; top: 0; min-height: 0; padding: max(8px, env(safe-area-inset-top)) 10px 8px; gap: 6px; background: linear-gradient(rgba(255,250,243,.92), rgba(255,250,243,.78)); border-bottom: 0; }
+.g3d.is-phone .g3d-sub { display: none; }
+.g3d.is-phone .g3d-btn { min-height: 38px; padding: 0 12px; font-size: .84rem; }
+.g3d.is-phone .g3d-tip { top: calc(max(8px, env(safe-area-inset-top)) + 58px); }
+.g3d.is-phone .g3d-wx { left: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); font-size: .78rem; }
+.g3d.is-phone .g3d-hint { bottom: calc(52px + env(safe-area-inset-bottom)); white-space: normal; width: max-content; max-width: calc(100% - 24px); text-align: center; font-size: .78rem; }
