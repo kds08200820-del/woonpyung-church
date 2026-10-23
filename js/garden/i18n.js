@@ -143,6 +143,7 @@ window.GardenI18n = (function () {
     'visit.title': '{name}님의 정원',
     'visit.title.mine': '나의 정원 · 방문객이 보는 모습',
     'visit.gb': '방명록',
+    'visit.gb.new': '내 정원 방명록에 새 글 {n}개가 있습니다. 정원 초대하기에서 볼 수 있습니다.',
     'visit.gb.btn': '방명록 {n}',
     'visit.gb.ph': '따뜻한 인사를 남겨 주세요',
     'visit.gb.send': '남기기',

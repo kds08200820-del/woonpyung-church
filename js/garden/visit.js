@@ -109,11 +109,20 @@ window.GardenVisit = (function () {
     SDK.visitList().then(function (r) {
       if (!r || !r.ok) return;
       V.ok = true; V.me = r.me || {}; V.list = r.gardens || [];
-      row.hidden = false; setBadge();
+      row.hidden = false; setBadge(); toldUnread();
       // 받은 주소(garden.html?visit=12)로 들어오면 그 정원으로 — 주소는 한 번 쓰고 지운다
       var q = null; try { q = new URLSearchParams(location.search).get('visit'); } catch (e) { }
       if (q && /^\d{1,6}$/.test(q)) { try { history.replaceState(history.state, '', location.pathname); } catch (e) { } visit(+q); }
     }, function () { /* 서버에 기능이 아직 없으면 단추를 숨긴 채로 */ });
+  }
+
+  // 방명록에 새 글이 있으면 정원에 들어올 때 한 번 알려 준다(같은 수면 이 창에서 다시 안 알림) — 읽기는 초대하기 창에서
+  function toldUnread() {
+    var n = (V.me && V.me.unread) | 0, k = 'g_gb_told', was = null;
+    if (n <= 0) return;
+    try { was = sessionStorage.getItem(k); sessionStorage.setItem(k, String(n)); } catch (e) { }
+    if (was === String(n)) return;
+    setTimeout(function () { HUD.toast(t('visit.gb.new', { n: I.fmtNum(n) }), 5000); }, 1500);
   }
 
   /* ── 초대하기 창 ── */
