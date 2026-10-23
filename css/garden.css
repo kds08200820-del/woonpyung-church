@@ -836,3 +836,15 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
 .g-wl-hsum .is-in { color: var(--g-sage-ink); }
 .g-wl-hsum .is-out { color: var(--g-coral-p); }
 @media (max-width: 520px) { .g-wl-hsum { grid-template-columns: 1fr 1fr; } }
+/* 달란트 선물 */
+.gv-gift { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 4px; padding: 12px; border-radius: 14px; background: var(--g-soft); border: 1px solid var(--g-line2); }
+.gv-gift b { font-size: .9rem; }
+.gv-gift-row { display: flex; align-items: center; gap: 8px; }
+.gv-gift input { min-height: 40px; padding: 0 10px; border: 1px solid var(--g-line); border-radius: 10px; background: var(--g-panel); color: var(--g-fg); font: inherit; font-size: .92rem; }
+.gv-gift-row input { width: 110px; font-variant-numeric: tabular-nums; }
+.gv-gift small { color: var(--g-fg2); font-size: .78rem; }
+.gv-gift-b { display: flex; justify-content: flex-end; gap: 8px; }
+.gv-gift-b .g-btn { min-height: 38px; padding: 0 14px; font-size: .86rem; }
+.gv-nba .gv-nb-b { white-space: nowrap; }
+.gd-grant { margin: 0; font-size: .92rem; line-height: 1.6; word-break: keep-all; }
+.gd-gift { margin: 0; }

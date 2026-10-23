@@ -464,7 +464,8 @@ window.GardenHud = (function () {
         '<p class="g-wl-note">' + esc(t('wallet.h.note')) + '</p></details>';
       var by = (w.by_kind || []).map(function (k) {
         var v = (+k['in'] ? '+' + fmtTal(k['in']) : '') + (+k.out ? (+k['in'] ? ' / ' : '') + '−' + fmtTal(k.out) : '');
-        return '<li><span>' + esc(k.label) + ' <small>' + esc(t('wallet.n', { n: k.n })) + '</small></span><b class="' + (+k['in'] >= +k.out ? 'is-in' : 'is-out') + '">' + esc(v) + '</b></li>';
+        var kl = (!k.label || k.label === k.kind) && I.has('kind.' + k.kind) ? t('kind.' + k.kind) : k.label;
+        return '<li><span>' + esc(kl) + ' <small>' + esc(t('wallet.n', { n: k.n })) + '</small></span><b class="' + (+k['in'] >= +k.out ? 'is-in' : 'is-out') + '">' + esc(v) + '</b></li>';
       }).join('');
       top.innerHTML = sum + harvest +
         '<details class="g-wl-box" open><summary>' + esc(t('wallet.rules')) + '</summary><p class="g-wl-note">' + esc(t('wallet.xp.note', { n: w.xp_day || 10 })) + '</p><ul class="g-wl-list">' + rules + '</ul></details>' +

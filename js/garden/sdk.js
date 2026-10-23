@@ -118,6 +118,7 @@
   function neighborRespond(id, accept) { return rpc('garden_neighbor_respond', { p_church: SLUG, p_id: id, p_accept: !!accept }); }
   function neighborRemove(id) { return rpc('garden_neighbor_remove', { p_church: SLUG, p_id: id }); }
   function neighborList() { return rpc('garden_neighbor_list', { p_church: SLUG }); }
+  function gift(plot, amount, note) { return rpc('garden_gift', { p_church: SLUG, p_plot: plot | 0, p_amount: +amount || 0, p_note: note || null }); }
   function farmBuy(x, y) { return rpc('garden_farm_buy', { p_church: SLUG, p_x: x, p_y: y }); }
   function farmPlant(x, y, crop) { return rpc('garden_farm_plant', { p_church: SLUG, p_x: x, p_y: y, p_crop: crop }); }
   function farmPick(x, y, n) { return rpc('garden_farm_pick', { p_church: SLUG, p_x: x, p_y: y, p_n: n }); }
@@ -203,7 +204,7 @@
     state: state, sync: sync, setPlant: setPlant, setProfile: setProfile, history: history,
     farm: farm, farmBuy: farmBuy, farmPlant: farmPlant, farmPick: farmPick, pickFruit: pickFruit,
     notices: notices, visitSet: visitSet, visitList: visitList, visitView: visitView, guestbookPost: guestbookPost, guestbookHide: guestbookHide,
-    neighborRequest: neighborRequest, neighborRespond: neighborRespond, neighborRemove: neighborRemove, neighborList: neighborList,
+    gift: gift, neighborRequest: neighborRequest, neighborRespond: neighborRespond, neighborRemove: neighborRemove, neighborList: neighborList,
     wallet: wallet, water: water, farmBuyMany: farmBuyMany, farmConvert: farmConvert, shop: shop, shopBuy: shopBuy,
     farmPlantItem: farmPlantItem, farmHarvest: farmHarvest, farmClear: farmClear, adminSetLandPrices: adminSetLandPrices, adminSetItemPrice: adminSetItemPrice,
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,

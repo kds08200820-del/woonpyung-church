@@ -6,6 +6,7 @@
    · 방문하기: 정원을 연 성도 목록(garden_visit_list) → 누르면 그 정원을 입체(garden3d.js)로, 옆에 방명록(쓰기·숨기기)
    · 이웃 신청(같은 날 지시 "이웃신청하기도 만들어주세요"): 방문한 정원에서 신청 → 받은 사람이 초대 창에서 수락·거절.
      이웃끼리는 초대를 꺼도 서로 방문·방명록. 방문 목록 맨 위는 내 이웃
+   · 달란트 선물(같은 날 지시 "이웃 신청한 사람에 한해 달란트를 줄 수 있도록"): 이웃 목록·이웃 정원 칸의 '선물'
    · 서버(20261023_2100 SQL)가 없으면 단추를 숨긴다. 이름은 정원 별명만 보인다(실명·연락처 없음)
    GardenVisit.init({ i18n, sdk, hud, scene, farm, base3d }) · GardenVisit.start() · GardenVisit.visit(plotNo)
    ============================================================ */
@@ -69,6 +70,34 @@ window.GardenVisit = (function () {
     });
   }
 
+  /* ── 달란트 선물: 단추 아래에 작은 칸(금액·한 마디)을 펼친다 ── */
+  function giftForm(anchor, plot, name) {
+    var old = document.querySelector('.gv-gift'); if (old) old.remove();
+    var bal = (HUD.garden() || {}).talent_balance || 0;
+    var f = document.createElement('form'); f.className = 'gv-gift';
+    f.innerHTML = '<b>' + esc(t('gift.title', { name: name || '' })) + '</b>' +
+      '<div class="gv-gift-row"><label class="g-sr" for="gvGiftAmt">' + esc(t('gift.amount')) + '</label>' +
+      '<input type="number" id="gvGiftAmt" min="1" step="1" value="10" inputmode="numeric"><span>' + esc(HUD.talentLabel()) + '</span></div>' +
+      '<label class="g-sr" for="gvGiftNote">' + esc(t('gift.note')) + '</label><input type="text" id="gvGiftNote" maxlength="60" placeholder="' + esc(t('gift.note')) + '">' +
+      '<small>' + esc(t('gift.bal', { n: I.fmtNum(Math.round(bal * 10) / 10) })) + '</small>' +
+      '<div class="gv-gift-b"><button type="button" class="g-btn g-btn-line" data-x>' + esc(t('gift.cancel')) + '</button><button type="submit" class="g-btn g-btn-primary">' + esc(t('gift.send')) + '</button></div>';
+    anchor.insertAdjacentElement('afterend', f);
+    f.querySelector('[data-x]').addEventListener('click', function () { f.remove(); });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var amt = Math.floor(+f.querySelector('#gvGiftAmt').value || 0), note = f.querySelector('#gvGiftNote').value, btn = f.querySelector('[type=submit]');
+      if (amt < 1) { f.querySelector('#gvGiftAmt').focus(); return; }
+      btn.disabled = true;
+      SDK.gift(plot, amt, note).then(function (r) {
+        btn.disabled = false;
+        if (!r || !r.ok) { HUD.toast(r && r.why === 'amount' && r.max ? t('gift.why.max', { n: I.fmtNum(r.max) }) : r && r.why === 'limit' ? t('gift.why.limit', { n: I.fmtNum(r.left || 0) }) : whyText(r)); return; }
+        HUD.setTalent(r.balance); f.remove();
+        HUD.toast(t('gift.sent', { name: name || '', n: I.fmtNum(r.amount) }));
+      }, function (er) { btn.disabled = false; HUD.toast(whyText(null, er)); });
+    });
+    setTimeout(function () { var a = f.querySelector('#gvGiftAmt'); a.focus(); a.select(); }, 30);
+  }
+
   /* ── 오른쪽 메뉴 단추 ── */
   function setBadge() {
     var bd = $('gInviteBadge'), n = ((V.me && V.me.unread) | 0) + ((V.me && V.me.requests) | 0); if (!bd) return;
@@ -113,7 +142,9 @@ window.GardenVisit = (function () {
     }).join('') + '</ul>';
     h += '<h4 class="gv-nbh">' + esc(t('nb.mine')) + ' <span class="gv-n">' + (nb.length ? I.fmtNum(nb.length) : '') + '</span></h4>';
     h += nb.length ? '<ul class="gv-nbl">' + nb.map(function (n) {
-      return nbRow(n, '<button type="button" class="g-btn g-btn-line gv-nb-b" data-act="go">' + esc(t('nb.go')) + '</button><button type="button" class="gv-hide" data-act="cut">' + esc(t('nb.cut')) + '</button>');
+      return nbRow(n, '<button type="button" class="g-btn g-btn-line gv-nb-b" data-act="go">' + esc(t('nb.go')) + '</button>' +
+        (SDK.gift ? '<button type="button" class="g-btn g-btn-line gv-nb-b" data-act="gift">' + esc(t('gift.open')) + '</button>' : '') +
+        '<button type="button" class="gv-hide" data-act="cut">' + esc(t('nb.cut')) + '</button>');
     }).join('') + '</ul>' : '<p class="g-empty">' + esc(t('nb.none')) + '</p>';
     if (out.length) h += '<h4 class="gv-nbh">' + esc(t('nb.outgoing')) + '</h4><ul class="gv-nbl">' + out.map(function (n) {
       return nbRow(n, '<button type="button" class="gv-hide" data-act="cancel">' + esc(t('nb.cancel')) + '</button>');
@@ -126,6 +157,7 @@ window.GardenVisit = (function () {
       var b = e.target.closest && e.target.closest('[data-act]'); if (!b || b.disabled) return;
       var li = b.closest('.gv-nbi'), id = +li.getAttribute('data-id'), act = b.getAttribute('data-act');
       if (act === 'go') { if (V.inv) HUD.closeModal(V.inv); visit(+li.getAttribute('data-plot')); return; }
+      if (act === 'gift') { giftForm(li, +li.getAttribute('data-plot'), (li.querySelector('.gv-nbt b') || {}).textContent); return; }
       if ((act === 'cut' || act === 'cancel') && !b.classList.contains('is-arm')) {   // 끊기·취소는 두 번 눌러야
         b.classList.add('is-arm'); b.textContent = t('nb.sure');
         setTimeout(function () { if (document.contains(b)) { b.classList.remove('is-arm'); b.textContent = t(act === 'cut' ? 'nb.cut' : 'nb.cancel'); } }, 3000);
@@ -218,14 +250,14 @@ window.GardenVisit = (function () {
     if (!window.Garden3D || !window.Garden3D.supported() || window.Garden3D.isOpen()) return;
     var side = document.createElement('aside');
     side.className = 'gv-side'; side.setAttribute('aria-label', t('visit.gb'));
-    side.innerHTML = '<div class="gv-nbbar" id="gvNbBar" hidden><span id="gvNbText"></span><button type="button" class="g-btn g-btn-primary gv-nb-b" id="gvNbBtn"></button></div>' +
+    side.innerHTML = '<div class="gv-nbbar" id="gvNbBar" hidden><span id="gvNbText"></span><button type="button" class="g-btn g-btn-primary gv-nb-b" id="gvNbBtn"></button><button type="button" class="g-btn g-btn-primary gv-nb-b" id="gvGiftBtn" hidden></button></div>' +
       '<div class="gv-side-h"><b>' + esc(t('visit.gb')) + '</b><span class="gv-n" id="gvN"></span></div>' +
       '<form class="gv-form" id="gvForm"><label class="g-sr" for="gvBody">' + esc(t('visit.gb.ph')) + '</label>' +
       '<textarea id="gvBody" maxlength="300" rows="3" placeholder="' + esc(t('visit.gb.ph')) + '"></textarea>' +
       '<div class="gv-form-row"><small id="gvCnt">0/300</small><button type="submit" class="g-btn g-btn-primary" id="gvSendBtn">' + esc(t('visit.gb.send')) + '</button></div></form>' +
       '<ul class="gv-gb" id="gvGb"></ul><p class="g-empty" id="gvGbNone" hidden>' + esc(t('visit.gb.none')) + '</p>';
     var ul = side.querySelector('#gvGb'), none = side.querySelector('#gvGbNone'), form = side.querySelector('#gvForm'), ta = side.querySelector('#gvBody'), cnt = side.querySelector('#gvCnt'), nEl = side.querySelector('#gvN');
-    var view = null, nbBar = side.querySelector('#gvNbBar'), nbBtn = side.querySelector('#gvNbBtn'), nbText = side.querySelector('#gvNbText'), nb = null;
+    var view = null, ownerName = '', giftBtn = side.querySelector('#gvGiftBtn'), nbBar = side.querySelector('#gvNbBar'), nbBtn = side.querySelector('#gvNbBtn'), nbText = side.querySelector('#gvNbText'), nb = null;
     // 이웃 사이 단추: none → 신청 / sent → 신청 취소(두 번) / received → 수락 / neighbor → 단추 없음(끊기는 초대 창에서)
     function drawNb(x) {
       nb = x; if (!x || !SDK.neighborRequest) { nbBar.hidden = true; return; }
@@ -233,9 +265,11 @@ window.GardenVisit = (function () {
       nbBar.hidden = false; nbBtn.disabled = false; nbBtn.classList.remove('is-arm');
       nbText.textContent = t('nb.state.' + st);
       nbBtn.hidden = st === 'neighbor';
+      giftBtn.hidden = st !== 'neighbor' || !SDK.gift; giftBtn.textContent = t('gift.open');
       nbBtn.textContent = t(st === 'sent' ? 'nb.cancel' : st === 'received' ? 'nb.accept' : 'nb.request');
       nbBtn.className = 'g-btn gv-nb-b ' + (st === 'sent' ? 'g-btn-line' : 'g-btn-primary');
     }
+    giftBtn.addEventListener('click', function () { giftForm(nbBar, plot, ownerName); });
     nbBtn.addEventListener('click', function () {
       if (!nb) return;
       var st = nb.status, p;
@@ -275,6 +309,7 @@ window.GardenVisit = (function () {
       var mine = (FARM && FARM.state && FARM.state()) || {}, max = mine.max || 4;
       if (r.mine && V.me) { V.me.unread = 0; setBadge(); }
       draw(r.guestbook || []);
+      ownerName = own.nickname || '';
       drawNb(r.mine ? null : r.neighbor);
       return {
         title: r.mine ? t('visit.title.mine') : t('visit.title', { name: own.nickname || '' }), sub: pl.text,

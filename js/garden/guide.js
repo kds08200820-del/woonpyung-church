@@ -11,7 +11,7 @@
 window.GardenGuide = (function () {
   'use strict';
   var I, SDK, HUD, SCENE, FARM, ctx, t;
-  var KEY_DAY = 'g_guide_day', KEY_OFF = 'g_guide_off', KEY_LAST = 'g_guide_last';
+  var KEY_DAY = 'g_guide_day', KEY_OFF = 'g_guide_off', KEY_LAST = 'g_guide_last', KEY_GRANT = 'g_grant_seen', KEY_GIFT = 'g_gift_seen';
   var G = { rec: null, tries: 0 };
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -46,6 +46,10 @@ window.GardenGuide = (function () {
     $('gdPic').innerHTML = pic ? '<img alt="" src="' + esc(pic) + '">' : '';
     $('gmGuideTitle').textContent = greet(me.nickname);
     $('gdLead').textContent = cheer(st);
+
+    // 목회자 기본 달란트(처음 한 번) · 새로 받은 선물
+    if (G.grant > 0 && get(KEY_GRANT) !== '1') { h += sec('grant', '<p class="gd-grant">' + esc(t('guide.grant', { n: I.fmtNum(G.grant) })) + '</p>'); put(KEY_GRANT, '1'); }
+    if (G.giftIn > (+get(KEY_GIFT) || 0)) { h += '<p class="gd-ok gd-gift">' + esc(t('guide.gift.in', { n: I.fmtNum(Math.round((G.giftIn - (+get(KEY_GIFT) || 0)) * 10) / 10) })) + '</p>'; put(KEY_GIFT, String(G.giftIn)); }
 
     // 오늘의 말씀
     var q = HUD.qt(), items = HUD.todoItems ? HUD.todoItems() : [], amen = items.filter(function (x) { return x.kind === 'qt_amen'; })[0];
@@ -124,7 +128,18 @@ window.GardenGuide = (function () {
   function daily() {
     var b = $('gGuideBtn'); if (b) b.hidden = false;
     var c = (ctx && ctx()) || {};
-    if (c.offline || get(KEY_OFF) === '1' || get(KEY_DAY) === I.todayStr()) return;
+    if (c.offline) return;
+    if (!G.checked && SDK.wallet) {   // 목회자 달란트·받은 선물이 있으면 그날 이미 봤어도 한 번 더
+      G.checked = true;
+      SDK.wallet().then(function (w) {
+        (w && w.by_kind || []).forEach(function (k) { if (k.kind === 'staff_grant') G.grant = +k['in'] || 0; if (k.kind === 'gift_in') G.giftIn = +k['in'] || 0; });
+        if ((G.grant > 0 && get(KEY_GRANT) !== '1') || (G.giftIn > (+get(KEY_GIFT) || 0))) put(KEY_DAY, '');
+        daily();
+      }, function () { daily(); });
+      return;
+    }
+    if (get(KEY_OFF) === '1' && !(G.grant > 0 && get(KEY_GRANT) !== '1')) return;
+    if (get(KEY_DAY) === I.todayStr()) return;
     // 다른 창(첫 심기·말씀 등)이 열려 있으면 조금 뒤에
     if (document.body.classList.contains('g-modal-open') || (window.Garden3D && window.Garden3D.isOpen())) { if (G.tries++ < 20) setTimeout(daily, 3000); return; }
     put(KEY_DAY, I.todayStr());
