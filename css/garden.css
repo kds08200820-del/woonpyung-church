@@ -509,7 +509,7 @@ body.g-has-banner .g-rotate { top: calc(var(--g-hdr) + 74px); }
 .g-me-txt .g-stitle { margin: 0; }
 .g-me-lv { display: flex; flex-direction: column; gap: 2px; margin: 0; }
 .g-me-lv[hidden] { display: none; }
-.g-me-lv b { font-size: 1.05rem; font-weight: 800; color: var(--g-fg); }
+.g-me-lv b { font-size: 1.02rem; font-weight: 800; color: var(--g-fg); word-break: keep-all; line-height: 1.35; }
 .g-me-lv small { font-size: .78rem; color: var(--g-fg3); }
 .g-me-name { font-size: 1.02rem; font-weight: 800; color: var(--g-fg); word-break: keep-all; }
 .g-gallery { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin-top: 16px; padding: 14px 16px; border-radius: 16px;

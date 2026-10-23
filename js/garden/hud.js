@@ -244,16 +244,20 @@ window.GardenHud = (function () {
     renderGrowth(); renderTodo(); renderLevel();
   }
   // 정원 레벨 — 모은 마음(xp_total)으로. 레벨 1에서 시작, 다음 레벨까지 마음 100 × 지금 레벨 (2026-10-23 담임목사: 내 모습 위에)
+  // 레벨은 성경의 네 정원을 따라 간다: 에덴동산(1~9) → 겟세마네 동산(10~19) → 솔로몬의 동산(20~29) → 하나님의 낙원(30~)
+  var LV_GARDENS = [{ from: 1, key: 'eden' }, { from: 10, key: 'gethsemane' }, { from: 20, key: 'solomon' }, { from: 30, key: 'paradise' }];
   function gardenLevel(xp) {
     var lv = 1, need = 100; xp = Math.max(0, +xp || 0);
     while (xp >= need) { xp -= need; lv++; need = 100 * lv; }
-    return { lv: lv, left: need - xp };
+    var g = LV_GARDENS[0]; LV_GARDENS.forEach(function (x) { if (lv >= x.from) g = x; });
+    return { lv: lv, left: need - xp, garden: g.key };
   }
   function renderLevel() {
     var el = $('gMeLv'); if (!el) return;
     var L = gardenLevel(garden().xp_total);
-    el.querySelector('b').textContent = t('me.level', { n: I.fmtNum(L.lv) });
+    el.querySelector('b').textContent = t('me.level', { garden: t('lv.' + L.garden), n: I.fmtNum(L.lv) });
     el.querySelector('small').textContent = t('me.level.next', { n: I.fmtNum(L.left) });
+    el.title = t('lv.' + L.garden) + ' — ' + t('lv.' + L.garden + '.d');
     el.hidden = false;
   }
   function renderGrowth() {
@@ -821,6 +825,10 @@ window.GardenHud = (function () {
     if (r.first && ((r.new_count | 0) || rows.length)) setTimeout(function () { toast(t('sync.first', { n: I.fmtNum((r.new_count | 0) || rows.length), xp: I.fmtNum(r.new_xp | 0) }), 4200); }, 400);
     var after = garden(), delay = n * 600 + 200;
     if (after.plants_done > before.plants_done) setTimeout(function () { toast(t('sync.harvest', { n: I.fmtNum(after.plants_done) }), 4000); }, delay);
+    var lb = gardenLevel(before.xp_total), la = gardenLevel(after.xp_total);
+    if (before.xp_total > 0 && la.lv > lb.lv) setTimeout(function () {
+      toast(la.garden !== lb.garden ? t('me.gardenup', { garden: t('lv.' + la.garden), d: t('lv.' + la.garden + '.d') }) : t('me.levelup', { garden: t('lv.' + la.garden), n: I.fmtNum(la.lv) }), 4600);
+    }, delay + 300);
     if (after.species === before.species && after.stage > before.stage) {
       setTimeout(function () {
         SCENE.stageUp(after.species, after.stage).then(function () {
