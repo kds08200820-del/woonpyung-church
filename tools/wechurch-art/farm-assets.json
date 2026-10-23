@@ -84,6 +84,26 @@
       "pick": 1
     },
     {
+      "id": "tex-dae",
+      "group": "bg",
+      "out": "tex-dae.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        512,
+        512
+      ],
+      "prompt": "Seamless tileable texture seen straight from above: a flat leveled building lot of smooth compacted light beige clay earth with fine pale gravel and a few tiny round pebbles, evenly lit, no plants, no furrows, no objects, fills the whole frame edge to edge. cute stylized 3D clay render, warm pastel sand beige palette, matte clay texture, highly detailed",
+      "seed": 12251,
+      "bg": "none",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
       "id": "crop-lettuce-1",
       "group": "ui",
       "out": "crop-lettuce-1.webp",

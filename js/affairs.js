@@ -10406,6 +10406,7 @@ console.log('[affairs.js] v20261023th1');
         '<div class="af-field"><label>종료일</label><input type="date" id="edu_f_end" value="' + esc(rec.end_date || '') + '" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field"><label>대상/부서</label><input type="text" id="edu_f_target" value="' + esc(rec.target || '') + '" placeholder="예: 새가족, 중등부" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field"><label>강사/인도자</label><input type="text" id="edu_f_teacher" value="' + esc(rec.teacher || '') + '" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field" style="grid-column:1/-1"><label>이수 달란트</label><input type="number" id="edu_f_talent" min="0" max="1000" step="0.5" value="' + esc(rec.talent_reward ? rec.talent_reward : '') + '" placeholder="0" style="width:140px;box-sizing:border-box"> <span style="font-size:.75rem;color:#93867C">종료일이 지나면 아래 참석자·이수자의 신앙 정원 지갑에 한 번 들어갑니다. 비우면 주지 않습니다.</span></div>' +
         '<div class="af-field" style="grid-column:1/-1"><label>내용/비고</label><textarea id="edu_f_content" style="min-height:70px;width:100%;box-sizing:border-box">' + esc(rec.content || '') + '</textarea></div>' +
         '</div>' +
         '<div style="margin-bottom:20px">' +
@@ -10606,6 +10607,9 @@ console.log('[affairs.js] v20261023th1');
           attendance: String(participants.length),
           participants: JSON.stringify(participants)
         };
+        // 이수 달란트: 칸이 있는 DB(20261023_1500 실행 후)에서만 보낸다 — 값이 있거나 이미 칸이 있는 기록일 때
+        var tv = parseFloat(ov.querySelector('#edu_f_talent').value);
+        if (tv > 0 || rec.talent_reward != null) data.talent_reward = tv > 0 ? Math.min(1000, Math.round(tv * 10) / 10) : 0;
         msgEl.style.color = '#93867C'; msgEl.textContent = '저장 중…';
         var isNew = !rec.id;
         var pr = rec.id
@@ -10626,7 +10630,7 @@ console.log('[affairs.js] v20261023th1');
         }).catch(function (e) {
           msgEl.style.color = '#A33A2A';
           msgEl.textContent = '저장 실패: ' + e.message;
-          if (/participants|end_date|cohort|class_name/i.test(e.message))
+          if (/participants|end_date|cohort|class_name|talent_reward/i.test(e.message))
             msgEl.textContent += ' — Supabase SQL Editor에서 컬럼을 추가해 주세요.';
         });
       };

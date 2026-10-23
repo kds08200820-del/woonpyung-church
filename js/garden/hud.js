@@ -9,7 +9,7 @@ window.GardenHud = (function () {
   'use strict';
   var I, SDK, SCENE, t, P = {};
   var H = { state: null, offline: false, qt: null, qtDate: '', amenDone: false, rankMsg: '', doneKinds: {}, talentLabel: '', svcForce: '', onPlanted: null };
-  var TASK_KINDS = ['login', 'qt_amen', 'bible_day', 'worship_sunday', 'worship_weekday', 'audiobook_chapter', 'heart_given', 'modu_day'];
+  var TASK_KINDS = ['water', 'login', 'qt_amen', 'bible_day', 'worship_sunday', 'worship_weekday', 'audiobook_chapter', 'heart_given', 'modu_day'];
   var TASK_HREF = { bible_day: 'dashboard.html', audiobook_chapter: 'audiobook.html', heart_given: 'story.html#growth', modu_day: 'modu/' };
   var SEED_ICON = { sunflower: '🌻', olive: '🫒', fig: '🍐', grape: '🍇', mustard: '🌼', lily: '🌷' };
   var WX_ICON = { clear: '☀️', night: '🌙', cloudy: '☁️', fog: '🌫️', rain: '🌧️', snow: '❄️' };
@@ -196,11 +196,34 @@ window.GardenHud = (function () {
       setTimeout(function () { b.remove(); renderFruitBtn(); }, 420);
     }).catch(function () { b.disabled = false; b.classList.remove('is-going'); toast(t('fruit.err')); });
   }
+  /* ── 정원에 물 주기 (하루 한 번, 3단계 SQL 뒤에만 — state.watered 가 있을 때) ── */
+  function renderWaterBtn() {
+    var b = $('gWaterBtn'), sb = $('gShopBtn'), st = H.state || {}, on = st.watered !== undefined && !H.offline;
+    if (sb) show(sb, on && !!window.GardenShop);
+    if (!b) return;
+    show(b, on);
+    var r = rulesMap().water;
+    b.disabled = !!st.watered;
+    b.textContent = st.watered ? t('water.done') : t('water.go.n', { n: fmtTal(r ? r.talent : 2) });
+  }
+  function doWater() {
+    var b = $('gWaterBtn'); if (b) b.disabled = true;
+    SDK.water().then(function (r) { if (!r || !r.ok) throw new Error('water'); afterWater(r); })
+      .catch(function () { if (b) b.disabled = false; toast(t('water.err')); });
+  }
+  function afterWater(r) {
+    if (!H.state) return;
+    H.state.watered = true; H.doneKinds.water = 1;
+    if (r.talent_balance != null) setTalent(r.talent_balance);
+    if (r.watered && +r.gain > 0) { SCENE.floatXp(0, '+' + fmtTal(r.gain) + ' ' + H.talentLabel); SCENE.sparkle(10); toast(t('water.thanks', { n: fmtTal(r.gain) })); }
+    else toast(t('water.done.msg'));
+    renderWaterBtn(); renderTodo();
+  }
   function renderRail() {
     var st = H.state || {}, g = garden(), ch = st.church || {};
     H.talentLabel = labelOf(ch.talent_label) || t('talent.unit');
     $('gTalentNum').textContent = fmtTal(g.talent_balance); $('gTalentUnit').textContent = H.talentLabel;
-    renderFruitBtn();
+    renderFruitBtn(); renderWaterBtn();
     var streak = st.qt_streak | 0;
     show($('gStreak'), streak > 0); $('gStreakText').textContent = t('rail.streak', { n: I.fmtNum(streak) });
     show($('gOffline'), H.offline);
@@ -220,6 +243,7 @@ window.GardenHud = (function () {
     var td = (H.state && H.state.today) || {};
     if (kind === 'login' && td.checked_in) return true;
     if (kind === 'qt_amen' && H.amenDone) return true;
+    if (kind === 'water' && H.state && H.state.watered) return true;
     var kinds = td.kinds || td.done;
     if (Array.isArray(kinds) && kinds.indexOf(kind) >= 0) return true;
     if (kinds && typeof kinds === 'object' && !Array.isArray(kinds) && (kinds[kind] | 0) > 0) return true;
@@ -231,6 +255,7 @@ window.GardenHud = (function () {
     TASK_KINDS.forEach(function (k) {
       var r = rules[k]; if (!r) return;
       if (k === 'worship_sunday' && dow !== 0) return;
+      if (k === 'login' && rules.water) return;
       if (k === 'worship_weekday' && dow === 0) return;
       items.push({ kind: k, rule: r, done: isDone(k) });
     });
@@ -247,6 +272,7 @@ window.GardenHud = (function () {
       b.setAttribute('aria-label', kindLabel(it.kind, rules) + (it.done ? ' · ' + t('todo.done') : ''));
       if (it.kind === 'qt_amen') b.addEventListener('click', function () { if (H.qt) openQt(); else toast(t('qt.none')); });
       else if (it.kind === 'login') b.addEventListener('click', function () { toast(it.done ? t('todo.login.done') : t('todo.login.todo')); });
+      else if (it.kind === 'water') b.addEventListener('click', function () { if (it.done) toast(t('water.done.msg')); else doWater(); });
       else if (it.kind.indexOf('worship') === 0) b.addEventListener('click', function () { var bn = $('gBanner'); if (bn && !bn.hidden) bn.click(); else toast(t('todo.worship.none')); });
       li.appendChild(b); ul.appendChild(li);
     });
@@ -352,11 +378,39 @@ window.GardenHud = (function () {
   function openStore() {
     if (store.rec) return;
     var g = garden();
+    var isWallet = !!(H.state && H.state.wallet);
+    $('gmStoreTitle').textContent = t(isWallet ? 'wallet.title' : 'store.title');
+    if ($('gmStoreSub')) $('gmStoreSub').textContent = t(isWallet ? 'wallet.sub' : 'store.sub');
+    var top = $('gmWalletTop'); if (top) { top.innerHTML = ''; show(top, isWallet); }
+    if (isWallet && top) loadWallet(top);
     $('gmStoreNum').textContent = fmtTal(g.talent_balance); $('gmStoreUnit').textContent = H.talentLabel;
     $('gmStoreList').innerHTML = ''; $('gmStoreTotal').textContent = '';
     store.offset = 0; store.total = 0; show($('gmStoreEmpty'), false); show($('gmStoreMore'), false);
     store.rec = openModal('gmStore', { onClose: function () { store.rec = null; } });
     loadMore();
+  }
+  function loadWallet(top) {
+    top.innerHTML = '<p class="g-empty">' + esc(t('store.loading')) + '</p>';
+    SDK.wallet().then(function (w) {
+      if (!w || !w.ok) throw new Error('wallet');
+      setTalent(w.balance);
+      var L = H.talentLabel;
+      var sum = '<div class="g-wl-sum"><div><span>' + esc(t('wallet.earned')) + '</span><b>' + esc(fmtTal(w.earned)) + '</b></div>' +
+        '<div><span>' + esc(t('wallet.spent')) + '</span><b>' + esc(fmtTal(w.spent)) + '</b></div>' +
+        '<div><span>' + esc(t('wallet.month')) + '</span><b>' + esc(fmtTal(w.month)) + '</b></div></div>';
+      var rules = (w.rules || []).map(function (r) {
+        var v = r.kind === 'edu_done' ? t('wallet.rule.edu') : r.kind === 'ss_talent' ? t('wallet.rule.ss') : '+' + fmtTal(r.talent) + ' ' + L;
+        return '<li><span>' + esc(label(r.label) || r.kind) + (r.daily_cap ? ' <small>' + esc(t('wallet.cap', { n: r.daily_cap })) + '</small>' : '') + '</span><b>' + esc(v) + '</b></li>';
+      }).join('');
+      var by = (w.by_kind || []).map(function (k) {
+        var v = (+k['in'] ? '+' + fmtTal(k['in']) : '') + (+k.out ? (+k['in'] ? ' / ' : '') + '−' + fmtTal(k.out) : '');
+        return '<li><span>' + esc(k.label) + ' <small>' + esc(t('wallet.n', { n: k.n })) + '</small></span><b class="' + (+k['in'] >= +k.out ? 'is-in' : 'is-out') + '">' + esc(v) + '</b></li>';
+      }).join('');
+      top.innerHTML = sum +
+        '<details class="g-wl-box" open><summary>' + esc(t('wallet.rules')) + '</summary><ul class="g-wl-list">' + rules + '</ul></details>' +
+        (by ? '<details class="g-wl-box"><summary>' + esc(t('wallet.by')) + '</summary><ul class="g-wl-list">' + by + '</ul></details>' : '') +
+        '<h3 class="g-wl-h">' + esc(t('wallet.history')) + '</h3>';
+    }).catch(function () { top.innerHTML = ''; });
   }
   function loadMore() {
     if (store.busy) return;
@@ -690,12 +744,14 @@ window.GardenHud = (function () {
   function init(o) {
     I = o.i18n; SDK = o.sdk; SCENE = o.scene; t = I.t; P = o.params || {};
     I.apply(document);
-    ['gmQt', 'gmStore', 'gmPlant', 'gmFarm'].forEach(function (id) { if ($(id)) bindModal(id); });
+    ['gmQt', 'gmStore', 'gmPlant', 'gmFarm', 'gmShop'].forEach(function (id) { if ($(id)) bindModal(id); });
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);
     bindOnboarding(); bindBanner(); bindBar(); bindTodoFold();
     if ($('gFruitBtn')) $('gFruitBtn').addEventListener('click', function () { fruitMode(!FR.on); renderFruitBtn(); });
+    if ($('gWaterBtn')) $('gWaterBtn').addEventListener('click', doWater);
+    if ($('gShopBtn')) $('gShopBtn').addEventListener('click', function () { if (window.GardenShop) window.GardenShop.open(); });
     if ($('gFarmBtn') && window.GardenFarm) $('gFarmBtn').addEventListener('click', function () { fruitMode(false); renderFruitBtn(); window.GardenFarm.open(); });
   }
   /* 오늘의 할 일 접기 — 접어 두면 다음에도 접힌 채로(이 기기에 기억) */
@@ -720,6 +776,6 @@ window.GardenHud = (function () {
     toast: toast, openModal: openModal, closeModal: closeModal, openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
     loadQt: loadQt, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
     syncPlot: syncPlot, renderTodo: renderTodo, garden: garden,
-    setTalent: setTalent, talentLabel: function () { return H.talentLabel; }
+    setTalent: setTalent, talentLabel: function () { return H.talentLabel; }, afterWater: afterWater
   };
 })();

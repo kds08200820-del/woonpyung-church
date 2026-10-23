@@ -1,0 +1,66 @@
+{
+  "version": "20261023sh1",
+  "theme": "shop",
+  "out_root": "images/garden/shop",
+  "comfy": {
+    "url": "http://127.0.0.1:8188",
+    "output_dir": "C:\\ComfyUI\\output",
+    "run_bat": "C:\\ComfyUI\\run_comfyui.bat",
+    "unet": "flux1-schnell-Q4_K_S.gguf",
+    "clip1": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+    "clip2": "clip_l.safetensors",
+    "vae": "flux_ae.safetensors",
+    "steps": 4,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "scheduler": "simple"
+  },
+  "style_prefix": "",
+  "style_suffix": "",
+  "sprite_suffix": "isolated on a flat solid evenly lit pure white background, nothing else in the frame",
+  "chroma_suffix": "the entire background is one solid flat vivid saturated neon magenta chroma-key background (#FF00FF), perfectly even, nothing else in the frame",
+  "chroma_suffix_black": "the entire background is solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame",
+  "chroma_key": {
+    "color": [
+      255,
+      0,
+      255
+    ],
+    "t0": 70,
+    "t1": 150,
+    "feather": 0.8
+  },
+  "webp": {
+    "quality": 82,
+    "method": 6
+  },
+  "margin": 0.04,
+  "fallback_key": "black",
+  "notes": [
+    "신앙 정원 꽃집 품목 그림 — 2026-10-23. GARDEN_ASSETS=tools/wechurch-art/shop-assets.json python tools/garden-art/gen_garden_assets.py gen|pick|export",
+    "<slug>.webp = 흙 둔덕 위 다 자란 모습(내 땅 칸과 꽃집 카드에 함께 씀, 768→384). <slug>-fruit.webp = 하나씩 따는 열매(512→160). _sprout.webp = 막 싹튼 모습(모든 품목 공통)",
+    "슬러그는 supabase/20261023_1500_garden_wallet_shop.sql 의 garden_shop_items.slug 와 같아야 한다"
+  ],
+  "assets": [
+    {
+      "id": "_sprout",
+      "group": "ui",
+      "out": "_sprout.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A tiny just-sprouted seedling with two flat oval light green clay seed leaves opening on a short thin pale green stem, growing out of a small dome-shaped mound of brown textured soil, front three-quarter view, centered, small in the frame. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 13003,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    }
+  ]
+}

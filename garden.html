@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261023fm1" />
+  <link rel="stylesheet" href="css/garden.css?v=20261023ws1" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -68,8 +68,10 @@
         <p class="g-grow-done" id="gGrowDone"></p>
         <button type="button" class="g-link g-profile-btn" id="gProfileBtn" data-i18n="profile.open"></button>
         <div class="g-farm-acts">
+          <button type="button" class="g-btn g-btn-primary" id="gWaterBtn" hidden></button>
           <button type="button" class="g-btn g-btn-primary" id="gFruitBtn" hidden></button>
           <button type="button" class="g-btn g-btn-line" id="gFarmBtn" hidden data-i18n="farm.open"></button>
+          <button type="button" class="g-btn g-btn-line" id="gShopBtn" hidden data-i18n="shop.open"></button>
         </div>
       </section>
     </aside>
@@ -120,9 +122,10 @@
       <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
       <div class="g-mhead">
         <h2 class="g-mtitle" id="gmStoreTitle" data-i18n="store.title"></h2>
-        <p class="g-msub" data-i18n="store.sub"></p>
+        <p class="g-msub" id="gmStoreSub" data-i18n="store.sub"></p>
         <div class="g-store-bal"><span class="g-pill-ic" aria-hidden="true">🪙</span><b id="gmStoreNum">0</b><span id="gmStoreUnit"></span></div>
       </div>
+      <div class="g-wl-top" id="gmWalletTop" hidden></div>
       <ul class="g-led-list" id="gmStoreList"></ul>
       <p class="g-empty" id="gmStoreEmpty" hidden></p>
       <p class="g-led-total" id="gmStoreTotal"></p>
@@ -167,9 +170,26 @@
         <h2 class="g-mtitle" id="gmFarmTitle" data-i18n="farm.title"></h2>
         <p class="g-msub" data-i18n="farm.sub"></p>
         <div class="gf-stats"><span class="g-chip gf-bal"><b id="gfBal">0</b><span id="gfUnit" data-i18n="talent.unit"></span></span><span class="g-chip" id="gfCount"></span><span class="g-chip" id="gfPrice"></span></div>
+        <div class="gf-tools" id="gfTools" hidden></div>
       </div>
       <div class="gf-wrap"><div class="gf-board" id="gfBoard"></div></div>
       <div class="gf-sheet" id="gfSheet" hidden></div>
+    </div>
+  </div>
+
+  <!-- 스토어(꽃집) -->
+  <div class="g-modal g-modal-shop" id="gmShop" hidden>
+    <div class="g-backdrop" data-close></div>
+    <div class="g-mbox g-mbox-shop" role="dialog" aria-modal="true" aria-labelledby="gmShopTitle">
+      <span class="g-grab" aria-hidden="true"></span>
+      <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
+      <div class="g-mhead">
+        <h2 class="g-mtitle" id="gmShopTitle" data-i18n="shop.title"></h2>
+        <p class="g-msub" data-i18n="shop.sub"></p>
+        <div class="gf-stats"><span class="g-chip gf-bal"><b id="gsBal">0</b><span data-i18n="talent.unit"></span></span><span class="g-chip gs-bag" id="gsBag"></span></div>
+        <div class="gs-tabs" id="gsTabs" role="tablist"></div>
+      </div>
+      <div class="gs-list" id="gsList"></div>
     </div>
   </div>
 
@@ -180,11 +200,13 @@
   <script src="js/bulletins-live.js?v=20261010sum1"></script>
   <script src="js/layout.js?v=20261023lib1"></script>
   <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/garden/i18n.js?v=20261023fm1"></script>
-  <script src="js/garden/sdk.js?v=20261023fm1"></script>
+  <script src="js/garden/i18n.js?v=20261023ws1"></script>
+  <script src="js/garden/sdk.js?v=20261023ws1"></script>
   <script src="js/garden/scene.js?v=20261023gd4"></script>
-  <script src="js/garden/hud.js?v=20261023fm1"></script>
-  <script src="js/garden/farm.js?v=20261023fm1"></script>
-  <script src="js/garden/main.js?v=20261023fm1"></script>
+  <script src="js/garden/hud.js?v=20261023ws1"></script>
+  <script src="js/garden/plantsim.js?v=20261023ws1"></script>
+  <script src="js/garden/shop.js?v=20261023ws1"></script>
+  <script src="js/garden/farm.js?v=20261023ws1"></script>
+  <script src="js/garden/main.js?v=20261023ws1"></script>
 </body>
 </html>

@@ -111,6 +111,18 @@
   function farmPlant(x, y, crop) { return rpc('garden_farm_plant', { p_church: SLUG, p_x: x, p_y: y, p_crop: crop }); }
   function farmPick(x, y, n) { return rpc('garden_farm_pick', { p_church: SLUG, p_x: x, p_y: y, p_n: n }); }
   function pickFruit(n) { return rpc('garden_pick_fruit', { p_church: SLUG, p_n: n }); }
+  /* 마이월렛·물 주기·땅 종류·꽃집 (20261023_1500_garden_wallet_shop.sql) */
+  function wallet() { return rpc('garden_wallet', { p_church: SLUG }); }
+  function water() { return rpc('garden_water', { p_church: SLUG }); }
+  function farmBuyMany(cells) { return rpc('garden_farm_buy_many', { p_church: SLUG, p_cells: cells }); }
+  function farmConvert(cells) { return rpc('garden_farm_convert', { p_church: SLUG, p_cells: cells }); }
+  function shop() { return rpc('garden_shop', { p_church: SLUG }); }
+  function shopBuy(item, qty) { return rpc('garden_shop_buy', { p_church: SLUG, p_item: item, p_qty: qty || 1 }); }
+  function farmPlantItem(x, y, item) { return rpc('garden_farm_plant_item', { p_church: SLUG, p_x: x, p_y: y, p_item: item }); }
+  function farmHarvest(x, y, n) { return rpc('garden_farm_harvest', { p_church: SLUG, p_x: x, p_y: y, p_n: n }); }
+  function farmClear(x, y) { return rpc('garden_farm_clear', { p_church: SLUG, p_x: x, p_y: y }); }
+  function adminSetLandPrices(j, d) { return rpc('garden_admin_set_land_prices', { p_church: SLUG, p_jeon: j, p_dae: d }); }
+  function adminSetItemPrice(item, price) { return rpc('garden_admin_set_item_price', { p_church: SLUG, p_item: item, p_price: price }); }
   function history(limit, offset) { return rpc('garden_history', { p_church: SLUG, p_limit: Math.min(Math.max(+limit || 30, 1), 100), p_offset: Math.max(+offset || 0, 0) }); }
 
   /* ── 큐티 (dashboard.js 897 방식: 오늘 이전 최근 1건) ── */
@@ -179,6 +191,8 @@
     init: init, slug: function () { return SLUG; }, session: sess, hasConfig: function () { return !!(SB && AK); },
     state: state, sync: sync, setPlant: setPlant, setProfile: setProfile, history: history,
     farm: farm, farmBuy: farmBuy, farmPlant: farmPlant, farmPick: farmPick, pickFruit: pickFruit,
+    wallet: wallet, water: water, farmBuyMany: farmBuyMany, farmConvert: farmConvert, shop: shop, shopBuy: shopBuy,
+    farmPlantItem: farmPlantItem, farmHarvest: farmHarvest, farmClear: farmClear, adminSetLandPrices: adminSetLandPrices, adminSetItemPrice: adminSetItemPrice,
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,
     attend: attend, hasSermon: hasSermon, weather: weather,
     lastState: lastState, saveState: saveState, notReady: notReady, isNetwork: isNetwork

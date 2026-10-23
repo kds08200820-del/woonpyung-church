@@ -518,3 +518,97 @@ button.gf-buy:focus-visible { outline: none; }
 }
 .g-fruit.noimg, .gf-fruit.noimg { border-radius: 50%; background: #8E5A8A; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .7), 0 2px 4px rgba(74, 59, 49, .3); }
 .g-fruit.noimg { width: 30px; height: 30px; }
+
+/* ============================================================
+   3단계 (2026-10-23): 마이월렛 · 물 주기 · 꽃집 · 땅 종류(전·대)·여러 칸 고르기
+   ============================================================ */
+/* 마이월렛 */
+.g-wl-top { margin: 4px 0 10px; }
+.g-wl-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.g-wl-sum > div { background: var(--g-soft); border: 1px solid var(--g-line2); border-radius: 14px; padding: 10px 12px; }
+.g-wl-sum span { display: block; font-size: .76rem; color: var(--g-fg2); font-weight: 700; }
+.g-wl-sum b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.g-wl-box { border: 1px solid var(--g-line2); border-radius: 14px; background: var(--g-panel); margin-bottom: 8px; }
+.g-wl-box summary { cursor: pointer; padding: 10px 14px; font-weight: 800; font-size: .9rem; list-style-position: inside; }
+.g-wl-list { list-style: none; margin: 0; padding: 0 14px 10px; display: grid; gap: 4px; }
+.g-wl-list li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--g-line2); font-size: .88rem; }
+.g-wl-list li:last-child { border-bottom: 0; }
+.g-wl-list small { color: var(--g-fg3); font-size: .74rem; }
+.g-wl-list b { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--g-accent); }
+.g-wl-list b.is-out { color: var(--g-fg2); }
+.g-wl-h { font-size: .9rem; margin: 14px 0 4px; }
+/* 레일 단추 */
+#gWaterBtn { background: #5E9BC9; }
+#gWaterBtn:hover { background: #4F8BB8; }
+#gWaterBtn[disabled] { background: var(--g-sky); color: var(--g-fg2); opacity: 1; }
+/* 내 땅: 도구 줄 · 대지 · 고르기 · 식물 상태 */
+.gf-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.gf-tools .g-btn { min-height: 40px; padding: 0 14px; font-size: .84rem; }
+.gf-top-dae { background-color: #D8C7AA; background-image: url(../images/garden/farm/tex-dae.webp); }
+.gf-top-grass, .gf-top-soil, .gf-top-dae { background-size: 0 0; }
+.gf-side-dae { background: #9C8667; }
+.gf-cell.is-picked .gf-top { box-shadow: inset 0 0 0 4px var(--g-coral); filter: brightness(1.06); }
+button.gf-buy.is-picked .gf-top-buy { background-color: rgba(233, 128, 95, .35); }
+.gf-board.is-converting .gf-cell:not(.is-pickable):not(.gf-buy) { opacity: .55; }
+.gf-board.is-converting .gf-cell.is-pickable .gf-top { box-shadow: inset 0 0 0 2px rgba(233, 128, 95, .7); }
+.gf-pick { top: 50%; z-index: 6; background: var(--g-coral); color: #fff; }
+.gf-st-dead { filter: grayscale(.85) sepia(.5) brightness(.85); transform-origin: bottom center; transform: rotate(-6deg); }
+.gf-st-done, .gf-st-rest { filter: saturate(.55); }
+.gf-st-full { filter: saturate(1.2) brightness(1.04); }
+.gf-warn { top: auto; bottom: -14px; color: #fff; background: #8A6A4E; }
+.gf-water { top: auto; bottom: -14px; color: #2F5F86; background: #E2F0FA; }
+.gf-s-t2 { margin-top: 6px; }
+.gf-s-list { margin: 0 0 6px; padding-left: 18px; color: var(--g-fg2); font-size: .9rem; line-height: 1.6; }
+.gf-crop em { font-style: normal; color: var(--g-accent); font-weight: 800; }
+.gf-prices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.gf-prices label { display: flex; flex-direction: column; gap: 4px; font-size: .84rem; font-weight: 700; color: var(--g-fg2); }
+.gf-prices input { min-height: 44px; border-radius: 12px; border: 1px solid var(--g-line); padding: 0 12px; font: inherit; font-size: 1rem; color: var(--g-fg); background: #fff; }
+/* 꽃집 */
+.g-mbox-shop { width: min(980px, calc(100vw - 32px)); max-width: none; height: min(880px, calc(100dvh - 40px)); display: flex; flex-direction: column; padding: 18px 18px 12px; }
+.gs-bag { max-width: 100%; white-space: normal; line-height: 1.4; }
+.gs-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.gs-tab { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--g-line); background: var(--g-panel); color: var(--g-fg2); font: inherit; font-weight: 800; font-size: .86rem; cursor: pointer; }
+.gs-tab.is-on { background: var(--g-fg); border-color: var(--g-fg); color: #fff; }
+.gs-tab.gs-soon { cursor: default; opacity: .6; font-weight: 700; }
+.gs-when { display: block; margin-top: 4px; font-size: .76rem; font-weight: 700; color: var(--g-fg3); }
+.gs-when.is-now { color: #4E7A4A; }
+.gf-crop.gf-off small { color: #9A5A3A; }
+.gs-tab.gs-soon small { font-size: .7rem; font-weight: 700; color: var(--g-fg3); }
+@media (max-width: 640px) { .gs-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: -4px; margin-right: -4px; padding: 0 4px 2px; } .gs-tabs::-webkit-scrollbar { display: none; } .gs-tab { flex: 0 0 auto; white-space: nowrap; } }
+.gs-list { flex: 1 1 auto; min-height: 0; overflow: auto; margin-top: 12px; padding-right: 4px; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px; align-content: start; }
+.gs-lead, .gs-sub { grid-column: 1 / -1; margin: 0; }
+.gs-lead { color: var(--g-fg2); font-size: .88rem; }
+.gs-sub { font-size: .95rem; margin-top: 10px; }
+.gs-card { background: var(--g-panel); border: 1px solid var(--g-line2); border-radius: 18px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.gs-card.is-no { background: var(--g-soft); }
+.gs-card.is-no img { filter: grayscale(.6); opacity: .8; }
+.gs-card-h { display: grid; grid-template-columns: 72px 1fr auto; gap: 10px; align-items: center; }
+.gs-card-h img { width: 72px; height: 72px; object-fit: contain; }
+.gs-card-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gs-card-t b { font-size: 1rem; }
+.gs-card-t small { color: var(--g-fg2); font-size: .76rem; line-height: 1.4; }
+.gs-fit { align-self: flex-start; font-size: .72rem; font-weight: 800; border-radius: 999px; padding: 2px 8px; }
+.gs-fit-good { background: var(--g-mint); color: var(--g-sage-ink); }
+.gs-fit-ok { background: var(--g-butter); color: #7A5A1C; }
+.gs-fit-no { background: var(--g-panel2); color: var(--g-fg3); }
+.gs-price { text-align: right; white-space: nowrap; }
+.gs-price b { font-size: 1.15rem; }
+.gs-price span { display: block; font-size: .72rem; color: var(--g-fg2); font-weight: 700; }
+.gs-admin input { width: 76px; min-height: 36px; border-radius: 10px; border: 1px solid var(--g-sage-line); padding: 0 8px; font: inherit; font-weight: 800; text-align: right; }
+.gs-spec summary { cursor: pointer; font-size: .84rem; font-weight: 800; color: var(--g-sage-ink); }
+.gs-spec dl { margin: 6px 0 0; display: grid; gap: 4px; }
+.gs-spec dl > div { display: grid; grid-template-columns: 78px 1fr; gap: 8px; font-size: .82rem; line-height: 1.45; }
+.gs-spec dt { color: var(--g-fg3); font-weight: 700; }
+.gs-spec dd { margin: 0; color: var(--g-fg); }
+.gs-src { margin: 6px 0 0; font-size: .72rem; color: var(--g-fg3); word-break: break-all; }
+.gs-buy { display: flex; align-items: center; gap: 8px; margin-top: auto; }
+.gs-have { flex: 1 1 auto; font-size: .78rem; color: var(--g-fg2); font-weight: 700; }
+.gs-qty { display: inline-flex; align-items: center; border: 1px solid var(--g-line); border-radius: 999px; background: #fff; }
+.gs-qty button { width: 36px; height: 40px; border: 0; background: none; font: inherit; font-size: 1.1rem; font-weight: 800; color: var(--g-fg); cursor: pointer; border-radius: 999px; }
+.gs-qty b { min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+.gs-go { min-height: 40px; padding: 0 14px; font-size: .84rem; }
+@media (max-width: 760px) {
+  .g-mbox-shop { width: 100vw; height: 92dvh; padding: 14px 12px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .gs-list { grid-template-columns: 1fr; }
+  .g-wl-sum b { font-size: 1rem; }
+}
