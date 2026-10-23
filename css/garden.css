@@ -400,7 +400,7 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
 @media (max-width: 760px) {
   :root { --g-bar: 66px; }
   /* 폰: 장면 → 달란트·할 일(레일) → 서재 (2026-10-23 담임목사 지시: 서재는 아래로) */
-  .g-root { display: flex; flex-direction: column; padding: 0 0 calc(var(--g-bar) + env(safe-area-inset-bottom, 0px) + 18px); }
+  .g-root { display: flex; flex-direction: column; align-items: stretch; padding: 0 0 calc(var(--g-bar) + env(safe-area-inset-bottom, 0px) + 18px); }   /* stretch: 태블릿 규칙의 align-items:start 가 남으면 장면 폭이 0 */
   .g-scene { order: 0; } .g-rail { order: 1; } .g-study { order: 2; }
   .g-scene { position: relative; height: 56dvh; min-height: 320px; top: auto; left: auto; right: auto; border-radius: 0 0 26px 26px; }
   .g-panel { margin: 12px 14px 0; padding: 16px 16px 18px; }
