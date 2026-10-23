@@ -156,7 +156,7 @@ window.GardenVisit = (function () {
     box.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('[data-act]'); if (!b || b.disabled) return;
       var li = b.closest('.gv-nbi'), id = +li.getAttribute('data-id'), act = b.getAttribute('data-act');
-      if (act === 'go') { if (V.inv) HUD.closeModal(V.inv); visit(+li.getAttribute('data-plot')); return; }
+      if (act === 'go') { var gp = +li.getAttribute('data-plot'); HUD.closeThen(V.inv, function () { visit(gp); }); return; }
       if (act === 'gift') { giftForm(li, +li.getAttribute('data-plot'), (li.querySelector('.gv-nbt b') || {}).textContent); return; }
       if ((act === 'cut' || act === 'cancel') && !b.classList.contains('is-arm')) {   // 끊기·취소는 두 번 눌러야
         b.classList.add('is-arm'); b.textContent = t('nb.sure');
@@ -212,7 +212,7 @@ window.GardenVisit = (function () {
       var nick = ((HUD.state() || {}).me || {}).nickname || '';
       try { navigator.share({ title: t('invite.share.title'), text: t('invite.share.text', { name: nick }), url: $('gvUrl').value }).catch(function () { }); } catch (e) { }
     });
-    $('gvPreview').addEventListener('click', function () { var p = V.me && V.me.plot_no; if (!p) return; if (V.inv) HUD.closeModal(V.inv); visit(p); });
+    $('gvPreview').addEventListener('click', function () { var p = V.me && V.me.plot_no; if (!p) return; HUD.closeThen(V.inv, function () { visit(p); }); });
     bindHide($('gvMyGb'), drawMyBook);
     bindNeighbors();
   }
@@ -220,6 +220,7 @@ window.GardenVisit = (function () {
   /* ── 방문하기 창: 정원을 연 성도 목록 ── */
   function openList() {
     var rec = HUD.openModal('gmVisit'); if (!rec) return;
+    V.listRec = rec;
     var box = $('gvList');
     box.innerHTML = '<p class="g-empty">' + esc(t('visit.loadingList')) + '</p>';
     SDK.visitList().then(function (r) {
@@ -239,8 +240,9 @@ window.GardenVisit = (function () {
   function bindList() {
     $('gvList').addEventListener('click', function (e) {
       var c = e.target.closest && e.target.closest('.gv-card'); if (!c) return;
-      var top = document.getElementById('gmVisit'); if (top && !top.hidden) { var x = top.querySelector('[data-close]'); if (x) x.click(); }
-      visit(+c.getAttribute('data-plot'), c);
+      // 목록 창이 다 닫힌(뒤로 가기가 끝난) 다음 연다 — 곧바로 열면 늦은 '뒤로'가 방금 연 정원을 닫았다
+      var plot = +c.getAttribute('data-plot');
+      HUD.closeThen(V.listRec, function () { visit(plot); });
     });
   }
 

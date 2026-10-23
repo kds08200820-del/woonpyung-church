@@ -154,14 +154,14 @@ window.GardenGuide = (function () {
   function onAct(e) {
     var b = e.target.closest && e.target.closest('[data-do]'); if (!b) return;
     var what = b.getAttribute('data-do'), kind = b.getAttribute('data-kind');
-    if (G.rec) HUD.closeModal(G.rec);
-    setTimeout(function () {
+    // 안내 창의 '뒤로 가기'가 끝난 다음 다음 창을 연다(곧바로 열면 늦은 '뒤로'가 새 창을 닫는다)
+    HUD.closeThen(G.rec, function () {
       if (what === 'qt') { if (HUD.qt()) HUD.openQt(); }
       else if (what === 'farm') { if (FARM) FARM.open(); }
       else if (what === 'visit') { if (window.GardenVisit) window.GardenVisit.openList(); }
       else if (what === 'week') { if (window.GardenWeather) window.GardenWeather.open(); }
       else if (what === 'todo') { var tb = document.querySelector('.g-todo-btn[data-kind="' + kind + '"]'); if (tb) tb.click(); }
-    }, 80);
+    });
   }
 
   function init(o) {

@@ -138,6 +138,8 @@ body.garden [hidden] { display: none !important; }
 .g-bar-track { height: 14px; margin: 8px 0 6px; border-radius: 999px; background: var(--g-panel2); overflow: hidden; box-shadow: inset 0 1px 3px rgba(120,90,60,.12); }
 .g-bar-fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #a9d6a8, #4FA374); transition: width .8s cubic-bezier(.2,.8,.2,1); }
 .g-grow-done { font-size: .8rem; color: var(--g-fg3); margin: 0; }
+.g-grow-mine { font-size: .84rem; color: var(--g-fg2); margin: 4px 0 0; line-height: 1.55; word-break: keep-all; }
+.g-grow-mine[hidden] { display: none; }
 
 /* ===== 예배 띠 ===== */
 .g-banner {

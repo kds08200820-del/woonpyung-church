@@ -71,6 +71,17 @@ window.GardenHud = (function () {
     if (!rec || rec.closed) return;
     if (rec.nav && window.ModalNav && ModalNav.count() === rec.depth) ModalNav.close(); else rec.doClose();
   }
+  // 창을 닫고, 그 '뒤로 가기'(ModalNav — 늦게 끝난다)가 끝난 다음 fn. 닫자마자 입체 창·다른 창을 열면
+  // 새 창이 history 를 쌓은 뒤에 늦은 '뒤로'가 와서 새 창을 바로 닫아 버린다(이웃 정원 방문이 안 열리던 까닭, 2026-10-23)
+  function closeThen(rec, fn) {
+    if (!rec || rec.closed) { fn(); return; }
+    var done = false;
+    function go() { if (done) return; done = true; window.removeEventListener('popstate', onPop); fn(); }
+    function onPop() { setTimeout(go, 0); }
+    window.addEventListener('popstate', onPop);
+    closeModal(rec);
+    if (rec.closed) go(); else setTimeout(go, 700);
+  }
   function recOf(id) { for (var i = mstack.length - 1; i >= 0; i--) if (mstack[i].id === id) return mstack[i]; return null; }
   function topModal() { return mstack[mstack.length - 1] || null; }
   function isTop(rec) { return !!rec && topModal() === rec && (!rec.nav || !window.ModalNav || ModalNav.count() === rec.depth); }
@@ -855,7 +866,7 @@ window.GardenHud = (function () {
 
   return {
     init: init, render: render, state: function () { return H.state; }, setState: function (s) { H.state = s; },
-    toast: toast, openModal: openModal, closeModal: closeModal, openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
+    toast: toast, openModal: openModal, closeModal: closeModal, closeThen: closeThen,openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
     loadQt: loadQt, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
     syncPlot: syncPlot, renderTodo: renderTodo, garden: garden, speciesName: speciesName, stageName: stageName,
     todoItems: todoItems, growthInfo: growthInfo, qt: function () { return H.qt || null; }, fruitRefresh: renderFruitBtn,
