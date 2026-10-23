@@ -104,7 +104,7 @@ window.GardenShop = (function () {
   }
   function card(it) {
     var sp = it.specs || {}, q = S.qty[it.slug] || 1, no = it.fit === 'no', have = invOf(it.slug), afford = +S.data.balance >= +it.price * q;
-    var fit = '<span class="gs-fit gs-fit-' + it.fit + '">' + esc(t('shop.fit.' + it.fit)) + '</span>';
+    var fit = '<span class="gs-fit gs-fit-' + it.fit + '">' + esc(t(isHouse(it) ? 'shop.fit.house' : 'shop.fit.' + it.fit)) + '</span>';   // 하우스 작물은 노지가 아니라 하우스에서 자란다
     var rows = SPEC_ORDER.filter(function (k) { return sp[k[0]]; }).map(function (k) { return '<div><dt>' + esc(t(k[1])) + '</dt><dd>' + esc(sp[k[0]]) + '</dd></div>'; }).join('');
     var xn = no ? null : xpNeed(it);
     if (xn) rows += '<div><dt>' + esc(t('shop.spec.xp')) + '</dt><dd>' + esc(t('shop.xp.' + (isHouse(it) ? it.category : tabOf(it)), { xp: I.fmtNum(xn.xp), d: I.fmtNum(xn.d), n: xn.xd })) + '</dd></div>';

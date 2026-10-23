@@ -119,7 +119,7 @@ window.GardenFarm = (function () {
     var src0 = fm || F.farm, ts = (src0 && src0.tiles) || [], out = [];
     ts.forEach(function (tl) {
       if (tl.x === 0 && tl.y === 0) return;
-      var o = { x: tl.x, y: tl.y, land: tl.land === 'dae' ? 'dae' : 'jeon', src: '', h: 0, dead: false, house: tl.building === 'greenhouse' };
+      var o = { x: tl.x, y: tl.y, land: tl.land === 'dae' ? 'dae' : 'jeon', src: '', h: 0, dead: false, house: tl.building === 'greenhouse' || isHouseItem(tl.item ? item(tl.item) : null) };
       var c = tl.crop ? crop(tl.crop) : null;
       if (c && tl.ripe_at) {
         var prog = 1 - Math.max(0, new Date(tl.ripe_at).getTime() - now()) / (c.grow_sec * 1000);

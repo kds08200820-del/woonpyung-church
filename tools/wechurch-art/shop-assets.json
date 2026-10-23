@@ -1,5 +1,5 @@
 {
-  "version": "20261023sh1",
+  "version": "20261024gh1",
   "theme": "shop",
   "out_root": "images/garden/shop",
   "comfy": {
@@ -39,7 +39,8 @@
   "notes": [
     "신앙 정원 꽃집 품목 그림 — 2026-10-23. GARDEN_ASSETS=tools/wechurch-art/shop-assets.json python tools/garden-art/gen_garden_assets.py gen|pick|export",
     "<slug>.webp = 흙 둔덕 위 다 자란 모습(내 땅 칸과 꽃집 카드에 함께 씀, 768→384). <slug>-fruit.webp = 하나씩 따는 열매(512→160). _sprout.webp = 막 싹튼 모습(모든 품목 공통)",
-    "슬러그는 supabase/20261023_1500_garden_wallet_shop.sql 의 garden_shop_items.slug 와 같아야 한다"
+    "슬러그는 supabase/20261023_1500_garden_wallet_shop.sql 의 garden_shop_items.slug 와 같아야 한다",
+    "하우스(유리 온실) 그림 — 2026-10-24: 하우스 작물 6가지(딸기·파프리카·멜론·참외·애플망고·바나나)와 열매 8가지(무화과·참다래 열매 포함), 스토어 온실 카드 greenhouse.webp. 슬러그는 supabase/20261024_0100_garden_greenhouse.sql"
   ],
   "assets": [
     {
@@ -1396,6 +1397,308 @@
       ],
       "prompt": "A rounded Korean azalea (jindallae) shrub in early spring full bloom, covered with soft magenta-pink flowers on thin brown branches before the leaves come out, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
       "seed": 15420,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "strawberry",
+      "group": "ui",
+      "out": "strawberry.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A low bushy strawberry plant with many trifoliate serrated green clay leaves and two small white flowers, absolutely no berries and nothing red, growing from a clearly visible small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16410,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "paprika",
+      "group": "ui",
+      "out": "paprika.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A bushy bell pepper plant with glossy oval green clay leaves tied to a thin wooden stake, a few small white flowers, absolutely no peppers, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16110,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "melon",
+      "group": "ui",
+      "out": "melon.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young melon vine with large round lobed green clay leaves and curly tendrils climbing a small wooden trellis, a few small yellow flowers, no melons, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16120,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "korean-melon",
+      "group": "ui",
+      "out": "korean-melon.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A low sprawling Korean melon (chamoe) vine with round lobed green clay leaves, curly tendrils and a few small yellow flowers, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16130,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "apple-mango",
+      "group": "ui",
+      "out": "apple-mango.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A small mango tree about one and a half meters tall with a short brown trunk and a rounded crown of long narrow glossy dark green clay leaves, no fruit, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16140,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "banana",
+      "group": "ui",
+      "out": "banana.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A young banana plant with a thick smooth green pseudostem and a few huge long paddle-shaped bright green clay leaves arching outward, no bananas, on a small dome-shaped mound of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16250,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "add": "a taller young banana plant about one meter high with four or five huge leaves"
+    },
+    {
+      "id": "strawberry-fruit",
+      "group": "ui",
+      "out": "strawberry-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single shiny ripe red strawberry with tiny yellow seeds and a fresh green leafy cap, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16160,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "paprika-fruit",
+      "group": "ui",
+      "out": "paprika-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "Two shiny blocky bell peppers, one bright red and one yellow, each with a short green stem, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16170,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "melon-fruit",
+      "group": "ui",
+      "out": "melon-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single round netted muskmelon with a pale green-beige rind covered in a fine raised white net pattern and a short T-shaped green stem, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16180,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "korean-melon-fruit",
+      "group": "ui",
+      "out": "korean-melon-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single oval bright yellow Korean melon (chamoe) with thin pale white stripes running from end to end, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16190,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "fig-fruit",
+      "group": "ui",
+      "out": "fig-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "Two ripe purple-brown figs, one whole and one cut in half showing pink seeded flesh, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16200,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "kiwi-fruit",
+      "group": "ui",
+      "out": "kiwi-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "One whole brown fuzzy kiwifruit and one half kiwifruit showing bright green flesh with a ring of tiny black seeds, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16210,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "apple-mango-fruit",
+      "group": "ui",
+      "out": "apple-mango-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A single ripe apple mango with a deep red blush over yellow-green skin and a short stem, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16320,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1,
+      "add": "the mango is oblong and kidney-shaped, longer than it is wide, clearly a mango"
+    },
+    {
+      "id": "banana-fruit",
+      "group": "ui",
+      "out": "banana-fruit.webp",
+      "gen": [
+        512,
+        512
+      ],
+      "final": [
+        160,
+        160
+      ],
+      "prompt": "A small bunch of four ripe curved yellow bananas joined at the stem, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16230,
+      "bg": "rembg",
+      "candidates": 1,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "greenhouse",
+      "group": "ui",
+      "out": "greenhouse.webp",
+      "gen": [
+        768,
+        768
+      ],
+      "final": [
+        384,
+        384
+      ],
+      "prompt": "A small glass greenhouse with a pitched gable glass roof, a thin white metal frame and a glass door at the front, rows of small green seedlings visible inside through clear glass panes, standing on a small patch of brown soil, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 16240,
       "bg": "rembg",
       "candidates": 1,
       "anchor": null,

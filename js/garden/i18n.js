@@ -730,6 +730,7 @@ window.GardenI18n = (function () {
     'shop.tab.house': '하우스',
     'shop.lead.house': '유리 온실과 하우스에서만 기르는 작물입니다. 하우스는 비어 있는 전 한 칸에 한 동을 짓습니다. 하우스 안 식물은 서리·추위·장마로 시들지 않고 철 상관없이 심지만, 비가 들지 않으니 물을 직접 줘야 합니다.',
     'shop.house.crops': '하우스 작물',
+    'shop.fit.house': '하우스 재배',
     'shop.house.name': '유리 온실',
     'shop.house.size': '비어 있는 전 한 칸에 한 동',
     'shop.house.have': '지은 하우스 {n}동',

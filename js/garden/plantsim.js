@@ -66,7 +66,7 @@ window.GardenPlant = (function () {
     var grown = xp == null ? age : Math.min(age, Math.floor(xp / xd));
     var water = {}; (waterDays || []).forEach(function (d) { water[d] = 1; });
     var base = m.root_mm || ROOT[type] || 40, deep = type !== 'annual' && type !== 'bulb', cap = base;
-    var house = !!(tile && tile.building === 'greenhouse');
+    var house = !!(tile && tile.building === 'greenhouse') || !!m.house;   // 하우스 작물은 하우스 칸에만 있다(이웃 정원은 building 이 없어 품목으로 안다)
     var out = { age: age, grown: grown, xp: xp, xpDay: xd, needXp: 0, alive: true, cause: '', stage: 'grow', label: '', needWater: false, moisture: base, ready: false, full: false, bloom: false, dryDays: 0, wetDays: 0 };
 
     // 물통을 심은 날부터(최근 92일 안에서) 하루씩
