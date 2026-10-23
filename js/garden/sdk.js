@@ -114,6 +114,7 @@
   function visitView(plot) { return rpc('garden_visit_view', { p_church: SLUG, p_plot: plot | 0 }); }
   function guestbookPost(plot, body) { return rpc('garden_guestbook_post', { p_church: SLUG, p_plot: plot | 0, p_body: String(body || '') }); }
   function guestbookHide(id) { return rpc('garden_guestbook_hide', { p_church: SLUG, p_id: id }); }
+  function pushKey() { return rpc('garden_push_key', { p_church: SLUG }); }   // 방명록 알림 열쇠 (20261023_2350 SQL)
   function neighborRequest(plot) { return rpc('garden_neighbor_request', { p_church: SLUG, p_plot: plot | 0 }); }
   function neighborRespond(id, accept) { return rpc('garden_neighbor_respond', { p_church: SLUG, p_id: id, p_accept: !!accept }); }
   function neighborRemove(id) { return rpc('garden_neighbor_remove', { p_church: SLUG, p_id: id }); }
@@ -223,7 +224,7 @@
     init: init, slug: function () { return SLUG; }, session: sess, hasConfig: function () { return !!(SB && AK); },
     state: state, sync: sync, setPlant: setPlant, setProfile: setProfile, history: history,
     farm: farm, farmBuy: farmBuy, farmPlant: farmPlant, farmPick: farmPick, pickFruit: pickFruit,
-    notices: notices, forecast: forecast, myRegion: myRegion, visitSet: visitSet, visitList: visitList, visitView: visitView, guestbookPost: guestbookPost, guestbookHide: guestbookHide,
+    notices: notices, forecast: forecast, myRegion: myRegion, visitSet: visitSet, visitList: visitList, visitView: visitView, guestbookPost: guestbookPost, guestbookHide: guestbookHide, pushKey: pushKey,
     gift: gift, neighborRequest: neighborRequest, neighborRespond: neighborRespond, neighborRemove: neighborRemove, neighborList: neighborList,
     wallet: wallet, water: water, farmBuyMany: farmBuyMany, farmConvert: farmConvert, shop: shop, shopBuy: shopBuy,
     farmPlantItem: farmPlantItem, farmHarvest: farmHarvest, farmClear: farmClear, adminSetLandPrices: adminSetLandPrices, adminSetItemPrice: adminSetItemPrice,

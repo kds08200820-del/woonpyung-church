@@ -109,7 +109,7 @@ window.GardenVisit = (function () {
     SDK.visitList().then(function (r) {
       if (!r || !r.ok) return;
       V.ok = true; V.me = r.me || {}; V.list = r.gardens || [];
-      row.hidden = false; setBadge(); toldUnread();
+      row.hidden = false; setBadge(); toldUnread(); tagPush();
       // 받은 주소(garden.html?visit=12)로 들어오면 그 정원으로 — 주소는 한 번 쓰고 지운다
       var q = null; try { q = new URLSearchParams(location.search).get('visit'); } catch (e) { }
       if (q && /^\d{1,6}$/.test(q)) { try { history.replaceState(history.state, '', location.pathname); } catch (e) { } visit(+q); }
@@ -123,6 +123,20 @@ window.GardenVisit = (function () {
     try { was = sessionStorage.getItem(k); sessionStorage.setItem(k, String(n)); } catch (e) { }
     if (was === String(n)) return;
     setTimeout(function () { HUD.toast(t('visit.gb.new', { n: I.fmtNum(n) }), 5000); }, 1500);
+  }
+
+  // 방명록 알림: 이 기기에 내 정원 알림 열쇠를 붙인다(OneSignal 태그 gk). 새 글이 오면 Apps Script 가 이 태그의 기기로 푸시
+  //   (apps-script/garden-guestbook-push.gs). 같은 열쇠면 다시 붙이지 않는다
+  function tagPush() {
+    if (!SDK.pushKey || !window.ONESIGNAL_APP_ID || !window.OneSignalDeferred) return;
+    SDK.pushKey().then(function (r) {
+      if (!r || !r.ok || !r.key) return;
+      var was = null; try { was = localStorage.getItem('g_gk'); } catch (e) { }
+      if (was === r.key) return;
+      window.OneSignalDeferred.push(function (OS) {
+        try { OS.User.addTag('gk', r.key); try { localStorage.setItem('g_gk', r.key); } catch (e) { } } catch (e) { }
+      });
+    }, function () { });
   }
 
   /* ── 초대하기 창 ── */
