@@ -81,7 +81,7 @@ window.GardenShop = (function () {
     var buy = no ? '' : '<div class="gs-buy"><span class="gs-have">' + esc(have ? t('shop.have', { n: have }) : '') + '</span>' +
       '<div class="gs-qty" role="group" aria-label="' + esc(t('shop.qty')) + '"><button type="button" data-q="-1" data-slug="' + esc(it.slug) + '" aria-label="' + esc(t('shop.qty.less')) + '">−</button><b>' + q + '</b><button type="button" data-q="1" data-slug="' + esc(it.slug) + '" aria-label="' + esc(t('shop.qty.more')) + '">+</button></div>' +
       '<button type="button" class="g-btn g-btn-primary gs-go" data-buy="' + esc(it.slug) + '"' + (afford ? '' : ' disabled') + '>' + esc(afford ? t('shop.buy', { p: tal(it.price * q) }) : t('shop.short')) + '</button></div>';
-    return '<article class="gs-card' + (no ? ' is-no' : '') + '">' + head + (rows ? '<details class="gs-spec"><summary>' + esc(t('shop.spec')) + '</summary><dl>' + rows + '</dl>' + (sp.src ? '<p class="gs-src">' + esc(t('shop.src')) + ' ' + esc(sp.src) + '</p>' : '') + '</details>' : '') + buy + '</article>';
+    return '<article class="gs-card' + (no ? ' is-no' : '') + '">' + head + (rows ? '<details class="gs-spec"><summary>' + esc(t('shop.spec')) + '</summary><dl>' + rows + '</dl></details>' : '') + buy + '</article>';
   }
 
   function onClick(e) {
