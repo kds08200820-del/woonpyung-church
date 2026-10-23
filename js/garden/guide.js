@@ -101,6 +101,8 @@ window.GardenGuide = (function () {
     var vr = $('gVisitRow');
     if (vr && !vr.hidden) nx.push('<li>' + esc(t('guide.next.visit')) + ' ' + act(t('guide.next.visitGo'), 'data-do="visit"') + '</li>');
     if (fs && fs.price > 0 && fs.balance >= fs.price) nx.push('<li>' + esc(t('guide.next.land')) + '</li>');
+    var ms = window.GardenStorage && window.GardenStorage.mission ? window.GardenStorage.mission() : null;   // 건축 미션(자산이 기준을 넘으면)
+    if (ms && ms.next) nx.unshift('<li>' + esc(t('guide.next.build', { step: ms.next.text })) + ' ' + act(t('guide.next.buildGo'), 'data-do="storage"') + '</li>');
     if (st.ss && st.ss.kids && st.ss.kids.length) nx.push('<li>' + esc(t('guide.next.ss')) + '</li>');
     if (nx.length) h += sec('next', '<ul class="gd-list gd-next">' + nx.join('') + '</ul>');
 
@@ -160,6 +162,7 @@ window.GardenGuide = (function () {
       else if (what === 'farm') { if (FARM) FARM.open(); }
       else if (what === 'visit') { if (window.GardenVisit) window.GardenVisit.openList(); }
       else if (what === 'week') { if (window.GardenWeather) window.GardenWeather.open(); }
+      else if (what === 'storage') { if (window.GardenStorage) window.GardenStorage.open(); }
       else if (what === 'todo') { var tb = document.querySelector('.g-todo-btn[data-kind="' + kind + '"]'); if (tb) tb.click(); }
     });
   }

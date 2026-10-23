@@ -932,3 +932,56 @@ button.g-chip-wx:focus-visible { outline: 3px solid var(--g-coral-ring); outline
 }
 /* 부부(가족) 이웃 */
 .gv-fam { margin-left: 4px; padding: 1px 7px; border-radius: 6px; background: var(--g-mint); color: var(--g-sage-ink); font-size: .7rem; font-weight: 800; vertical-align: 1px; }
+
+/* ===== 경제 가격표 · 나무 스토어 재고 · 나의 보관함 · 건축 미션 (2026-10-24) ===== */
+.g-btn-danger { background: var(--g-panel); color: #A33A2A; border-color: #A33A2A; }
+.g-btn-danger:hover { background: #FBEDEA; }
+.gf-mk { font-size: .82rem; line-height: 1.5; }
+.gf-mk.is-on { color: #9A5A3A; font-weight: 700; }
+.gf-warn { color: #A33A2A; font-size: .84rem; }
+/* 스토어: 거두면 받는 것 · 다 자란 나무(재고) */
+.gs-yield { margin: 0; font-size: .82rem; line-height: 1.45; color: var(--g-sage-ink); font-weight: 700; }
+.gs-stock-lead { font-weight: 800; color: var(--g-fg); }
+.gs-grown { margin-top: 2px; padding: 10px 12px; border-radius: 14px; background: var(--g-soft); border: 1px dashed var(--g-line); display: flex; flex-direction: column; gap: 6px; }
+.gs-grown-t { margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .9rem; }
+.gs-left { font-size: .82rem; font-weight: 800; color: var(--g-sage-ink); white-space: nowrap; }
+.gs-left.is-none { color: var(--g-fg3); }
+.gs-grown-m { margin: 0; font-size: .8rem; line-height: 1.45; color: var(--g-fg2); }
+.gs-admin-stock { display: inline-flex; align-items: center; gap: 6px; font-size: .76rem; font-weight: 700; color: var(--g-fg2); }
+.gs-admin-stock input { width: 64px; }
+/* 오른쪽 메뉴: 다음 미션 */
+.g-mission { margin-top: 16px; padding: 12px 14px 14px; border-radius: 18px; background: var(--g-soft); border: 1px solid var(--g-line2); }
+.g-mission .g-stitle { margin: 0 0 6px; }
+.g-mission-m { margin: 0; font-size: .88rem; font-weight: 700; line-height: 1.5; word-break: keep-all; }
+.g-mission-p { margin: 0 0 10px; font-size: .78rem; color: var(--g-fg2); }
+.g-mission .g-btn { width: 100%; }
+/* 나의 보관함 */
+.gst-body { display: block; }
+.gst-box summary { overflow: hidden; }
+.gst-sum { float: right; font-size: .78rem; font-weight: 700; color: var(--g-fg3); }
+.gst-total { display: flex; align-items: baseline; gap: 6px; margin: 0; padding: 0 14px 6px; font-size: .86rem; color: var(--g-fg2); }
+.gst-total b { font-size: 1.3rem; color: var(--g-fg); font-variant-numeric: tabular-nums; }
+.gst-box .g-wl-note { padding: 0 14px; }
+.gst-steps { list-style: none; margin: 0; padding: 0 14px 12px; display: grid; gap: 8px; }
+.gst-step { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--g-line2); }
+.gst-step:last-child { border-bottom: 0; }
+.gst-chk { width: 24px; height: 24px; border-radius: 999px; border: 2px solid var(--g-sage-line); display: grid; place-items: center; font-size: .8rem; font-weight: 800; color: #fff; }
+.gst-step.is-done .gst-chk { background: #2F6B4F; border-color: #2F6B4F; }
+.gst-st { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gst-st b { font-size: .9rem; }
+.gst-st small { font-size: .78rem; line-height: 1.45; color: var(--g-fg2); word-break: keep-all; }
+.gst-step.is-done .gst-st b { color: var(--g-fg2); }
+.gst-step.is-soon { opacity: .7; }
+.gst-soon { font-size: .7rem; font-weight: 700; color: var(--g-fg3); }
+.gst-bar { display: block; height: 8px; margin: 4px 0 0; }
+.gst-bar .g-bar-fill { display: block; }
+.gst-go { min-height: 36px; padding: 0 12px; font-size: .8rem; white-space: nowrap; }
+.g-wl-list b.is-in { color: var(--g-accent); }
+@media (max-width: 520px) { .gst-step { grid-template-columns: 26px 1fr; } .gst-go { grid-column: 2; justify-self: start; } }
+/* 품목 판의 단추가 셋 넘으면 줄을 바꾼다(거두기·베기·팔기·캐내기) */
+.gf-s-acts { flex-wrap: wrap; }
+.gf-s-acts .g-btn { flex: 0 1 auto; white-space: nowrap; }
+.gs-grown .gs-buy { flex-wrap: wrap; justify-content: flex-end; }
+.gs-grown .gs-have { display: none; }
+.gs-grown .gs-go { white-space: nowrap; }
+.gs-admin-stock { flex: 1 0 100%; }

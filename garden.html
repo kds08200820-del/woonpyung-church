@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261023lv3" />
+  <link rel="stylesheet" href="css/garden.css?v=20261024ec1" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -93,7 +93,16 @@
           <button type="button" class="g-btn g-btn-primary" id="gFruitBtn" hidden></button>
           <button type="button" class="g-btn g-btn-line" id="gFarmBtn" hidden data-i18n="farm.open"></button>
           <button type="button" class="g-btn g-btn-line" id="gShopBtn" hidden data-i18n="shop.open"></button>
+          <button type="button" class="g-btn g-btn-line" id="gStorageBtn" hidden aria-haspopup="dialog" data-i18n="storage.open"></button>
         </div>
+      </section>
+      <!-- 다음 미션: 집 지을 준비 (2026-10-23 담임목사 — 일정 수준의 자산이 모이면) — storage.js 가 채운다 -->
+      <section class="g-mission" id="gMission" hidden aria-labelledby="gMissionT">
+        <h3 class="g-stitle" id="gMissionT" data-i18n="build.title"></h3>
+        <p class="g-mission-m" id="gMissionM"></p>
+        <div class="g-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="gMissionT"><div class="g-bar-fill" id="gMissionFill"></div></div>
+        <p class="g-mission-p" id="gMissionP"></p>
+        <button type="button" class="g-btn g-btn-line" id="gMissionBtn" aria-haspopup="dialog" data-i18n="build.see"></button>
       </section>
       <!-- 갤러리(우리들 소식) 바로 가기 -->
       <a class="g-gallery" href="story.html#album"><span class="g-gallery-t" data-i18n="rail.gallery"></span><span class="g-gallery-go" aria-hidden="true">›</span><span class="g-gallery-s" data-i18n="rail.gallery.sub"></span></a>
@@ -200,6 +209,20 @@
     </div>
   </div>
 
+  <!-- 나의 보관함: 내 자산 · 다음 미션 · 건축 자재 · 심지 않은 씨앗·묘목 · 배운 교육 · 다녀온 여행 · 지은 집 (2026-10-23 담임목사) -->
+  <div class="g-modal" id="gmStorage" hidden>
+    <div class="g-backdrop" data-close></div>
+    <div class="g-mbox g-mbox-store g-mbox-storage" role="dialog" aria-modal="true" aria-labelledby="gmStorageTitle">
+      <span class="g-grab" aria-hidden="true"></span>
+      <button type="button" class="g-mclose" data-close data-i18n-aria="common.close">&times;</button>
+      <div class="g-mhead">
+        <h2 class="g-mtitle" id="gmStorageTitle" data-i18n="storage.title"></h2>
+        <p class="g-msub" data-i18n="storage.sub"></p>
+      </div>
+      <div class="gst-body" id="gstBody"></div>
+    </div>
+  </div>
+
   <!-- 안내 도우미 (하루 처음 들어올 때 · 내 모습 칸의 '오늘의 안내') -->
   <div class="g-modal" id="gmGuide" hidden>
     <div class="g-backdrop" data-close></div>
@@ -280,18 +303,19 @@
   <script src="js/bulletins-live.js?v=20261010sum1"></script>
   <script src="js/layout.js?v=20261023lib1"></script>
   <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/garden/i18n.js?v=20261023lv2"></script>
-  <script src="js/garden/sdk.js?v=20261023wx1"></script>
+  <script src="js/garden/i18n.js?v=20261024ec1"></script>
+  <script src="js/garden/sdk.js?v=20261024ec1"></script>
   <script src="js/garden/scene.js?v=20261023fr1"></script>
-  <script src="js/garden/hud.js?v=20261023lv2"></script>
-  <script src="js/garden/plantsim.js?v=20261023ws3"></script>
-  <script src="js/garden/shop.js?v=20261023ns1"></script>
-  <script src="js/garden/farm.js?v=20261023vf1"></script>
+  <script src="js/garden/hud.js?v=20261024ec1"></script>
+  <script src="js/garden/plantsim.js?v=20261024ec1"></script>
+  <script src="js/garden/shop.js?v=20261024ec1"></script>
+  <script src="js/garden/farm.js?v=20261024ec1"></script>
+  <script src="js/garden/storage.js?v=20261024ec1"></script>
   <script src="js/garden/garden3d.js?v=20261023wx1"></script>
   <script src="js/garden/visit.js?v=20261023gb1"></script>
-  <script src="js/garden/guide.js?v=20261023vf1"></script>
+  <script src="js/garden/guide.js?v=20261024ec1"></script>
   <script src="js/garden/region.js?v=20261023wx1"></script>
   <script src="js/garden/weather.js?v=20261023wx1"></script>
-  <script src="js/garden/main.js?v=20261023wx1"></script>
+  <script src="js/garden/main.js?v=20261024ec1"></script>
 </body>
 </html>

@@ -12,6 +12,8 @@
    · 꽃: 꽃 피는 달에 피고, 사흘 내리 해가 6시간 넘게 나면 만개
    · 마음(XP): 심었다고 자라지 않는다. 자란 날 = least(심은 지 날수, 심은 뒤 쌓인 XP ÷ 하루치(10)) — 신앙생활이 곧 관심
      (날씨·물은 실제 날수로 셈하고, 자람·꽃·열매는 자란 날로 셈한다. 서버 garden_farm_harvest 와 같은 셈)
+   · 수확 방식(model.harvest, 20261024 가격표): once 채소는 익은 뒤 window_days(14) 지나면 '때를 놓쳐 시듦'(over) ·
+     season 열매 나무·timber 건축용 나무는 first_days(마음 날)로 자란다 — 거둘 것·벨 것은 서버(st)가 정하고 여기서는 모습만
    GardenPlant.weather(lat, lng) → Promise<rows> · GardenPlant.state(item, tile, rows, waterDays, now, tz, xpDay)
    ============================================================ */
 window.GardenPlant = (function () {
@@ -105,6 +107,16 @@ window.GardenPlant = (function () {
       out.stage = bloomNow ? (out.full ? 'full' : 'bloom') : (grown < 14 ? 'sprout' : 'grow');
       return out;
     }
+    if (type === 'tree' && (m.harvest === 'season' || m.harvest === 'timber')) {
+      var fdT = m.first_days || 120;
+      out.years = Math.floor(age / 365.25) + 1;
+      if (age >= fdT && grown < fdT) out.needXp = Math.ceil(fdT * xd - xp);
+      if (grown < fdT) { out.stage = grown < 30 ? 'sapling' : 'young'; out.daysLeft = fdT - grown; return out; }
+      if (m.harvest === 'timber') { out.stage = 'mature'; out.ready = true; return out; }
+      out.stage = inMonths(m.harvest_months, month) ? 'fruit' : (month === 12 || month <= 2 ? 'rest' : 'grow');
+      out.ready = out.stage === 'fruit';
+      return out;
+    }
     if (type === 'tree') {
       var years = grown / 365.25, yf = m.years_to_fruit || 3;
       out.years = Math.floor(age / 365.25) + 1;
@@ -122,7 +134,7 @@ window.GardenPlant = (function () {
     if (grown < fd * 0.3) out.stage = 'sprout';
     else if (grown < fd) { out.stage = 'grow'; out.daysLeft = fd - grown; }
     else if (grown < fd + wd) { out.stage = 'harvest'; out.ready = true; }
-    else out.stage = 'done';
+    else out.stage = m.harvest === 'once' ? 'over' : 'done';
     return out;
   }
   var CAUSE = { drought: '흙이 오래 말라 시들었습니다', wet: '비가 계속 와 뿌리가 썩었습니다', frost: '서리를 맞아 얼었습니다', cold: '견딜 수 있는 추위보다 추웠습니다' };
