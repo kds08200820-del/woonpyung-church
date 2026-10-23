@@ -38,6 +38,7 @@ window.GardenBuild = (function () {
       B.p = null;
       showChurch();
       if (SHOP && SHOP.refreshTabs) SHOP.refreshTabs();
+      if (window.GardenStorage && window.GardenStorage.refresh) window.GardenStorage.refresh();   // 건축 미션의 목표 집·빈 대지
       return B.ok;
     });
     return B.p;

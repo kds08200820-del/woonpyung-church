@@ -22,18 +22,22 @@ window.GardenStorage = (function () {
   /* ── 건축 미션: 단계와 다음 할 일 ── */
   function mission(b) {
     b = b || S.build; if (!b) return null;
-    var h = (b.houses && b.houses[0]) || { key: 'small', dae: 1, wood: 200, wage: 50 };
+    // 목표 집: 아직 짓지 않은 첫 집(작은 집 → 한옥 → 큰 집). 다 지었으면 마지막 집
+    var hs = b.houses || [], built = BLD() ? BLD().homes3d().map(function (x) { return x.kind; }) : [], h = null;
+    for (var j = 0; j < hs.length; j++) if (built.indexOf(hs[j].key) < 0) { h = hs[j]; break; }
+    h = h || hs[hs.length - 1] || { key: 'small', dae: 1, wood: 200, wage: 50 };
     var wood = +b.wood || 0, coming = +b.coming || 0, st = b.stock || {}, left = 0;
+    var dae = BLD() ? BLD().info().free : (+b.dae || 0);   // 집이 이미 앉은 대지는 빼고
     Object.keys(st).forEach(function (k) { left += +st[k] || 0; });
     var list = [
-      { key: 'dae', done: (+b.dae || 0) >= h.dae, text: t('build.s.dae', { n: h.dae }), sub: t('build.s.dae.sub', { have: I.fmtNum(+b.dae || 0) }), go: 'farm' },
+      { key: 'dae', done: dae >= h.dae, text: t('build.s.dae', { n: h.dae }), sub: t('build.s.dae.sub', { have: I.fmtNum(dae) }), go: 'farm' },
       { key: 'trees', done: wood + coming >= h.wood, text: t('build.s.trees'),
         sub: b.winter ? t('build.s.trees.winter', { n: I.fmtNum(left) }) : t('build.s.trees.sub', { n: I.fmtNum(+b.trees || 0), w: I.fmtNum(coming) }), go: 'timber' },
       { key: 'wood', done: wood >= h.wood, text: t('build.s.wood', { n: I.fmtNum(h.wood) }), sub: t('build.s.wood.sub', { have: I.fmtNum(wood), need: I.fmtNum(h.wood) }),
         bar: Math.max(0, Math.min(1, wood / h.wood)) },
       { key: 'wage', done: (+b.balance || 0) >= h.wage, text: t('build.s.wage', { n: I.fmtNum(h.wage) }), sub: t('build.s.wage.sub', { have: tal(b.balance) }) },
-      // 집 짓기 — 건재상(build.js, 20261024_0200)이 열리면 지을 수 있고, 한 채라도 지으면 마친 것
-      BLD() ? { key: 'house', done: BLD().homes3d().length > 0, text: t('build.s.house', { name: t('house.' + h.key) }), sub: t(BLD().homes3d().length ? 'build.s.house.done' : 'build.s.house.open'), go: 'build' }
+      // 집 짓기 — 건재상(build.js, 20261024_0200)이 열리면 지을 수 있고, 그 집을 지으면 마친 것(그다음 집이 새 미션)
+      BLD() ? { key: 'house', done: built.indexOf(h.key) >= 0, text: t('build.s.house', { name: t('house.' + h.key) }), sub: t(built.indexOf(h.key) >= 0 ? 'build.s.house.done' : 'build.s.house.open'), go: 'build' }
         : { key: 'house', done: false, soon: true, text: t('build.s.house', { name: t('house.' + h.key) }), sub: t('build.s.house.sub') }
     ];
     var prep = list.slice(0, 4), d = prep.filter(function (s) { return s.done; }).length, next = null;
@@ -152,5 +156,6 @@ window.GardenStorage = (function () {
     var btn = $('gStorageBtn'); if (btn) btn.addEventListener('click', function () { open(); });
     var mb = $('gMissionBtn'); if (mb) mb.addEventListener('click', function () { open(); });
   }
-  return { init: init, open: open, setFarm: setFarm, mission: function () { return S.build && S.build.active ? mission(S.build) : null; } };
+  return { init: init, open: open, setFarm: setFarm, mission: function () { return S.build && S.build.active ? mission(S.build) : null; },
+    refresh: renderMission };   // 집·교회 자료(build.js)를 받은 뒤 미션 칸을 다시
 })();
