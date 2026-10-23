@@ -106,9 +106,8 @@
       art: { hills: SCENE.asset('mid/hills.webp'), clouds: SCENE.asset('sky/clouds-overlay.webp'), soil: 'images/garden/farm/tex-soil.webp', dae: 'images/garden/farm/tex-dae.webp' } };
   }
   function open3d(btn) {
-    var st = M.state || {}, g = HUD.garden() || {}, me = st.me || {}, ch = M.church || {}, FARM = window.GardenFarm;
+    var st = M.state || {}, g = HUD.garden() || {}, FARM = window.GardenFarm;
     var sp = g.species || 'sunflower', stg = Math.max(0, Math.min(5, g.stage | 0));
-    var pic = document.querySelector('#gMePic img'), nick = me.nickname || '';
     var land = null, fr = st.fruit;
     function landNow() { var f = FARM.state() || {}; return { tiles: FARM.sceneList(), max: f.max || 4 }; }
     if (FARM && fr !== undefined && !M.offline) land = FARM.state() ? Promise.resolve(landNow()) : FARM.reload().then(landNow, function () { return null; });
@@ -117,7 +116,6 @@
       title: t('g3d.title'), sub: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg),
       opener: btn,
       plant: { src: SCENE.asset('plants/' + sp + '-' + stg + '.webp'), name: (g.plant_name || HUD.speciesName(sp)) + ' · ' + HUD.stageName(sp, stg), bubble: treeFruit },
-      character: pic ? { src: pic.getAttribute('src'), name: nick ? t('g3d.me', { name: nick }) : '' } : null,
       land: land,
       // 열매 말풍선: 믿음 나무면 열매 따기, 밭이면 내 땅 창
       onBubble: function (kind) { setTimeout(function () { var fb = document.getElementById('gFruitBtn'); if (kind === 'tree' && fb && !fb.hidden && !fb.disabled) fb.click(); else if (FARM) FARM.open(); }, 60); },

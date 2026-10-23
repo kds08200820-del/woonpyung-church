@@ -279,7 +279,6 @@ window.GardenVisit = (function () {
       return {
         title: r.mine ? t('visit.title.mine') : t('visit.title', { name: own.nickname || '' }), sub: pl.text,
         plant: { src: SCENE.asset('plants/' + pl.sp + '-' + pl.si + '.webp'), name: pl.text },
-        character: { src: avatarSrc(own.avatar_key, own.avatar_url), name: own.nickname || '' },
         land: { tiles: tiles, max: max }, side: side, sideLabel: t('visit.gb.btn', { n: (r.guestbook || []).length })
       };
     }, function (e) { return { error: whyText(null, e) }; });
