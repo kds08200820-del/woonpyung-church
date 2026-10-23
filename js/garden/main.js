@@ -167,7 +167,9 @@
       if (window.GardenVisit && !M.offline) window.GardenVisit.start();   // 초대하기·방문하기 (서버에 기능이 있을 때만 단추가 보인다)
       // 내 땅(밭)을 메인 장면에도 — 땅 기능이 있는 서버(state.fruit)일 때만, 창을 열지 않고 조용히 불러온다
       var s2 = M.state || st;
-      if (window.GardenFarm && s2 && s2.fruit !== undefined && !M.offline) window.GardenFarm.reload();
+      var farmP = window.GardenFarm && s2 && s2.fruit !== undefined && !M.offline ? window.GardenFarm.reload() : null;
+      // 안내 도우미: 하루 처음 들어올 때(밭·날씨를 받은 뒤, 첫 심기 창이 없을 때)
+      if (window.GardenGuide) Promise.all([farmP, M.wx ? null : refreshWeather()]).then(function () { window.GardenGuide.daily(); }, function () { window.GardenGuide.daily(); });
     });
   }
   function boot() {
@@ -177,6 +179,7 @@
     if (window.GardenShop) window.GardenShop.init({ i18n: I, sdk: SDK, hud: HUD });
     if (window.GardenFarm) window.GardenFarm.init({ i18n: I, sdk: SDK, hud: HUD, shop: window.GardenShop, plant: window.GardenPlant });
     if (window.GardenVisit) window.GardenVisit.init({ i18n: I, sdk: SDK, hud: HUD, scene: SCENE, farm: window.GardenFarm, base3d: base3d });
+    if (window.GardenGuide) window.GardenGuide.init({ i18n: I, sdk: SDK, hud: HUD, scene: SCENE, farm: window.GardenFarm, ctx: function () { return { wx: M.wx, church: M.church, offline: M.offline }; } });
     if (reduceMotion()) document.documentElement.classList.add('g-reduce');
     M.bootDay = I.todayStr();
     if (/(^|[#&])access_token=/.test(location.hash || '')) { signing(); return; }

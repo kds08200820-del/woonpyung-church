@@ -72,7 +72,7 @@ window.GardenVisit = (function () {
   /* ── 오른쪽 메뉴 단추 ── */
   function setBadge() {
     var bd = $('gInviteBadge'), n = ((V.me && V.me.unread) | 0) + ((V.me && V.me.requests) | 0); if (!bd) return;
-    bd.hidden = !n; bd.textContent = t('invite.badge', { n: n });
+    bd.hidden = !n; bd.textContent = t('invite.badge', { n: n }); bd.setAttribute('aria-label', t('invite.badge.aria', { n: n }));
   }
   function start() {
     var row = $('gVisitRow'); if (!row || V.started) return;

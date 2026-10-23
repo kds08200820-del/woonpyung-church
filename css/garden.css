@@ -789,3 +789,50 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
 .gv-nbbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--g-soft); border: 1px solid var(--g-line2); font-size: .84rem; color: var(--g-fg2); }
 .gv-nbbar[hidden] { display: none; }
 .gv-nbbar .gv-nb-b.is-arm { border-color: var(--g-coral); color: var(--g-coral-p); }
+/* ============================================================
+   안내 도우미 — js/garden/guide.js (2026-10-23)
+   ============================================================ */
+.g-guide-btn { margin-top: -2px; }
+.g-guide-btn[hidden] { display: none; }
+.g-mbox-guide { width: min(620px, calc(100vw - 32px)); max-height: min(880px, calc(100dvh - 40px)); overflow-y: auto; }
+.gd-head { display: flex; align-items: flex-end; gap: 14px; padding-right: 40px; margin-bottom: 8px; }
+.gd-pic { flex: 0 0 auto; width: 86px; height: 96px; overflow: hidden; border-radius: 18px; background: var(--g-soft); border: 1px solid var(--g-line2); }
+.gd-pic img { display: block; width: 130%; max-width: none; margin: -4% 0 0 -15%; }
+.gd-say .g-mtitle { margin: 0 0 4px; }
+.gd-lead { margin: 0; color: var(--g-fg); font-size: .95rem; line-height: 1.6; word-break: keep-all; }
+.gd-body { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.gd-sec { padding: 12px 14px; border-radius: 16px; background: var(--g-panel); border: 1px solid var(--g-line2); }
+.gd-h { margin: 0 0 8px; font-size: .86rem; color: var(--g-fg2); font-weight: 800; }
+.gd-word { display: flex; flex-direction: column; gap: 2px; margin: 0 0 10px; }
+.gd-word small { color: var(--g-fg2); }
+.gd-ok { margin: 0; color: var(--g-sage-ink); font-weight: 700; font-size: .9rem; }
+.gd-todo { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.gd-todo li { display: flex; align-items: center; gap: 10px; }
+.gd-tt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.gd-tt b { font-size: .92rem; }
+.gd-tt small { color: var(--g-fg2); font-size: .78rem; }
+.gd-tt .gd-rw { color: var(--g-coral-p); font-weight: 700; }
+.gd-act { min-height: 38px; padding: 0 14px; font-size: .86rem; flex: 0 0 auto; }
+.gd-list { margin: 0 0 10px; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 4px; font-size: .9rem; line-height: 1.55; word-break: keep-all; }
+.gd-list .gd-ripe { color: var(--g-coral-p); font-weight: 700; }
+.gd-next { margin-bottom: 0; }
+.gd-next .gd-act { margin-left: 6px; min-height: 32px; }
+.gd-wx, .gd-tip { margin: 0 0 6px; font-size: .9rem; line-height: 1.6; word-break: keep-all; }
+.gd-tip { margin: 0; color: var(--g-fg2); }
+.gd-banner { margin: 0 0 6px; font-weight: 700; font-size: .9rem; }
+.gd-news { margin: 0 0 8px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.gd-news li { display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; }
+.gd-news li b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-news li small { flex: 0 0 auto; color: var(--g-fg3); }
+.gd-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+.gd-daily { display: flex; align-items: center; gap: 6px; font-size: .86rem; color: var(--g-fg2); cursor: pointer; }
+.gd-daily input { width: 18px; height: 18px; accent-color: var(--g-coral); }
+@media (max-width: 760px) { .g-mbox-guide { width: 100vw; max-height: 90dvh; } .gd-pic { width: 70px; height: 80px; } }
+/* 지갑: 수확과 투자 */
+.g-wl-hsum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 10px; }
+.g-wl-hsum > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--g-soft); border: 1px solid var(--g-line2); }
+.g-wl-hsum span { font-size: .76rem; color: var(--g-fg2); }
+.g-wl-hsum b { font-size: 1.02rem; font-variant-numeric: tabular-nums; }
+.g-wl-hsum .is-in { color: var(--g-sage-ink); }
+.g-wl-hsum .is-out { color: var(--g-coral-p); }
+@media (max-width: 520px) { .g-wl-hsum { grid-template-columns: 1fr 1fr; } }

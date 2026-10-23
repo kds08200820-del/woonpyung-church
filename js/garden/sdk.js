@@ -107,6 +107,7 @@
   }
   /* 내 땅·작물·열매 (20261023_1300_garden_farm.sql) */
   function farm() { return rpc('garden_farm', { p_church: SLUG }); }
+  function notices() { return api('GET', 'notices?select=id,title,created_at,pinned&order=pinned.desc,created_at.desc&limit=3'); }   // 안내 도우미: 교회 소식
   /* 정원 초대하기·방문하기·방명록 (20261023_2100 SQL) */
   function visitSet(open) { return rpc('garden_visit_set', { p_church: SLUG, p_open: !!open }); }
   function visitList() { return rpc('garden_visit_list', { p_church: SLUG }); }
@@ -201,7 +202,7 @@
     init: init, slug: function () { return SLUG; }, session: sess, hasConfig: function () { return !!(SB && AK); },
     state: state, sync: sync, setPlant: setPlant, setProfile: setProfile, history: history,
     farm: farm, farmBuy: farmBuy, farmPlant: farmPlant, farmPick: farmPick, pickFruit: pickFruit,
-    visitSet: visitSet, visitList: visitList, visitView: visitView, guestbookPost: guestbookPost, guestbookHide: guestbookHide,
+    notices: notices, visitSet: visitSet, visitList: visitList, visitView: visitView, guestbookPost: guestbookPost, guestbookHide: guestbookHide,
     neighborRequest: neighborRequest, neighborRespond: neighborRespond, neighborRemove: neighborRemove, neighborList: neighborList,
     wallet: wallet, water: water, farmBuyMany: farmBuyMany, farmConvert: farmConvert, shop: shop, shopBuy: shopBuy,
     farmPlantItem: farmPlantItem, farmHarvest: farmHarvest, farmClear: farmClear, adminSetLandPrices: adminSetLandPrices, adminSetItemPrice: adminSetItemPrice,

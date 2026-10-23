@@ -93,6 +93,25 @@ window.GardenFarm = (function () {
     });
     return out;
   }
+  /* 오늘 돌볼 것 — 거둘 것·목마른 것·마음(XP)이 더 필요한 것·시든 것·빈 밭 (안내 도우미) */
+  function summary() {
+    var out = { ripe: [], thirsty: [], wantXp: [], dead: [], empty: 0, balance: F.farm ? +F.farm.balance || 0 : 0, price: F.farm ? prices().jeon : 0 };
+    ((F.farm && F.farm.tiles) || []).forEach(function (tl) {
+      if (tl.x === 0 && tl.y === 0) return;
+      var c = tl.crop ? crop(tl.crop) : null;
+      if (c && tl.ripe_at) {
+        if (now() >= new Date(tl.ripe_at).getTime() && (tl.picked || []).length < c.fruits) out.ripe.push(nameOf(c.name));
+      } else if (tl.item) {
+        var it = item(tl.item), v = plantView(tl), nm = it ? nameOf(it.name) : tl.item;
+        if (!v) return;
+        if (v.stage === 'dead') out.dead.push(nm);
+        else if (v.ready && it && it.model && it.model.per_day && (tl.harvested || []).length < it.model.per_day) out.ripe.push(nm);
+        else if (v.needWater) out.thirsty.push(nm);
+        else if (v.needXp > 0 || v.age - v.grown >= 3) out.wantXp.push(nm);
+      } else if (tl.land !== 'dae') out.empty++;
+    });
+    return out;
+  }
   function pushScene() {
     var SC = window.GardenScene; if (!SC || !SC.setField || !F.farm) return;
     var list = sceneList(), sig = JSON.stringify(list);
@@ -420,5 +439,5 @@ window.GardenFarm = (function () {
     var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (F.rec) render(); }, 150); });
     setInterval(pushScene, 60 * 1000);   // 창이 닫혀 있어도 작물이 자라는 모습을 1분마다
   }
-  return { init: init, open: open, reload: load, ready: ready, pushScene: pushScene, sceneList: sceneList, state: function () { return F.farm; } };
+  return { init: init, open: open, reload: load, ready: ready, pushScene: pushScene, sceneList: sceneList, summary: summary, state: function () { return F.farm; } };
 })();

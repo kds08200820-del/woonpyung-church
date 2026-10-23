@@ -252,8 +252,8 @@ window.GardenHud = (function () {
     if (kinds && typeof kinds === 'object' && !Array.isArray(kinds) && (kinds[kind] | 0) > 0) return true;
     return !!H.doneKinds[kind];
   }
-  function renderTodo() {
-    var ul = $('gTodoList'); if (!ul) return;
+  /* 오늘의 할 일 목록(오른쪽 메뉴·안내 도우미가 같이 쓴다) */
+  function todoItems() {
     var rules = rulesMap(), dow = I.nowParts().dow, items = [];
     TASK_KINDS.forEach(function (k) {
       var r = rules[k]; if (!r) return;
@@ -263,6 +263,18 @@ window.GardenHud = (function () {
       items.push({ kind: k, rule: r, done: isDone(k), talent: +r.talent || 0, xp: r.xp | 0 });
     });
     ssTasks(rules).forEach(function (x) { items.push(x); });
+    items.forEach(function (it) { it.label = it.label || kindLabel(it.kind, rules); it.href = it.href || TASK_HREF[it.kind] || ''; });
+    return items;
+  }
+  /* 다음 단계까지 (안내 도우미) */
+  function growthInfo() {
+    var g = garden(), sp = speciesOf(g.species) || {}, th = Array.isArray(sp.stage_xp) ? sp.stage_xp : [0, 150, 500, 1000, 1600, 2200], done = sp.done_xp || 2800;
+    var next = g.stage >= 5 ? done : (th[g.stage + 1] || done);
+    return { name: g.plant_name || speciesName(g.species), stage: stageName(g.species, g.stage), next: g.stage >= 5 ? '' : stageName(g.species, g.stage + 1), need: Math.max(0, next - (g.plant_xp | 0)), last: g.stage >= 5 };
+  }
+  function renderTodo() {
+    var ul = $('gTodoList'); if (!ul) return;
+    var rules = rulesMap(), items = todoItems();
     ul.innerHTML = '';
     show($('gTodoEmpty'), !items.length);
     var cnt = $('gTodoCount');
@@ -275,7 +287,7 @@ window.GardenHud = (function () {
         (it.xp > 0 ? '<span class="g-todo-xp">+' + esc(I.fmtNum(it.xp)) + ' XP</span>' : '');
       var inner = '<span class="g-todo-chk" aria-hidden="true">' + (it.done ? '✓' : '') + '</span><span class="g-todo-label">' + esc(lab) +
         (it.sub ? '<small>' + esc(it.sub) + '</small>' : '') + '</span>' + (rw ? '<span class="g-todo-rw">' + rw + '</span>' : '');
-      var b = document.createElement(tag); b.className = 'g-todo-btn'; b.innerHTML = inner;
+      var b = document.createElement(tag); b.className = 'g-todo-btn'; b.innerHTML = inner; b.setAttribute('data-kind', it.kind);
       if (href) b.href = href; else b.type = 'button';
       b.setAttribute('aria-label', lab + (it.done ? ' · ' + t('todo.done') : ''));
       if (it.kind === 'qt_amen') b.addEventListener('click', function () { if (H.qt) openQt(); else toast(t('qt.none')); });
@@ -431,11 +443,30 @@ window.GardenHud = (function () {
         if (+r.xp) v += (v ? ' · ' : '') + t('wallet.rule.xp', { n: r.xp });
         return '<li><span>' + esc(label(r.label) || r.kind) + (r.daily_cap ? ' <small>' + esc(t('wallet.cap', { n: r.daily_cap })) + '</small>' : '') + '</span><b>' + esc(v) + '</b></li>';
       }).join('');
+      // 수확과 투자 (2026-10-23 담임목사: "수확량, 금액이 나와야 합니다") — 원장 종류별 합계(by_kind)로
+      var K = {}; (w.by_kind || []).forEach(function (k) { K[k.kind] = k; });
+      function kv(kind, f) { var k = K[kind]; return k ? +k[f] || 0 : 0; }
+      var hIn = 0, hN = 0, gOut = 0;
+      var hRows = [['crop_pick', 'wallet.h.crop'], ['harvest', 'wallet.h.item'], ['fruit_pick', 'wallet.h.tree']].map(function (x) {
+        var n = K[x[0]] ? K[x[0]].n | 0 : 0, v = kv(x[0], 'in'); hIn += v; hN += n;
+        return n ? '<li><span>' + esc(t(x[1])) + ' <small>' + esc(t('wallet.h.n', { n: I.fmtNum(n) })) + '</small></span><b class="is-in">+' + esc(fmtTal(v)) + '</b></li>' : '';
+      }).join('');
+      var iRows = [['seed', 'wallet.i.seed'], ['shop_buy', 'wallet.i.shop'], ['land_buy', 'wallet.i.land'], ['land_convert', 'wallet.i.dae']].map(function (x) {
+        var n = K[x[0]] ? K[x[0]].n | 0 : 0, v = kv(x[0], 'out'); if (x[0] === 'seed' || x[0] === 'shop_buy') gOut += v;
+        return n && v ? '<li><span>' + esc(t(x[1])) + ' <small>' + esc(t('wallet.n', { n: n })) + '</small></span><b class="is-out">−' + esc(fmtTal(v)) + '</b></li>' : '';
+      }).join('');
+      var harvest = '<details class="g-wl-box g-wl-harvest" open><summary>' + esc(t('wallet.harvest')) + '</summary>' +
+        '<div class="g-wl-hsum"><div><span>' + esc(t('wallet.h.qty')) + '</span><b>' + esc(t('wallet.h.n', { n: I.fmtNum(hN) })) + '</b></div>' +
+        '<div><span>' + esc(t('wallet.h.amt')) + '</span><b class="is-in">+' + esc(fmtTal(hIn)) + '</b></div>' +
+        '<div><span>' + esc(t('wallet.h.cost')) + '</span><b class="is-out">−' + esc(fmtTal(gOut)) + '</b></div>' +
+        '<div><span>' + esc(t('wallet.h.roi')) + '</span><b>' + esc(gOut > 0 ? t('wallet.h.x', { n: (Math.round(hIn / gOut * 100) / 100).toFixed(2) }) : '—') + '</b></div></div>' +
+        ((hRows || iRows) ? '<ul class="g-wl-list">' + hRows + iRows + '</ul>' : '<p class="g-wl-note">' + esc(t('wallet.h.none')) + '</p>') +
+        '<p class="g-wl-note">' + esc(t('wallet.h.note')) + '</p></details>';
       var by = (w.by_kind || []).map(function (k) {
         var v = (+k['in'] ? '+' + fmtTal(k['in']) : '') + (+k.out ? (+k['in'] ? ' / ' : '') + '−' + fmtTal(k.out) : '');
         return '<li><span>' + esc(k.label) + ' <small>' + esc(t('wallet.n', { n: k.n })) + '</small></span><b class="' + (+k['in'] >= +k.out ? 'is-in' : 'is-out') + '">' + esc(v) + '</b></li>';
       }).join('');
-      top.innerHTML = sum +
+      top.innerHTML = sum + harvest +
         '<details class="g-wl-box" open><summary>' + esc(t('wallet.rules')) + '</summary><p class="g-wl-note">' + esc(t('wallet.xp.note', { n: w.xp_day || 10 })) + '</p><ul class="g-wl-list">' + rules + '</ul></details>' +
         (by ? '<details class="g-wl-box"><summary>' + esc(t('wallet.by')) + '</summary><ul class="g-wl-list">' + by + '</ul></details>' : '') +
         '<h3 class="g-wl-h">' + esc(t('wallet.history')) + '</h3>';
@@ -779,7 +810,7 @@ window.GardenHud = (function () {
   function init(o) {
     I = o.i18n; SDK = o.sdk; SCENE = o.scene; t = I.t; P = o.params || {};
     I.apply(document);
-    ['gmQt', 'gmStore', 'gmPlant', 'gmFarm', 'gmShop', 'gmInvite', 'gmVisit'].forEach(function (id) { if ($(id)) bindModal(id); });
+    ['gmQt', 'gmStore', 'gmPlant', 'gmFarm', 'gmShop', 'gmInvite', 'gmVisit', 'gmGuide'].forEach(function (id) { if ($(id)) bindModal(id); });
     $('gTalentBtn').addEventListener('click', openStore);
     $('gQtOpen').addEventListener('click', function () { openQt(); });
     $('gmStoreMore').addEventListener('click', loadMore);
@@ -825,6 +856,7 @@ window.GardenHud = (function () {
     toast: toast, openModal: openModal, closeModal: closeModal, openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
     loadQt: loadQt, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
     syncPlot: syncPlot, renderTodo: renderTodo, garden: garden, speciesName: speciesName, stageName: stageName,
+    todoItems: todoItems, growthInfo: growthInfo, qt: function () { return H.qt || null; },
     setTalent: setTalent, talentLabel: function () { return H.talentLabel; }, afterWater: afterWater
   };
 })();
