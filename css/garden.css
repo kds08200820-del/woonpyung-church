@@ -476,6 +476,21 @@ body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 74px); }
   .g-enter3d { min-height: 40px; padding: 0 14px 0 11px; font-size: .86rem; }
   body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 66px); }
 }
+/* 화면 돌리기 — 장면 왼쪽 위, 서재 바로 오른쪽 (2026-10-23 담임목사). 폰에서는 글자 없이 둥근 단추 */
+.g-rotate { position: fixed; z-index: 3; top: calc(var(--g-hdr) + 14px); left: calc(16px + var(--g-panel-w) + 20px); display: inline-flex; align-items: center; gap: 7px;
+  min-height: 44px; padding: 0 16px 0 12px; border: 1px solid var(--g-line2); border-radius: 999px; background: var(--g-panel); color: var(--g-fg);
+  font: inherit; font-size: .9rem; font-weight: 800; box-shadow: var(--g-shadow-s); cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.g-rotate:hover { background: var(--g-soft); }
+.g-rotate:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+.g-rotate-ic { width: 18px; height: 18px; flex: 0 0 auto; }
+body.g-has-banner .g-rotate { top: calc(var(--g-hdr) + 74px); }
+.g-root[data-mode="gate"] .g-rotate, .g-root[data-mode="loading"] .g-rotate { display: none !important; }
+@media (max-width: 1000px) { .g-rotate { left: 16px; top: calc(var(--g-hdr) + 12px); } }
+@media (max-width: 760px) {
+  .g-rotate { position: absolute; left: 12px; top: calc(var(--g-hdr) + 10px); width: 40px; min-height: 40px; height: 40px; padding: 0; justify-content: center; }
+  .g-rotate-t { display: none; }
+  body.g-has-banner .g-rotate { top: calc(var(--g-hdr) + 66px); }
+}
 
 /* ============================================================
    내 땅(밭) · 열매 따기 (2026-10-23) — js/garden/farm.js, hud.js fruitMode
