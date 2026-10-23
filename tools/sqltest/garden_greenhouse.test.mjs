@@ -68,7 +68,7 @@ const cols = (await pg(`select column_name, is_nullable from information_schema.
 ok('columns nullable', cols.length === 2 && cols.every((c) => c.is_nullable === 'YES'), cols);
 ok('rule label house_build', (await pg(`select count(*)::int n from public.garden_rules where church_id is null and kind = 'house_build' and sort = 121`))[0].n === 1);
 let items = Object.fromEntries((await pg(`select slug, category, price, fit, model, specs, active from public.garden_shop_items`)).map((r) => [r.slug, r]));
-const HOUSE_ITEMS = { strawberry: ['food', 9, 'once'], paprika: ['food', 10, 'once'], melon: ['food', 10, 'once'], 'korean-melon': ['food', 8, 'once'],
+const HOUSE_ITEMS = { strawberry: ['food', 9, 'once'], paprika: ['food', 10, 'once'], melon: ['food', 9, 'once'], 'korean-melon': ['food', 10, 'once'],
   fig: ['tree', 50, 'season'], kiwi: ['tree', 60, 'season'], 'apple-mango': ['tree', 60, 'season'], banana: ['tree', 50, 'season'] };
 const badItem = Object.entries(HOUSE_ITEMS).filter(([s, [cat, p, mode]]) => {
   const it = items[s]; return !it || it.category !== cat || !near(it.price, p) || it.model.harvest !== mode || it.model.house !== true || it.fit !== 'good' || !it.active;

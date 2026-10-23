@@ -197,32 +197,32 @@ update public.garden_shop_items s set price = v.price, updated_at = now()
   from (values ('fig', 50), ('kiwi', 60)) v(slug, price)
  where s.slug = v.slug and not coalesce((s.model->>'house')::boolean, false);
 
--- 품목 시작 (화면 카드에 그대로 보이는 사실 — specs.src 가 출처)
+-- 품목 시작 (화면 카드에 그대로 보이는 사실 — 농촌진흥청·농사로·도 농업기술원 자료로 확인, 출처는 specs.src. 원문에 없는 것은 '확인 못 함')
 insert into public.garden_shop_items (slug, category, name, price, fit, specs, model, sort) values
   ('strawberry', 'food', '{"ko":"딸기(설향)","en":"Strawberry"}'::jsonb, 9, 'good',
-   '{"plant":"모종, 9월 상중순 하우스에 아주심기 (촉성재배)","first":"심고 약 80~90일 (11월 하순~12월부터)","harvest":"12월~이듬해 5월","water":"점적관수로 흙이 마르지 않게, 조금씩 자주 (하우스는 비가 들지 않아 물 주기가 꼭 필요)","cold":"밤 5~8℃ 아래로 내려가지 않게 보온","note":"하우스 전용 — 이 정원에서는 익으면 한 번에 거둡니다","src":"농사로 딸기 https://www.nongsaro.go.kr"}'::jsonb,
+   '{"plant":"모종(묘령 50~60일), 9월 초·중순 하우스에 아주심기 (촉성재배)","first":"9월에 심으면 12월 초·중순부터 거둠","harvest":"11~12월에 시작해 이듬해 4월까지","water":"점적관수(스프링클러는 피함), 물은 오전 10~12시 전에 마침","cold":"수확기 밤 6~7℃, 1월에도 5℃ 넘게 — 밤에 열매가 얼지 않게","note":"설향은 잿빛곰팡이병에 약해 하우스를 너무 습하게 하지 않습니다. 이 정원에서는 익으면 한 번에 거둡니다","src":"농촌진흥청 딸기 재배 https://www.nongsaro.go.kr/cms_contents/937/100188_MF_ATTACH_01.pdf"}'::jsonb,
    '{"type":"annual","house":true,"harvest":"once","yield_x":2,"first_days":90,"window_days":14,"water_every":2,"drought_days":7,"wet":"mid"}'::jsonb, 600),
   ('paprika', 'food', '{"ko":"파프리카","en":"Bell pepper"}'::jsonb, 10, 'good',
-   '{"plant":"모종, 하우스 촉성재배는 7~8월 아주심기","first":"심고 약 90~100일 (꽃 핀 뒤 색이 들기까지 50~60일)","harvest":"10월~이듬해 6월 (작형에 따라)","water":"점적관수, 흙이 늘 촉촉하게","cold":"밤 16~18℃ 안팎 유지","note":"하우스 전용","src":"농사로 파프리카 https://www.nongsaro.go.kr"}'::jsonb,
+   '{"plant":"모종(본잎 8~10장), 겨울 작형은 8~9월 아주심기","first":"열매가 맺힌 뒤 약 7~9주 (심고 첫 수확까지 날수는 확인 못 함)","harvest":"겨울 작형 11월~이듬해 7월","water":"배지에 드리퍼로 하루 2~10번 (자라는 때에 따라)","cold":"심은 직후 낮 23℃·밤 20℃, 열매가 맺힌 뒤 밤 18℃ 넘게","note":"줄기가 약해 지지대가 필요합니다. 90% 넘게 색이 들면 거둡니다","src":"제주농업기술원 파프리카 https://agri.jeju.go.kr/files/board/%EA%B3%BC%EC%B1%84%EB%A5%98(%ED%8C%8C%ED%94%84%EB%A6%AC%EC%B9%B4).pdf"}'::jsonb,
    '{"type":"annual","house":true,"harvest":"once","yield_x":2,"first_days":100,"window_days":14,"water_every":2,"drought_days":7,"wet":"mid"}'::jsonb, 610),
-  ('melon', 'food', '{"ko":"멜론","en":"Melon"}'::jsonb, 10, 'good',
-   '{"plant":"모종, 하우스 봄 재배는 2~3월 아주심기","first":"심고 약 100일 (열매 맺힌 뒤 50~55일)","harvest":"5~7월 (봄 재배)","water":"열매가 커질 때 넉넉히, 익을 무렵에는 줄여 단맛을 올림","cold":"밤 15℃ 아래로 내려가지 않게","note":"하우스 전용","src":"농사로 멜론 https://www.nongsaro.go.kr"}'::jsonb,
-   '{"type":"annual","house":true,"harvest":"once","yield_x":2,"first_days":100,"window_days":14,"water_every":3,"drought_days":8,"wet":"mid"}'::jsonb, 620),
-  ('korean-melon', 'food', '{"ko":"참외","en":"Korean melon"}'::jsonb, 8, 'good',
-   '{"plant":"모종, 하우스 촉성재배는 1~2월 아주심기","first":"심고 약 70~80일 (열매 맺힌 뒤 25~30일)","harvest":"3월 하순~7월","water":"흙이 마르면 넉넉히, 익을 무렵 줄임","cold":"밤 12℃ 아래로 내려가지 않게 보온","note":"하우스 전용","src":"농사로 참외 https://www.nongsaro.go.kr"}'::jsonb,
-   '{"type":"annual","house":true,"harvest":"once","yield_x":2,"first_days":80,"window_days":14,"water_every":3,"drought_days":8,"wet":"mid"}'::jsonb, 630),
+  ('melon', 'food', '{"ko":"멜론(네트멜론)","en":"Netted melon"}'::jsonb, 9, 'good',
+   '{"plant":"모종(본잎 3.5장), 봄 재배는 3월 초·중순 아주심기","first":"꽃가루받이(교배) 뒤 50~60일","harvest":"봄 재배 5~6월, 여름 재배 9월","water":"물 호스와 비닐 덮기. 교배 뒤 15~21일(그물이 생길 때)에 물이 모자라면 가장 해롭습니다","cold":"낮 28~30℃·밤 18~20℃, 밤 15℃ 아래면 꽃이 제대로 안 핌","note":"2~3일만 일찍 따도 단맛이 크게 떨어져 교배한 날을 적어 두고 거둡니다","src":"제주농업기술원 멜론 https://agri.jeju.go.kr/files/board/%EA%B3%BC%EC%B1%84%EB%A5%98(%EB%A9%9C%EB%A1%A0).pdf"}'::jsonb,
+   '{"type":"annual","house":true,"harvest":"once","yield_x":2,"first_days":90,"window_days":14,"water_every":3,"drought_days":8,"wet":"mid"}'::jsonb, 620),
+  ('korean-melon', 'food', '{"ko":"참외","en":"Korean melon"}'::jsonb, 10, 'good',
+   '{"plant":"접목 모종, 반촉성 재배는 1월 하순~2월 중순 아주심기","first":"교배 뒤 추울 때 35~38일, 더울 때 27~30일 (반촉성은 5월 하순부터)","harvest":"반촉성 5월 하순부터, 촉성(남부) 4월 상순부터","water":"열매가 굵을 때 자주, 꽃 핀 뒤 25일쯤부터 줄이고 거두기 10일 전에는 끊음","cold":"하우스 최저 12℃·땅 15℃ 넘게, 밤 15℃ 아래로 내려가지 않게","note":"덩굴쪼김병과 이어짓기 피해를 막으려고 접목해서 기릅니다","src":"제주농업기술원 참외 https://agri.jeju.go.kr/files/board/%EA%B3%BC%EC%B1%84%EB%A5%98(%EC%B0%B8%EC%99%B8).pdf"}'::jsonb,
+   '{"type":"annual","house":true,"harvest":"once","yield_x":2,"first_days":100,"window_days":14,"water_every":3,"drought_days":8,"wet":"mid"}'::jsonb, 630),
   ('fig', 'tree', '{"ko":"무화과","en":"Fig"}'::jsonb, 50, 'good',
-   '{"fitwhy":"우정읍 노지는 겨울에 얼어(어린나무 −6℃) 하우스에서만 기릅니다","plant":"묘목, 봄","first":"심고 이듬해부터 (2년째)","harvest":"하우스 7월 하순~10월","water":"열매가 클 때 넉넉히, 물 빠짐이 좋아야 함","cold":"−6~−8℃에 얼어 죽음 — 하우스에서 겨울나기","note":"하우스 전용 — 이 정원에서는 마음 120일 뒤부터 열매 철마다 거둡니다","src":"농사로 무화과 https://www.nongsaro.go.kr"}'::jsonb,
-   '{"type":"tree","house":true,"harvest":"season","yield_x":1,"first_days":120,"keep_days":7,"dig_x":0.5,"harvest_months":[8,9,10],"water_every":5,"drought_days":20}'::jsonb, 640),
+   '{"fitwhy":"우정읍 노지는 겨울에 얼어(−7~−8℃) 하우스에서만 기릅니다","plant":"묘목(주로 꺾꽂이 묘), 3월 중순","first":"심은 해에도 조금 열리고 2년째부터 거둠, 4년이 지나면 제대로","harvest":"하우스 7월 중순~12월 (노지 8월 중순~11월)","water":"잎이 커서 가뭄에 약함 — 물 주는 시설이 꼭 있어야 함","cold":"1월 평균 1℃ 넘어야 하고, −7~−8℃에서 얼어 죽음","note":"비를 맞으면 피해가 커서 하우스·비가림 재배가 좋습니다. 이 정원에서는 마음 120일 뒤부터 열매 철마다 거둡니다","src":"국립원예특작과학원 무화과 https://www.rda.go.kr/middlePopOpenPopNongsaroDBView.do?no=1694"}'::jsonb,
+   '{"type":"tree","house":true,"harvest":"season","yield_x":1,"first_days":120,"keep_days":7,"dig_x":0.5,"harvest_months":[7,8,9,10,11,12],"water_every":5,"drought_days":20}'::jsonb, 640),
   ('kiwi', 'tree', '{"ko":"참다래(키위)","en":"Kiwifruit"}'::jsonb, 60, 'good',
-   '{"fitwhy":"우정읍 노지는 −10℃ 추위에 얼어 하우스에서만 기릅니다","plant":"묘목, 봄","first":"심고 3~4년째","harvest":"10월 하순~11월 중순","water":"뿌리가 얕아 가물면 넉넉히, 물 빠짐이 좋아야 함","cold":"−10℃에서 얼어 상함","note":"하우스 전용 — 이 정원에서는 마음 150일 뒤부터 열매 철마다 거둡니다","src":"농사로 참다래 https://www.nongsaro.go.kr"}'::jsonb,
+   '{"fitwhy":"우정읍 노지는 겨울 추위(−9℃ 아래)에 얼어 하우스에서만 기릅니다","plant":"2~3년생 묘목, 잎 진 뒤(11월 중순)~2월 하순(싹트기 전)","first":"접목하고 3년째부터 열매 (품종에 따라 다름)","harvest":"10월 하순~11월 중순","water":"5~7일에 한 번 20~30mm, 점적관수","cold":"한겨울 −9℃부터 피해, 봄 새싹·꽃은 −1.5℃에 30분 넘게 닿으면 큰 피해","note":"암수딴그루라 실제로는 암나무 6그루에 수나무 1그루를 섞어 심습니다. 이 정원에서는 마음 150일 뒤부터 열매 철마다 거둡니다","src":"농사로 참다래 https://www.nongsaro.go.kr/portal/ps/psb/psbl/workScheduleDtl.ps?menuId=PS00087&cntntsNo=30668"}'::jsonb,
    '{"type":"tree","house":true,"harvest":"season","yield_x":1,"first_days":150,"keep_days":7,"dig_x":0.5,"harvest_months":[10,11],"water_every":5,"drought_days":15}'::jsonb, 650),
   ('apple-mango', 'tree', '{"ko":"애플망고","en":"Apple mango"}'::jsonb, 60, 'good',
-   '{"fitwhy":"열대 과일 — 겨울에도 데우는 하우스에서만 기릅니다","plant":"접목 묘목","first":"심고 약 3년","harvest":"6~8월","water":"꽃 필 무렵은 건조하게, 열매가 클 때 넉넉히","cold":"겨울에도 하우스 안을 데워야 함 (확인 못 함: 정확한 최저 온도)","note":"하우스 전용 — 이 정원에서는 마음 150일 뒤부터 열매 철마다 거둡니다","src":"확인 못 함"}'::jsonb,
+   '{"fitwhy":"열대 과일 — 겨울에도 데우는 하우스에서만 기릅니다","plant":"접목하고 2년 넘게 키운 묘목, 3~4월(봄순 트기 전)~장마 초기","first":"심고 3년째부터","harvest":"하우스를 데우기 시작한 때에 따라 3월부터·6월부터·8월 뒤 (보통 6월부터)","water":"꽃눈 만들 때는 끊고, 꽃 필 때 주 1회 5mm 안팎, 열매가 굵을 때 주 1회 20mm 안팎","cold":"알맞은 온도 24~27℃, 꽃 필 때부터 최저 22℃ — 꽃·어린 열매는 5℃ 아래에 잠깐만 닿아도 큰 피해","note":"꽃이 활짝 핀 뒤 120일 넘게 지나 나무에서 다 익은 것을 땁니다. 이 정원에서는 마음 150일 뒤부터 열매 철마다 거둡니다","src":"제주농업기술원 망고 https://agri.jeju.go.kr/files/board/%EC%95%84%EC%97%B4%EB%8C%80%EA%B3%BC%EC%88%98(%EB%A7%9D%EA%B3%A0).pdf"}'::jsonb,
    '{"type":"tree","house":true,"harvest":"season","yield_x":1,"first_days":150,"keep_days":7,"dig_x":0.5,"harvest_months":[6,7,8],"water_every":4,"drought_days":15}'::jsonb, 660),
   ('banana', 'tree', '{"ko":"바나나","en":"Banana"}'::jsonb, 50, 'good',
-   '{"fitwhy":"열대 과일 — 겨울에도 데우는 하우스에서만 기릅니다","plant":"새끼 포기(흡지)·모종","first":"심고 약 1년 (꽃대가 나온 뒤 3~4개월)","harvest":"확인 못 함 (하우스는 거의 한 해 내내)","water":"잎이 넓어 물을 많이 씀 — 흙이 마르지 않게","cold":"추위에 매우 약함, 겨울에도 하우스 안을 데워야 함","note":"한 포기에서 한 송이가 나고 곁순으로 이어 갑니다. 이 정원에서는 마음 120일 뒤부터 열매 철마다 거둡니다","src":"확인 못 함"}'::jsonb,
-   '{"type":"tree","house":true,"harvest":"season","yield_x":1,"first_days":120,"keep_days":7,"dig_x":0.5,"harvest_months":[7,8,9,10],"water_every":3,"drought_days":10}'::jsonb, 670)
+   '{"fitwhy":"열대 과일 — 겨울에도 데우는 하우스에서만 기릅니다","plant":"흡아(새끼 포기) 묘목, 한 해 내내 심을 수 있으나 6~9월이 좋음","first":"심고 1년쯤 지나 열매, 꽃 핀 뒤 4~5개월에 거둠","harvest":"여름 수확형 5~8월, 겨울 수확형 10월~이듬해 4월 (심는 때에 따라)","water":"20℃ 안쪽이면 주 1회, 30℃ 넘으면 3일에 1회, 점적관수","cold":"알맞은 온도 20~35℃, 13℃ 아래면 죽거나 잘 자라지 못함","note":"열매 맺은 줄기는 죽고 곁에서 난 흡아를 길러 이어 갑니다. 이 정원에서는 마음 120일 뒤부터 열매 철마다 거둡니다","src":"제주농업기술원 바나나 https://agri.jeju.go.kr/files/board/%EC%95%84%EC%97%B4%EB%8C%80%EA%B3%BC%EC%88%98(%EB%B0%94%EB%82%98%EB%82%98).pdf"}'::jsonb,
+   '{"type":"tree","house":true,"harvest":"season","yield_x":1,"first_days":120,"keep_days":7,"dig_x":0.5,"harvest_months":[5,6,7,8],"water_every":3,"drought_days":10}'::jsonb, 670)
 on conflict (slug) do update set category = excluded.category, name = excluded.name, fit = excluded.fit,
   specs = excluded.specs, model = excluded.model, sort = excluded.sort, active = true, updated_at = now();
 -- 품목 끝

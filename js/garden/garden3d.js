@@ -16,7 +16,8 @@
                    side: 오른쪽 칸(방명록 등, 휴대폰은 아래에서 올라오는 칸), sideLabel,
                    onTile(cell{x,y,owned}) · fmtLeft(ms) · onExpire() — 내 땅 가꾸기(farm.js)가 칸 누르기·남은 시간을 받는다 })
    돌려주는 것: { close, side(label), openSide(on), setLand(land), setTreeBubble(src), flash(cell, text) }
-   land = { tiles:[{x,y,land,planted,src,h,dead,name,bubble,until,tag}], max, buyable:[{x,y,label}], picks:{'x,y':1}, pickable:{'x,y':1}, mode }
+   land = { tiles:[{x,y,land,planted,src,h,dead,name,bubble,until,tag,house}], max, buyable:[{x,y,label}], picks:{'x,y':1}, pickable:{'x,y':1}, mode }
+   tile.house = 하우스(유리 온실, 20261024_0100) — 박공지붕 유리 온실을 칸 위에 세우고, 안의 그림은 처마 높이에 맞춰 줄인다
    ============================================================ */
 window.Garden3D = (function () {
   'use strict';
@@ -476,6 +477,36 @@ window.Garden3D = (function () {
         tileMeshes = tileMeshes.filter(function (m) { return m.parent !== tileGroup; });
         tileGroup.children.slice().forEach(function (c) { tileGroup.remove(c); });
       }
+      // 하우스(유리 온실): 박공지붕 유리 몸통(눌러지는 칸) + 흰 철골. 모양·재질은 한 번만 만들어 함께 쓴다
+      var GH = { W: TS * 0.9, D: TS * 0.9, H1: 1.45, H2: 2.15, bar: 0.05, plantMax: 1.6 }, gh = null;
+      function ghParts() {
+        if (gh) return gh;
+        var W2 = GH.W / 2, sh = new T.Shape();
+        sh.moveTo(-W2, 0); sh.lineTo(W2, 0); sh.lineTo(W2, GH.H1); sh.lineTo(0, GH.H2); sh.lineTo(-W2, GH.H1); sh.lineTo(-W2, 0);
+        var glassGeo = new T.ExtrudeGeometry(sh, { depth: GH.D, bevelEnabled: false }); glassGeo.translate(0, 0, -GH.D / 2);
+        var glass = new T.MeshStandardMaterial({ color: tint(new T.Color(0xe2f1ee)), transparent: true, opacity: 0.22, roughness: 0.08, metalness: 0.1, depthWrite: false, side: T.DoubleSide });
+        var frame = new T.MeshStandardMaterial({ color: 0xf3f0ea, roughness: 0.5, metalness: 0.25 });
+        gh = { glassGeo: glassGeo, glass: glass, frame: frame, barGeo: new T.BoxGeometry(1, 1, 1), z: new T.Vector3(0, 0, 1) };
+        return gh;
+      }
+      function ghBar(g, a, b) {
+        var P = ghParts(), A = new T.Vector3(a[0], a[1], a[2]), B = new T.Vector3(b[0], b[1], b[2]), d = B.clone().sub(A);
+        var m = new T.Mesh(P.barGeo, P.frame); m.scale.set(GH.bar, GH.bar, d.length() + GH.bar);
+        m.position.copy(A).add(B).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(P.z, d.normalize()); m.castShadow = true;
+        g.add(m);
+      }
+      function greenhouse(x, y, top, cell) {
+        var P = ghParts(), cx = x * TS, cz = y * TS, W2 = GH.W / 2, D2 = GH.D / 2, H1 = GH.H1, H2 = GH.H2;
+        var body = new T.Mesh(P.glassGeo, P.glass); body.position.set(cx, top, cz); body.renderOrder = 3; body.userData.cell = cell;
+        tileGroup.add(body); tileMeshes.push(body);   // 유리를 눌러도 그 칸
+        var g = new T.Group(); g.position.set(cx, top, cz);
+        [[-W2, -D2], [W2, -D2], [-W2, D2], [W2, D2], [-W2, 0], [W2, 0]].forEach(function (q) { ghBar(g, [q[0], 0, q[1]], [q[0], H1, q[1]]); });
+        ghBar(g, [-W2, H1, -D2], [-W2, H1, D2]); ghBar(g, [W2, H1, -D2], [W2, H1, D2]); ghBar(g, [0, H2, -D2], [0, H2, D2]);
+        [-D2, 0, D2].forEach(function (z) { ghBar(g, [-W2, H1, z], [0, H2, z]); ghBar(g, [W2, H1, z], [0, H2, z]); });
+        ghBar(g, [-W2, 0.02, -D2], [W2, 0.02, -D2]); ghBar(g, [-W2, 0.02, D2], [W2, 0.02, D2]);
+        ghBar(g, [-0.32, 0, D2], [-0.32, 1.2, D2]); ghBar(g, [0.32, 0, D2], [0.32, 1.2, D2]); ghBar(g, [-0.32, 1.2, D2], [0.32, 1.2, D2]);   // 문
+        tileGroup.add(g);
+      }
       function overlay(x, y, h, mat) {
         var m = new T.Mesh(cellGeo, mat); m.rotation.x = -Math.PI / 2; m.position.set(x * TS, h + 0.012, y * TS); m.renderOrder = 2; tileGroup.add(m);
       }
@@ -490,7 +521,8 @@ window.Garden3D = (function () {
         tiles.forEach(function (tl) {
           if (!tl || (tl.x === 0 && tl.y === 0)) return;
           var key = tl.x + ',' + tl.y, cell = { x: tl.x, y: tl.y, owned: true };
-          var top = plate(tl.x, tl.y, tl.land === 'dae' ? 'dae' : tl.planted ? 'jeon' : 'grass', tileGroup, cell);
+          var top = plate(tl.x, tl.y, tl.land === 'dae' ? 'dae' : tl.planted || tl.house ? 'jeon' : 'grass', tileGroup, cell);
+          if (tl.house) greenhouse(tl.x, tl.y, top, cell);
           extent = Math.max(extent, (Math.max(Math.abs(tl.x), Math.abs(tl.y)) + 0.5) * TS);
           if (picks[key]) overlay(tl.x, tl.y, top, pickMat); else if (can[key]) overlay(tl.x, tl.y, top, canMat);
           if (picks[key]) tagAt(tl.x * TS, top + 0.15, tl.y * TS, '✓', 'pick', 0, tileGroup);
@@ -500,7 +532,9 @@ window.Garden3D = (function () {
           };
           if (tl.src) loadImage(tl.src).then(function (im) {
             if (dead || !im || gen !== landGen) return;
-            var it = sprite(im, { x: tl.x * TS, z: tl.y * TS, y: top, h: Math.max(0.35, (+tl.h || 60) / 100 * 1.5), dead: !!tl.dead, name: tl.name, cell: cell, parent: tileGroup });
+            var hh = Math.max(0.35, (+tl.h || 60) / 100 * 1.5);
+            if (tl.house) hh = Math.min(hh, GH.plantMax);   // 하우스 안 — 처마 위로 나오지 않게
+            var it = sprite(im, { x: tl.x * TS, z: tl.y * TS, y: top, h: hh, dead: !!tl.dead, name: tl.name, cell: cell, parent: tileGroup });
             if (firstDrop && !reduce) { it.drop = 1.2 + Math.random(); it.vy = 0; }   // 처음 열 때 살짝 내려앉는다
             if (tl.bubble) bubble(tl.bubble, tl.x * TS, top + it.top + 0.25, tl.y * TS, 'tile', cell, gen);
             else label(top + it.top + 0.15);

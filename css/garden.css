@@ -985,3 +985,8 @@ button.g-chip-wx:focus-visible { outline: 3px solid var(--g-coral-ring); outline
 .gs-grown .gs-have { display: none; }
 .gs-grown .gs-go { white-space: nowrap; }
 .gs-admin-stock { flex: 1 0 100%; }
+
+/* 하우스(유리 온실) — 스토어 카드 · 내 땅 판 (20261024_0100) */
+.gs-house { grid-column: 1 / -1; background: var(--g-soft); }
+.gs-house-list { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: .84rem; line-height: 1.5; color: var(--g-fg2); }
+.gf-house-m { color: var(--g-sage-ink); font-size: .84rem; line-height: 1.5; }

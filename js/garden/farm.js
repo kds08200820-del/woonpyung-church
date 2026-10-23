@@ -9,12 +9,16 @@
    · 서버가 시간·값·중복을 모두 확인한다. 화면은 받은 상태를 그리기만
    · 가격표(20261024): 꽃집 품목은 칸마다 서버가 셈한 st(거둘 값·벨 목재·캐내기 값)로 — 한 번에 거두기·베기·스토어에 팔기·캐내기.
      빠른 작물은 칸마다 하루 2번까지 제값, 그 뒤는 직판장 값(30% 낮음)
+   · 하우스(20261024_0100): 빈 전 칸에 유리 온실을 짓는다('하우스 짓기' 고르기 모드 · 스토어 하우스 칸에서도). 하우스 목록은 garden_house 로
+     따로 받아 칸마다 building 으로 붙인다. 하우스 작물은 하우스 칸에만, 하우스 칸에는 일반 나무를 심지 않는다(서버 트리거가 지킨다).
+     하우스 칸의 식물은 날씨에 시들지 않고 철 경고도 없다(plantsim.js). garden_house 가 없으면(SQL 전) 하우스 단추는 숨는다
    GardenFarm.init({ i18n, sdk, hud, shop, plant }) · open() · attach3d(opts) · bindView(view)
    ============================================================ */
 window.GardenFarm = (function () {
   'use strict';
   var I, SDK, HUD, SHOP, PLANT, t;
-  var F = { farm: null, skew: 0, view: null, ui: null, busy: false, sel: null, mode: 'normal', pick: {}, items: null, wx: [], art: 'images/garden/farm/', shopArt: 'images/garden/shop/' };
+  var F = { farm: null, skew: 0, view: null, ui: null, busy: false, sel: null, mode: 'normal', pick: {}, items: null, wx: [], art: 'images/garden/farm/', shopArt: 'images/garden/shop/',
+    houses: undefined, housePrice: 0, pendingMode: null };   // houses: undefined = 아직 안 받음 · null = 서버에 없음(SQL 전) · [] = 받음
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function ui(id) { return F.ui ? F.ui.querySelector('#' + id) : null; }
   function nameOf(v) { if (v && typeof v === 'object') { var l = String(I.locale() || 'ko'); return v[l] || v[l.split('-')[0]] || v.ko || v.en || ''; } return v || ''; }
@@ -39,9 +43,9 @@ window.GardenFarm = (function () {
   }
   // 입체 창을 열기 전에 붙인다: 내 땅 그림·오른쪽 칸(메뉴·심기 목록)·칸 누르기
   function attach3d(opts) {
-    F.mode = 'normal'; F.pick = {};
+    F.mode = F.pendingMode || 'normal'; F.pendingMode = null; F.pick = {};   // 스토어 '하우스 짓기'로 열면 바로 고르기 모드
     opts.side = panel(); opts.sideLabel = t('farm.menu');
-    opts.land = (F.farm && F.items ? Promise.resolve() : load()).then(function () { return F.farm ? land3d() : null; });
+    opts.land = (F.farm && F.items && F.houses !== undefined ? Promise.resolve() : load()).then(function () { return F.farm ? land3d() : null; });
     opts.onTile = onCell;
     opts.onBubble = function (kind, data) {
       if (kind === 'tree') pickTree();
@@ -53,6 +57,7 @@ window.GardenFarm = (function () {
     var prev = opts.onClose;
     opts.onClose = function () { F.view = null; F.mode = 'normal'; F.pick = {}; closeSheet(); if (prev) prev(); };
     closeSheet(); renderPanel();
+    if (F.mode !== 'normal' && F.farm) sheetPick();
     return opts;
   }
   function bindView(v) { F.view = v; }
@@ -63,10 +68,11 @@ window.GardenFarm = (function () {
     var st = HUD.state ? HUD.state() : null, ch = (st && st.church) || {};
     var shopP = SHOP && SHOP.load ? SHOP.load().then(function () { F.items = SHOP.items(); }).catch(function () { }) : Promise.resolve();
     var wxP = PLANT && ch.lat != null ? PLANT.weather(ch.lat, ch.lng, tz()).then(function (rows) { F.wx = rows || []; }).catch(function () { }) : Promise.resolve();
+    var houseP = SDK.house ? SDK.house().then(function (h) { return h && h.ok ? h : null; }, function () { return null; }) : Promise.resolve(null);
     return SDK.farm().then(function (r) {
       if (!r || !r.ok) throw new Error((r && r.why) || 'farm');
       setFarm(r.farm);
-      return Promise.all([shopP, wxP]).then(function () { render(); pushScene(); });
+      return Promise.all([shopP, wxP, houseP]).then(function (rs) { setHouses(rs[2]); render(); pushScene(); });
     }).catch(function (e) {
       if (F.view) HUD.toast(SDK.notReady(e) ? t('farm.notready') : t('farm.err'));
     });
@@ -75,12 +81,27 @@ window.GardenFarm = (function () {
   function afterShop() { if (F.view) { closeSheet(); load(); } }
   function setFarm(f) {
     F.farm = f;
+    mergeHouses();
     if (f.now) F.skew = new Date(f.now).getTime() - Date.now();
     HUD.setTalent(f.balance);
     render();
     pushScene();
     if (window.GardenStorage) window.GardenStorage.setFarm(f);   // 건축 미션 칸·보관함 단추
   }
+
+  // 하우스: garden_house 결과({ price, houses:[{x,y,building}] } | null)를 받아 두고 칸마다 building 을 붙인다
+  function setHouses(h) {
+    F.houses = h ? (h.houses || []) : null;
+    if (h) F.housePrice = +h.price || 0;
+    mergeHouses();
+  }
+  function mergeHouses() {
+    if (!F.farm || !F.farm.tiles) return;
+    var map = {};
+    (F.houses || []).forEach(function (hh) { map[hh.x + ',' + hh.y] = hh.building; });
+    F.farm.tiles.forEach(function (tl) { tl.building = map[tl.x + ',' + tl.y] || null; });
+  }
+  function isHouseItem(it) { return !!(it && it.model && it.model.house); }
 
   /* ── 메인 장면의 밭 (2026-10-23 담임목사: 산 땅·심은 꽃이 메인 화면에도 보이게) ──
      칸마다 { x, y, land, src, h, dead, name, planted, bubble } — 나무 칸(0,0)은 뺀다. 그리기는 scene.setField · garden3d
@@ -98,7 +119,7 @@ window.GardenFarm = (function () {
     var src0 = fm || F.farm, ts = (src0 && src0.tiles) || [], out = [];
     ts.forEach(function (tl) {
       if (tl.x === 0 && tl.y === 0) return;
-      var o = { x: tl.x, y: tl.y, land: tl.land === 'dae' ? 'dae' : 'jeon', src: '', h: 0, dead: false };
+      var o = { x: tl.x, y: tl.y, land: tl.land === 'dae' ? 'dae' : 'jeon', src: '', h: 0, dead: false, house: tl.building === 'greenhouse' };
       var c = tl.crop ? crop(tl.crop) : null;
       if (c && tl.ripe_at) {
         var prog = 1 - Math.max(0, new Date(tl.ripe_at).getTime() - now()) / (c.grow_sec * 1000);
@@ -177,7 +198,8 @@ window.GardenFarm = (function () {
     if (F.mode !== 'buy') return false;
     return !!(F.pick[(x + 1) + ',' + y] || F.pick[(x - 1) + ',' + y] || F.pick[x + ',' + (y + 1)] || F.pick[x + ',' + (y - 1)]);
   }
-  function convertible(tl) { return tl && tl.land !== 'dae' && !(tl.x === 0 && tl.y === 0) && !tl.crop && !tl.item; }
+  function convertible(tl) { return tl && tl.land !== 'dae' && !(tl.x === 0 && tl.y === 0) && !tl.crop && !tl.item && !tl.building; }
+  function houseable(tl) { return convertible(tl); }   // 하우스도 비어 있는 전에만 짓는다
   function plantView(tl, fm) {
     var it = item(tl.item), f = fm || F.farm; if (!it || !PLANT || !f) return null;
     return PLANT.state(it, tl, F.wx, f.water_days || [], new Date(now()), tz(), f.xp_day);
@@ -206,6 +228,7 @@ window.GardenFarm = (function () {
     });
     if (f.max != null) for (var y = -f.max; y <= f.max; y++) for (var x = -f.max; x <= f.max; x++) if (buyable(x, y)) buy.push({ x: x, y: y, label: tal(prices().jeon) });
     if (F.mode === 'convert') (f.tiles || []).forEach(function (tl) { if (convertible(tl)) pickable[tl.x + ',' + tl.y] = 1; });
+    if (F.mode === 'house') (f.tiles || []).forEach(function (tl) { if (houseable(tl)) pickable[tl.x + ',' + tl.y] = 1; });
     return { tiles: list, max: f.max || 4, buyable: buy, picks: picks, pickable: pickable, mode: F.mode };
   }
   function render() {
@@ -242,6 +265,7 @@ window.GardenFarm = (function () {
     if (f.prices) {
       h += '<button type="button" class="g-btn ' + (F.mode === 'buy' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="buy">' + esc(t('farm.tool.buy')) + '</button>';
       h += '<button type="button" class="g-btn ' + (F.mode === 'convert' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="convert">' + esc(t('farm.tool.convert')) + '</button>';
+      if (F.houses) h += '<button type="button" class="g-btn ' + (F.mode === 'house' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="house">' + esc(t('farm.tool.house')) + '</button>';
       h += '<button type="button" class="g-btn g-btn-line" data-tool="water"' + (f.watered ? ' disabled' : '') + '>' + esc(f.watered ? t('water.done') : t('water.go')) + '</button>';
       if (SHOP) h += '<button type="button" class="g-btn g-btn-line" data-tool="shop">' + esc(t('shop.open')) + '</button>';
       if (f.build && window.GardenStorage) h += '<button type="button" class="g-btn g-btn-line" data-tool="storage">' + esc(t('storage.open')) + '</button>';
@@ -260,7 +284,12 @@ window.GardenFarm = (function () {
     }
     if (F.mode === 'convert') {
       if (convertible(tl)) { if (F.pick[key]) delete F.pick[key]; else F.pick[key] = 1; render(); openSide(); }
-      else HUD.toast(t(tl && tl.land === 'dae' ? 'farm.why.already' : 'farm.why.convert'));
+      else HUD.toast(t(tl && tl.land === 'dae' ? 'farm.why.already' : tl && tl.building ? 'farm.why.convertHouse' : 'farm.why.convert'));
+      return;
+    }
+    if (F.mode === 'house') {
+      if (houseable(tl)) { if (F.pick[key]) delete F.pick[key]; else F.pick[key] = 1; render(); openSide(); }
+      else HUD.toast(t(tl && tl.building ? 'farm.why.house.already' : 'farm.why.house'));
       return;
     }
     if (!tl) {
@@ -373,7 +402,7 @@ window.GardenFarm = (function () {
   function onTools(e) {
     var b = e.target.closest('[data-tool]'); if (!b || b.disabled) return;
     var k = b.getAttribute('data-tool');
-    if (k === 'buy' || k === 'convert') { F.mode = F.mode === k ? 'normal' : k; F.pick = {}; closeSheet(); render(); return; }
+    if (k === 'buy' || k === 'convert' || k === 'house') { F.mode = F.mode === k ? 'normal' : k; F.pick = {}; closeSheet(); render(); return; }
     if (k === 'water') { water(b); return; }
     if (k === 'shop' && SHOP) { SHOP.open(null, afterShop); return; }
     if (k === 'storage' && window.GardenStorage) { window.GardenStorage.open(afterShop); return; }
@@ -396,12 +425,13 @@ window.GardenFarm = (function () {
   function sheet(html) { var s = ui('gfSheet'); if (s) s.innerHTML = html; }
   function acts(main) { return '<div class="gf-s-acts"><button type="button" class="g-btn g-btn-line" data-act="cancel">' + esc(t('farm.cancel')) + '</button>' + (main || '') + '</div>'; }
   function sheetPick() {
-    var n = Object.keys(F.pick).length, P = prices(), buy = F.mode === 'buy', per = buy ? P.jeon : P.dae, total = Math.round(per * n * 10) / 10, can = n > 0 && +F.farm.balance >= total;
+    var n = Object.keys(F.pick).length, P = prices(), k = F.mode === 'buy' ? 'buy' : F.mode === 'house' ? 'house' : 'convert';
+    var per = k === 'buy' ? P.jeon : k === 'house' ? F.housePrice : P.dae, total = Math.round(per * n * 10) / 10, can = n > 0 && +F.farm.balance >= total;
     F.sel = { kind: F.mode };
-    sheet('<p class="gf-s-t">' + esc(t(buy ? 'farm.pick.buy.t' : 'farm.pick.convert.t')) + '</p>' +
-      '<p class="gf-s-m">' + esc(n ? t('farm.pick.sum', { n: n, per: tal(per), total: tal(total), have: tal(F.farm.balance) }) : t(buy ? 'farm.pick.buy.hint' : 'farm.pick.convert.hint')) + '</p>' +
-      acts('<button type="button" class="g-btn g-btn-primary" data-act="' + (buy ? 'buymany' : 'convert') + '"' + (can ? '' : ' disabled') + '>' +
-        esc(!n ? t('farm.pick.none') : can ? t(buy ? 'farm.pick.buy.go' : 'farm.pick.convert.go', { n: n, total: tal(total) }) : t('farm.buy.short')) + '</button>'));
+    sheet('<p class="gf-s-t">' + esc(t('farm.pick.' + k + '.t')) + '</p>' +
+      '<p class="gf-s-m">' + esc(n ? t('farm.pick.sum', { n: n, per: tal(per), total: tal(total), have: tal(F.farm.balance) }) : t('farm.pick.' + k + '.hint')) + '</p>' +
+      acts('<button type="button" class="g-btn g-btn-primary" data-act="' + (k === 'buy' ? 'buymany' : k === 'house' ? 'housebuild' : 'convert') + '"' + (can ? '' : ' disabled') + '>' +
+        esc(!n ? t('farm.pick.none') : can ? t('farm.pick.' + k + '.go', { n: n, total: tal(total) }) : t('farm.buy.short')) + '</button>'));
   }
   function sheetBuyOne(x, y) {   // 3단계 SQL 전(값이 하나뿐일 때)
     F.sel = { x: x, y: y, kind: 'buy' };
@@ -418,19 +448,26 @@ window.GardenFarm = (function () {
         '<img alt="" src="' + F.art + 'crop-' + esc(c.slug) + '-2.webp" onerror="this.style.visibility=\'hidden\'">' +
         '<span class="gf-crop-t"><b>' + esc(nameOf(c.name)) + '</b><small>' + esc(lock ? t('farm.crop.lock', { n: c.min_stage }) : t('farm.crop.meta', { time: left(c.grow_sec * 1000), cost: tal(c.seed_cost), n: c.fruits, y: tal(yieldV) })) + '</small></span></button>';
     }).join('');
+    var hx = tile(x, y), inHouse = !!(hx && hx.building === 'greenhouse');
     var inv = (F.farm.inventory || []).map(function (i) {
       var it = item(i.item); if (!it) return '';
-      var pm = it.model && it.model.plant_months, off = pm && pm.length && pm.indexOf(new Date(Date.now() + F.skew).getMonth() + 1) < 0;
-      var noPlant = off && it.model.harvest === 'timber';   // 건축용 나무는 심는 달에만(서버가 막는다)
-      return '<button type="button" class="gf-crop' + (off ? ' gf-off' : '') + '" data-item="' + esc(i.item) + '"' + (noPlant ? ' disabled' : '') + '><img alt="" src="' + F.shopArt + esc(i.item) + '.webp" onerror="this.style.visibility=\'hidden\'">' +
-        '<span class="gf-crop-t"><b>' + esc(nameOf(it.name)) + ' <em>×' + i.qty + '</em></b><small>' + esc(noPlant ? t('farm.bag.noplant', { when: (it.specs && it.specs.plant) || '' }) : off ? t('farm.bag.off', { when: (it.specs && it.specs.plant) || '' }) : (it.specs && (it.specs.first || it.specs.bloom)) || '') + '</small></span></button>';
+      // 하우스 작물은 하우스 칸에만, 하우스 칸에는 일반 나무(과일나무·건축용 나무)를 심지 않는다 — 하우스 칸은 철 경고도 없다
+      var hItem = isHouseItem(it), wrong = hItem ? !inHouse : inHouse && it.category === 'tree';
+      var pm = it.model && it.model.plant_months, off = !inHouse && !wrong && pm && pm.length && pm.indexOf(new Date(Date.now() + F.skew).getMonth() + 1) < 0;
+      var noPlant = wrong || (off && it.model.harvest === 'timber');   // 건축용 나무는 심는 달에만(서버가 막는다)
+      var note = wrong ? t(hItem ? 'farm.bag.houseOnly' : 'farm.bag.noTreeInHouse') : noPlant ? t('farm.bag.noplant', { when: (it.specs && it.specs.plant) || '' })
+        : off ? t('farm.bag.off', { when: (it.specs && it.specs.plant) || '' }) : (it.specs && (it.specs.first || it.specs.bloom)) || '';
+      return '<button type="button" class="gf-crop' + (off || wrong ? ' gf-off' : '') + '" data-item="' + esc(i.item) + '"' + (noPlant ? ' disabled' : '') + '><img alt="" src="' + F.shopArt + esc(i.item) + '.webp" onerror="this.style.visibility=\'hidden\'">' +
+        '<span class="gf-crop-t"><b>' + esc(nameOf(it.name)) + ' <em>×' + i.qty + '</em></b><small>' + esc(note) + '</small></span></button>';
     }).join('');
     var bagH = F.farm.inventory ? '<p class="gf-s-t gf-s-t2">' + esc(t('farm.bag.t')) + '</p>' + (inv ? '<div class="gf-crops">' + inv + '</div>' : '<p class="gf-s-m">' + esc(t('farm.bag.empty')) + '</p>') : '';
     // 빠른 작물: 칸마다 하루 2번까지 제값, 그 뒤는 직판장 값 (2026-10-23 담임목사 — 게임에 빠지지 않게)
     var mk = F.farm.market, tl0 = tile(x, y), pt = tl0 ? tl0.picks_today | 0 : 0, off = mk ? Math.round((1 - (+mk.rate || 0.7)) * 100) : 0;
     var mkNote = mk ? '<p class="gf-s-m gf-mk' + (pt >= mk.free ? ' is-on' : '') + '">' + esc(pt >= mk.free ? t('farm.market.now', { n: pt, r: off }) : t('farm.market.rule', { n: mk.free, r: off, done: pt })) + '</p>' : '';
-    sheet(bagH + '<p class="gf-s-t gf-s-t2">' + esc(t('farm.plant.t')) + '</p>' + mkNote + '<div class="gf-crops">' + quick + '</div>' +
-      acts(SHOP && F.farm.inventory ? '<button type="button" class="g-btn g-btn-line" data-act="shop">' + esc(t('shop.open')) + '</button>' : ''));
+    var houseH = inHouse ? '<p class="gf-s-t">' + esc(t('farm.house.t')) + '</p><p class="gf-s-m gf-house-m">' + esc(t('farm.house.m')) + '</p>' : '';
+    sheet(houseH + bagH + '<p class="gf-s-t gf-s-t2">' + esc(t('farm.plant.t')) + '</p>' + mkNote + '<div class="gf-crops">' + quick + '</div>' +
+      acts((inHouse ? '<button type="button" class="g-btn g-btn-line" data-act="hremove">' + esc(t('farm.house.remove')) + '</button>' : '') +
+        (SHOP && F.farm.inventory ? '<button type="button" class="g-btn g-btn-line" data-act="shop">' + esc(t('shop.open')) + '</button>' : '')));
   }
   // 서버가 셈한 상태(st)를 한 줄로: 거두면 받을 값 · 벨 목재와 팔 값 · 아직이면 언제 무엇을
   function stLine(it, st) {
@@ -459,6 +496,7 @@ window.GardenFarm = (function () {
     }
     var dead = !!(v && v.stage === 'dead'), gone = !!(v && (v.stage === 'done' || v.stage === 'over')) || !!(st && st.over);
     if (st && !dead) lines.unshift(stLine(it, st));
+    if (tl.building === 'greenhouse') lines.unshift(t('farm.house.in'));
     var multi = !!(st && (st.mode === 'yearly' || st.mode === 'season' || st.mode === 'timber')), digCost = st ? +st.dig || 0 : 0;
     if (multi && !dead && digCost > 0) lines.push(t('st.dig', { p: tal(digCost) }));
     if (sp.water) lines.push(t('shop.spec.water') + ': ' + sp.water);
@@ -497,6 +535,8 @@ window.GardenFarm = (function () {
     if (act === 'buy') p = SDK.farmBuy(sel.x, sel.y);
     else if (act === 'buymany') p = SDK.farmBuyMany(cells);
     else if (act === 'convert') p = SDK.farmConvert(cells);
+    else if (act === 'housebuild') p = SDK.houseBuild(cells);
+    else if (act === 'hremove') p = SDK.houseRemove(sel.x, sel.y);
     else if (act === 'clear') p = serverNew() ? SDK.farmDig(sel.x, sel.y, true) : SDK.farmClear(sel.x, sel.y);
     else if (act === 'digok') p = SDK.farmDig(sel.x, sel.y, false);
     else if (act === 'cut') p = SDK.farmCut(sel.x, sel.y);
@@ -511,20 +551,43 @@ window.GardenFarm = (function () {
     if (!p) return;
     F.busy = true; b.disabled = true;
     p.then(function (r) {
-      if (!r || !r.ok) { HUD.toast(why(r)); b.disabled = false; return; }
+      if (!r || !r.ok) { HUD.toast(act === 'housebuild' ? whyHouse(r) : why(r)); b.disabled = false; return; }
       var msg = act === 'buy' ? t('farm.bought', { p: tal(r.spent) }) : act === 'buymany' ? t('farm.bought.many', { n: r.n, p: tal(r.spent) })
         : act === 'convert' ? t('farm.converted', { n: r.n, p: tal(r.spent) }) : act === 'clear' ? t('farm.cleared') : act === 'prices' ? t('farm.prices.saved')
         : act === 'digok' ? t('farm.dug', { p: tal(r.spent) }) : act === 'cut' ? t('farm.cut.done', { w: I.fmtNum(r.wood), total: I.fmtNum(r.wood_total) })
-        : act === 'sell' ? t('farm.sold', { p: tal(r.gain) }) : t('farm.planted');
+        : act === 'sell' ? t('farm.sold', { p: tal(r.gain) }) : act === 'housebuild' ? t('farm.house.built', { n: r.n, p: tal(r.spent) })
+        : act === 'hremove' ? t('farm.house.removed') : t('farm.planted');
+      if (r.house) setHouses(r.house);
       F.mode = 'normal'; F.pick = {}; closeSheet(); setFarm(r.farm);
       HUD.toast(msg); used();
-    }).catch(function () { HUD.toast(t('farm.err')); b.disabled = false; })
+    }).catch(function (e) { HUD.toast(whyErr(e)); b.disabled = false; })
       .then(function () { F.busy = false; });
+  }
+
+  // 하우스 짓기에서 안 되는 칸 · 서버 지킴이(트리거)가 막은 심기
+  function whyHouse(r) {
+    var w = (r && r.why) || '';
+    if (w === 'already') return t('farm.why.house.already');
+    if (w === 'busy' || w === 'dae' || w === 'tree') return t('farm.why.house');
+    return why(r);
+  }
+  function whyErr(e) {
+    var m = (e && e.message) || '';
+    if (/garden_house_only/.test(m)) return t('farm.bag.houseOnly');
+    if (/garden_house_tree/.test(m)) return t('farm.bag.noTreeInHouse');
+    if (/garden_house_land/.test(m)) return t('farm.why.convertHouse');
+    return t('farm.err');
+  }
+  // 스토어 '하우스 짓기' — 입체 정원을 열고(열려 있으면 그대로) 빈 전 칸을 고르는 모드로
+  function startHouse() {
+    if (F.view) { F.mode = 'house'; F.pick = {}; closeSheet(); render(); openSide(); return; }
+    F.pendingMode = 'house'; open();
   }
 
   function init(o) {
     I = o.i18n; SDK = o.sdk; HUD = o.hud; SHOP = o.shop || window.GardenShop || null; PLANT = o.plant || window.GardenPlant || null; t = I.t;
     setInterval(pushScene, 60 * 1000);   // 입체 창을 열지 않아도 작물이 자라는 모습을 1분마다 메인 장면에
   }
-  return { init: init, open: open, attach3d: attach3d, bindView: bindView, reload: load, ready: ready, pushScene: pushScene, sceneList: sceneList, summary: summary, state: function () { return F.farm; } };
+  return { init: init, open: open, attach3d: attach3d, bindView: bindView, reload: load, ready: ready, pushScene: pushScene, sceneList: sceneList, summary: summary, state: function () { return F.farm; },
+    startHouse: startHouse, houses: function () { return F.houses; } };
 })();

@@ -6,15 +6,17 @@
    · 관리자는 값을 바로 고친다(garden_admin_set_item_price)
    · 건축용 나무(2026-10-23 담임목사): 묘목을 사서 길러 베면 목재. 다 자란 나무를 성도들이 스토어에 팔면 재고가 쌓이고,
      재고가 보이며 남은 수량까지만 산다(심은 값의 2배, 산 나무는 바로 목재로 보관함에) — 겨울에도 건축을 준비하게
+   · 하우스(2026-10-23 담임목사): '하우스' 칸에서 유리 온실을 짓고(빈 전 칸에 한 동, 입체 정원에서 칸을 고른다) 하우스 작물(model.house)을 산다.
+     하우스 작물은 하우스 칸에만 심는다. garden_house 가 없으면(SQL 전) 이 칸은 보이지 않는다
    · 다른 가게(꾸미기·옷·건재상·가구가전·차고)는 '준비 중' — docs/we-church-로드맵-상점.md
    GardenShop.init({ i18n, sdk, hud }) · GardenShop.open(tab, 닫힌 뒤 할 일)
    ============================================================ */
 window.GardenShop = (function () {
   'use strict';
   var I, SDK, HUD, t;
-  var S = { data: null, tab: 'food', rec: null, busy: false, qty: {}, sq: {} };
+  var S = { data: null, tab: 'food', rec: null, busy: false, qty: {}, sq: {}, house: null, done: null };
   var ART = 'images/garden/shop/';
-  var TABS = [['food', 'shop.tab.food'], ['tree', 'shop.tab.tree'], ['timber', 'shop.tab.timber'], ['flower', 'shop.tab.flower']];
+  var TABS = [['food', 'shop.tab.food'], ['tree', 'shop.tab.tree'], ['timber', 'shop.tab.timber'], ['flower', 'shop.tab.flower'], ['house', 'shop.tab.house']];
   var SOON = ['shop.soon.deco', 'shop.soon.wear', 'shop.soon.build', 'shop.soon.home', 'shop.soon.car'];
   var SPEC_ORDER = [['plant', 'shop.spec.plant'], ['first', 'shop.spec.first'], ['harvest', 'shop.spec.harvest'], ['bloom', 'shop.spec.bloom'],
     ['water', 'shop.spec.water'], ['sun', 'shop.spec.sun'], ['cold', 'shop.spec.cold'], ['drought', 'shop.spec.drought'], ['rain', 'shop.spec.rain'],
@@ -24,26 +26,34 @@ window.GardenShop = (function () {
   function nameOf(v) { if (v && typeof v === 'object') { var l = String(I.locale() || 'ko'); return v[l] || v[l.split('-')[0]] || v.ko || v.en || ''; } return v || ''; }
   function tal(n) { return I.fmtNum(Math.round((+n || 0) * 10) / 10); }
   function isTimber(it) { return !!(it && it.model && it.model.harvest === 'timber'); }
-  function tabOf(it) { return isTimber(it) ? 'timber' : it.category; }
+  function isHouse(it) { return !!(it && it.model && it.model.house); }
+  function tabOf(it) { return isHouse(it) ? 'house' : isTimber(it) ? 'timber' : it.category; }
   function stockOf(slug) { var st = (S.data && S.data.stock) || {}; return +st[slug] || 0; }
   function invOf(slug) { var inv = (S.data && S.data.inventory) || []; for (var i = 0; i < inv.length; i++) if (inv[i].item === slug) return inv[i].qty; return 0; }
 
   function open(tab, done) {
     if (S.rec) return;
     if (tab) S.tab = tab;
-    S.rec = HUD.openModal('gmShop', { onClose: function () { S.rec = null; if (done) done(); } });
+    S.done = done || null;
+    S.rec = HUD.openModal('gmShop', { onClose: function () { S.rec = null; var d = S.done; S.done = null; if (d) d(); } });
     $('gsList').innerHTML = '<p class="g-empty">' + esc(t('shop.loading')) + '</p>';
     renderTabs();
     load();
   }
   function load() {
-    return SDK.shop().then(function (r) {
+    // 하우스 목록·값은 스토어 창이 열려 있을 때만 함께 받는다(내 땅이 품목만 새로 받을 때는 건너뜀). 없으면(SQL 전) 하우스 칸을 숨긴다
+    var hp = S.rec && SDK.house ? SDK.house().then(function (h) { return h && h.ok ? h : null; }, function () { return null; }) : Promise.resolve(S.house);
+    return Promise.all([SDK.shop(), hp]).then(function (rs) {
+      var r = rs[0];
       if (!r || !r.ok) throw new Error((r && r.why) || 'shop');
-      S.data = r; HUD.setTalent(r.balance); render();
+      S.data = r; S.house = rs[1]; HUD.setTalent(r.balance);
+      if (S.tab === 'house' && !S.house) S.tab = 'food';
+      if (S.rec) renderTabs();
+      render();
     }).catch(function (e) { $('gsList').innerHTML = '<p class="g-empty">' + esc(SDK.notReady(e) ? t('shop.notready') : t('shop.err')) + '</p>'; });
   }
   function renderTabs() {
-    $('gsTabs').innerHTML = TABS.map(function (tb) {
+    $('gsTabs').innerHTML = TABS.filter(function (tb) { return tb[0] !== 'house' || S.house; }).map(function (tb) {
       return '<button type="button" class="gs-tab' + (S.tab === tb[0] ? ' is-on' : '') + '" role="tab" aria-selected="' + (S.tab === tb[0]) + '" data-tab="' + tb[0] + '">' + esc(t(tb[1])) + '</button>';
     }).join('') + SOON.map(function (k) { return '<span class="gs-tab gs-soon" aria-disabled="true">' + esc(t(k)) + '<small>' + esc(t('shop.soon')) + '</small></span>'; }).join('');
   }
@@ -55,16 +65,34 @@ window.GardenShop = (function () {
     var items = (d.items || []).filter(function (it) { return tabOf(it) === S.tab; });
     var sell = items.filter(function (it) { return it.fit !== 'no'; }), no = items.filter(function (it) { return it.fit === 'no'; });
     var html = '<p class="gs-lead">' + esc(t('shop.lead.' + S.tab)) + '</p>' +
-      (S.tab === 'timber' && d.stock ? '<p class="gs-lead gs-stock-lead">' + esc(t('shop.timber.wood', { n: I.fmtNum(d.wood || 0) })) + '</p>' : '') + sell.map(card).join('');
+      (S.tab === 'timber' && d.stock ? '<p class="gs-lead gs-stock-lead">' + esc(t('shop.timber.wood', { n: I.fmtNum(d.wood || 0) })) + '</p>' : '') +
+      (S.tab === 'house' && S.house ? houseCard() + '<h3 class="gs-sub">' + esc(t('shop.house.crops')) + '</h3>' : '') + sell.map(card).join('');
     if (no.length) html += '<h3 class="gs-sub">' + esc(t('shop.nofit.t')) + '</h3><p class="gs-lead">' + esc(t('shop.nofit.m')) + '</p>' + no.map(card).join('');
     $('gsList').innerHTML = html || '<p class="g-empty">' + esc(t('shop.empty')) + '</p>';
   }
   function find(slug) { var a = (S.data && S.data.items) || []; for (var i = 0; i < a.length; i++) if (a[i].slug === slug) return a[i]; return null; }
   // 심는 달(model.plant_months)이면 '지금이 심는 때', 아니면 언제 심는지
   function season(it) {
+    if (isHouse(it)) return '<small class="gs-when is-now">' + esc(t('shop.when.house')) + '</small>';
     var pm = it.model && it.model.plant_months; if (!pm || !pm.length) return '';
     var on = pm.indexOf(new Date().getMonth() + 1) >= 0, sp = it.specs || {};
-    return '<small class="gs-when' + (on ? ' is-now' : '') + '">' + esc(on ? t('shop.when.now') : t('shop.when.off', { when: sp.plant || '' })) + '</small>';
+    // 하우스가 있으면 채소·꽃은 철이 아니어도 하우스 칸에 심는다(일반 나무·건축용 나무는 빼고)
+    var inHouse = !on && it.category !== 'tree' && S.house && (S.house.houses || []).length > 0;
+    return '<small class="gs-when' + (on ? ' is-now' : '') + '">' + esc(on ? t('shop.when.now') : t('shop.when.off', { when: sp.plant || '' }) + (inHouse ? ' · ' + t('shop.when.inHouse') : '')) + '</small>';
+  }
+  // 유리 온실 카드 — 값·지은 수·이점, '지을 칸 고르기'를 누르면 입체 정원에서 빈 전 칸을 고른다
+  function houseCard() {
+    var h = S.house, p = +h.price || 0, n = (h.houses || []).length, can = +S.data.balance >= p;
+    var rows = ['shop.house.r1', 'shop.house.r2', 'shop.house.r3', 'shop.house.r4', 'shop.house.r5'].map(function (k) { return '<li>' + esc(t(k)) + '</li>'; }).join('');
+    return '<article class="gs-card gs-house">' +
+      '<div class="gs-card-h"><img alt="" loading="lazy" src="' + ART + 'greenhouse.webp" onerror="this.style.visibility=\'hidden\'">' +
+      '<div class="gs-card-t"><b>' + esc(t('shop.house.name')) + '</b><small>' + esc(t('shop.house.size')) + '</small>' +
+      (n ? '<small class="gs-when is-now">' + esc(t('shop.house.have', { n: I.fmtNum(n) })) + '</small>' : '') + '</div>' +
+      '<div class="gs-price">' + (S.data.admin ? '<label class="gs-admin"><span class="g-sr">' + esc(t('shop.admin.price')) + '</span><input type="number" min="0" step="0.1" value="' + esc(p) + '" data-hprice="1"></label>' : '<b>' + esc(tal(p)) + '</b>') +
+      '<span>' + esc(HUD.talentLabel()) + '</span></div></div>' +
+      '<ul class="gs-house-list">' + rows + '</ul>' +
+      '<div class="gs-buy"><span class="gs-have"></span><button type="button" class="g-btn g-btn-primary gs-go" data-house-go="1"' + (can ? '' : ' disabled') + '>' +
+      esc(can ? t('shop.house.go') : t('shop.short')) + '</button></div></article>';
   }
   // 첫 수확·첫 꽃·벨 때까지 드는 마음(XP): 자란 날 × 하루치(10) — 가격표 뒤 나무는 first_days(마음 날)
   function xpNeed(it) {
@@ -79,7 +107,7 @@ window.GardenShop = (function () {
     var fit = '<span class="gs-fit gs-fit-' + it.fit + '">' + esc(t('shop.fit.' + it.fit)) + '</span>';
     var rows = SPEC_ORDER.filter(function (k) { return sp[k[0]]; }).map(function (k) { return '<div><dt>' + esc(t(k[1])) + '</dt><dd>' + esc(sp[k[0]]) + '</dd></div>'; }).join('');
     var xn = no ? null : xpNeed(it);
-    if (xn) rows += '<div><dt>' + esc(t('shop.spec.xp')) + '</dt><dd>' + esc(t('shop.xp.' + tabOf(it), { xp: I.fmtNum(xn.xp), d: I.fmtNum(xn.d), n: xn.xd })) + '</dd></div>';
+    if (xn) rows += '<div><dt>' + esc(t('shop.spec.xp')) + '</dt><dd>' + esc(t('shop.xp.' + (isHouse(it) ? it.category : tabOf(it)), { xp: I.fmtNum(xn.xp), d: I.fmtNum(xn.d), n: xn.xd })) + '</dd></div>';
     var yl = no ? '' : yieldLine(it);
     var head = '<div class="gs-card-h"><img alt="" loading="lazy" src="' + ART + esc(it.slug) + '.webp" onerror="this.style.visibility=\'hidden\'">' +
       '<div class="gs-card-t"><b>' + esc(nameOf(it.name)) + '</b>' + fit + (sp.fitwhy ? '<small>' + esc(sp.fitwhy) + '</small>' : '') + (no ? '' : season(it)) + '</div>' +
@@ -114,6 +142,12 @@ window.GardenShop = (function () {
   }
 
   function onClick(e) {
+    var hg = e.target.closest('[data-house-go]');
+    if (hg && !hg.disabled && S.rec) {
+      S.done = null;   // 입체 정원으로 옮겨 가므로 닫힌 뒤 할 일은 하지 않는다(내 땅이 새로 받는다)
+      HUD.closeThen(S.rec, function () { if (window.GardenFarm && window.GardenFarm.startHouse) window.GardenFarm.startHouse(); });
+      return;
+    }
     var tb = e.target.closest('.gs-tab[data-tab]');
     if (tb) { S.tab = tb.getAttribute('data-tab'); renderTabs(); render(); $('gsList').scrollTop = 0; return; }
     var sqb = e.target.closest('[data-sq]');
@@ -158,8 +192,18 @@ window.GardenShop = (function () {
       HUD.toast(t('shop.admin.stockSaved', { name: nameOf((find(slug) || {}).name), n: I.fmtNum(r.qty) }));
     }).catch(function () { HUD.toast(t('shop.admin.fail')); });
   }
+  function onHousePrice(inp) {
+    var v = Math.round(+inp.value * 10) / 10;
+    if (!(v >= 0)) { HUD.toast(t('shop.admin.bad')); return; }
+    SDK.adminSetHousePrice(v).then(function (r) {
+      if (!r || !r.ok) { HUD.toast(t('shop.admin.fail')); return; }
+      if (S.house) S.house.price = r.price; render();
+      HUD.toast(t('shop.admin.saved', { name: t('shop.house.name'), p: tal(r.price) }));
+    }).catch(function () { HUD.toast(t('shop.admin.fail')); });
+  }
   function onPrice(e) {
     var stIn = e.target.closest('[data-stock]'); if (stIn) { onStock(stIn); return; }
+    var hpIn = e.target.closest('[data-hprice]'); if (hpIn) { onHousePrice(hpIn); return; }
     var inp = e.target.closest('[data-price]'); if (!inp) return;
     var slug = inp.getAttribute('data-price'), v = Math.round(+inp.value * 10) / 10;
     if (!(v >= 0)) { HUD.toast(t('shop.admin.bad')); return; }
@@ -176,5 +220,5 @@ window.GardenShop = (function () {
     $('gmShop').addEventListener('click', onClick);
     $('gmShop').addEventListener('change', onPrice);
   }
-  return { init: init, open: open, items: function () { return (S.data && S.data.items) || null; }, load: load, find: find };
+  return { init: init, open: open, items: function () { return (S.data && S.data.items) || null; }, load: load, find: find, isHouse: isHouse };
 })();
