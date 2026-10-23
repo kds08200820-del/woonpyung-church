@@ -10,7 +10,7 @@ window.GardenHud = (function () {
   var I, SDK, SCENE, t, P = {};
   var H = { state: null, offline: false, qt: null, qtDate: '', amenDone: false, rankMsg: '', doneKinds: {}, talentLabel: '', svcForce: '', onPlanted: null };
   var TASK_KINDS = ['water', 'login', 'qt_amen', 'bible_day', 'worship_sunday', 'worship_weekday', 'audiobook_chapter', 'heart_given', 'modu_day'];
-  var TASK_HREF = { bible_day: 'dashboard.html', audiobook_chapter: 'audiobook.html', heart_given: 'story.html#growth', modu_day: 'modu/' };
+  var TASK_HREF = { bible_day: 'dashboard.html', audiobook_chapter: 'audiobook.html', heart_given: 'home.html#ssGrowth', modu_day: 'modu/' };
   var SEED_ICON = { sunflower: '🌻', olive: '🫒', fig: '🍐', grape: '🍇', mustard: '🌼', lily: '🌷' };
   var WX_ICON = { clear: '☀️', night: '🌙', cloudy: '☁️', fog: '🌫️', rain: '🌧️', snow: '❄️' };
   /* 예배 묶음 — index.html 이 쓰는 ?v= 그대로(이미 올라간 파일은 건너뜀) */
@@ -97,9 +97,11 @@ window.GardenHud = (function () {
   });
 
   /* ── 상태 도우미 ── */
+  function stageIdx(s) { return Math.max(0, Math.min(5, (s | 0) - 1)); }
   function garden() {
     var g = (H.state && H.state.garden) || {};
-    return { species: g.species || 'sunflower', plant_name: g.plant_name || '', stage: g.stage | 0, plant_xp: g.plant_xp | 0, xp_total: g.xp_total | 0, talent_balance: g.talent_balance | 0, plants_done: g.plants_done | 0, chosen_at: g.chosen_at || null };
+    // 서버 단계는 1부터(씨앗=1, garden_stage) — 화면(그림·이름·게이지)은 0부터 세므로 하나 뺀다
+    return { species: g.species || 'sunflower', plant_name: g.plant_name || '', stage: stageIdx(g.stage), plant_xp: g.plant_xp | 0, xp_total: g.xp_total | 0, talent_balance: g.talent_balance | 0, plants_done: g.plants_done | 0, chosen_at: g.chosen_at || null };
   }
   function speciesList() {
     var list = ((H.state && H.state.species) || []).filter(function (s) { return s && s.slug && s.active !== false; });

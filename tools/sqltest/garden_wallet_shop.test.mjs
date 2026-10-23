@@ -34,6 +34,8 @@ await db.exec(`
     select json_build_object('id', m.id, 'title', m.title, 'amount', m.amount, 'daily_days', m.daily_days) from public.ss_missions m
      where m.week_start = (now() at time zone 'Asia/Seoul')::date - extract(dow from (now() at time zone 'Asia/Seoul')::date)::int limit 1 $$;
   create table public.ss_talent_items (id bigint generated always as identity primary key, name text, amount int);
+  create table public.album_likes (photo_id bigint, user_id uuid, created_at timestamptz not null default now());
+  create table public.post_reactions (post_id bigint, user_id uuid, type text, created_at timestamptz not null default now());
   create table public.qt_checks (user_id uuid, check_date date, created_at timestamptz default now());
   create table public.bible_reading (user_id uuid, day_no int, done_at timestamptz);
   create table public.attendance (att_date date, service text, member_key text);
@@ -75,7 +77,8 @@ await db.exec(`
 `);
 await db.exec(fs.readFileSync(path.join(ROOT, 'supabase/20261023_1200_garden_phase1.sql'), 'utf8'));
 await db.exec(fs.readFileSync(path.join(ROOT, 'supabase/20261023_1300_garden_farm.sql'), 'utf8'));
-const sql3 = fs.readFileSync(path.join(ROOT, 'supabase/20261023_1500_garden_wallet_shop.sql'), 'utf8');
+const sql3 = fs.readFileSync(path.join(ROOT, 'supabase/20261023_1500_garden_wallet_shop.sql'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_1900_garden_hearts.sql'), 'utf8');   // 하트 고침(1900)은 1500 뒤에 늘 함께
 await db.exec(sql3);
 await db.exec(sql3);
 ok('rerun safe', true);
@@ -272,6 +275,20 @@ ok('set ss talent', st2.ok && (await as(U1, `select public.garden_state('woonpyu
 const xd2 = await as(ADM, `select public.garden_admin_set_xp_day('woonpyung', 8)`);
 ok('set xp day', xd2.ok && +(await as(U1, `select public.garden_farm('woonpyung')`)).farm.xp_day === 8, xd2);
 await as(ADM, `select public.garden_admin_set_xp_day('woonpyung', 10)`);
+
+// 7-4) 하트: 갤러리 하트 1달란트 · 글의 사랑해요 1달란트(다른 반응은 0) · 성장기 하트는 셈한 날(오늘)로
+await db.exec(`insert into public.album_likes (photo_id, user_id) values (501, '${U1}');
+          insert into public.post_reactions (post_id, user_id, type) values (601, '${U1}', '사랑해요'), (602, '${U1}', '기도해요');
+          insert into public.ss_submissions (member_key, stype, sub_date, liked_uids) values ('테스트_남의아이|20160101', 'QT', (now() at time zone 'Asia/Seoul')::date - 30, '["${U1}"]'::jsonb)`);
+await as(U1, `select public.garden_sync('woonpyung')`);
+const hl = await pg(`select kind, ref, talent, xp, (at at time zone 'Asia/Seoul')::date = (now() at time zone 'Asia/Seoul')::date as today
+                       from public.garden_ledger where user_id = '${U1}' and kind in ('album_like', 'reaction', 'reaction_heart', 'heart_given') order by kind, ref`);
+const hk = (k, r) => hl.find((x) => x.kind === k && (!r || x.ref === r));
+ok('gallery heart = 1 talent', hk('album_like') && +hk('album_like').talent === 1, hl);
+ok('post heart reaction = 1 talent, other reaction 0', hk('reaction_heart', '601|사랑해요') && +hk('reaction_heart').talent === 1 && hk('reaction', '602|기도해요') && +hk('reaction', '602|기도해요').talent === 0 && !hk('reaction', '601|사랑해요'), hl);
+ok('growth heart counted today', hk('heart_given') && hk('heart_given').today === true && +hk('heart_given').talent === 1, hl);
+const todayKinds = (await as(U1, `select public.garden_state('woonpyung')`)).today;
+ok('heart shows in today', JSON.stringify(todayKinds).includes('heart_given'), todayKinds);
 
 // 7-1) 마이그레이션을 다시 실행해도 안전 — 관리자가 바꾼 품목 값은 그대로
 await as(ADM, `select public.garden_admin_set_item_price('woonpyung', 'apple', 45)`);

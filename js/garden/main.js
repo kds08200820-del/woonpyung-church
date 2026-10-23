@@ -49,7 +49,7 @@
   }
   function preloadFor(st) {
     var g = (st && st.garden) || {};
-    var urls = SCENE.assetsFor(phaseNow(), seasonNow(), g.species || 'sunflower', g.stage | 0);
+    var urls = SCENE.assetsFor(phaseNow(), seasonNow(), g.species || 'sunflower', Math.max(0, Math.min(5, (g.stage | 0) - 1)));   // 서버 단계 1부터 → 그림 0부터
     return Promise.race([SCENE.preload(urls), new Promise(function (res) { setTimeout(res, 2500); })]);
   }
   function mountScene(st) {
@@ -84,8 +84,11 @@
       if (document.hidden) return;
       if (I.todayStr() !== M.bootDay) { location.reload(); return; }
       applySky();
-      if (Date.now() - M.lastSync > 60 * 1000) doSync();
+      // 다른 페이지(성장기 하트·QT·성경)에 다녀오면 바로 다시 셈한다
+      if (Date.now() - M.lastSync > 5 * 1000) doSync();
     });
+    // 뒤로 가기로 돌아온 페이지(bfcache)는 visibilitychange 가 없을 수 있다
+    window.addEventListener('pageshow', function (ev) { if (ev.persisted && Date.now() - M.lastSync > 5 * 1000) doSync(); });
   }
 
   /* ── 카카오 로그인 복귀(#access_token=…): sb-ready → SIGNED_IN 뒤 garden.html 로 ── */
