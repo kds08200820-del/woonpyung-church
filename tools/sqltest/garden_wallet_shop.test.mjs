@@ -23,7 +23,7 @@ await db.exec(`
   alter default privileges in schema public grant all on sequences to anon, authenticated;
   alter default privileges in schema public grant execute on functions to anon, authenticated;
   create table public.admins (uid uuid primary key);
-  create table public.profiles (id uuid primary key, name text);
+  create table public.profiles (id uuid primary key, name text, role text);
   create table public.member_links (user_id uuid primary key, member_key text, spouse_key text, member_status text default '정회원');
   create table public.gyojeok (id serial primary key, member_key text, name text, head text, ss_role text, birth date);
   create or replace function public.ss_student_roles() returns text[] language sql immutable as $$ select array['어린이', '중학생', '고등학생']::text[] $$;
@@ -374,11 +374,53 @@ ok('request again after decline', (await as(ADM, `select public.garden_neighbor_
 ok('no direct neighbors read', !!(await asErr(KID, `select count(*) from public.garden_neighbors`)));
 ok('neighbor rows never deleted', (await pg(`select count(*)::int n from public.garden_neighbors`))[0].n === 2);
 
+// 7-7) 달란트 선물 — 이웃에게만, 1~500, 하루 1,000, 잔액 안에서. 원장 두 줄
+const bal = async (u) => +(await pg(`select public.garden_balance(public.garden_default_church(), '${u}') b`))[0].b;
+const setBal = async (u, v) => { const cur = await bal(u); await pg(`insert into public.garden_ledger (church_id, user_id, kind, ref, xp, talent, at, source) values (public.garden_default_church(), '${u}', 'test_adjust', 'adj-' || gen_random_uuid()::text, 0, ${v} - ${cur}, now(), 'admin')`); };
+await setBal(U1, 250);
+const k0 = await bal(KID);
+ok('gift to self refused', (await as(U1, `select public.garden_gift('woonpyung', ${P1}, 10)`)).why === 'self');
+ok('gift to non-neighbor refused', (await as(ADM, `select public.garden_gift('woonpyung', ${P1}, 10)`)).why === 'neighbor');
+ok('gift amount too small', (await as(U1, `select public.garden_gift('woonpyung', ${PK}, 0.5)`)).why === 'amount');
+ok('gift amount too big', (await as(U1, `select public.garden_gift('woonpyung', ${PK}, 501)`)).why === 'amount');
+ok('gift over balance refused', (await as(U1, `select public.garden_gift('woonpyung', ${PK}, 300)`)).why === 'balance');
+let gf = await as(U1, `select public.garden_gift('woonpyung', ${PK}, 100, '  주일에   뵈어요 ')`);
+ok('gift sent', gf.ok && +gf.amount === 100 && +gf.balance === 150, gf);
+ok('receiver got it', (await bal(KID)) === k0 + 100 && (await bal(U1)) === 150);
+let grows = await pg(`select kind, talent::float t, source, meta->>'note' note, ref from public.garden_ledger where kind like 'gift_%' order by kind`);
+ok('two ledger rows, same ref, transfer', grows.length === 2 && grows[0].ref === grows[1].ref && grows.every((r) => r.source === 'transfer') && grows[0].note === '주일에 뵈어요', grows);
+ok('gift_in shows in wallet', (await as(KID, `select public.garden_wallet('woonpyung')`)).by_kind.some((k) => k.kind === 'gift_in' && +k['in'] === 100));
+await setBal(U1, 5000);
+await pg(`insert into public.garden_ledger (church_id, user_id, kind, ref, xp, talent, at, source) values (public.garden_default_church(), '${U1}', 'gift_out', 'gift:test-cap', 0, -850, now(), 'transfer')`);
+ok('daily gift cap 1,000', (await as(U1, `select public.garden_gift('woonpyung', ${PK}, 100)`)).why === 'limit');
+ok('cap leaves room for 50', (await as(U1, `select public.garden_gift('woonpyung', ${PK}, 50)`)).ok === true);
+
+// 7-8) 목회자 기본 달란트 — 담임목사 10만 · 부목사 1만 · 새 교회 소유자 10만, 한 사람에 한 번
+const sg = async (u, c) => (await pg(`select count(*)::int n, coalesce(sum(talent), 0)::float t, max(meta->>'message') m from public.garden_ledger where user_id = '${u}' and kind = 'staff_grant'` + (c ? ` and church_id = '${c}'` : '')))[0];
+await pg(`insert into public.profiles (id, name, role) values ('${ADM}', '테스트_부목사', '부목사') on conflict (id) do update set role = excluded.role`);
+ok('assoc pastor gets 10,000', (await sg(ADM)).t === 10000);
+await pg(`update public.profiles set role = '부목사' where id = '${ADM}'`);
+ok('no double grant on role update', (await sg(ADM)).n === 1);
+await pg(`insert into public.profiles (id, name, role) values ('${OUT}', '테스트_담임', '담임목사') on conflict (id) do update set role = excluded.role`);
+let so = await sg(OUT);
+ok('senior pastor gets 100,000 with message', so.t === 100000 && /10만 달란트/.test(so.m || ''), so);
+ok('admin gift caps are larger', (await as(ADM, `select public.garden_gift('woonpyung', ${PK}, 600)`)).why === 'neighbor');
+const NEWC = '99999999-9999-4999-8999-999999999999';
+await pg(`insert into public.garden_churches (id, slug, name) values ('${NEWC}', 'newchurch', '테스트_새교회')`);
+await pg(`insert into public.garden_memberships (church_id, user_id, role) values ('${NEWC}', '${KID}', 'owner')`);
+let nc = await sg(KID, NEWC);
+ok('new church owner gets 100,000 once', nc.n === 1 && nc.t === 100000, nc);
+await pg(`update public.garden_memberships set status = 'active' where church_id = '${NEWC}' and user_id = '${KID}'`);
+ok('owner update → still once', (await sg(KID, NEWC)).n === 1);
+await pg(`update public.profiles set role = '집사' where id = '${OUT}'`);
+ok('role change keeps grant row (no delete)', (await sg(OUT)).n === 1);
+
 // 7-1) 마이그레이션을 다시 실행해도 안전 — 관리자가 바꾼 품목 값은 그대로
 await as(ADM, `select public.garden_admin_set_item_price('woonpyung', 'apple', 45)`);
 await db.exec(sql3);
 const apRow = await pg(`select price from public.garden_shop_items where slug = 'apple'`);
 ok('rerun keeps admin price', +apRow[0].price === 45, apRow);
+ok('rerun: staff grants not doubled', (await pg(`select count(*)::int n from public.garden_ledger where kind = 'staff_grant'`))[0].n === 3);
 
 // 8) 잔액 = 장부 합, 권한
 s = await as(U1, `select public.garden_sync('woonpyung')`);

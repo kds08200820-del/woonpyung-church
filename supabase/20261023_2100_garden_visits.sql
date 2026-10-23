@@ -1,5 +1,5 @@
 -- ============================================================
--- 신앙 정원 — 정원 초대하기 · 이웃 정원 방문하기 · 방명록 · 이웃 신청 (2026-10-23 담임목사 지시)
+-- 신앙 정원 — 정원 초대하기 · 이웃 정원 방문하기 · 방명록 · 이웃 신청 · 달란트 선물 (2026-10-23 담임목사 지시)
 --
 -- [무엇]
 -- · 초대하기: 내 정원을 열면(visit_open) 같은 교회 성도가 구경하러 올 수 있다. 닫으면 주인·관리자만 본다
@@ -9,9 +9,13 @@
 -- · 글은 한 사람이 하루(24시간) 30개까지
 -- · 이웃 신청: 정원 자리로 신청 → 받은 사람이 수락·거절. 서로 신청하면 바로 이웃. 이웃끼리는 초대를 꺼도 서로 방문·방명록 가능
 --   끊기·취소는 지우지 않고 status 로(removed·declined). 신청은 한 사람이 하루 30개까지
+-- · 달란트 선물: 서로 이웃인 사람에게만. 한 번에 1~500, 하루 보내는 합계 1,000까지(목회자·관리자는 1만·5만), 잔액 안에서.
+-- · 목회자 기본 달란트: 담임목사 100,000 · 부목사 10,000 (직책 profiles.role, 성경 동기화 주인, 새 교회 소유자) — 한 사람에 한 번, 메시지와 함께
+--   원장에 두 줄(gift_out −, gift_in +, 같은 선물 번호, source 'transfer') — 지우지 않는다
 -- [표]   garden_gardens(+visit_open, visit_open_at, guestbook_seen_at) · garden_guestbook · garden_neighbors
 -- [함수] garden_visit_set · garden_visit_list · garden_visit_view · garden_guestbook_post · garden_guestbook_hide
---        garden_neighbor_request · garden_neighbor_respond · garden_neighbor_remove · garden_neighbor_list
+--        garden_neighbor_request · garden_neighbor_respond · garden_neighbor_remove · garden_neighbor_list · garden_gift
+--        (목회자 기본 달란트) garden_staff_grant · 방아쇠 garden_memberships_owner_grant · garden_profiles_staff_grant
 --        (안쪽) garden_visit_member · garden_guestbook_json · garden_is_neighbor · garden_neighbor_json · garden_neighbor_list_json
 -- [필요] 20261023_1200·1300·1500 이 먼저 실행돼 있어야 한다(garden_tiles.land/item, garden_xp_since 사용)
 -- [실행] SQL Editor 에서 이 파일 내용 그대로 1회 (다시 실행해도 안전)
@@ -22,7 +26,12 @@
 --     public.garden_visit_member(uuid, uuid), public.garden_guestbook_json(uuid, uuid, uuid, boolean),
 --     public.garden_neighbor_request(text, int), public.garden_neighbor_respond(text, bigint, boolean), public.garden_neighbor_remove(text, bigint),
 --     public.garden_neighbor_list(text), public.garden_is_neighbor(uuid, uuid, uuid), public.garden_neighbor_json(uuid, uuid, uuid),
---     public.garden_neighbor_list_json(uuid, uuid);
+--     public.garden_neighbor_list_json(uuid, uuid), public.garden_gift(text, int, numeric, text);
+--   (선물로 적힌 원장 줄은 그대로 둔다 — 잔액이 맞게 남는다)
+--   drop trigger if exists garden_memberships_owner_grant on public.garden_memberships;
+--   drop trigger if exists garden_profiles_staff_grant on public.profiles;
+--   drop function if exists public.garden_owner_grant_trg(), public.garden_profile_grant_trg(), public.garden_staff_grant(uuid, uuid, text);
+--   (목회자 기본 달란트를 거두려면 원장 줄을 지우지 말고 같은 금액을 빼는 줄을 더한다: kind 'staff_grant_back')
 --   alter table public.garden_guestbook rename to garden_guestbook_archived;
 --   alter table public.garden_neighbors rename to garden_neighbors_archived;
 --   alter table public.garden_gardens rename column visit_open to visit_open_archived;
@@ -336,14 +345,116 @@ begin
   return (json_build_object('ok', true) :: jsonb || (public.garden_neighbor_list_json(v_church, v_uid) :: jsonb)) :: json;
 end $$;
 
+-- 달란트 선물(이웃에게만)
+create or replace function public.garden_gift(p_church text, p_plot int, p_amount numeric, p_note text default null) returns json
+language plpgsql security definer set search_path = public as $$
+declare v_church uuid; v_uid uuid := auth.uid(); v_to uuid; v_amt numeric(12,1); v_bal numeric; v_tz text; v_day date; v_today numeric;
+        v_ref text; v_note text; v_from int; v_nick text; v_max numeric; v_cap numeric;
+begin
+  if v_uid is null then return json_build_object('ok', false, 'why', 'login'); end if;
+  v_church := public.garden_resolve_church(p_church);
+  if v_church is null then return json_build_object('ok', false, 'why', 'church'); end if;
+  if not public.garden_visit_member(v_church, v_uid) then return json_build_object('ok', false, 'why', 'member'); end if;
+  select pl.owner_user_id into v_to from public.garden_plots pl where pl.church_id = v_church and pl.plot_no = p_plot;
+  if v_to is null then return json_build_object('ok', false, 'why', 'none'); end if;
+  if v_to = v_uid then return json_build_object('ok', false, 'why', 'self'); end if;
+  if not public.garden_is_neighbor(v_church, v_uid, v_to) then return json_build_object('ok', false, 'why', 'neighbor'); end if;
+  v_amt := round(coalesce(p_amount, 0), 1);
+  -- 목회자·관리자는 성도를 돕도록 한도가 크다(한 번 1만·하루 5만), 성도는 한 번 500·하루 1,000
+  if public.garden_is_admin(v_church) then v_max := 10000; v_cap := 50000; else v_max := 500; v_cap := 1000; end if;
+  if v_amt < 1 or v_amt > v_max then return json_build_object('ok', false, 'why', 'amount', 'max', v_max); end if;
+  -- 같은 사람이 동시에 두 번 보내도 잔액을 넘지 않게: 내 정원 줄을 잠근다
+  perform 1 from public.garden_gardens where church_id = v_church and user_id = v_uid for update;
+  v_tz := coalesce((select c.timezone from public.garden_churches c where c.id = v_church), 'Asia/Seoul');
+  v_day := (now() at time zone v_tz)::date;
+  select coalesce(-sum(l.talent), 0) into v_today from public.garden_ledger l
+   where l.church_id = v_church and l.user_id = v_uid and l.kind = 'gift_out' and (l.at at time zone v_tz)::date = v_day;
+  if v_today + v_amt > v_cap then return json_build_object('ok', false, 'why', 'limit', 'left', greatest(0, v_cap - v_today)); end if;
+  v_bal := public.garden_balance(v_church, v_uid);
+  if v_bal < v_amt then return json_build_object('ok', false, 'why', 'balance', 'balance', v_bal); end if;
+  v_note := nullif(left(btrim(regexp_replace(coalesce(p_note, ''), '\s+', ' ', 'g')), 60), '');
+  select pl.plot_no into v_from from public.garden_plots pl where pl.church_id = v_church and pl.owner_user_id = v_uid;
+  v_nick := coalesce((select nullif(p.nickname, '') from public.garden_profiles p where p.user_id = v_uid), '성도');
+  v_ref := 'gift:' || gen_random_uuid()::text;
+  insert into public.garden_ledger (church_id, user_id, kind, ref, xp, talent, at, source, meta)
+  values (v_church, v_uid, 'gift_out', v_ref, 0, -v_amt, now(), 'transfer', jsonb_build_object('to_plot', p_plot, 'note', v_note));
+  insert into public.garden_ledger (church_id, user_id, kind, ref, xp, talent, at, source, meta)
+  values (v_church, v_to, 'gift_in', v_ref, 0, v_amt, now(), 'transfer', jsonb_build_object('from_plot', v_from, 'from', v_nick, 'note', v_note));
+  perform public.garden_refresh_balance(v_church, v_to);
+  return json_build_object('ok', true, 'amount', v_amt, 'balance', public.garden_refresh_balance(v_church, v_uid), 'left', v_cap - v_today - v_amt);
+end $$;
+
+-- ──────────────────────────────────────────────────────────────
+-- 목회자 기본 달란트 (2026-10-23 담임목사: "담임목사는 10만 달란트", "새로운 교회가 가입했을 때 담임목사에게 메시지와 함께 10만",
+--   "부목사는 1만") — 성도를 돕고 격려하라고 주는 몫. 한 사람에 한 번(원장 줄 번호 staff_grant/pastor·assoc 으로 막는다)
+-- ──────────────────────────────────────────────────────────────
+create or replace function public.garden_staff_grant(p_church uuid, p_uid uuid, p_kind text) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare v_amt numeric; v_msg text; v_n int;
+begin
+  if p_church is null or p_uid is null then return false; end if;
+  if p_kind = 'pastor' then
+    v_amt := 100000; v_msg := '교회를 섬기시는 담임목사님께, 성도들을 돕고 격려하실 수 있도록 10만 달란트를 드립니다. 이웃이 된 성도에게 선물하실 수 있습니다.';
+  elsif p_kind = 'assoc' then
+    v_amt := 10000; v_msg := '함께 섬기시는 부목사님께, 성도들을 돕고 격려하실 수 있도록 1만 달란트를 드립니다. 이웃이 된 성도에게 선물하실 수 있습니다.';
+  else return false; end if;
+  insert into public.garden_ledger (church_id, user_id, kind, ref, xp, talent, at, source, meta)
+  values (p_church, p_uid, 'staff_grant', p_kind, 0, v_amt, now(), 'admin', jsonb_build_object('message', v_msg))
+  on conflict (church_id, user_id, kind, ref) do nothing;
+  get diagnostics v_n = row_count;
+  if v_n > 0 then perform public.garden_refresh_balance(p_church, p_uid); end if;
+  return v_n > 0;
+end $$;
+revoke all on function public.garden_staff_grant(uuid, uuid, text) from public, anon, authenticated;
+
+-- 새 교회: 소유자(담임목사)가 정해지면 — 지급이 실패해도 소속 저장은 막지 않는다
+create or replace function public.garden_owner_grant_trg() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.role = 'owner' and new.status = 'active' then
+    begin perform public.garden_staff_grant(new.church_id, new.user_id, 'pastor'); exception when others then null; end;
+  end if;
+  return new;
+end $$;
+drop trigger if exists garden_memberships_owner_grant on public.garden_memberships;
+create trigger garden_memberships_owner_grant after insert or update of role, status on public.garden_memberships
+  for each row execute function public.garden_owner_grant_trg();
+
+-- 이 사이트(운평): 직책(profiles.role, 목회행정에서 정함)이 담임목사·부목사가 되면 + 지금 정해진 분들 + 성경 동기화 주인(담임목사 계정)
+do $grant$
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'role') then
+    execute $f$
+      create or replace function public.garden_profile_grant_trg() returns trigger
+      language plpgsql security definer set search_path = public as $b$
+      begin
+        begin
+          if coalesce(new.role, '') like '%담임목사%' then perform public.garden_staff_grant(public.garden_default_church(), new.id, 'pastor');
+          elsif coalesce(new.role, '') like '%부목사%' then perform public.garden_staff_grant(public.garden_default_church(), new.id, 'assoc');
+          end if;
+        exception when others then null;   -- 프로필 저장은 늘 된다
+        end;
+        return new;
+      end $b$ $f$;
+    execute 'drop trigger if exists garden_profiles_staff_grant on public.profiles';
+    execute 'create trigger garden_profiles_staff_grant after insert or update of role on public.profiles for each row execute function public.garden_profile_grant_trg()';
+    perform public.garden_staff_grant(public.garden_default_church(), p.id, case when p.role like '%담임목사%' then 'pastor' else 'assoc' end)
+       from public.profiles p
+      where (p.role like '%담임목사%' or p.role like '%부목사%') and exists (select 1 from auth.users u where u.id = p.id);
+  end if;
+  if to_regclass('public.sync_owners') is not null then
+    perform public.garden_staff_grant(public.garden_default_church(), s.user_id, 'pastor') from (select distinct user_id from public.sync_owners) s;
+  end if;
+end $grant$;
+
 revoke all on function public.garden_visit_set(text, boolean), public.garden_visit_list(text), public.garden_visit_view(text, int),
   public.garden_guestbook_post(text, int, text), public.garden_guestbook_hide(text, bigint),
   public.garden_neighbor_request(text, int), public.garden_neighbor_respond(text, bigint, boolean), public.garden_neighbor_remove(text, bigint),
-  public.garden_neighbor_list(text) from public, anon;
+  public.garden_neighbor_list(text), public.garden_gift(text, int, numeric, text) from public, anon;
 grant execute on function public.garden_visit_set(text, boolean), public.garden_visit_list(text), public.garden_visit_view(text, int),
   public.garden_guestbook_post(text, int, text), public.garden_guestbook_hide(text, bigint),
   public.garden_neighbor_request(text, int), public.garden_neighbor_respond(text, bigint, boolean), public.garden_neighbor_remove(text, bigint),
-  public.garden_neighbor_list(text) to authenticated;
+  public.garden_neighbor_list(text), public.garden_gift(text, int, numeric, text) to authenticated;
 
 commit;
 
