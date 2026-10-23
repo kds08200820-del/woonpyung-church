@@ -708,7 +708,7 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
 .g3d.is-phone .g3d-btn { min-height: 38px; padding: 0 12px; font-size: .84rem; }
 .g3d.is-phone .g3d-tip { top: calc(max(8px, env(safe-area-inset-top)) + 58px); }
 .g3d.is-phone .g3d-wx { left: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); font-size: .78rem; }
-.g3d.is-phone .g3d-ctl { right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); grid-template-columns: 44px; }
+.g3d.is-phone .g3d-ctl { right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); grid-template-columns: 44px 44px; grid-auto-flow: row; }
 .g3d.is-phone .g3d-wx { max-width: calc(100% - 80px); }
 .g3d.is-phone .g3d-hint { bottom: calc(52px + env(safe-area-inset-bottom)); left: 10px; transform: none; white-space: normal; width: max-content; max-width: calc(100% - 80px); font-size: .78rem; }
 

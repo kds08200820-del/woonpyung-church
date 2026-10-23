@@ -3,7 +3,8 @@
    2026-10-23 담임목사: "정원을 크게 입체적으로 볼 수 있어야", "모바일은 전체 화면이 되게",
      "이런 식으로 보여야 합니다. 확대 축소 해서 볼 수 있어야" (농장 게임처럼 땅 전체를 마름모로 내려다보는 그림)
    · 보기: 내 땅 전체(산 칸 + 앞으로 살 수 있는 칸)를 도톰한 잔디 판으로 놓고 남동쪽 위에서 마름모로 내려다본다.
-     끌면 옮겨 보고, 휠·두 손가락으로 확대·축소(가까울수록 눈높이로 내려온다), 돌리기 단추·오른쪽 끌기·두 손가락 비틀기로 돈다
+     끌면 옮겨 보고, 휠·두 손가락으로 확대·축소, 돌리기 단추·오른쪽 끌기·두 손가락 비틀기로 돈다.
+     보는 각도(기울기)는 따로: 기울기 단추·오른쪽 끌기 위아래·두 손가락을 함께 위아래로 (2026-10-23 담임목사 "보는 각도를 조절, 모바일은 두 손으로, 더 축소")
    · 2.5D 클레이(도서관 프로그램 '정원 가꾸기'와 같은 방식): 땅·빛·그림자·바람·비·눈은 three.js 3D,
      나무·꽃·작물·인물은 정원과 같은 클레이 그림 판(늘 보는 쪽으로 돈다). 코드로 그린 나무는 쓰지 않는다
    · 해: 교회 자리의 지금 해 방위·고도 → 빛 방향과 그림자 길이. 해가 지면 달빛과 별
@@ -21,7 +22,7 @@ window.Garden3D = (function () {
     'https://unpkg.com/three@0.160.0/build/three.module.min.js'
   ];
   var TS = 2.2;                 // 칸 한 변(m)
-  var HILL_R = 90;              // 먼 언덕 둘레 반지름(m)
+  var HILL_R = 160;             // 먼 언덕 둘레 반지름(m) — 멀리 물러나도 언덕 안쪽에 있게
   var T = null, CUR = null, OK = null;
 
   function loadThree() {
@@ -95,7 +96,8 @@ window.Garden3D = (function () {
     var tip = h('div', { class: 'g3d-tip', role: 'status', 'aria-live': 'polite', hidden: '' });
     function ctl(key, txt) { return h('button', { type: 'button', class: 'g3d-ctl-b', 'aria-label': t(key), title: t(key), text: txt }); }
     var zIn = ctl('g3d.zoomIn', '+'), zOut = ctl('g3d.zoomOut', '−'), rL = ctl('g3d.rotL', '↺'), rR = ctl('g3d.rotR', '↻');
-    var ctls = h('div', { class: 'g3d-ctl' }, [zIn, zOut, rL, rR]);
+    var tUp = ctl('g3d.tiltUp', '∧'), tDn = ctl('g3d.tiltDn', '∨');
+    var ctls = h('div', { class: 'g3d-ctl' }, [zIn, zOut, tUp, tDn, rL, rR]);
     var fullBtn = (document.fullscreenEnabled && !phone) ? h('button', { type: 'button', class: 'g3d-btn', text: t('g3d.full') }) : null;
     var resetBtn = h('button', { type: 'button', class: 'g3d-btn', text: t('g3d.reset') });
     var closeBtn = h('button', { type: 'button', class: 'g3d-btn g3d-btn-close', text: t('g3d.close') });
@@ -199,7 +201,7 @@ window.Garden3D = (function () {
       renderer.setPixelRatio(Math.min(phone ? 1.75 : 2, window.devicePixelRatio || 1));
       renderer.outputColorSpace = T.SRGBColorSpace;
       renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
-      var scene = new T.Scene(), camera = new T.PerspectiveCamera(32, 1, 0.1, 500);
+      var scene = new T.Scene(), camera = new T.PerspectiveCamera(32, 1, 0.1, 900);
       R = { renderer: renderer, scene: scene, camera: camera };
       onResize();
 
@@ -216,7 +218,7 @@ window.Garden3D = (function () {
       var hor = new T.Color().setRGB(mix(0.16, 0.82, day), mix(0.2, 0.9, day), mix(0.32, 0.96, day)).lerp(new T.Color(0.98, 0.72, 0.52), dusk * 0.7);
       var grey = new T.Color(0.72, 0.74, 0.78).multiplyScalar(mix(0.25, 1, day));
       zen.lerp(grey, cloud * 0.7); hor.lerp(grey, cloud * 0.6);
-      var sky = new T.Mesh(new T.SphereGeometry(300, 32, 16), new T.ShaderMaterial({
+      var sky = new T.Mesh(new T.SphereGeometry(600, 32, 16), new T.ShaderMaterial({
         side: T.BackSide, depthWrite: false, uniforms: { zen: { value: zen }, hor: { value: hor } },
         vertexShader: 'varying vec3 vp; void main(){ vp = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
         fragmentShader: 'uniform vec3 zen; uniform vec3 hor; varying vec3 vp; void main(){ float k = clamp(vp.y*1.5, 0.0, 1.0); gl_FragColor = vec4(mix(hor, zen, pow(k, 0.7)), 1.0); }'
@@ -224,12 +226,12 @@ window.Garden3D = (function () {
       sky.renderOrder = -3; scene.add(sky);
       // 안개 색은 하늘 지평선과 같게(하늘은 색 변환 없이 그리므로 안개 쪽을 거꾸로 맞춘다)
       var fogCol = hor.clone().convertSRGBToLinear();
-      scene.fog = kind === 'fog' ? new T.Fog(fogCol, 25, 110) : new T.Fog(fogCol, 80, 280);
+      scene.fog = kind === 'fog' ? new T.Fog(fogCol, 30, 160) : new T.Fog(fogCol, 140, 520);
       // 별: 해가 지고 하늘이 개면
       var nightK = clamp((-sun.alt - 4) / 8, 0, 1) * (1 - cloud);
       if (nightK > 0.05) {
         var sp = new Float32Array(700 * 3);
-        for (var s = 0; s < 700; s++) { var th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 0.92 + 0.08); sp.set([Math.sin(ph) * Math.cos(th) * 280, Math.cos(ph) * 280, Math.sin(ph) * Math.sin(th) * 280], s * 3); }
+        for (var s = 0; s < 700; s++) { var th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 0.92 + 0.08); sp.set([Math.sin(ph) * Math.cos(th) * 560, Math.cos(ph) * 560, Math.sin(ph) * Math.sin(th) * 560], s * 3); }
         var sg = new T.BufferGeometry(); sg.setAttribute('position', new T.BufferAttribute(sp, 3));
         var stars = new T.Points(sg, new T.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.85 * nightK, fog: false, depthWrite: false }));
         stars.renderOrder = -2; scene.add(stars);
@@ -264,7 +266,7 @@ window.Garden3D = (function () {
       var clouds = null;
       if (img.clouds) {
         var ctx2 = tex(img.clouds); ctx2.wrapS = T.MirroredRepeatWrapping; ctx2.repeat.set(-4, 1); ctx2.offset.set(3, 0); ctx2.needsUpdate = true;
-        var CR = 200, CH = CR * (Math.PI / 2) / 3 * 0.6;
+        var CR = 380, CH = CR * (Math.PI / 2) / 3 * 0.6;
         clouds = new T.Mesh(new T.CylinderGeometry(CR, CR, CH, 96, 1, true), new T.MeshBasicMaterial({ map: ctx2, transparent: true, side: T.BackSide, depthWrite: false, fog: false, opacity: (kind === 'clear' ? 0.75 : 0.95) * mix(0.25, 1, day) }));
         clouds.position.y = CH / 2 - 4; clouds.renderOrder = -2;
         clouds.material.color.setScalar(mix(0.35, 1, day)).lerp(new T.Color(0.7, 0.72, 0.76), cloud * 0.5);
@@ -415,7 +417,7 @@ window.Garden3D = (function () {
 
       /* ── 카메라: 남동쪽 위에서 마름모로 내려다본다 ──
          cam = { tx, tz: 보는 곳, az: 방위, dist: 거리 }. 기울기는 거리로 정한다 — 멀면 위에서(지도처럼), 가까우면 눈높이로 */
-      var cam = null, fly = null, touched = false, lim = { min: 4, max: 60, fit: 16 };
+      var cam = null, fly = null, touched = false, lim = { min: 4, max: 60, fit: 16 }, POL = { min: 0.12, max: 1.45, home: 0.92 };
       function distFor(w) {   // 가로 w(m) 마름모가 화면에 들어오는 거리
         var tv = Math.tan(camera.fov * Math.PI / 360), th = tv * (camera.aspect || 1);
         return Math.max(w / 2 / th, w * 0.62 / 2 / tv);
@@ -423,19 +425,19 @@ window.Garden3D = (function () {
       R.refit = function () {
         var a = camera.aspect || 1, fov = a < 0.8 ? 44 : 32;
         if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
-        lim.max = clamp(distFor(half * 2 * 1.414 + 3) * 1.1, 20, 140);
+        lim.max = clamp(distFor(half * 2 * 1.414 + 3) * 2.4, 40, 150);   // 땅 전체보다 훨씬 멀리까지
         lim.fit = clamp(distFor((extent + TS * (a < 0.8 ? 0.25 : 0.8)) * 2 * 1.414), lim.min + 4, lim.max);   // 산 땅 + 둘레 한 칸쯤(넓힐 땅이 보이게)
         if (cam && !touched && !fly) cam.dist = lim.fit;
         if (cam) cam.dist = clamp(cam.dist, lim.min, lim.max);
       };
       R.refit();
-      var home = function () { return { tx: 0, tz: 0, az: Math.PI / 4, dist: lim.fit }; };
-      cam = reduce ? home() : { tx: 0, tz: 0, az: Math.PI / 4 - 0.5, dist: lim.max };
+      var home = function () { return { tx: 0, tz: 0, az: Math.PI / 4, dist: lim.fit, pol: POL.home }; };
+      cam = reduce ? home() : { tx: 0, tz: 0, az: Math.PI / 4 - 0.5, dist: Math.min(lim.max, lim.fit * 2.4), pol: 0.55 };
       fly = reduce ? null : { from: Object.assign({}, cam), to: null, t0: performance.now(), dur: 1800 };
       var vel = { x: 0, z: 0, az: 0 };
       function zoomK() { return clamp((lim.max - cam.dist) / Math.max(1, lim.max - lim.min), 0, 1); }
       function placeCam() {
-        var k = Math.pow(zoomK(), 2.2), pol = mix(0.8, 1.2, k), ty = mix(0.2, 1.1, k), s1 = Math.sin(pol);
+        var k = Math.pow(zoomK(), 2.2), pol = clamp(cam.pol, POL.min, POL.max), ty = mix(0.2, 1.1, k), s1 = Math.sin(pol);
         camera.position.set(cam.tx + cam.dist * s1 * Math.sin(cam.az), ty + cam.dist * Math.cos(pol), cam.tz + cam.dist * s1 * Math.cos(cam.az));
         camera.lookAt(cam.tx, ty, cam.tz);
         R.pitch = Math.PI / 2 - pol;
@@ -444,6 +446,9 @@ window.Garden3D = (function () {
       function goTo(to, dur) { touched = true; vel.x = vel.z = vel.az = 0; fly = { from: Object.assign({}, cam), to: to, t0: performance.now(), dur: reduce ? 1 : dur || 450 }; }
       function zoomBy(f) { var c = fly && fly.to ? fly.to : cam; goTo(Object.assign({}, c, { dist: clamp(c.dist * f, lim.min, lim.max) }), 320); }
       function rotBy(a) { var c = fly && fly.to ? fly.to : cam; goTo(Object.assign({}, c, { az: c.az + a }), 450); }
+      function tiltBy(a) { var c = fly && fly.to ? fly.to : cam; goTo(Object.assign({}, c, { pol: clamp(c.pol + a, POL.min, POL.max) }), 380); }
+      tUp.onclick = function () { tiltBy(-0.18); };   // 더 위에서(지도처럼)
+      tDn.onclick = function () { tiltBy(0.18); };    // 더 옆에서(눈높이로)
       resetBtn.onclick = function () { touched = false; goTo(home(), 800); touched = false; };
       zIn.onclick = function () { zoomBy(0.7); };
       zOut.onclick = function () { zoomBy(1 / 0.7); };
@@ -462,6 +467,7 @@ window.Garden3D = (function () {
         else if (key === '-' || key === '_') zoomBy(1.25);
         else if (key === 'ArrowLeft') pan(step, 0); else if (key === 'ArrowRight') pan(-step, 0);
         else if (key === 'ArrowUp') pan(0, step); else if (key === 'ArrowDown') pan(0, -step);
+        else if (key === 'PageUp' || key === 'w' || key === 'W') tiltBy(-0.15); else if (key === 'PageDown' || key === 's' || key === 'S') tiltBy(0.15);
         else if (key === 'q' || key === 'Q') rotBy(-Math.PI / 2); else if (key === 'e' || key === 'E') rotBy(Math.PI / 2);
         else return false;
         touched = true; fly = fly && fly.to ? fly : null;
@@ -502,13 +508,14 @@ window.Garden3D = (function () {
           var n2 = twoState(), da = n2.a - two.a;
           if (da > Math.PI) da -= Math.PI * 2; if (da < -Math.PI) da += Math.PI * 2;
           cam.dist = clamp(cam.dist * two.d / Math.max(1, n2.d), lim.min, lim.max);
-          cam.az -= da; pan(n2.x - two.x, n2.y - two.y);
+          cam.az -= da;
+          cam.pol = clamp(cam.pol - (n2.y - two.y) * 0.006, POL.min, POL.max);   // 두 손가락을 함께 위로 밀면 눕고(눈높이), 아래로 당기면 위에서
           two = n2; return;
         }
         if (!drag) return;
         var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
         drag.moved += Math.abs(dx) + Math.abs(dy);
-        if (drag.rot) { vel.az = -dx * 0.006; cam.az += vel.az; }
+        if (drag.rot) { vel.az = -dx * 0.006; cam.az += vel.az; cam.pol = clamp(cam.pol - dy * 0.005, POL.min, POL.max); }
         else { var mv = pan(dx, dy); vel.x = mv.x; vel.z = mv.z; }
         drag.x = e.clientX; drag.y = e.clientY;
       });
@@ -538,7 +545,7 @@ window.Garden3D = (function () {
         var dt = Math.min(0.05, (ts - last) / 1000), tt = ts / 1000; last = ts;
         if (fly) {
           var to = fly.to || home(), k = clamp((ts - fly.t0) / fly.dur, 0, 1), e2 = ease(k);
-          cam.tx = mix(fly.from.tx, to.tx, e2); cam.tz = mix(fly.from.tz, to.tz, e2); cam.dist = mix(fly.from.dist, to.dist, e2); cam.az = mix(fly.from.az, to.az, e2);
+          cam.tx = mix(fly.from.tx, to.tx, e2); cam.tz = mix(fly.from.tz, to.tz, e2); cam.dist = mix(fly.from.dist, to.dist, e2); cam.az = mix(fly.from.az, to.az, e2); cam.pol = mix(fly.from.pol, to.pol, e2);
           if (k >= 1) fly = null;
         } else if (!drag && !two) {
           if (Math.abs(vel.x) + Math.abs(vel.z) > 1e-4) { cam.tx = clamp(cam.tx + vel.x, -half, half); cam.tz = clamp(cam.tz + vel.z, -half, half); vel.x *= 0.88; vel.z *= 0.88; }
