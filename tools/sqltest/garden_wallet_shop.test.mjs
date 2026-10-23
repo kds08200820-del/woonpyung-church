@@ -80,7 +80,8 @@ await db.exec(fs.readFileSync(path.join(ROOT, 'supabase/20261023_1300_garden_far
 const sql3 = fs.readFileSync(path.join(ROOT, 'supabase/20261023_1500_garden_wallet_shop.sql'), 'utf8')
   + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_1900_garden_hearts.sql'), 'utf8')   // 하트 고침(1900)은 1500 뒤에 늘 함께
   + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_2100_garden_visits.sql'), 'utf8')   // 초대·방문·방명록
-  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_2330_garden_region.sql'), 'utf8');   // 부부는 서로 이웃(2100 뒤에 늘 함께)
+  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_2330_garden_region.sql'), 'utf8')   // 부부는 서로 이웃(2100 뒤에 늘 함께)
+  + '\n' + fs.readFileSync(path.join(ROOT, 'supabase/20261023_2350_garden_guestbook_push.sql'), 'utf8');   // 방명록 알림(열쇠·피드)
 await db.exec(sql3);
 await db.exec(sql3);
 ok('rerun safe', true);
@@ -332,6 +333,31 @@ await as(U1, `select public.garden_visit_set('woonpyung', false)`);
 ok('closed again → not viewable', (await as(KID, `select public.garden_visit_view('woonpyung', ${P1})`)).why === 'closed');
 ok('admin can view closed garden', (await as(ADM, `select public.garden_visit_view('woonpyung', ${P1})`)).ok === true);
 ok('no direct table read', !!(await asErr(KID, `select count(*) from public.garden_guestbook`)));
+
+// 7-6) 방명록 알림 — 주인 기기 열쇠(push_key) · 공개 피드는 열쇠·건수만
+ok('anon cannot get push key', !!(await asErr(null, `select public.garden_push_key('woonpyung')`)));
+const k1 = await as(U1, `select public.garden_push_key('woonpyung')`);
+ok('push key made (32 chars)', k1.ok && /^[0-9a-f]{32}$/.test(k1.key), k1);
+ok('push key stays the same', (await as(U1, `select public.garden_push_key('woonpyung')`)).key === k1.key);
+const kk = await as(KID, `select public.garden_push_key('woonpyung')`);
+ok('each garden own key', kk.ok && kk.key !== k1.key, kk);
+let pf = await as(null, `select public.garden_guestbook_push_feed(0)`);
+const k1n = (f) => ((f.keys || []).find((x) => x.key === k1.key) || {}).n || 0;
+ok('feed: visible new posts counted, hidden not', k1n(pf) === 30 && !(pf.keys || []).some((x) => x.key === kk.key), pf);
+ok('feed: keys and counts only', !/테스트|정원이|채우기/.test(JSON.stringify(pf)) && !JSON.stringify(pf).includes(KID) && !JSON.stringify(pf).includes(U1), pf);
+ok('feed: nothing after max', (await as(null, `select public.garden_guestbook_push_feed(${pf.max_id})`)).keys.length === 0);
+let base = pf.max_id;
+await as(U1, `select public.garden_guestbook_post('woonpyung', ${P1}, '주인이 쓴 글')`);
+ok('feed: owner own post not sent', k1n(await as(null, `select public.garden_guestbook_push_feed(${base})`)) === 0);
+await as(U1, `select public.garden_visit_view('woonpyung', ${P1})`);
+ok('feed: seen by owner → not sent', k1n(await as(null, `select public.garden_guestbook_push_feed(0)`)) === 0);
+await as(U1, `select public.garden_visit_set('woonpyung', true)`);
+base = (await as(null, `select public.garden_guestbook_push_feed(0)`)).max_id;
+ok('admin posts to open garden', (await as(ADM, `select public.garden_guestbook_post('woonpyung', ${P1}, '목사님 인사')`)).ok === true);
+ok('feed: new post after seen → 1', k1n(await as(null, `select public.garden_guestbook_push_feed(${base})`)) === 1);
+await pg(`update public.garden_guestbook set created_at = now() - interval '2 days' where body = '목사님 인사'`);
+ok('feed: older than a day not sent', k1n(await as(null, `select public.garden_guestbook_push_feed(${base})`)) === 0);
+await as(U1, `select public.garden_visit_set('woonpyung', false)`);
 
 // 7-6) 이웃 신청 — 신청·수락·거절·끊기, 이웃은 닫힌 정원도 방문
 const PK = (await as(KID, `select public.garden_visit_list('woonpyung')`)).me.plot_no;
