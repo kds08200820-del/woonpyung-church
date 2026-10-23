@@ -140,6 +140,12 @@ body.garden [hidden] { display: none !important; }
 .g-grow-done { font-size: .8rem; color: var(--g-fg3); margin: 0; }
 .g-grow-mine { font-size: .84rem; color: var(--g-fg2); margin: 4px 0 0; line-height: 1.55; word-break: keep-all; }
 .g-grow-mine[hidden] { display: none; }
+/* 꽃·나무 자람 게이지(내 식물) — 담담하게 한 색 */
+.g-gauges { display: grid; gap: 8px; margin: 8px 0 0; }
+.g-gauges[hidden] { display: none; }
+.g-gauge-n { font-size: .84rem; font-weight: 700; color: var(--g-fg); }
+.g-gauge-track { height: 8px; margin-top: 4px; border-radius: 999px; background: var(--g-panel2); overflow: hidden; }
+.g-gauge-fill { height: 100%; border-radius: 999px; background: #7fae84; }
 
 /* ===== 예배 띠 ===== */
 .g-banner {
@@ -572,6 +578,7 @@ button.gf-buy:focus-visible { outline: none; }
 .gf-s-t { margin: 0 0 6px; font-weight: 800; }
 .gf-s-m { margin: 0 0 10px; color: var(--g-fg2); font-size: .9rem; }
 .gf-s-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.gf-s-acts-l { justify-content: flex-start; margin-top: 4px; }
 .gf-crops { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
 .gf-crop { display: flex; align-items: center; gap: 10px; min-height: 64px; padding: 6px 12px 6px 6px; border-radius: 16px; border: 1px solid var(--g-line); background: var(--g-panel);
   font: inherit; color: var(--g-fg); text-align: left; cursor: pointer; }

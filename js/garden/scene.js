@@ -114,18 +114,26 @@ window.GardenScene = (function () {
       S.ctx = S.canvas.getContext('2d'); S.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       S.parts = [];
     }
+    if (S.fieldList && Math.abs(visBottom() - (S.fieldVB || 0)) > 8) setField();   // 화면 비율이 바뀌어 아래가 잘리면 밭 앞줄을 다시 맞춘다
   }
+  /* 화면에 보이는 장면의 맨 아래(설계 y) — 넓고 낮은 칸에서는 장면 아래가 잘린다 */
+  function visBottom() { return S.root ? Math.min(H, H / 2 + (S.root.clientHeight || H) / (2 * (S.scale || 1))) : H; }
   /* 설계 좌표 → 뷰포트 좌표(fixed 기준). 말풍선 패널 위치 잡기에 쓴다 */
   function project(x, y) {
     if (!S.root) return { x: 0, y: 0, scale: 1 };
     var r = S.root.getBoundingClientRect();
     return { x: r.left + S.offX + x * S.scale, y: r.top + S.offY + y * S.scale, scale: S.scale };
   }
+  /* 밭이 있으면 믿음 나무는 밭 가운데 제 칸(S.treeAt)에 원근 크기로 선다 — 나무에 딸린 앵커(이름판·말풍선·+XP)도 같이 옮기고 줄인다 */
   function anchors() {
-    var o = cellOrigin(world.plot), out = {};
-    for (var k in ANCHOR) out[k] = { x: ANCHOR[k].x + o.x, y: ANCHOR[k].y + o.y };
+    var o = cellOrigin(world.plot), out = {}, T = S.treeAt, P = ANCHOR.plant;
+    for (var k in ANCHOR) {
+      var a = ANCHOR[k];
+      out[k] = T && k !== 'character' ? { x: T.x + (a.x - P.x) * T.s + o.x, y: T.y + (a.y - P.y) * T.s + o.y } : { x: a.x + o.x, y: a.y + o.y };
+    }
     return out;
   }
+  function treeScale() { return S.treeAt ? S.treeAt.s : 1; }
 
   /* ── 층 만들기 ── */
   function buildSky() {
@@ -190,13 +198,41 @@ window.GardenScene = (function () {
     pl.addEventListener('click', function (e) { e.stopPropagation(); peekName(); });
     soil.addEventListener('click', function (e) { e.stopPropagation(); peekName(); });
     S.el.plot.appendChild(soil); S.el.plot.appendChild(ch); S.el.plot.appendChild(pl); S.el.plot.appendChild(np);
+    S.el.soil = soil;
+    placeTree();
+  }
+  /* 나무·흙·이름판을 지금 자리(S.treeAt)로 — 없으면 처음 자리(밭 앞) */
+  var SOIL_K = 0.6;
+  function placeTree() {
+    var A = anchors(), T = S.treeAt, s = treeScale();
+    function put(node, x, y, tf, z) {
+      if (!node) return;
+      node.style.left = x + 'px'; node.style.top = y + 'px';
+      node.style.transform = T ? tf : ''; node.style.transformOrigin = T && tf.indexOf('-100%') > 0 ? '50% 100%' : '';
+      node.style.zIndex = T ? z : '';
+    }
+    put(S.el.plantAnchor, A.plant.x, A.plant.y, 'translate(-50%,-100%) scale(' + s.toFixed(3) + ')', T && T.z);
+    put(S.el.soil, A.plant.x, A.plant.y, 'translate(-50%,-50%) scale(' + (s * SOIL_K).toFixed(3) + ')', T && T.z);
+    put(S.el.np, A.nameplate.x, A.nameplate.y, 'translate(-50%,0)', 300);
   }
 
   /* ── 내 땅(밭): 산 칸마다 밭두둑, 심은 것은 그 위에 (2026-10-23) ──
-     정면 장면이라 '내 땅' 창의 마름모 대신 나무 뒤 땅에 원근으로 줄지어 놓는다: 앞줄은 크고 아래(설계 y 650), 뒷줄일수록 작고 위(지평선 쪽).
+     정면 장면이라 '내 땅' 창의 마름모 대신 나무 뒤 땅에 원근으로 줄지어 놓는다: 앞줄은 크고 아래(설계 y 740), 뒷줄일수록 작고 위(잔디 언덕 능선 쪽).
      칸 사이를 띄우고 앞에서 FIELD.rows 줄까지만 그린다(담임목사 "밭이 너무 빽빽합니다. 여유 있게 띄워 주세요") — 그 뒤 줄은 돌려 보면 앞으로 온다.
-     x 는 나무(0,0) 기준 좌우. S.fieldRot(0~3)만큼 땅을 90°씩 돌려서 본다 — 화면 돌리기 단추(hud.js). 누르면 내 땅 가꾸기 창(o.onOpen) */
-  var FIELD = { rows: 6, pitch: 116, yFront: 650, horizon: 470, depth: 0.3 };
+     x 는 나무(0,0) 기준 좌우. S.fieldRot(0~3)만큼 땅을 90°씩 돌려서 본다 — 화면 돌리기 단추(hud.js). 누르면 내 땅 가꾸기 창(o.onOpen)
+     믿음 나무는 입체 정원처럼 제 칸(0,0)에 선다(담임목사 "올리브 나무도 밭 중간에 있는 것을 그대로") — 나무 앞은 많아야 FIELD.ahead 줄,
+     그보다 앞줄은 화면 밖(돌려 보면 보인다). 앞줄일수록 z 가 커서 나무 밑동을 가린다
+     땅 곡면: 뒷줄은 잔디 언덕 능선(CREST) 아래에서 멈추고, 줄은 가운데가 높고 양옆이 낮은 둥근 언덕을 따라 휜다(bend)
+     — 담임목사 "공중에 떠 있습니다. 지면의 곡률에 따라 적용되어야 합니다" */
+  var FIELD = { rows: 6, ahead: 3, pitch: 116, yFront: 740, gapTop: 12, bend: 36, depth: 0.3, treeK: 0.95 };
+  /* 잔디 언덕 능선(먼 산과 만나는 선) — 언덕 그림 mid/hills.webp 에서 잰 설계 좌표 [x, y] */
+  var CREST = [[0, 520], [330, 520], [420, 505], [500, 528], [600, 548], [700, 555], [900, 560], [1450, 558], [1600, 566]];
+  function crestAt(x) {
+    for (var j = 1; j < CREST.length; j++) {
+      if (x <= CREST[j][0] || j === CREST.length - 1) { var a = CREST[j - 1], b = CREST[j], t = Math.max(0, Math.min(1, (x - a[0]) / (b[0] - a[0]))); return a[1] + (b[1] - a[1]) * t; }
+    }
+  }
+  function zRow(i) { return 100 - i * 2; }
   function turnCell(c, n) { var x = c.x, y = c.y, t; for (var i = 0; i < n; i++) { t = x; x = -y; y = t; } return { x: x, y: y }; }   // 위에서 봐서 시계 방향 90°씩
   function setField(list, o) {
     if (list !== undefined) { S.fieldList = list; S.fieldOpts = o || {}; }   // 인자 없이 부르면 마지막 밭을 다시 그린다(돌리기)
@@ -204,24 +240,37 @@ window.GardenScene = (function () {
     if (!S.el.plot) return;
     if (S.el.field) { S.el.field.remove(); S.el.field = null; }
     if (S.root) S.root.dispatchEvent(new CustomEvent('g:field', { bubbles: true, detail: { n: list ? list.length : 0 } }));
-    if (!list || !list.length) return;
-    var A = anchors(), F = FIELD, front = -Infinity;
+    if (!list || !list.length) { if (S.treeAt) { S.treeAt = null; placeTree(); } return; }
+    var P = ANCHOR.plant, F = FIELD, front = 0;     // 나무 칸(0,0)도 땅이다
     var cells = list.map(function (c) { var p = turnCell(c, S.fieldRot || 0); front = Math.max(front, p.y); return { c: c, x: p.x, y: p.y }; });
+    front = Math.min(front, F.ahead);
+    S.fieldVB = visBottom();
+    var yFront = Math.max(crestAt(P.x) + 60, Math.min(F.yFront, S.fieldVB - 40));   // 앞줄이 화면 아래로 잘리지 않게
     // k = 원근(크기), kx = 좌우 간격 — 뒷줄이 나무 쪽으로 너무 몰리지 않게 원근보다 덜 좁힌다
-    function rowAt(i) { var k = 1 / (1 + i * F.depth); return { k: k, kx: 0.5 + 0.5 * k, y: F.horizon + (F.yFront - F.horizon) * k }; }
+    function rowAt(i) { var k = 1 / (1 + i * F.depth); return { k: k, kx: 0.5 + 0.5 * k }; }
+    // 땅 위 y: 능선 바로 아래(top)와 앞줄(front, 양옆으로 갈수록 낮게) 사이를 원근으로
+    function groundY(i, x) {
+      var k = rowAt(i).k, dx = (x - P.x) / 800, top = crestAt(x) + F.gapTop, fy = yFront + F.bend * dx * dx;
+      return top + (fy - top) * k;
+    }
+    var T0 = rowAt(front);
+    S.treeAt = { x: P.x, y: groundY(front, P.x) + 4 * T0.k, s: T0.k * F.treeK, z: zRow(front) };
+    placeTree();
     var box = el('div', 'g-field');
-    cells.filter(function (q) { return front - q.y < F.rows; })
+    cells.filter(function (q) { var i = front - q.y; return i >= 0 && i < F.rows; })
       .sort(function (a, b) { return a.y - b.y || a.x - b.x; })     // 뒷줄부터 그려야 앞줄이 위에 온다
       .forEach(function (q) {
-        var c = q.c, i = front - q.y, R = rowAt(i), k = R.k, y = R.y, gap = y - rowAt(i + 1).y;
-        var x = A.plant.x + q.x * F.pitch * R.kx, w = F.pitch * k * 0.64;
+        var c = q.c, i = front - q.y, R = rowAt(i), k = R.k;
+        var x = P.x + q.x * F.pitch * R.kx, w = F.pitch * k * 0.64, y = groundY(i, x), gap = y - groundY(i + 1, x);
         if (x < -w || x > W + w) return;
         var bed = el('div', 'g-fbed' + (c.land === 'dae' ? ' is-dae' : c.planted ? '' : ' is-empty'));
         bed.style.left = x.toFixed(1) + 'px'; bed.style.top = y.toFixed(1) + 'px'; bed.style.width = w.toFixed(1) + 'px'; bed.style.height = Math.min(w * 0.34, gap * 0.72).toFixed(1) + 'px';
+        bed.style.zIndex = zRow(i);
         box.appendChild(bed);
         if (c.src) {
           var im = el('img', 'g-fspr' + (c.dead ? ' is-dead' : '')); im.src = c.src; im.alt = ''; im.draggable = false;
           im.style.left = x.toFixed(1) + 'px'; im.style.top = (y + w * 0.05).toFixed(1) + 'px'; im.style.height = Math.max(14, Math.round(c.h * k)) + 'px';
+          im.style.zIndex = zRow(i);
           im.onerror = function () { im.remove(); };
           box.appendChild(im);
         }
@@ -367,15 +416,15 @@ window.GardenScene = (function () {
   }
   function stageUp(species, stage) {
     sparkle(18, true);
-    if (S.el.fx) { var ring = el('div', 'g-ring'); var A = anchors(); ring.style.left = A.plant.x + 'px'; ring.style.top = (A.plant.y - 120) + 'px'; S.el.fx.appendChild(ring); setTimeout(function () { ring.remove(); }, 1400); }
+    if (S.el.fx) { var ring = el('div', 'g-ring'); var A = anchors(); ring.style.left = A.plant.x + 'px'; ring.style.top = (A.plant.y - 120 * treeScale()) + 'px'; S.el.fx.appendChild(ring); setTimeout(function () { ring.remove(); }, 1400); }
     return new Promise(function (res) { setTimeout(function () { setPlant(species, stage, { animate: true }).then(function () { peekName(4500); res(); }); }, S.reduce ? 0 : 320); });
   }
   function sparkle(n, big) {
     if (!S.el.fx) return;
-    var A = anchors(), frag = document.createDocumentFragment();
+    var A = anchors(), k = treeScale(), frag = document.createDocumentFragment();
     for (var i = 0; i < n; i++) {
       var s = el('i', 'g-spark' + (big ? ' g-spark-big' : ''));
-      s.style.cssText = 'left:' + (A.plant.x + rnd(-150, 150)) + 'px;top:' + (A.plant.y - rnd(40, 320)) + 'px;animation-delay:' + rnd(0, .5) + 's';
+      s.style.cssText = 'left:' + (A.plant.x + rnd(-150, 150) * k) + 'px;top:' + (A.plant.y - rnd(40, 320) * k) + 'px;animation-delay:' + rnd(0, .5) + 's';
       frag.appendChild(s);
       (function (node) { setTimeout(function () { node.remove(); }, 1600); })(s);
     }
