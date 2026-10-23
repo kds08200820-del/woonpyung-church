@@ -638,7 +638,7 @@ window.Garden3D = (function () {
           var n2 = twoState(), da = n2.a - two.a;
           if (da > Math.PI) da -= Math.PI * 2; if (da < -Math.PI) da += Math.PI * 2;
           cam.dist = clamp(cam.dist * two.d / Math.max(1, n2.d), lim.min, lim.max);
-          cam.az -= da;
+          cam.az += da;   // 손가락을 시계 방향으로 비틀면 땅도 시계 방향으로(돌리기 단추 ↺·↻ 와 같은 방향) — 2026-10-23 담임목사 "반대로 돌아갑니다"
           cam.pol = clamp(cam.pol - (n2.y - two.y) * 0.006, POL.min, POL.max);   // 두 손가락을 함께 위로 밀면 눕고(눈높이), 아래로 당기면 위에서
           two = n2; return;
         }
