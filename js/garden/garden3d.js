@@ -122,6 +122,9 @@ window.Garden3D = (function () {
     var canvas = h('canvas', { class: 'g3d-cv', tabindex: '0', 'aria-label': t('g3d.canvas') });
     var load = h('div', { class: 'g3d-load', role: 'status', text: t('g3d.loading') });
     var wxLine = h('div', { class: 'g3d-wx', hidden: '' });
+    // 모두 거두기 — 날씨 줄 바로 위. 거둘 것이 있을 때만 켜진다 (o.onHarvest 가 있을 때만 만든다)
+    var harvestBtn = o.onHarvest ? h('button', { type: 'button', class: 'g3d-harvest', hidden: '', disabled: '' }) : null;
+    if (harvestBtn) harvestBtn.onclick = function () { o.onHarvest(); };
     var hint = h('div', { class: 'g3d-hint', text: t(touch ? 'g3d.hint.touch' : 'g3d.hint') });
     var tip = h('div', { class: 'g3d-tip', role: 'status', 'aria-live': 'polite', hidden: '' });
     function ctl(key, txt) { return h('button', { type: 'button', class: 'g3d-ctl-b', 'aria-label': t(key), title: t(key), text: txt }); }
@@ -131,7 +134,7 @@ window.Garden3D = (function () {
     var fullBtn = (document.fullscreenEnabled && !phone) ? h('button', { type: 'button', class: 'g3d-btn', text: t('g3d.full') }) : null;
     var resetBtn = h('button', { type: 'button', class: 'g3d-btn', text: t('g3d.reset') });
     var closeBtn = h('button', { type: 'button', class: 'g3d-btn g3d-btn-close', text: t('g3d.close') });
-    var stage = h('div', { class: 'g3d-stage' }, [canvas, load, wxLine, hint, tip, ctls]);
+    var stage = h('div', { class: 'g3d-stage' }, [canvas, load, wxLine, harvestBtn, hint, tip, ctls].filter(Boolean));
     var titleEl = h('b', { class: 'g3d-title', text: o.title || t('g3d.title') }), subEl = h('span', { class: 'g3d-sub', text: o.sub || '' });
     var sideBtn = h('button', { type: 'button', class: 'g3d-btn g3d-side-btn', hidden: '', 'aria-expanded': 'false' });
     var body = h('div', { class: 'g3d-body' }, [stage]);
@@ -203,6 +206,7 @@ window.Garden3D = (function () {
       openSide: function (on) { showSide(on); },
       setLand: function (land) { if (R && R.drawLand) R.drawLand(land); else pendingLand = land; },
       setTreeBubble: function (src) { if (R && R.treeBubble) R.treeBubble(src); },
+      setHarvest: function (label, on) { if (!harvestBtn) return; harvestBtn.textContent = label; harvestBtn.disabled = !on; harvestBtn.classList.toggle('is-on', !!on); harvestBtn.hidden = false; },
       flash: function (cell, text) { if (R && R.flash) R.flash(cell, text); },
       // 칸 가운데의 화면 좌표(시험·도움말용)
       project: function (cx, cy, hh) {
@@ -722,7 +726,7 @@ window.Garden3D = (function () {
           }
           if (p && p.item) { p.item.drop = 0.25; p.item.vy = 0; }
           if (p && p.cell && o.onTile) o.onTile(p.cell);
-          else showTip(p && p.item ? p.item.name : '');
+          else { showTip(p && p.item ? p.item.name : ''); if (o.onBlank) o.onBlank(); }   // 땅이 아닌 곳을 누르면 메뉴를 비운다
         }
         drag = null; canvas.classList.remove('is-drag');
       }

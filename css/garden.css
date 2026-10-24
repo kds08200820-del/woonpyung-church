@@ -724,7 +724,12 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
 .g3d-load { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-weight: 700; color: var(--g-fg2); }
 .g3d-wx, .g3d-tip, .g3d-hint { position: absolute; z-index: 1; padding: 7px 14px; border-radius: 999px; background: rgba(255,250,243,.9); border: 1px solid var(--g-line2); box-shadow: var(--g-shadow-s); font-size: .84rem; font-weight: 600; color: var(--g-fg); pointer-events: none; }
 .g3d-wx { left: 14px; bottom: 14px; }
-.g3d-hint { left: 14px; bottom: 60px; max-width: calc(100% - 140px); transition: opacity .6s ease; }
+.g3d-harvest { position: absolute; z-index: 1; left: 14px; bottom: 58px; min-height: 44px; padding: 8px 18px; border-radius: 999px; border: 1px solid var(--g-line2); background: rgba(255,250,243,.9); box-shadow: var(--g-shadow-s); font: inherit; font-size: .9rem; font-weight: 800; color: var(--g-fg3); }
+.g3d-harvest.is-on { background: var(--g-coral, #e8795a); border-color: transparent; color: #fff; cursor: pointer; }
+.g3d-harvest:disabled { opacity: .7; cursor: default; }
+.g3d-harvest[hidden] { display: none; }
+.g3d.is-phone .g3d-harvest { left: 10px; bottom: calc(52px + env(safe-area-inset-bottom)); }
+.g3d-hint { left: 14px; bottom: 112px; max-width: calc(100% - 140px); transition: opacity .6s ease; }
 .g3d-hint.is-gone { opacity: 0; }
 .g3d-hint[hidden] { display: none; }
 .g3d-tip { left: 50%; top: 14px; transform: translateX(-50%); font-weight: 800; white-space: nowrap; }
@@ -745,7 +750,7 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
 .g3d.is-phone .g3d-wx { left: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); font-size: .78rem; }
 .g3d.is-phone .g3d-ctl { right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); grid-template-columns: 44px 44px; grid-auto-flow: row; }
 .g3d.is-phone .g3d-wx { max-width: calc(100% - 80px); }
-.g3d.is-phone .g3d-hint { bottom: calc(52px + env(safe-area-inset-bottom)); left: 10px; transform: none; white-space: normal; width: max-content; max-width: calc(100% - 80px); font-size: .78rem; }
+.g3d.is-phone .g3d-hint { bottom: calc(104px + env(safe-area-inset-bottom)); left: 10px; transform: none; white-space: normal; width: max-content; max-width: calc(100% - 80px); font-size: .78rem; }
 
 /* ============================================================
    정원 초대하기 · 이웃 정원 방문 · 방명록 — js/garden/visit.js (2026-10-23)

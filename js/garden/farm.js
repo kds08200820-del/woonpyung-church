@@ -51,6 +51,8 @@ window.GardenFarm = (function () {
     opts.side = panel(); opts.sideLabel = t('farm.menu');
     opts.land = (F.farm && F.items && F.houses !== undefined ? Promise.resolve() : load()).then(function () { return F.farm ? land3d() : null; });
     opts.onTile = onCell;
+    opts.onHarvest = harvestAll;   // 날씨 줄 위의 '모두 거두기'
+    opts.onBlank = onBlank;
     opts.onBubble = function (kind, data) {
       if (kind === 'tree') pickTree();
       else if (data) { var tl = tile(data.x, data.y); if (tl) harvestTile(tl); }
@@ -64,7 +66,14 @@ window.GardenFarm = (function () {
     if (F.mode !== 'normal' && F.farm && F.ui) sheetPick();
     return opts;
   }
-  function bindView(v) { F.view = v; if (F.mode !== 'normal') openSide(); }
+  function bindView(v) { F.view = v; syncHarvest(); if (F.mode !== 'normal') openSide(); }
+  // 모두 거두기 단추: 거둘 칸이 있으면 켜고 칸 수를 적는다
+  function syncHarvest() { if (F.view && F.view.setHarvest && F.farm) { var n = ripeTiles().length; F.view.setHarvest(t('farm.harvestall', { n: n }), n > 0); } }
+  // 땅이 아닌 곳을 누르면: 열린 메뉴·고르기를 모두 거둔다
+  function onBlank() {
+    if (F.busy) return;
+    if (F.mode !== 'normal') { F.mode = 'normal'; F.pick = {}; closeSheet(); render(); } else closeSheet();
+  }
   // 건축(build.js) — 서버에 집·교회 기능이 있을 때만
   function BLD() { var b = window.GardenBuild; return b && b.ready && b.ready() ? b : null; }
   // 건재상에서 고른 집을 지으러: 입체 정원(열려 있으면 그대로)에서 대지 칸을 고른다
@@ -221,7 +230,7 @@ window.GardenFarm = (function () {
   }
   function pushScene() {
     var SC = window.GardenScene; if (!F.farm) return;
-    renderMine();
+    syncHarvest(); renderMine();
     if (!SC || !SC.setField) return;
     var list = sceneList(), sig;
     // 지은 집은 첫 화면 밭에서 그 집이 앉은 첫 칸에 세운다
@@ -288,7 +297,7 @@ window.GardenFarm = (function () {
     return { tiles: list, max: f.max || 4, buyable: buy, picks: picks, pickable: pickable, mode: F.mode, homes: BLD() ? BLD().homes3d() : [] };
   }
   function render() {
-    renderPanel();
+    renderPanel(); syncHarvest();
     if (F.view && F.farm) F.view.setLand(land3d());
     if (F.mode !== 'normal' && F.ui) sheetPick();
   }
@@ -322,8 +331,6 @@ window.GardenFarm = (function () {
       h += '<button type="button" class="g-btn ' + (F.mode === 'buy' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="buy">' + esc(t('farm.tool.buy')) + '</button>';
       h += '<button type="button" class="g-btn ' + (F.mode === 'convert' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="convert">' + esc(t('farm.tool.convert')) + '</button>';
       if (F.houses) h += '<button type="button" class="g-btn ' + (F.mode === 'house' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="house">' + esc(t('farm.tool.house')) + '</button>';
-      var ripeN = ripeTiles().length;
-      h += '<button type="button" class="g-btn ' + (ripeN ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="harvestall"' + (ripeN ? '' : ' disabled') + '>' + esc(t('farm.harvestall', { n: ripeN })) + '</button>';
       h += '<button type="button" class="g-btn g-btn-line" data-tool="water"' + (f.watered ? ' disabled' : '') + '>' + esc(f.watered ? t('water.done') : t('water.go')) + '</button>';
       if (SHOP) h += '<button type="button" class="g-btn g-btn-line" data-tool="shop">' + esc(t('shop.open')) + '</button>';
       if (f.build && window.GardenStorage) h += '<button type="button" class="g-btn g-btn-line" data-tool="storage">' + esc(t('storage.open')) + '</button>';
@@ -336,6 +343,7 @@ window.GardenFarm = (function () {
   /* ── 칸 누르기 ── */
   function onCell(c) {
     if (!F.farm || F.busy) return;
+    if (F.mode === 'normal') closeSheet();   // 다른 칸을 누르면 앞의 메뉴는 비운다(필요한 칸이면 아래에서 다시 연다)
     var x = c.x, y = c.y, key = x + ',' + y, tl = tile(x, y);
     if (F.mode === 'buy') {
       if (!tl && buyable(x, y)) { if (F.pick[key]) delete F.pick[key]; else F.pick[key] = 1; prune(); render(); openSide(); }
@@ -559,7 +567,6 @@ window.GardenFarm = (function () {
     var k = b.getAttribute('data-tool');
     if (k === 'buy' || k === 'convert' || k === 'house') { F.mode = F.mode === k ? 'normal' : k; F.pick = {}; closeSheet(); render(); return; }
     if (k === 'water') { water(b); return; }
-    if (k === 'harvestall') { harvestAll(); return; }
     if (k === 'shop' && SHOP) { SHOP.open(null, afterShop); return; }
     if (k === 'storage' && window.GardenStorage) { window.GardenStorage.open(afterShop); return; }
     if (k === 'home') {   // 집 고르기 중이면 그만, 아니면 건재상에서 지을 집을 고른다
