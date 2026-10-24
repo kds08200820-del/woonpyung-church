@@ -168,6 +168,12 @@ body.garden [hidden] { display: none !important; }
   box-shadow: var(--g-shadow); user-select: none; white-space: nowrap; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 .g-banner[hidden] { display: none; }
+.g-preach { position: fixed; top: calc(var(--g-hdr) + 72px); left: 50%; transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 18px;
+  border-radius: 999px; background: #2f5d8a; color: #fff; font-size: .9rem; font-weight: 800; text-decoration: none; box-shadow: var(--g-shadow); white-space: nowrap; }
+.g-preach small { font-size: .74rem; font-weight: 600; opacity: .85; }
+.g-preach[hidden] { display: none; }
+.g-preach:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+.g-root[data-mode="gate"] .g-preach { display: none; }
 .g-banner.is-live { background: var(--g-coral); animation: g-pulse 2.4s ease-in-out infinite; }
 .g-banner.is-busy { opacity: .7; pointer-events: none; }
 .g-bn-c { font-variant-numeric: tabular-nums; background: rgba(255,255,255,.18); padding: 4px 10px; border-radius: 999px; font-weight: 600; }
@@ -445,6 +451,7 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
   .g-scene { position: relative; height: 56dvh; min-height: 320px; top: auto; left: auto; right: auto; border-radius: 0 0 26px 26px; }
   .g-panel { margin: 12px 14px 0; padding: 16px 16px 18px; }
   .g-banner { top: calc(var(--g-hdr) + 6px); left: 12px; right: 12px; transform: none; max-width: none; justify-content: space-between; font-size: .86rem; }
+  .g-preach { top: calc(var(--g-hdr) + 124px); }   /* 휴대폰: 새로고침·정원 들어가기 줄 아래 */
   .g-bar {
     left: 0; right: 0; bottom: 0; transform: none; border-radius: 22px 22px 0 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
     justify-content: space-around; background: rgba(255,250,243,.96); box-shadow: 0 -8px 22px rgba(185,164,140,.22);

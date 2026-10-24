@@ -251,6 +251,12 @@
     house: house, houseBuild: houseBuild, houseRemove: houseRemove, adminSetHousePrice: adminSetHousePrice,
     home: home, homeBuild: homeBuild, church: church, churchOffer: churchOffer, adminChurchStart: adminChurchStart, adminChurchGoal: adminChurchGoal, adminChurchStop: adminChurchStop,
     // 관리자에게만: 입금 확인이 남은 신청(신청비 있음 · 활성 · 교회 확인 전)을 신청서별로 센다 { 신청서번호: { n: 전체, claimed: '납부했습니다' 눌린 것 } } — 관리자가 아니면 null
+    // 사이트 관리자(담임목사 등)인가 — admins 표에 내 uid 가 있는지. 한 번만 묻고 기억한다
+    isSiteAdmin: function () {
+      var s = sess(); if (!s) return Promise.resolve(false);
+      if (!this._adm || this._admUid !== s.uid) { this._admUid = s.uid; this._adm = api('GET', 'admins?uid=eq.' + encodeURIComponent(s.uid) + '&select=uid').then(function (a) { return !!(a && a.length); }, function () { return false; }); }
+      return this._adm;
+    },
     formsPending: function () {
       var s = sess(); if (!s) return Promise.resolve(null);
       return api('GET', 'admins?uid=eq.' + encodeURIComponent(s.uid) + '&select=uid').then(function (a) {

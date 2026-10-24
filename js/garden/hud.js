@@ -716,8 +716,21 @@ window.GardenHud = (function () {
     b.dataset.state = state; b.dataset.kind = sc.kind; b.dataset.part = sc.part ? String(sc.part) : ''; b.dataset.svc = sc.svc || '';
     b.classList.toggle('is-live', state === 'live'); b.hidden = false; BN.cur = sc;
     document.body.classList.add('g-has-banner');
+    syncPreach(sc);
   }
-  function hideBanner() { var b = $('gBanner'); if (b) b.hidden = true; BN.cur = null; document.body.classList.remove('g-has-banner'); }
+  function hideBanner() { var b = $('gBanner'); if (b) b.hidden = true; BN.cur = null; document.body.classList.remove('g-has-banner'); syncPreach(null); }
+  /* 설교하기(발표자 모드) — 예배 띠가 뜰 때 관리자(담임목사)에게만. 누르면 새 탭에서 목회 행정이 그날 그 예배 설교를 발표자 모드로 연다
+     (홈 화면 worship.js preachRow 와 같은 주소: affairs.html?present=sunday|wed|dawn&date=YYYY-MM-DD) — 2026-10-25 담임목사 "설교자용 보기가 안 나옵니다" */
+  function syncPreach(sc) {
+    var p = $('gPreach'); if (!p) return;
+    if (!sc || !SDK.isSiteAdmin) { p.hidden = true; return; }
+    var kind = sc.kind, href = 'affairs.html?present=' + encodeURIComponent(kind) + '&date=' + I.nowParts().date;
+    if (p.dataset.href === href && !p.hidden) return;
+    SDK.isSiteAdmin().then(function (ok) {
+      if (!ok || !BN.cur || BN.cur.kind !== kind) { p.hidden = true; return; }
+      p.href = href; p.dataset.href = href; p.hidden = false;
+    });
+  }
   function tick() {
     var n = I.nowParts(), dow = n.dow, date = n.date, sec = n.hh * 3600 + n.mm * 60 + n.ss;
     var L = sched(), pick = null, sc, i;
