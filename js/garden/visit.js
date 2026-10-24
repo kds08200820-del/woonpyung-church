@@ -17,10 +17,16 @@ window.GardenVisit = (function () {
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function avatarSrc(key, url) {
+    var k = String(key || 'a').toLowerCase(), AV = window.GardenAvatar;
+    if (AV && AV.isCustom(k)) return AV.uri(AV.decode(k), 'face');      /* 내 모습 설정값(avatar.js) — 얼굴만 그린다 */
     if (url && /^https:\/\//.test(url)) return url;
-    var k = String(key || 'a').toLowerCase();
     if (!/^[a-z0-9-]{1,20}$/.test(k)) k = 'a';
     return SCENE.asset('chars/char-' + k + '.webp') || SCENE.asset('chars/char-a.webp') || '';
+  }
+  /* 둥근 얼굴 칸의 그림 — 전신 그림은 CSS 로 얼굴만 잘라 보이고, 설정값 얼굴 그림은 그대로(is-face) */
+  function avatarImg(key, url) {
+    var src = avatarSrc(key, url), AV = window.GardenAvatar;
+    return src ? '<img alt="" src="' + esc(src) + '"' + (AV && AV.isCustom(String(key || '').toLowerCase()) ? ' class="is-face"' : '') + '>' : '';
   }
   function plantLabel(g) {
     var sp = (g && g.species) || 'sunflower', si = Math.max(0, Math.min(5, ((g && g.stage) | 0) - 1));   // 서버 단계 1부터 → 그림 0부터
@@ -46,9 +52,9 @@ window.GardenVisit = (function () {
   function gbHtml(list) {
     if (!list || !list.length) return '';
     return list.map(function (b) {
-      var a = b.author || {}, src = avatarSrc(a.avatar_key, a.avatar_url);
+      var a = b.author || {};
       return '<li class="gv-gbi' + (b.mine ? ' is-mine' : '') + '">' +
-        '<span class="gv-av">' + (src ? '<img alt="" src="' + esc(src) + '">' : '') + '</span>' +
+        '<span class="gv-av">' + avatarImg(a.avatar_key, a.avatar_url) + '</span>' +
         '<div class="gv-gbt"><div class="gv-gbm"><b>' + esc(a.nickname || '') + '</b><small>' + esc(ago(b.at)) + '</small>' +
         (b.can_hide ? '<button type="button" class="gv-hide" data-id="' + esc(b.id) + '">' + esc(t('visit.gb.hide')) + '</button>' : '') + '</div>' +
         '<p>' + esc(b.body) + '</p></div></li>';
@@ -139,8 +145,7 @@ window.GardenVisit = (function () {
     SDK.neighborList().then(function (r) { if (r && r.ok) drawNeighbors(r); }, function () { box.innerHTML = ''; });
   }
   function nbRow(n, acts) {
-    var src = avatarSrc(n.avatar_key, n.avatar_url);
-    return '<li class="gv-nbi" data-id="' + esc(n.id) + '" data-plot="' + esc(n.plot_no) + '"><span class="gv-av">' + (src ? '<img alt="" src="' + esc(src) + '">' : '') + '</span>' +
+    return '<li class="gv-nbi" data-id="' + esc(n.id) + '" data-plot="' + esc(n.plot_no) + '"><span class="gv-av">' + avatarImg(n.avatar_key, n.avatar_url) + '</span>' +
       '<span class="gv-nbt"><b>' + esc(n.nickname) + (n.family ? ' <span class="gv-fam">' + esc(t('nb.family')) + '</span>' : '') + '</b>' + (n.species ? '<small>' + esc(plantLabel(n).text) + '</small>' : '') + '</span><span class="gv-nba">' + acts + '</span></li>';
   }
   function drawNeighbors(r) {
@@ -237,10 +242,10 @@ window.GardenVisit = (function () {
       V.me = r.me || V.me; V.list = r.gardens || []; setBadge();
       if (!V.list.length) { box.innerHTML = '<p class="g-empty gv-none">' + esc(t('visit.none')) + '</p>'; return; }
       box.innerHTML = V.list.map(function (g) {
-        var pl = plantLabel(g), src = avatarSrc(g.avatar_key, g.avatar_url), tree = SCENE.asset('plants/' + pl.sp + '-' + pl.si + '-s.webp') || SCENE.asset('plants/' + pl.sp + '-' + pl.si + '.webp');
+        var pl = plantLabel(g), tree = SCENE.asset('plants/' + pl.sp + '-' + pl.si + '-s.webp') || SCENE.asset('plants/' + pl.sp + '-' + pl.si + '.webp');
         return '<button type="button" class="gv-card" data-plot="' + esc(g.plot_no) + '">' +
           '<span class="gv-sign' + (g.neighbor ? ' is-nb' : '') + '">' + esc(t(g.neighbor ? 'nb.sign' : 'visit.sign')) + '</span>' +
-          '<span class="gv-pics"><span class="gv-av gv-av-lg">' + (src ? '<img alt="" src="' + esc(src) + '">' : '') + '</span>' + (tree ? '<img class="gv-tree" alt="" src="' + esc(tree) + '">' : '') + '</span>' +
+          '<span class="gv-pics"><span class="gv-av gv-av-lg">' + avatarImg(g.avatar_key, g.avatar_url) + '</span>' + (tree ? '<img class="gv-tree" alt="" src="' + esc(tree) + '">' : '') + '</span>' +
           '<span class="gv-cardt"><b>' + esc(g.nickname) + '</b><small>' + esc(pl.text) + '</small>' +
           '<small class="gv-meta">' + esc(t('visit.comments', { n: I.fmtNum(g.comments | 0) })) + (g.plants_done ? ' · ' + esc(t('visit.done', { n: I.fmtNum(g.plants_done) })) : '') + '</small></span></button>';
       }).join('');

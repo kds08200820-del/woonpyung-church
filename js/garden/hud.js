@@ -131,18 +131,6 @@ window.GardenHud = (function () {
   function rulesMap() { var m = {}; ((H.state && H.state.rules) || []).forEach(function (r) { if (r && r.kind && r.active !== false) m[r.kind] = r; }); return m; }
   function kindLabel(kind, rules) { var r = (rules || rulesMap())[kind]; var l = r ? label(r.label) : ''; return l || (I.has('kind.' + kind) ? t('kind.' + kind) : kind); }
   function avatarKeyOf(url) { var m = String(url || '').match(/char-([a-z0-9-]+)\.webp/); return m ? m[1] : ''; }
-  /* 고를 수 있는 모습 — 도서관 인물(서 있는 전신 그림이 있을 때). 목사님 모습은 교회 관리자에게만.
-     예전 키 a/b/c 는 m1·f1·m2 와 같은 그림이라 그 칸에 표시한다 */
-  var AV_PEOPLE = ['m1', 'f1', 'm2', 'f2', 'm3', 'f3', 'm4', 'f4'];
-  var AV_LEGACY = { a: 'm1', b: 'f1', c: 'm2' };
-  function avatarChoices(me) {
-    var list = AV_PEOPLE.filter(function (k) { return SCENE.has('chars/char-' + k + '.webp'); });
-    if (!list.length) return ['a', 'b', 'c'];                                   /* 그림이 없으면 예전 자리표시 3칸 */
-    var role = (me && me.role) || '';
-    if ((role === 'owner' || role === 'admin') && SCENE.has('chars/char-pastor.webp')) list.unshift('pastor');
-    return list;
-  }
-  function avatarUrlOf(key) { return 'images/garden/default/chars/char-' + key + '.webp'; }
 
   /* ── 레일 ── */
   // 교회 설정의 글자는 {"ko":"달란트","en":"Talents"} 처럼 언어별 묶음일 수 있다 — 지금 언어 것을 고른다
@@ -551,26 +539,35 @@ window.GardenHud = (function () {
     $('gmStoreList').appendChild(li);
   }
 
-  /* ── 첫 심기(온보딩): 1 닉네임·아바타 → 2 씨앗·이름 ── */
-  var ob = { step: 1, avatar: 'a', species: '', rec: null, busy: false, resolve: null, planted: null, mode: 'plant', savedAvatar: '' };
-  function pickAvatar(me) {
-    ob.choices = avatarChoices(me);
-    ob.avatar = me.avatar_key || avatarKeyOf(me.avatar_url) || ob.choices[0];
-    if (ob.choices.indexOf(ob.avatar) < 0) ob.avatar = AV_LEGACY[ob.avatar] && ob.choices.indexOf(AV_LEGACY[ob.avatar]) >= 0 ? AV_LEGACY[ob.avatar] : ob.choices[0];
+  /* ── 첫 심기(온보딩): 1 닉네임·내 모습 → 2 씨앗·이름 ── */
+  var ob = { step: 1, avatar: 'a', species: '', rec: null, busy: false, resolve: null, planted: null, mode: 'plant', savedAvatar: '', avx: null, draft: null };
+  /* 내 모습 만들기(avatar.js) — 저장된 키(설정값 또는 예전 그림 키)에서 출발해 하나하나 고친다.
+     첫 심기는 설정값이 없으면 기본 모습에서. 모습 바꾸기를 저장 없이 닫으면 그 모습을 이번 방문 동안 남겨 두었다가 이어서 고친다 */
+  function startAvatar(me, plant) {
+    var AV = window.GardenAvatar, key = me.avatar_key || avatarKeyOf(me.avatar_url) || '';
+    var base = plant && !AV.isCustom(key) ? AV.defaults() : AV.fromKey(key), draft = !plant && ob.draft;
+    if (!ob.avx) ob.avx = AV.editor($('gObAvatars'), { t: t, onChange: function (s) { ob.avatar = AV.encode(s); SCENE.setCharacter(ob.avatar, { nickname: $('gObNick').value }); } });
+    ob.avx.set(draft || base, base);
+    ob.avatar = AV.encode(draft || base);
+    $('gObDraft').hidden = !draft;
+    if (draft) SCENE.setCharacter(ob.avatar, { nickname: me.nickname || '' });
   }
   /* 모습 바꾸기 — 첫 심기 창의 1단계(이름·모습)만 열어 저장한다. 저장 없이 닫으면 원래 모습으로 되돌린다 */
   function openProfile() {
     if (ob.rec || !H.state) return;
     var me = H.state.me || {};
     ob.mode = 'profile'; ob.busy = false; ob.resolve = null;
-    pickAvatar(me); ob.savedAvatar = me.avatar_key || ob.avatar;
+    ob.savedAvatar = me.avatar_key || avatarKeyOf(me.avatar_url) || 'a';
     $('gObNick').value = String(me.nickname || '').slice(0, 20);
-    renderAvatars();
+    startAvatar(me, false);
     $('gObErr').hidden = true;
     showStep(1);
     ob.rec = openModal('gmPlant', { initialFocus: '#gObNick', onClose: function () {
       ob.rec = null;
-      if (ob.mode === 'profile') SCENE.setCharacter((H.state && H.state.me && H.state.me.avatar_key) || ob.savedAvatar, { nickname: (H.state && H.state.me && H.state.me.nickname) || '' });
+      if (ob.mode === 'profile') {
+        ob.draft = ob.avatar !== window.GardenAvatar.encode(window.GardenAvatar.fromKey(ob.savedAvatar)) ? ob.avx.get() : null;
+        SCENE.setCharacter((H.state && H.state.me && H.state.me.avatar_key) || ob.savedAvatar, { avatarUrl: H.state && H.state.me && H.state.me.avatar_url, nickname: (H.state && H.state.me && H.state.me.nickname) || '' });
+      }
       ob.mode = 'plant';
     } });
   }
@@ -579,9 +576,9 @@ window.GardenHud = (function () {
       if (ob.rec) { resolve(null); return; }
       ob.mode = 'plant'; ob.resolve = resolve; ob.planted = null; ob.busy = false;
       var me = (st && st.me) || {};
-      pickAvatar(me);
       $('gObNick').value = String(me.nickname || '').slice(0, 20);
-      renderAvatars();
+      startAvatar(me, true);
+      SCENE.setCharacter(ob.avatar, { nickname: me.nickname || '' });
       var list = speciesList();
       ob.species = list[0].slug;
       $('gObSeeds').innerHTML = list.map(function (s) {
@@ -595,24 +592,6 @@ window.GardenHud = (function () {
       $('gObErr').hidden = true;
       showStep(1);
       ob.rec = openModal('gmPlant', { initialFocus: '#gObNick', onClose: function () { ob.rec = null; var r = ob.resolve; ob.resolve = null; if (r) r(ob.planted); } });
-    });
-  }
-  function renderAvatars() {
-    var wrap = $('gObAvatars');
-    var keys = ob.choices || ['a', 'b', 'c'];
-    wrap.innerHTML = keys.map(function (k, i) {
-      var src = SCENE.asset('chars/char-' + k + '.webp');
-      var name = k === 'pastor' ? t('onboard.avatar.pastor') : (I.has('onboard.avatar.' + k) ? t('onboard.avatar.' + k) : t('onboard.avatar.n', { n: i + 1 }));
-      /* 얼굴이 보이게 전신 그림의 윗부분을 둥근 칸에 크게 — 그림이 없으면 예전 색 동그라미 */
-      var face = src ? '<span class="g-av-face" style="background-image:url(&quot;' + esc(src) + '&quot;)"></span>' : '<i></i>';
-      return '<button type="button" class="g-av g-av-' + esc(k) + (src ? ' has-img' : '') + (k === ob.avatar ? ' is-on' : '') + '" role="radio" aria-checked="' + (k === ob.avatar) + '" data-key="' + esc(k) + '" aria-label="' + esc(name) + '" title="' + esc(name) + '">' + face + '</button>';
-    }).join('');
-    Array.prototype.forEach.call(wrap.querySelectorAll('.g-av'), function (b) {
-      b.addEventListener('click', function () {
-        ob.avatar = b.getAttribute('data-key');
-        Array.prototype.forEach.call(wrap.querySelectorAll('.g-av'), function (x) { var on = x === b; x.classList.toggle('is-on', on); x.setAttribute('aria-checked', String(on)); });
-        SCENE.setCharacter(ob.avatar, { nickname: $('gObNick').value });
-      });
     });
   }
   function selectSeed(slug, init) {
@@ -644,7 +623,7 @@ window.GardenHud = (function () {
         .then(function (r) {
           if (!r || r.ok === false) throw new Error((r && r.why) || 'profile');
           if (H.state) { H.state.me = r.me || H.state.me || {}; H.state.me.nickname = nick; H.state.me.avatar_key = ob.avatar; SDK.saveState(H.state); }
-          ob.mode = 'saved'; closeModal(ob.rec); renderRail(); toast(t('profile.done'));
+          ob.mode = 'saved'; ob.draft = null; closeModal(ob.rec); renderRail(); toast(t('profile.done'));
         })
         .catch(function (e) { var err = $('gObErr'); err.textContent = SDK.notReady(e) ? t('onboard.err.notready') : t('onboard.err.save'); err.hidden = false; })
         .then(function () { ob.busy = false; btn.disabled = false; btn.textContent = ob.mode === 'profile' ? t('profile.save') : t('onboard.next'); });
@@ -654,6 +633,7 @@ window.GardenHud = (function () {
     document.addEventListener('g-character', function (e) {
       var d = e.detail || {}, pic = $('gMePic'), nm = $('gMeName'); if (!pic) return;
       pic.innerHTML = d.src ? '<img alt="" draggable="false" src="' + esc(d.src) + '">' : '';
+      pic.classList.toggle('is-avx', !!(window.GardenAvatar && window.GardenAvatar.isCustom(d.key)));
       if (nm) { nm.textContent = d.nickname || ''; nm.hidden = !d.nickname; }
     });
     $('gObNick').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('gObNext').click(); } });
@@ -665,7 +645,7 @@ window.GardenHud = (function () {
       if (!ob.species) return;
       ob.busy = true;
       var btn = $('gObPlant'), orig = t('onboard.plant'); btn.disabled = true; btn.textContent = t('onboard.planting'); $('gObErr').hidden = true;
-      SDK.setProfile({ nickname: nick, avatar_key: ob.avatar })   /* 캐릭터는 키(a/b/c)로 저장 — avatar_url 은 https 사진용 */
+      SDK.setProfile({ nickname: nick, avatar_key: ob.avatar })   /* 내 모습은 키(설정값 20자, avatar.js)로 저장 — avatar_url 은 https 사진용 */
         .then(function (r) { if (r && r.ok === false) throw new Error(r.why || 'profile'); if (r && r.me && H.state) H.state.me = r.me; return SDK.setPlant(ob.species, name); })
         .then(function (r) {
           if (!r || r.ok === false) throw new Error((r && r.why) || 'plant');

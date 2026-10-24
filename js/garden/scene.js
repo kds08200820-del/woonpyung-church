@@ -191,6 +191,7 @@ window.GardenScene = (function () {
   function setChurch(v, o) { S.church = v ? { v: v, o: o || {} } : null; drawChurch(); }
   function drawChurch() {
     if (S.el.church) { S.el.church.remove(); S.el.church = null; }
+    if (S.el.churchHint) { S.el.churchHint.remove(); S.el.churchHint = null; }
     if (!S.church || !S.el.plot) return;
     var v = S.church.v, o = S.church.o, box = el('div', 'g-church'), names = [], siteTop = null;
     box.style.left = CHURCH_AT.x + 'px'; box.style.top = CHURCH_AT.y + 'px'; box.style.zIndex = CHURCH_AT.z;
@@ -212,7 +213,11 @@ window.GardenScene = (function () {
     }
     box.title = names.join(' · ');
     if (o.onOpen) {
-      var hn = el('span', 'g-church-hint'); hn.textContent = o.hint || o.label || ''; box.appendChild(hn);   // 눌러 보라는 안내 풍선
+      /* 눌러 보라는 안내 풍선 — 교회 상자(z 91, 밭 줄 사이) 밖에 따로 맨 위로 둔다. 안에 두면 믿음 나무·앞줄 밭이 글씨를 가린다(2026-10-25 담임목사 "건축헌금 글씨가 안 보입니다") */
+      var hn = el('button', 'g-church-hint'); hn.type = 'button'; hn.tabIndex = -1; hn.textContent = o.hint || o.label || '';
+      hn.style.left = CHURCH_AT.x + 'px'; hn.style.top = (CHURCH_AT.y - 34) + 'px';
+      hn.addEventListener('click', function (e) { e.stopPropagation(); o.onOpen(); });
+      S.el.plot.appendChild(hn); S.el.churchHint = hn;
       box.classList.add('is-open'); box.setAttribute('role', 'button'); box.tabIndex = 0; box.setAttribute('aria-label', (o.label || '') + (names.length ? ' — ' + names.join(' · ') : ''));
       box.addEventListener('click', function (e) { e.stopPropagation(); o.onOpen(); });
       box.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onOpen(); } });
@@ -482,14 +487,16 @@ window.GardenScene = (function () {
   /* ── 캐릭터 ── */
   function setCharacter(key, o) {
     o = o || {};
-    /* 도서관 인물 9명(pastor·m1~m4·f1~f4) + 예전 키 a/b/c — 그림이 있는 키만 받고, 없으면 a */
-    var k = String(key || 'a').toLowerCase();
-    if (!/^[a-z0-9-]{1,20}$/.test(k) || !(CHAR_COLOR[k] || has('chars/char-' + k + '.webp'))) k = 'a';
+    /* 내 모습 설정값(avatar.js 의 20자 키, 2026-10-25) 또는 예전 그림 키(pastor·m1~m4·f1~f4·a/b/c) — 그림이 없는 키는 a.
+       설정값은 SVG 로 그려 사진 주소(avatarUrl)보다 앞선다 */
+    var k = String(key || 'a').toLowerCase(), AV = window.GardenAvatar, custom = !!(AV && AV.isCustom(k));
+    if (!custom && (!/^[a-z0-9-]{1,20}$/.test(k) || !(CHAR_COLOR[k] || has('chars/char-' + k + '.webp')))) k = 'a';
     S.charKey = k; S.nickname = o.nickname || '';
     if (!S.el.char) return;
-    var box = S.el.char; box.innerHTML = ''; box.setAttribute('data-char', k);
+    var box = S.el.char; box.innerHTML = ''; box.setAttribute('data-char', custom ? 'custom' : k);
     var src = null;
-    if (o.avatarUrl && /^(https?:)?\/\//.test(o.avatarUrl)) src = o.avatarUrl;
+    if (custom) src = AV.uri(AV.decode(k), 'full');
+    else if (o.avatarUrl && /^(https?:)?\/\//.test(o.avatarUrl)) src = o.avatarUrl;
     else if (o.avatarUrl && has(o.avatarUrl.replace(/^images\/garden\/default\//, ''))) src = url(o.avatarUrl.replace(/^images\/garden\/default\//, ''));
     else src = asset('chars/char-' + k + '.webp');
     /* 인물은 장면이 아니라 오른쪽 메뉴의 '내 모습' 칸에 보인다(2026-10-23) — 같은 그림을 알려 준다 */
