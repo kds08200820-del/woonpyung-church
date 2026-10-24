@@ -94,6 +94,12 @@
     }
     return null;
   }
+  // 직접 올린 영상 파일(앨범 url 이 .mp4 등) — 스키마 변경 없이 확장자로 알아본다. 서버(R2)가 Range 를 지원해 건너뛰며 재생된다
+  const VIDEO_RE = /\.(mp4|m4v|webm|mov|ogv)(\?|#|$)/i;
+  const isVideo = (p) => !!(p && VIDEO_RE.test(String(p.key || p.url || "")));
+  const VIDEO_MAX = 100 * 1024 * 1024;   // 서버 한 건 상한(cloudflare/worker.js MAX_BYTES)
+  const isVideoFile = (f) => /^video\//.test(f.type) || (!f.type && VIDEO_RE.test(f.name || ""));
+  const fileMB = (b) => (b / 1024 / 1024).toFixed(b > 10485760 ? 0 : 1);
   const linkOf = (p) => (p && p.link_url ? parseLink(p.link_url) : null);
   const IG_THUMB = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f9ce34"/><stop offset=".5" stop-color="#ee2a7b"/><stop offset="1" stop-color="#6228d7"/></linearGradient></defs><rect width="600" height="600" fill="url(#g)"/><rect x="210" y="210" width="180" height="180" rx="48" fill="none" stroke="#fff" stroke-width="16"/><circle cx="300" cy="300" r="52" fill="none" stroke="#fff" stroke-width="16"/><circle cx="352" cy="248" r="13" fill="#fff"/></svg>');
   const linkThumb = (lk) => (lk.type === "youtube" ? "https://i.ytimg.com/vi/" + lk.id + "/hqdefault.jpg" : IG_THUMB);
@@ -172,7 +178,8 @@
     carEl.innerHTML = `
       <div class="hn-track">${slides.map((p, i) => `
         <figure class="hn-slide${i === 0 ? " on" : ""}" data-idx="${i}">
-          <img src="${esc(p.url)}" alt="${esc(titleOf(p))}" loading="${i === 0 ? "eager" : "lazy"}" draggable="false" />
+          ${isVideo(p) ? `<video src="${esc(p.url)}#t=0.1" preload="metadata" muted playsinline draggable="false" aria-label="${esc(titleOf(p))}"></video><span class="hn-linkbadge vid">▶ 영상</span>`
+            : `<img src="${esc(p.url)}" alt="${esc(titleOf(p))}" loading="${i === 0 ? "eager" : "lazy"}" draggable="false" />`}
           ${linkBadge(linkOf(p))}
           <figcaption class="hn-cap">
             <b>${esc(titleOf(p))}</b>
@@ -272,7 +279,7 @@
     feedModal.addEventListener("click", (e) => { if (e.target.hasAttribute("data-close")) closeFeed(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && feedModal && !feedModal.hidden && viewer.hidden) closeFeed(); });
   }
-  function closeFeedDom() { if (feedModal) { feedModal.hidden = true; if (viewer.hidden) document.body.style.overflow = ""; } }
+  function closeFeedDom() { if (feedModal) { pauseAll(feedModal); feedModal.hidden = true; if (viewer.hidden) document.body.style.overflow = ""; } }
   function closeFeed() { if (window.ModalNav && window.ModalNav.close()) return; closeFeedDom(); }
 
   let feedAdmin = false, feedSsTeacher = false;
@@ -306,6 +313,8 @@
       return `<div class="ig-media ig-embed"><iframe loading="lazy" src="https://www.youtube.com/embed/${encodeURIComponent(lk.id)}?rel=0&playsinline=1" title="YouTube 영상" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
     if (lk && lk.type === "instagram" && lk.code)
       return `<div class="ig-media ig-embed ig-embed-insta"><iframe loading="lazy" src="https://www.instagram.com/p/${encodeURIComponent(lk.code)}/embed/captioned/" title="Instagram 게시물" scrolling="no" allowtransparency="true"></iframe></div>`;
+    if (isVideo(p))
+      return `<div class="ig-media ig-video"><video src="${esc(p.url)}#t=0.1" controls playsinline preload="metadata" aria-label="${esc(titleOf(p))}"></video></div>`;
     return `<div class="ig-media" data-act="open" data-idx="${i}" role="button" tabindex="0" aria-label="크게 보기">
         <img src="${esc(p.url)}" alt="${esc(titleOf(p))}" loading="lazy" draggable="false" />
         ${linkBadge(lk)}
@@ -482,7 +491,8 @@
   const vStage = viewer.querySelector('[data-role="stage"]');
   let vList = [], vIdx = 0;
   function openViewer(list, idx) { vList = list; vIdx = idx || 0; renderViewer(); viewer.hidden = false; document.body.style.overflow = "hidden"; if (window.ModalNav) window.ModalNav.open(closeViewerDom); }
-  function closeViewerDom() { viewer.hidden = true; if (!feedModal || feedModal.hidden) document.body.style.overflow = ""; else document.body.style.overflow = "hidden"; }
+  function pauseAll(root) { (root || document).querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (e) {} }); }
+  function closeViewerDom() { pauseAll(vStage); viewer.hidden = true; if (!feedModal || feedModal.hidden) document.body.style.overflow = ""; else document.body.style.overflow = "hidden"; }
   function closeViewer() { if (window.ModalNav && window.ModalNav.close()) return; closeViewerDom(); }
   function renderViewer() {
     const p = vList[vIdx]; if (!p) return;
@@ -491,6 +501,8 @@
       vStage.innerHTML = `<div class="igv-embed"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(lk.id)}?playsinline=1&rel=0" title="YouTube 영상" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
     } else if (lk && lk.type === "instagram" && lk.code) {
       vStage.innerHTML = `<div class="igv-embed igv-embed-insta"><iframe src="https://www.instagram.com/p/${encodeURIComponent(lk.code)}/embed/captioned/" title="Instagram 게시물" scrolling="no" allowtransparency="true"></iframe></div><a class="igv-linkgo" href="${esc(lk.link)}" target="_blank" rel="noopener">Instagram에서 열기 ↗</a>`;
+    } else if (isVideo(p)) {
+      vStage.innerHTML = `<video src="${esc(p.url)}" controls autoplay playsinline preload="auto"></video>`;
     } else if (lk) {
       vStage.innerHTML = `<img src="${esc(p.url)}" alt="${esc(titleOf(p))}" draggable="false" /><a class="igv-linkgo" href="${esc(lk.link)}" target="_blank" rel="noopener">Instagram에서 열기 ↗</a>`;
     } else {
@@ -520,7 +532,7 @@
   viewer.addEventListener("click", (e) => { if (e.target === viewer) closeViewer(); });
   document.addEventListener("keydown", (e) => { if (viewer.hidden) return; if (e.key === "Escape") closeViewer(); else if (e.key === "ArrowLeft") vGo(-1); else if (e.key === "ArrowRight") vGo(1); });
   let lastTap = 0, tX = null, tY = null, drag = false;
-  vStage.addEventListener("click", () => { const now = Date.now(); if (now - lastTap < 300) { if (!myLikes.has(String(vList[vIdx].id))) vLike(); heartBurst(); lastTap = 0; } else lastTap = now; });
+  vStage.addEventListener("click", (e) => { if (e.target.tagName === "VIDEO") return; const now = Date.now(); if (now - lastTap < 300) { if (!myLikes.has(String(vList[vIdx].id))) vLike(); heartBurst(); lastTap = 0; } else lastTap = now; });
   vStage.addEventListener("touchstart", (e) => { if (e.touches.length !== 1) return; tX = e.touches[0].clientX; tY = e.touches[0].clientY; drag = true; }, { passive: true });
   vStage.addEventListener("touchmove", (e) => { if (!drag) return; const dx = e.touches[0].clientX - tX, dy = e.touches[0].clientY - tY; if (Math.abs(dx) > Math.abs(dy)) { const img = vStage.querySelector("img"); if (img) img.style.transform = `translateX(${dx}px)`; } }, { passive: true });
   vStage.addEventListener("touchend", (e) => { if (!drag) return; drag = false; const dx = e.changedTouches[0].clientX - tX; const img = vStage.querySelector("img"); if (img) img.style.transform = ""; if (Math.abs(dx) > 60) vGo(dx < 0 ? 1 : -1); tX = tY = null; });
@@ -533,18 +545,18 @@
     upModal.className = "modal"; upModal.hidden = true;
     upModal.innerHTML = `
       <div class="modal-backdrop" data-upclose></div>
-      <div class="modal-box modal-box-upload" role="dialog" aria-modal="true" aria-label="사진 올리기">
+      <div class="modal-box modal-box-upload" role="dialog" aria-modal="true" aria-label="사진·영상 올리기">
         <button class="modal-close" data-upclose aria-label="닫기">&times;</button>
-        <h3 class="m-title">사진 올리기</h3>
+        <h3 class="m-title">사진·영상 올리기</h3>
         <div class="up-drop" id="upDrop">
           <div class="up-drop-in">
             <span class="up-drop-ic">🖼️</span>
-            <p class="up-drop-t">여기로 사진을 끌어다 놓거나</p>
-            <button type="button" class="btn btn-solid up-pick" id="upPick">사진 선택</button>
+            <p class="up-drop-t">여기로 사진·영상을 끌어다 놓거나</p>
+            <button type="button" class="btn btn-solid up-pick" id="upPick">사진·영상 선택</button>
             <button type="button" class="btn btn-line up-cam" id="upCam" style="margin-top:8px">카메라로 찍기</button>
-            <p class="up-drop-s">여러 장을 한 번에 올릴 수 있어요</p>
+            <p class="up-drop-s">여러 장을 한 번에 올릴 수 있어요 · 영상은 한 개 100MB까지</p>
           </div>
-          <input type="file" id="upInput" accept="image/*" multiple hidden />
+          <input type="file" id="upInput" accept="image/*,video/*,.mp4,.mov,.m4v,.webm" multiple hidden />
           <input type="file" id="upCamera" accept="image/*" capture="environment" hidden />
         </div>
         <div class="up-thumbs" id="upThumbs"></div>
@@ -602,14 +614,19 @@
     linkInput.addEventListener("input", onLinkInput);
 
     function refreshThumbs() {
-      thumbs.innerHTML = picked.map((f, i) => `<div class="up-th"><img src="${URL.createObjectURL(f)}" alt="" /><button type="button" class="up-th-x" data-i="${i}" aria-label="제거">×</button></div>`).join("");
+      thumbs.innerHTML = picked.map((f, i) => `<div class="up-th">${isVideoFile(f) ? `<video src="${URL.createObjectURL(f)}#t=0.1" preload="metadata" muted playsinline></video><span class="up-th-v">▶ ${fileMB(f.size)}MB</span>` : `<img src="${URL.createObjectURL(f)}" alt="" />`}<button type="button" class="up-th-x" data-i="${i}" aria-label="제거">×</button></div>`).join("");
       thumbs.querySelectorAll(".up-th-x").forEach((b) => b.addEventListener("click", () => { picked.splice(Number(b.dataset.i), 1); refreshThumbs(); }));
       refreshGo();
     }
     function addFiles(fl) {
-      const imgs = Array.from(fl || []).filter((f) => /^image\//.test(f.type));
-      if (!imgs.length) { if (fl && fl.length) alert("이미지 파일만 올릴 수 있습니다."); return; }
-      picked = picked.concat(imgs); refreshThumbs();
+      const all = Array.from(fl || []);
+      const ok = all.filter((f) => /^image\//.test(f.type) || isVideoFile(f));
+      if (!ok.length) { if (all.length) alert("사진 또는 영상(mp4·mov·webm) 파일만 올릴 수 있습니다."); return; }
+      const big = ok.filter((f) => isVideoFile(f) && f.size > VIDEO_MAX);
+      if (big.length) alert("영상이 너무 큽니다(" + big.map((f) => fileMB(f.size) + "MB").join(", ") + "). 한 개당 100MB까지 올릴 수 있어요.\n휴대폰 갤러리의 '영상 편집(자르기)'이나 카톡·유튜브용으로 줄여서 올려 주세요.");
+      const good = ok.filter((f) => !big.includes(f));
+      if (!good.length) return;
+      picked = picked.concat(good); refreshThumbs();
     }
     upModal._reset = function () { picked = []; pickedLink = null; thumbs.innerHTML = ""; linkInput.value = ""; linkHint.hidden = true; goBtn.disabled = true; upModal.querySelector("#upTitle").value = ""; upModal.querySelector("#upCap").value = ""; upModal.querySelector("#upDate").value = todayISO(); upModal.querySelector("#upStatus").hidden = true; upModal.querySelector("#upStatus").textContent = ""; };
 
@@ -678,7 +695,8 @@
       for (let i = 0; i < picked.length; i++) {
         status.textContent = `올리는 중… ${i + 1}/${picked.length}`;
         try {
-          const r = await window.ChurchUpload.upload(picked[i], { folder: "album" });
+          const vid = isVideoFile(picked[i]);
+          const r = await window.ChurchUpload.upload(picked[i], vid ? { folder: "album", onProgress: (q) => { status.textContent = `영상 올리는 중… ${i + 1}/${picked.length} · ${Math.round(q * 100)}%${q >= 1 ? " (저장 중)" : ""}`; } } : { folder: "album" });
           const base = { category: cat, url: r.url, key: r.key, caption: cap || null, user_id: me.id, author_name: displayName(me) };
           try {
             await api("POST", "album_photos", Object.assign({ title: title || null, event_date: date }, base), { Prefer: "return=minimal" });

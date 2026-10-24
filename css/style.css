@@ -998,6 +998,8 @@ ul { list-style: none; }
 .ig-menu:hover { color: #A33A2A; }
 .ig-media { position: relative; background: #000; cursor: pointer; display: block; }
 .ig-media img { display: block; width: 100%; max-height: 62vh; object-fit: contain; user-select: none; }
+.ig-media video { display: block; width: 100%; max-height: 70vh; background: #000; }
+.ig-media.ig-video { cursor: default; }
 .ig-heartburst, .igv-heartburst { position: absolute; top: 50%; left: 50%; width: 96px; height: 96px; transform: translate(-50%,-50%) scale(0); opacity: 0; color: #fff; pointer-events: none; }
 .ig-heartburst.go, .igv-heartburst.go { animation: igheart .9s ease; }
 @keyframes igheart { 0%{transform:translate(-50%,-50%) scale(0);opacity:0;} 15%{transform:translate(-50%,-50%) scale(1.15);opacity:.95;} 30%{transform:translate(-50%,-50%) scale(.95);} 70%{opacity:.95;} 100%{transform:translate(-50%,-50%) scale(1);opacity:0;} }
@@ -1023,6 +1025,7 @@ ul { list-style: none; }
 .ig-viewer { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.94); display: flex; align-items: center; justify-content: center; }
 .ig-viewer[hidden] { display: none; }
 .igv-stage { position: relative; max-width: 100%; max-height: 82vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.igv-stage video { max-width: 100vw; max-height: 82vh; background: #000; }
 .igv-stage img { max-width: 100vw; max-height: 82vh; object-fit: contain; touch-action: pan-y; transition: transform .05s linear; user-select: none; }
 .igv-close { position: absolute; top: 14px; right: 16px; z-index: 2; width: 42px; height: 42px; border: 0; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 1.7rem; line-height: 1; cursor: pointer; }
 .igv-close:hover { background: rgba(255,255,255,.22); }
@@ -1076,6 +1079,7 @@ ul { list-style: none; }
 .hn-slide { position: absolute; inset: 0; margin: 0; opacity: 0; transition: opacity .7s ease; cursor: pointer; }
 .hn-slide.on { opacity: 1; }
 .hn-slide img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; }
+.hn-slide video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; pointer-events: none; }   /* 직접 올린 영상(2026-10-25) — 눌러서 크게 보면 재생 */
 .hn-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 22px 18px; display: flex; flex-direction: column; gap: 3px;
   background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff; }
 .hn-cap b { font-family: var(--font); font-size: 1.15rem; font-weight: 700; word-break: keep-all; }
@@ -1113,6 +1117,8 @@ ul { list-style: none; }
 .up-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; margin-top: 12px; }
 .up-thumbs:empty { display: none; }
 .up-th { position: relative; }
+.up-th video { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 9px; border: 1px solid var(--line); display: block; background: #000; }
+.up-th-v { position: absolute; left: 6px; bottom: 6px; padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,.65); color: #fff; font-size: .72rem; font-weight: 700; }
 .up-th img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 9px; border: 1px solid var(--line); display: block; }
 .up-th-x { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: #A33A2A; color: #fff; font-size: .9rem; line-height: 1; cursor: pointer; box-shadow: 0 1px 5px rgba(0,0,0,.3); }
 .up-fields { margin-top: 16px; display: flex; flex-direction: column; gap: 14px; }
@@ -1137,6 +1143,7 @@ ul { list-style: none; }
 .up-link-hint[hidden] { display: none; }
 .hn-linkbadge { position: absolute; top: 12px; left: 12px; z-index: 2; padding: 5px 12px; border-radius: 999px; font-size: .76rem; font-weight: 700; color: #fff; letter-spacing: .02em; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .hn-linkbadge.yt { background: #e62117; }
+.hn-linkbadge.vid { background: rgba(58,40,28,.88); }
 .hn-linkbadge.ig { background: linear-gradient(45deg, #f9ce34, #ee2a7b, #6228d7); }
 .ig-media .hn-linkbadge { top: 10px; left: 10px; }
 .ig-embed { cursor: default; background: #000; }

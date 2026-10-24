@@ -1,6 +1,6 @@
 /* ============================================================
    운평장로교회 — 파일 업로드 공용 모듈 (Cloudflare R2 Worker 연동)
-   window.ChurchUpload.upload(file, {folder, compress}) → { url, key }
+   window.ChurchUpload.upload(file, {folder, compress, onProgress(0~1)}) → { url, key }   (영상도 가능 — 서버 상한 100MB)
    window.ChurchUpload.remove(key)
    window.ChurchUpload.compressImage(file) → File(압축본)
    - 이미지는 업로드 전 자동 축소·압축(최대 변 1600px, JPEG 82%)
@@ -57,22 +57,42 @@ window.ChurchUpload = (function () {
     }
   }
 
+  // 영상: 기기에 따라 file.type 이 비어 오므로 확장자로 보정(비어 있으면 서버가 octet-stream 으로 저장해 재생이 안 된다)
+  const VIDEO_TYPES = { mp4: "video/mp4", m4v: "video/mp4", mov: "video/quicktime", webm: "video/webm", ogv: "video/ogg" };
+  function mediaType(f) {
+    if (f.type) return f.type;
+    const m = String(f.name || "").toLowerCase().match(/\.([a-z0-9]{1,5})$/);
+    return (m && VIDEO_TYPES[m[1]]) || "application/octet-stream";
+  }
+
   async function upload(file, opts) {
     opts = opts || {};
     if (!isReady()) throw new Error("업로드 서버가 아직 설정되지 않았습니다.");
     if (!token()) throw new Error("로그인이 필요합니다.");
     const folder = opts.folder || "uploads";
     const f = (opts.compress === false) ? file : await compressImage(file);
-    const res = await fetch(base() + "/upload", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + token(),
-        "Content-Type": f.type || "application/octet-stream",
-        "x-filename": encodeURIComponent(f.name || "file"),
-        "x-folder": folder,
-      },
-      body: f,
-    });
+    const headers = {
+      Authorization: "Bearer " + token(),
+      "Content-Type": mediaType(f),
+      "x-filename": encodeURIComponent(f.name || "file"),
+      "x-folder": folder,
+    };
+    if (opts.onProgress) {   // 큰 파일(영상)은 진행률을 보여 주려고 XHR 로 올린다
+      return new Promise((resolve, reject) => {
+        const x = new XMLHttpRequest();
+        x.open("POST", base() + "/upload");
+        Object.keys(headers).forEach((k) => x.setRequestHeader(k, headers[k]));
+        x.upload.onprogress = (e) => { if (e.lengthComputable) opts.onProgress(e.loaded / e.total); };
+        x.onerror = () => reject(new Error("네트워크 오류로 올리지 못했습니다. 다시 시도해 주세요."));
+        x.ontimeout = () => reject(new Error("시간이 너무 오래 걸려 중단했습니다. 와이파이에서 다시 시도해 주세요."));
+        x.onload = () => {
+          let d = {}; try { d = JSON.parse(x.responseText || "{}"); } catch (e) {}
+          if (x.status >= 200 && x.status < 300) resolve(d); else reject(new Error(d.error || ("업로드 실패 (" + x.status + ")")));
+        };
+        x.send(f);
+      });
+    }
+    const res = await fetch(base() + "/upload", { method: "POST", headers, body: f });
     let data = {};
     try { data = await res.json(); } catch (e) {}
     if (!res.ok) throw new Error(data.error || ("업로드 실패 (" + res.status + ")"));
