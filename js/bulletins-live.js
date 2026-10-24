@@ -10,7 +10,9 @@
   if (typeof BULLETINS === 'undefined' || !Array.isArray(BULLETINS)) return;
   var url = window.SUPABASE_URL, key = window.SUPABASE_ANON_KEY;
   if (!url || !key || typeof fetch !== 'function') return;
-  var latest = BULLETINS.length ? BULLETINS[0].date : '2000-01-01';
+  /* 정적 주보가 게시 주보보다 앞서 올라가 있어도(예: 10-25 를 손으로 넣고 10-11·10-18 은 게시본만 있을 때) 그 사이 날짜가 가려지지 않게,
+     가장 최근 정적 주보가 아니라 그 바로 앞(둘째로 최근) 정적 주보 날짜부터 받는다 */
+  var latest = BULLETINS.length > 1 ? BULLETINS[1].date : (BULLETINS.length ? BULLETINS[0].date : '2000-01-01');
 
   function conv(r) {
     var d = r.data || {}, dt = String(r.bdate || '').slice(0, 10), m = dt.split('-'), off = d.offering || {};
@@ -34,7 +36,7 @@
     return b;
   }
 
-  window.BULLETINS_LIVE = fetch(url.replace(/\/$/, '') + '/rest/v1/bulletins_public?select=bdate,title,scripture,preacher,data&bdate=gt.' + latest + '&order=bdate.desc&limit=4',
+  window.BULLETINS_LIVE = fetch(url.replace(/\/$/, '') + '/rest/v1/bulletins_public?select=bdate,title,scripture,preacher,data&bdate=gt.' + latest + '&order=bdate.desc&limit=8',
     { headers: { apikey: key, Authorization: 'Bearer ' + key } })
     .then(function (res) { return res.ok ? res.json() : []; })
     .then(function (rows) {
@@ -42,7 +44,8 @@
         .filter(function (b) { return !BULLETINS.some(function (x) { return x.date === b.date; }); })
         .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
       if (!add.length) return 0;
-      BULLETINS.unshift.apply(BULLETINS, add);
+      BULLETINS.push.apply(BULLETINS, add);
+      BULLETINS.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });   // 최신 → 과거
       try { window.dispatchEvent(new CustomEvent('bulletins:live', { detail: { added: add.length } })); } catch (e) { }
       return add.length;
     })
