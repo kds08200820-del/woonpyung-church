@@ -692,7 +692,7 @@ window.GardenI18n = (function () {
     'shop.tab.build': '건재상',
     'shop.tab.church': '교회 건축',
     'build.shop.lead': '모델하우스 세 채입니다. 내 땅의 대지와 모은 목재, 품삯(달란트)으로 짓습니다. 목재는 건축용 나무를 길러 베거나 스토어에서 다 자란 나무를 사서 모읍니다.',
-    'build.shop.note': '지은 집은 입체 정원과 첫 화면 밭에 서고, 내 자산(목재 + 품삯)으로 셉니다. 대지는 내 땅 메뉴의 대지로 바꾸기에서 만듭니다.',
+    'build.shop.note': '대지는 내 땅 메뉴의 대지로 바꾸기에서 만듭니다.',
     'build.cost': '대지 {dae}칸 · 목재 {wood} · 품삯 {wage} {u}',
     'build.shape.1': '한 칸',
     'build.shape.2': '나란히 붙은 두 칸',

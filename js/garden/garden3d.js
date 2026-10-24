@@ -143,9 +143,10 @@ window.Garden3D = (function () {
       if (!el) return;
       el.classList.add('g3d-side'); body.append(el); root.classList.add('has-side');
       sideBtn.textContent = label || ''; sideBtn.hidden = !phone || !label;
-      sideBtn.onclick = function () { var on = !root.classList.contains('is-side'); root.classList.toggle('is-side', on); sideBtn.setAttribute('aria-expanded', String(on)); setTimeout(onResize, 30); };
+      sideBtn.onclick = function () { showSide(!root.classList.contains('is-side')); setTimeout(onResize, 30); };
       setTimeout(onResize, 30);
     }
+    function showSide(on) { if (!phone) return; root.classList.toggle('is-side', !!on); sideBtn.setAttribute('aria-expanded', String(!!on)); }
     function setHead() { titleEl.textContent = o.title || t('g3d.title'); subEl.textContent = o.sub || ''; subEl.hidden = !o.sub; root.setAttribute('aria-label', o.title || t('g3d.title')); }
     setHead();
     document.body.append(root);
@@ -198,7 +199,7 @@ window.Garden3D = (function () {
     CUR = {
       close: function () { close(); },
       side: function (label) { if (label != null) { sideBtn.textContent = label; } },
-      openSide: function (on) { if (!phone) return; root.classList.toggle('is-side', !!on); sideBtn.setAttribute('aria-expanded', String(!!on)); },
+      openSide: function (on) { showSide(on); },
       setLand: function (land) { if (R && R.drawLand) R.drawLand(land); else pendingLand = land; },
       setTreeBubble: function (src) { if (R && R.treeBubble) R.treeBubble(src); },
       flash: function (cell, text) { if (R && R.flash) R.flash(cell, text); },
@@ -676,6 +677,9 @@ window.Garden3D = (function () {
         if (Object.keys(pointers).length < 2) two = null;
         if (wasTap) {
           vel.x = vel.z = vel.az = 0;
+          // 휴대폰: 아래 칸(메뉴)이 떠 있으면 장면을 누를 때 내린다 — 칸을 눌러 메뉴가 필요하면 farm.js 가 곧바로 다시 올린다
+          // (2026-10-24 담임목사 "다른 곳을 클릭하면 사라져야 하는데 계속 아래에서 떠 있습니다")
+          if (phone && root.classList.contains('is-side')) showSide(false);
           var p = pick(e);
           if (p && p.bubble && o.onBubble) {   // onBubble 이 true 를 돌려주면 창을 닫지 않는다(내 땅에서 바로 거두기)
             var kd = p.bubble.kind, dd = p.bubble.data;
