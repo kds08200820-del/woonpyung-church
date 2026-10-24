@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261023lib1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261025pr1" />
+  <link rel="stylesheet" href="css/garden.css?v=20261025pr2" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -183,7 +183,8 @@
       </div>
       <div class="g-ob-step" id="gObStep1">
         <label class="g-field"><span class="g-flabel" data-i18n="onboard.nick.label"></span><input type="text" id="gObNick" maxlength="20" autocomplete="nickname" data-i18n-ph="onboard.nick.ph" /></label>
-        <div class="g-field"><span class="g-flabel" data-i18n="onboard.avatar.label"></span><div class="g-avatars" id="gObAvatars" role="radiogroup"></div></div>
+        <!-- 내 모습 만들기(avatar.js): 얼굴·눈·눈썹·코·입·귀·머리·몸·옷을 하나하나 (2026-10-25 담임목사) -->
+        <div class="g-field"><span class="g-flabel" data-i18n="onboard.avatar.label"></span><p class="g-avx-note" id="gObDraft" hidden data-i18n="avx.draft"></p><div class="g-avx-host" id="gObAvatars"></div></div>
         <div class="g-mfoot"><button type="button" class="g-btn g-btn-primary" id="gObNext" data-i18n="onboard.next"></button></div>
       </div>
       <div class="g-ob-step" id="gObStep2" hidden>
@@ -308,17 +309,18 @@
   <script src="js/bulletins-live.js?v=20261025jb1"></script>
   <script src="js/layout.js?v=20261023lib1"></script>
   <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/garden/i18n.js?v=20261024fm5"></script>
-  <script src="js/garden/sdk.js?v=20261025pr1"></script>
-  <script src="js/garden/scene.js?v=20261024fm4"></script>
-  <script src="js/garden/hud.js?v=20261025pr1"></script>
+  <script src="js/garden/i18n.js?v=20261025av1"></script>
+  <script src="js/garden/sdk.js?v=20261025pr2"></script>
+  <script src="js/garden/avatar.js?v=20261025av1"></script>
+  <script src="js/garden/scene.js?v=20261025av1"></script>
+  <script src="js/garden/hud.js?v=20261025pr2"></script>
   <script src="js/garden/plantsim.js?v=20261024mg1"></script>
   <script src="js/garden/shop.js?v=20261024mg1"></script>
   <script src="js/garden/farm.js?v=20261024ha2"></script>
   <script src="js/garden/storage.js?v=20261024mg1"></script>
   <script src="js/garden/build.js?v=20261024fm3"></script>
   <script src="js/garden/garden3d.js?v=20261024ch2"></script>
-  <script src="js/garden/visit.js?v=20261023gb1"></script>
+  <script src="js/garden/visit.js?v=20261025av1"></script>
   <script src="js/garden/guide.js?v=20261024ec1"></script>
   <script src="js/garden/region.js?v=20261023wx1"></script>
   <script src="js/garden/weather.js?v=20261023wx1"></script>
