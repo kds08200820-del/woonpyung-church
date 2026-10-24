@@ -322,6 +322,8 @@ window.GardenFarm = (function () {
       h += '<button type="button" class="g-btn ' + (F.mode === 'buy' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="buy">' + esc(t('farm.tool.buy')) + '</button>';
       h += '<button type="button" class="g-btn ' + (F.mode === 'convert' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="convert">' + esc(t('farm.tool.convert')) + '</button>';
       if (F.houses) h += '<button type="button" class="g-btn ' + (F.mode === 'house' ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="house">' + esc(t('farm.tool.house')) + '</button>';
+      var ripeN = ripeTiles().length;
+      h += '<button type="button" class="g-btn ' + (ripeN ? 'g-btn-primary' : 'g-btn-line') + '" data-tool="harvestall"' + (ripeN ? '' : ' disabled') + '>' + esc(t('farm.harvestall', { n: ripeN })) + '</button>';
       h += '<button type="button" class="g-btn g-btn-line" data-tool="water"' + (f.watered ? ' disabled' : '') + '>' + esc(f.watered ? t('water.done') : t('water.go')) + '</button>';
       if (SHOP) h += '<button type="button" class="g-btn g-btn-line" data-tool="shop">' + esc(t('shop.open')) + '</button>';
       if (f.build && window.GardenStorage) h += '<button type="button" class="g-btn g-btn-line" data-tool="storage">' + esc(t('storage.open')) + '</button>';
@@ -426,6 +428,60 @@ window.GardenFarm = (function () {
       }, function () { F.busy = false; if (last) setFarm(last); HUD.toast(t('farm.err')); });
     })(0);
   }
+  // 지금 거둘 수 있는 칸(나무 칸 0,0 제외)
+  function ripeTiles() {
+    return ((F.farm && F.farm.tiles) || []).filter(function (tl) { return !(tl.x === 0 && tl.y === 0) && remaining(tl).length > 0; });
+  }
+  // 한 칸을 거두고 { ok, n, gain, farm, err } 로 알린다 (여러 칸을 이어 거둘 때 쓴다 — 서버가 칸마다 시간·값을 확인)
+  function harvestOne(tl) {
+    var ns = remaining(tl), x = tl.x, y = tl.y, isCrop = !!tl.crop;
+    function call(n) { return isCrop ? SDK.farmPick(x, y, n) : SDK.farmHarvest(x, y, n); }
+    if (!ns.length) return Promise.resolve({ ok: true, n: 0, gain: 0 });
+    if (isCrop ? serverNew() : stNew(tl)) {
+      return call(0).then(function (r) {
+        if (!r || !r.ok) return { ok: false, err: r };
+        return { ok: true, n: r.picked ? (+r.n || 1) : 0, gain: r.picked ? +r.gain || 0 : 0, farm: r.farm };
+      });
+    }
+    var acc = { ok: true, n: 0, gain: 0, farm: null };
+    return ns.reduce(function (pr, n) {
+      return pr.then(function (a) {
+        if (!a.ok) return a;
+        return call(n).then(function (r) {
+          if (!r || !r.ok) { a.ok = false; a.err = r; return a; }
+          if (r.picked) { a.n++; a.gain += +r.gain || 0; }
+          a.farm = r.farm || a.farm; return a;
+        });
+      });
+    }, Promise.resolve(acc));
+  }
+  // 익은 칸을 모두 차례로 거둔다 — 한 칸이 막히면 거기서 멈추고 거둔 만큼만 알린다
+  function harvestAll() {
+    var list = ripeTiles();
+    if (F.busy) return;
+    if (!list.length) { HUD.toast(t('farm.harvestall.none')); return; }
+    F.busy = true;
+    var cells = 0, cnt = 0, total = 0, last = null, fail = null;
+    function finish() {
+      F.busy = false;
+      if (last) setFarm(last); else render();
+      if (cells) {
+        used();
+        HUD.toast(t('farm.harvestall.done', { c: cells, n: cnt, p: tal(total) }), 4200);
+        if (F.view) F.view.flash({ x: list[0].x, y: list[0].y }, '+' + tal(total) + ' ' + HUD.talentLabel());
+      }
+      if (fail) HUD.toast(fail.err ? why(fail.err) : t('farm.err'), 4200);
+      if (fail && fail.err && (fail.err.why === 'growing' || fail.err.why === 'not_ready' || fail.err.why === 'over')) load();
+    }
+    (function next(i) {
+      if (i >= list.length) { finish(); return; }
+      harvestOne(list[i]).then(function (r) {
+        if (!r.ok) { fail = r; finish(); return; }
+        if (r.n) { cells++; cnt += r.n; total += r.gain; }
+        last = r.farm || last; next(i + 1);
+      }, function () { fail = { err: null }; finish(); });
+    })(0);
+  }
   // 고른 빈 밭마다 차례로 심는다(서버가 칸마다 씨앗 값·보관함을 확인) — 보관함 것은 가진 만큼만
   function plantMany(cells, cr, itm, b) {
     cells = cells.slice().sort(function (a, c) { return a.y - c.y || a.x - c.x; });
@@ -503,6 +559,7 @@ window.GardenFarm = (function () {
     var k = b.getAttribute('data-tool');
     if (k === 'buy' || k === 'convert' || k === 'house') { F.mode = F.mode === k ? 'normal' : k; F.pick = {}; closeSheet(); render(); return; }
     if (k === 'water') { water(b); return; }
+    if (k === 'harvestall') { harvestAll(); return; }
     if (k === 'shop' && SHOP) { SHOP.open(null, afterShop); return; }
     if (k === 'storage' && window.GardenStorage) { window.GardenStorage.open(afterShop); return; }
     if (k === 'home') {   // 집 고르기 중이면 그만, 아니면 건재상에서 지을 집을 고른다
