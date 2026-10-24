@@ -205,7 +205,7 @@ window.GardenBuild = (function () {
     var built = (c.built || [])[0], cur = c.current;
     if (!built && !cur) return null;
     return {
-      src: built ? churchSrc(built.kind) : '', name: built ? churchName(built.kind) : '',
+      src: built ? churchSrc(built.kind) : '', kind: built ? built.kind : '', name: built ? churchName(built.kind) : '',
       site: cur ? { src: ART + 'church-site.webp', name: t('church.site', { name: churchName(cur.kind), p: pct(cur) }) } : null
     };
   }

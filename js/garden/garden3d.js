@@ -344,6 +344,31 @@ window.Garden3D = (function () {
       outer.rotation.x = -Math.PI / 2; outer.position.y = -0.7; outer.receiveShadow = true; scene.add(outer);
 
       // 그림 판(나무·꽃·작물·인물): 보이는 판은 늘 카메라 쪽, 그림자 판은 늘 해 쪽 → 어느 쪽에서 봐도 그림자가 온전하다
+      // 교회 입체 건물 (앞 = +z, 바닥 y 0): 종류마다 벽·지붕 빛깔만 다르다
+      function buildChurch(kind, W) {
+        var pal = { small: [0xf3ead8, 0x9b5b3e, 0xcdbd9f], brick: [0xb4604a, 0x4d4f5a, 0xcbb9a0], stone: [0xa09e97, 0x5a687b, 0xb8b2a4] }[kind] || [0xf3ead8, 0x9b5b3e, 0xcdbd9f];
+        function mat(c, em) { var m = new T.MeshStandardMaterial({ color: tint(new T.Color(c)), roughness: 1 }); if (em) { m.emissive = new T.Color(em); m.emissiveIntensity = 0.5; } return m; }
+        var wall = mat(pal[0]), roof = mat(pal[1]), base = mat(pal[2]), wood = mat(0x5b3d2a), glass = mat(0x9fc6e8, 0x35587f), gold = mat(0xe9c46a, 0x6b5320);
+        var g = new T.Group(), k = W / 8.8;   // 8.8m 기준으로 그린 것을 칸 수에 맞게 늘이고 줄인다
+        function box(w, h, d, m, x, y, z) { var b = new T.Mesh(new T.BoxGeometry(w, h, d), m); b.position.set(x, y + h / 2, z); b.castShadow = b.receiveShadow = true; g.add(b); return b; }
+        box(9.4, 0.12, 9.4, base, 0, 0, 0);                    // 마당
+        box(2.0, 0.14, 2.4, base, 0, 0.12, 4.8);   // 현관 앞 길
+        box(5.9, 0.5, 6.7, base, 0, 0.12, -1.2);               // 예배당 기단
+        box(5.6, 3.4, 6.4, wall, 0, 0.62, -1.2);               // 예배당 몸체
+        var sh = new T.Shape(); sh.moveTo(-3.3, 0); sh.lineTo(3.3, 0); sh.lineTo(0, 2.7); sh.closePath();
+        var rf = new T.Mesh(new T.ExtrudeGeometry(sh, { depth: 7.0, bevelEnabled: false }), roof);
+        rf.position.set(0, 4.02, -4.7); rf.castShadow = rf.receiveShadow = true; g.add(rf);   // 맞배지붕(앞뒤로 길게)
+        box(3.0, 7.6, 3.0, wall, 0, 0.12, 2.9);                // 종탑
+        box(3.3, 0.35, 3.3, base, 0, 7.72, 2.9);               // 종탑 처마
+        var sp = new T.Mesh(new T.ConeGeometry(2.3, 4.0, 4), roof); sp.rotation.y = Math.PI / 4; sp.position.set(0, 7.72 + 0.35 + 2.0, 2.9); sp.castShadow = true; g.add(sp);   // 첨탑
+        box(0.2, 1.5, 0.2, gold, 0, 7.72 + 0.35 + 4.0, 2.9); box(0.8, 0.2, 0.2, gold, 0, 7.72 + 0.35 + 4.0 + 0.85, 2.9);   // 십자가
+        box(1.2, 2.1, 0.12, wood, 0, 0.26, 4.45);              // 정문
+        box(0.8, 1.5, 0.12, glass, 0, 4.2, 4.45);              // 종탑 앞 창
+        box(1.6, 0.5, 0.12, glass, 0, 6.5, 4.45);              // 종탑 종소리 창
+        for (var i = 0; i < 3; i++) [-1, 1].forEach(function (sd) { box(0.12, 1.5, 0.8, glass, sd * 2.85, 1.5, -3.6 + i * 2.1); });   // 예배당 옆 창
+        g.scale.set(k, k, k);
+        return g;
+      }
       var items = [], bubbles = [], shadowYaw = Math.atan2(sunDir.x, sunDir.z), plantGroup = new T.Group(); scene.add(plantGroup);
       function sprite(im, s) {
         // s: { x, z, y, h: 모양 높이(m) | size: 그림 높이(m), center, stiff, dead, name }
@@ -428,13 +453,20 @@ window.Garden3D = (function () {
         if (o.plant.bubble) bubble(o.plant.bubble, 0, homeH + tree.top + 0.3, 0, 'tree');
       }
       // 교회(모든 성도에게 같은 교회)와 공사 터: 내 땅 뒤편 — 처음 카메라(남동쪽)의 반대쪽, 바깥 잔디(y −0.7) 위
+      // 교회는 그림판이 아니라 입체 건물: 한 변 CH_TILES 칸(8.8m)을 차지하고 예배당 · 종탑 · 첨탑 · 십자가를 갖춘다 (2026-10-24 담임목사 "4배는 키워야 · 3D로 4칸을 차지하는 큰 건물")
+      var churchGroup = null, churchName = '';
       if (o.church) {
-        var cd = TS * 4.5 + 9, ccx = -cd / Math.SQRT2, ccz = -cd / Math.SQRT2;
-        [[o.church.src, o.church.name, 9.5, 0], [o.church.site && o.church.site.src, o.church.site && o.church.site.name, 6.5, o.church.src ? 1 : 0]].forEach(function (c) {
-          if (!c[0]) return;
-          loadImage(c[0]).then(function (im) {   // 교회 옆 공사 터는 땅 가장자리와 나란히 한쪽으로 비켜 선다
-            if (!dead && im) sprite(im, { x: ccx + c[3] * 8, z: ccz - c[3] * 8, y: -0.7, size: c[2], center: true, stiff: 0, name: c[1] || '' });
-          });
+        var CH_TILES = 4, CH = CH_TILES * TS, cdist = half * 1.4142 + CH / 2 + 1.6, ccx = -cdist / Math.SQRT2, ccz = -cdist / Math.SQRT2;
+        if (o.church.src) {
+          var ck = o.church.kind || (/brick/.test(o.church.src) ? 'brick' : /stone/.test(o.church.src) ? 'stone' : 'small');
+          churchGroup = buildChurch(ck, CH); churchName = o.church.name || '';
+          churchGroup.position.set(ccx, -0.7, ccz); churchGroup.rotation.y = Math.PI / 4;   // 정면이 처음 카메라(남동쪽)를 본다
+          scene.add(churchGroup);
+        }
+        var site = o.church.site;
+        if (site && site.src) loadImage(site.src).then(function (im) {   // 교회 옆 공사 터는 땅 가장자리와 나란히 한쪽으로 비켜 선다
+          var off = o.church.src ? CH * 0.5 + 4.2 : 0;
+          if (!dead && im) sprite(im, { x: ccx + off / Math.SQRT2, z: ccz - off / Math.SQRT2, y: -0.7, size: 9, center: true, stiff: 0, name: site.name || '' });
         });
       }
       R.treeBubble = function (src) {   // 믿음 나무 열매를 다 따면 말풍선을 뗀다
@@ -675,6 +707,7 @@ window.Garden3D = (function () {
           var ht = hits[j], it = items.filter(function (x) { return x.mesh === ht.object; })[0];
           if (it && ht.uv && alphaAt(it.im, ht.uv.x, ht.uv.y) > 40) return { item: it, cell: it.cell };
         }
+        if (churchGroup) { var chh = ray.intersectObject(churchGroup, true); if (chh.length) return { item: { name: churchName, drop: 0, vy: 0 }, cell: null }; }
         var th = ray.intersectObjects(tileMeshes, false);
         if (th.length) return { cell: th[0].object.userData.cell };
         return null;
