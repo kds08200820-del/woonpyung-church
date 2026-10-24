@@ -33,9 +33,14 @@ const chain = ['20261023_1200_garden_phase1.sql', '20261023_1300_garden_farm.sql
   '20261023_2100_garden_visits.sql', '20261023_2330_garden_region.sql', '20261023_2350_garden_guestbook_push.sql', '20261024_0010_garden_economy_build.sql'];
 for (const f of chain) await db.exec(fs.readFileSync(path.join(ROOT, 'supabase', f), 'utf8'));
 const BUILD = fs.readFileSync(path.join(ROOT, 'supabase/20261024_0200_garden_build.sql'), 'utf8');
+const RULES = fs.readFileSync(path.join(ROOT, 'supabase/20261024_1140_garden_home_rules.sql'), 'utf8');
 await db.exec(BUILD);
 await db.exec(BUILD);
+// 0200 뒤에 새 규칙 파일(작은 집 4칸·건축비 칸당 1,000) — 두 번 실행해도 안전
+await db.exec(RULES);
+await db.exec(RULES);
 ok('rerun safe', true);
+
 
 async function as(uid, sql) {
   await db.exec(`set session authorization postgres; select set_config('test.uid', '${uid || ''}', false); set role ${uid ? 'authenticated' : 'anon'};`);
@@ -57,71 +62,90 @@ await as(U1, `select public.garden_farm('woonpyung')`);
 await as(U2, `select public.garden_farm('woonpyung')`);
 ok('rule labels', (await pg(`select count(*)::int n from public.garden_rules where church_id is null and kind in ('home_build','church_offering','church_refund')`))[0].n === 3);
 
-// 1) 건재상 — 세 채 값
+// 1) 건재상 — 세 채 값(담임목사 10/24: 작은 집 최소 대지 4칸, 건축비 = 대지 한 칸당 1,000 달란트)
 let h = await as(U1, `select public.garden_home('woonpyung')`);
 ok('home ok', h.ok && h.plans.length === 3 && h.homes.length === 0 && h.wood === 0 && h.dae === 0, h);
-ok('plans per price table', h.plans[0].key === 'small' && h.plans[0].dae === 1 && h.plans[0].wood === 200 && h.plans[0].wage === 50
-  && h.plans[1].key === 'hanok' && h.plans[1].dae === 2 && h.plans[2].key === 'big' && h.plans[2].dae === 4 && h.plans[2].wood === 1500 && h.plans[2].wage === 400, h.plans);
+ok('plans 4/6/9 cells', h.plans[0].key === 'small' && h.plans[0].dae === 4 && h.plans[0].wood === 200 && near(h.plans[0].wage, 4000)
+  && h.plans[1].key === 'hanok' && h.plans[1].dae === 6 && h.plans[1].wood === 600 && near(h.plans[1].wage, 6000)
+  && h.plans[2].key === 'big' && h.plans[2].dae === 9 && h.plans[2].wood === 1500 && near(h.plans[2].wage, 9000) && near(h.plans[0].cell_fee, 1000), h.plans);
+const bj = await one(`select public.garden_build_json(${CH}, '${U1}')`);
+ok('mission reads the same plans', JSON.stringify(bj.houses) === JSON.stringify(h.plans), bj.houses);
 
-// 대지 만들기: 3×3 의 (1,-1)(1,0)(1,1)(-1,-1)(-1,0)(0,-1) 을 대지로
-await grant(U1, 3000, 'g1');
-let cv = await as(U1, `select public.garden_farm_convert('woonpyung', ${cells([[1, -1], [1, 0], [1, 1], [-1, -1], [-1, 0], [0, -1]])})`);
-ok('convert 6 dae', cv.ok && cv.n === 6, cv);
+// 땅 만들기·대지: 가운데 3×3 은 믿음 나무가 있어 집이 못 앉는다 → 바깥에 사서 대지로
+//   작은 집 2×2 = (-1,1)(0,1)(-1,2)(0,2) · 한옥 3×2 = (-4,0)(-3,0)(-2,0)(-4,1)(-3,1)(-2,1) · 큰 집 3×3 = x 2..4 × y -1..1
+await grant(U1, 40000, 'g1');
+const BIG = [], HAN = [[-4, 0], [-3, 0], [-2, 0], [-4, 1], [-3, 1], [-2, 1]], SML = [[-1, 1], [0, 1], [-1, 2], [0, 2]];
+for (let x = 2; x <= 4; x++) for (let y = -1; y <= 1; y++) BIG.push([x, y]);
+const buyCells = [...BIG, [-4, 0], [-3, 0], [-2, 0], [-4, 1], [-3, 1], [-2, 1], [-1, 2], [0, 2]];
+let bm = await as(U1, `select public.garden_farm_buy_many('woonpyung', ${cells(buyCells)})`);
+ok('bought land', bm.ok, bm);
+let cv = await as(U1, `select public.garden_farm_convert('woonpyung', ${cells([...BIG, ...HAN, ...SML])})`);
+ok('convert 19 dae', cv.ok && cv.n === 19, cv);
 
 // 2) 집 짓기 — 막히는 경우
-let r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[0, 1]])})`);
-ok('not dae', !r.ok && r.why === 'not_dae', r);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[0, 0]])})`);
-ok('tree cell', !r.ok && r.why === 'tree', r);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[2, 2]])})`);
-ok('not owned', !r.ok && r.why === 'not_owned', r);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'tent', ${cells([[1, 0]])})`);
+let r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[-1, 0], [0, 0], [-1, 1], [0, 1]])})`);
+ok('tree cell', !r.ok && (r.why === 'tree' || r.why === 'not_dae'), r);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[-1, 1], [0, 1], [-1, 2], [1, 2]])})`);
+ok('not owned / not dae', !r.ok && (r.why === 'not_owned' || r.why === 'not_dae'), r);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'tent', ${cells(SML)})`);
 ok('bad kind', !r.ok && r.why === 'kind', r);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'hanok', ${cells([[1, 0]])})`);
-ok('size', !r.ok && r.why === 'size' && r.need === 2, r);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'hanok', ${cells([[1, -1], [-1, 0]])})`);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[-1, 1]])})`);
+ok('size: one cell is not enough', !r.ok && r.why === 'size' && r.need === 4, r);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'hanok', ${cells(SML)})`);
+ok('size: hanok needs 6', !r.ok && r.why === 'size' && r.need === 6, r);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[-1, 1], [0, 1], [-1, 2], [-4, 0]])})`);
 ok('shape (apart)', !r.ok && r.why === 'shape', r);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'big', ${cells([[1, -1], [1, 0], [1, 1], [-1, -1]])})`);
-ok('shape (not 2x2)', !r.ok && r.why === 'shape', r);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[1, 0]])})`);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'hanok', ${cells([[-4, 0], [-3, 0], [-2, 0], [-4, 1], [-3, 1], [4, 1]])})`);
+ok('shape (not a rectangle)', !r.ok && r.why === 'shape', r);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells(SML)})`);
 ok('no wood', !r.ok && r.why === 'wood' && r.need === 200 && r.have === 0, r);
 
-// 3) 집 짓기 — 작은 집
+// 3) 작은 집(2×2) — 건축비 4,000
 await giveWood(U1, 250, 'w1');
-const b0 = await bal(U1);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[1, 0]])})`);
-ok('small built', r.ok && r.kind === 'small' && near(r.spent, 50) && r.wood === 200 && r.wood_total === 50 && r.homes.length === 1, r);
-ok('wage paid', near(b0 - await bal(U1), 50));
+let b0 = await bal(U1);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells(SML)})`);
+ok('small built', r.ok && r.kind === 'small' && near(r.spent, 4000) && r.wood === 200 && r.wood_total === 50 && r.homes.length === 1, r);
+ok('fee paid 4000', near(b0 - await bal(U1), 4000));
 ok('wood left 50', (await wood(U1)) === 50);
-ok('home row', r.homes[0].x === 1 && r.homes[0].y === 0 && r.homes[0].w === 1 && r.homes[0].h === 1 && r.homes[0].wood === 200);
+ok('home row 2x2', r.homes[0].x === -1 && r.homes[0].y === 1 && r.homes[0].w === 2 && r.homes[0].h === 2 && r.homes[0].wood === 200 && near(r.homes[0].wage, 4000), r.homes[0]);
 ok('farm json back', r.farm && Array.isArray(r.farm.tiles) && r.farm.wood === 50, r.farm && r.farm.wood);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[1, 0]])})`);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells(SML)})`);
 ok('taken', !r.ok && r.why === 'taken', r);
 
-// 한옥: 2칸(위아래로 붙은 (1,-1)? (1,0) 에 집이 있으니 (-1,-1)(-1,0))
+// 한옥 3×2 — 건축비 6,000
 await giveWood(U1, 600, 'w2');
-r = await as(U1, `select public.garden_home_build('woonpyung', 'hanok', ${cells([[1, -1], [1, 0]])})`);
-ok('hanok overlaps', !r.ok && r.why === 'taken', r);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'hanok', ${cells([[-1, -1], [-1, 0], [-1, 0]])})`);
-ok('hanok built (dup cell ignored)', r.ok && r.homes.length === 2 && r.homes[1].w === 1 && r.homes[1].h === 2 && r.homes[1].x === -1 && r.homes[1].y === -1, r);
+b0 = await bal(U1);
+r = await as(U1, `select public.garden_home_build('woonpyung', 'hanok', ${cells([...HAN, HAN[0]])})`);
+ok('hanok built 3x2 (dup cell ignored)', r.ok && r.homes.length === 2 && r.homes[1].w === 3 && r.homes[1].h === 2 && r.homes[1].x === -4 && r.homes[1].y === 0 && near(r.spent, 6000), r);
+ok('fee paid 6000', near(b0 - await bal(U1), 6000));
 ok('wood after hanok', (await wood(U1)) === 50);
 
-// 품삯 모자람
-await pg(`insert into public.garden_ledger (church_id, user_id, kind, ref, xp, talent, at, source) values (${CH}, '${U1}', 'admin_grant', 'drain', 0, -${(await bal(U1)) - 10}, now(), 'admin')`);
-await giveWood(U1, 200, 'w3');
-await as(U1, `select public.garden_farm_convert('woonpyung', ${cells([[0, 1]])})`).catch(() => null);
-r = await as(U1, `select public.garden_home_build('woonpyung', 'small', ${cells([[1, 1]])})`);
-ok('no wage', !r.ok && r.why === 'talent' && near(r.need, 50), r);
-await grant(U1, 100, 'g1b');
+// 건축비 모자람 → 채우면 큰 집 3×3(9,000)
+await pg(`insert into public.garden_ledger (church_id, user_id, kind, ref, xp, talent, at, source) values (${CH}, '${U1}', 'admin_grant', 'drain', 0, -${(await bal(U1)) - 100}, now(), 'admin')`);
+await giveWood(U1, 1500, 'w3');
+r = await as(U1, `select public.garden_home_build('woonpyung', 'big', ${cells(BIG)})`);
+ok('no fee (need 9000)', !r.ok && r.why === 'talent' && near(r.need, 9000), r);
+await grant(U1, 9000, 'g1b');
+r = await as(U1, `select public.garden_home_build('woonpyung', 'big', ${cells(BIG)})`);
+ok('big built 3x3', r.ok && r.homes.length === 3 && r.homes[2].w === 3 && r.homes[2].h === 3 && near(r.spent, 9000) && r.wood === 1500, r);
 
-// 자산: 집 = 목재 + 품삯
-const a = await one(`select public.garden_assets(${CH}, '${U1}')`);
-ok('assets houses', near(a.houses, 200 + 50 + 600 + 150) && near(a.total, num(a.talent) + num(a.land) + num(a.plants) + num(a.wood) + num(a.houses)), a);
+// 칸당 건축비를 교회 설정으로 바꾸면 새 값(이미 지은 집은 그대로)
+await pg(`update public.garden_churches set settings = jsonb_set(coalesce(settings, '{}'::jsonb), '{home_cell_fee}', '500') where id = ${CH}`);
 h = await as(U1, `select public.garden_home('woonpyung')`);
-ok('home dae counts', h.dae === 6 && h.free_dae === 3 && h.homes.length === 2, { dae: h.dae, free: h.free_dae });
+ok('home_cell_fee 500 -> 2000/3000/4500', near(h.plans[0].wage, 2000) && near(h.plans[1].wage, 3000) && near(h.plans[2].wage, 4500) && near(h.plans[0].cell_fee, 500), h.plans);
+await pg(`update public.garden_churches set settings = settings - 'home_cell_fee' where id = ${CH}`);
+h = await as(U1, `select public.garden_home('woonpyung')`);
+ok('fee back to 1000', near(h.plans[0].wage, 4000));
+
+// 자산: 집 = 목재 + 건축비
+const a = await one(`select public.garden_assets(${CH}, '${U1}')`);
+ok('assets houses', near(a.houses, 200 + 4000 + 600 + 6000 + 1500 + 9000) && near(a.total, num(a.talent) + num(a.land) + num(a.plants) + num(a.wood) + num(a.houses)), a);
+ok('all dae used by three houses', h.dae === 19 && h.free_dae === 0 && h.homes.length === 3, { dae: h.dae, free: h.free_dae });
 ok('others cannot see my homes', (await as(U2, `select count(*)::int from public.garden_homes`)) === 0);
-ok('owner sees own homes', (await as(U1, `select count(*)::int from public.garden_homes`)) === 2);
+ok('owner sees own homes', (await as(U1, `select count(*)::int from public.garden_homes`)) === 3);
 ok('cannot write homes', !!(await asErr(U1, `insert into public.garden_homes (church_id, user_id, kind, x, y) values (${CH}, '${U1}', 'small', 1, 1)`)));
+ok('rule label updated', (await one(`select label->>'ko' from public.garden_rules where church_id is null and kind = 'home_build'`)) === '집 짓기(건축비)');
+
 
 // 4) 교회 건축 — 시작은 관리자만
 let c = await as(U1, `select public.garden_church('woonpyung')`);
@@ -200,9 +224,9 @@ let s = await as(U1, `select public.garden_sync('woonpyung')`);
 const sum = (await pg(`select sum(talent)::text s from public.garden_ledger where user_id='${U1}'`))[0].s;
 ok('balance equals ledger', near(s.state.garden.talent_balance, num(sum)), { b: s.state.garden.talent_balance, sum });
 s = await as(U1, `select public.garden_storage('woonpyung')`);
-ok('storage still works', s.ok && s.build && near(s.build.assets.houses, 1000), s.build && s.build.assets);
-await db.exec(BUILD);
-ok('rerun keeps homes & builds', (await one(`select count(*)::int from public.garden_homes`)) === 2 && (await one(`select count(*)::int from public.garden_church_builds`)) === 3);
+ok('storage still works', s.ok && s.build && near(s.build.assets.houses, 21300) && s.build.houses.length === 3, s.build && s.build.assets);
+await db.exec(BUILD); await db.exec(RULES);
+ok('rerun keeps homes & builds', (await one(`select count(*)::int from public.garden_homes`)) === 3 && (await one(`select count(*)::int from public.garden_church_builds`)) === 3);
 
 console.log(`\n${pass} 통과, ${fail} 실패`);
 process.exit(fail ? 1 : 0);

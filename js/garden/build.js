@@ -2,7 +2,7 @@
    신앙 정원 — 건축: 건재상(모델하우스·집 짓기) · 교회 건축(성도들의 건축헌금) (2026-10-23 담임목사 지시)
    · "건축을 추가 해주세요. 로컬 ai로 3개의 집을 모델하우스로 만들어주세요. 교회도 3개를 만들어주세요.
       교회는 성도들의 헌금으로 지어집니다." · "교회 건축은 목사님이 시작 할 수 있습니다."
-   · 건재상(스토어 탭): 모델하우스 세 채(그림 images/garden/build — 교회PC 로컬 AI)와 필요한 것(빈 대지·목재·품삯), 내 형편.
+   · 건재상(스토어 탭): 모델하우스 세 채(그림 images/garden/build — 교회PC 로컬 AI)와 필요한 것(빈 대지·목재·건축비), 내 형편.
      '짓기'를 누르면 입체 정원에서 대지 칸을 골라 짓는다(farm.js 의 집 고르기). 지은 집은 입체 정원과 첫 화면 밭에 선다
    · 교회 건축(스토어 탭): 짓는 중인 교회의 목표·모인 헌금·드린 사람 수와 내가 드린 헌금(나만 본다), 건축헌금 드리기(달란트, 1부터).
      목사님(관리자)은 세 교회 가운데 골라 목표를 정해 시작하고, 목표를 고치거나 멈출 수 있다(멈추면 드린 헌금을 모두 돌려드림)
@@ -44,6 +44,10 @@ window.GardenBuild = (function () {
     return B.p;
   }
   function plans() { return (B.home && B.home.plans) || []; }
+  // 집이 앉는 대지 모양(칸 수에서) — 서버가 알려 준 칸 수를 그대로 따른다(작은 집 2×2·한옥 3×2·큰 집 3×3)
+  var SHAPE_N = { 1: 1, 2: 1, 4: 1, 6: 1, 9: 1 };
+  function shape(n) { return SHAPE_N[n] ? t('build.shape.' + n) : t('build.shape.any', { n: n }); }
+  function fee() { var p = plans()[0]; return tal(p && p.cell_fee != null ? p.cell_fee : 1000); }
   function plan(k) { var a = plans(); for (var i = 0; i < a.length; i++) if (a[i].key === k) return a[i]; return null; }
   function homes() { return (B.home && B.home.homes) || []; }
   function homeAt(x, y) {
@@ -66,11 +70,11 @@ window.GardenBuild = (function () {
   /* ── 건재상: 모델하우스 세 채 ── */
   function renderBuild(box, api) {
     var h = B.home || {}, bal = api.balance(), wood = +h.wood || 0, free = +h.free_dae || 0, mine = homes();
-    var html = '<p class="gs-lead">' + esc(t('build.shop.lead')) + '</p>';
+    var html = '<p class="gs-lead">' + esc(t('build.shop.lead', { fee: fee() })) + '</p>';
     html += plans().map(function (p) {
       var okD = free >= p.dae, okW = wood >= +p.wood, okT = bal >= +p.wage, can = okD && okW && okT;
       var n = mine.filter(function (x) { return x.kind === p.key; }).length;
-      var need = [[okD, t('build.need.dae', { n: p.dae, shape: t(p.dae >= 4 ? 'build.shape.4' : p.dae === 2 ? 'build.shape.2' : 'build.shape.1'), have: I.fmtNum(free) })],
+      var need = [[okD, t('build.need.dae', { n: p.dae, shape: shape(p.dae), have: I.fmtNum(free) })],
         [okW, t('build.need.wood', { n: I.fmtNum(+p.wood), have: I.fmtNum(wood) })],
         [okT, t('build.need.wage', { n: tal(p.wage), have: tal(bal) })]];
       return '<article class="gs-card gb-model">' +
@@ -216,6 +220,6 @@ window.GardenBuild = (function () {
     SHOP.addTab({ key: 'build', label: 'shop.tab.build', soon: 'shop.soon.build', ready: function () { return B.ok; }, render: renderBuild, click: clickBuild });
     SHOP.addTab({ key: 'church', label: 'shop.tab.church', ready: function () { return B.ok; }, render: renderChurch, click: clickChurch });
   }
-  return { init: init, load: load, ready: function () { return B.ok; }, plan: plan, homes3d: homes3d, homeAt: homeAt, setHomes: setHomes,
+  return { init: init, load: load, ready: function () { return B.ok; }, plan: plan, shape: shape, homes3d: homes3d, homeAt: homeAt, setHomes: setHomes,
     church3d: church3d, info: function () { var h = B.home || {}; return { wood: +h.wood || 0, free: +h.free_dae || 0 }; } };
 })();
