@@ -142,6 +142,11 @@
   function treeBuy(item, qty) { return rpc('garden_tree_buy', { p_church: SLUG, p_item: item, p_qty: qty || 1 }); }
   function storage() { return rpc('garden_storage', { p_church: SLUG }); }
   function adminSetStock(item, qty) { return rpc('garden_admin_set_stock', { p_church: SLUG, p_item: item, p_qty: qty | 0 }); }
+  /* 하우스(유리 온실) · 하우스 작물 (20261024_0100_garden_greenhouse.sql) */
+  function house() { return rpc('garden_house', { p_church: SLUG }); }
+  function houseBuild(cells) { return rpc('garden_house_build', { p_church: SLUG, p_cells: cells || [] }); }
+  function houseRemove(x, y) { return rpc('garden_house_remove', { p_church: SLUG, p_x: x, p_y: y }); }
+  function adminSetHousePrice(p) { return rpc('garden_admin_set_house_price', { p_church: SLUG, p_price: p }); }
   /* 건축: 집 짓기 · 교회 건축헌금 (20261024_0200_garden_build.sql) */
   function home() { return rpc('garden_home', { p_church: SLUG }); }
   function homeBuild(kind, cells) { return rpc('garden_home_build', { p_church: SLUG, p_kind: kind, p_cells: cells || [] }); }
@@ -243,6 +248,7 @@
     wallet: wallet, water: water, farmBuyMany: farmBuyMany, farmConvert: farmConvert, shop: shop, shopBuy: shopBuy,
     farmPlantItem: farmPlantItem, farmHarvest: farmHarvest, farmClear: farmClear, adminSetLandPrices: adminSetLandPrices, adminSetItemPrice: adminSetItemPrice,
     farmCut: farmCut, farmDig: farmDig, treeSell: treeSell, treeBuy: treeBuy, storage: storage, adminSetStock: adminSetStock,
+    house: house, houseBuild: houseBuild, houseRemove: houseRemove, adminSetHousePrice: adminSetHousePrice,
     home: home, homeBuild: homeBuild, church: church, churchOffer: churchOffer, adminChurchStart: adminChurchStart, adminChurchGoal: adminChurchGoal, adminChurchStop: adminChurchStop,
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,
     attend: attend, hasSermon: hasSermon, weather: weather,

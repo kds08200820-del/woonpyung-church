@@ -14,6 +14,8 @@
      (날씨·물은 실제 날수로 셈하고, 자람·꽃·열매는 자란 날로 셈한다. 서버 garden_farm_harvest 와 같은 셈)
    · 수확 방식(model.harvest, 20261024 가격표): once 채소는 익은 뒤 window_days(14) 지나면 '때를 놓쳐 시듦'(over) ·
      season 열매 나무·timber 건축용 나무는 first_days(마음 날)로 자란다 — 거둘 것·벨 것은 서버(st)가 정하고 여기서는 모습만
+   · 하우스(tile.building === 'greenhouse', 20261024_0100): 비가 흙에 들지 않고(물은 직접 준 날만) 서리·추위·과습으로 죽지 않는다.
+     흙이 오래 마르면 하우스 안에서도 시든다
    GardenPlant.weather(lat, lng) → Promise<rows> · GardenPlant.state(item, tile, rows, waterDays, now, tz, xpDay)
    ============================================================ */
 window.GardenPlant = (function () {
@@ -64,6 +66,7 @@ window.GardenPlant = (function () {
     var grown = xp == null ? age : Math.min(age, Math.floor(xp / xd));
     var water = {}; (waterDays || []).forEach(function (d) { water[d] = 1; });
     var base = m.root_mm || ROOT[type] || 40, deep = type !== 'annual' && type !== 'bulb', cap = base;
+    var house = !!(tile && tile.building === 'greenhouse') || !!m.house;   // 하우스 작물은 하우스 칸에만 있다(이웃 정원은 building 이 없어 품목으로 안다)
     var out = { age: age, grown: grown, xp: xp, xpDay: xd, needXp: 0, alive: true, cause: '', stage: 'grow', label: '', needWater: false, moisture: base, ready: false, full: false, bloom: false, dryDays: 0, wetDays: 0 };
 
     // 물통을 심은 날부터(최근 92일 안에서) 하루씩
@@ -75,20 +78,21 @@ window.GardenPlant = (function () {
       var w = !!water[r.date], dayAge = days(planted, r.date);
       var mon = +r.date.slice(5, 7), dormant = (type === 'tree' || type === 'shrub' || type === 'perennial' || type === 'bulb') && (mon === 12 || mon <= 2);
       cap = deep ? base * (1 + Math.min(1, dayAge / 365)) : base;
-      mm = Math.min(cap, mm + r.prcp);
+      var rain = house ? 0 : r.prcp;   // 하우스 안에는 비가 들지 않는다
+      mm = Math.min(cap, mm + rain);
       if (w) mm = Math.max(mm, cap * 0.75);
-      if (r.prcp >= 5 || w) lastWet = r.date;
+      if (rain >= 5 || w) lastWet = r.date;
       var tmean = (r.tmax + r.tmin) / 2, sunFrac = Math.min(1, r.sun / 12);
       var et = (tmean > 0 ? 0.6 + 0.12 * Math.max(0, r.tmax) : 0.2) * (0.5 + 0.5 * sunFrac) * (dormant ? 0.3 : 1);
       mm = Math.max(0, mm - et);
       if (mm < cap * 0.2) dry++; else if (mm > cap * 0.35) dry = 0;
-      if (r.prcp >= 20 || (mm >= cap - 1 && r.prcp >= 5)) wet++; else if (r.prcp < 1) wet = Math.max(0, wet - 1);
+      if (rain >= 20 || (mm >= cap - 1 && rain >= 5)) wet++; else if (rain < 1) wet = Math.max(0, wet - 1);
       sunRun = r.sun >= 6 && r.prcp < 10 ? sunRun + 1 : 0;
       var drought = m.drought_days || 10, wetLimit = m.wet === 'low' ? 4 : m.wet === 'mid' ? 6 : 99, up = dayAge >= (m.emerge_days || 0);
       if (!out.cause && !dormant && up && dry > drought) out.cause = 'drought';
-      if (!out.cause && wet >= wetLimit) out.cause = 'wet';
-      if (!out.cause && up && m.frost_kill && r.tmin <= -1) out.cause = 'frost';
-      if (!out.cause && up && m.min_temp != null && r.tmin < m.min_temp) out.cause = 'cold';
+      if (!out.cause && !house && wet >= wetLimit) out.cause = 'wet';
+      if (!out.cause && !house && up && m.frost_kill && r.tmin <= -1) out.cause = 'frost';
+      if (!out.cause && !house && up && m.min_temp != null && r.tmin < m.min_temp) out.cause = 'cold';
       if (out.cause) { out.alive = false; out.diedOn = r.date; break; }
     }
     out.moisture = Math.round(mm); out.cap = Math.round(cap); out.dryDays = dry; out.wetDays = wet; out.simFrom = planted < start ? start : planted;

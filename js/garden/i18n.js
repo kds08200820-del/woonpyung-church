@@ -819,7 +819,40 @@ window.GardenI18n = (function () {
     'wallet.i.treebuy': '스토어에서 산 나무',
     'wallet.i.dig': '나무 캐내기',
     'guide.next.build': '다음 미션 — 집 지을 준비: {step}',
-    'guide.next.buildGo': '보관함 보기'
+    'guide.next.buildGo': '보관함 보기',
+
+    /* 하우스(유리 온실) · 하우스 작물 — 20261024_0100 */
+    'shop.tab.house': '하우스',
+    'shop.lead.house': '유리 온실과 하우스에서만 기르는 작물입니다. 하우스는 비어 있는 전 한 칸에 한 동을 짓습니다. 하우스 안 식물은 서리·추위·장마로 시들지 않고 철 상관없이 심지만, 비가 들지 않으니 물을 직접 줘야 합니다.',
+    'shop.house.crops': '하우스 작물',
+    'shop.fit.house': '하우스 재배',
+    'shop.house.name': '유리 온실',
+    'shop.house.size': '비어 있는 전 한 칸에 한 동',
+    'shop.house.have': '지은 하우스 {n}동',
+    'shop.house.r1': '서리·추위·장마에 시들지 않습니다',
+    'shop.house.r2': '비가 들지 않아 물은 직접 줘야 합니다',
+    'shop.house.r3': '철 상관없이 심습니다. 겨울에도 채소와 꽃이 자랍니다',
+    'shop.house.r4': '하우스 작물은 하우스 칸에만 심습니다. 일반 과일나무와 건축용 나무는 하우스에 심지 않습니다',
+    'shop.house.r5': '하우스는 빈 칸일 때 걷을 수 있고, 돌려받는 값은 없습니다',
+    'shop.house.go': '지을 칸 고르기',
+    'shop.when.house': '하우스에서 언제나 심습니다',
+    'shop.when.inHouse': '하우스 칸에는 지금도 심습니다',
+    'farm.tool.house': '하우스 짓기',
+    'farm.pick.house.t': '하우스를 지을 칸을 고르세요',
+    'farm.pick.house.hint': '비어 있는 전을 누르면 골라집니다. 여러 칸을 고른 뒤 한 번에 짓습니다.',
+    'farm.pick.house.go': '{n}칸에 하우스 짓기 · {total} 달란트',
+    'farm.why.house': '비어 있는 전에만 하우스를 지을 수 있습니다',
+    'farm.why.house.already': '이미 하우스가 있는 칸입니다',
+    'farm.why.convertHouse': '하우스가 있는 칸은 대지로 바꾸지 못합니다',
+    'farm.house.t': '하우스 안 칸',
+    'farm.house.m': '날씨에 시들지 않고 철 상관없이 심습니다. 비가 들지 않으니 물을 주세요.',
+    'farm.house.mixed': '고른 칸 가운데 하우스 칸 {h}칸 · 바깥 칸 {o}칸 — 하우스 작물은 하우스 칸만 골랐을 때 심습니다.',
+    'farm.house.in': '하우스 안 — 날씨에 시들지 않습니다. 비가 들지 않으니 물을 주세요',
+    'farm.house.remove': '하우스 걷기',
+    'farm.house.built': '하우스 {n}동을 지었습니다 (−{p} 달란트)',
+    'farm.house.removed': '하우스를 걷었습니다',
+    'farm.bag.houseOnly': '하우스 칸에만 심습니다',
+    'farm.bag.noTreeInHouse': '하우스 칸에는 일반 나무를 심지 않습니다'
   };
   /* 백엔드·주보가 쓰는 고정값(번역하지 않음) */
   var DB = { cal_dawn: '새벽기도', cal_wed: '수요기도회', svc_dawn: '새벽기도회', svc_wed: '수요기도회', svc_sun1: '주일 1부', svc_sun2: '주일 2부', svc_sun: '주일 예배', combined_re: '통합\\s*예배' };
