@@ -203,6 +203,7 @@ window.GardenScene = (function () {
     if (v.site && v.site.name) { var tg = el('span', 'g-church-tag'); tg.textContent = v.site.name; box.appendChild(tg); }
     box.title = names.join(' · ');
     if (o.onOpen) {
+      var hn = el('span', 'g-church-hint'); hn.textContent = o.hint || o.label || ''; box.appendChild(hn);   // 눌러 보라는 안내 풍선
       box.classList.add('is-open'); box.setAttribute('role', 'button'); box.tabIndex = 0; box.setAttribute('aria-label', (o.label || '') + (names.length ? ' — ' + names.join(' · ') : ''));
       box.addEventListener('click', function (e) { e.stopPropagation(); o.onOpen(); });
       box.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onOpen(); } });

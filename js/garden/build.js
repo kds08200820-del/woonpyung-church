@@ -211,7 +211,7 @@ window.GardenBuild = (function () {
   }
   function showChurch() {
     if (!SCENE || !SCENE.setChurch) return;
-    SCENE.setChurch(church3d(), { label: t('church.open'), onOpen: function () { if (SHOP) SHOP.open('church'); } });
+    SCENE.setChurch(church3d(), { label: t('church.open'), hint: t('church.hint'), onOpen: function () { if (SHOP) SHOP.open('church'); } });
   }
 
   function init(o) {

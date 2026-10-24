@@ -1060,4 +1060,8 @@ button.g-chip-wx:focus-visible { outline: 3px solid var(--g-coral-ring); outline
 .g-church-img { width: auto; filter: drop-shadow(0 4px 5px rgba(80,60,40,.22)); }
 .g-church.is-open { cursor: pointer; }
 .g-church.is-open:focus-visible { outline: 3px solid var(--g-coral); outline-offset: 4px; border-radius: 8px; }
+.g-church-hint { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); white-space: nowrap; font-size: 15px; font-weight: 800; color: #fff; background: var(--g-coral, #e9805f); border-radius: 999px; padding: 7px 16px; box-shadow: 0 4px 12px rgba(80,60,40,.28); animation: g-church-bob 1.6s ease-in-out infinite; pointer-events: none; }
+.g-church-hint::after { content: ""; position: absolute; left: 50%; top: -6px; width: 12px; height: 12px; background: inherit; transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
+@keyframes g-church-bob { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .g-church-hint { animation: none; } }
 .g-church-tag { position: absolute; left: 50%; top: -6px; transform: translate(-50%, -100%); white-space: nowrap; font-size: 15px; font-weight: 700; color: #4a3b31; background: rgba(255,250,243,.92); border: 1px solid #e6d6c3; border-radius: 999px; padding: 2px 10px; }

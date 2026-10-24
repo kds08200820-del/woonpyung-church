@@ -733,6 +733,7 @@ window.GardenI18n = (function () {
     'church.brick': '벽돌 교회',
     'church.stone': '큰 돌 교회',
     'church.open': '교회 건축 보기',
+    'church.hint': '👆 눌러서 건축헌금 드리기',
     'church.lead': '교회는 성도들의 건축헌금으로 지어집니다. 목사님이 건축을 시작하면 누구나 달란트로 헌금할 수 있고, 목표에 이르면 완공됩니다. 모인 합계와 드린 사람 수만 보이고, 내가 드린 헌금은 나만 봅니다.',
     'church.now': '{name} 건축 중',
     'church.since': '{d}에 시작',
