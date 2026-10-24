@@ -250,6 +250,7 @@
     farmCut: farmCut, farmDig: farmDig, treeSell: treeSell, treeBuy: treeBuy, storage: storage, adminSetStock: adminSetStock,
     house: house, houseBuild: houseBuild, houseRemove: houseRemove, adminSetHousePrice: adminSetHousePrice,
     home: home, homeBuild: homeBuild, church: church, churchOffer: churchOffer, adminChurchStart: adminChurchStart, adminChurchGoal: adminChurchGoal, adminChurchStop: adminChurchStop,
+    openForms: function () { return rpc('app_open_forms').then(function (r) { return r || []; }); },   // 지금 신청 기간인 신청서(서버 시계) — 로그인 전에도 읽는다
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,
     attend: attend, hasSermon: hasSermon, weather: weather,
     lastState: lastState, saveState: saveState, notReady: notReady, isNetwork: isNetwork

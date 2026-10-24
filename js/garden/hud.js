@@ -378,6 +378,26 @@ window.GardenHud = (function () {
       return SDK.amenState(H.qtDate).then(function (done) { H.amenDone = !!done; renderQtDone(); renderTodo(); }).catch(function () { });
     }).catch(function () { show($('gQtLoading'), false); show($('gQtEmpty'), true); });
   }
+  /* ── 서재: 지금 받는 신청서 (신청 기간 동안만 — 서버 시계로 app_open_forms 가 거른다. SQL 전이면 조용히 숨는다) ── */
+  function loadForms() {
+    var box = $('gForms'); if (!box || !SDK.openForms) return Promise.resolve();
+    return SDK.openForms().then(function (rows) {
+      rows = (rows || []).filter(function (f) { return f.show_hero !== false; });
+      if (!rows.length) { box.hidden = true; box.innerHTML = ''; return; }
+      var nowMs = Date.now();
+      box.innerHTML = '<h3 class="g-forms-t" id="gFormsT">' + esc(t('forms.title')) + '</h3>' + rows.map(function (f) {
+        var close = f.close_at ? new Date(f.close_at) : null, d = close ? Math.max(0, Math.ceil((close.getTime() - nowMs) / 86400000)) : null;
+        var when = [f.event_date ? String(f.event_date).slice(5).replace('-', '.') + (f.event_time ? ' ' + String(f.event_time).slice(0, 5) : '') : '', f.place || ''].filter(Boolean).join(' · ');
+        var until = close ? t('forms.until', { m: close.getMonth() + 1, d: close.getDate(), dd: d === 0 ? t('forms.today') : 'D-' + d }) : '';
+        return '<a class="g-form-card" href="forms.html?f=' + encodeURIComponent(f.id) + '">' +
+          '<b class="g-form-name">' + esc(f.title || '') + '</b>' +
+          (when ? '<span class="g-form-when">' + esc(when) + '</span>' : '') +
+          (until ? '<span class="g-form-until">' + esc(until) + '</span>' : '') +
+          '<span class="g-form-go">' + esc(t('forms.go')) + '</span></a>';
+      }).join('');
+      box.hidden = false;
+    }).catch(function () { box.hidden = true; });
+  }
   function renderQtDone() { var d = $('gQtDone'); if (!d) return; d.hidden = !H.amenDone; d.textContent = t('qt.amen.done'); }
   function bibleHTML(text) {
     return String(text || '').split('\n').map(function (s) { return s.trim(); }).filter(Boolean).map(function (ln) {
@@ -899,7 +919,7 @@ window.GardenHud = (function () {
   return {
     init: init, render: render, state: function () { return H.state; }, setState: function (s) { H.state = s; },
     gardenLevel: gardenLevel, toast: toast, openModal: openModal, closeModal: closeModal, closeThen: closeThen,openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
-    loadQt: loadQt, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
+    loadQt: loadQt, loadForms: loadForms, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
     syncPlot: syncPlot, renderTodo: renderTodo, garden: garden, speciesName: speciesName, stageName: stageName,
     todoItems: todoItems, growthInfo: growthInfo, qt: function () { return H.qt || null; }, fruitRefresh: renderFruitBtn,
     setTalent: setTalent, talentLabel: function () { return H.talentLabel; }, afterWater: afterWater

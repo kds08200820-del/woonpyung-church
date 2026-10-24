@@ -163,6 +163,7 @@
       bind3d();
       HUD.startBanner(P.svc);
       HUD.loadQt();
+      HUD.loadForms();
       refreshWeather();
       var needPlant = (P.isNew || !g.chosen_at) && !M.offline;
       return needPlant ? HUD.openOnboarding(st).then(function (planted) { if (!planted) HUD.syncPlot(false); return planted; }) : null;

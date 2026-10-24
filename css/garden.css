@@ -74,6 +74,15 @@ body.garden [hidden] { display: none !important; }
 .g-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px; background: var(--g-soft); color: var(--g-fg2); font-size: .86rem; font-weight: 600; margin: 6px 6px 0 0; user-select: none; }
 .g-link:hover { background: var(--g-panel2); color: var(--g-fg); }
 .g-study-links { margin-top: 14px; }
+.g-forms { margin-top: 12px; display: grid; gap: 8px; }
+.g-forms[hidden] { display: none; }
+.g-forms-t { margin: 0; font-size: .82rem; font-weight: 800; color: var(--g-fg2); }
+.g-form-card { display: grid; gap: 3px; padding: 12px 14px; border-radius: var(--g-r); background: var(--g-peach, #fbe3da); border: 1px solid var(--g-line2); text-decoration: none; color: var(--g-fg); box-shadow: var(--g-shadow-s); }
+.g-form-card:hover, .g-form-card:focus-visible { outline: 3px solid var(--g-coral-ring, rgba(233,128,95,.35)); }
+.g-form-name { font-size: .98rem; line-height: 1.4; word-break: keep-all; }
+.g-form-when, .g-form-until { font-size: .8rem; color: var(--g-fg2); }
+.g-form-until { font-weight: 700; color: var(--g-coral-p, #b5523a); }
+.g-form-go { justify-self: start; margin-top: 4px; padding: 6px 14px; border-radius: 999px; background: var(--g-coral, #e9805f); color: #fff; font-size: .84rem; font-weight: 800; }
 
 /* 단추 */
 .g-btn {
