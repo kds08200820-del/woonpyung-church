@@ -15,7 +15,7 @@ window.GardenHud = (function () {
   var SEED_ICON = { sunflower: '🌻', olive: '🫒', fig: '🍐', grape: '🍇', mustard: '🌼', lily: '🌷' };
   var WX_ICON = { clear: '☀️', night: '🌙', cloudy: '☁️', fog: '🌫️', rain: '🌧️', snow: '❄️' };
   /* 예배 묶음 — index.html 이 쓰는 ?v= 그대로(이미 올라간 파일은 건너뜀) */
-  var BUNDLE_CSS = ['css/worship.css?v=20261023lib1'];
+  var BUNDLE_CSS = ['css/worship.css?v=20261025acc1'];
   var BUNDLE_JS = ['js/bulletins.js?v=20261017sum1', 'js/bulletins-live.js?v=20261010sum1', 'js/gyodok-data.js?v=20260926ws', 'js/hymn-data.js?v=20260927meta', 'modu/ccm-data.js?v=20260928ccm2', 'js/worship.js?v=20261023lib1'];
 
   function $(id) { return document.getElementById(id); }

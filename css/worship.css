@@ -29,6 +29,13 @@ body.ws-open { overflow: hidden; }
 .ws-sp { flex: 1; }
 .ws-ib { border: 0; background: rgba(255,255,255,.14); color: #fff; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
 .ws-ib.ws-x { font-size: 1.3rem; line-height: 1; padding: 4px 10px; }
+/* 휴대폰 폭(반주자 화면처럼 단추가 많을 때)에 글자가 한 글자씩 세로로 쪼개지지 않게 — 줄을 넘겨 두 줄로 (2026-10-25 점검) */
+.ws-top b, .ws-step, .ws-ib, .ws-view { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 560px) {
+  .ws-top { flex-wrap: wrap; gap: 6px 8px; padding: 10px 10px; }
+  .ws-ib { padding: 6px 8px; font-size: .8rem; }
+  .ws-ib.ws-x { font-size: 1.05rem; }
+}
 .ws-strip { display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px; border-bottom: 1px solid #EAE2D9; scrollbar-width: none; background: #F6F1EB; }
 .ws-strip::-webkit-scrollbar { display: none; }
 .ws-chip { flex: 0 0 auto; border: 1px solid #DBCFC1; background: #fff; color: #5A4C46; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: .8rem; white-space: nowrap; cursor: pointer; }
