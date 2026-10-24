@@ -369,6 +369,39 @@ window.Garden3D = (function () {
         g.scale.set(k, k, k);
         return g;
       }
+      // 짓는 중인 교회 (앞 = +z): 진행률(0~100)만큼 벽과 종탑이 올라가고, 비계·목재·벽돌 더미가 둘러선다. 75% 넘으면 지붕틀이 얹힌다
+      function buildSite(kind, W, pc) {
+        var wc = { small: 0xf3ead8, brick: 0xb4604a, stone: 0xa09e97 }[kind] || 0xf3ead8, rc = { small: 0x9b5b3e, brick: 0x4d4f5a, stone: 0x5a687b }[kind] || 0x9b5b3e;
+        function mat(c) { return new T.MeshStandardMaterial({ color: tint(new T.Color(c)), roughness: 1 }); }
+        var wall = mat(wc), conc = mat(0xb9b6ae), plank = mat(0xc9a56a), pole = mat(0x8a6a48), brk = mat(0xb4604a), cone = mat(0xe8793a);
+        var g = new T.Group(), k = W / 8.8, p = Math.max(0, Math.min(100, +pc || 0)) / 100;
+        function box(w, h, d, m, x, y, z) { var b = new T.Mesh(new T.BoxGeometry(w, h, d), m); b.position.set(x, y + h / 2, z); b.castShadow = b.receiveShadow = true; g.add(b); return b; }
+        box(9.4, 0.12, 9.4, mat(0xcbb9a0), 0, 0, 0);                  // 터
+        box(6.2, 0.3, 7.0, conc, 0, 0.12, -1.2);                      // 콘크리트 기초
+        var wh = 0.3 + p * 3.4, th = 0.3 + p * 7.4;
+        box(5.6, wh, 6.4, wall, 0, 0.42, -1.2);                       // 올라가는 벽
+        box(3.0, th, 3.0, wall, 0, 0.42, 2.9);                        // 올라가는 종탑
+        if (p >= 0.75) {                                              // 지붕틀
+          var sh = new T.Shape(); sh.moveTo(-3.3, 0); sh.lineTo(3.3, 0); sh.lineTo(0, 2.7); sh.closePath();
+          var rm = new T.MeshStandardMaterial({ color: tint(new T.Color(rc)), roughness: 1, transparent: true, opacity: 0.55 });
+          var rf = new T.Mesh(new T.ExtrudeGeometry(sh, { depth: 7.0, bevelEnabled: false }), rm); rf.position.set(0, 0.42 + 3.7, -4.7); g.add(rf);
+        }
+        // 비계: 예배당 양옆 · 종탑 앞뒤에 기둥과 가로대, 널판
+        var sh2 = wh + 1.4;
+        [-1, 1].forEach(function (sd) {
+          for (var i = 0; i < 4; i++) box(0.12, sh2, 0.12, pole, sd * 3.35, 0.42, -4.2 + i * 2.1);
+          for (var lv = 1; lv <= 3; lv++) if (lv * 1.15 < sh2) { box(0.1, 0.1, 6.5, pole, sd * 3.35, 0.42 + lv * 1.15, -1.2); box(0.8, 0.08, 6.5, plank, sd * 3.7, 0.42 + lv * 1.15, -1.2); }
+        });
+        var th2 = th + 1.2;
+        [-1, 1].forEach(function (sd) { box(0.12, th2, 0.12, pole, sd * 1.75, 0.42, 4.5); box(0.12, th2, 0.12, pole, sd * 1.75, 0.42, 1.3); });
+        for (var lv2 = 1; lv2 <= 6; lv2++) if (lv2 * 1.2 < th2) box(3.7, 0.08, 0.5, plank, 0, 0.42 + lv2 * 1.2, 4.7);
+        // 자재: 목재 더미 · 벽돌 더미 · 고깔
+        for (var j = 0; j < 4; j++) box(2.2, 0.22, 0.45, plank, -3.6, 0.12 + j * 0.24, 4.3 - (j % 2) * 0.1);
+        for (var r = 0; r < 3; r++) for (var q = 0; q < 3 - r; q++) box(0.7, 0.4, 0.5, brk, 3.5 + q * 0.75 + r * 0.37, 0.12 + r * 0.4, 4.2);
+        [[-1.6, 4.6], [1.6, 4.6], [3.9, 2.0]].forEach(function (c) { var cn = new T.Mesh(new T.ConeGeometry(0.22, 0.6, 12), cone); cn.position.set(c[0], 0.42, c[1]); cn.castShadow = true; g.add(cn); });
+        g.scale.set(k, k, k);
+        return g;
+      }
       var items = [], bubbles = [], shadowYaw = Math.atan2(sunDir.x, sunDir.z), plantGroup = new T.Group(); scene.add(plantGroup);
       function sprite(im, s) {
         // s: { x, z, y, h: 모양 높이(m) | size: 그림 높이(m), center, stiff, dead, name }
@@ -454,20 +487,17 @@ window.Garden3D = (function () {
       }
       // 교회(모든 성도에게 같은 교회)와 공사 터: 내 땅 뒤편 — 처음 카메라(남동쪽)의 반대쪽, 바깥 잔디(y −0.7) 위
       // 교회는 그림판이 아니라 입체 건물: 한 변 CH_TILES 칸(8.8m)을 차지하고 예배당 · 종탑 · 첨탑 · 십자가를 갖춘다 (2026-10-24 담임목사 "4배는 키워야 · 3D로 4칸을 차지하는 큰 건물")
-      var churchGroup = null, churchName = '';
+      var churchPicks = [];   // 눌러서 이름을 보일 교회·공사 터 { g, name }
       if (o.church) {
         var CH_TILES = 4, CH = CH_TILES * TS, cdist = half * 1.4142 + CH / 2 + 1.6, ccx = -cdist / Math.SQRT2, ccz = -cdist / Math.SQRT2;
-        if (o.church.src) {
-          var ck = o.church.kind || (/brick/.test(o.church.src) ? 'brick' : /stone/.test(o.church.src) ? 'stone' : 'small');
-          churchGroup = buildChurch(ck, CH); churchName = o.church.name || '';
-          churchGroup.position.set(ccx, -0.7, ccz); churchGroup.rotation.y = Math.PI / 4;   // 정면이 처음 카메라(남동쪽)를 본다
-          scene.add(churchGroup);
+        var ck = o.church.kind || (/brick/.test(o.church.src || '') ? 'brick' : /stone/.test(o.church.src || '') ? 'stone' : 'small');
+        function placeBig(grp, off, nm) {   // 처음 카메라(남동쪽)를 보게 세우고, off 만큼 땅 가장자리와 나란히 비켜 선다
+          grp.position.set(ccx + off / Math.SQRT2, -0.7, ccz - off / Math.SQRT2); grp.rotation.y = Math.PI / 4;
+          scene.add(grp); churchPicks.push({ g: grp, name: nm || '' });
         }
+        if (o.church.src) placeBig(buildChurch(ck, CH), 0, o.church.name);
         var site = o.church.site;
-        if (site && site.src) loadImage(site.src).then(function (im) {   // 교회 옆 공사 터는 땅 가장자리와 나란히 한쪽으로 비켜 선다
-          var off = o.church.src ? CH * 0.5 + 4.2 : 0;
-          if (!dead && im) sprite(im, { x: ccx + off / Math.SQRT2, z: ccz - off / Math.SQRT2, y: -0.7, size: 9, center: true, stiff: 0, name: site.name || '' });
-        });
+        if (site) placeBig(buildSite(site.kind || ck, CH, site.pct || 0), o.church.src ? CH + 1.6 : 0, site.name);
       }
       R.treeBubble = function (src) {   // 믿음 나무 열매를 다 따면 말풍선을 뗀다
         bubbles = bubbles.filter(function (b) { if (b.kind === 'tree') { scene.remove(b.s); b.s.material.map.dispose(); b.s.material.dispose(); return false; } return true; });
@@ -707,7 +737,7 @@ window.Garden3D = (function () {
           var ht = hits[j], it = items.filter(function (x) { return x.mesh === ht.object; })[0];
           if (it && ht.uv && alphaAt(it.im, ht.uv.x, ht.uv.y) > 40) return { item: it, cell: it.cell };
         }
-        if (churchGroup) { var chh = ray.intersectObject(churchGroup, true); if (chh.length) return { item: { name: churchName, drop: 0, vy: 0 }, cell: null }; }
+        for (var ci = 0; ci < churchPicks.length; ci++) { if (ray.intersectObject(churchPicks[ci].g, true).length) return { item: { name: churchPicks[ci].name, drop: 0, vy: 0 }, cell: null }; }
         var th = ray.intersectObjects(tileMeshes, false);
         if (th.length) return { cell: th[0].object.userData.cell };
         return null;

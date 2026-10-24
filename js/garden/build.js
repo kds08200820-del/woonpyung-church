@@ -206,7 +206,7 @@ window.GardenBuild = (function () {
     if (!built && !cur) return null;
     return {
       src: built ? churchSrc(built.kind) : '', kind: built ? built.kind : '', name: built ? churchName(built.kind) : '',
-      site: cur ? { src: ART + 'church-site.webp', name: t('church.site', { name: churchName(cur.kind), p: pct(cur) }) } : null
+      site: cur ? { kind: cur.kind, pct: pct(cur), src: ART + 'church-site.webp', name: t('church.site', { name: churchName(cur.kind), p: pct(cur) }) } : null
     };
   }
   function showChurch() {

@@ -187,7 +187,7 @@ window.GardenScene = (function () {
      v = { src, name, site:{src,name} } | null (build.js). 누르면 스토어 '교회 건축'(o.onOpen) ── */
   // 믿음 나무(x 890) 왼쪽, 바다 앞 잔디 위 — 휴대폰(가운데 x 430~1170 만 보임)과 PC(오른쪽 칸이 덮음) 모두에서 보이는 자리
   // 2026-10-24 담임목사 "교회가 너무 멀리 있습니다" → 먼 언덕(y 482·높이 120)에서 잔디 위 가까이로. z 는 밭 뒷줄 사이(앞줄이 교회 밑을 가림)
-  var CHURCH_AT = { x: 540, y: 614, h: 200, siteH: 140, z: 91 };
+  var CHURCH_AT = { x: 400, y: 640, h: 440, siteH: 330, z: 91 };   // 2026-10-24 담임목사 "메인화면에 교회가 너무 작습니다" — 2.2배(넓이로 4.8배)
   function setChurch(v, o) { S.church = v ? { v: v, o: o || {} } : null; drawChurch(); }
   function drawChurch() {
     if (S.el.church) { S.el.church.remove(); S.el.church = null; }
