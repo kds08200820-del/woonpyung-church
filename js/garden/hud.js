@@ -381,19 +381,22 @@ window.GardenHud = (function () {
   /* ── 서재: 지금 받는 신청서 (신청 기간 동안만 — 서버 시계로 app_open_forms 가 거른다. SQL 전이면 조용히 숨는다) ── */
   function loadForms() {
     var box = $('gForms'); if (!box || !SDK.openForms) return Promise.resolve();
-    return SDK.openForms().then(function (rows) {
-      rows = (rows || []).filter(function (f) { return f.show_hero !== false; });
+    return Promise.all([SDK.openForms(), SDK.formsPending ? SDK.formsPending() : null]).then(function (rs) {
+      var rows = (rs[0] || []).filter(function (f) { return f.show_hero !== false; }), pend = rs[1];
       if (!rows.length) { box.hidden = true; box.innerHTML = ''; return; }
       var nowMs = Date.now();
       box.innerHTML = '<h3 class="g-forms-t" id="gFormsT">' + esc(t('forms.title')) + '</h3>' + rows.map(function (f) {
         var close = f.close_at ? new Date(f.close_at) : null, d = close ? Math.max(0, Math.ceil((close.getTime() - nowMs) / 86400000)) : null;
         var when = [f.event_date ? String(f.event_date).slice(5).replace('-', '.') + (f.event_time ? ' ' + String(f.event_time).slice(0, 5) : '') : '', f.place || ''].filter(Boolean).join(' · ');
         var until = close ? t('forms.until', { m: close.getMonth() + 1, d: close.getDate(), dd: d === 0 ? t('forms.today') : 'D-' + d }) : '';
-        return '<a class="g-form-card" href="forms.html?f=' + encodeURIComponent(f.id) + '">' +
+        var pd = pend && pend[f.id], adm = '';
+        if (pd) adm = '<a class="g-form-pay' + (pd.claimed ? ' is-claimed' : '') + '" href="affairs.html?tab=forms&f=' + encodeURIComponent(f.id) + '&filter=' + (pd.claimed ? 'claimed' : 'due') + '">' +
+          esc(t(pd.claimed ? 'forms.pay.claimed' : 'forms.pay', { n: pd.claimed || pd.n })) + '</a>';
+        return '<div class="g-form-card">' +
           '<b class="g-form-name">' + esc(f.title || '') + '</b>' +
           (when ? '<span class="g-form-when">' + esc(when) + '</span>' : '') +
           (until ? '<span class="g-form-until">' + esc(until) + '</span>' : '') +
-          '<span class="g-form-go">' + esc(t('forms.go')) + '</span></a>';
+          '<span class="g-form-acts"><a class="g-form-go" href="forms.html?f=' + encodeURIComponent(f.id) + '">' + esc(t('forms.go')) + '</a>' + adm + '</span></div>';
       }).join('');
       box.hidden = false;
     }).catch(function () { box.hidden = true; });

@@ -261,7 +261,7 @@ window.WPCFormsAdmin = (function () {
     function entHTML(e) {
       var p = payOf(e), off = e.status === 'cancelled', f = formOf(e.form_id) || {}, btn = [];
       if (!off && e.fee_total > 0) {
-        if (e.paid_at && !e.confirmed_at) btn.push(['confirm', '입금 확인', 'btn-solid']);
+        if (!e.confirmed_at) btn.push(['confirm', '입금 확인', 'btn-solid']);   // 신청자가 '납부했습니다'를 누르기 전이라도 통장에 들어왔으면 바로 확정(서버가 납부 완료로 함께 기록)
         if (e.confirmed_at) btn.push(['unconfirm', '입금 확인 풀기', 'btn-line']);
         if (e.paid_at) btn.push(['unpaid', '납부 취소·안내', 'btn-line']);
         else btn.push(['mark_paid', '납부 처리(현금 등)', 'btn-line']);
@@ -430,7 +430,11 @@ window.WPCFormsAdmin = (function () {
     }
 
     panel.innerHTML = msgCard('신청서', '불러오는 중…');
-    load().then(showList).catch(function (e) {
+    load().then(function () {
+      var op = window.__faOpen; window.__faOpen = null;
+      if (op && formOf(op.id)) { filter = op.filter || 'all'; enter(function () { showForm(op.id); }); return; }
+      showList();
+    }).catch(function (e) {
       panel.innerHTML = notReady(e)
         ? msgCard('SQL 실행 필요', 'Supabase → SQL Editor 에서 supabase/20261010_1140_app_forms.sql 을 한 번 실행해 주십시오.')
         : msgCard('불러오지 못했습니다', e.message);

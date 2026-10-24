@@ -250,6 +250,17 @@
     farmCut: farmCut, farmDig: farmDig, treeSell: treeSell, treeBuy: treeBuy, storage: storage, adminSetStock: adminSetStock,
     house: house, houseBuild: houseBuild, houseRemove: houseRemove, adminSetHousePrice: adminSetHousePrice,
     home: home, homeBuild: homeBuild, church: church, churchOffer: churchOffer, adminChurchStart: adminChurchStart, adminChurchGoal: adminChurchGoal, adminChurchStop: adminChurchStop,
+    // 관리자에게만: 입금 확인이 남은 신청(신청비 있음 · 활성 · 교회 확인 전)을 신청서별로 센다 { 신청서번호: { n: 전체, claimed: '납부했습니다' 눌린 것 } } — 관리자가 아니면 null
+    formsPending: function () {
+      var s = sess(); if (!s) return Promise.resolve(null);
+      return api('GET', 'admins?uid=eq.' + encodeURIComponent(s.uid) + '&select=uid').then(function (a) {
+        if (!a || !a.length) return null;
+        return api('GET', 'app_entries?select=form_id,paid_at&status=eq.active&fee_total=gt.0&confirmed_at=is.null').then(function (rows) {
+          var m = {}; (rows || []).forEach(function (e) { var o = m[e.form_id] || (m[e.form_id] = { n: 0, claimed: 0 }); o.n++; if (e.paid_at) o.claimed++; });
+          return m;
+        });
+      }).catch(function () { return null; });
+    },
     openForms: function () { return rpc('app_open_forms').then(function (r) { return r || []; }); },   // 지금 신청 기간인 신청서(서버 시계) — 로그인 전에도 읽는다
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,
     attend: attend, hasSermon: hasSermon, weather: weather,

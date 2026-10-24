@@ -335,7 +335,7 @@ console.log('[affairs.js] v20261023th1');
     if (window.WPCFormsAdmin) { go(); return; }
     panel.innerHTML = msgCard('신청서', '불러오는 중…');
     var s = document.createElement('script');
-    s.src = 'js/forms-admin.js?v=20261023lib1';
+    s.src = 'js/forms-admin.js?v=20261024fm5';
     s.onload = function () { if (window.WPCFormsAdmin && document.body.contains(panel)) go(); };
     s.onerror = function () { panel.innerHTML = msgCard('불러오지 못했습니다', '잠시 뒤에 다시 열어 주십시오.'); };
     document.body.appendChild(s);
@@ -11685,6 +11685,10 @@ console.log('[affairs.js] v20261023th1');
     api('GET', 'admins?uid=eq.' + s.uid + '&select=uid').then(function (rows) {
       if (!rows || !rows.length) { root.innerHTML = msgCard('접근 권한이 없습니다', '행정관리는 관리자만 이용할 수 있습니다.'); return; }
       var pq = presentQuery(); if (pq) { presentFromUrl(pq); return; }   /* 히어로 '설교하기' → 발표자 모드로 바로 */
+      try {   // 정원 첫 화면 '입금 확인 하기' → affairs.html?tab=forms&f=번호&filter=claimed|due : 그 신청서의 신청 목록을 바로 연다
+        var fq = new URLSearchParams(location.search);
+        if (fq.get('tab') === 'forms') { tab = 'forms'; if (/^\d+$/.test(fq.get('f') || '')) window.__faOpen = { id: fq.get('f'), filter: /^(claimed|due|conf|all)$/.test(fq.get('filter') || '') ? fq.get('filter') : 'claimed' }; }
+      } catch (e) { /* noop */ }
       loadMembers();
       loadGeneral(); // 설립일(호수 주년 기준) 미리 로드
       render();

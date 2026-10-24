@@ -533,6 +533,8 @@ window.GardenI18n = (function () {
     'forms.go': '신청하기',
     'forms.until': '{m}월 {d}일까지 · {dd}',
     'forms.today': '오늘 마감',
+    'forms.pay': '입금 확인 하기 ({n})',
+    'forms.pay.claimed': '입금 확인 하기 · {n}건 대기',
     'qt.loading': '오늘의 말씀을 불러오는 중…',
     'qt.none': '아직 등록된 큐티가 없습니다',
     'qt.amen.done': '✓ 오늘 아멘했어요',
