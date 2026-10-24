@@ -117,6 +117,7 @@ window.WPCFormsAdmin = (function () {
     });
     return s;
   }
+  function plabel(f) { return String((f && f.people_label) || '').trim() || '참가자'; }   /* 신청서마다 정한 이름표(20261024_1800) */
   /* 참가자 이름 — [{name, kind}] (이름을 받기 전에 낸 신청은 [] → '명단 없음') */
   function partsOf(e) { return (e && Array.isArray(e.participants) ? e.participants : []).filter(function (x) { return x && x.name; }); }
   function kindName(x, f) { return f && f.ask_minor === false ? '' : (x.kind === 'minor' ? '미성년자' : '성인'); }
@@ -251,7 +252,7 @@ window.WPCFormsAdmin = (function () {
         ps.forEach(function (x) { rows.push({ name: x.name, kind: kindName(x, f), from: e.name }); });
       });
       if (!act.length) return '';
-      return '<details class="fa-pdet" open><summary>참가자 명단 · ' + rows.length + '명' + (none ? ' (명단 없음 ' + none + '건)' : '') + '</summary>' +
+      return '<details class="fa-pdet" open><summary>' + esc(plabel(f)) + ' 명단 · ' + rows.length + '명' + (none ? ' (명단 없음 ' + none + '건)' : '') + '</summary>' +
         (rows.length ? '<ol class="fa-plist">' + rows.map(function (r) {
           return '<li>' + esc(r.name) + (r.kind ? ' <small>' + r.kind + '</small>' : '') + ' <small>· ' + esc(r.from) + ' 신청</small></li>';
         }).join('') + '</ol>' : '<p class="fa-note" style="margin-top:8px">아직 이름이 적힌 신청이 없습니다.</p>') +
@@ -271,7 +272,7 @@ window.WPCFormsAdmin = (function () {
       return '<div class="fa-ent' + (off ? ' is-off' : '') + '" data-id="' + e.id + '"><div class="fa-ent-hd"><b>' + esc(e.name) + '</b><span class="fa-st fa-st-' + p[0] + '">' + p[1] + '</span></div>' +
         '<p>' + esc(e.phone || '연락처 없음') + '</p>' +
         '<p>' + (f.ask_minor === false ? (e.adults + e.minors) + '명' : '성인 ' + e.adults + '명 · 미성년자 ' + e.minors + '명') + ' · ' + (e.fee_total > 0 ? won(e.fee_total) + '원' : '신청비 없음') + '</p>' +
-        (partLine(e, f) ? '<p>참가자: ' + esc(partLine(e, f)) + '</p>' : '<p style="color:#8B7B6C">참가자: 명단 없음</p>') +
+        (partLine(e, f) ? '<p>' + esc(plabel(f)) + ': ' + esc(partLine(e, f)) + '</p>' : '<p style="color:#8B7B6C">' + esc(plabel(f)) + ': 명단 없음</p>') +
         (e.memo ? '<p>' + esc((f.memo_label || '메모') + (/[?？.]$/.test(f.memo_label || '') ? ' ' : ': ') + e.memo) + '</p>' : '') +
         '<p style="color:#8B7B6C">신청 ' + esc(day(e.created_at)) + (e.paid_at ? ' · ' + (e.paid_by === 'admin' ? '납부 처리 ' : '납부했습니다 ') + esc(day(e.paid_at)) : '') + (e.confirmed_at ? ' · 교회 확인 ' + esc(day(e.confirmed_at)) : '') + '</p>' +
         (e.admin_msg ? '<div class="fa-msg">보낸 안내(' + esc(day(e.admin_msg_at)) + ', ' + (e.msg_read_at ? '읽음' : '아직 안 읽음') + '): ' + esc(e.admin_msg) + '</div>' : '') +
@@ -306,7 +307,7 @@ window.WPCFormsAdmin = (function () {
     }
 
     function csv(f, list) {
-      var head = ['번호', '신청일', '이름', '연락처', '성인', '미성년자', '참가자', f.memo_label || '메모', '금액', '신청 상태', '납부', '납부일', '교회 확인'];
+      var head = ['번호', '신청일', '이름', '연락처', '성인', '미성년자', plabel(f), f.memo_label || '메모', '금액', '신청 상태', '납부', '납부일', '교회 확인'];
       var rows = list.map(function (e, i) {
         var ps = partsOf(e).map(function (x) { var k = kindName(x, f); return x.name + (k ? '(' + k + ')' : ''); }).join(', ') || '명단 없음';
         return [i + 1, localInput(e.created_at).replace('T', ' '), e.name, e.phone, e.adults, e.minors, ps, e.memo, e.fee_total, e.status === 'cancelled' ? '취소' : '신청',
@@ -324,6 +325,8 @@ window.WPCFormsAdmin = (function () {
     function showEdit(f, copy) {
       if (!alive()) return;
       var isNew = !f || copy, v = f || {};
+      var hasLabelCol = FORMS.some(function (x) { return 'people_label' in x; });   /* 20261024_1800_app_forms_people_label.sql 실행 뒤에만 '이름표' 칸 */
+      var hasSameCol = FORMS.some(function (x) { return 'allow_same_name' in x; });   /* 20261024_1810_app_forms_allow_same_name.sql 실행 뒤에만 '같은 이름도 받기' 칸 */
       var hasImgCol = FORMS.some(function (x) { return 'image_url' in x; });   /* 20261010_1700_app_forms_image.sql 실행 뒤에만 '안내 그림' 칸 */
       if (copy) v = Object.assign({}, f, { title: f.title + ' (새)', open_at: null, close_at: null, event_date: null, event_time: null });
       if (isNew && !ownPay(v)) { var dp = defaultPay(); v = Object.assign({}, v, { pay_bank: dp.pay_bank || '', pay_account: dp.pay_account || '', pay_holder: dp.pay_holder || '', pay_toss_url: dp.pay_toss_url || '' }); }   /* 새 신청서 = 교회 기본 계좌 */
@@ -347,6 +350,8 @@ window.WPCFormsAdmin = (function () {
         fld('신청 마감 (비우면 마감 없음)', '<input type="datetime-local" id="ff_close" value="' + esc(localInput(v.close_at)) + '">') +
         '</div>' +
         '<div class="fa-sec">신청비</div><div class="fa-grid">' +
+        (hasLabelCol ? fld('신청하는 분을 뭐라고 부를까요', '<input id="ff_plabel" maxlength="12" list="ff_plabel_l" value="' + esc(plabel(v)) + '" placeholder="참가자"><datalist id="ff_plabel_l"><option value="참가자"><option value="신청자"><option value="수령자"><option value="대상자"><option value="이용자"></datalist><small style="color:#8B7B6C">신청 화면·명단·엑셀에 이 말로 나옵니다. 예) 행사는 참가자, 책은 신청자·수령자</small>', true) : '') +
+        (hasSameCol ? '<div class="af-field" style="grid-column:1/-1">' + chk('ff_same', '같은 이름도 받습니다 (예: 한 사람이 책을 여러 권 신청)', !!v.allow_same_name) + '</div>' : '') +
         fld('성인 1명 (원)', '<input type="number" min="0" step="500" id="ff_fa" value="' + esc(v.fee_adult != null ? v.fee_adult : 0) + '">') +
         fld('미성년자 1명 (원)', '<input type="number" min="0" step="500" id="ff_fm" value="' + esc(v.fee_minor != null ? v.fee_minor : 0) + '">') +
         '<div class="af-field" style="justify-content:flex-end;display:flex;flex-direction:column">' + chk('ff_minor', '미성년자 인원을 따로 받습니다', v.ask_minor !== false) + '</div>' +
@@ -420,6 +425,8 @@ window.WPCFormsAdmin = (function () {
           show_hero: $('ff_hero').checked, published: $('ff_pub').checked
         };
         if (hasImgCol) body.image_url = $('ff_img').value.trim() || null;
+        if (hasSameCol) body.allow_same_name = $('ff_same').checked;
+        if (hasLabelCol) body.people_label = ($('ff_plabel').value.trim() || '참가자').slice(0, 12);
         var b = this; b.disabled = true; err.hidden = true;
         var req = isNew ? api('POST', 'app_forms', body, 'return=representation') : api('PATCH', 'app_forms?id=eq.' + f.id, body, 'return=representation');
         req.then(function (rows) {

@@ -206,6 +206,8 @@ console.log('[forms.js] v20261010form6');
     if (f && f.ask_minor === false) return (e.adults + e.minors) + '명';
     return '성인 ' + e.adults + '명' + (e.minors ? ' · 미성년자 ' + e.minors + '명' : '');
   }
+  /* 사람 이름표 — 신청서마다 '참가자'·'신청자'·'수령자' 등 (app_forms.people_label, 20261024_1800 · 없으면 '참가자') */
+  function plabel(f) { return String((f && f.people_label) || '').trim() || '참가자'; }
   /* 참가자 이름 — [{name, kind:'adult'|'minor'}] (20261010_1300 전에 낸 신청은 []) */
   function partsOf(e) { return (e && Array.isArray(e.participants) ? e.participants : []).filter(function (x) { return x && x.name; }); }
   function partText(e, f) {
@@ -383,7 +385,7 @@ console.log('[forms.js] v20261010form6');
     var nm = { adults: [], minors: [] };
     partsOf(e).forEach(function (x) { nm[x.kind === 'minor' ? 'minors' : 'adults'].push(x.name); });
     if (!nm.adults[0]) nm.adults[0] = cur.name || p.name || '';
-    var askMinor = f.ask_minor !== false, paidLock = e && e.paid_at && e.status === 'active';
+    var PL = plabel(f), askMinor = f.ask_minor !== false, paidLock = e && e.paid_at && e.status === 'active';
     var aFee = +f.fee_adult || 0, mFee = +f.fee_minor || 0;
     function countRow(k, label, sub) {
       return '<div class="ap-count"><span>' + label + '<small>' + sub + '</small></span><div class="ap-step">' +
@@ -412,13 +414,13 @@ console.log('[forms.js] v20261010form6');
       function total() { return v.adults * aFee + (askMinor ? v.minors * mFee : 0); }
       function nameRows() {                     // 지금 인원에 맞는 이름 칸 — [{k, i, label}]
         var out = [], k, i;
-        for (i = 0; i < v.adults; i++) out.push({ k: 'adults', i: i, label: (askMinor ? '성인 ' : '참가자 ') + (i + 1) });
+        for (i = 0; i < v.adults; i++) out.push({ k: 'adults', i: i, label: (askMinor ? '성인 ' : PL + ' ') + (i + 1) });
         if (askMinor) for (i = 0; i < v.minors; i++) out.push({ k: 'minors', i: i, label: '미성년자 ' + (i + 1) });
         return out;
       }
       function drawNames(msg) {
         var rows = nameRows();
-        box.innerHTML = '<p>참가자 이름 <small>· 오시는 분마다 한 분씩 적어 주십시오</small></p>' + rows.map(function (r) {
+        box.innerHTML = '<p>' + esc(PL) + ' 이름 <small>· 한 분씩 적어 주십시오</small></p>' + rows.map(function (r) {
           return '<label class="ap-pname"><span>' + r.label + '</span><input data-k="' + r.k + '" data-i="' + r.i + '" maxlength="30" autocomplete="off" value="' + esc(nm[r.k][r.i] || '') + '" aria-label="' + r.label + ' 이름"></label>';
         }).join('') + '<p class="ap-nerr"' + (msg ? '' : ' hidden') + '>' + esc(msg || '') + '</p>';
         box.hidden = !rows.length;
@@ -458,8 +460,8 @@ console.log('[forms.js] v20261010form6');
         err.hidden = true;
         var names = collect(), keys = names.map(nameKey), seen = {}, twice = [];
         var empty = names.some(function (n) { return !n; }), long = names.filter(function (n) { return n.length > 30; });
-        keys.forEach(function (k, i) { if (k && seen[k]) twice.push(names[i]); seen[k] = 1; });
-        if (empty) { markNames([''], '참가자 이름을 모두 적어 주십시오.'); return; }
+        keys.forEach(function (k, i) { if (k && seen[k] && !f.allow_same_name) twice.push(names[i]); seen[k] = 1; });   // allow_same_name(20261024_1810): 책 여러 권처럼 같은 이름을 받는 신청서
+        if (empty) { markNames([''], PL + ' 이름을 모두 적어 주십시오.'); return; }
         if (long.length) { markNames(long.map(nameKey), '이름은 30자까지 적을 수 있습니다.'); return; }
         if (twice.length) { markNames(twice.map(nameKey), '같은 이름을 두 번 적었습니다: ' + twice.join(', ')); return; }
         drawNames();
@@ -508,7 +510,7 @@ console.log('[forms.js] v20261010form6');
       html += '<div style="margin-top:12px">' + chip(e) + '</div>' + msgHTML(e) +
         '<dl class="ap-dl"><dt>신청한 분</dt><dd>' + esc(e.name) + '</dd><dt>연락처</dt><dd>' + esc(e.phone) + '</dd>' +
         '<dt>인원</dt><dd>' + esc(peopleText(e, f)) + '</dd>' +
-        (partText(e, f) ? '<dt>참가자</dt><dd>' + esc(partText(e, f)) + '</dd>' : '') +
+        (partText(e, f) ? '<dt>' + esc(plabel(f)) + '</dt><dd>' + esc(partText(e, f)) + '</dd>' : '') +
         (e.memo ? '<dt>' + esc(f.memo_label || '메모') + '</dt><dd>' + nl2br(e.memo) + '</dd>' : '') +
         '<dt>신청비</dt><dd>' + (e.fee_total > 0 ? won(e.fee_total) + '원' : '없음') + '</dd>' +
         '<dt>신청한 날</dt><dd>' + esc(dtText(e.created_at)) + '</dd>' +
@@ -567,7 +569,7 @@ console.log('[forms.js] v20261010form6');
         (whenPlace(f) ? '<p class="ap-item-meta">' + esc(whenPlace(f)) + '</p>' : '') +
         '<p class="ap-item-meta">' + esc(peopleText(e, f)) + ' · ' + (e.fee_total > 0 ? won(e.fee_total) + '원' : '신청비 없음') + ' · ' + esc(dayText(e.created_at)) + ' 신청</p>' +
         (full ? '<p class="ap-item-meta">신청한 분 ' + esc(e.name) + (e.phone ? ' · ' + esc(e.phone) : '') + '</p>' +
-          (partText(e, f) ? '<p class="ap-item-meta">참가자 ' + esc(partText(e, f)) + '</p>' : '') +
+          (partText(e, f) ? '<p class="ap-item-meta">' + esc(plabel(f)) + ' ' + esc(partText(e, f)) + '</p>' : '') +
           (e.memo ? '<p class="ap-item-meta">' + esc(memoLine(f, e)) + '</p>' : '') +
           (e.paid_at ? '<p class="ap-item-meta">납부 ' + esc(dtText(e.paid_at)) + (e.confirmed_at ? ' · 교회 확인' : '') + '</p>' : '') +
           msgHTML(e) : '') +
