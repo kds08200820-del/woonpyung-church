@@ -528,7 +528,7 @@ window.GardenFarm = (function () {
   function closeSheet() { var s = ui('gfSheet'); if (s) s.innerHTML = '<p class="gf-s-m gf3-hint">' + esc(t('farm.hint3d')) + '</p>'; F.sel = null; }
   function sheet(html) { var s = ui('gfSheet'); if (s) s.innerHTML = html; }
   function acts(main) { return '<div class="gf-s-acts"><button type="button" class="g-btn g-btn-line" data-act="cancel">' + esc(t('farm.cancel')) + '</button>' + (main || '') + '</div>'; }
-  // 집 짓기: 고른 집에 맞게 대지 칸을 고른다(꼭 맞는 직사각형). 목재·품삯이 모자라면 단추가 잠긴다
+  // 집 짓기: 고른 집에 맞게 대지 칸을 고른다(꼭 맞는 직사각형). 목재·건축비가 모자라면 단추가 잠긴다
   function sheetHome() {
     var p = BLD() ? BLD().plan(F.homeKind) : null;
     if (!p) { F.mode = 'normal'; F.pick = {}; closeSheet(); return; }
@@ -537,7 +537,7 @@ window.GardenFarm = (function () {
     var free = (F.farm.tiles || []).filter(homeFree).length;
     var state = !free ? t('farm.pick.home.nodae', { n: p.dae }) : !n ? t('farm.pick.home.hint', { n: p.dae }) : shape ? t('farm.pick.home.ok', { n: n })
       : n < p.dae ? t('farm.pick.home.more', { n: n, need: p.dae })
-      : t('farm.pick.home.bad', { n: n, need: p.dae, shape: t(p.dae >= 4 ? 'build.shape.4' : p.dae === 2 ? 'build.shape.2' : 'build.shape.1') });
+      : t('farm.pick.home.bad', { n: n, need: p.dae, shape: BLD().shape(p.dae) });
     F.sel = { kind: 'home' };
     sheet('<p class="gf-s-t">' + esc(t('farm.pick.home.t', { name: name })) + '</p>' +
       '<p class="gf-s-m">' + esc(t('build.cost', { dae: p.dae, wood: I.fmtNum(+p.wood), wage: tal(p.wage), u: HUD.talentLabel() })) + '</p>' +
