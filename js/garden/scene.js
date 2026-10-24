@@ -182,17 +182,18 @@ window.GardenScene = (function () {
     drawChurch();
   }
 
-  /* ── 교회: 성도들의 건축헌금으로 지은 교회(가장 최근 것)와 짓는 중인 공사 터 — 언덕 위, 모든 성도에게 같은 교회 (2026-10-23 담임목사)
+  /* ── 교회: 성도들의 건축헌금으로 지은 교회(가장 최근 것)와 짓는 중인 공사 터 — 바다 앞 잔디 위, 모든 성도에게 같은 교회 (2026-10-23 담임목사)
      plot 층에 둔다(그 층이 화면 전체를 덮어 mid 층 것은 눌리지 않는다). 언덕 그림을 다시 그려도(계절) 그대로
      v = { src, name, site:{src,name} } | null (build.js). 누르면 스토어 '교회 건축'(o.onOpen) ── */
-  // 믿음 나무(x 890) 왼쪽 언덕 — 휴대폰(가운데 x 430~1170 만 보임)과 PC(오른쪽 칸이 덮음) 모두에서 보이는 자리
-  var CHURCH_AT = { x: 660, y: 482, h: 120, siteH: 80 };
+  // 믿음 나무(x 890) 왼쪽, 바다 앞 잔디 위 — 휴대폰(가운데 x 430~1170 만 보임)과 PC(오른쪽 칸이 덮음) 모두에서 보이는 자리
+  // 2026-10-24 담임목사 "교회가 너무 멀리 있습니다" → 먼 언덕(y 482·높이 120)에서 잔디 위 가까이로. z 는 밭 뒷줄 사이(앞줄이 교회 밑을 가림)
+  var CHURCH_AT = { x: 540, y: 614, h: 200, siteH: 140, z: 91 };
   function setChurch(v, o) { S.church = v ? { v: v, o: o || {} } : null; drawChurch(); }
   function drawChurch() {
     if (S.el.church) { S.el.church.remove(); S.el.church = null; }
     if (!S.church || !S.el.plot) return;
     var v = S.church.v, o = S.church.o, box = el('div', 'g-church'), names = [];
-    box.style.left = CHURCH_AT.x + 'px'; box.style.top = CHURCH_AT.y + 'px';
+    box.style.left = CHURCH_AT.x + 'px'; box.style.top = CHURCH_AT.y + 'px'; box.style.zIndex = CHURCH_AT.z;
     [[v.src, CHURCH_AT.h, '', v.name], [v.site && v.site.src, CHURCH_AT.siteH, ' is-site', v.site && v.site.name]].forEach(function (c) {
       if (!c[0]) return;
       var im = el('img', 'g-church-img' + c[2]); im.src = c[0]; im.alt = ''; im.draggable = false; im.style.height = c[1] + 'px';
@@ -253,8 +254,8 @@ window.GardenScene = (function () {
      땅 곡면: 뒷줄은 잔디 언덕 능선(CREST) 아래에서 멈추고, 줄은 가운데가 높고 양옆이 낮은 둥근 언덕을 따라 휜다(bend)
      — 담임목사 "공중에 떠 있습니다. 지면의 곡률에 따라 적용되어야 합니다" */
   var FIELD = { rows: 6, ahead: 3, pitch: 116, yFront: 740, gapTop: 12, bend: 36, depth: 0.3, treeK: 0.95 };
-  /* 잔디 언덕 능선(먼 산과 만나는 선) — 언덕 그림 mid/hills.webp 에서 잰 설계 좌표 [x, y] */
-  var CREST = [[0, 520], [330, 520], [420, 505], [500, 528], [600, 548], [700, 555], [900, 560], [1450, 558], [1600, 566]];
+  /* 잔디 끝(모래밭과 만나는 선) — 바다 그림 mid/hills.webp(2026-10-24 '운평리는 바다가 보이는 곳')에서 잰 설계 좌표 [x, y]. 그림을 바꾸면 다시 잰다 */
+  var CREST = [[0, 560], [300, 570], [500, 562], [700, 568], [800, 572], [900, 570], [1100, 561], [1300, 562], [1600, 562]];
   function crestAt(x) {
     for (var j = 1; j < CREST.length; j++) {
       if (x <= CREST[j][0] || j === CREST.length - 1) { var a = CREST[j - 1], b = CREST[j], t = Math.max(0, Math.min(1, (x - a[0]) / (b[0] - a[0]))); return a[1] + (b[1] - a[1]) * t; }

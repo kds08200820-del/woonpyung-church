@@ -1,5 +1,5 @@
 {
-  "version": "20261023gd3",
+  "version": "20261024sea1",
   "theme": "default",
   "out_root": "images/garden/default",
   "style_ref": {
@@ -180,15 +180,15 @@
         1536,
         768
       ],
-      "prompt": "Cute stylized 3D clay render diorama, soft pastel colors, matte clay texture, rounded simple toy-like shapes, miniature, gentle soft light. Wide eye-level view of a peaceful garden landscape, open outdoors only, no window, no frame. In the foreground a soft green lawn with a low cream wooden picket fence on the right, a few round fluffy trees with dense rounded tuft canopies and sturdy brown trunks, small round bushes and little pastel flowers, a small winding stepping-stone path. Layered rounded clay hills and a valley leading to distant soft clay mountains at the horizon. Summer: lush soft greens, vivid but soft colors. The sky above the mountains is solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame.",
-      "seed": 5601,
+      "prompt": "Cute stylized 3D clay render diorama, soft pastel colors, matte clay texture, rounded simple toy-like shapes, miniature, gentle soft light. Wide eye-level view of a peaceful seaside garden on the west coast of Korea, open outdoors only, no window, no frame. The bottom forty percent of the image is a wide open soft green lawn that gently slopes down toward the sea, with a small winding stepping-stone path, a few small round bushes and little pastel flowers near the left and right edges. Beyond the lawn a calm wide soft blue sea fills the middle of the image up to a perfectly straight flat horizon line, a thin pale sandy shore with soft tidal flats, a few tiny low flat islands far away on the sea. Absolutely no mountains, no hills, no cliffs, no tall trees, nothing standing above the horizon. Summer: lush soft greens, vivid but soft colors. The sky above the horizon is solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame.",
+      "seed": 5701,
       "bg": "chroma",
-      "candidates": 2,
+      "candidates": 4,
       "anchor": null,
       "variants": [
         "768"
       ],
-      "pick": 2,
+      "pick": 4,
       "key": "black",
       "key_sides": "top"
     },

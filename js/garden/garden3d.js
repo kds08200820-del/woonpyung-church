@@ -319,13 +319,13 @@ window.Garden3D = (function () {
         scene.add(clouds);
       }
 
-      // 잔디: 언덕 그림 앞쪽 잔디(아래 83~93%, 왼쪽 40%)를 떼어 거울로 이어 깐다 → 정원 장면과 같은 점토 잔디
+      // 잔디: 배경 그림 앞쪽 잔디(아래 86~96%, 오른쪽 62~96% — 바다 그림의 디딤돌·꽃이 없는 곳)를 떼어 거울로 이어 깐다 → 정원 장면과 같은 점토 잔디
       var wet = (kind === 'rain') ? 1 : 0, snowK = kind === 'snow' ? 0.7 : 0;
       function tint(c) { return c.multiplyScalar(1 - wet * 0.2).lerp(new T.Color(0.95, 0.96, 1), snowK); }
       var lawnCv = null;
       if (img.hills) {
         lawnCv = document.createElement('canvas'); lawnCv.width = 256; lawnCv.height = 128;
-        lawnCv.getContext('2d').drawImage(img.hills, 0, img.hills.height * 0.83, img.hills.width * 0.4, img.hills.height * 0.1, 0, 0, 256, 128);
+        lawnCv.getContext('2d').drawImage(img.hills, img.hills.width * 0.62, img.hills.height * 0.86, img.hills.width * 0.34, img.hills.height * 0.1, 0, 0, 256, 128);
       }
       function lawnMat(rep, color, glow) {
         var m = new T.MeshStandardMaterial({ roughness: 1, color: color, emissive: new T.Color(1, 1, 1), emissiveIntensity: glow * (0.25 + 0.75 * day) });
