@@ -1060,4 +1060,4 @@ button.g-chip-wx:focus-visible { outline: 3px solid var(--g-coral-ring); outline
 .g-church-img { width: auto; filter: drop-shadow(0 4px 5px rgba(80,60,40,.22)); }
 .g-church.is-open { cursor: pointer; }
 .g-church.is-open:focus-visible { outline: 3px solid var(--g-coral); outline-offset: 4px; border-radius: 8px; }
-.g-church-tag { position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%); white-space: nowrap; font-size: 15px; font-weight: 700; color: #4a3b31; background: rgba(255,250,243,.92); border: 1px solid #e6d6c3; border-radius: 999px; padding: 2px 10px; }
+.g-church-tag { position: absolute; left: 50%; top: -6px; transform: translate(-50%, -100%); white-space: nowrap; font-size: 15px; font-weight: 700; color: #4a3b31; background: rgba(255,250,243,.92); border: 1px solid #e6d6c3; border-radius: 999px; padding: 2px 10px; }
