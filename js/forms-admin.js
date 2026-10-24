@@ -204,6 +204,7 @@ window.WPCFormsAdmin = (function () {
         '<div class="fa-right"><button class="btn btn-line" id="fa_edit" style="padding:6px 13px;font-size:.84rem">양식 고치기</button>' +
         '<button class="btn btn-line" id="fa_copy" style="padding:6px 13px;font-size:.84rem">이 양식으로 새 신청서</button>' +
         '<button class="btn btn-line" id="fa_csv" style="padding:6px 13px;font-size:.84rem">명단 내려받기</button>' +
+        '<button class="btn btn-line" id="fa_share" style="padding:6px 13px;font-size:.84rem">링크 공유</button>' +
         '<a class="btn btn-line" href="forms.html?f=' + f.id + '" target="_blank" rel="noopener" style="padding:6px 13px;font-size:.84rem">홈페이지에서 보기</a></div></div>' +
         '<div class="fa-item-hd"><b style="font-size:1.2rem;color:var(--accent,#3A281C)">' + esc(f.title) + '</b><span class="fa-st fa-st-' + st[0] + '">' + st[1] + '</span></div>' +
         (eventText(f) || f.place ? '<div class="fa-meta">행사 ' + esc([eventText(f), f.place].filter(Boolean).join(' · ')) + '</div>' : '') +
@@ -231,6 +232,17 @@ window.WPCFormsAdmin = (function () {
       panel.querySelector('#fa_edit').onclick = function () { showEdit(f); };
       panel.querySelector('#fa_copy').onclick = function () { showEdit(f, true); };
       panel.querySelector('#fa_csv').onclick = function () { csv(f, list); };
+      panel.querySelector('#fa_share').onclick = function () {   // 링크 공유: 폰은 공유창(카톡 등), 그 밖에는 링크 복사 — 열면 그 신청서가 바로 열린다
+        var btn = this, url = new URL('forms.html?f=' + f.id, location.href).href;
+        var text = f.title + (eventText(f) || f.place ? '\n행사 ' + [eventText(f), f.place].filter(Boolean).join(' · ') : '') + (f.close_at ? '\n' + dt(f.close_at) + '까지 신청' : '');
+        var copy = function () {
+          var done = function () { var o = btn.dataset.o || (btn.dataset.o = btn.textContent); btn.textContent = '링크를 복사했습니다'; setTimeout(function () { btn.textContent = o; }, 1800); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { window.prompt('링크를 복사하십시오', url); });
+          else window.prompt('링크를 복사하십시오', url);
+        };
+        if (navigator.share) navigator.share({ title: f.title, text: text, url: url }).catch(function (er) { if (!er || er.name !== 'AbortError') copy(); });
+        else copy();
+      };
       Array.prototype.forEach.call(panel.querySelectorAll('.fa-filter button'), function (b) { b.onclick = function () { filter = b.dataset.f; showForm(id); }; });
       Array.prototype.forEach.call(panel.querySelectorAll('[data-act]'), function (b) {
         b.onclick = function () {

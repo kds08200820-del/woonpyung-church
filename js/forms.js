@@ -274,6 +274,20 @@ console.log('[forms.js] v20261010form6');
     h += '<p class="ap-note">신청비를 보낸 뒤에 누르십시오. 신청서 확인에 ‘납부 완료’로 나옵니다. 교회가 통장 내역과 맞춰 봅니다.</p>';
     return h + '</div>';
   }
+  /* 신청서 링크 공유 — 폰은 공유창(카톡 등), 그 밖에는 링크 복사. 링크는 forms.html?f=번호 (열면 그 신청서가 바로 열린다) */
+  var SHARE = {};
+  function shareUrl(id) { return new URL('forms.html?f=' + encodeURIComponent(id), location.href).href; }
+  function shareForm(id, btn) {
+    var f = SHARE[id] || { id: id, title: '신청서' }, url = shareUrl(id);
+    var text = f.title + (whenPlace(f) ? '\n' + whenPlace(f) : '') + (untilText(f) ? '\n' + untilText(f) : '');
+    var copy = function () {
+      var done = function () { if (!btn) return; var o = btn.dataset.o || (btn.dataset.o = btn.textContent); btn.textContent = '링크를 복사했습니다'; setTimeout(function () { btn.textContent = o; }, 1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { window.prompt('링크를 복사하십시오', url); });
+      else window.prompt('링크를 복사하십시오', url);
+    };
+    if (navigator.share) navigator.share({ title: f.title, text: text, url: url }).catch(function (er) { if (!er || er.name !== 'AbortError') copy(); });
+    else copy();
+  }
   function copyText(txt, btn) {
     var done = function () { if (!btn) return; var o = btn.textContent; btn.textContent = '복사했습니다'; setTimeout(function () { btn.textContent = o; }, 1600); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, function () { window.prompt('계좌번호를 복사하십시오', txt); });
@@ -498,6 +512,7 @@ console.log('[forms.js] v20261010form6');
     }).catch(function (e) { openModal(errorHTML(e)); });
   }
   function showStatus(f, e, done) {
+    SHARE[f.id] = f;
     var open = isOpen(f), html = headHTML(f, '신청 확인') + (done ? '<p class="ap-done">' + esc(done) + '</p>' : '');
     if (!e) {
       var before = f.open_at && new Date(f.open_at).getTime() > Date.now();
@@ -521,6 +536,7 @@ console.log('[forms.js] v20261010form6');
         (active && open ? '<button type="button" class="ap-btn-line" data-edit>신청 고치기</button>' : '') +
         (active && !e.paid_at ? '<button type="button" class="ap-btn-line ap-quiet" data-cancel="' + e.id + '">신청 취소</button>' : '') +
         (!active && open ? '<button type="button" class="ap-btn" data-edit>다시 신청하기</button>' : '') +
+        (open ? '<button type="button" class="ap-btn-line" data-share="' + f.id + '">링크 공유</button>' : '') +
         '</div>' +
         (active && e.paid_at && !e.confirmed_at && e.paid_by === 'self' ? '<p class="ap-note">교회가 통장 내역과 맞춰 본 뒤 ‘교회 확인’이 붙습니다. 입금이 확인되지 않으면 이곳에 안내가 옵니다.</p>' : '');
     }
@@ -533,6 +549,7 @@ console.log('[forms.js] v20261010form6');
   function wireActions(b, formId, after) {
     Array.prototype.forEach.call(b.querySelectorAll('[data-edit]'), function (x) { x.onclick = function () { openApply(x.dataset.edit || formId, true); }; });
     Array.prototype.forEach.call(b.querySelectorAll('[data-copy]'), function (x) { x.onclick = function () { copyText(x.dataset.copy, x); }; });
+    Array.prototype.forEach.call(b.querySelectorAll('[data-share]'), function (x) { x.onclick = function () { shareForm(x.dataset.share, x); }; });
     Array.prototype.forEach.call(b.querySelectorAll('[data-cancel]'), function (x) {
       x.onclick = function () {
         if (!confirm('이 신청을 취소할까요?\n신청 기간 안에는 다시 신청할 수 있습니다.')) return;
@@ -638,7 +655,7 @@ console.log('[forms.js] v20261010form6');
         var soon = all.filter(function (f) { return !openIds[f.id] && new Date(f.open_at).getTime() > now; });
         var past = all.filter(function (f) { return !openIds[f.id] && new Date(f.open_at).getTime() <= now; });
         var cards = open.map(function (f) {
-          var e = applied[f.id], has = e && e.status === 'active';
+          var e = applied[f.id], has = e && e.status === 'active'; SHARE[f.id] = f;
           return '<div class="ap-fcard"><h3 class="ap-title">' + esc(f.title) + '</h3>' +
             (whenPlace(f) ? '<p class="ap-meta">' + esc(whenPlace(f)) + '</p>' : '') +
             '<p class="ap-meta">' + esc(feeText(f)) + (f.close_at ? ' · ' + esc(dtText(f.close_at)) + '까지 신청' : '') + '</p>' +
@@ -646,7 +663,7 @@ console.log('[forms.js] v20261010form6');
             (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') + imgHTML(f) +
             (has ? '<div style="margin-top:12px">신청함 ' + chip(e) + '</div>' : '') +
             '<div class="ap-actions">' + (has ? '<button type="button" class="ap-btn" data-status="' + f.id + '">신청 확인</button><button type="button" class="ap-btn-line" data-edit="' + f.id + '">신청 고치기</button>'
-              : '<button type="button" class="ap-btn" data-apply="' + f.id + '">신청하기</button>' + (s ? '' : '<button type="button" class="ap-btn-line" data-status="' + f.id + '">신청 확인</button>')) + '</div></div>';
+              : '<button type="button" class="ap-btn" data-apply="' + f.id + '">신청하기</button>' + (s ? '' : '<button type="button" class="ap-btn-line" data-status="' + f.id + '">신청 확인</button>')) + '<button type="button" class="ap-btn-line" data-share="' + f.id + '">링크 공유</button></div></div>';
         }).join('') + soon.map(function (f) {
           return '<div class="ap-fcard"><h3 class="ap-title">' + esc(f.title) + '</h3>' + (whenPlace(f) ? '<p class="ap-meta">' + esc(whenPlace(f)) + '</p>' : '') +
             '<p class="ap-meta">' + esc(dtText(f.open_at)) + '부터 신청을 받습니다.</p></div>';
@@ -661,6 +678,7 @@ console.log('[forms.js] v20261010form6');
         root.innerHTML = html;
         wireList(root);
         Array.prototype.forEach.call(root.querySelectorAll('[data-edit]'), function (x) { x.onclick = function () { openApply(x.dataset.edit, true); }; });
+        Array.prototype.forEach.call(root.querySelectorAll('[data-share]'), function (x) { x.onclick = function () { shareForm(x.dataset.share, x); }; });
         var lg = root.querySelector('[data-login]'); if (lg) lg.onclick = openLogin;
         if (/#mine/.test(location.hash)) { var m = document.getElementById('mine'); if (m) m.scrollIntoView(); }
       }).catch(function (e) {
