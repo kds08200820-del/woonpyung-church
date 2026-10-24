@@ -192,15 +192,24 @@ window.GardenScene = (function () {
   function drawChurch() {
     if (S.el.church) { S.el.church.remove(); S.el.church = null; }
     if (!S.church || !S.el.plot) return;
-    var v = S.church.v, o = S.church.o, box = el('div', 'g-church'), names = [];
+    var v = S.church.v, o = S.church.o, box = el('div', 'g-church'), names = [], siteTop = null;
     box.style.left = CHURCH_AT.x + 'px'; box.style.top = CHURCH_AT.y + 'px'; box.style.zIndex = CHURCH_AT.z;
     [[v.src, CHURCH_AT.h, '', v.name], [v.site && v.site.src, CHURCH_AT.siteH, ' is-site', v.site && v.site.name]].forEach(function (c) {
       if (!c[0]) return;
       var im = el('img', 'g-church-img' + c[2]); im.src = c[0]; im.alt = ''; im.draggable = false; im.style.height = c[1] + 'px';
       im.onerror = function () { im.remove(); };
       box.appendChild(im); if (c[3]) names.push(c[3]);
+      // 짓는 중이면 진행률(%)만큼만 보인다 — 받침대에서 위로 벽·문·지붕이 차례로 올라온다 (2026-10-24 담임목사 "20% 건축이면 20% 모습만")
+      if (c[2] && v.site && v.site.pct != null) {
+        var r = 0.35 + 0.45 * Math.max(0, Math.min(1, +v.site.pct / 100));   // 그림 높이 중 아래에서 보이는 몫(받침대 0.35 ~ 십자가 끝 0.80)
+        im.style.clipPath = 'inset(' + ((1 - r) * 100).toFixed(1) + '% 0 0 0)';
+        siteTop = Math.round(c[1] * r) + 4;
+      }
     });
-    if (v.site && v.site.name) { var tg = el('span', 'g-church-tag'); tg.textContent = v.site.name; box.appendChild(tg); }
+    if (v.site && v.site.name) {
+      var tg = el('span', 'g-church-tag'); tg.textContent = v.site.name; box.appendChild(tg);
+      if (siteTop != null) { tg.style.top = 'auto'; tg.style.bottom = siteTop + 'px'; tg.style.transform = 'translateX(-50%)'; }   // 보이는 윗부분 바로 위에
+    }
     box.title = names.join(' · ');
     if (o.onOpen) {
       var hn = el('span', 'g-church-hint'); hn.textContent = o.hint || o.label || ''; box.appendChild(hn);   // 눌러 보라는 안내 풍선
