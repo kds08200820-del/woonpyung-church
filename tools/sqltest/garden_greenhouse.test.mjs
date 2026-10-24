@@ -1,6 +1,6 @@
 // 신앙 정원 5단계(하우스 · 하우스 작물) 마이그레이션 시험 — 가짜 자료만(PGlite).
 //   빈 폴더에서 npm i @electric-sql/pglite@0.2 후 이 파일을 그 폴더로 복사해 node garden_greenhouse.test.mjs <저장소 경로>
-//   1200 → 1300 → 1500 → 1900 → 2100 → 2330 → 2350 → 20261024_0010(경제) → 20261024_0100(하우스) 차례로
+//   1200 → 1300 → 1500 → 1900 → 2100 → 2330 → 2350 → 20261024_0010(경제) → 0200(건축) → 20261024_0100(하우스) 차례로 — 운영과 같은 순서
 import { PGlite } from '@electric-sql/pglite';
 import fs from 'fs';
 import path from 'path';
@@ -36,7 +36,8 @@ await db.exec(`
   insert into public.profiles values ('${U1}', '테스트_성도'), ('${U2}', '테스트_이웃'), ('${U3}', '테스트_새가족'), ('${ADM}', '테스트_목사');
 `);
 const files = ['20261023_1200_garden_phase1.sql', '20261023_1300_garden_farm.sql', '20261023_1500_garden_wallet_shop.sql', '20261023_1900_garden_hearts.sql',
-  '20261023_2100_garden_visits.sql', '20261023_2330_garden_region.sql', '20261023_2350_garden_guestbook_push.sql', '20261024_0010_garden_economy_build.sql'];
+  '20261023_2100_garden_visits.sql', '20261023_2330_garden_region.sql', '20261023_2350_garden_guestbook_push.sql', '20261024_0010_garden_economy_build.sql',
+  '20261024_0200_garden_build.sql'];   // 운영 순서: 0010 · 0200 (10/24 실행) 뒤에 0100
 for (const f of files) await db.exec(fs.readFileSync(path.join(ROOT, 'supabase', f), 'utf8'));
 const HOUSE = fs.readFileSync(path.join(ROOT, 'supabase/20261024_0100_garden_greenhouse.sql'), 'utf8');
 await db.exec(HOUSE);

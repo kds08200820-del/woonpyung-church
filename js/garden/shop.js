@@ -8,13 +8,14 @@
      재고가 보이며 남은 수량까지만 산다(심은 값의 2배, 산 나무는 바로 목재로 보관함에) — 겨울에도 건축을 준비하게
    · 하우스(2026-10-23 담임목사): '하우스' 칸에서 유리 온실을 짓고(빈 전 칸에 한 동, 입체 정원에서 칸을 고른다) 하우스 작물(model.house)을 산다.
      하우스 작물은 하우스 칸에만 심는다. garden_house 가 없으면(SQL 전) 이 칸은 보이지 않는다
-   · 다른 가게(꾸미기·옷·건재상·가구가전·차고)는 '준비 중' — docs/we-church-로드맵-상점.md
+   · 건재상(모델하우스)·교회 건축은 build.js 가 탭을 더한다(addTab — 서버에 기능이 없으면 '준비 중' 그대로)
+   · 다른 가게(꾸미기·옷·가구가전·차고)는 '준비 중' — docs/we-church-로드맵-상점.md
    GardenShop.init({ i18n, sdk, hud }) · GardenShop.open(tab, 닫힌 뒤 할 일)
    ============================================================ */
 window.GardenShop = (function () {
   'use strict';
   var I, SDK, HUD, t;
-  var S = { data: null, tab: 'food', rec: null, busy: false, qty: {}, sq: {}, house: null, done: null };
+  var S = { data: null, tab: 'food', rec: null, busy: false, qty: {}, sq: {}, house: undefined, done: null };   // house: undefined 아직 · null 서버에 없음
   var ART = 'images/garden/shop/';
   var TABS = [['food', 'shop.tab.food'], ['tree', 'shop.tab.tree'], ['timber', 'shop.tab.timber'], ['flower', 'shop.tab.flower'], ['house', 'shop.tab.house']];
   var SOON = ['shop.soon.deco', 'shop.soon.wear', 'shop.soon.build', 'shop.soon.home', 'shop.soon.car'];
@@ -52,16 +53,34 @@ window.GardenShop = (function () {
       render();
     }).catch(function (e) { $('gsList').innerHTML = '<p class="g-empty">' + esc(SDK.notReady(e) ? t('shop.notready') : t('shop.err')) + '</p>'; });
   }
+  // 다른 모듈이 더하는 탭(건재상·교회 건축 — build.js). 서버에 기능이 없으면(ready false) 탭을 숨기고 '준비 중' 칸을 그대로 둔다
+  //   { key, label, soon(대신하는 '준비 중' 키), ready(), render(목록 칸, api), click(e, api) → true 면 처리함 }
+  var EXTRA = [];
+  function extra(key) { for (var i = 0; i < EXTRA.length; i++) if (EXTRA[i].key === key && EXTRA[i].ready()) return EXTRA[i]; return null; }
+  var api = {
+    balance: function () { return S.data ? +S.data.balance || 0 : 0; },
+    setBalance: function (v) { if (S.data) S.data.balance = v; HUD.setTalent(v); if ($('gsBal')) $('gsBal').textContent = tal(v); },
+    close: function (fn) { if (S.rec) HUD.closeThen(S.rec, fn); else if (fn) fn(); },
+    render: function () { render(); },
+    tab: function (k) { S.tab = k; renderTabs(); render(); }
+  };
   function renderTabs() {
-    $('gsTabs').innerHTML = TABS.filter(function (tb) { return tb[0] !== 'house' || S.house; }).map(function (tb) {
+    var ex = EXTRA.filter(function (x) { return x.ready(); }), hide = {};
+    ex.forEach(function (x) { if (x.soon) hide[x.soon] = 1; });
+    // 하우스 칸은 서버에 하우스가 없다고 알 때(S.house === null, SQL 전)만 숨긴다 — 처음 열 때는 받기 전이라 그대로 둔다
+    var tabs = TABS.filter(function (tb) { return tb[0] !== 'house' || S.house !== null; });
+    if (!tabs.some(function (tb) { return tb[0] === S.tab; }) && !extra(S.tab)) S.tab = 'food';
+    $('gsTabs').innerHTML = tabs.concat(ex.map(function (x) { return [x.key, x.label]; })).map(function (tb) {
       return '<button type="button" class="gs-tab' + (S.tab === tb[0] ? ' is-on' : '') + '" role="tab" aria-selected="' + (S.tab === tb[0]) + '" data-tab="' + tb[0] + '">' + esc(t(tb[1])) + '</button>';
-    }).join('') + SOON.map(function (k) { return '<span class="gs-tab gs-soon" aria-disabled="true">' + esc(t(k)) + '<small>' + esc(t('shop.soon')) + '</small></span>'; }).join('');
+    }).join('') + SOON.filter(function (k) { return !hide[k]; }).map(function (k) { return '<span class="gs-tab gs-soon" aria-disabled="true">' + esc(t(k)) + '<small>' + esc(t('shop.soon')) + '</small></span>'; }).join('');
   }
   function render() {
     var d = S.data; if (!d) return;
     $('gsBal').textContent = tal(d.balance);
     var bag = (d.inventory || []).map(function (i) { var it = find(i.item); return it ? esc(nameOf(it.name)) + ' ' + i.qty : ''; }).filter(Boolean);
     $('gsBag').textContent = bag.length ? t('shop.bag', { list: bag.join(' · ') }) : t('shop.bag.empty');
+    var ext = extra(S.tab);
+    if (ext) { ext.render($('gsList'), api); return; }
     var items = (d.items || []).filter(function (it) { return tabOf(it) === S.tab; });
     var sell = items.filter(function (it) { return it.fit !== 'no'; }), no = items.filter(function (it) { return it.fit === 'no'; });
     var html = '<p class="gs-lead">' + esc(t('shop.lead.' + S.tab)) + '</p>' +
@@ -150,6 +169,8 @@ window.GardenShop = (function () {
     }
     var tb = e.target.closest('.gs-tab[data-tab]');
     if (tb) { S.tab = tb.getAttribute('data-tab'); renderTabs(); render(); $('gsList').scrollTop = 0; return; }
+    var ext = extra(S.tab);
+    if (ext && ext.click && $('gsList').contains(e.target) && ext.click(e, api)) return;
     var sqb = e.target.closest('[data-sq]');
     if (sqb) { var s2 = sqb.getAttribute('data-slug'); S.sq[s2] = Math.max(1, Math.min(Math.min(20, stockOf(s2) || 1), (S.sq[s2] || 1) + (+sqb.getAttribute('data-sq')))); render(); return; }
     var gb = e.target.closest('[data-grown]');
@@ -220,5 +241,6 @@ window.GardenShop = (function () {
     $('gmShop').addEventListener('click', onClick);
     $('gmShop').addEventListener('change', onPrice);
   }
-  return { init: init, open: open, items: function () { return (S.data && S.data.items) || null; }, load: load, find: find, isHouse: isHouse };
+  return { init: init, open: open, items: function () { return (S.data && S.data.items) || null; }, load: load, find: find, isHouse: isHouse,
+    addTab: function (x) { EXTRA.push(x); if (S.rec) renderTabs(); }, refreshTabs: function () { if (S.rec) { renderTabs(); render(); } } };
 })();

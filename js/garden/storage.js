@@ -17,21 +17,28 @@ window.GardenStorage = (function () {
   function nameOf(v) { if (v && typeof v === 'object') { var l = String(I.locale() || 'ko'); return v[l] || v[l.split('-')[0]] || v.ko || v.en || ''; } return v || ''; }
   function tal(n) { return I.fmtNum(Math.round((+n || 0) * 10) / 10); }
   function unit() { return HUD.talentLabel ? HUD.talentLabel() : t('talent.unit'); }
+  function BLD() { var b = window.GardenBuild; return b && b.ready && b.ready() ? b : null; }   // 건축(집·교회)이 열렸는지
 
   /* ── 건축 미션: 단계와 다음 할 일 ── */
   function mission(b) {
     b = b || S.build; if (!b) return null;
-    var h = (b.houses && b.houses[0]) || { key: 'small', dae: 1, wood: 200, wage: 50 };
+    // 목표 집: 아직 짓지 않은 첫 집(작은 집 → 한옥 → 큰 집). 다 지었으면 마지막 집
+    var hs = b.houses || [], built = BLD() ? BLD().homes3d().map(function (x) { return x.kind; }) : [], h = null;
+    for (var j = 0; j < hs.length; j++) if (built.indexOf(hs[j].key) < 0) { h = hs[j]; break; }
+    h = h || hs[hs.length - 1] || { key: 'small', dae: 1, wood: 200, wage: 50 };
     var wood = +b.wood || 0, coming = +b.coming || 0, st = b.stock || {}, left = 0;
+    var dae = BLD() ? BLD().info().free : (+b.dae || 0);   // 집이 이미 앉은 대지는 빼고
     Object.keys(st).forEach(function (k) { left += +st[k] || 0; });
     var list = [
-      { key: 'dae', done: (+b.dae || 0) >= h.dae, text: t('build.s.dae', { n: h.dae }), sub: t('build.s.dae.sub', { have: I.fmtNum(+b.dae || 0) }), go: 'farm' },
+      { key: 'dae', done: dae >= h.dae, text: t('build.s.dae', { n: h.dae }), sub: t('build.s.dae.sub', { have: I.fmtNum(dae) }), go: 'farm' },
       { key: 'trees', done: wood + coming >= h.wood, text: t('build.s.trees'),
         sub: b.winter ? t('build.s.trees.winter', { n: I.fmtNum(left) }) : t('build.s.trees.sub', { n: I.fmtNum(+b.trees || 0), w: I.fmtNum(coming) }), go: 'timber' },
       { key: 'wood', done: wood >= h.wood, text: t('build.s.wood', { n: I.fmtNum(h.wood) }), sub: t('build.s.wood.sub', { have: I.fmtNum(wood), need: I.fmtNum(h.wood) }),
         bar: Math.max(0, Math.min(1, wood / h.wood)) },
       { key: 'wage', done: (+b.balance || 0) >= h.wage, text: t('build.s.wage', { n: I.fmtNum(h.wage) }), sub: t('build.s.wage.sub', { have: tal(b.balance) }) },
-      { key: 'house', done: false, soon: true, text: t('build.s.house', { name: t('house.' + h.key) }), sub: t('build.s.house.sub') }
+      // 집 짓기 — 건재상(build.js, 20261024_0200)이 열리면 지을 수 있고, 그 집을 지으면 마친 것(그다음 집이 새 미션)
+      BLD() ? { key: 'house', done: built.indexOf(h.key) >= 0, text: t('build.s.house', { name: t('house.' + h.key) }), sub: t(built.indexOf(h.key) >= 0 ? 'build.s.house.done' : 'build.s.house.open'), go: 'build' }
+        : { key: 'house', done: false, soon: true, text: t('build.s.house', { name: t('house.' + h.key) }), sub: t('build.s.house.sub') }
     ];
     var prep = list.slice(0, 4), d = prep.filter(function (s) { return s.done; }).length, next = null;
     for (var i = 0; i < prep.length; i++) if (!prep[i].done) { next = prep[i]; break; }
@@ -52,7 +59,7 @@ window.GardenStorage = (function () {
     var box = $('gMission'), b = S.build; if (!box) return;
     if (!b || !b.active) { box.hidden = true; return; }
     var m = mission(b);
-    $('gMissionM').textContent = m.next ? t('build.next', { step: m.next.text }) : t('build.ready');
+    $('gMissionM').textContent = m.next ? t('build.next', { step: m.next.text }) : t(BLD() ? 'build.ready2' : 'build.ready');
     $('gMissionP').textContent = t('build.prog', { n: m.total, d: m.done });
     $('gMissionFill').style.width = Math.round(m.done / m.total * 100) + '%';
     var tr = $('gMissionFill').parentNode; tr.setAttribute('aria-valuenow', String(Math.round(m.done / m.total * 100)));
@@ -98,7 +105,7 @@ window.GardenStorage = (function () {
       var m = mission(b);
       h += box(t('build.title'), '<p class="g-wl-note">' + esc(t('build.lead', { house: t('house.' + m.house.key), dae: m.house.dae, wood: I.fmtNum(m.house.wood), wage: I.fmtNum(m.house.wage) })) + '</p>' +
         '<ol class="gst-steps">' + m.list.map(function (s) {
-          var go = s.done || s.soon || !s.go ? '' : '<button type="button" class="g-btn g-btn-line gst-go" data-go="' + s.go + '">' + esc(t(s.go === 'farm' ? 'build.go.farm' : 'build.go.timber')) + '</button>';
+          var go = s.done || s.soon || !s.go ? '' : '<button type="button" class="g-btn g-btn-line gst-go" data-go="' + s.go + '">' + esc(t(s.go === 'farm' ? 'build.go.farm' : s.go === 'build' ? 'build.go.build' : 'build.go.timber')) + '</button>';
           return '<li class="gst-step' + (s.done ? ' is-done' : '') + (s.soon ? ' is-soon' : '') + '"><span class="gst-chk" aria-hidden="true">' + (s.done ? '✓' : '') + '</span>' +
             '<span class="gst-st"><b>' + esc(s.text) + (s.soon ? ' <small class="gst-soon">' + esc(t('storage.soon')) + '</small>' : '') + '</b><small>' + esc(s.sub) + '</small>' +
             (s.bar != null ? '<span class="g-bar-track gst-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(s.bar * 100) + '"><span class="g-bar-fill" style="width:' + Math.round(s.bar * 100) + '%"></span></span>' : '') +
@@ -124,7 +131,11 @@ window.GardenStorage = (function () {
     h += box(t('storage.edu'), edu ? '<ul class="g-wl-list">' + edu + '</ul>' : '<p class="g-wl-note">' + esc(t('storage.edu.none')) + '</p>', !!edu, edu ? I.fmtNum((d.edu || []).length) : '');
     // 다녀온 여행 · 지은 집 — 앞으로 생길 상품
     h += box(t('storage.trip'), '<p class="g-wl-note">' + esc(t('storage.trip.soon')) + '</p>', false, t('storage.soon'));
-    h += box(t('storage.house'), '<p class="g-wl-note">' + esc(t('storage.house.soon')) + '</p>', false, t('storage.soon'));
+    var hs = BLD() ? BLD().homes3d() : null;
+    if (!hs) h += box(t('storage.house'), '<p class="g-wl-note">' + esc(t('storage.house.soon')) + '</p>', false, t('storage.soon'));
+    else h += box(t('storage.house'), hs.length
+      ? '<ul class="g-wl-list">' + hs.map(function (x) { return '<li><span>' + esc(x.name) + ' <small>' + esc(I.fmtDate(new Date(x.built_at))) + '</small></span><b>' + esc(t('storage.house.cells', { n: x.w * x.h })) + '</b></li>'; }).join('') + '</ul>'
+      : '<p class="g-wl-note">' + esc(t('storage.house.none')) + '</p>', !!hs.length, hs.length ? I.fmtNum(hs.length) : '');
     $('gstBody').innerHTML = h;
   }
   function onBody(e) {
@@ -134,6 +145,7 @@ window.GardenStorage = (function () {
     HUD.closeThen(S.rec, function () {
       if (go === 'farm' && FARM) FARM.open();
       else if (go === 'timber' && SHOP) SHOP.open('timber');
+      else if (go === 'build' && SHOP) SHOP.open('build');
     });
   }
 
@@ -144,5 +156,6 @@ window.GardenStorage = (function () {
     var btn = $('gStorageBtn'); if (btn) btn.addEventListener('click', function () { open(); });
     var mb = $('gMissionBtn'); if (mb) mb.addEventListener('click', function () { open(); });
   }
-  return { init: init, open: open, setFarm: setFarm, mission: function () { return S.build && S.build.active ? mission(S.build) : null; } };
+  return { init: init, open: open, setFarm: setFarm, mission: function () { return S.build && S.build.active ? mission(S.build) : null; },
+    refresh: renderMission };   // 집·교회 자료(build.js)를 받은 뒤 미션 칸을 다시
 })();

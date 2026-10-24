@@ -1,0 +1,186 @@
+{
+  "comfy": {
+    "url": "http://127.0.0.1:8188",
+    "output_dir": "C:\\ComfyUI\\output",
+    "run_bat": "C:\\ComfyUI\\run_comfyui.bat",
+    "unet": "flux1-schnell-Q4_K_S.gguf",
+    "clip1": "t5xxl_fp8_e4m3fn_scaled.safetensors",
+    "clip2": "clip_l.safetensors",
+    "vae": "flux_ae.safetensors",
+    "steps": 4,
+    "cfg": 1.0,
+    "sampler": "euler",
+    "scheduler": "simple"
+  },
+  "style_prefix": "",
+  "style_suffix": "",
+  "sprite_suffix": "isolated on a flat solid evenly lit pure white background, nothing else in the frame",
+  "chroma_suffix": "the entire background is one solid flat vivid saturated neon magenta chroma-key background (#FF00FF), perfectly even, nothing else in the frame",
+  "chroma_suffix_black": "the entire background is solid pure pitch black (#000000), perfectly even, no gradient, no vignette, no stars, no floor reflection, nothing else in the frame",
+  "chroma_key": {
+    "color": [
+      255,
+      0,
+      255
+    ],
+    "t0": 70,
+    "t1": 150,
+    "feather": 0.8
+  },
+  "webp": {
+    "quality": 82,
+    "method": 6
+  },
+  "margin": 0.04,
+  "fallback_key": "black",
+  "version": "20261024bd1",
+  "theme": "build",
+  "out_root": "images/garden/build",
+  "notes": [
+    "신앙 정원 건축 그림 — 모델하우스 3채(작은 집·한옥·큰 집)와 교회 3채, 교회 공사 중 터. 2026-10-23 담임목사 지시",
+    "GARDEN_ASSETS=tools/wechurch-art/build-assets.json python tools/garden-art/gen_garden_assets.py gen|pick|export",
+    "<id>.webp = 땅 위에 선 건물 하나(스토어 모델하우스 카드와 입체 정원에 함께 씀, 896→512)"
+  ],
+  "assets": [
+    {
+      "id": "house-small",
+      "group": "ui",
+      "out": "house-small.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        512,
+        512
+      ],
+      "prompt": "A small cozy one-story Korean countryside cottage with cream plaster walls, a dark gray tiled gable roof, a wooden front door, two small square windows with wooden frames and a short stone step, standing on a small flat square patch of light brown packed earth, no people, no text, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 21100,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "house-hanok",
+      "group": "ui",
+      "out": "house-hanok.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        512,
+        512
+      ],
+      "prompt": "A traditional Korean hanok house, one story, with a gracefully curved dark gray giwa tile roof with upturned eaves, white walls framed by dark brown wooden beams, lattice paper windows, a raised wooden porch floor and a gray stone foundation, standing on a flat rectangular patch of light packed earth, no people, no text, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 21200,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 2
+    },
+    {
+      "id": "house-big",
+      "group": "ui",
+      "out": "house-big.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        512,
+        512
+      ],
+      "prompt": "A large two-story Korean family house with warm beige walls, a terracotta brown roof, many white framed windows, a covered front porch with wooden pillars and a small balcony, a few small round shrubs beside it, standing on a flat square patch of light packed earth, no people, no text, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 21300,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 2
+    },
+    {
+      "id": "church-small",
+      "group": "ui",
+      "out": "church-small.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        512,
+        512
+      ],
+      "prompt": "A small white wooden country chapel with a steep red-brown gable roof, a small white bell tower above the entrance topped by a simple plain cross, an arched wooden door and tall arched windows, standing on a flat patch of short green grass, no people, no text, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 22100,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 2
+    },
+    {
+      "id": "church-brick",
+      "group": "ui",
+      "out": "church-brick.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        512,
+        512
+      ],
+      "prompt": "A medium-sized red brick church with a tall square brick bell tower topped by a slender dark spire and a simple plain cross, tall arched windows, a dark gray slate roof and wide stone steps up to arched wooden double doors, standing on a flat patch of short green grass, no people, no text, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 22200,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 1
+    },
+    {
+      "id": "church-stone",
+      "group": "ui",
+      "out": "church-stone.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        512,
+        512
+      ],
+      "prompt": "A large grand church built of warm light gray stone with two tall towers with pointed spires each topped by a simple plain cross, a big round rose window above three arched main doors, a long nave with buttresses and a dark slate roof, standing on a broad flat patch of short green grass, no people, no text, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 22300,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 2
+    },
+    {
+      "id": "church-site",
+      "group": "ui",
+      "out": "church-site.webp",
+      "gen": [
+        896,
+        896
+      ],
+      "final": [
+        512,
+        512
+      ],
+      "prompt": "A church construction site with a low gray stone foundation, simple wooden scaffolding frames, a neat stack of timber planks, a stack of red bricks and a small wooden ladder, standing on a flat patch of light brown packed earth, no people, no text, front three-quarter view, centered. cute stylized 3D clay render, soft pastel palette, matte clay texture, rounded simple shapes, gentle soft light, highly detailed",
+      "seed": 22900,
+      "bg": "rembg",
+      "candidates": 2,
+      "anchor": null,
+      "variants": [],
+      "pick": 2
+    }
+  ]
+}

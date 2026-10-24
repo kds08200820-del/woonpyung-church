@@ -173,6 +173,8 @@
       // 내 땅(밭)을 메인 장면에도 — 땅 기능이 있는 서버(state.fruit)일 때만, 창을 열지 않고 조용히 불러온다
       var s2 = M.state || st;
       var farmP = window.GardenFarm && s2 && s2.fruit !== undefined && !M.offline ? window.GardenFarm.reload() : null;
+      // 교회(첫 화면 언덕)·지은 집 — 내 땅을 부르면 함께 받고, 아니면 따로 (서버에 기능이 없으면 조용히 숨는다)
+      if (!farmP && window.GardenBuild && !M.offline) window.GardenBuild.load();
       // 안내 도우미: 하루 처음 들어올 때(밭·날씨를 받은 뒤, 첫 심기 창이 없을 때)
       if (window.GardenGuide) Promise.all([farmP, M.wx ? null : refreshWeather()]).then(function () { window.GardenGuide.daily(); }, function () { window.GardenGuide.daily(); });
     });
@@ -184,6 +186,7 @@
     if (window.GardenShop) window.GardenShop.init({ i18n: I, sdk: SDK, hud: HUD });
     if (window.GardenFarm) window.GardenFarm.init({ i18n: I, sdk: SDK, hud: HUD, shop: window.GardenShop, plant: window.GardenPlant });
     if (window.GardenStorage) window.GardenStorage.init({ i18n: I, sdk: SDK, hud: HUD, farm: window.GardenFarm, shop: window.GardenShop });
+    if (window.GardenBuild) window.GardenBuild.init({ i18n: I, sdk: SDK, hud: HUD, shop: window.GardenShop, farm: window.GardenFarm, scene: SCENE });   // 건재상·교회 건축
     if (window.GardenVisit) window.GardenVisit.init({ i18n: I, sdk: SDK, hud: HUD, scene: SCENE, farm: window.GardenFarm, base3d: base3d });
     if (window.GardenRegion) {
       window.GardenRegion.init({ sdk: SDK });

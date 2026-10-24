@@ -166,7 +166,7 @@ window.GardenScene = (function () {
   function buildHills() {
     S.el.mid.innerHTML = '';
     var img = asset(hillsPath(S.season));
-    if (img) { var im = el('img', 'g-hills-img'); im.src = img; im.alt = ''; im.draggable = false; S.el.mid.appendChild(im); return; }
+    if (img) { var im = el('img', 'g-hills-img'); im.src = img; im.alt = ''; im.draggable = false; S.el.mid.appendChild(im); drawChurch(); return; }
     var ph = el('div', 'g-hills-ph');
     ph.innerHTML =
       '<div class="g-hill g-hill-far" style="left:-200px;width:900px;height:520px;bottom:60px"></div>' +
@@ -179,6 +179,34 @@ window.GardenScene = (function () {
       '<div class="g-tree" style="left:1440px;bottom:120px;--s:.8"></div>' +
       '<div class="g-path"></div>';
     S.el.mid.appendChild(ph);
+    drawChurch();
+  }
+
+  /* ── 교회: 성도들의 건축헌금으로 지은 교회(가장 최근 것)와 짓는 중인 공사 터 — 언덕 위, 모든 성도에게 같은 교회 (2026-10-23 담임목사)
+     plot 층에 둔다(그 층이 화면 전체를 덮어 mid 층 것은 눌리지 않는다). 언덕 그림을 다시 그려도(계절) 그대로
+     v = { src, name, site:{src,name} } | null (build.js). 누르면 스토어 '교회 건축'(o.onOpen) ── */
+  // 믿음 나무(x 890) 왼쪽 언덕 — 휴대폰(가운데 x 430~1170 만 보임)과 PC(오른쪽 칸이 덮음) 모두에서 보이는 자리
+  var CHURCH_AT = { x: 660, y: 482, h: 120, siteH: 80 };
+  function setChurch(v, o) { S.church = v ? { v: v, o: o || {} } : null; drawChurch(); }
+  function drawChurch() {
+    if (S.el.church) { S.el.church.remove(); S.el.church = null; }
+    if (!S.church || !S.el.plot) return;
+    var v = S.church.v, o = S.church.o, box = el('div', 'g-church'), names = [];
+    box.style.left = CHURCH_AT.x + 'px'; box.style.top = CHURCH_AT.y + 'px';
+    [[v.src, CHURCH_AT.h, '', v.name], [v.site && v.site.src, CHURCH_AT.siteH, ' is-site', v.site && v.site.name]].forEach(function (c) {
+      if (!c[0]) return;
+      var im = el('img', 'g-church-img' + c[2]); im.src = c[0]; im.alt = ''; im.draggable = false; im.style.height = c[1] + 'px';
+      im.onerror = function () { im.remove(); };
+      box.appendChild(im); if (c[3]) names.push(c[3]);
+    });
+    if (v.site && v.site.name) { var tg = el('span', 'g-church-tag'); tg.textContent = v.site.name; box.appendChild(tg); }
+    box.title = names.join(' · ');
+    if (o.onOpen) {
+      box.classList.add('is-open'); box.setAttribute('role', 'button'); box.tabIndex = 0; box.setAttribute('aria-label', (o.label || '') + (names.length ? ' — ' + names.join(' · ') : ''));
+      box.addEventListener('click', function (e) { e.stopPropagation(); o.onOpen(); });
+      box.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onOpen(); } });
+    }
+    S.el.plot.insertBefore(box, S.el.plot.firstChild); S.el.church = box;   // 밭·인물과 같은 층(누를 수 있게), 그 층 맨 앞 자식 = 맨 뒤에 그림
   }
   function buildFloor() {
     var img = asset('floor/floor-tiles.webp');
@@ -503,7 +531,7 @@ window.GardenScene = (function () {
   }
 
   return {
-    W: W, H: H, mount: mount, layout: layout, project: project, anchors: anchors, world: function () { return world; }, setWorld: setWorld, setField: setField,
+    W: W, H: H, mount: mount, layout: layout, project: project, anchors: anchors, world: function () { return world; }, setWorld: setWorld, setField: setField, setChurch: setChurch,
     rotateField: rotateField, fieldRot: function () { return S.fieldRot || 0; },
     setSky: setSky, setSeason: setSeason, setPlant: setPlant, stageUp: stageUp, setCharacter: setCharacter, floatXp: floatXp, sparkle: sparkle,
     setNameplate: setNameplate, peekName: peekName, setReducedMotion: setReducedMotion, preview: preview,
