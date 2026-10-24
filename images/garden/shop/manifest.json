@@ -1,5 +1,5 @@
 {
- "version": "20261023sh1",
+ "version": "20261024sh1",
  "theme": "shop",
  "files": {
   "_sprout.webp": 28756,
@@ -36,6 +36,7 @@
   "jujube-fruit.webp": 6728,
   "jujube.webp": 41998,
   "kiwi.webp": 30332,
+  "larch.webp": 24648,
   "lavender.webp": 62762,
   "lettuce-fruit.webp": 7834,
   "lettuce.webp": 23930,
@@ -48,6 +49,7 @@
   "mum.webp": 33850,
   "nanking-cherry-fruit.webp": 6534,
   "nanking-cherry.webp": 52980,
+  "oak.webp": 35664,
   "peach-fruit.webp": 5934,
   "peach.webp": 36478,
   "pear-fruit.webp": 5284,
@@ -56,6 +58,7 @@
   "pepper.webp": 24806,
   "persimmon-fruit.webp": 5862,
   "persimmon.webp": 33096,
+  "pine.webp": 29960,
   "plum-fruit.webp": 4830,
   "plum.webp": 32364,
   "portulaca.webp": 33474,
