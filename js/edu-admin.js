@@ -11,7 +11,7 @@
  *    교적에서 골라 같은 양식의 증명서를 발급하고 그 성도의 자료실(member_files)에 넣는다. 강의실 이수 기록이 있으면 저절로 잇는다.
  *    서버: supabase/20261025_2000_edu_cert_pastor.sql (edu_is_pastor · 목회자만 발급)
  */
-console.log('[edu-admin.js] v20261026dy1');
+console.log('[edu-admin.js] v20261026rt1');
 
 (function () {
   if (window.WPCEduAdmin) return;
@@ -121,7 +121,7 @@ console.log('[edu-admin.js] v20261026dy1');
       return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px"><h3 style="margin:0;color:var(--accent,#3A281C)">🎓 강의실 — 학습·세례(입교)·유아세례 교육</h3>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap"><a class="btn btn-line" href="classroom.html" target="_blank" rel="noopener" style="padding:3px 11px">강의실 열기 ↗</a><button class="btn btn-line" data-x="reload" style="padding:3px 11px">새로고침</button><button class="btn btn-line" data-x="close" style="padding:3px 11px">닫기</button></div></div>' +
         '<p style="margin:0 0 10px;font-size:.78rem;color:#AFA49C;line-height:1.55">이수 = 강의실에서 모든 장을 공부하고 이수 시험(20문항)에서 70점 이상. 이수 기록은 교적 매칭키와 함께 저장되어 교적 상세·자료실(출석/이수)에도 보입니다. 당회 문답과 예식을 마치면 <b>증명서 발급</b>을 눌러 번호를 매겨 인쇄합니다.</p>' +
-        '<div class="fin-tabs" style="margin:8px 0 14px">' + [['done', '이수자'], ['prog', '수강 현황'], ['cert', '증명서 대장']].map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (t[0] === cur ? 'active' : '') + '">' + t[1] + '</button>'; }).join('') + '</div><div id="eduBody"></div>';
+        '<div class="fin-tabs" style="margin:8px 0 14px">' + [['done', '이수자'], ['prog', '수강 현황'], ['tries', '응시 기록'], ['cert', '증명서 대장']].map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (t[0] === cur ? 'active' : '') + '">' + t[1] + '</button>'; }).join('') + '</div><div id="eduBody"></div>';
     }
     function draw() {
       m.box.innerHTML = head();
@@ -132,6 +132,7 @@ console.log('[edu-admin.js] v20261026dy1');
       if (D.ready !== true) { body.innerHTML = '<p style="color:#A3907F">강의실 기록 표가 아직 없습니다. supabase/20261025_1600_edu_classroom.sql 을 실행해 주십시오.</p>'; return; }
       if (cur === 'done') drawDone(body, draw);
       else if (cur === 'prog') drawProg(body);
+      else if (cur === 'tries') drawTries(body);
       else drawCerts(body, draw);
     }
     if (D.ready === true) draw(); else { m.box.innerHTML = '<p class="qt-loading">불러오는 중…</p>'; load().then(draw, draw); }
@@ -155,6 +156,29 @@ console.log('[edu-admin.js] v20261026dy1');
           '<td><div style="display:flex;align-items:center;gap:8px;min-width:150px"><div class="dsh-bar" style="height:8px"><i style="width:' + Math.round(n / t * 100) + '%"></i></div><span style="font-size:.8rem;white-space:nowrap">' + n + '/' + t + '</span></div></td>' +
           '<td class="num">' + (p.tries || 0) + '</td><td class="num">' + (p.best == null ? '–' : p.best + '점') + '</td><td>' + st + '</td><td style="white-space:nowrap">' + esc(dday(p.updated_at)) + '</td></tr>';
       }).join('') + '</tbody></table></div>';
+  }
+  // 응시 기록(2026-10-26 담임목사 "재시험 … 기존 기록은 삭제되지 않습니다"): 통과·미달 모든 회차 — 회차마다 시험지 PDF
+  function drawTries(body) {
+    var all = D.results.slice().sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); }), nth = {}, cnt = {};
+    all.forEach(function (r) { var k = (r.user_id || r.member_key || r.member_name) + '|' + r.course; cnt[k] = (cnt[k] || 0) + 1; nth[r.id] = cnt[k]; });
+    var q = '', only = '';
+    body.innerHTML = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><input id="eduTq" placeholder="이름 검색" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid #DDD9D5;border-radius:3px;font:inherit">' +
+      '<select id="eduTf" style="padding:7px 10px;border:1px solid #DDD9D5;border-radius:3px;font:inherit"><option value="">통과·미달 모두</option><option value="fail">미달(재시험 대상)</option><option value="pass">통과</option></select>' +
+      '<span style="font-size:.84rem;color:#7D7167">응시 ' + D.results.length + '회 · 미달 ' + D.results.filter(function (r) { return !r.passed; }).length + '회 — 미달한 분은 강의실에서 재시험을 볼 수 있고, 지난 기록은 지우지 않습니다</span></div><div id="eduTl"></div>';
+    var box = body.querySelector('#eduTl');
+    function paint() {
+      var v = q.trim(), rows = D.results.filter(function (r) { return (!v || String(r.member_name).indexOf(v) >= 0) && (!only || (only === 'pass') === !!r.passed); });
+      box.innerHTML = rows.length ? '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>응시일</th><th>이름</th><th>과정</th><th class="num">회차</th><th class="num">점수</th><th>결과</th><th></th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          return '<tr><td style="white-space:nowrap">' + esc(dday(r.created_at)) + '</td><td><b>' + esc(r.member_name) + '</b>' + (r.member_key ? '' : ' <small style="color:#A33A2A">교적 미연결</small>') + '</td>' +
+            '<td>' + esc(COURSE[r.course] || r.course) + '</td><td class="num">' + (nth[r.id] || 1) + '회</td><td class="num">' + esc(r.score) + '점</td>' +
+            '<td>' + (r.passed ? '<span class="fin-pill" style="background:#13110F;color:#fff">통과</span>' : '<span class="fin-pill" style="background:#FBEDE4;color:#A33A2A">미달</span>') + '</td>' +
+            '<td style="text-align:right"><a class="btn btn-line" href="edu-print.html?sheet=' + r.id + '" target="_blank" rel="noopener" style="padding:3px 10px;font-size:.8rem">시험지 PDF</a></td></tr>';
+        }).join('') + '</tbody></table></div>' : '<p style="color:#A3907F">응시 기록이 없습니다.</p>';
+    }
+    body.querySelector('#eduTq').oninput = function () { q = this.value; paint(); };
+    body.querySelector('#eduTf').onchange = function () { only = this.value; paint(); };
+    paint();
   }
   /* ── 도장 설정: 교회 직인(images/운평장로교회직인.png, '회' 자에 반쯤 걸침) · 당회장 인('(인)' 자리) ──
        당회장 인은 저장소(공개)에 넣지 않고 교회 파일 서버(R2)에 올려 주소만 app_settings 'edu_img_pastor_seal' 에 둔다(관리자·재정권한자만 읽음).

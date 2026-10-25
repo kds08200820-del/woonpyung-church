@@ -58,6 +58,22 @@
 .cr-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border-radius: 999px; font-size: .76rem; font-weight: 700; background: var(--paper-alt); color: var(--accent); }
 .cr-badge.is-pass { background: var(--accent); color: #fff; }
 .cr-badge.is-ready { background: #FBEDE4; color: #9C4825; }
+.cr-badge.is-retry { background: #FFF1E0; color: #9C4825; border: 1px solid #F0C9A8; }
+/* 재시험 안내 · 응시 기록(2026-10-26) — 지난 기록은 지우지 않고 회차마다 시험지를 다시 본다 */
+.cr-retry { margin: 0 0 14px; padding: 11px 14px; border: 1px solid #F0C9A8; border-left: 4px solid var(--gold); border-radius: 10px; background: #FFF8F1; font-size: .9rem; line-height: 1.65; color: var(--ink-soft); word-break: keep-all; }
+.cr-retry b { display: inline-block; margin-right: 8px; color: var(--gold); }
+.cr-hist { margin-top: 22px; text-align: left; }
+.cr-hist h3 small { font-size: .76rem; font-weight: 500; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.cr-hist ol { list-style: none; margin: 8px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden; }
+.cr-hist li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 14px; border-top: 1px solid var(--line); font-size: .88rem; }
+.cr-hist li:first-child { border-top: 0; }
+.cr-hist li .n { font-weight: 700; color: var(--accent); min-width: 2.4em; }
+.cr-hist li .d { color: var(--muted); flex: 1 1 auto; }
+.cr-hist li b { font-variant-numeric: tabular-nums; color: var(--accent); }
+.cr-hist li .r { font-size: .76rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #F3ECE4; color: #8B7B6C; }
+.cr-hist li.is-pass .r { background: var(--accent); color: #fff; }
+.cr-hist li.is-fail .r { background: #FBEDE4; color: #A33A2A; }
+.cr-hist li.is-cur { background: #FBF5EC; }
 
 .cr-bar { height: 8px; border-radius: 999px; background: #EFE6DA; overflow: hidden; }
 .cr-bar > i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--accent); transition: width .5s cubic-bezier(.4,0,.2,1); }

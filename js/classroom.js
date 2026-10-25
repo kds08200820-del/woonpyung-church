@@ -7,8 +7,10 @@
  *    통과하면 교적 매칭키와 함께 기록되어 목회행정 대시보드·교적 상세·자료실에 나타난다
  *    (supabase/20261025_1600_edu_classroom.sql — 실행 전에는 결과 저장만 '준비 중' 으로 안내)
  *  · 유아세례 과정(부모 교육)은 20261025_1800_edu_infant.sql 로 서버가 받는다 — 실행 전에는 이 기기에 먼저 보관
+ *  · 재시험(2026-10-26 담임목사): 70점에 못 미치면 새 문제로 다시 본다. 앞선 응시 기록은 지우지 않고(서버 edu_exam_results 에 한 줄씩)
+ *    '응시 기록'으로 보여 주며 회차마다 시험지를 다시 볼 수 있다. 통과한 과정은 다시 보지 않는다(하루 10번까지 — 서버가 센다)
  */
-console.log('[classroom.js] v20261025inf1');
+console.log('[classroom.js] v20261026rt1');
 
 (function () {
   var C = window.WPC_CATECHISM;
@@ -104,6 +106,25 @@ console.log('[classroom.js] v20261025inf1');
     if (r) return { score: r.score, at: r.created_at, id: r.id };
     var l = L.last[cid];
     return l && l.passed ? { score: l.score, at: l.at, id: l.id || null, local: !l.id } : null;
+  }
+  // 응시 기록(오래된 것부터): 서버에 저장된 회차 + 아직 이 기기에만 있는 마지막 결과
+  function triesOf(cid) {
+    var list = SV.results.filter(function (r) { return r.course === cid; }).slice().sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); });
+    var l = L.last[cid];
+    if (l && !l.id && l.sheet) list.push({ id: null, course: cid, score: l.score, passed: l.passed, created_at: l.at, local: true });
+    return list;
+  }
+  function failsOf(cid) { return triesOf(cid).filter(function (r) { return !r.passed; }); }
+  function bestOf(list) { return list.length ? Math.max.apply(null, list.map(function (r) { return +r.score || 0; })) : null; }
+  function historyHTML(cid, curId) {
+    var list = triesOf(cid); if (!list.length) return '';
+    return '<section class="cr-hist" aria-label="응시 기록"><h3 class="cr-sub-h">응시 기록 <small>지난 기록은 지워지지 않고 그대로 남습니다</small></h3><ol>' +
+      list.map(function (r, i) {
+        var url = r.id ? 'edu-print.html?sheet=' + r.id : 'edu-print.html?local=' + cid;
+        return '<li class="' + (r.passed ? 'is-pass' : 'is-fail') + (curId && r.id === curId ? ' is-cur' : '') + '"><span class="n">' + (i + 1) + '회</span>' +
+          '<span class="d">' + esc(kdate(r.created_at)) + (r.local ? ' · 이 기기에 보관' : '') + '</span><b>' + esc(r.score) + '점</b>' +
+          '<span class="r">' + (r.passed ? '통과' : '미달') + '</span><a class="cr-line cr-sm" href="' + url + '" target="_blank" rel="noopener">시험지</a></li>';
+      }).join('') + '</ol></section>';
   }
   function loadServer() {
     if (!S) { SV.loaded = true; return Promise.resolve(); }
@@ -220,8 +241,11 @@ console.log('[classroom.js] v20261025inf1');
   function courseCard(cid) {
     var c = C.courses[cid], p = pct(cid), pass = passedOf(cid), started = doneOf(cid).length > 0;
     var st = steps(cid), lessonsDone = !st[st.length - 1].lock;
-    var badge = pass ? '<span class="cr-badge is-pass">✓ 이수 완료 ' + pass.score + '점</span>' : (lessonsDone ? '<span class="cr-badge is-ready">시험을 볼 수 있습니다</span>' : (started ? '<span class="cr-badge">공부 중</span>' : ''));
-    var label = !S ? '로그인하고 시작하기' : pass ? '과정 다시 보기' : lessonsDone ? '이수 시험 보기' : started ? '이어서 공부하기' : '공부 시작하기';
+    var fails = pass ? [] : failsOf(cid);
+    var badge = pass ? '<span class="cr-badge is-pass">✓ 이수 완료 ' + pass.score + '점</span>' :
+      fails.length ? '<span class="cr-badge is-retry">재시험 가능 · 최고 ' + bestOf(fails) + '점</span>' :
+      (lessonsDone ? '<span class="cr-badge is-ready">시험을 볼 수 있습니다</span>' : (started ? '<span class="cr-badge">공부 중</span>' : ''));
+    var label = !S ? '로그인하고 시작하기' : pass ? '과정 다시 보기' : lessonsDone ? (fails.length ? '재시험 보기' : '이수 시험 보기') : started ? '이어서 공부하기' : '공부 시작하기';
     return '<article class="cr-course is-' + cid + '">' +
       '<p class="cr-c-part">' + esc(c.part) + '</p><h2>' + esc(c.title) + '</h2>' +
       '<p class="cr-c-sub">' + esc(c.sub) + ' · 이수 시험 ' + C.exam.count + '문항</p>' +
@@ -229,7 +253,7 @@ console.log('[classroom.js] v20261025inf1');
       '<p class="cr-c-who"><b>대상</b>' + esc(c.who) + '</p>' +
       '<div class="cr-c-prog"><div class="cr-c-stat"><span>' + (badge || '진행률') + '</span><b>' + p.pct + '%</b></div>' +
       '<div class="cr-bar" role="progressbar" aria-label="' + esc(c.title) + ' 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + p.pct + '"><i style="width:' + p.pct + '%"></i></div>' +
-      '<a class="cr-btn' + tone(cid) + '" href="#' + cid + (pass ? '/1' : '') + '"' + (!S ? ' data-login' : '') + '>' + esc(label) + '</a></div>' +
+      '<a class="cr-btn' + tone(cid) + '" href="#' + cid + (pass ? '/1' : fails.length && lessonsDone ? '/exam' : '') + '"' + (!S ? ' data-login' : '') + '>' + esc(label) + '</a></div>' +
       '</article>';
   }
   function mineHTML() {
@@ -239,7 +263,7 @@ console.log('[classroom.js] v20261025inf1');
       if (pass) rows.push('<li><span><b>' + esc(c.title) + '</b> 이수 · ' + pass.score + '점<small>' + esc(kdate(pass.at)) + '</small></span>' +
         '<a class="cr-line cr-sm" href="' + (pass.id ? 'edu-print.html?sheet=' + pass.id : 'edu-print.html?local=' + cid) + '" target="_blank" rel="noopener">시험지·결과 보기</a></li>');
       var tries = SV.results.filter(function (r) { return r.course === cid && !r.passed; }).length;
-      if (!pass && tries) rows.push('<li><span><b>' + esc(c.title) + '</b> 시험 ' + tries + '회 응시<small>최고 ' + Math.max.apply(null, SV.results.filter(function (r) { return r.course === cid; }).map(function (r) { return r.score; })) + '점</small></span><a class="cr-line cr-sm" href="#' + cid + '/exam">다시 도전하기</a></li>');
+      if (!pass && tries) rows.push('<li><span><b>' + esc(c.title) + '</b> 시험 ' + tries + '회 응시<small>최고 ' + Math.max.apply(null, SV.results.filter(function (r) { return r.course === cid; }).map(function (r) { return r.score; })) + '점</small></span><a class="cr-line cr-sm" href="#' + cid + '/exam">재시험 보기</a></li>');
     });
     SV.certs.forEach(function (ct) {
       rows.push('<li><span><b>' + esc(ct.kind === '유아세례' ? '유아세례 증명서' + (ct.member_name ? ' (' + ct.member_name + ')' : '') : ct.kind + '교인 증명서') + '</b> 제 ' + esc(ct.cert_no) + ' 호<small>' + esc(ct.issued_on) + ' 발급</small></span><a class="cr-line cr-sm" href="edu-print.html?cert=' + ct.id + '" target="_blank" rel="noopener">증명서 보기</a></li>');
@@ -379,7 +403,7 @@ console.log('[classroom.js] v20261025inf1');
   }
   function bankItem(cid, id) { return C.courses[cid].bank.filter(function (b) { return b.id === id; })[0] || null; }
   function renderExam(cid) {
-    var c = C.courses[cid], st = steps(cid), exam = st[st.length - 1], pass = passedOf(cid);
+    var c = C.courses[cid], st = steps(cid), exam = st[st.length - 1], pass = passedOf(cid), fails = failsOf(cid);
     if (pass) return renderPassed(cid, pass);
     var ex = L.exam[cid];
     if (ex && ex.sheet && ex.sheet.length === C.exam.count) return renderQuestion(cid, ex.cur || 0);
@@ -391,8 +415,10 @@ console.log('[classroom.js] v20261025inf1');
       (exam.lock ? '<p class="cr-warn">아래 단계를 마치면 시험을 볼 수 있습니다.</p><ul class="cr-todo">' + todo.map(function (s) {
         return '<li><span>' + (s.vows ? '서약 문답' : '제' + s.n + '장 ' + esc(s.title)) + '</span><a class="cr-line cr-sm" href="#' + cid + '/' + s.key + '">공부하기</a></li>';
       }).join('') + '</ul>' :
+        (fails.length ? '<p class="cr-retry"><b>재시험</b>지난 시험 ' + fails.length + '회 · 최고 ' + bestOf(fails) + '점 — ' + C.exam.pass + '점에 못 미쳐 다시 봅니다. 새 문제가 나오며, 지난 기록은 지워지지 않고 그대로 남습니다.</p>' : '') +
         '<p class="cr-note" style="margin:0 0 16px">모든 장을 마쳤습니다. 준비가 되면 시작하세요. 시험 중에 창을 닫아도 이 기기에서 이어서 볼 수 있습니다. 통과하면 교적에 이수가 기록되고, 목회자가 확인한 뒤 당회 문답을 안내합니다.</p>' +
-        '<div class="cr-acts"><button type="button" class="cr-btn' + tone(cid) + '" data-start>시험 시작하기</button><a class="cr-line" href="#' + cid + '/1">처음부터 복습하기</a></div>') +
+        '<div class="cr-acts"><button type="button" class="cr-btn' + tone(cid) + '" data-start>' + (fails.length ? '재시험 시작하기' : '시험 시작하기') + '</button><a class="cr-line" href="#' + cid + '/1">처음부터 복습하기</a></div>') +
+      historyHTML(cid) +
       '</article></div>';
     root.innerHTML = html;
     centerCurrentStep();
@@ -499,12 +525,13 @@ console.log('[classroom.js] v20261025inf1');
       (pass ? '<h2>축하합니다! ' + esc(c.title) + '을 이수했습니다</h2>' +
         '<p>' + (rec.id ? (rec.linked === false ? '이수 기록이 저장되었습니다. 계정이 아직 교적과 연결되지 않아 목회자가 확인한 뒤 교적에 연결해 드립니다.' : '이수 기록이 교적에 저장되었습니다. 목회자가 확인한 뒤 당회 문답과 예식을 안내해 드립니다.') : '') + '</p>' +
         '<p>' + esc(c.next) + '</p>'
-        : '<h2>아쉽지만 ' + C.exam.pass + '점에 조금 모자랍니다</h2><p>틀린 문항의 풀이를 살펴보고, 해당 장을 복습한 뒤 다시 도전해 보세요. 다시 볼 때는 다른 문제가 나옵니다.</p>') +
+        : '<h2>아쉽지만 ' + C.exam.pass + '점에 조금 모자랍니다</h2><p>틀린 문항의 풀이를 살펴보고, 해당 장을 복습한 뒤 <b>재시험</b>을 보세요. 재시험에는 새 문제가 나오며, 이번 기록(' + rec.score + '점)도 지워지지 않고 응시 기록에 남습니다.</p>') +
       (rec.saveMsg ? '<p class="cr-warn" style="text-align:left;margin-top:12px">' + esc(rec.saveMsg) + '</p>' : '') +
       '<div class="cr-acts">' +
       (pass ? '<a class="cr-btn" href="' + printUrl + '" target="_blank" rel="noopener">🖨 시험지·결과 PDF</a>' + (cid === 'infant' ? '' : '<a class="cr-line" href="forms.html">학습·세례 신청서 보기</a>')
-        :'<button type="button" class="cr-btn cr-gold" data-retry>다시 시험 보기</button><a class="cr-line" href="' + printUrl + '" target="_blank" rel="noopener">🖨 시험지 인쇄</a>') +
+        : '<button type="button" class="cr-btn cr-gold" data-retry>재시험 보기</button><a class="cr-line" href="' + printUrl + '" target="_blank" rel="noopener">🖨 시험지 인쇄</a>') +
       '<a class="cr-line" href="#">강의실 첫 화면</a></div>' +
+      (pass ? '' : historyHTML(cid, rec.id)) +
       reviewHTML(cid, rec.sheet) +
       '</div></div>';
     root.innerHTML = html;
@@ -519,6 +546,7 @@ console.log('[classroom.js] v20261025inf1');
       '<div class="cr-result is-pass"><div class="cr-score" style="--p:' + pass.score + '"><b>' + pass.score + '</b><span>점 · 이수 완료</span></div>' +
       '<h2>' + esc(c.title) + ' 이수 완료</h2><p>' + esc(kdate(pass.at)) + '에 이수했습니다. ' + esc(c.next) + '</p>' +
       '<div class="cr-acts"><a class="cr-btn" href="' + printUrl + '" target="_blank" rel="noopener">🖨 시험지·결과 PDF</a><a class="cr-line" href="#' + cid + '/1">과정 다시 보기</a><a class="cr-line" href="#">강의실 첫 화면</a></div>' +
+      (triesOf(cid).length > 1 ? historyHTML(cid, pass.id) : '') +
       (rec && rec.passed && rec.sheet ? reviewHTML(cid, rec.sheet) : '') +
       '</div></div>';
     centerCurrentStep();
