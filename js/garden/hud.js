@@ -279,6 +279,7 @@ window.GardenHud = (function () {
       items.push({ kind: k, rule: r, done: isDone(k), talent: +r.talent || 0, xp: r.xp | 0 });
     });
     ssTasks(rules).forEach(function (x) { items.push(x); });
+    (H.bapt || []).forEach(function (f) { items.push({ kind: 'bapt_form', label: f.title || t('forms.title'), sub: t('forms.mine'), href: 'forms.html?f=' + encodeURIComponent(f.id), done: false, talent: 0, xp: 0, rule: {} }); });
     items.forEach(function (it) { it.label = it.label || kindLabel(it.kind, rules); it.href = it.href || TASK_HREF[it.kind] || ''; });
     return items;
   }
@@ -371,6 +372,8 @@ window.GardenHud = (function () {
     var box = $('gForms'); if (!box || !SDK.openForms) return Promise.resolve();
     return Promise.all([SDK.openForms(), SDK.formsPending ? SDK.formsPending() : null, SDK.myFormTargets ? SDK.myFormTargets() : []]).then(function (rs) {
       var rows = (rs[0] || []).filter(function (f) { return f.show_hero !== false; }), pend = rs[1], mine = rs[2] || [];
+      H.bapt = (rs[0] || []).filter(function (f) { return mine.indexOf(f.id) >= 0 || mine.indexOf(String(f.id)) >= 0; });   // 학습·세례 신청 대상 → 오늘의 할 일에 띄운다
+      renderTodo();
       if (!rows.length) { box.hidden = true; box.innerHTML = ''; return; }
       var nowMs = Date.now();
       box.innerHTML = '<h3 class="g-forms-t" id="gFormsT">' + esc(t('forms.title')) + '</h3>' + rows.map(function (f) {
