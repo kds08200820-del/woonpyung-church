@@ -8,7 +8,7 @@
  *  affairs.js 의 '신청서' 탭이 WPCFormsAdmin.render(panel, { api, esc, msgCard, pushBackClose }) 로 부른다.
  *  자료: app_forms · app_entries — supabase/20261010_1140_app_forms.sql
  */
-console.log('[forms-admin.js] v20261010form6');
+console.log('[forms-admin.js] v20261025ap1');
 
 window.WPCFormsAdmin = (function () {
   var CSS =
@@ -117,14 +117,10 @@ window.WPCFormsAdmin = (function () {
     });
     return s;
   }
-  /* 학습·세례(입교) 신청서 (2026-10-25 담임목사 지시, supabase/20261025_1300_app_forms_baptism.sql)
-     문답 질문은 신청서마다 관리자가 정한다 — 아래는 처음 넣어 주는 초안(교단 헌법의 문답으로 고쳐 쓰면 된다) */
-  /* 질문 앞에 [학습] / [세례] 를 붙이면 그 종류를 고른 분에게만 묻는다 — 한 신청서에 학습·세례(입교) 문답을 함께 둔다 */
+  /* 학습·세례·입교 신청서 (2026-10-25 담임목사 지시, supabase/20261025_1300_app_forms_baptism.sql · 1900)
+     문답 칸은 없앴다(2026-10-25 담임목사 "문답 — 질문 칸은 삭제하세요"). 신청하는 분은 교적으로 자격 안내를 받고 학습·세례·입교 중 하나를 고른다.
+     예전 신청서에 남은 질문([학습]/[세례] 머리표)은 명단에서 그대로 보여 준다 */
   function qText(q) { return String(q || '').replace(/^\[(학습|세례)\]\s*/, ''); }
-  var Q_STUDY = ['하나님은 어떤 분이시며, 나는 하나님을 어떻게 믿게 되었습니까?', '나는 죄인임을 고백합니까? 내가 생각하는 죄가 무엇인지 적어 주십시오.',
-    '예수 그리스도는 누구시며, 나를 위해 무엇을 해 주셨습니까?', '성경은 어떤 책이라고 믿습니까?', '앞으로 신앙생활(주일 예배·기도·말씀 읽기)을 어떻게 해 나가겠습니까?'].map(function (q) { return '[학습] ' + q; });
-  var Q_BAPT = ['나는 죄인임을 고백하며 예수 그리스도를 나의 구주로 믿습니다. 그렇게 믿게 된 과정을 적어 주십시오.', '성부·성자·성령 하나님을 믿으며 사도신경의 고백에 동의합니까? 가장 마음에 와 닿는 고백 한 가지와 그 이유를 적어 주십시오.',
-    '하나님의 말씀인 성경의 가르침대로 살며 세상의 죄를 멀리하겠습니까?', '교회의 지체로서 예배와 봉사에 힘쓰고 교회의 덕을 세우겠습니까?', '세례(입교)를 받고 싶은 이유를 나의 말로 적어 주십시오.'].map(function (q) { return '[세례] ' + q; });
   function sha16(s) {   // 서버 app_key_hash 와 같은 규칙: sha256('wpc-bt|' + 키) 앞 16자리
     var data = new TextEncoder().encode('wpc-bt|' + String(s || '').trim());
     return crypto.subtle.digest('SHA-256', data).then(function (b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('').slice(0, 16); });
@@ -180,6 +176,12 @@ window.WPCFormsAdmin = (function () {
     return out.sort(function (a, b) { return (ORD[a.st] - ORD[b.st]) || (KO[a.kind] - KO[b.kind]) || String(a.name).localeCompare(String(b.name), 'ko'); });
   }
   function v0kind(f) { return f && f.kind === 'baptism' ? 'baptism' : 'general'; }
+  // 양식 칸의 예시 문구 — 학습·세례·입교 신청서에는 그에 맞는 말로(2026-10-25 담임목사)
+  var PH = {
+    gen: { title: '예: 삼일 만세길 걷기', summary: '비우면 날짜·장소·신청비만 나옵니다' },
+    bapt: { title: '예: 2027년 부활절 학습·세례·입교 신청', summary: '예: 부활절 성례식에 앞서 학습·세례·입교 신청을 받습니다',
+      body: '예: 신청하신 분은 강의실에서 해당 과정을 공부하고 이수 시험을 본 뒤, 당회 문답을 받습니다.' }
+  };
   function plabel(f) { return String((f && f.people_label) || '').trim() || '참가자'; }   /* 신청서마다 정한 이름표(20261024_1800) */
   /* 참가자 이름 — [{name, kind}] (이름을 받기 전에 낸 신청은 [] → '명단 없음') */
   function partsOf(e) { return (e && Array.isArray(e.participants) ? e.participants : []).filter(function (x) { return x && x.name; }); }
@@ -378,13 +380,13 @@ window.WPCFormsAdmin = (function () {
         '<div class="fa-item-hd"><b style="font-size:1.2rem;color:var(--accent,#3A281C)">' + esc(f.title) + '</b><span class="fa-st fa-st-' + st[0] + '">' + st[1] + '</span></div>' +
         (eventText(f) || f.place ? '<div class="fa-meta">행사 ' + esc([eventText(f), f.place].filter(Boolean).join(' · ')) + '</div>' : '') +
         '<div class="fa-meta">신청 기간 ' + esc(dt(f.open_at)) + ' ~ ' + esc(f.close_at ? dt(f.close_at) : '마감 없음') + (f.show_hero ? ' · 이 기간에 공지사항에 뜸' : ' · 공지사항에 띄우지 않음') + '</div>' +
-        (f.kind === 'baptism' ? '<div class="fa-meta">학습·세례(입교) 신청 · 문답 ' + ((f.questions || []).length) + '개 · 신청비 없음</div>' : '<div class="fa-meta">신청비 ' + esc(feeText(f)) + '</div>') +
+        (f.kind === 'baptism' ? '<div class="fa-meta">학습·세례·입교 신청 · 신청하는 분에게 교적으로 자격 안내' + ((f.questions || []).length ? ' · 문답 ' + f.questions.length + '개(예전 양식)' : '') + ' · 신청비 없음</div>' : '<div class="fa-meta">신청비 ' + esc(feeText(f)) + '</div>') +
         (needsPay ? '<div class="fa-pay">' + (hasPay
           ? '납부 받는 곳: ' + esc([fp.pay_bank, fp.pay_account, fp.pay_holder ? '예금주 ' + fp.pay_holder : ''].filter(Boolean).join(' ')) + (fp.pay_toss_url ? (fp.pay_account ? ' · ' : '') + '토스 링크 ' + esc(fp.pay_toss_url) : '') + (ownPay(f) ? '' : ' (교회 기본 계좌 — 목회 행정 > 설정에서 바꿉니다)')
           : '<span class="fa-warn">납부 받는 곳(계좌·토스 링크)이 비어 있습니다.</span> ‘양식 고치기’에서 넣으면 신청한 분 화면에 ‘토스로 송금하기’와 계좌가 나옵니다.') + '</div>' : '') +
         (f.kind === 'baptism' ? '<div class="fa-grid fa-sgrid" style="margin-top:14px"><div class="fa-stat"><span>신청</span><b>' + s.n + '건</b>' + (s.off ? '<small>취소 ' + s.off + '건 따로</small>' : '') + '</div>' +
-          '<div class="fa-stat"><span>학습</span><b>' + list.filter(function (e) { return e.status !== 'cancelled' && e.apply_kind === '학습'; }).length + '명</b></div>' +
-          '<div class="fa-stat"><span>세례(입교)</span><b>' + list.filter(function (e) { return e.status !== 'cancelled' && e.apply_kind === '세례(입교)'; }).length + '명</b></div></div>' + '<div id="fa_tg"></div>' : '') +
+          ['학습', '세례', '입교'].map(function (k) { return '<div class="fa-stat"><span>' + k + '</span><b>' + list.filter(function (e) { return e.status !== 'cancelled' && (e.apply_kind === k || (k === '세례' && e.apply_kind === '세례(입교)')); }).length + '명</b></div>'; }).join('') +
+          '</div>' + '<div id="fa_tg"></div>' : '') +
         (f.kind === 'baptism' ? '' : '<div class="fa-grid fa-sgrid" style="margin-top:14px">' +
         '<div class="fa-stat"><span>신청</span><b>' + s.n + '건</b>' + (s.off ? '<small>취소 ' + s.off + '건 따로</small>' : '') + '</div>' +
         '<div class="fa-stat"><span>인원</span><b>' + (s.ad + s.mi) + '명</b><small>성인 ' + s.ad + '명' + (f.ask_minor ? ' · 미성년자 ' + s.mi + '명' : '') + '</small></div>' +
@@ -529,22 +531,19 @@ window.WPCFormsAdmin = (function () {
       function chk(id, label, on) { return '<label class="fa-check"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '> ' + label + '</label>'; }
       var html = '<div class="fin-card"><div class="fa-head"><button class="btn btn-line" id="fa_cancel" style="padding:6px 13px;font-size:.84rem">← ' + (f && !copy ? '돌아가기' : '신청서 목록') + '</button><h3>' + (isNew ? '새 신청서' : '양식 고치기') + '</h3></div>' +
         '<div class="fa-sec">무엇을 받는 신청서인가</div><div class="fa-grid">' +
-        (hasKindCol ? fld('신청서 종류', '<select id="ff_kind"><option value="general"' + (isBapt ? '' : ' selected') + '>일반 신청서 (행사·모임·책 등)</option><option value="baptism"' + (isBapt ? ' selected' : '') + '>학습·세례(입교) 신청 — 문답을 적어 냄</option></select>', true) : '') +
-        fld('제목', '<input id="ff_title" maxlength="200" value="' + esc(v.title || '') + '" placeholder="예: 삼일 만세길 걷기">', true) +
-        fld('공지사항 한 줄 안내 (선택)', '<input id="ff_summary" maxlength="200" value="' + esc(v.summary || '') + '" placeholder="비우면 날짜·장소·신청비만 나옵니다">', true) +
-        fld('자세한 안내 (선택)', '<textarea id="ff_body" rows="4">' + esc(v.body || '') + '</textarea>', true) +
-        /* 안내 그림(코스 약도·포스터) — image_url, 2026-10-10. 칸이 아직 없으면(SQL 전) 보이지 않는다 */
-        (hasImgCol ? fld('안내 그림 (선택) — 코스 약도·포스터 등', '<div style="display:flex;gap:6px;align-items:center"><input id="ff_img" maxlength="500" value="' + esc(v.image_url || '') + '" placeholder="그림 주소 — 아래 단추로 올리면 저절로 채워집니다" style="flex:1;min-width:0">' +
+        (hasKindCol ? fld('신청서 종류', '<select id="ff_kind"><option value="general"' + (isBapt ? '' : ' selected') + '>일반 신청서 (행사·모임·책 등)</option><option value="baptism"' + (isBapt ? ' selected' : '') + '>학습·세례·입교 신청 — 교적으로 자격 안내</option></select>', true) : '') +
+        '<p class="fa-note" id="ff_bnote" style="grid-column:1/-1;margin-top:0"' + (isBapt ? '' : ' hidden') + '>신청하는 분이 신청서를 열면 교적(신급·등록일·학습일·생년월일)으로 신청 자격과 종류를 안내받고 <b>학습 · 세례 · 입교</b> 가운데 하나를 골라 신청합니다. 신청한 뒤에는 강의실로 바로 갈 수 있습니다. 신청비는 받지 않습니다.</p>' +
+        fld('제목', '<input id="ff_title" maxlength="200" value="' + esc(v.title || '') + '" placeholder="' + (isBapt ? PH.bapt.title : PH.gen.title) + '">', true) +
+        fld('공지사항 한 줄 안내 (선택)', '<input id="ff_summary" maxlength="200" value="' + esc(v.summary || '') + '" placeholder="' + (isBapt ? PH.bapt.summary : PH.gen.summary) + '">', true) +
+        fld('자세한 안내 (선택)', '<textarea id="ff_body" rows="4" placeholder="' + (isBapt ? PH.bapt.body : '') + '">' + esc(v.body || '') + '</textarea>', true) +
+        /* 안내 그림(코스 약도·포스터) — image_url, 2026-10-10. 칸이 아직 없으면(SQL 전) 보이지 않는다 · 학습·세례·입교 신청서에는 없음(2026-10-25) */
+        (hasImgCol ? '<div id="ff_img_w" style="grid-column:1/-1"' + (isBapt ? ' hidden' : '') + '>' + fld('안내 그림 (선택) — 코스 약도·포스터 등', '<div style="display:flex;gap:6px;align-items:center"><input id="ff_img" maxlength="500" value="' + esc(v.image_url || '') + '" placeholder="그림 주소 — 아래 단추로 올리면 저절로 채워집니다" style="flex:1;min-width:0">' +
           '<button type="button" class="btn btn-line" id="ff_img_up" style="padding:6px 12px;white-space:nowrap">그림 올리기</button><button type="button" class="btn btn-line" id="ff_img_rm" style="padding:6px 10px">빼기</button></div>' +
-          '<div id="ff_img_pv" style="margin-top:8px"></div>', true) : '') +
-        fld('행사 날짜', '<input type="date" id="ff_date" value="' + esc(v.event_date || '') + '">') +
-        fld('행사 시각', '<input type="time" id="ff_time" value="' + esc(String(v.event_time || '').slice(0, 5)) + '">') +
+          '<div id="ff_img_pv" style="margin-top:8px"></div>', true) + '</div>' : '') +
+        fld('<span id="ff_date_l">' + (isBapt ? '문답 날짜 (선택)' : '행사 날짜') + '</span>', '<input type="date" id="ff_date" value="' + esc(v.event_date || '') + '">') +
+        fld('<span id="ff_time_l">' + (isBapt ? '문답 시각 (선택)' : '행사 시각') + '</span>', '<input type="time" id="ff_time" value="' + esc(String(v.event_time || '').slice(0, 5)) + '">') +
         fld('장소', '<input id="ff_place" maxlength="200" value="' + esc(v.place || '') + '">') +
         '</div>' +
-        (hasKindCol ? '<div id="ff_qa"' + (isBapt ? '' : ' hidden') + '><div class="fa-sec">문답 — 신청하는 분이 적어 낼 질문 (한 줄에 질문 하나)</div>' +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button type="button" class="btn btn-line" id="ff_q_study" style="padding:5px 12px;font-size:.82rem">학습+세례 문답 초안 넣기</button><button type="button" class="btn btn-line" id="ff_q_bapt" style="padding:5px 12px;font-size:.82rem">세례 문답만</button><button type="button" class="btn btn-line" id="ff_q_clear" style="padding:5px 12px;font-size:.82rem">비우기</button></div>' +
-          '<textarea id="ff_qs" rows="7" style="width:100%" placeholder="예: 하나님은 어떤 분이시며, 나는 하나님을 어떻게 믿게 되었습니까?">' + esc((v.questions || []).join('\n')) + '</textarea>' +
-          '<p class="fa-note">초안은 교단 헌법의 문답에 맞게 고쳐 쓰세요. 질문 앞에 <b>[학습]</b> 을 붙이면 학습을 고른 분에게만, <b>[세례]</b> 를 붙이면 세례(입교)를 고른 분에게만 묻고, 아무것도 안 붙이면 모두에게 묻습니다. 신청하는 분은 ‘학습 / 세례(입교)’ 중 하나를 고른 뒤 그에 맞는 질문에 답을 적습니다. 신청비는 받지 않습니다.</p></div>' : '') +
         '<div class="fa-sec">신청 기간 — 이 기간에 홈페이지 공지사항 맨 위에 저절로 뜹니다</div><div class="fa-grid">' +
         fld('신청 시작', '<input type="datetime-local" id="ff_open" value="' + esc(localInput(v.open_at) || localInput(new Date().toISOString())) + '">') +
         fld('신청 마감 (비우면 마감 없음)', '<input type="datetime-local" id="ff_close" value="' + esc(localInput(v.close_at)) + '">') +
@@ -582,12 +581,14 @@ window.WPCFormsAdmin = (function () {
         if (F && amt > 0) link = F.tossMeUrl(toss, amt) || F.tossApp({ pay_bank: bank, pay_account: acct }, amt);
         $('ff_preview').textContent = link ? '성인 1명이 신청하면 ‘토스로 송금하기’가 여는 주소: ' + link : '';
       }
-      if (hasKindCol) {
-        var syncKind = function () { var b = $('ff_kind').value === 'baptism'; $('ff_qa').hidden = !b; $('ff_gen').hidden = b; };
-        $('ff_kind').onchange = function () { syncKind(); if ($('ff_kind').value === 'baptism' && !$('ff_qs').value.trim()) $('ff_qs').value = Q_STUDY.concat(Q_BAPT).join('\n'); };
-        $('ff_q_study').onclick = function () { $('ff_qs').value = Q_STUDY.concat(Q_BAPT).join('\n'); };
-        $('ff_q_bapt').onclick = function () { $('ff_qs').value = Q_BAPT.join('\n'); };
-        $('ff_q_clear').onclick = function () { $('ff_qs').value = ''; };
+      if (hasKindCol) {   // 신청서 종류에 따라: 예시 문구 · 안내 그림 · 신청비 칸 · 날짜 이름
+        $('ff_kind').onchange = function () {
+          var b = $('ff_kind').value === 'baptism', ph = b ? PH.bapt : PH.gen;
+          $('ff_gen').hidden = b; $('ff_bnote').hidden = !b;
+          if ($('ff_img_w')) $('ff_img_w').hidden = b;
+          $('ff_title').placeholder = ph.title; $('ff_summary').placeholder = ph.summary; $('ff_body').placeholder = b ? PH.bapt.body : '';
+          $('ff_date_l').textContent = b ? '문답 날짜 (선택)' : '행사 날짜'; $('ff_time_l').textContent = b ? '문답 시각 (선택)' : '행사 시각';
+        };
       }
       ['ff_fa', 'ff_toss', 'ff_bank', 'ff_acct'].forEach(function (id) { $(id).addEventListener('input', preview); });
       preview();
@@ -635,11 +636,11 @@ window.WPCFormsAdmin = (function () {
         if (hasSameCol) body.allow_same_name = $('ff_same').checked;
         if (hasKindCol) {
           body.kind = $('ff_kind').value;
-          body.questions = $('ff_qs').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 30);
+          body.questions = [];   // 문답 칸 없음(2026-10-25)
           if (body.kind === 'baptism') {
-            if (!body.questions.length) return fail('문답 질문을 한 줄 이상 적어 주십시오. ‘학습 문답 초안 넣기’를 누르면 처음 틀이 들어갑니다.');
             body.fee_adult = 0; body.fee_minor = 0; body.ask_minor = false; body.memo_label = '';
-          } else body.questions = [];
+            if (hasImgCol) body.image_url = null;   // 학습·세례·입교 신청서에는 안내 그림 없음
+          }
         }
         if (hasLabelCol) body.people_label = ($('ff_plabel').value.trim() || '참가자').slice(0, 12);
         var b = this; b.disabled = true; err.hidden = true;

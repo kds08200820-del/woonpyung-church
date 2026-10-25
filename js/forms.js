@@ -7,7 +7,7 @@
  *  참가자 이름(2026-10-10): 인원마다 이름을 받아 app_submit(…, p_names) 로 보낸다 — 같은 신청서에 같은 이름은 서버가 막는다
  *    (supabase/20261010_1300_app_participants.sql)
  */
-console.log('[forms.js] v20261025tg1');
+console.log('[forms.js] v20261025ap1');
 
 (function () {
   if (window.WPCForms) return;
@@ -84,6 +84,13 @@ console.log('[forms.js] v20261025tg1');
     '.ap-msg-hd{font-size:.78rem;color:var(--accent-soft,#6E523C);font-weight:700;margin:0 0 4px}' +
     '.ap-msg-tx{font-size:.93rem;color:var(--ink,#3A281C);margin:0;line-height:1.65;word-break:keep-all}' +
     '.ap-msg .ap-btn-line{margin-top:9px;padding:6px 13px;font-size:.82rem}' +
+    '.ap-msg.is-ok{border-color:#5E7A55;background:#F2F6EF}.ap-msg.is-stop{border-color:#A33A2A;background:#FBF1EE}' +
+    '.ap-cr{border-color:#5E7A55}.ap-crgo{display:inline-flex;align-items:center;justify-content:center;margin-top:10px;text-decoration:none;width:auto}' +
+    '.ap-kind.is-3{flex:1 1 170px;flex-direction:column;align-items:flex-start;gap:3px}.ap-kind.is-3 .k{display:inline-flex;align-items:center;gap:7px;font-weight:inherit}' +
+    '.ap-kind .d{font-size:.76rem;color:var(--muted,#8B7B6C);font-weight:400;line-height:1.45;word-break:keep-all}' +
+    '.ap-kind .rec{font-style:normal;font-size:.68rem;font-weight:700;color:#fff;background:#5E7A55;border-radius:999px;padding:1px 7px;margin-left:2px}' +
+    '.ap-kind:has(input:disabled){opacity:.45;cursor:default}.ap-kinds small.is-warn{color:#A33A2A}' +
+    '.ap-kinds .ap-kind input{width:18px;height:18px;padding:0;margin:0;flex:0 0 18px;border-radius:50%}.ap-kind.is-3 .k,.ap-kind .rec{white-space:nowrap}' +
     '.ap-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0 0;font-size:.92rem}' +
     '.ap-dl dt{color:var(--muted,#8B7B6C)}' +
     '.ap-dl dd{margin:0;color:var(--ink,#3A281C);word-break:break-all}' +
@@ -377,9 +384,12 @@ console.log('[forms.js] v20261025tg1');
       if (!f) { openModal('<h3 class="ap-title">신청서를 찾을 수 없습니다</h3><p class="ap-text">교회에서 내린 신청서입니다.</p>'); return; }
       if (e && e.status === 'active' && !edit) { showStatus(f, e); return; }
       if (!isOpen(f)) { showStatus(f, e); return; }
-      // 학습·세례: 담임목사가 정한 대상 종류·알림 문구(app_my_target_info, 20261025_1700) — 없으면 고르는 그대로
-      if (f.kind === 'baptism') return rpc('app_my_target_info').then(function (ts) { return (ts || []).filter(function (x) { return String(x.form_id) === String(f.id); })[0] || null; }, function () { return null; })
-        .then(function (ti) { showBaptism(f, e, p, ti); });
+      // 학습·세례·입교: 담임목사가 정한 대상 종류·알림 문구(app_my_target_info, 1700) + 내 교적으로 본 신청 자격(app_my_baptism_status, 1900)
+      //   SQL 실행 전이면 둘 다 없이(null) 고르는 그대로
+      if (f.kind === 'baptism') return Promise.all([
+        rpc('app_my_target_info').then(function (ts) { return (ts || []).filter(function (x) { return String(x.form_id) === String(f.id); })[0] || null; }, function () { return null; }),
+        rpc('app_my_baptism_status').catch(function () { return null; })
+      ]).then(function (two) { showBaptism(f, e, p, two[0], two[1]); });
       showForm(f, e, p);
     }).catch(function (e) { openModal(errorHTML(e)); });
   }
@@ -391,6 +401,7 @@ console.log('[forms.js] v20261025tg1');
   /* 안내만 보기(로그인 없이) — 공지사항 '코스·안내 보기' */
   function openInfo(f) {
     if (!f) return;
+    if (f.kind === 'baptism' && sess()) { openApply(f.id); return; }   // 학습·세례·입교: 여는 순간 교적으로 자격을 안내한다
     openModal(headHTML(f, '안내') + (f.summary ? '<p class="ap-text">' + esc(f.summary) + '</p>' : '') + (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') + imgHTML(f) +
       '<div class="ap-actions"><button type="button" class="ap-btn" data-go="apply">신청하기</button><button type="button" class="ap-btn-line" data-go="status">신청 확인</button></div>',
       function (body) {
@@ -402,63 +413,122 @@ console.log('[forms.js] v20261025tg1');
       (whenPlace(f) ? '<p class="ap-meta">' + esc(whenPlace(f)) + '</p>' : '') +
       '<p class="ap-meta">' + esc(feeText(f)) + (untilText(f) ? ' · ' + esc(untilText(f)) : '') + '</p>';
   }
-  /* ── 학습·세례(입교) 신청 — 종류를 고르고 문답을 적어 낸다 (2026-10-25 담임목사 지시, supabase/20261025_1300_app_forms_baptism.sql)
-       대상: 교적부에서 세례를 받지 않은 만 14세 이상(관리자가 확정). 신청비 없음. 질문은 신청서마다 관리자가 정한다 ── */
-  var BAPT_KINDS = ['학습', '세례(입교)'];
-  function qParts(q) {   // '[학습] 질문' · '[세례] 질문' · '질문' → { text, only: '학습' | '세례(입교)' | '' }
+  /* ── 학습·세례·입교 신청 (2026-10-25 담임목사 지시, supabase/20261025_1300 · 1700 · 1900)
+       신청 화면을 열면 내 교적(신급·등록일·학습일·생년월일)으로 신청 자격과 종류를 안내하고(app_my_baptism_status, 1900),
+       학습 · 세례 · 입교 가운데 하나를 고른다. 담임목사가 정한 대상 종류가 있으면 그 종류로 고정한다(app_my_target_info, 1700).
+       기준은 목회행정 대상 선정(forms-admin.js baptTargets)과 같다. 신청비 없음. 신청한 뒤에는 강의실로 바로 간다.
+       문답 칸은 없앴다(2026-10-25) — 예전 신청서에 질문이 있으면 그대로 보여 준다 ── */
+  var BAPT_KINDS = [
+    ['학습', '처음 믿고 교회에 등록한 지 6개월이 지난 분 (만 14세 이상)'],
+    ['세례', '학습을 받고 6개월이 지난 분'],
+    ['입교', '유아세례를 받고 만 14세가 된 분']
+  ];
+  var LEGACY_BAPT = '세례(입교)';   // 1900 실행 전 서버가 받는 옛 종류(세례·입교를 하나로)
+  function qParts(q) {   // '[학습] 질문' · '[세례] 질문' · '질문' → { text, only: '학습' | '세례' | '' }
     var m = /^\[(학습|세례)\]\s*/.exec(String(q || ''));
-    return m ? { text: String(q).slice(m[0].length), only: m[1] === '학습' ? '학습' : '세례(입교)' } : { text: String(q || ''), only: '' };
+    return m ? { text: String(q).slice(m[0].length), only: m[1] } : { text: String(q || ''), only: '' };
   }
-  function showBaptism(f, e, p, ti) {
+  function qShows(only, kind) { return !only || (only === '학습' ? kind === '학습' : !!kind && kind !== '학습'); }
+  function dotYmd(v) { return v ? String(v).slice(0, 10).replace(/-/g, '.') : ''; }
+  // 교적으로 본 신청 자격 → 안내 상자 · 막을지 · 권하는 종류
+  function eligOf(st) {
+    var o = { html: '', block: false, rec: '' };
+    if (!st || !st.ok) return o;
+    var k = st.kind || '', base = k === '학습' ? '교회 등록일 ' + dotYmd(st.basis) : k === '세례' ? '학습일 ' + dotYmd(st.basis) : '';
+    var box = function (cls, hd, tx, extra) { return '<div class="ap-msg ap-elig ' + cls + '"><p class="ap-msg-hd">' + hd + '</p><p class="ap-msg-tx">' + tx + '</p>' + (extra || '') + '</div>'; };
+    var office = ' 교적 내용이 다르면 교회 사무실(담임목사님)에 말씀해 주십시오.';
+    if (st.st === 'ok') {
+      o.rec = k;
+      o.html = box('is-ok', '✅ 신청하실 수 있습니다', '교적으로 확인했습니다 — <b>‘' + esc(k) + '’</b> 신청 대상이십니다' +
+        (k === '입교' ? ' (유아세례 · 만 ' + esc(st.age) + '세).' : base ? ' (' + esc(base) + ' · 6개월이 지났습니다).' : '.') + ' 아래에서 ‘' + esc(k) + '’을 골라 신청해 주십시오.');
+    } else if (st.st === 'check') {
+      o.rec = k;
+      o.html = box('', 'ℹ️ 교적 확인이 필요합니다', esc(st.why || '교적에 날짜가 비어 있습니다') + '. 교적의 신급으로는 <b>‘' + esc(k) + '’</b> 신청에 해당합니다. 신청하시면 담임목사님이 교적을 확인합니다.');
+    } else if (st.st === 'wait') {
+      o.block = true;
+      o.html = box('is-stop', '⏳ 아직 신청할 때가 아닙니다', '<b>‘' + esc(k) + '’</b> 신청은 <b>' + esc(dotYmd(st.from)) + '</b>부터 할 수 있습니다 — ' +
+        (k === '입교' ? '만 14세가 되어야 입교 문답을 받습니다.' : esc(base) + '에서 6개월이 지나야 합니다.') + office);
+    } else if (st.st === 'done') {
+      o.block = true;
+      o.html = box('is-stop', '이미 세례(입교)교인이십니다', '교적의 신급이 ‘' + esc(st.grade) + '’이어서 학습·세례·입교 신청 대상이 아닙니다.' + office);
+    } else if (st.st === 'young') {
+      o.block = true;
+      o.html = box('is-stop', '만 14세 미만입니다', '만 14세 미만은 학습·세례 대신 부모님의 신앙고백으로 유아·어린이 세례를 받습니다. 부모님께서 담임목사님께 말씀해 주십시오.',
+        '<a class="ap-btn-line" href="classroom.html#infant">강의실 유아세례 과정(부모 교육)</a>');
+    } else if (st.st === 'nolink' || st.st === 'nogj') {
+      o.html = box('', 'ℹ️ 교적으로 자격을 확인하지 못했습니다', (st.st === 'nolink' ? '계정이 아직 교적과 연결되지 않았습니다.' : '교적에서 찾지 못했습니다.') + ' 아래 기준을 보고 알맞은 것을 고르시면 교회가 교적을 확인합니다.');
+    }
+    return o;
+  }
+  // 신청한 뒤: 강의실 바로 가기 (학습 → 학습 과정, 세례·입교 → 세례(입교) 과정)
+  function classroomHTML(kind) {
+    var c = kind === '학습' ? 'learn' : 'baptism', t = kind === '학습' ? '학습 과정' : '세례(입교) 과정';
+    return '<div class="ap-msg ap-cr"><p class="ap-msg-hd">📖 다음 차례 — 강의실</p><p class="ap-msg-tx">당회 문답을 받기 전에 강의실 <b>‘' + t + '’</b>을 공부하고 이수 시험(20문항 · 70점 이상)을 보십시오. 이수하면 교적에 기록됩니다.</p>' +
+      '<a class="ap-btn ap-crgo" href="classroom.html#' + c + '">강의실 바로 가기 ›</a></div>';
+  }
+  function showBaptism(f, e, p, ti, st) {
     var cur = e || {}, qs = Array.isArray(f.questions) ? f.questions : [], ans = Array.isArray(cur.answers) ? cur.answers : [];
-    // 담임목사가 정한 대상 종류가 있으면 그 종류로 고정한다(학습 → 학습, 세례·입교 → 세례(입교))
-    var lock = ti && ti.kind ? (ti.kind === '학습' ? '학습' : '세례(입교)') : '';
-    if (lock && !cur.apply_kind) cur = Object.assign({}, cur, { apply_kind: lock });
+    // 담임목사가 정한 대상 종류가 있으면 그 종류로 고정한다
+    var lock = ti && ti.kind ? ti.kind : '', el = lock ? { html: '', block: false, rec: lock } : eligOf(st);
+    var pick0 = lock || (cur.apply_kind && cur.apply_kind !== LEGACY_BAPT ? cur.apply_kind : '') || (cur.apply_kind === LEGACY_BAPT && el.rec !== '학습' ? el.rec : '') || el.rec;
     var html = headHTML(f, e ? '신청 고치기' : '신청서') +
       (ti ? '<div class="ap-msg"><p class="ap-msg-hd">📖 ' + esc(ti.kind ? ti.kind + ' 신청 대상' : '신청 대상') + '으로 선정되셨습니다</p>' + (ti.note ? '<p class="ap-msg-tx">' + nl2br(ti.note) + '</p>' : '') +
-        '<a class="ap-btn-line" href="classroom.html">강의실에서 문답 공부하기</a></div>' : '') +
+        '<a class="ap-btn-line" href="classroom.html#' + (ti.kind === '학습' ? 'learn' : 'baptism') + '">강의실에서 문답 공부하기</a></div>' : '') +
+      el.html +
       (f.summary ? '<p class="ap-text">' + esc(f.summary) + '</p>' : '') +
-      (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') + imgHTML(f) +
-      '<p class="ap-note">대상 — 학습: 교회에 등록한 지 6개월이 지난 초신자(만 14세 이상) · 세례: 학습을 받고 6개월이 지난 분 · 입교: 유아세례를 받고 만 14세가 된 분 · 신청비 없음</p>' +
+      (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') +
       '<form class="ap-form" novalidate>' +
       '<label class="ap-field"><span>신청하는 분 이름</span><input name="name" maxlength="60" autocomplete="name" value="' + esc(cur.name || p.name || '') + '" required></label>' +
       '<label class="ap-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="010-0000-0000" value="' + esc(cur.phone || p.phone || '') + '" required></label>' +
-      '<fieldset class="ap-field ap-kinds"><legend>무엇을 신청하시나요</legend>' +
-        BAPT_KINDS.map(function (k, i) { return '<label class="ap-kind"><input type="radio" name="apply" value="' + esc(k) + '"' + ((cur.apply_kind || '') === k ? ' checked' : '') + (lock && lock !== k ? ' disabled' : '') + '> <span>' + esc(k) + '</span></label>'; }).join('') +
-        '<small>' + (lock ? '담임목사님이 정하신 신청 종류입니다.' : '처음 신청하시면 ‘학습’, 학습을 받으셨거나 어릴 때 유아세례를 받으셨으면 ‘세례(입교)’를 고르세요.') + '</small></fieldset>' +
-      (qs.length ? '<div class="ap-qa"><p class="ap-qa-h">문답 <small>· 아는 대로 정성껏 적어 주십시오</small></p><p class="ap-note" data-qa-hint hidden>위에서 학습과 세례(입교) 가운데 하나를 고르면, 그에 맞는 문답이 나옵니다.</p>' + qs.map(function (q, i) {
+      '<fieldset class="ap-field ap-kinds"><legend>무엇을 신청하시나요 — 학습 · 세례 · 입교 가운데 하나</legend>' +
+        BAPT_KINDS.map(function (k) {
+          return '<label class="ap-kind is-3"><span class="k"><input type="radio" name="apply" value="' + esc(k[0]) + '"' + (pick0 === k[0] ? ' checked' : '') + (lock && lock !== k[0] ? ' disabled' : '') + '> ' + esc(k[0]) +
+            (el.rec === k[0] && !lock ? '<i class="rec">교적 기준</i>' : '') + '</span><span class="d">' + esc(k[1]) + '</span></label>';
+        }).join('') +
+        '<small data-kind-note>' + (lock ? '담임목사님이 정하신 신청 종류입니다.' : '총회 「학습·세례문답서」 기준입니다. 어릴 때 유아세례를 받으셨으면 ‘입교’를 고르세요.') + '</small></fieldset>' +
+      (qs.length ? '<div class="ap-qa"><p class="ap-qa-h">문답 <small>· 아는 대로 정성껏 적어 주십시오</small></p><p class="ap-note" data-qa-hint hidden>위에서 학습·세례·입교 가운데 하나를 고르면, 그에 맞는 문답이 나옵니다.</p>' + qs.map(function (q, i) {
         var qp = qParts(q);
         return '<label class="ap-field" data-only="' + esc(qp.only) + '"><span><em data-n></em>' + esc(qp.text) + '</span><textarea name="a' + i + '" rows="3" maxlength="3000" data-i="' + i + '">' + esc(ans[i] || '') + '</textarea></label>';
       }).join('') + '</div>' : '') +
       '<p class="ap-err" hidden></p>' +
-      '<button type="submit" class="ap-btn ap-wide">' + (e && e.status === 'active' ? '고친 내용 저장' : '신청하기') + '</button>' +
-      '<p class="ap-note">한 계정으로 한 번 신청하며, 다시 내면 앞의 신청을 고칩니다. 신청 기간 안에는 언제든 고칠 수 있습니다.</p></form>';
+      '<button type="submit" class="ap-btn ap-wide"' + (el.block ? ' disabled' : '') + '>' + (el.block ? '지금은 신청할 수 없습니다' : e && e.status === 'active' ? '고친 내용 저장' : '신청하기') + '</button>' +
+      '<p class="ap-note">한 계정으로 한 번 신청하며, 다시 내면 앞의 신청을 고칩니다. 신청 기간 안에는 언제든 고칠 수 있습니다. 신청비는 없습니다.</p></form>';
     openModal(html, function (b) {
       var form = b.querySelector('form'), err = b.querySelector('.ap-err'), btn = form.querySelector('button[type=submit]');
       var label = e && e.status === 'active' ? '고친 내용 저장' : '신청하기';
-      function fail(msg, el) { err.textContent = msg; err.hidden = false; btn.disabled = false; btn.textContent = label; if (el && el.focus) el.focus(); }
+      function fail(msg, el2) { err.textContent = msg; err.hidden = false; btn.disabled = false; btn.textContent = label; if (el2 && el2.focus) el2.focus(); }
       var qLabels = Array.prototype.slice.call(form.querySelectorAll('.ap-qa label[data-only]'));
-      function paintQ() {   // 고른 종류에 맞는 질문만 보이고 번호를 다시 매긴다
+      var note = form.querySelector('[data-kind-note]'), note0 = note.textContent;
+      function paint() {   // 고른 종류에 맞는 질문만 보이고 번호를 다시 매긴다 · 교적 기준과 다르게 고르면 알려 준다
         var pick = form.querySelector('input[name=apply]:checked'), kind = pick ? pick.value : '', n = 0;
         qLabels.forEach(function (l) {
-          var only = l.getAttribute('data-only'), show = !only || only === kind;
+          var show = qShows(l.getAttribute('data-only'), kind);
           l.hidden = !show; if (show) { n++; l.querySelector('em[data-n]').textContent = n + '. '; }
         });
         var hint = form.querySelector('[data-qa-hint]'); if (hint) hint.hidden = !!kind || !qLabels.some(function (l) { return l.getAttribute('data-only'); });
+        var off = !lock && el.rec && kind && kind !== el.rec;
+        note.textContent = off ? '교적 기준으로는 ‘' + el.rec + '’ 대상이십니다. ‘' + kind + '’(으)로 신청하시면 담임목사님이 확인합니다.' : note0;
+        note.classList.toggle('is-warn', !!off);
       }
-      Array.prototype.forEach.call(form.querySelectorAll('input[name=apply]'), function (r) { r.onchange = paintQ; });
-      paintQ();
+      Array.prototype.forEach.call(form.querySelectorAll('input[name=apply]'), function (r) { r.onchange = paint; });
+      paint();
       form.onsubmit = function (ev) {
         ev.preventDefault();
+        if (el.block) return;
         var name = form.name.value.trim(), phone = form.phone.value.trim(), pick = form.querySelector('input[name=apply]:checked');
         if (!name) return fail('신청하는 분 이름을 적어 주십시오.', form.name);
         if (!phone) return fail('연락처를 적어 주십시오.', form.phone);
-        if (!pick) return fail('학습과 세례(입교) 가운데 하나를 골라 주십시오.');
+        if (!pick) return fail('학습·세례·입교 가운데 하나를 골라 주십시오.');
         var answers = qs.map(function (_, i) { var l = qLabels[i]; return l && l.hidden ? '' : String(form['a' + i].value || '').trim(); });
         var miss = answers.findIndex(function (a, i) { return !a && !(qLabels[i] && qLabels[i].hidden); });
         if (miss >= 0) return fail('빈 문답이 있습니다. 모든 질문에 답을 적어 주십시오.', form['a' + miss]);
         err.hidden = true; btn.disabled = true; btn.textContent = '보내는 중…';
-        rpc('app_submit_qa', { p_form: f.id, p_name: name, p_phone: phone, p_apply: pick.value, p_answers: answers }).then(function (r) {
+        var send = function (kind) { return rpc('app_submit_qa', { p_form: f.id, p_name: name, p_phone: phone, p_apply: kind, p_answers: answers }); };
+        send(pick.value).then(function (r) {
+          // 1900 실행 전 서버는 '학습' · '세례(입교)' 만 받는다 → 세례·입교는 옛 이름으로 다시 보낸다
+          if (r && !r.ok && r.why === 'apply' && pick.value !== '학습') return send(LEGACY_BAPT);
+          return r;
+        }).then(function (r) {
           if (!r || !r.ok) throw new Error((r && r.error) || '신청하지 못했습니다.');
           changed();
           return loadEntry(f.id).then(function (e2) { showStatus(f, e2, r.updated ? '고친 내용을 저장했습니다.' : '신청했습니다.'); });
@@ -610,6 +680,7 @@ console.log('[forms.js] v20261025tg1');
         (f.kind === 'baptism' && Array.isArray(e.answers) && e.answers.some(Boolean) ? '<div class="ap-qa-view"><p class="ap-qa-h">내가 적은 문답</p>' + (function () { var n = 0; return e.answers.map(function (a, i) {
           if (!a) return ''; n++; return '<div class="ap-qa-i"><b>' + n + '. ' + esc(qParts((f.questions || [])[i]).text) + '</b><p>' + nl2br(a) + '</p></div>'; }).join(''); })() + '</div>' : '') +
         (due ? payHTML(f, e) : '') +
+        (f.kind === 'baptism' && active ? classroomHTML(e.apply_kind) : '') +
         '<div class="ap-actions">' +
         (active && open ? '<button type="button" class="ap-btn-line" data-edit>신청 고치기</button>' : '') +
         (active && !e.paid_at ? '<button type="button" class="ap-btn-line ap-quiet" data-cancel="' + e.id + '">신청 취소</button>' : '') +
