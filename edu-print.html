@@ -66,12 +66,14 @@
     .c-date{text-align:center;font-family:"Noto Serif KR",serif;font-size:17px;margin:auto 0 10mm;padding-top:14mm;letter-spacing:.08em}
     .c-sign{text-align:center;font-family:"Noto Serif KR",serif;line-height:1.9}
     .c-sign .dn{font-size:14px;color:#3A281C}
-    .c-sign .ch{font-size:25px;font-weight:900;letter-spacing:.32em;padding-left:.32em;color:#2E2016}
-    .c-sign .ps{font-size:17px;letter-spacing:.18em;display:inline-block;white-space:nowrap;margin-top:16px;padding-left:72px}
-    /* 직인: 이름 뒤 '(인)' 칸(직인 폭과 같은 64px)에 가운데 맞춰 찍는다 — 이름 글자·교회 이름에 겹치지 않음.
-       왼쪽 72px 여백은 (인) 칸만큼 줄 전체를 오른쪽으로 밀려난 것을 되돌려 '담임목사 김 동 석' 이 가운데 오게 한다. 곱하기 섞기로 도장처럼 보임 */
-    .c-sign .in{position:relative;display:inline-block;width:64px;margin-left:8px;text-align:center;letter-spacing:0;font-size:14px;color:#9B8775;vertical-align:middle}
-    .c-sign .in img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:60px;height:auto;max-width:none;opacity:.9;mix-blend-mode:multiply}
+    .c-sign .ch{font-size:25px;font-weight:900;letter-spacing:.32em;padding-left:.32em;color:#2E2016;margin-top:8px}
+    /* 교회 직인: 끝 글자 '회' 의 가운데(0.5em)에서 시작 — 도장 왼쪽 절반이 '회' 의 오른쪽 절반에 걸친다. 곱하기 섞기로 글자가 비쳐 보인다 */
+    .c-sign .ch .last{position:relative;display:inline-block}
+    .c-sign .ch .last img{position:absolute;left:.5em;top:50%;transform:translateY(-50%);width:70px;height:auto;max-width:none;opacity:.9;mix-blend-mode:multiply;pointer-events:none}
+    .c-sign .ps{font-size:17px;letter-spacing:.18em;display:inline-block;white-space:nowrap;margin-top:30px;padding-left:66px}
+    /* 당회장 도장: 이름 뒤 '(인)' 칸(58px)에 가운데 맞춰 찍는다. 왼쪽 66px 여백은 (인) 칸만큼 밀린 줄을 되돌려 '담임목사 김 동 석' 이 가운데 오게 한다 */
+    .c-sign .in{position:relative;display:inline-block;width:58px;margin-left:8px;text-align:center;letter-spacing:0;font-size:14px;color:#9B8775;vertical-align:middle}
+    .c-sign .in img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:52px;height:auto;max-height:56px;max-width:none;object-fit:contain;opacity:.92;mix-blend-mode:multiply;pointer-events:none}
     .void{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
     .void span{transform:rotate(-24deg);font-size:64px;font-weight:900;color:rgba(163,58,42,.28);border:8px solid rgba(163,58,42,.28);padding:6px 30px;letter-spacing:.2em}
     /* 인쇄: 쪽 여백은 @page 가 맡는다(두 쪽째도 같은 여백) — 증명서 틀은 한 쪽(297-24mm)을 꽉 채운다 */
@@ -93,6 +95,6 @@
 
   <script src="js/config.js?v=20260908lib"></script>
   <script src="js/catechism-data.js?v=20261025cr1"></script>
-  <script src="js/edu-print.js?v=20261025cr1"></script>
+  <script src="js/edu-print.js?v=20261025cr2"></script>
 </body>
 </html>
