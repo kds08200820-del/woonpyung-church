@@ -172,6 +172,13 @@ body.garden [hidden] { display: none !important; }
   border-radius: 999px; background: #2f5d8a; color: #fff; font-size: .9rem; font-weight: 800; text-decoration: none; box-shadow: var(--g-shadow); white-space: nowrap; }
 .g-preach small { font-size: .74rem; font-weight: 600; opacity: .85; }
 .g-preach[hidden] { display: none; }
+/* 설교하기 단추가 예배 띠 아래 한 줄을 차지하면 그 아래 줄(정원 들어가기·날씨·돌리기·알림)을 한 줄만큼 내린다 — 태블릿·PC (폰은 위 규칙대로 띠 아래) */
+@media (min-width: 761px) {
+  body.g-has-banner.g-has-preach .g-wx-float { top: calc(var(--g-hdr) + 128px); }
+  body.g-has-banner.g-has-preach .g-rotate { top: calc(var(--g-hdr) + 128px); }
+  body.g-has-banner.g-has-preach .g-toast { top: calc(var(--g-hdr) + 132px); }
+}
+@media (min-width: 1001px) and (max-width: 1279px) { body.g-has-banner.g-has-preach .g-rotate { top: calc(var(--g-hdr) + 182px); } }
 .g-preach:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
 .g-root[data-mode="gate"] .g-preach { display: none; }
 .g-banner.is-live { background: var(--g-coral); animation: g-pulse 2.4s ease-in-out infinite; }

@@ -114,6 +114,7 @@ window.GardenScene = (function () {
       S.ctx = S.canvas.getContext('2d'); S.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       S.parts = [];
     }
+    fitChurch();
     if (S.fieldList && Math.abs(visBottom() - (S.fieldVB || 0)) > 8) setField();   // 화면 비율이 바뀌어 아래가 잘리면 밭 앞줄을 다시 맞춘다
   }
   /* 화면에 보이는 장면의 맨 아래(설계 y) — 넓고 낮은 칸에서는 장면 아래가 잘린다 */
@@ -222,7 +223,37 @@ window.GardenScene = (function () {
       box.addEventListener('click', function (e) { e.stopPropagation(); o.onOpen(); });
       box.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onOpen(); } });
     }
-    S.el.plot.insertBefore(box, S.el.plot.firstChild); S.el.church = box;   // 밭·인물과 같은 층(누를 수 있게), 그 층 맨 앞 자식 = 맨 뒤에 그림
+    S.el.plot.insertBefore(box, S.el.plot.firstChild); S.el.church = box; fitChurch(); setTimeout(fitChurch, 400);
+    if (!S.churchObs && window.MutationObserver) {   // 오른쪽 칸을 접거나 펼치면 비어 있는 폭이 바뀐다 — 다시 맞춘다
+      var gr = document.getElementById('gRoot');
+      if (gr) { S.churchObs = new MutationObserver(function () { setTimeout(fitChurch, 350); }); S.churchObs.observe(gr, { attributes: true, attributeFilter: ['class'] }); }
+    }   // 밭·인물과 같은 층(누를 수 있게), 그 층 맨 앞 자식 = 맨 뒤에 그림
+  }
+  /* 교회를 '두 패널 사이 비어 있는 곳'의 가운데에, 그 폭에 들어가게 — 세로로 긴 태블릿(아이패드)에서는 장면이 크게 확대돼
+     교회가 왼쪽 서재 패널 뒤로 숨고 잘렸다 (2026-10-25 담임목사 "아이패드 화면 조정"). 넓은 화면에서는 원래 자리(CHURCH_AT.x) 근처 */
+  function fixedRect(el) {
+    if (!el) return null;
+    var cs = getComputedStyle(el); if (cs.display === 'none' || cs.position !== 'fixed') return null;
+    var r = el.getBoundingClientRect(); return r.width > 0 ? r : null;
+  }
+  function fitChurch() {
+    var box = S.el && S.el.church; if (!box || !S.root) return;
+    var vw = window.innerWidth, L = 0, R = vw;
+    var a = fixedRect(document.getElementById('gStudy')); if (a && a.right > 0) L = Math.max(L, a.right + 12);
+    var b = fixedRect(document.getElementById('gRail')); if (b && b.left < vw) R = Math.min(R, b.left - 12);
+    if (R - L < 240) { L = 0; R = vw; }
+    var s = S.scale || 1, rr = S.root.getBoundingClientRect(), x = ((L + R) / 2 - rr.left - S.offX) / s;
+    x = Math.max(W * 0.18, Math.min(W * 0.82, x));
+    box.style.left = x.toFixed(1) + 'px';
+    box.style.transform = ''; box.style.transformOrigin = '50% 100%';
+    var f = Math.min(1, (R - L) * 0.92 / Math.max(1, box.offsetWidth * s));
+    if (f < 1) box.style.transform = 'translate(-50%, -100%) scale(' + f.toFixed(3) + ')';
+    var hn = S.el.churchHint;   // 안내 풍선은 따로 있는 층 — 같은 가운데로, 받침대(그림 아래에서 69px 위) 바로 아래에
+    if (hn) {
+      hn.style.left = x.toFixed(1) + 'px'; hn.style.top = Math.round(CHURCH_AT.y - 69 * f + 46) + 'px';
+      var hf = Math.max(0.62, f);   // 교회를 줄이면 풍선도 따라 줄인다(너무 작아 읽기 힘들지 않게 62%까지)
+      hn.style.fontSize = hf < 1 ? (15 * hf).toFixed(1) + 'px' : ''; hn.style.padding = hf < 1 ? (7 * hf).toFixed(1) + 'px ' + (16 * hf).toFixed(1) + 'px' : '';
+    }
   }
   function buildFloor() {
     var img = asset('floor/floor-tiles.webp');

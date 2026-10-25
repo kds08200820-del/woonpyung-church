@@ -703,12 +703,12 @@ window.GardenHud = (function () {
      (홈 화면 worship.js preachRow 와 같은 주소: affairs.html?present=sunday|wed|dawn&date=YYYY-MM-DD) — 2026-10-25 담임목사 "설교자용 보기가 안 나옵니다" */
   function syncPreach(sc) {
     var p = $('gPreach'); if (!p) return;
-    if (!sc || !SDK.isSiteAdmin) { p.hidden = true; return; }
+    if (!sc || !SDK.isSiteAdmin) { p.hidden = true; document.body.classList.remove('g-has-preach'); return; }
     var kind = sc.kind, href = 'affairs.html?present=' + encodeURIComponent(kind) + '&date=' + I.nowParts().date;
     if (p.dataset.href === href && !p.hidden) return;
     SDK.isSiteAdmin().then(function (ok) {
-      if (!ok || !BN.cur || BN.cur.kind !== kind) { p.hidden = true; return; }
-      p.href = href; p.dataset.href = href; p.hidden = false;
+      if (!ok || !BN.cur || BN.cur.kind !== kind) { p.hidden = true; document.body.classList.remove('g-has-preach'); return; }
+      p.href = href; p.dataset.href = href; p.hidden = false; document.body.classList.add('g-has-preach');
     });
   }
   function tick() {
