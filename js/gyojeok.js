@@ -445,10 +445,10 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
       });
       loadClassroom(cur['매칭키']).then(function (cl) {
         var el = box.querySelector('#gd_class'); if (!el || !cl || (!cl.done.length && !cl.certs.length)) return;
-        var CT = { learn: '학습 과정', baptism: '세례(입교) 과정' }, pill = 'class="fin-pill" style="background:#F8F1EB;color:#845C3E;margin:0 6px 6px 0;display:inline-block;text-decoration:none"';
+        var CT = { learn: '학습 과정', baptism: '세례(입교) 과정', infant: '유아세례 과정(부모 교육)' }, pill = 'class="fin-pill" style="background:#F8F1EB;color:#845C3E;margin:0 6px 6px 0;display:inline-block;text-decoration:none"';
         el.innerHTML = '<div style="color:#93867C;font-size:.85rem;margin-bottom:5px">🎓 교육 이수 (강의실)</div>' +
           cl.done.map(function (r) { return '<a ' + pill + ' href="edu-print.html?sheet=' + r.id + '" target="_blank" rel="noopener" title="시험지 보기">' + esc(CT[r.course] || r.course) + ' 이수 · ' + esc(String(r.created_at || '').slice(0, 10)) + ' · ' + esc(r.score) + '점</a>'; }).join('') +
-          cl.certs.map(function (c) { return '<a ' + pill.replace('#F8F1EB;color:#845C3E', '#2E2016;color:#fff') + ' href="edu-print.html?cert=' + c.id + '" target="_blank" rel="noopener">' + esc(c.kind) + '교인 증명서 ' + esc(c.cert_no) + '</a>'; }).join('');
+          cl.certs.map(function (c) { return '<a ' + pill.replace('#F8F1EB;color:#845C3E', '#2E2016;color:#fff') + ' href="edu-print.html?cert=' + c.id + '" target="_blank" rel="noopener">' + esc(c.kind === '유아세례' ? '유아세례 증명서' : c.kind + '교인 증명서') + ' ' + esc(c.cert_no) + '</a>'; }).join('');
       });
     }
 

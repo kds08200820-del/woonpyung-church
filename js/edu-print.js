@@ -1,10 +1,10 @@
-/* edu-print.js — 강의실 시험지·결과지와 학습·세례·입교 교인 증명서 인쇄 (2026-10-25 담임목사 지시)
+/* edu-print.js — 강의실 시험지·결과지와 학습·세례·입교 교인 증명서 · 유아세례 증명서 인쇄 (2026-10-25 담임목사 지시)
  *  edu-print.html?sheet=<결과 번호>  : 서버에 저장된 시험지·결과 (본인·관리자만 — RLS)
- *  edu-print.html?local=learn|baptism : 이 기기에 보관된 마지막 시험 결과(서버 저장 전)
+ *  edu-print.html?local=learn|baptism|infant : 이 기기에 보관된 마지막 시험 결과(서버 저장 전)
  *  edu-print.html?cert=<증명서 번호>  : 증명서 (관리자·본인만 — RLS)
  *  인쇄 창에서 'PDF로 저장' 을 고르면 PDF 가 된다. 자료실(member_files)의 강의실 항목이 이 주소로 연결된다.
  */
-console.log('[edu-print.js] v20261025cr1');
+console.log('[edu-print.js] v20261025inf1');
 
 (function () {
   var C = window.WPC_CATECHISM || { courses: {}, church: {} };
@@ -12,7 +12,15 @@ console.log('[edu-print.js] v20261025cr1');
   var doc = document.getElementById('doc'), bar = document.getElementById('bar');
   var SB = String(window.SUPABASE_URL || '').replace(/\/$/, ''), AK = window.SUPABASE_ANON_KEY;
   var Q = new URLSearchParams(location.search);
-  var COURSE_T = { learn: '학습 과정', baptism: '세례(입교) 과정' };
+  var COURSE_T = { learn: '학습 과정', baptism: '세례(입교) 과정', infant: '유아세례 과정(부모 교육)' };
+  // 유아세례 증명서: 세례받을 때 만 7~13세였으면 '어린이세례'(총회 문답서 세례 2문)
+  function infantLabel(c) {
+    var b = c.birth && new Date(c.birth + 'T00:00:00'), d = c.rite_date && new Date(c.rite_date + 'T00:00:00');
+    if (!b || !d || isNaN(b) || isNaN(d)) return '유아세례';
+    var age = d.getFullYear() - b.getFullYear() - ((d.getMonth() < b.getMonth() || (d.getMonth() === b.getMonth() && d.getDate() < b.getDate())) ? 1 : 0);
+    return age >= 7 ? '어린이세례' : '유아세례';
+  }
+  function certTitle(c) { return c.kind === '유아세례' ? infantLabel(c) + ' 증명서' : c.kind + '교인 증명서'; }
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function kdate(d) { if (!d) return ''; var x = new Date(String(d).length === 10 ? d + 'T00:00:00' : d); if (isNaN(x)) return ''; return x.getFullYear() + '년 ' + (x.getMonth() + 1) + '월 ' + x.getDate() + '일'; }
@@ -81,8 +89,8 @@ console.log('[edu-print.js] v20261025cr1');
   //   '담임목사 김동석 (인)' 자리에는 당회장 도장(목회행정 > 교인 증명서 > 도장 설정에서 올린 이미지, app_settings 'edu_img_pastor_seal')을 찍는다.
   //   당회장 도장은 관리자(교적·재정 권한)만 읽을 수 있어, 성도 본인이 열면 '(인)' 만 보인다.
   function certHTML(c, res, pastorSeal) {
-    var kind = c.kind, church = c.church || CH.name || '운평장로교회';
-    var dayLabel = kind === '학습' ? '학습받은 날' : kind === '세례' ? '세례받은 날' : '입교한 날';
+    var kind = c.kind, church = c.church || CH.name || '운평장로교회', inf = kind === '유아세례';
+    var dayLabel = kind === '학습' ? '학습받은 날' : kind === '입교' ? '입교한 날' : '세례받은 날';
     var verb = kind === '학습' ? '학습을 받았음을' : kind === '세례' ? '세례를 받았음을' : '입교하였음을';
     var course = kind === '학습' ? '학습' : '세례(입교)';
     var blank = '<span class="blank"></span>';
@@ -91,11 +99,15 @@ console.log('[edu-print.js] v20261025cr1');
     return '<div class="page cert"><div class="frame"><div class="frame-in">' +
       (c.voided_at ? '<div class="void"><span>취 소</span></div>' : '') +
       '<div class="c-no">제 ' + esc(c.cert_no) + ' 호</div>' +
-      '<div class="c-title">' + esc(kind) + '교인 증명서</div>' +
-      '<table class="c-tb">' + row('성 명', c.member_name) + row('생년월일', c.birth ? kdate(c.birth) : '') + row('문답받은 날', kdate(c.qa_date)) +
-      row(dayLabel, kdate(c.rite_date)) + row('집례 목사', c.officiant) + row('받은 곳', church) + '</table>' +
-      '<p class="c-body">위 사람은 「학습·세례문답서」에 따른 ' + esc(course) + ' 교육을 마치고, 당회의 문답을 거쳐 ' + esc(church) + '에서 ' + esc(verb) + ' 증명합니다.</p>' +
-      (res ? '<p class="c-edu">교육 이수: ' + esc(CH.name || '운평장로교회') + ' 강의실 ' + esc(COURSE_T[res.course] || '') + ' (' + esc(dotdate(res.created_at)) + ' · ' + esc(res.score) + '점)</p>' : '') +
+      '<div class="c-title">' + esc(certTitle(c)) + '</div>' +
+      (inf
+        ? '<table class="c-tb">' + row('성 명', c.member_name) + row('생년월일', c.birth ? kdate(c.birth) : '') + row('부 모', c.parents) +
+          row(dayLabel, kdate(c.rite_date)) + row('집례 목사', c.officiant) + row('받은 곳', church) + '</table>' +
+          '<p class="c-body">위 어린이는 믿는 부모의 신앙고백과 서약에 따라 당회의 문답을 거쳐 ' + esc(church) + '에서 ' + esc(infantLabel(c)) + '를 받았음을 증명합니다.</p>'
+        : '<table class="c-tb">' + row('성 명', c.member_name) + row('생년월일', c.birth ? kdate(c.birth) : '') + row('문답받은 날', kdate(c.qa_date)) +
+          row(dayLabel, kdate(c.rite_date)) + row('집례 목사', c.officiant) + row('받은 곳', church) + '</table>' +
+          '<p class="c-body">위 사람은 「학습·세례문답서」에 따른 ' + esc(course) + ' 교육을 마치고, 당회의 문답을 거쳐 ' + esc(church) + '에서 ' + esc(verb) + ' 증명합니다.</p>') +
+      (res ? '<p class="c-edu">' + (inf ? '부모 교육 이수: ' : '교육 이수: ') + esc(CH.name || '운평장로교회') + ' 강의실 ' + esc(COURSE_T[res.course] || '') + ' (' + esc(dotdate(res.created_at)) + (inf ? '' : ' · ' + esc(res.score) + '점') + ')</p>' : '') +
       '<p class="c-date">' + esc(kdate(c.issued_on)) + '</p>' +
       '<div class="c-sign"><div class="dn">' + esc(CH.denom || '대한예수교장로회(합동)') + ' ' + esc(CH.presbytery || '') + '</div>' +
       '<div class="ch">' + esc(chName.slice(0, -1)) + '<span class="last">' + esc(chName.slice(-1)) + '<img src="' + seal + '" alt="교회 직인"></span></div>' +
@@ -132,7 +144,7 @@ console.log('[edu-print.js] v20261025cr1');
       return Promise.all([p, ps]).then(function (two) {
         var res = two[0];
         doc.innerHTML = certHTML(c, res, two[1]);
-        ready(c.member_name + ' ' + c.kind + '교인 증명서');
+        ready(c.member_name + ' ' + certTitle(c));
       });
     }).catch(function (e) { message('불러오지 못했습니다', (e && e.message) || '잠시 뒤에 다시 열어 주십시오.'); });
     return;

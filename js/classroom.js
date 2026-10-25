@@ -1,4 +1,4 @@
-/* classroom.js — 강의실 (학습·세례(입교) 교육과정, 2026-10-25 담임목사 지시)
+/* classroom.js — 강의실 (학습·세례(입교)·유아세례 교육과정, 2026-10-25 담임목사 지시)
  *  · 교재·문제은행: js/catechism-data.js (window.WPC_CATECHISM)
  *  · 화면(주소 #): 첫 화면 '#' · 과정 '#learn' · 장 '#learn/3' · 서약 문답 '#learn/vows' · 시험 '#learn/exam' · 결과 '#learn/result'
  *  · 진행 단계 네비게이션 바: 장 → 서약 문답 → 시험. 마친 단계는 채워지고 진행률(%)이 보인다
@@ -6,20 +6,24 @@
  *  · 저장: 이 기기(localStorage)에 먼저, 로그인하면 서버(edu_progress_save · edu_exam_submit)에도 —
  *    통과하면 교적 매칭키와 함께 기록되어 목회행정 대시보드·교적 상세·자료실에 나타난다
  *    (supabase/20261025_1600_edu_classroom.sql — 실행 전에는 결과 저장만 '준비 중' 으로 안내)
+ *  · 유아세례 과정(부모 교육)은 20261025_1800_edu_infant.sql 로 서버가 받는다 — 실행 전에는 이 기기에 먼저 보관
  */
-console.log('[classroom.js] v20261025cr1');
+console.log('[classroom.js] v20261025inf1');
 
 (function () {
   var C = window.WPC_CATECHISM;
   var root = document.getElementById('crRoot');
   if (!root || !C) return;
   var SB = String(window.SUPABASE_URL || '').replace(/\/$/, ''), AK = window.SUPABASE_ANON_KEY;
-  var ORDER = ['learn', 'baptism'];
+  var ORDER = ['learn', 'baptism', 'infant'];
   // 네비게이션 바에 쓰는 짧은 장 이름
   var SHORT = {
     learn: ['자격과 목적', '성경', '하나님', '창조', '죄', '예수 그리스도', '예배', '공적 예배', '성도의 생활', '주기도문·사도신경'],
-    baptism: ['자격', '성경', '하나님', '사탄과 범죄', '예수님의 사역', '성령과 구원', '교회생활', '종말과 재림', '세례와 성찬', '성경교육·선교', '꼭 암송할 것']
+    baptism: ['자격', '성경', '하나님', '사탄과 범죄', '예수님의 사역', '성령과 구원', '교회생활', '종말과 재림', '세례와 성찬', '성경교육·선교', '꼭 암송할 것'],
+    infant: ['유아세례란', '세례의 뜻', '물과 성령', '믿음의 가정', '성찬과 입교']
   };
+  // 과정별 단추 색: 학습 기본 · 세례 주황 · 유아세례 초록
+  function tone(cid) { return cid === 'baptism' ? ' cr-gold' : cid === 'infant' ? ' cr-sage' : ''; }
   var VOW_STEP = 0;   // 서약 문답은 장 번호 0 으로 진도에 넣는다
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -106,7 +110,7 @@ console.log('[classroom.js] v20261025cr1');
     return Promise.all([
       api('GET', 'edu_course_progress?select=course,done'),
       api('GET', 'edu_exam_results?select=id,course,score,correct,total,passed,created_at&order=created_at.desc&limit=60'),
-      api('GET', 'edu_certificates?select=id,cert_no,kind,issued_on,voided_at&order=issued_on.desc').catch(function () { return []; })
+      api('GET', 'edu_certificates?select=id,cert_no,kind,member_name,issued_on,voided_at&order=issued_on.desc').catch(function () { return []; })
     ]).then(function (res) {
       SV.ready = true;
       var changed = {};
@@ -194,11 +198,11 @@ console.log('[classroom.js] v20261025cr1');
 
   /* ═════════════ 첫 화면 ═════════════ */
   function renderHome() {
-    var html = '<div class="cr-wrap">' +
+    var html = '<div class="cr-wrap is-home">' +
       '<section class="cr-guide" aria-labelledby="crGuideT"><h2 id="crGuideT">강의실은 이렇게 진행됩니다</h2>' +
       '<p>대한예수교장로회총회 「학습·세례문답서」를 한 장씩 친절한 풀이와 함께 배웁니다. 공부한 곳은 위쪽 진행 막대에 표시되고, 다 마치면 시험을 봅니다.</p>' +
       '<ol class="cr-flow">' +
-      '<li><b>과정 고르기</b>학습 또는 세례(입교)</li>' +
+      '<li><b>과정 고르기</b>학습 · 세례(입교) · 유아세례(부모)</li>' +
       '<li><b>장마다 공부</b>문답 원문과 풀이</li>' +
       '<li><b>서약 문답</b>예식 때 드릴 고백 미리 보기</li>' +
       '<li><b>이수 시험</b>20문항 · 70점 이상 통과</li>' +
@@ -208,7 +212,7 @@ console.log('[classroom.js] v20261025cr1');
       (S && SV.ready === false ? '<p class="cr-warn">강의실 기록 저장을 준비하고 있습니다. 공부와 시험은 지금도 할 수 있고, 결과는 이 기기에 먼저 보관됩니다.</p>' : '') +
       '<div class="cr-courses">' + ORDER.map(courseCard).join('') + '</div>' +
       (S ? mineHTML() : '<div class="cr-card" style="margin-top:22px"><h2>로그인하고 시작하세요</h2><p>공부한 진도와 시험 결과는 내 계정에 기록되어 교적에 이수로 남습니다.</p><div class="cr-acts"><button type="button" class="cr-btn" data-login>로그인</button></div></div>') +
-      '<p class="cr-note">' + esc(C.source) + ' 이 강의실의 이수는 교육을 마쳤다는 기록이며, 학습·세례(입교)는 당회의 문답과 예식을 거쳐 받습니다.</p>' +
+      '<p class="cr-note">' + esc(C.source) + ' 이 강의실의 이수는 교육을 마쳤다는 기록이며, 학습·세례(입교)·유아세례는 당회의 문답과 예식을 거쳐 받습니다.</p>' +
       '</div>';
     root.innerHTML = html;
     bindLogin();
@@ -225,7 +229,7 @@ console.log('[classroom.js] v20261025cr1');
       '<p class="cr-c-who"><b>대상</b>' + esc(c.who) + '</p>' +
       '<div class="cr-c-prog"><div class="cr-c-stat"><span>' + (badge || '진행률') + '</span><b>' + p.pct + '%</b></div>' +
       '<div class="cr-bar" role="progressbar" aria-label="' + esc(c.title) + ' 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + p.pct + '"><i style="width:' + p.pct + '%"></i></div>' +
-      '<a class="cr-btn' + (cid === 'baptism' ? ' cr-gold' : '') + '" href="#' + cid + (pass ? '/1' : '') + '"' + (!S ? ' data-login' : '') + '>' + esc(label) + '</a></div>' +
+      '<a class="cr-btn' + tone(cid) + '" href="#' + cid + (pass ? '/1' : '') + '"' + (!S ? ' data-login' : '') + '>' + esc(label) + '</a></div>' +
       '</article>';
   }
   function mineHTML() {
@@ -238,7 +242,7 @@ console.log('[classroom.js] v20261025cr1');
       if (!pass && tries) rows.push('<li><span><b>' + esc(c.title) + '</b> 시험 ' + tries + '회 응시<small>최고 ' + Math.max.apply(null, SV.results.filter(function (r) { return r.course === cid; }).map(function (r) { return r.score; })) + '점</small></span><a class="cr-line cr-sm" href="#' + cid + '/exam">다시 도전하기</a></li>');
     });
     SV.certs.forEach(function (ct) {
-      rows.push('<li><span><b>' + esc(ct.kind) + '교인 증명서</b> 제 ' + esc(ct.cert_no) + ' 호<small>' + esc(ct.issued_on) + ' 발급</small></span><a class="cr-line cr-sm" href="edu-print.html?cert=' + ct.id + '" target="_blank" rel="noopener">증명서 보기</a></li>');
+      rows.push('<li><span><b>' + esc(ct.kind === '유아세례' ? '유아세례 증명서' + (ct.member_name ? ' (' + ct.member_name + ')' : '') : ct.kind + '교인 증명서') + '</b> 제 ' + esc(ct.cert_no) + ' 호<small>' + esc(ct.issued_on) + ' 발급</small></span><a class="cr-line cr-sm" href="edu-print.html?cert=' + ct.id + '" target="_blank" rel="noopener">증명서 보기</a></li>');
     });
     return '<section class="cr-mine" aria-labelledby="crMineT"><h2 id="crMineT">내 기록</h2>' +
       (rows.length ? '<ul class="cr-mine-list">' + rows.join('') + '</ul>' : '<p class="cr-note" style="margin:0">아직 이수한 과정이 없습니다. 위에서 과정을 골라 시작해 보세요.</p>') +
@@ -258,7 +262,7 @@ console.log('[classroom.js] v20261025cr1');
     return '<nav class="cr-nav is-' + cid + '" aria-label="' + esc(c.title) + ' 진행 단계">' +
       '<div class="cr-nav-top"><a class="cr-nav-back" href="#">‹ 강의실</a><span class="cr-nav-title">' + esc(c.title) + '</span>' +
       '<span class="cr-nav-pct"><b>' + p.pct + '%</b> · ' + p.done + '/' + p.total + '단계</span></div>' +
-      '<div class="cr-bar' + (cid === 'baptism' ? ' is-baptism' : '') + '" role="progressbar" aria-label="진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + p.pct + '"><i style="width:' + p.pct + '%"></i></div>' +
+      '<div class="cr-bar' + (cid !== 'learn' ? ' is-' + cid : '') + '" role="progressbar" aria-label="진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + p.pct + '"><i style="width:' + p.pct + '%"></i></div>' +
       '<ol class="cr-steps">' + st.map(function (s) {
         var cls = 'cr-step' + (s.done ? ' is-done' : '') + (s.key === curKey ? ' is-cur' : '') + (s.lock ? ' is-lock' : '') + (s.exam ? ' is-exam' : '') + (s.pass ? ' is-pass' : '');
         var num = s.exam ? (s.pass ? '✓' : '시험') : s.vows ? '서약' : String(s.n);
@@ -294,10 +298,10 @@ console.log('[classroom.js] v20261025cr1');
     var html = '<div class="cr-wrap">' + navHTML(cid, key) +
       '<article class="cr-lesson">' +
       '<header class="cr-l-head"><p class="cr-l-eye">' + esc(c.part) + ' · 제' + ch.no + '장</p><h2>' + esc(ch.title) + '</h2>' +
-      '<p class="cr-l-meta">문답 ' + first + (last !== first ? '~' + last : '') + ' · ' + ch.qa.length + '문</p></header>' +
+      '<p class="cr-l-meta">' + (ch.meta ? '제2편 ' + esc(ch.meta) + ' — 문답 ' + ch.qa.length + '개' : '문답 ' + first + (last !== first ? '~' + last : '') + ' · ' + ch.qa.length + '문') + '</p></header>' +
       '<section class="cr-l-intro"><h3>📖 이 장의 풀이</h3>' + ch.intro.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</section>' +
       '<ol class="cr-qa">' + ch.qa.map(function (q) {
-        return '<li class="cr-q"><div class="cr-q-h"><span class="cr-q-n">' + q.n + '문</span><b>' + esc(q.q) + '</b></div>' +
+        return '<li class="cr-q"><div class="cr-q-h"><span class="cr-q-n' + (q.src ? ' is-src' : '') + '">' + (q.src ? esc(q.src) + ' ' : '') + q.n + '문</span><b>' + esc(q.q) + '</b></div>' +
           (q.a ? '<div class="cr-q-a">' + answerHTML(q.a) + '</div>' : '') +
           (q.recite ? reciteHTML(q.recite, q.recite.length < 14 && q.recite[0].length > 40) : '') +
           (q.tip ? '<div class="cr-q-tip"><span>풀이</span>' + esc(q.tip) + '</div>' : '') + '</li>';
@@ -307,7 +311,7 @@ console.log('[classroom.js] v20261025cr1');
       '<div class="cr-l-foot">' +
       (nb.prev ? '<a class="cr-line" href="#' + cid + '/' + nb.prev.key + '">‹ ' + esc(nb.prev.label) + '</a>' : '<a class="cr-line" href="#">‹ 강의실</a>') +
       (isDone ? '<span class="cr-done-msg">✓ 마친 장입니다</span>' : '') +
-      '<button type="button" class="cr-btn' + (cid === 'baptism' ? ' cr-gold' : '') + '" data-done>' + (isDone ? '다음으로 ›' : '이 장을 마쳤어요 ✓') + '</button>' +
+      '<button type="button" class="cr-btn' + tone(cid) + '" data-done>' + (isDone ? '다음으로 ›' : '이 장을 마쳤어요 ✓') + '</button>' +
       '</div></article></div>';
     root.innerHTML = html;
     centerCurrentStep();
@@ -337,9 +341,10 @@ console.log('[classroom.js] v20261025cr1');
     var c = C.courses[cid], nb = stepNeighbors(cid, 'vows'), isDone = doneOf(cid).indexOf(VOW_STEP) >= 0;
     var html = '<div class="cr-wrap">' + navHTML(cid, 'vows') +
       '<article class="cr-lesson">' +
-      '<header class="cr-l-head"><p class="cr-l-eye">제3편 부록</p><h2>서약 문답 미리 보기</h2><p class="cr-l-meta">' + (cid === 'learn' ? '학습 문답' : '세례 문답 · 입교 문답 · 유아·어린이 세례 문답') + '</p></header>' +
+      '<header class="cr-l-head"><p class="cr-l-eye">제3편 부록</p><h2>서약 문답 미리 보기</h2><p class="cr-l-meta">' + (cid === 'learn' ? '학습 문답' : cid === 'infant' ? '유아·어린이 세례 문답 (부모의 서약)' : '세례 문답 · 입교 문답 · 유아·어린이 세례 문답') + '</p></header>' +
       '<section class="cr-l-intro"><h3>📖 예식 때 이렇게 묻고 답합니다</h3><p>' + esc(C.vowNote) + '</p>' +
-      (cid === 'baptism' ? '<p>세례를 받는 분은 ‘세례 문답’, 어려서 세례를 받고 입교하는 분은 ‘입교 문답’으로 서약합니다. ‘유아·어린이 세례 문답’은 자녀에게 세례를 받게 하는 부모가 드리는 서약으로, 장차 부모가 될 세례교인이 함께 알아 두면 좋습니다.</p>' : '<p>학습 문답은 네 가지입니다. 하나님을 믿는 고백, 예수님이 나의 구주이심을 믿는 고백, 말씀대로 살겠다는 다짐, 주일과 예배와 기도를 힘쓰겠다는 작정입니다.</p>') +
+      (cid === 'infant' ? '<p>유아·어린이 세례 때에는 아이 대신 부모가 세 가지를 묻고 답합니다. 아이에게 그리스도의 피로 씻음과 성령으로 거듭나는 은혜가 필요함을 인정하고, 아이가 하나님의 언약의 자손임을 믿으며, 아이를 하나님께 바치고 모범과 기도와 말씀으로 기르기를 서약합니다. 부모 두 분이 함께 읽어 보십시오.</p>' :
+       cid === 'baptism' ? '<p>세례를 받는 분은 ‘세례 문답’, 어려서 세례를 받고 입교하는 분은 ‘입교 문답’으로 서약합니다. ‘유아·어린이 세례 문답’은 자녀에게 세례를 받게 하는 부모가 드리는 서약으로, 장차 부모가 될 세례교인이 함께 알아 두면 좋습니다.</p>' : '<p>학습 문답은 네 가지입니다. 하나님을 믿는 고백, 예수님이 나의 구주이심을 믿는 고백, 말씀대로 살겠다는 다짐, 주일과 예배와 기도를 힘쓰겠다는 작정입니다.</p>') +
       '</section>' +
       c.vows.map(function (k) {
         var v = C.vows[k];
@@ -349,7 +354,7 @@ console.log('[classroom.js] v20261025cr1');
       '<div class="cr-l-foot">' +
       (nb.prev ? '<a class="cr-line" href="#' + cid + '/' + nb.prev.key + '">‹ ' + esc(nb.prev.label) + '</a>' : '<span></span>') +
       (isDone ? '<span class="cr-done-msg">✓ 읽은 단계입니다</span>' : '') +
-      '<button type="button" class="cr-btn' + (cid === 'baptism' ? ' cr-gold' : '') + '" data-done>' + (isDone ? '시험으로 ›' : '잘 읽었습니다 ✓') + '</button>' +
+      '<button type="button" class="cr-btn' + tone(cid) + '" data-done>' + (isDone ? '시험으로 ›' : '잘 읽었습니다 ✓') + '</button>' +
       '</div></article></div>';
     root.innerHTML = html;
     centerCurrentStep();
@@ -387,7 +392,7 @@ console.log('[classroom.js] v20261025cr1');
         return '<li><span>' + (s.vows ? '서약 문답' : '제' + s.n + '장 ' + esc(s.title)) + '</span><a class="cr-line cr-sm" href="#' + cid + '/' + s.key + '">공부하기</a></li>';
       }).join('') + '</ul>' :
         '<p class="cr-note" style="margin:0 0 16px">모든 장을 마쳤습니다. 준비가 되면 시작하세요. 시험 중에 창을 닫아도 이 기기에서 이어서 볼 수 있습니다. 통과하면 교적에 이수가 기록되고, 목회자가 확인한 뒤 당회 문답을 안내합니다.</p>' +
-        '<div class="cr-acts"><button type="button" class="cr-btn' + (cid === 'baptism' ? ' cr-gold' : '') + '" data-start>시험 시작하기</button><a class="cr-line" href="#' + cid + '/1">처음부터 복습하기</a></div>') +
+        '<div class="cr-acts"><button type="button" class="cr-btn' + tone(cid) + '" data-start>시험 시작하기</button><a class="cr-line" href="#' + cid + '/1">처음부터 복습하기</a></div>') +
       '</article></div>';
     root.innerHTML = html;
     centerCurrentStep();
@@ -468,7 +473,7 @@ console.log('[classroom.js] v20261025cr1');
       go('#' + cid + '/result');
     };
     submitServer(cid, rec).then(function () { done(''); }, function (e) {
-      if (notReady(e)) { SV.ready = false; done('강의실 기록 저장을 준비하고 있어 결과를 이 기기에 먼저 보관했습니다. 준비가 끝나면 이 화면을 다시 열 때 자동으로 올라갑니다.'); }
+      if (notReady(e) || e.why === 'course') { if (e.why !== 'course') SV.ready = false; done('강의실 기록 저장을 준비하고 있어 결과를 이 기기에 먼저 보관했습니다. 준비가 끝나면 이 화면을 다시 열 때 자동으로 올라갑니다.'); }
       else if (e.why === 'limit') { done(e.message); }
       else done('결과를 서버에 저장하지 못했습니다(' + (e.message || '연결 오류') + '). 이 기기에 보관했으니 잠시 뒤 강의실을 다시 열어 주십시오.');
     });
@@ -497,8 +502,8 @@ console.log('[classroom.js] v20261025cr1');
         : '<h2>아쉽지만 ' + C.exam.pass + '점에 조금 모자랍니다</h2><p>틀린 문항의 풀이를 살펴보고, 해당 장을 복습한 뒤 다시 도전해 보세요. 다시 볼 때는 다른 문제가 나옵니다.</p>') +
       (rec.saveMsg ? '<p class="cr-warn" style="text-align:left;margin-top:12px">' + esc(rec.saveMsg) + '</p>' : '') +
       '<div class="cr-acts">' +
-      (pass ? '<a class="cr-btn" href="' + printUrl + '" target="_blank" rel="noopener">🖨 시험지·결과 PDF</a><a class="cr-line" href="forms.html">학습·세례 신청서 보기</a>'
-        : '<button type="button" class="cr-btn cr-gold" data-retry>다시 시험 보기</button><a class="cr-line" href="' + printUrl + '" target="_blank" rel="noopener">🖨 시험지 인쇄</a>') +
+      (pass ? '<a class="cr-btn" href="' + printUrl + '" target="_blank" rel="noopener">🖨 시험지·결과 PDF</a>' + (cid === 'infant' ? '' : '<a class="cr-line" href="forms.html">학습·세례 신청서 보기</a>')
+        :'<button type="button" class="cr-btn cr-gold" data-retry>다시 시험 보기</button><a class="cr-line" href="' + printUrl + '" target="_blank" rel="noopener">🖨 시험지 인쇄</a>') +
       '<a class="cr-line" href="#">강의실 첫 화면</a></div>' +
       reviewHTML(cid, rec.sheet) +
       '</div></div>';

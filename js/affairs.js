@@ -1230,7 +1230,7 @@ console.log('[affairs.js] v20261023th1');
         '<div class="dsh-kpis">' +
         kpi({ id: 'eduDoneCard', label: '교육 이수자', numId: 'eduDoneNum', subId: 'eduDoneSub', sub: '불러오는 중…' }) +
         kpi({ id: 'eduProgCard', label: '강의실 수강 중', numId: 'eduProgNum', subId: 'eduProgSub', sub: '진도·응시 현황' }) +
-        kpi({ id: 'eduCertCard', label: '교인 증명서', numId: 'eduCertNum', subId: 'eduCertSub', sub: '학습·세례·입교 · 발급 대장' }) +
+        kpi({ id: 'eduCertCard', label: '교인 증명서', numId: 'eduCertNum', subId: 'eduCertSub', sub: '학습·세례·입교·유아세례 · 발급 대장' }) +
         '</div>' +
         '<div class="dsh-panel"><div class="dsh-ph"><b>교육 이수자 명단<small>강의실 · 최근 8명</small></b><button type="button" class="dsh-link" data-edu-open>전체 보기 →</button></div><div id="eduList"><p class="qt-loading" style="margin:0">불러오는 중…</p></div></div>' +
         '<div class="dsh-sec">미디어 · 관리<small>눌러서 관리</small></div>' +
@@ -1709,7 +1709,7 @@ console.log('[affairs.js] v20261023th1');
       function go() { if (document.body.contains(panel)) window.WPCEduAdmin.dash(panel, ctx); }
       if (window.WPCEduAdmin) { go(); return; }
       function add(src, next) { var s = document.createElement('script'); s.src = src; s.onload = next; s.onerror = function () { var b = panel.querySelector('#eduList'); if (b) b.innerHTML = '<p style="color:#A3907F;font-size:.86rem;margin:0">강의실 화면을 불러오지 못했습니다.</p>'; }; document.body.appendChild(s); }
-      add('js/catechism-data.js?v=20261025cr1', function () { add('js/edu-admin.js?v=20261025tg1', function () { if (window.WPCEduAdmin) go(); }); });
+      add('js/catechism-data.js?v=20261025inf1', function () { add('js/edu-admin.js?v=20261025inf1', function () { if (window.WPCEduAdmin) go(); }); });
     }
     function loadWorshipJobs(panel) {
       var numEl = panel.querySelector('#wpJobsNum'), subEl = panel.querySelector('#wpJobsSub');
