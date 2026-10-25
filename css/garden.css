@@ -1158,3 +1158,25 @@ button.g-chip-wx:focus-visible { outline: 3px solid var(--g-coral-ring); outline
 @keyframes g-church-bob { 0%, 100% { transform: translate(-50%, -100%); } 50% { transform: translate(-50%, -100%) translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .g-church-hint { animation: none; } }
 .g-church-tag { position: absolute; left: 50%; top: -6px; transform: translate(-50%, -100%); white-space: nowrap; font-size: 15px; font-weight: 700; color: #4a3b31; background: rgba(255,250,243,.92); border: 1px solid #e6d6c3; border-radius: 999px; padding: 2px 10px; }
+
+/* ===== 첫 화면 맨 위 가운데 정돈 (2026-10-25 담임목사 "정리가 안 되어 있습니다") =====
+   예배 띠 · 단추 줄(종료·방송실·설교하기) · 정원 들어가기+날씨 · 화면 돌리기를 한 묶음(.g-top)에 위에서 아래로 차례로 쌓는다.
+   예전엔 각자 position: fixed 에 '띠가 있으면 몇 px 아래로' 규칙을 따로 줘서, 단추가 늘 때마다 서로 겹쳤다.
+   · 태블릿·PC(761px~): 묶음이 두 패널 사이 가운데에 서고, 자식들은 흐름대로 배치(서로 밀어 줌)
+   · 휴대폰(~760px): 묶음을 풀어(display: contents) 예전처럼 각자 제 자리 */
+@media (min-width: 761px) {
+  .g-top { position: fixed; z-index: 3; top: calc(var(--g-hdr) + 14px); left: 50%; transform: translateX(-50%);
+    width: calc(100% - 2 * (var(--g-panel-w) + 40px)); min-width: 260px; max-width: 760px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
+  .g-top > *, .g-top .g-wx-float > * { pointer-events: auto; }
+  .g-top .g-banner { position: static; transform: none; max-width: 100%; }
+  .g-top .g-pills { position: static; transform: none; max-width: 100%; }
+  .g-top .g-wx-float, body.g-has-banner .g-top .g-wx-float, body.g-has-banner.g-has-pill .g-top .g-wx-float { position: static; top: auto; right: auto; left: auto; max-width: 100%; justify-content: center; flex-wrap: wrap; pointer-events: none; }
+  .g-top .g-rotate, body.g-has-banner .g-top .g-rotate, body.g-has-banner.g-has-pill .g-top .g-rotate { position: static; top: auto; left: auto; }
+  .g-top .g-rotate[hidden], .g-top .g-banner[hidden] { display: none; }
+  .g-top .g-pills:not(:has(> :not([hidden]))), .g-top .g-wx-float:not(:has(> :not([hidden]))) { display: none; }   /* 보이는 단추가 하나도 없으면 줄 자체를 없앤다(빈 줄 간격 방지) */
+  /* 알림(토스트)은 묶음과 겹치지 않게 아래쪽(하단 바 위)으로 */
+  .g-toast, body.g-has-banner .g-toast, body.g-has-banner.g-has-pill .g-toast { top: auto; bottom: calc(var(--g-bar) + 34px); }
+}
+@media (max-width: 760px) { .g-top { display: contents; } }
+.g-root[data-mode="gate"] .g-top, .g-root[data-mode="loading"] .g-top { display: none; }

@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261025vid1" />
-  <link rel="stylesheet" href="css/garden.css?v=20261025en2" />
+  <link rel="stylesheet" href="css/garden.css?v=20261025tp1" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -22,6 +22,17 @@
     <!-- 장면(층): scene.js 가 채운다 -->
     <div class="g-scene" id="gScene" aria-hidden="true"></div>
 
+    <!-- 첫 화면 맨 위 가운데 묶음 (2026-10-25 담임목사 "정리가 안 되어 있습니다"): 예배 띠 → 단추 줄 → 정원 들어가기·날씨 → 화면 돌리기를 위에서 아래로 차례로 쌓는다.
+         태블릿·PC 는 이 묶음이 두 패널 사이 가운데에 서고(위치 계산 없이 서로 밀어 줌), 휴대폰은 묶음을 풀어(display: contents) 각자 제 자리에 둔다 -->
+    <div class="g-top" id="gTop">
+    <!-- 예배 띠 -->
+    <a class="g-banner" id="gBanner" href="#" role="button" hidden><span class="g-bn-t" id="gBnT"></span><span class="g-bn-c" id="gBnC"></span><span class="g-bn-go" aria-hidden="true">›</span></a>
+    <!-- 설교하기: 예배 띠가 뜰 때 관리자에게만 (hud.js syncPreach) -->
+    <div class="g-pills" id="gPills">
+      <button type="button" class="g-end" id="gEnd" hidden></button>
+      <button type="button" class="g-bcast" id="gBcast" hidden>📺 방송실 전체화면</button>
+      <a class="g-preach" id="gPreach" href="#" target="_blank" rel="noopener" hidden>🎤 설교하기 <small>발표자 모드</small></a>
+    </div>
     <!-- 장면 하늘 위 (오른쪽 패널 왼쪽 위): 나의 정원에 들어가기(입체, 2026-10-23 담임목사) + 날씨 -->
     <div class="g-wx-float" id="gTopActs">
       <button type="button" class="g-enter3d" id="gEnter3d" hidden><svg class="g-enter3d-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m0 0 8-4.5M12 12 4 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span data-i18n="g3d.enter"></span></button>
@@ -29,6 +40,8 @@
     </div>
     <!-- 장면 왼쪽 위(서재 오른쪽): 화면 돌리기 — 메인 장면의 밭을 90°씩 돌려 본다 (2026-10-23 담임목사). 밭이 있을 때만 보인다 -->
     <button type="button" class="g-rotate" id="gRotate" hidden data-i18n-aria="field.rotate" data-i18n-title="field.rotate"><svg class="g-rotate-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4.5v5h-5M19.6 9.5A8 8 0 1 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="g-rotate-t" data-i18n="field.rotate"></span></button>
+    </div>
+
 
     <!-- 왼쪽 서재(개인) -->
     <aside class="g-study g-panel" id="gStudy" aria-labelledby="gStudyTitle">
@@ -113,14 +126,6 @@
     <!-- 오른쪽 메뉴 숨기기/꺼내기 손잡이 (2026-10-23 담임목사: 오른쪽으로 숨기고 다시 빼기) -->
     <button type="button" class="g-rail-tog" id="gRailTog" aria-controls="gRail" aria-expanded="true"><span class="g-rail-tog-ic" aria-hidden="true"></span></button>
 
-    <!-- 예배 띠 -->
-    <a class="g-banner" id="gBanner" href="#" role="button" hidden><span class="g-bn-t" id="gBnT"></span><span class="g-bn-c" id="gBnC"></span><span class="g-bn-go" aria-hidden="true">›</span></a>
-    <!-- 설교하기: 예배 띠가 뜰 때 관리자에게만 (hud.js syncPreach) -->
-    <div class="g-pills" id="gPills">
-      <button type="button" class="g-end" id="gEnd" hidden></button>
-      <button type="button" class="g-bcast" id="gBcast" hidden>📺 방송실 전체화면</button>
-      <a class="g-preach" id="gPreach" href="#" target="_blank" rel="noopener" hidden>🎤 설교하기 <small>발표자 모드</small></a>
-    </div>
 
     <!-- 하단 바 -->
     <nav class="g-bar" id="gBar" data-i18n-aria="bar.label">
