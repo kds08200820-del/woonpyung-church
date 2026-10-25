@@ -4,7 +4,7 @@
  *  edu-print.html?cert=<증명서 번호>  : 증명서 (관리자·본인만 — RLS)
  *  인쇄 창에서 'PDF로 저장' 을 고르면 PDF 가 된다. 자료실(member_files)의 강의실 항목이 이 주소로 연결된다.
  */
-console.log('[edu-print.js] v20261025inf1');
+console.log('[edu-print.js] v20261026pr1');
 
 (function () {
   var C = window.WPC_CATECHISM || { courses: {}, church: {} };
@@ -44,6 +44,14 @@ console.log('[edu-print.js] v20261025inf1');
   }
   function message(title, text) {
     doc.innerHTML = '<div class="msg"><h1>' + esc(title) + '</h1><p>' + esc(text) + '</p><p><a href="classroom.html">강의실로 가기</a></p></div>';
+  }
+  // 증명서 인쇄: 종이 여백을 0 으로(브라우저 머리글·바닥글도 빠짐) — 여백은 증명서 상자(210×297mm)의 안쪽 12·13mm 가 맡는다
+  function certPage() {
+    document.body.classList.add('is-cert');
+    if (document.getElementById('certPageCss')) return;
+    var st = document.createElement('style'); st.id = 'certPageCss';
+    st.textContent = '@page{size:A4 portrait;margin:0}';
+    document.head.appendChild(st);
   }
   function ready(title) {
     if (title) document.title = title + ' | 운평장로교회';
@@ -144,6 +152,7 @@ console.log('[edu-print.js] v20261025inf1');
       return Promise.all([p, ps]).then(function (two) {
         var res = two[0];
         doc.innerHTML = certHTML(c, res, two[1]);
+        certPage();
         ready(c.member_name + ' ' + certTitle(c));
       });
     }).catch(function (e) { message('불러오지 못했습니다', (e && e.message) || '잠시 뒤에 다시 열어 주십시오.'); });
