@@ -20,7 +20,7 @@ window.GardenFarm = (function () {
   'use strict';
   var I, SDK, HUD, SHOP, PLANT, t;
   var F = { farm: null, skew: 0, view: null, ui: null, busy: false, sel: null, mode: 'normal', pick: {}, items: null, wx: [], art: 'images/garden/farm/', shopArt: 'images/garden/shop/',
-    houses: undefined, housePrice: 0 };   // houses: undefined = 아직 안 받음 · null = 서버에 없음(SQL 전) · [] = 받음
+    houses: undefined, housePrice: 0, opt: {} };   // opt: 서버 답을 기다리는 칸을 먼저 화면에 반영(낙관적) — { 'x,y': { harvest: true } | { plant: 슬러그, isCrop } }   // houses: undefined = 아직 안 받음 · null = 서버에 없음(SQL 전) · [] = 받음
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function ui(id) { return F.ui ? F.ui.querySelector('#' + id) : null; }
   function nameOf(v) { if (v && typeof v === 'object') { var l = String(I.locale() || 'ko'); return v[l] || v[l.split('-')[0]] || v.ko || v.en || ''; } return v || ''; }
@@ -155,6 +155,15 @@ window.GardenFarm = (function () {
         o.h = Math.round((bud || stage === 'sprout' ? 44 : SPR_BASE[cat] || 90) * (bud ? 1 : (SPR_STAGE[stage] || 1)));
         o.dead = stage === 'dead' || stage === 'over'; o.planted = true; o.name = it ? nameOf(it.name) : '';
         if (!fm && itemReady(tl, it, v)) o.bubble = F.shopArt + tl.item + (cat === 'flower' ? '.webp' : '-fruit.webp');   // 꽃은 꽃다발로
+      }
+      var op = !fm && F.opt[tl.x + ',' + tl.y];
+      if (op) {   // 서버 확인을 기다리는 동안 먼저 보여 준다 — 틀리면 서버가 준 밭으로 되돌린다
+        if (op.harvest) delete o.bubble;
+        else if (op.plant) {
+          delete o.bubble; o.planted = true;
+          if (op.isCrop) { var pc = crop(op.plant); o.src = F.art + 'crop-' + op.plant + '-1.webp'; o.h = 60; o.name = pc ? nameOf(pc.name) : ''; }
+          else { var pi = item(op.plant); o.src = F.shopArt + '_sprout.webp'; o.h = 44; o.name = pi ? nameOf(pi.name) : ''; }
+        }
       }
       out.push(o);
     });
@@ -409,36 +418,37 @@ window.GardenFarm = (function () {
     var ns = remaining(tl);
     if (!ns.length || F.busy) { if (!ns.length) HUD.toast(t(stNew(tl) && tl.st.mode === 'timber' ? 'farm.why.cutHint' : 'farm.why.growing')); return; }
     F.busy = true;
-    var total = 0, cnt = 0, last = null, x = tl.x, y = tl.y, isCrop = !!tl.crop;
+    var total = 0, cnt = 0, last = null, x = tl.x, y = tl.y, isCrop = !!tl.crop, key = x + ',' + y;
+    F.opt[key] = { harvest: true }; render(); pushScene();   // 누르는 순간 말풍선부터 거둔다
     if (isCrop ? serverNew() : stNew(tl)) {
       (isCrop ? SDK.farmPick(x, y, 0) : SDK.farmHarvest(x, y, 0)).then(function (r) {
-        F.busy = false;
-        if (!r || !r.ok) { HUD.toast(why(r)); if (r && (r.why === 'growing' || r.why === 'not_ready' || r.why === 'over')) load(); return; }
+        F.busy = false; delete F.opt[key];
+        if (!r || !r.ok) { render(); pushScene(); HUD.toast(why(r)); if (r && (r.why === 'growing' || r.why === 'not_ready' || r.why === 'over')) load(); return; }
         setFarm(r.farm);
         if (!r.picked) return;
         used();
         HUD.toast(isCrop ? t(r.market ? 'farm.harvested.market' : 'farm.harvested', { n: r.n, p: tal(r.gain) })
           : t(r.mode === 'season' ? 'farm.harvested.days' : r.cleared ? 'farm.harvested.once' : 'farm.harvested.year', { n: r.n, p: tal(r.gain) }), r.market ? 4200 : null);
         if (F.view) F.view.flash({ x: x, y: y }, '+' + tal(r.gain) + ' ' + HUD.talentLabel());
-      }, function () { F.busy = false; HUD.toast(t('farm.err')); });
+      }, function () { F.busy = false; delete F.opt[key]; render(); pushScene(); HUD.toast(t('farm.err')); });
       return;
     }
     (function next(i) {
       if (i >= ns.length) {
-        F.busy = false; if (last) setFarm(last);
+        F.busy = false; delete F.opt[key]; if (last) setFarm(last); else { render(); pushScene(); }
         if (cnt) { used(); HUD.toast(t('farm.harvested', { n: cnt, p: tal(total) })); if (F.view) F.view.flash({ x: x, y: y }, '+' + tal(total) + ' ' + HUD.talentLabel()); }
         return;
       }
       (isCrop ? SDK.farmPick(x, y, ns[i]) : SDK.farmHarvest(x, y, ns[i])).then(function (r) {
-        if (!r || !r.ok) { F.busy = false; if (last) setFarm(last); HUD.toast(why(r)); if (r && (r.why === 'growing' || r.why === 'not_ready')) load(); return; }
+        if (!r || !r.ok) { F.busy = false; delete F.opt[key]; if (last) setFarm(last); else { render(); pushScene(); } HUD.toast(why(r)); if (r && (r.why === 'growing' || r.why === 'not_ready')) load(); return; }
         if (r.picked) { total += +r.gain || 0; cnt++; }
         last = r.farm || last; next(i + 1);
-      }, function () { F.busy = false; if (last) setFarm(last); HUD.toast(t('farm.err')); });
+      }, function () { F.busy = false; delete F.opt[key]; if (last) setFarm(last); else { render(); pushScene(); } HUD.toast(t('farm.err')); });
     })(0);
   }
   // 지금 거둘 수 있는 칸(나무 칸 0,0 제외)
   function ripeTiles() {
-    return ((F.farm && F.farm.tiles) || []).filter(function (tl) { return !(tl.x === 0 && tl.y === 0) && remaining(tl).length > 0; });
+    return ((F.farm && F.farm.tiles) || []).filter(function (tl) { return !(tl.x === 0 && tl.y === 0) && !F.opt[tl.x + ',' + tl.y] && remaining(tl).length > 0; });
   }
   // 한 칸을 거두고 { ok, n, gain, farm, err } 로 알린다 (여러 칸을 이어 거둘 때 쓴다 — 서버가 칸마다 시간·값을 확인)
   function harvestOne(tl) {
@@ -469,10 +479,14 @@ window.GardenFarm = (function () {
     if (F.busy) return;
     if (!list.length) { HUD.toast(t('farm.harvestall.none')); return; }
     F.busy = true;
-    var cells = 0, cnt = 0, total = 0, last = null, fail = null;
+    var cells = 0, cnt = 0, total = 0, last = null, fail = null, nAll = list.length;
+    list.forEach(function (tl) { F.opt[tl.x + ',' + tl.y] = { harvest: true }; });
+    render(); pushScene();   // 누르는 순간 모든 말풍선을 먼저 거두고, 서버 확인은 뒤에서 차례로
+    function prog(i) { if (F.view && F.view.setHarvest) F.view.setHarvest(t('farm.harvesting', { i: i, n: nAll }), false); }
+    prog(0);
     function finish() {
-      F.busy = false;
-      if (last) setFarm(last); else render();
+      F.busy = false; F.opt = {};
+      if (last) setFarm(last); else { render(); pushScene(); }
       if (cells) {
         used();
         HUD.toast(t('farm.harvestall.done', { c: cells, n: cnt, p: tal(total) }), 4200);
@@ -486,7 +500,7 @@ window.GardenFarm = (function () {
       harvestOne(list[i]).then(function (r) {
         if (!r.ok) { fail = r; finish(); return; }
         if (r.n) { cells++; cnt += r.n; total += r.gain; }
-        last = r.farm || last; next(i + 1);
+        last = r.farm || last; prog(i + 1); next(i + 1);
       }, function () { fail = { err: null }; finish(); });
     })(0);
   }
@@ -498,9 +512,11 @@ window.GardenFarm = (function () {
     if (!cells.length || F.busy) return;
     F.busy = true; if (b) b.disabled = true;
     var done = 0, last = null;
+    cells.forEach(function (c) { F.opt[c.x + ',' + c.y] = { plant: cr || itm, isCrop: !!cr }; });
+    F.mode = 'normal'; F.pick = {}; closeSheet(); render(); pushScene();   // 누르는 순간 심긴 모습부터 보인다
     function finish(r) {
-      F.busy = false; F.mode = 'normal'; F.pick = {}; closeSheet();
-      if (last) setFarm(last); else render();
+      F.busy = false; F.opt = {}; F.mode = 'normal'; F.pick = {}; closeSheet();
+      if (last) setFarm(last); else { render(); pushScene(); }
       if (done) used();
       HUD.toast(!done ? why(r) : r ? t('farm.planted.part', { n: done, why: why(r) }) : cut ? t('farm.planted.bag', { n: done }) : done > 1 ? t('farm.planted.many', { n: done }) : t('farm.planted'));
     }

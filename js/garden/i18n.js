@@ -347,6 +347,7 @@ window.GardenI18n = (function () {
     'farm.count2': '땅 {n}칸 · 대지 {d}칸',
     'farm.price2': '전 칸당 {j} · 대지로 바꾸기 칸당 {d}',
     'farm.harvestall': '모두 거두기 ({n}칸)',
+    'farm.harvesting': '거두는 중… {i}/{n}',
     'farm.harvestall.none': '지금 거둘 수 있는 칸이 없습니다',
     'farm.harvestall.done': '{c}칸에서 {n}개를 거두어 {p} 달란트를 받았습니다',
     'farm.tool.buy': '땅 사기',
