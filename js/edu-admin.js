@@ -7,13 +7,18 @@
  *  · 유아세례: 부모가 공부·시험을 보고, 증명서는 자녀 이름으로(교적에서 자녀를 고름) · 부모 이름은 parents 칼럼
  *  자료: supabase/20261025_1600_edu_classroom.sql (실행 전에는 카드에 '준비 중' 으로 조용히 표시)
  *        supabase/20261025_1800_edu_infant.sql (유아세례 과정·증명서)
+ *  · 교회행정 > 증명서 발급(cert.html, 목회자만 — 2026-10-25): WPCEduAdmin.page(root, ctx) — 강의를 듣지 않은 성도도
+ *    교적에서 골라 같은 양식의 증명서를 발급하고 그 성도의 자료실(member_files)에 넣는다. 강의실 이수 기록이 있으면 저절로 잇는다.
+ *    서버: supabase/20261025_2000_edu_cert_pastor.sql (edu_is_pastor · 목회자만 발급)
  */
-console.log('[edu-admin.js] v20261025inf1');
+console.log('[edu-admin.js] v20261025ct1');
 
 (function () {
   if (window.WPCEduAdmin) return;
   var COURSE = { learn: '학습', baptism: '세례(입교)', infant: '유아세례' };
   var KIND0 = { learn: '학습', baptism: '세례', infant: '유아세례' };   // 과정 → 증명서 종류(처음 고른 값)
+  var KIND_BY_GRADE = { '': '학습', '원입': '학습', '학습': '세례', '유아세례': '입교' };   // 교적 신급 → 다음에 받을 것(증명서 직접 발급 때 처음 고른 값)
+  var COURSE_OF_KIND = { '학습': 'learn', '세례': 'baptism', '입교': 'baptism' };   // 증명서 종류 → 강의실 과정(이수 기록 잇기)
   function certTitle(k) { return k === '유아세례' ? '유아세례 증명서' : k + '교인 증명서'; }
   // 과정의 단계 수 = 장 + 서약 문답
   function stepsOf(c) { var C = window.WPC_CATECHISM; return C && C.courses[c] ? C.courses[c].chapters.length + 1 : (c === 'learn' ? 11 : c === 'infant' ? 6 : 12); }
@@ -26,6 +31,7 @@ console.log('[edu-admin.js] v20261025inf1');
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function today() { var d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function dday(s) { if (!s) return ''; var d = new Date(s); return isNaN(d) ? '' : d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()); }
+  function d10(v) { return String(v || '').slice(0, 10); }
   function birthOfKey(k) { var b = String(k || '').split('|')[1] || ''; return /^\d{8}$/.test(b) ? b.slice(0, 4) + '-' + b.slice(4, 6) + '-' + b.slice(6, 8) : ''; }
   function notReady(e) { return /42P01|42883|PGRST20[0-9]|does not exist|schema cache|Could not find/i.test((e && e.message) || ''); }
   function certOf(r) { return D.certs.filter(function (c) { return c.result_id === r.id && !c.voided_at; })[0] || null; }
@@ -215,7 +221,7 @@ console.log('[edu-admin.js] v20261025inf1');
       (D.certs.length ? '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>번호</th><th>종류</th><th>이름</th><th>문답일</th><th>예식일</th><th>집례</th><th>발급일</th><th></th></tr></thead><tbody>' +
         D.certs.map(function (c) {
           var off = !!c.voided_at;
-          return '<tr style="' + (off ? 'opacity:.5;text-decoration:line-through' : '') + '"><td style="white-space:nowrap"><b>' + esc(c.cert_no) + '</b></td><td>' + esc(c.kind) + '</td><td>' + esc(c.member_name) + (c.parents ? '<br><small style="color:#93867C">부모 ' + esc(c.parents) + '</small>' : '') + '</td><td>' + esc(c.qa_date || '') + '</td><td>' + esc(c.rite_date || '') + '</td><td>' + esc(c.officiant || '') + '</td><td style="white-space:nowrap">' + esc(c.issued_on) + '</td>' +
+          return '<tr style="' + (off ? 'opacity:.5;text-decoration:line-through' : '') + '"><td style="white-space:nowrap"><b>' + esc(c.cert_no) + '</b></td><td>' + esc(c.kind) + '</td><td>' + esc(c.member_name) + (c.parents ? '<br><small style="color:#93867C">부모 ' + esc(c.parents) + '</small>' : '') + '</td><td>' + esc(d10(c.qa_date)) + '</td><td>' + esc(d10(c.rite_date)) + '</td><td>' + esc(c.officiant || '') + '</td><td style="white-space:nowrap">' + esc(d10(c.issued_on)) + '</td>' +
             '<td style="text-align:right;white-space:nowrap;text-decoration:none"><a class="btn btn-line" href="edu-print.html?cert=' + c.id + '" target="_blank" rel="noopener" style="padding:3px 10px;font-size:.8rem">보기·인쇄</a>' +
             (off ? '' : ' <button type="button" class="btn btn-line" data-void="' + c.id + '" style="padding:3px 10px;font-size:.8rem;color:#A33A2A">취소</button>') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : '<p style="color:#A3907F">아직 발급한 증명서가 없습니다.</p>');
@@ -279,9 +285,9 @@ console.log('[edu-admin.js] v20261025inf1');
   }
 
   /* ═════════════ 증명서 발급 ═════════════ */
-  function issueDialog(r, _unused, done) {
+  function issueDialog(r, kindPreset, done) {
     var m = overlay(620);
-    var kind0 = r ? (KIND0[r.course] || '세례') : '학습', infant0 = kind0 === '유아세례';
+    var kind0 = r ? (KIND0[r.course] || '세례') : (kindPreset || '학습'), infant0 = kind0 === '유아세례', kindTouched = !!(r || kindPreset);
     m.box.innerHTML = '<h3 style="margin:0 0 4px;color:var(--accent,#3A281C)">교인 증명서 발급</h3>' +
       '<p style="margin:0 0 12px;font-size:.8rem;color:#93867C;line-height:1.55">' + (r ? esc(r.member_name) + ' · 강의실 ' + esc(COURSE[r.course]) + ' 과정 이수 ' + esc(dday(r.created_at)) + ' (' + esc(r.score) + '점)' + (infant0 ? ' — 유아세례 증명서는 <b>자녀 이름</b>으로 발급합니다. 교적에서 자녀를 고르십시오.' : '') : '강의실 시험과 상관없이 교적에서 골라 발급합니다.') +
       ' 번호는 해마다 종류별로 매겨집니다(예: ' + new Date().getFullYear() + '-학-001).</p>' +
@@ -298,11 +304,21 @@ console.log('[edu-admin.js] v20261025inf1');
       '<div class="af-field" style="grid-column:1/-1"><label>메모(증명서 아래 작게, 선택)</label><input id="ci_memo" placeholder="예: 제2026-1기 학습 문답"></div>' +
       '</div>' +
       '<div id="ci_link" style="font-size:.8rem;margin-top:8px;min-height:1.2em;color:#AFA49C"></div>' +
+      '<div id="ci_res" style="font-size:.8rem;margin-top:4px;color:#2F6B4F"></div>' +
       '<label id="ci_gjw" style="display:none;align-items:center;gap:7px;margin-top:10px;font-size:.86rem;color:#38332E"><input type="checkbox" id="ci_gj" checked> <span id="ci_gjt"></span></label>' +
       '<div style="display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap"><button class="btn btn-solid" id="ci_go" style="padding:9px 22px">발급하고 인쇄</button><button class="btn btn-line" id="ci_x" style="padding:9px 16px">닫기</button><span id="ci_msg" style="font-size:.84rem"></span></div>';
     var $ = function (id) { return m.box.querySelector('#' + id); };
-    var pick = null;
+    var pick = null, autoRes = null;
     m.box.querySelector('#ci_x').onclick = m.close;
+    // 강의실 밖에서 고른 성도: 그 성도의 강의실 이수 기록(같은 과정)이 있으면 증명서에 함께 적는다
+    function findRes() {
+      autoRes = null;
+      if (!r && pick && pick.key) {
+        var c = COURSE_OF_KIND[$('ci_kind').value];
+        autoRes = c ? D.results.filter(function (x) { return x.passed && x.course === c && x.member_key === pick.key; })[0] || null : null;
+      }
+      $('ci_res').textContent = autoRes ? '📖 강의실 ' + (COURSE[autoRes.course] || '') + ' 과정 이수 기록(' + dday(autoRes.created_at) + ' · ' + autoRes.score + '점)이 있어 증명서에 함께 적습니다.' : '';
+    }
     function syncKind() {
       var k = $('ci_kind').value, inf = k === '유아세례';
       $('ci_rite_l').textContent = k === '학습' ? '학습받은 날' : k === '입교' ? '입교한 날' : '세례받은 날';
@@ -316,13 +332,14 @@ console.log('[edu-admin.js] v20261025inf1');
     }
     function showPick(mm) {
       pick = mm;
+      if (mm && !kindTouched && KIND_BY_GRADE[mm.grade || ''] && Object.prototype.hasOwnProperty.call(KIND_BY_GRADE, mm.grade || '')) $('ci_kind').value = KIND_BY_GRADE[mm.grade || ''];
       var h = $('ci_link');
       if (mm) { h.style.color = '#2F6B4F'; h.innerHTML = '🔗 교적 연결: <b>' + esc(mm.name) + '</b> · ' + esc([mm.birth, mm.grade, mm.role].filter(Boolean).join(' · ')); if (mm.birth && !$('ci_birth').value) $('ci_birth').value = mm.birth; }
       else if (r && r.member_key && $('ci_kind').value !== '유아세례') { h.style.color = '#2F6B4F'; h.textContent = '🔗 교적 연결: ' + r.member_key; }
       else { h.style.color = '#AFA49C'; h.textContent = '교적 미연결 — 이름만 기록됩니다(이름을 지우고 다시 입력하면 교적에서 고를 수 있습니다).'; }
-      syncKind();
+      syncKind(); findRes();
     }
-    $('ci_kind').onchange = syncKind;
+    $('ci_kind').onchange = function () { kindTouched = true; syncKind(); findRes(); };
     loadGJ().then(function () {
       memberPicker($('ci_name'), $('ci_link'), function (mm) { showPick(mm); });
       showPick(r && r.member_key && !infant0 ? gjByKey(r.member_key) : null);
@@ -331,15 +348,17 @@ console.log('[edu-admin.js] v20261025inf1');
       var name = $('ci_name').value.trim(), kind = $('ci_kind').value, msg = $('ci_msg');
       if (!name) { msg.style.color = '#A33A2A'; msg.textContent = '성명을 적어 주십시오.'; return; }
       var key = pick ? pick.key : (r && kind !== '유아세례' ? r.member_key : null), par = kind === '유아세례' ? $('ci_par').value.trim() : '';
+      if (!key && !confirm('교적에서 고르지 않아 성도별 자료실에 연결되지 않습니다. 이름만으로 발급할까요?\n(교적에서 고르려면 ‘취소’ 뒤 이름을 다시 입력해 목록에서 고르십시오.)')) return;
+      var resId = r ? r.id : (autoRes ? autoRes.id : null);
       var rite = $('ci_rite').value || null;
       var w = window.open('', '_blank');   // 팝업 차단을 피하려고 누른 순간에 창을 연다
       $('ci_go').disabled = true; msg.style.color = '#93867C'; msg.textContent = '발급하는 중…';
       X.api('POST', 'rpc/edu_cert_issue', {
-        p_kind: kind, p_result: r ? r.id : null, p_member_key: key || null, p_member_name: name, p_birth: $('ci_birth').value || null,
+        p_kind: kind, p_result: resId, p_member_key: key || null, p_member_name: name, p_birth: $('ci_birth').value || null,
         p_qa_date: $('ci_qa').value || null, p_rite_date: rite, p_officiant: $('ci_off').value, p_church: $('ci_church').value,
         p_issued_on: $('ci_on').value || null, p_memo: $('ci_memo').value
       }).then(function (res) {
-        if (!res || !res.ok) throw new Error((res && res.error) || '발급하지 못했습니다.');
+        if (!res || !res.ok) { var er = new Error((res && res.error) || '발급하지 못했습니다.'); er.why = res && res.why; throw er; }
         var url = 'edu-print.html?cert=' + res.id;
         if (w) w.location.href = url; else window.open(url, '_blank');
         var after = Promise.resolve('');
@@ -363,5 +382,28 @@ console.log('[edu-admin.js] v20261025inf1');
     };
   }
 
-  window.WPCEduAdmin = { dash: dash, open: function (ctx, tab) { X = ctx; openModal(tab); } };
+  /* ═════════════ 교회행정 > 증명서 발급 (cert.html, 목회자만) ═════════════ */
+  function page(root, ctx) {
+    X = ctx;
+    root.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
+    function draw() {
+      if (D.ready !== true) {
+        root.innerHTML = '<div class="fin-card"><p style="color:#A3907F;margin:0">' + (D.ready === false ? '증명서 대장 표가 아직 없습니다. 마이그레이션 supabase/20261025_1600_edu_classroom.sql 을 먼저 실행해 주십시오.' : '불러오지 못했습니다. 잠시 뒤에 다시 열어 주십시오.') + '</p></div>';
+        return;
+      }
+      var KINDS = [['학습', '학습교인 증명서'], ['세례', '세례교인 증명서'], ['입교', '입교교인 증명서'], ['유아세례', '유아세례 증명서']];
+      var yr = String(new Date().getFullYear()), live = D.certs.filter(function (c) { return !c.voided_at; });
+      root.innerHTML = '<div class="fin-card ct-top"><h2 style="margin:0 0 4px;font-size:1.15rem;color:var(--accent,#3A281C)">증명서 발급</h2>' +
+        '<p style="margin:0 0 14px;font-size:.86rem;color:#7D7167;line-height:1.65;word-break:keep-all">강의실 교육을 받지 않은 성도도 교적에서 골라 발급할 수 있습니다. 강의실 이수 증명서와 같은 양식이며, 발급하면 번호(' + yr + '-학-001 꼴)가 매겨지고 <b>그 성도의 자료실</b>에 들어갑니다. 강의실 이수 기록이 있으면 저절로 함께 적습니다. 올해 ' +
+        live.filter(function (c) { return String(c.issued_on || '').slice(0, 4) === yr; }).length + '건 · 전체 ' + live.length + '건.</p>' +
+        '<div class="ct-kinds">' + KINDS.map(function (k) { return '<button type="button" class="btn btn-solid" data-kind="' + k[0] + '">＋ ' + k[1] + '</button>'; }).join('') + '</div></div>' +
+        '<div class="fin-card"><div id="ctBody"></div></div>';
+      Array.prototype.forEach.call(root.querySelectorAll('[data-kind]'), function (b) { b.onclick = function () { issueDialog(null, b.dataset.kind, draw); }; });
+      drawCerts(root.querySelector('#ctBody'), draw);
+    }
+    loadGJ();
+    load().then(draw, draw);
+  }
+
+  window.WPCEduAdmin = { dash: dash, page: page, open: function (ctx, tab) { X = ctx; openModal(tab); } };
 })();
