@@ -42,7 +42,7 @@ ul { list-style: none; }
   padding: 22px 0;
 }
 .nav-inner {
-  max-width: 1280px; margin: 0 auto; padding: 0 32px;
+  max-width: 1360px; margin: 0 auto; padding: 0 32px;   /* 1280 → 1360 (2026-10-25): 맨 위 메뉴에 '강의실' 이 더해져 넓은 화면에서도 한 줄에 들어가게 */
   display: flex; align-items: center; justify-content: space-between;
 }
 .logo { display: flex; flex-direction: column; line-height: 1.15; }

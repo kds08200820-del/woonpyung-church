@@ -17,7 +17,6 @@ window.GardenI18n = (function () {
     'study.dashboard': '대시보드',
     'study.audiobook': '오디오북 듣기',
     'study.classroom': '강의실 (학습·세례 교육)',
-    'class.open': '강의실',
     'rail.title': '오늘',
     'rail.streak': '큐티 {n}일 연속',
     'rail.offline': '오프라인 · 마지막 상태',
