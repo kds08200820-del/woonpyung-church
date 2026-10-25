@@ -168,18 +168,24 @@ body.garden [hidden] { display: none !important; }
   box-shadow: var(--g-shadow); user-select: none; white-space: nowrap; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
 .g-banner[hidden] { display: none; }
-.g-preach { position: fixed; top: calc(var(--g-hdr) + 72px); left: 50%; transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 18px;
+.g-preach { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 18px;
   border-radius: 999px; background: #2f5d8a; color: #fff; font-size: .9rem; font-weight: 800; text-decoration: none; box-shadow: var(--g-shadow); white-space: nowrap; }
 .g-preach small { font-size: .74rem; font-weight: 600; opacity: .85; }
-.g-bcast { position: fixed; top: calc(var(--g-hdr) + 72px); left: 50%; transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 18px;
+.g-bcast { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 18px;
   border: 0; border-radius: 999px; background: #5b3a8a; color: #fff; font: inherit; font-size: .9rem; font-weight: 800; box-shadow: var(--g-shadow); white-space: nowrap; cursor: pointer; }
 .g-bcast[hidden] { display: none; }
 .g-bcast:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
 .g-root[data-mode="gate"] .g-bcast { display: none; }
-/* 두 단추가 함께 뜨면 가운데에서 나란히 */
-body.g-has-bcast.g-has-preach .g-preach { left: auto; right: calc(50% + 4px); transform: none; }
-body.g-has-bcast.g-has-preach .g-bcast { left: calc(50% + 4px); transform: none; }
-body.g-has-bcast.g-has-preach .g-preach small { display: none; }
+/* 예배 띠 아래 단추 묶음 — 종료·방송실·설교하기가 함께 뜨면 가운데에서 나란히(좁으면 다음 줄) */
+.g-pills { position: fixed; top: calc(var(--g-hdr) + 72px); left: 50%; transform: translateX(-50%); z-index: 3; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: calc(100% - 2 * (var(--g-panel-w) + 40px)); }
+.g-pills .g-preach small { display: none; }
+.g-end { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 18px; border: 0; border-radius: 999px; background: #8a2f2f; color: #fff; font: inherit; font-size: .9rem; font-weight: 800; box-shadow: var(--g-shadow); white-space: nowrap; cursor: pointer; }
+.g-end.is-undo { background: #fff; color: #8a2f2f; border: 1.5px solid #8a2f2f; font-weight: 700; }
+.g-end[hidden] { display: none; }
+.g-end:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+.g-end.is-busy { opacity: .6; pointer-events: none; }
+.g-bcast.is-next { background: #2f7d4e; animation: g-pulse 2s ease-in-out infinite; }   /* 1부가 끝나 2부 카운트다운을 열 수 있을 때 */
+.g-root[data-mode="gate"] ~ .g-pills, .g-root[data-mode="gate"] .g-end { display: none; }
 /* 방송실 전체 화면 카운트다운 */
 .g-bc { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4vh 4vw; color: #fff;
   background: radial-gradient(ellipse at 50% 30%, #5a3d2a 0%, #3a281c 55%, #241810 100%); cursor: none; }
@@ -517,7 +523,7 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
   .g-scene { position: relative; height: 56dvh; min-height: 320px; top: auto; left: auto; right: auto; border-radius: 0 0 26px 26px; }
   .g-panel { margin: 12px 14px 0; padding: 16px 16px 18px; }
   .g-banner { top: calc(var(--g-hdr) + 6px); left: 12px; right: 12px; transform: none; max-width: none; justify-content: space-between; font-size: .86rem; }
-  .g-preach, .g-bcast { top: calc(var(--g-hdr) + 124px); }   /* 휴대폰: 새로고침·정원 들어가기 줄 아래 */
+  .g-pills { top: calc(var(--g-hdr) + 124px); left: 12px; right: 12px; transform: none; max-width: none; }   /* 휴대폰: 새로고침·정원 들어가기 줄 아래 */
   .g-bar {
     left: 0; right: 0; bottom: 0; transform: none; border-radius: 22px 22px 0 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
     justify-content: space-around; background: rgba(255,250,243,.96); box-shadow: 0 -8px 22px rgba(185,164,140,.22);

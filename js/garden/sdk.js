@@ -252,6 +252,21 @@
     home: home, homeBuild: homeBuild, church: church, churchOffer: churchOffer, adminChurchStart: adminChurchStart, adminChurchGoal: adminChurchGoal, adminChurchStop: adminChurchStop,
     // 관리자에게만: 입금 확인이 남은 신청(신청비 있음 · 활성 · 교회 확인 전)을 신청서별로 센다 { 신청서번호: { n: 전체, claimed: '납부했습니다' 눌린 것 } } — 관리자가 아니면 null
     // 사이트 관리자(담임목사 등)인가 — admins 표에 내 uid 가 있는지. 한 번만 묻고 기억한다
+    // 1부 예배 종료 (20261025_1000_worship_end.sql — 실행 전이면 worshipEndState 가 undefined 를 돌려 단추가 나타나지 않는다)
+    worshipEndState: function () { return rpc('worship_end_state').then(function (r) { return r || null; }, function () { return undefined; }); },
+    worshipEnd: function (part, undo) { return rpc('worship_end', { p_part: part || 1, p_undo: !!undo }); },
+    // 목회자(can_pastor)이거나 관리자인가
+    canPastor: function () {
+      var s = sess(); if (!s) return Promise.resolve(false);
+      if (!this._pas || this._pasUid !== s.uid) {
+        var self = this; this._pasUid = s.uid;
+        this._pas = self.isSiteAdmin().then(function (a) {
+          if (a) return true;
+          return api('GET', 'member_links?user_id=eq.' + encodeURIComponent(s.uid) + '&select=can_pastor').then(function (r) { return !!(r && r[0] && r[0].can_pastor); }, function () { return false; });
+        });
+      }
+      return this._pas;
+    },
     // 방송실 담당(can_broadcast)이거나 관리자인가 — rpc broadcast_access (SQL 전이면 관리자만)
     canBroadcast: function () {
       var s = sess(); if (!s) return Promise.resolve(false);

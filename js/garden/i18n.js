@@ -642,6 +642,8 @@ window.GardenI18n = (function () {
     'banner.open': '열기',
     'banner.sunday': '오늘은 주일입니다',
     'bc.btn': '방송실 전체화면', 'bc.close': '닫기 (Esc)', 'bc.soon': '곧 예배가 시작됩니다', 'bc.live': '예배가 진행 중입니다', 'bc.day': '오늘은 주일입니다', 'bc.none': '예배 시간이 되면 카운트다운이 나옵니다',
+    'end.btn': '⏹ 1부 예배 종료', 'end.undo': '↩ 1부 종료 취소', 'end.confirm': '1부 예배를 종료할까요?\n방송실에서 2부 카운트다운을 열 수 있게 됩니다.',
+    'end.done': '1부 예배를 종료했습니다 — 방송실에서 2부 카운트다운을 열 수 있어요', 'end.undone': '1부 종료를 취소했습니다', 'end.err': '예배를 종료하지 못했습니다', 'end.notice': '1부 예배가 끝났습니다 — 2부 카운트다운을 열 수 있어요', 'bc.btn2': '📺 2부 카운트다운 전체화면',
     'bc.h': '시간', 'bc.m': '분', 'bc.s': '초',
     'banner.soon': '곧 {label}가 시작됩니다',
     'attend.login': '로그인하면 출석이 기록됩니다',
