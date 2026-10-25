@@ -11,7 +11,7 @@
 window.GardenGuide = (function () {
   'use strict';
   var I, SDK, HUD, SCENE, FARM, ctx, t;
-  var KEY_DAY = 'g_guide_day', KEY_OFF = 'g_guide_off', KEY_LAST = 'g_guide_last', KEY_GRANT = 'g_grant_seen', KEY_GIFT = 'g_gift_seen';
+  var KEY_DAY = 'g_guide_day', KEY_OFF = 'g_guide_off', KEY_LAST = 'g_guide_last', KEY_GRANT = 'g_grant_seen', KEY_GIFT = 'g_gift_seen', KEY_BT = 'g_bt_seen';
   var G = { rec: null, tries: 0 };
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -50,6 +50,15 @@ window.GardenGuide = (function () {
     // 목회자 기본 달란트(처음 한 번) · 새로 받은 선물
     if (G.grant > 0 && get(KEY_GRANT) !== '1') { h += sec('grant', '<p class="gd-grant">' + esc(t('guide.grant', { n: I.fmtNum(G.grant) })) + '</p>'); put(KEY_GRANT, '1'); }
     if (G.giftIn > (+get(KEY_GIFT) || 0)) { h += '<p class="gd-ok gd-gift">' + esc(t('guide.gift.in', { n: I.fmtNum(Math.round((G.giftIn - (+get(KEY_GIFT) || 0)) * 10) / 10) })) + '</p>'; put(KEY_GIFT, String(G.giftIn)); }
+
+    // 학습·세례(입교) 신청 대상 — 담임목사가 확정한 분에게 맨 위에(종류·알림 문구·마감) (2026-10-25 담임목사)
+    var bts = HUD.baptTargets ? HUD.baptTargets() : [];
+    if (bts.length) h += sec('bapt', bts.map(function (f) {
+      var until = f.close_at ? t('guide.bapt.until', { date: I.fmtDate(new Date(f.close_at)) }) : '';
+      return '<div class="gd-bapt"><p class="gd-bapt-t"><b>' + esc(f.t_kind ? t('guide.bapt.title', { kind: f.t_kind }) : t('guide.bapt.any')) + '</b>' + (until ? '<small>' + esc(f.title || '') + ' · ' + esc(until) + '</small>' : '<small>' + esc(f.title || '') + '</small>') + '</p>' +
+        (f.t_note ? '<p class="gd-bapt-n">' + esc(f.t_note) + '</p>' : '') +
+        '<div class="gd-bapt-a"><a class="g-btn g-btn-primary gd-act" href="forms.html?f=' + encodeURIComponent(f.id) + '">' + esc(t('guide.bapt.apply')) + '</a><a class="g-btn g-btn-line gd-act" href="classroom.html">' + esc(t('guide.bapt.study')) + '</a></div></div>';
+    }).join(''), 'gd-sec-bapt');
 
     // 오늘의 말씀
     var q = HUD.qt(), items = HUD.todoItems ? HUD.todoItems() : [], amen = items.filter(function (x) { return x.kind === 'qt_amen'; })[0];
@@ -153,6 +162,21 @@ window.GardenGuide = (function () {
     put(KEY_DAY, I.todayStr());
     open();
   }
+  // 새로 신청 대상이 되면(신청서·종류마다 한 번) '매일 보기'를 꺼 두었거나 오늘 이미 봤어도 안내 창을 연다 — hud.js loadForms 가 부른다
+  function targets(list) {
+    var seen = (get(KEY_BT) || '').split(',').filter(Boolean);
+    var fresh = (list || []).map(function (f) { return f.id + ':' + (f.t_kind || ''); }).filter(function (k) { return seen.indexOf(k) < 0; });
+    if (G.rec) { draw(); }
+    if (!fresh.length) return;
+    if (document.body.classList.contains('g-modal-open') || (window.Garden3D && window.Garden3D.isOpen())) {   // 다른 창이 열려 있으면 조금 뒤에
+      G.btTries = (G.btTries || 0) + 1;
+      if (G.btTries < 20) setTimeout(function () { targets(list); }, 3000);
+      return;
+    }
+    put(KEY_BT, seen.concat(fresh).slice(-40).join(','));
+    put(KEY_DAY, I.todayStr());
+    open();
+  }
   function onAct(e) {
     var b = e.target.closest && e.target.closest('[data-do]'); if (!b) return;
     var what = b.getAttribute('data-do'), kind = b.getAttribute('data-kind');
@@ -174,5 +198,5 @@ window.GardenGuide = (function () {
     $('gdDaily').addEventListener('change', function () { put(KEY_OFF, this.checked ? '0' : '1'); });
     var b = $('gGuideBtn'); if (b) b.addEventListener('click', open);
   }
-  return { init: init, daily: daily, open: open };
+  return { init: init, daily: daily, open: open, targets: targets };
 })();

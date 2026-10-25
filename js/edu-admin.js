@@ -39,7 +39,7 @@ console.log('[edu-admin.js] v20261025cr1');
     if (!window.WPF) return Promise.resolve([]);
     return WPF.call('listGyojeok').then(function (r) {
       GJ = (r.members || []).filter(function (m) { return m['이름']; }).map(function (m) {
-        return { id: m['교적ID'], name: m['이름'], key: m['매칭키'] || '', birth: String(m['생년월일'] || '').slice(0, 10), grade: m['신급'] || '', bap: String(m['세례일'] || '').slice(0, 10), role: m['직책'] || '', group: m['그룹'] || m['소속그룹'] || '' };
+        return { id: m['교적ID'], name: m['이름'], key: m['매칭키'] || '', birth: String(m['생년월일'] || '').slice(0, 10), grade: m['신급'] || '', bap: String(m['세례일'] || '').slice(0, 10), role: m['직책'] || '', group: m['그룹'] || m['소속그룹'] || '', hasLearn: '학습일' in m };
       });
       return GJ;
     }).catch(function () { GJ = []; return GJ; });
@@ -302,7 +302,7 @@ console.log('[edu-admin.js] v20261025cr1');
       var w = $('ci_gjw');
       if (pick && pick.id) {
         w.style.display = 'flex';
-        $('ci_gjt').textContent = '교적도 고치기 — 신급 ‘' + (pick.grade || '없음') + '’ → ‘' + k + '’' + (k === '세례' ? ' · 세례일 = 세례받은 날' : '') + ' (교적관리 권한 필요)';
+        $('ci_gjt').textContent = '교적도 고치기 — 신급 ‘' + (pick.grade || '없음') + '’ → ‘' + k + '’' + (k === '세례' ? ' · 세례일 = 세례받은 날' : k === '학습' && pick.hasLearn ? ' · 학습일 = 학습받은 날(세례 대상 판단에 쓰임)' : '') + ' (교적관리 권한 필요)';
       } else w.style.display = 'none';
     }
     function showPick(mm) {
@@ -335,7 +335,7 @@ console.log('[edu-admin.js] v20261025cr1');
         if (w) w.location.href = url; else window.open(url, '_blank');
         var after = Promise.resolve('');
         if (pick && pick.id && $('ci_gj').checked && window.WPF) {
-          var f = { '신급': kind }; if (kind === '세례' && rite) f['세례일'] = rite;
+          var f = { '신급': kind }; if (kind === '세례' && rite) f['세례일'] = rite; if (kind === '학습' && rite && pick.hasLearn) f['학습일'] = rite;
           after = WPF.call('updateGyojeok', { id: pick.id, fields: f }).then(function () { pick.grade = kind; if (f['세례일']) pick.bap = rite; return ' · 교적 신급을 고쳤습니다'; }, function (e) { return ' · 교적은 고치지 못했습니다(' + e.message + ')'; });
         }
         return X.api('GET', 'edu_certificates?id=eq.' + res.id + '&select=*').then(function (rows) { if (rows && rows[0]) D.certs.unshift(rows[0]); return after; })

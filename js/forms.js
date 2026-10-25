@@ -7,7 +7,7 @@
  *  참가자 이름(2026-10-10): 인원마다 이름을 받아 app_submit(…, p_names) 로 보낸다 — 같은 신청서에 같은 이름은 서버가 막는다
  *    (supabase/20261010_1300_app_participants.sql)
  */
-console.log('[forms.js] v20261010form6');
+console.log('[forms.js] v20261025tg1');
 
 (function () {
   if (window.WPCForms) return;
@@ -377,7 +377,9 @@ console.log('[forms.js] v20261010form6');
       if (!f) { openModal('<h3 class="ap-title">신청서를 찾을 수 없습니다</h3><p class="ap-text">교회에서 내린 신청서입니다.</p>'); return; }
       if (e && e.status === 'active' && !edit) { showStatus(f, e); return; }
       if (!isOpen(f)) { showStatus(f, e); return; }
-      if (f.kind === 'baptism') { showBaptism(f, e, p); return; }
+      // 학습·세례: 담임목사가 정한 대상 종류·알림 문구(app_my_target_info, 20261025_1700) — 없으면 고르는 그대로
+      if (f.kind === 'baptism') return rpc('app_my_target_info').then(function (ts) { return (ts || []).filter(function (x) { return String(x.form_id) === String(f.id); })[0] || null; }, function () { return null; })
+        .then(function (ti) { showBaptism(f, e, p, ti); });
       showForm(f, e, p);
     }).catch(function (e) { openModal(errorHTML(e)); });
   }
@@ -407,18 +409,23 @@ console.log('[forms.js] v20261010form6');
     var m = /^\[(학습|세례)\]\s*/.exec(String(q || ''));
     return m ? { text: String(q).slice(m[0].length), only: m[1] === '학습' ? '학습' : '세례(입교)' } : { text: String(q || ''), only: '' };
   }
-  function showBaptism(f, e, p) {
+  function showBaptism(f, e, p, ti) {
     var cur = e || {}, qs = Array.isArray(f.questions) ? f.questions : [], ans = Array.isArray(cur.answers) ? cur.answers : [];
+    // 담임목사가 정한 대상 종류가 있으면 그 종류로 고정한다(학습 → 학습, 세례·입교 → 세례(입교))
+    var lock = ti && ti.kind ? (ti.kind === '학습' ? '학습' : '세례(입교)') : '';
+    if (lock && !cur.apply_kind) cur = Object.assign({}, cur, { apply_kind: lock });
     var html = headHTML(f, e ? '신청 고치기' : '신청서') +
+      (ti ? '<div class="ap-msg"><p class="ap-msg-hd">📖 ' + esc(ti.kind ? ti.kind + ' 신청 대상' : '신청 대상') + '으로 선정되셨습니다</p>' + (ti.note ? '<p class="ap-msg-tx">' + nl2br(ti.note) + '</p>' : '') +
+        '<a class="ap-btn-line" href="classroom.html">강의실에서 문답 공부하기</a></div>' : '') +
       (f.summary ? '<p class="ap-text">' + esc(f.summary) + '</p>' : '') +
       (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') + imgHTML(f) +
-      '<p class="ap-note">대상: 세례를 받지 않은 만 14세 이상 성도 · 신청비 없음</p>' +
+      '<p class="ap-note">대상 — 학습: 교회에 등록한 지 6개월이 지난 초신자(만 14세 이상) · 세례: 학습을 받고 6개월이 지난 분 · 입교: 유아세례를 받고 만 14세가 된 분 · 신청비 없음</p>' +
       '<form class="ap-form" novalidate>' +
       '<label class="ap-field"><span>신청하는 분 이름</span><input name="name" maxlength="60" autocomplete="name" value="' + esc(cur.name || p.name || '') + '" required></label>' +
       '<label class="ap-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="010-0000-0000" value="' + esc(cur.phone || p.phone || '') + '" required></label>' +
       '<fieldset class="ap-field ap-kinds"><legend>무엇을 신청하시나요</legend>' +
-        BAPT_KINDS.map(function (k, i) { return '<label class="ap-kind"><input type="radio" name="apply" value="' + esc(k) + '"' + ((cur.apply_kind || '') === k ? ' checked' : '') + '> <span>' + esc(k) + '</span></label>'; }).join('') +
-        '<small>처음 신청하시면 ‘학습’, 학습을 받으셨거나 어릴 때 유아세례를 받으셨으면 ‘세례(입교)’를 고르세요.</small></fieldset>' +
+        BAPT_KINDS.map(function (k, i) { return '<label class="ap-kind"><input type="radio" name="apply" value="' + esc(k) + '"' + ((cur.apply_kind || '') === k ? ' checked' : '') + (lock && lock !== k ? ' disabled' : '') + '> <span>' + esc(k) + '</span></label>'; }).join('') +
+        '<small>' + (lock ? '담임목사님이 정하신 신청 종류입니다.' : '처음 신청하시면 ‘학습’, 학습을 받으셨거나 어릴 때 유아세례를 받으셨으면 ‘세례(입교)’를 고르세요.') + '</small></fieldset>' +
       (qs.length ? '<div class="ap-qa"><p class="ap-qa-h">문답 <small>· 아는 대로 정성껏 적어 주십시오</small></p><p class="ap-note" data-qa-hint hidden>위에서 학습과 세례(입교) 가운데 하나를 고르면, 그에 맞는 문답이 나옵니다.</p>' + qs.map(function (q, i) {
         var qp = qParts(q);
         return '<label class="ap-field" data-only="' + esc(qp.only) + '"><span><em data-n></em>' + esc(qp.text) + '</span><textarea name="a' + i + '" rows="3" maxlength="3000" data-i="' + i + '">' + esc(ans[i] || '') + '</textarea></label>';

@@ -335,7 +335,7 @@ console.log('[affairs.js] v20261023th1');
     if (window.WPCFormsAdmin) { go(); return; }
     panel.innerHTML = msgCard('신청서', '불러오는 중…');
     var s = document.createElement('script');
-    s.src = 'js/forms-admin.js?v=20261024fm7';
+    s.src = 'js/forms-admin.js?v=20261025tg1';
     s.onload = function () { if (window.WPCFormsAdmin && document.body.contains(panel)) go(); };
     s.onerror = function () { panel.innerHTML = msgCard('불러오지 못했습니다', '잠시 뒤에 다시 열어 주십시오.'); };
     document.body.appendChild(s);
@@ -1709,7 +1709,7 @@ console.log('[affairs.js] v20261023th1');
       function go() { if (document.body.contains(panel)) window.WPCEduAdmin.dash(panel, ctx); }
       if (window.WPCEduAdmin) { go(); return; }
       function add(src, next) { var s = document.createElement('script'); s.src = src; s.onload = next; s.onerror = function () { var b = panel.querySelector('#eduList'); if (b) b.innerHTML = '<p style="color:#A3907F;font-size:.86rem;margin:0">강의실 화면을 불러오지 못했습니다.</p>'; }; document.body.appendChild(s); }
-      add('js/catechism-data.js?v=20261025cr1', function () { add('js/edu-admin.js?v=20261025cr2', function () { if (window.WPCEduAdmin) go(); }); });
+      add('js/catechism-data.js?v=20261025cr1', function () { add('js/edu-admin.js?v=20261025tg1', function () { if (window.WPCEduAdmin) go(); }); });
     }
     function loadWorshipJobs(panel) {
       var numEl = panel.querySelector('#wpJobsNum'), subEl = panel.querySelector('#wpJobsSub');

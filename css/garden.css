@@ -990,6 +990,15 @@ html.g3d-open, html.g3d-open body { overflow: hidden; }
 .gv-gift-b .g-btn { min-height: 38px; padding: 0 14px; font-size: .86rem; }
 .gv-nba .gv-nb-b { white-space: nowrap; }
 .gd-grant { margin: 0; font-size: .92rem; line-height: 1.6; word-break: keep-all; }
+/* 학습·세례(입교) 신청 대상 안내 — 오늘의 안내 맨 위 (2026-10-25 담임목사) */
+.gd-sec-bapt { background: var(--g-peach, #fde7dc); border-color: #f1c9b8; }
+.gd-bapt + .gd-bapt { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #f1c9b8; }
+.gd-bapt-t { margin: 0; line-height: 1.5; word-break: keep-all; }
+.gd-bapt-t b { display: block; font-size: 1rem; color: var(--g-fg); }
+.gd-bapt-t small { display: block; font-size: .8rem; color: var(--g-fg2); margin-top: 2px; }
+.gd-bapt-n { margin: 8px 0 0; padding: 9px 12px; border-radius: 12px; background: rgba(255,255,255,.72); font-size: .9rem; line-height: 1.65; color: var(--g-fg); white-space: pre-wrap; word-break: keep-all; }
+.gd-bapt-a { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.gd-bapt-a .g-btn { text-decoration: none; }
 .gd-gift { margin: 0; }
 /* ============================================================
    내 땅 가꾸기를 입체 정원 안에서 (2026-10-23) — js/garden/farm.js 의 오른쪽 칸
