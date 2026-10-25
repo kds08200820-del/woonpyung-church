@@ -41,6 +41,9 @@
       { href: "world.html#mission", label: "선교" },
     ] },
     { href: "library.html", label: "자료실", sub: [
+      // 강의실(2026-10-25): 학습·세례(입교) 교육과정 — 장마다 풀이·진행 막대·이수 시험(js/classroom.js).
+      // 머리글 한 줄이 관리자 화면에서 이미 꽉 차 있어 맨 위 메뉴가 아니라 자료실 아래에 둔다(정원 첫 화면에도 단추)
+      { href: "classroom.html", label: "강의실 (학습·세례 교육)" },
       { href: "library.html#edu", label: "교육 자료실" },
       { href: "library.html#worship", label: "예배 자료실" },
       { href: "mahanaim.html", label: "마하나임 찬양단" },
@@ -89,7 +92,7 @@
           <span class="logo-kr">운평장로교회</span>
           <span class="logo-en">UNPYEONG PRESBYTERIAN CHURCH · SINCE 1964</span>
         </div>
-        <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="forms.html">신청서</a><a href="bylaws.html">정관</a><a href="terms.html">이용약관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a><a href="wechurch/">We Church</a><a href="./">K-LOGOS</a></nav>
+        <nav class="footer-nav">${NAV.filter((n) => !n.adminOnly && !n.memberOnly).map((n) => `<a href="${n.href}">${n.label}</a>`).join("")}<a href="forms.html">신청서</a><a href="classroom.html">강의실</a><a href="bylaws.html">정관</a><a href="terms.html">이용약관</a><a href="privacy.html">개인정보처리방침</a><a href="withdraw.html">회원탈퇴</a><a href="wechurch/">We Church</a><a href="./">K-LOGOS</a></nav>
         <div class="footer-actions">
           <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">카카오톡 채널 추가</a>
           <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">온라인헌금</a>

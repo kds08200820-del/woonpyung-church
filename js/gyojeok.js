@@ -376,6 +376,17 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
       return EDU_CACHE;
     }).catch(function () { return []; });
   }
+  /* ── 교육 이수(강의실, 2026-10-25) — 학습·세례(입교) 과정 이수 시험 통과 기록과 교인 증명서. 표가 없으면 조용히 비운다 ── */
+  function loadClassroom(matchKey) {
+    if (!matchKey || !window.SUPABASE_URL) return Promise.resolve(null);
+    var tok = sbToken(); if (!tok) return Promise.resolve(null);
+    var h = { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + tok }, k = encodeURIComponent(matchKey);
+    function get(path) { return fetch(window.SUPABASE_URL + '/rest/v1/' + path, { headers: h }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }); }
+    return Promise.all([
+      get('edu_exam_results?member_key=eq.' + k + '&passed=eq.true&select=id,course,score,created_at&order=created_at.desc'),
+      get('edu_certificates?member_key=eq.' + k + '&select=id,cert_no,kind,issued_on,voided_at&order=issued_on.desc')
+    ]).then(function (res) { return { done: res[0] || [], certs: (res[1] || []).filter(function (c) { return !c.voided_at; }) }; });
+  }
   function eduOf(matchKey) {
     if (!EDU_CACHE || !matchKey) return [];
     return EDU_CACHE.filter(function (r) {
@@ -411,6 +422,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
         row('세대주', cur['세대주']) + row('세대주와 관계', cur['관계']) + row('배우자', cur['배우자']) + row('회원상태', cur['회원상태']) + row('임직일', cur['임직일']) + row('주일학교', cur['주일학교']) +
         '</div></div>' + (cur['주소'] ? row('주소', cur['주소']) : '') + (groupsOf(cur).length ? '<div style="margin-top:12px"><div style="color:#93867C;font-size:.85rem;margin-bottom:5px">소속 그룹</div>' + groupsOf(cur).map(function (g) { return '<span class="fin-pill" style="background:#F8F1EB;color:#845C3E;margin:0 6px 6px 0;display:inline-block">' + esc(g) + '</span>'; }).join('') + '</div>' : '') +
         '<div id="gd_edu" style="margin-top:12px"></div>' +
+        '<div id="gd_class" style="margin-top:12px"></div>' +
         '<div style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="color:var(--accent,#3A281C)">가족 관계</b><button class="btn btn-line" id="gd_family" style="padding:3px 12px;font-size:.8rem">👪 가족 구성/수정</button></div><div style="overflow:auto;margin-top:6px"><table class="fin-table" style="font-size:.86rem"><thead><tr><th>이름</th><th>관계</th><th>생년월일</th><th>직책</th></tr></thead><tbody>' + famRows + '</tbody></table></div></div>';
       box.querySelector('#gd_close').onclick = close;
       box.querySelector('#gd_edit').onclick = function () { editMode(cur); };
@@ -423,6 +435,13 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
         if (!list.length) return;
         el.innerHTML = '<div style="color:#93867C;font-size:.85rem;margin-bottom:5px">📚 진행중인 교육</div>' +
           list.map(function (r) { return '<span class="fin-pill" style="background:#F6F2EF;color:#5D4D40;margin:0 6px 6px 0;display:inline-block">' + eduLabel(r) + '</span>'; }).join('');
+      });
+      loadClassroom(cur['매칭키']).then(function (cl) {
+        var el = box.querySelector('#gd_class'); if (!el || !cl || (!cl.done.length && !cl.certs.length)) return;
+        var CT = { learn: '학습 과정', baptism: '세례(입교) 과정' }, pill = 'class="fin-pill" style="background:#F8F1EB;color:#845C3E;margin:0 6px 6px 0;display:inline-block;text-decoration:none"';
+        el.innerHTML = '<div style="color:#93867C;font-size:.85rem;margin-bottom:5px">🎓 교육 이수 (강의실)</div>' +
+          cl.done.map(function (r) { return '<a ' + pill + ' href="edu-print.html?sheet=' + r.id + '" target="_blank" rel="noopener" title="시험지 보기">' + esc(CT[r.course] || r.course) + ' 이수 · ' + esc(String(r.created_at || '').slice(0, 10)) + ' · ' + esc(r.score) + '점</a>'; }).join('') +
+          cl.certs.map(function (c) { return '<a ' + pill.replace('#F8F1EB;color:#845C3E', '#2E2016;color:#fff') + ' href="edu-print.html?cert=' + c.id + '" target="_blank" rel="noopener">' + esc(c.kind) + '교인 증명서 ' + esc(c.cert_no) + '</a>'; }).join('');
       });
     }
 

@@ -566,6 +566,12 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
 .g-enter3d:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
 .g-enter3d-ic { width: 18px; height: 18px; flex: 0 0 auto; }
 .g-enter3d[hidden] { display: none; }
+/* 강의실(학습·세례 교육, 2026-10-25 담임목사) — 정원 들어가기와 날씨 사이, 흰 바탕 둥근 단추 */
+.g-classroom { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 16px 0 13px; border: 1px solid var(--g-line2); border-radius: 999px; background: var(--g-panel);
+  color: var(--g-fg); font-size: .9rem; font-weight: 800; box-shadow: var(--g-shadow-s); white-space: nowrap; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.g-classroom:hover { background: var(--g-soft); }
+.g-classroom:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+@media (max-width: 760px) { .g-classroom { min-height: 40px; padding: 0 13px 0 11px; font-size: .86rem; } }
 body.g-has-banner .g-wx-float { top: calc(var(--g-hdr) + 74px); }
 .g-root[data-mode="gate"] .g-wx-float, .g-root[data-mode="loading"] .g-wx-float { display: none !important; }
 .g-fold-h { margin: 14px 0 6px; }

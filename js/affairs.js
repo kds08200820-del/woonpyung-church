@@ -1109,7 +1109,7 @@ console.log('[affairs.js] v20261023th1');
   // ── 설교 대시보드: 통계 + 성경 권별 커버리지 ──
   function renderSermonDashboard(panel) {
     // ── 오른쪽 '알림 · 해야 할 일' — draw()·load*() 가 note(key, html, 단추, 동작, 카드id) 로 올리고(html 비우면 내림) ──
-    var NOTES = {}, NOTE_ORDER = ['sun', 'video', 'forms', 'wpjobs'];
+    var NOTES = {}, NOTE_ORDER = ['sun', 'edu', 'video', 'forms', 'wpjobs'];
     function note(key, html, btn, fn, cardId) {
       if (html) NOTES[key] = { html: html, btn: btn, fn: fn }; else delete NOTES[key];
       var c = cardId && panel.querySelector('#' + cardId);
@@ -1225,6 +1225,14 @@ console.log('[affairs.js] v20261023th1');
         kpi({ id: 'bookProgCard', label: '오디오북 듣기 현황', numId: 'bookProgNum', sub: '함께 듣는 성도 · 눌러서 현황 보기' }) +
         kpi({ id: 'appFormsCard', label: '신청서', numId: 'appFormsNum', subId: 'appFormsSub', sub: '진행 중인 신청서 · 눌러서 보기' }) +
         '</div>' +
+        // 교육 · 강의실(2026-10-25): 학습·세례(입교) 교육과정 이수자 명단 · 시험지 PDF · 증명서 — js/edu-admin.js
+        '<div class="dsh-sec">교육 · 강의실<small>학습·세례(입교) 교육과정 · 눌러서 명단</small></div>' +
+        '<div class="dsh-kpis">' +
+        kpi({ id: 'eduDoneCard', label: '교육 이수자', numId: 'eduDoneNum', subId: 'eduDoneSub', sub: '불러오는 중…' }) +
+        kpi({ id: 'eduProgCard', label: '강의실 수강 중', numId: 'eduProgNum', subId: 'eduProgSub', sub: '진도·응시 현황' }) +
+        kpi({ id: 'eduCertCard', label: '교인 증명서', numId: 'eduCertNum', subId: 'eduCertSub', sub: '학습·세례·입교 · 발급 대장' }) +
+        '</div>' +
+        '<div class="dsh-panel"><div class="dsh-ph"><b>교육 이수자 명단<small>강의실 · 최근 8명</small></b><button type="button" class="dsh-link" data-edu-open>전체 보기 →</button></div><div id="eduList"><p class="qt-loading" style="margin:0">불러오는 중…</p></div></div>' +
         '<div class="dsh-sec">미디어 · 관리<small>눌러서 관리</small></div>' +
         '<div class="dsh-kpis">' +
         kpi({ id: 'videoMgrCard', label: 'QT 영상 관리', numId: 'videoMgrNum', subId: 'videoMgrSub', sub: '제작·검토·수정 · 눌러서 관리' }) +
@@ -1284,6 +1292,7 @@ console.log('[affairs.js] v20261023th1');
       loadBookProgress(panel);
       loadWorshipJobs(panel);
       loadAppForms(panel);
+      loadEduClassroom(panel);
       loadAppLicenses(panel);
       loadAttendanceStats(panel);
       if (location.hash === '#attStats' && !window.__attStatsOpened) { window.__attStatsOpened = 1; attStatsModal(); }
@@ -1692,6 +1701,15 @@ console.log('[affairs.js] v20261023th1');
           });
         })
         .catch(function () { numEl.textContent = '–'; subEl.textContent = '신청서를 불러오지 못했습니다 · 눌러서 보기'; });
+    }
+    // ── 🎓 교육 · 강의실 — 이수자 명단·수강 현황·증명서(js/edu-admin.js, 처음 열 때 한 번 불러온다) ──
+    function loadEduClassroom(panel) {
+      if (!panel.querySelector('#eduDoneCard')) return;
+      var ctx = { api: api, esc: esc, note: note, pushBackClose: pushBackClose };
+      function go() { if (document.body.contains(panel)) window.WPCEduAdmin.dash(panel, ctx); }
+      if (window.WPCEduAdmin) { go(); return; }
+      function add(src, next) { var s = document.createElement('script'); s.src = src; s.onload = next; s.onerror = function () { var b = panel.querySelector('#eduList'); if (b) b.innerHTML = '<p style="color:#A3907F;font-size:.86rem;margin:0">강의실 화면을 불러오지 못했습니다.</p>'; }; document.body.appendChild(s); }
+      add('js/catechism-data.js?v=20261025cr1', function () { add('js/edu-admin.js?v=20261025cr1', function () { if (window.WPCEduAdmin) go(); }); });
     }
     function loadWorshipJobs(panel) {
       var numEl = panel.querySelector('#wpJobsNum'), subEl = panel.querySelector('#wpJobsSub');
