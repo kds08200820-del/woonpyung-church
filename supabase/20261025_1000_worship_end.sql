@@ -1,8 +1,8 @@
 -- 1부 예배 종료 (2026-10-25 담임목사 지시)
---  목회자가 정원 첫 화면의 '예배 종료'를 누르면 1부가 끝난 것으로 기록되고, 방송실이 곧바로 2부 카운트다운을 전체 화면으로 열 수 있다.
+--  목회자 또는 방송실 담당이 정원 첫 화면의 '예배 종료'를 누르면 1부가 끝난 것으로 기록되고, 방송실이 곧바로 2부 카운트다운을 전체 화면으로 열 수 있다.
 --  · 기록은 church_settings(key='worship_end') 한 줄에 둔다 — 새 표 없음. 그 표는 관리자만 읽고 쓰므로 아래 함수(security definer)로만 다룬다.
 --    data = { date: 'YYYY-MM-DD'(한국 날짜), part: 1, at: 'ISO 시각', by: uid }
---  · worship_end(p_part, p_undo)   : 목회자(member_links.can_pastor)·관리자만. 오늘 그 부를 종료로 기록(p_undo=true 면 종료 취소).
+--  · worship_end(p_part, p_undo)   : 목회자(member_links.can_pastor)·방송실 담당(can_broadcast)·관리자만. 오늘 그 부를 종료로 기록(p_undo=true 면 종료 취소).
 --  · worship_end_state()           : 누구나 읽는다(공개 정보: 오늘 몇 부가 끝났는지). 오늘 기록이 아니면 null.
 --  · 비파괴: 함수 둘 추가 + church_settings 에 한 줄(없으면 만들고 있으면 바꿈). 지우는 것 없음.
 --    이 SQL 을 실행하기 전에도 화면은 지금처럼 동작한다('예배 종료' 단추가 나타나지 않는다).
@@ -20,8 +20,8 @@ declare
 begin
   if auth.uid() is null then return json_build_object('ok', false, 'why', 'login', 'error', '로그인이 필요합니다.'); end if;
   v_ok := exists (select 1 from public.admins where uid = auth.uid())
-       or coalesce((select can_pastor from public.member_links where user_id = auth.uid()), false);
-  if not v_ok then return json_build_object('ok', false, 'why', 'role', 'error', '목회자만 예배를 종료할 수 있습니다.'); end if;
+       or coalesce((select can_pastor or can_broadcast from public.member_links where user_id = auth.uid()), false);
+  if not v_ok then return json_build_object('ok', false, 'why', 'role', 'error', '목회자 또는 방송실 담당만 예배를 종료할 수 있습니다.'); end if;
   if p_part is null or p_part < 1 or p_part > 3 then return json_build_object('ok', false, 'why', 'part', 'error', '몇 부인지 알 수 없습니다.'); end if;
 
   if p_undo then

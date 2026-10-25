@@ -184,12 +184,17 @@ body.garden [hidden] { display: none !important; }
 .g-end[hidden] { display: none; }
 .g-end:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
 .g-end.is-busy { opacity: .6; pointer-events: none; }
+.g-end.is-sure, .g-bc-end.is-sure { background: #c0392b; color: #fff; border-color: #c0392b; animation: g-pulse 1s ease-in-out infinite; }
 .g-bcast.is-next { background: #2f7d4e; animation: g-pulse 2s ease-in-out infinite; }   /* 1부가 끝나 2부 카운트다운을 열 수 있을 때 */
 .g-root[data-mode="gate"] ~ .g-pills, .g-root[data-mode="gate"] .g-end { display: none; }
 /* 방송실 전체 화면 카운트다운 */
 .g-bc { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4vh 4vw; color: #fff;
   background: radial-gradient(ellipse at 50% 30%, #5a3d2a 0%, #3a281c 55%, #241810 100%); cursor: none; }
 .g-bc.is-live { background: radial-gradient(ellipse at 50% 30%, #b5523a 0%, #7d3a28 55%, #3a1d14 100%); }
+.g-bc-end { position: absolute; bottom: 4vh; left: 50%; transform: translateX(-50%); min-height: 48px; padding: 10px 26px; border: 1.5px solid rgba(255,255,255,.45); border-radius: 999px; background: rgba(0,0,0,.35); color: #fff; font: inherit; font-size: 1.05rem; font-weight: 800; cursor: pointer; opacity: 0; transition: opacity .3s; }
+.g-bc:hover .g-bc-end, .g-bc-end:focus-visible { opacity: 1; }
+.g-bc-end[hidden] { display: none; }
+.g-bc-end.is-busy { pointer-events: none; opacity: .5; }
 .g-bc-x { position: absolute; top: 2vh; right: 2vw; width: 48px; height: 48px; border: 0; border-radius: 50%; background: rgba(255,255,255,.14); color: #fff; font-size: 1.3rem; cursor: pointer; opacity: 0; transition: opacity .3s; }
 .g-bc:hover .g-bc-x, .g-bc-x:focus-visible { opacity: 1; cursor: pointer; }
 .g-bc:hover { cursor: default; }

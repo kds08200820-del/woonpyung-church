@@ -765,7 +765,7 @@ window.GardenHud = (function () {
   /* ── 방송실 전체 화면 카운트다운 (2026-10-25 담임목사 "방송실용 전체화면 카운트다운 없나요?") ──
        예배 띠가 떠 있을 때 방송실 담당(교적관리 > 권한 관리의 can_broadcast)·관리자에게만 '방송실 전체화면' 단추가 보인다.
        예배 띠와 같은 시계(BN)를 읽어 화면 가득 큰 글씨로 남은 시간을 보여 준다. Esc 나 ✕ 로 끝낸다 */
-  var BC = { el: null, tm: 0 };
+  var BC = { el: null, tm: 0, canEnd: false };
   function bcPad(n) { return (n < 10 ? '0' : '') + n; }
   function bcSermon() {
     var sc = BN.cur, n = I.nowParts(); if (!sc || sc.kind !== 'sunday') return '';
@@ -787,6 +787,8 @@ window.GardenHud = (function () {
     el.querySelector('.g-bc-eye').textContent = eye; el.querySelector('.g-bc-title').textContent = title;
     el.querySelector('.g-bc-sub').textContent = sub; el.querySelector('.g-bc-sermon').textContent = bcSermon();
     var c = el.querySelector('.g-bc-count'); c.innerHTML = cnt; c.hidden = !cnt;
+    var eb = el.querySelector('.g-bc-end'), em = endMode(sc);   // 전체 화면에서도 1부 종료·종료 취소를 할 수 있다(방송실 담당)
+    if (!em || !BC.canEnd) eb.hidden = true; else { eb.hidden = false; if (eb.dataset.armed !== '1') eb.textContent = t(em === 'undo' ? 'end.undo' : 'end.btn'); }
     el.classList.toggle('is-live', st === 'live');
   }
   function bcClose() {
@@ -799,9 +801,11 @@ window.GardenHud = (function () {
   function bcOpen() {
     if (BC.el) return;
     var el = document.createElement('div'); el.className = 'g-bc'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', t('bc.btn'));
-    el.innerHTML = '<button type="button" class="g-bc-x" aria-label="' + esc(t('bc.close')) + '">✕</button><p class="g-bc-eye"></p><h1 class="g-bc-title"></h1><p class="g-bc-sub"></p><p class="g-bc-sermon"></p><div class="g-bc-count" hidden aria-live="polite"></div>';
+    el.innerHTML = '<button type="button" class="g-bc-x" aria-label="' + esc(t('bc.close')) + '">✕</button><p class="g-bc-eye"></p><h1 class="g-bc-title"></h1><p class="g-bc-sub"></p><p class="g-bc-sermon"></p><div class="g-bc-count" hidden aria-live="polite"></div><button type="button" class="g-bc-end" hidden></button>';
     document.body.appendChild(el); BC.el = el;
     el.querySelector('.g-bc-x').addEventListener('click', bcClose);
+    el.querySelector('.g-bc-end').addEventListener('click', onEnd);
+    BC.canEnd = false; canEnd().then(function (ok) { BC.canEnd = ok; bcRender(); });
     document.addEventListener('keydown', bcKey);
     var req = el.requestFullscreen || el.webkitRequestFullscreen;
     try { var p = req ? req.call(el) : null; if (p && p.catch) p.catch(function () { }); } catch (e) { }   // 전체 화면이 안 열려도 화면 가득 채워 보인다(고정 배치)
@@ -811,29 +815,38 @@ window.GardenHud = (function () {
   /* 예배 종료 단추 — 목회자·관리자에게만: 1부가 진행 중일 때 '1부 예배 종료', 종료한 뒤 2부 카운트다운 중이면 '1부 종료 취소' */
   function syncEnd(sc) {
     var b = $('gEnd'); if (!b) return;
-    var date = I.nowParts().date, mode = '';
-    if (EN.ready && sc && sc.kind === 'sunday' && !sc.single && !H.svcForce) {
-      if (sc.part === 1 && BN.state === 'live' && !endedPart(date, 1)) mode = 'end';
-      else if (sc.part === 2 && endedPart(date, 1)) mode = 'undo';
-    }
+    var mode = endMode(sc);
     if (!mode) { b.hidden = true; b.dataset.mode = ''; pills(); return; }
-    SDK.canPastor().then(function (ok) {
+    canEnd().then(function (ok) {
       var still = ok && BN.cur && BN.cur.kind === 'sunday';
-      b.hidden = !still; b.dataset.mode = still ? mode : ''; b.classList.toggle('is-undo', mode === 'undo'); b.textContent = t(mode === 'undo' ? 'end.undo' : 'end.btn');
+      b.hidden = !still; b.dataset.mode = still ? mode : ''; b.classList.toggle('is-undo', mode === 'undo'); if (b.dataset.armed !== '1') b.textContent = t(mode === 'undo' ? 'end.undo' : 'end.btn');
       if (!b.dataset.bound) { b.dataset.bound = '1'; b.addEventListener('click', onEnd); }
       pills();
     });
   }
-  function onEnd() {
-    var b = $('gEnd'), mode = b && b.dataset.mode; if (!mode || EN.busy) return;
-    if (mode === 'end' && !window.confirm(t('end.confirm'))) return;
+  function canEnd() { return Promise.all([SDK.canPastor(), SDK.canBroadcast ? SDK.canBroadcast() : false]).then(function (r) { return !!(r[0] || r[1]); }); }   // 목회자 또는 방송실 담당
+  function endMode(sc) {   // 지금 눌러야 할 종료 단추의 종류: 'end'(1부 종료) | 'undo'(종료 취소) | ''
+    var date = I.nowParts().date;
+    if (!(EN.ready && sc && sc.kind === 'sunday' && !sc.single && !H.svcForce)) return '';
+    if (sc.part === 1 && BN.state === 'live' && !endedPart(date, 1)) return 'end';
+    if (sc.part === 2 && endedPart(date, 1)) return 'undo';
+    return '';
+  }
+  function onEnd(ev) {
+    var b = (ev && ev.currentTarget) || $('gEnd'), mode = endMode(BN.cur); if (!mode || EN.busy) return;
+    if (mode === 'end' && b.dataset.armed !== '1') {   // 기본 확인창은 전체 화면을 닫아 버려, 단추를 한 번 더 누르게 한다(4초 안에)
+      var keep = b.textContent; b.dataset.armed = '1'; b.textContent = t('end.sure'); b.classList.add('is-sure');
+      setTimeout(function () { if (b.dataset.armed === '1') { b.dataset.armed = ''; b.classList.remove('is-sure'); b.textContent = keep; } }, 4000);
+      return;
+    }
+    b.dataset.armed = ''; b.classList.remove('is-sure');
     EN.busy = true; b.classList.add('is-busy');
     SDK.worshipEnd(1, mode === 'undo').then(function (r) {
       if (!r || !r.ok) { toast((r && r.error) || t('end.err')); return; }
       EN.state = mode === 'undo' ? null : r.state; EN.at = Date.now();
       toast(t(mode === 'undo' ? 'end.undone' : 'end.done'));
       tick();
-    }).catch(function () { toast(t('end.err')); }).then(function () { EN.busy = false; b.classList.remove('is-busy'); });
+    }).catch(function () { toast(t('end.err')); }).then(function () { EN.busy = false; b.classList.remove('is-busy'); syncEnd(BN.cur); });
   }
   function pills() { var b = document.body, p = $('gPreach'), c = $('gBcast'), e = $('gEnd'); b.classList.toggle('g-has-pill', !!((p && !p.hidden) || (c && !c.hidden) || (e && !e.hidden))); }   // 예배 띠 아래 단추 줄이 있으면 그 아래 줄을 내린다
   function syncBcast(sc) {
