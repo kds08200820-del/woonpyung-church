@@ -11,7 +11,7 @@
  *    교적에서 골라 같은 양식의 증명서를 발급하고 그 성도의 자료실(member_files)에 넣는다. 강의실 이수 기록이 있으면 저절로 잇는다.
  *    서버: supabase/20261025_2000_edu_cert_pastor.sql (edu_is_pastor · 목회자만 발급)
  */
-console.log('[edu-admin.js] v20261025ct1');
+console.log('[edu-admin.js] v20261026dy1');
 
 (function () {
   if (window.WPCEduAdmin) return;
@@ -51,7 +51,7 @@ console.log('[edu-admin.js] v20261025ct1');
     if (!window.WPF) return Promise.resolve([]);
     return WPF.call('listGyojeok').then(function (r) {
       GJ = (r.members || []).filter(function (m) { return m['이름']; }).map(function (m) {
-        return { id: m['교적ID'], name: m['이름'], key: m['매칭키'] || '', birth: String(m['생년월일'] || '').slice(0, 10), grade: m['신급'] || '', bap: String(m['세례일'] || '').slice(0, 10), role: m['직책'] || '', group: m['그룹'] || m['소속그룹'] || '', hasLearn: '학습일' in m };
+        return { id: m['교적ID'], name: m['이름'], key: m['매칭키'] || '', birth: String(m['생년월일'] || '').slice(0, 10), grade: m['신급'] || '', bap: String(m['세례일'] || '').slice(0, 10), learn: String(m['학습일'] || '').slice(0, 10), role: m['직책'] || '', group: m['그룹'] || m['소속그룹'] || '', hasLearn: '학습일' in m };
       });
       return GJ;
     }).catch(function () { GJ = []; return GJ; });
@@ -304,11 +304,32 @@ console.log('[edu-admin.js] v20261025ct1');
       '<div class="af-field" style="grid-column:1/-1"><label>메모(증명서 아래 작게, 선택)</label><input id="ci_memo" placeholder="예: 제2026-1기 학습 문답"></div>' +
       '</div>' +
       '<div id="ci_link" style="font-size:.8rem;margin-top:8px;min-height:1.2em;color:#AFA49C"></div>' +
+      '<div id="ci_day" style="font-size:.8rem;margin-top:4px"></div>' +
       '<div id="ci_res" style="font-size:.8rem;margin-top:4px;color:#2F6B4F"></div>' +
       '<label id="ci_gjw" style="display:none;align-items:center;gap:7px;margin-top:10px;font-size:.86rem;color:#38332E"><input type="checkbox" id="ci_gj" checked> <span id="ci_gjt"></span></label>' +
       '<div style="display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap"><button class="btn btn-solid" id="ci_go" style="padding:9px 22px">발급하고 인쇄</button><button class="btn btn-line" id="ci_x" style="padding:9px 16px">닫기</button><span id="ci_msg" style="font-size:.84rem"></span></div>';
     var $ = function (id) { return m.box.querySelector('#' + id); };
-    var pick = null, autoRes = null;
+    var pick = null, autoRes = null, dayAuto = { rite: '', qa: '' };
+    // 교적에서 고른 성도: 학습받은 날 ← 교적 학습일, 세례받은 날 ← 교적 세례일(2026-10-26 담임목사 "학습 받은 날이 연동이 되지 않는데").
+    //   같은 종류로 앞서 낸 증명서(취소 안 된 것)가 있으면 그 문답일·예식일도 쓴다. 손으로 고친 날짜는 덮지 않는다.
+    function fillDays() {
+      var k = $('ci_kind').value, m = pick, rite = '', qa = '', from = '';
+      if (m) {
+        var prev = D.certs.filter(function (c) { return !c.voided_at && c.kind === k && m.key && c.member_key === m.key; })[0];
+        if (k === '학습' && m.learn) { rite = m.learn; from = '교적의 학습일'; }
+        else if ((k === '세례' || k === '유아세례') && m.bap) { rite = m.bap; from = '교적의 세례일'; }
+        if (!rite && prev && prev.rite_date) { rite = d10(prev.rite_date); from = '앞서 낸 증명서(' + prev.cert_no + ')'; }
+        if (prev && prev.qa_date) qa = d10(prev.qa_date);
+      }
+      [['ci_rite', 'rite', rite], ['ci_qa', 'qa', qa]].forEach(function (x) {
+        var el = $(x[0]); if (el.value === '' || el.value === dayAuto[x[1]]) { el.value = x[2]; dayAuto[x[1]] = x[2]; }
+      });
+      var lab = $('ci_rite_l').textContent, day = $('ci_day'), col = k === '학습' ? '학습일' : (k === '세례' || k === '유아세례') ? '세례일' : '';
+      if (!m) { day.textContent = ''; return; }
+      if (rite) { day.style.color = '#2F6B4F'; day.textContent = '📅 ' + lab + ' ' + rite + ' — ' + from + '에서 가져왔습니다.'; }
+      else if (col) { day.style.color = '#9C4825'; day.textContent = '📅 교적에 ' + col + '이 비어 있습니다. ' + lab + '을 적으시면 아래 ‘교적도 고치기’로 교적에도 저장됩니다.'; }
+      else day.textContent = '';
+    }
     m.box.querySelector('#ci_x').onclick = m.close;
     // 강의실 밖에서 고른 성도: 그 성도의 강의실 이수 기록(같은 과정)이 있으면 증명서에 함께 적는다
     function findRes() {
@@ -337,9 +358,9 @@ console.log('[edu-admin.js] v20261025ct1');
       if (mm) { h.style.color = '#2F6B4F'; h.innerHTML = '🔗 교적 연결: <b>' + esc(mm.name) + '</b> · ' + esc([mm.birth, mm.grade, mm.role].filter(Boolean).join(' · ')); if (mm.birth && !$('ci_birth').value) $('ci_birth').value = mm.birth; }
       else if (r && r.member_key && $('ci_kind').value !== '유아세례') { h.style.color = '#2F6B4F'; h.textContent = '🔗 교적 연결: ' + r.member_key; }
       else { h.style.color = '#AFA49C'; h.textContent = '교적 미연결 — 이름만 기록됩니다(이름을 지우고 다시 입력하면 교적에서 고를 수 있습니다).'; }
-      syncKind(); findRes();
+      syncKind(); fillDays(); findRes();
     }
-    $('ci_kind').onchange = function () { kindTouched = true; syncKind(); findRes(); };
+    $('ci_kind').onchange = function () { kindTouched = true; syncKind(); fillDays(); findRes(); };
     loadGJ().then(function () {
       memberPicker($('ci_name'), $('ci_link'), function (mm) { showPick(mm); });
       showPick(r && r.member_key && !infant0 ? gjByKey(r.member_key) : null);
