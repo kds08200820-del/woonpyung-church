@@ -531,6 +531,7 @@ window.GardenI18n = (function () {
     'qt.listen': '오늘의 말씀 듣기',
     'forms.title': '지금 받는 신청서',
     'forms.go': '신청하기',
+    'forms.mine': '📖 신청 대상입니다 — 신청해 주세요',
     'forms.until': '{m}월 {d}일까지 · {dd}',
     'forms.today': '오늘 마감',
     'forms.pay': '입금 확인 하기 ({n})',

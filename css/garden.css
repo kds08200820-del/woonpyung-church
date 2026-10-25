@@ -78,6 +78,8 @@ body.garden [hidden] { display: none !important; }
 .g-forms[hidden] { display: none; }
 .g-forms-t { margin: 0; justify-self: start; padding: 6px 14px; border-radius: 999px; background: rgba(255,250,243,.96); border: 1px solid var(--g-line2); box-shadow: var(--g-shadow-s); font-size: .86rem; font-weight: 800; color: var(--g-fg); }   /* 책장 그림 위에서도 읽히게 */
 .g-form-card { display: grid; gap: 3px; padding: 12px 14px; border-radius: var(--g-r); background: var(--g-peach, #fbe3da); border: 1px solid var(--g-line2); text-decoration: none; color: var(--g-fg); box-shadow: var(--g-shadow-s); }
+.g-form-card.is-mine { border-color: #3f7d4e; box-shadow: 0 0 0 2px rgba(63,125,78,.35), var(--g-shadow-s); }
+.g-form-badge { justify-self: start; padding: 3px 10px; border-radius: 999px; background: #3f7d4e; color: #fff; font-size: .76rem; font-weight: 800; }
 .g-form-name { font-size: .98rem; line-height: 1.4; word-break: keep-all; }
 .g-form-when, .g-form-until { font-size: .8rem; color: var(--g-fg2); }
 .g-form-until { font-weight: 700; color: var(--g-coral-p, #b5523a); }

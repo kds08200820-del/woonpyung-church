@@ -349,6 +349,18 @@
       } catch (e) {
         /* 대시보드 Web 설정 완료 전에는 조용히 무시 */
       }
+      // 학습·세례(입교) 신청 대상 기기에 태그를 붙인다 — apps-script/baptism-form-push.gs 가 이 태그(bt_<신청서번호>=1)가 있는 기기에만 '신청하세요' 알림을 보낸다.
+      // 대상은 서버(app_my_targets)가 내 교적 매칭키로 판단하며, 이름·키는 기기나 OneSignal 에 올리지 않는다. SQL 전·로그인 전에는 조용히 건너뛴다.
+      try {
+        const ref = new URL(window.SUPABASE_URL).hostname.split(".")[0];
+        const raw = localStorage.getItem("sb-" + ref + "-auth-token");
+        const s0 = raw && JSON.parse(raw), tok = s0 && (s0.access_token || (s0.currentSession && s0.currentSession.access_token));
+        if (tok) {
+          const r = await fetch(window.SUPABASE_URL + "/rest/v1/rpc/app_my_targets", { method: "POST", headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + tok, "Content-Type": "application/json" }, body: "{}" });
+          const ids = r.ok ? await r.json() : [];
+          if (Array.isArray(ids)) ids.forEach(function (id) { try { OneSignal.User.addTag("bt_" + id, "1"); } catch (e2) {} });
+        }
+      } catch (e) { /* 알림 태그는 없어도 사이트는 정상 */ }
     });
   }
 

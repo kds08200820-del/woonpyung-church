@@ -369,8 +369,8 @@ window.GardenHud = (function () {
   /* ── 서재: 지금 받는 신청서 (신청 기간 동안만 — 서버 시계로 app_open_forms 가 거른다. SQL 전이면 조용히 숨는다) ── */
   function loadForms() {
     var box = $('gForms'); if (!box || !SDK.openForms) return Promise.resolve();
-    return Promise.all([SDK.openForms(), SDK.formsPending ? SDK.formsPending() : null]).then(function (rs) {
-      var rows = (rs[0] || []).filter(function (f) { return f.show_hero !== false; }), pend = rs[1];
+    return Promise.all([SDK.openForms(), SDK.formsPending ? SDK.formsPending() : null, SDK.myFormTargets ? SDK.myFormTargets() : []]).then(function (rs) {
+      var rows = (rs[0] || []).filter(function (f) { return f.show_hero !== false; }), pend = rs[1], mine = rs[2] || [];
       if (!rows.length) { box.hidden = true; box.innerHTML = ''; return; }
       var nowMs = Date.now();
       box.innerHTML = '<h3 class="g-forms-t" id="gFormsT">' + esc(t('forms.title')) + '</h3>' + rows.map(function (f) {
@@ -380,7 +380,9 @@ window.GardenHud = (function () {
         var pd = pend && pend[f.id], adm = '';
         if (pd) adm = '<a class="g-form-pay' + (pd.claimed ? ' is-claimed' : '') + '" href="affairs.html?tab=forms&f=' + encodeURIComponent(f.id) + '&filter=' + (pd.claimed ? 'claimed' : 'due') + '">' +
           esc(t(pd.claimed ? 'forms.pay.claimed' : 'forms.pay', { n: pd.claimed || pd.n })) + '</a>';
-        return '<div class="g-form-card">' +
+        var isMine = mine.indexOf(f.id) >= 0 || mine.indexOf(String(f.id)) >= 0;   // 학습·세례 신청 대상으로 확정된 분
+        return '<div class="g-form-card' + (isMine ? ' is-mine' : '') + '">' +
+          (isMine ? '<span class="g-form-badge">' + esc(t('forms.mine')) + '</span>' : '') +
           '<b class="g-form-name">' + esc(f.title || '') + '</b>' +
           (when ? '<span class="g-form-when">' + esc(when) + '</span>' : '') +
           (until ? '<span class="g-form-until">' + esc(until) + '</span>' : '') +

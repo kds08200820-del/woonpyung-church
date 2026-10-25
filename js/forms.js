@@ -35,6 +35,12 @@ console.log('[forms.js] v20261010form6');
     '.ap-text{font-size:.94rem;color:var(--ink-soft,#4A3628);margin:12px 0 0;word-break:keep-all}' +
     '.ap-form{margin-top:16px;display:flex;flex-direction:column;gap:12px}' +
     '.ap-field{display:flex;flex-direction:column;gap:5px}' +
+    '.ap-kinds{border:0;margin:0;padding:0;min-width:0}.ap-kinds legend{font-size:.84rem;color:var(--ink-soft,#4A3628);font-weight:500;margin-bottom:6px;padding:0}' +
+    '.ap-kinds{display:flex;flex-direction:row;flex-wrap:wrap;gap:8px}.ap-kinds legend{flex:0 0 100%}.ap-kinds small{flex:0 0 100%;color:var(--ink-soft,#6b5a4a);font-size:.78rem;line-height:1.5}' +
+    '.ap-kind{display:inline-flex;align-items:center;gap:7px;padding:11px 16px;border:1px solid var(--line,#E6D8C6);border-radius:12px;background:#fff;cursor:pointer;font-size:.98rem}' +
+    '.ap-kind:has(input:checked){border-color:var(--accent,#3A281C);background:#f6efe6;font-weight:700}.ap-kind input{width:18px;height:18px;margin:0}' +
+    '.ap-qa{display:flex;flex-direction:column;gap:12px;margin-top:4px}.ap-qa-h{margin:6px 0 0;font-weight:700;color:var(--accent,#3A281C)}.ap-qa-h small{font-weight:400;color:var(--ink-soft,#6b5a4a)}' +
+    '.ap-qa-view{margin-top:14px;display:flex;flex-direction:column;gap:10px}.ap-qa-i{background:#fff;border:1px solid var(--line,#E6D8C6);border-radius:12px;padding:10px 13px}.ap-qa-i b{font-size:.9rem;color:var(--accent,#3A281C)}.ap-qa-i p{margin:5px 0 0;font-size:.92rem;line-height:1.6;white-space:pre-wrap;word-break:keep-all}' +
     '.ap-field>span{font-size:.84rem;color:var(--ink-soft,#4A3628);font-weight:500}' +
     '.ap-field input,.ap-field textarea{font:inherit;font-size:1rem;padding:11px 13px;border:1px solid var(--line,#E6D8C6);border-radius:10px;width:100%;box-sizing:border-box;background:#fff}' +
     '.ap-field input:focus,.ap-field textarea:focus{outline:none;border-color:var(--accent-soft,#6E523C)}' +
@@ -191,6 +197,7 @@ console.log('[forms.js] v20261010form6');
   }
   function dayText(iso) { var d = new Date(iso); return isNaN(d) ? '' : (d.getMonth() + 1) + '월 ' + d.getDate() + '일'; }
   function feeText(f) {
+    if (f && f.kind === 'baptism') return '신청비 없음';
     var a = +f.fee_adult || 0, m = f.ask_minor ? (+f.fee_minor || 0) : 0;
     if (!a && !m) return '신청비 없음';
     if (!f.ask_minor) return '1명 ' + won(a) + '원';
@@ -370,6 +377,7 @@ console.log('[forms.js] v20261010form6');
       if (!f) { openModal('<h3 class="ap-title">신청서를 찾을 수 없습니다</h3><p class="ap-text">교회에서 내린 신청서입니다.</p>'); return; }
       if (e && e.status === 'active' && !edit) { showStatus(f, e); return; }
       if (!isOpen(f)) { showStatus(f, e); return; }
+      if (f.kind === 'baptism') { showBaptism(f, e, p); return; }
       showForm(f, e, p);
     }).catch(function (e) { openModal(errorHTML(e)); });
   }
@@ -391,6 +399,65 @@ console.log('[forms.js] v20261010form6');
     return '<p class="ap-eye">' + esc(eye) + '</p><h3 class="ap-title">' + esc(f.title) + '</h3>' +
       (whenPlace(f) ? '<p class="ap-meta">' + esc(whenPlace(f)) + '</p>' : '') +
       '<p class="ap-meta">' + esc(feeText(f)) + (untilText(f) ? ' · ' + esc(untilText(f)) : '') + '</p>';
+  }
+  /* ── 학습·세례(입교) 신청 — 종류를 고르고 문답을 적어 낸다 (2026-10-25 담임목사 지시, supabase/20261025_1300_app_forms_baptism.sql)
+       대상: 교적부에서 세례를 받지 않은 만 14세 이상(관리자가 확정). 신청비 없음. 질문은 신청서마다 관리자가 정한다 ── */
+  var BAPT_KINDS = ['학습', '세례(입교)'];
+  function qParts(q) {   // '[학습] 질문' · '[세례] 질문' · '질문' → { text, only: '학습' | '세례(입교)' | '' }
+    var m = /^\[(학습|세례)\]\s*/.exec(String(q || ''));
+    return m ? { text: String(q).slice(m[0].length), only: m[1] === '학습' ? '학습' : '세례(입교)' } : { text: String(q || ''), only: '' };
+  }
+  function showBaptism(f, e, p) {
+    var cur = e || {}, qs = Array.isArray(f.questions) ? f.questions : [], ans = Array.isArray(cur.answers) ? cur.answers : [];
+    var html = headHTML(f, e ? '신청 고치기' : '신청서') +
+      (f.summary ? '<p class="ap-text">' + esc(f.summary) + '</p>' : '') +
+      (f.body ? '<div class="ap-body">' + nl2br(f.body) + '</div>' : '') + imgHTML(f) +
+      '<p class="ap-note">대상: 세례를 받지 않은 만 14세 이상 성도 · 신청비 없음</p>' +
+      '<form class="ap-form" novalidate>' +
+      '<label class="ap-field"><span>신청하는 분 이름</span><input name="name" maxlength="60" autocomplete="name" value="' + esc(cur.name || p.name || '') + '" required></label>' +
+      '<label class="ap-field"><span>연락처</span><input name="phone" type="tel" inputmode="tel" maxlength="30" autocomplete="tel" placeholder="010-0000-0000" value="' + esc(cur.phone || p.phone || '') + '" required></label>' +
+      '<fieldset class="ap-field ap-kinds"><legend>무엇을 신청하시나요</legend>' +
+        BAPT_KINDS.map(function (k, i) { return '<label class="ap-kind"><input type="radio" name="apply" value="' + esc(k) + '"' + ((cur.apply_kind || '') === k ? ' checked' : '') + '> <span>' + esc(k) + '</span></label>'; }).join('') +
+        '<small>처음 신청하시면 ‘학습’, 학습을 받으셨거나 어릴 때 유아세례를 받으셨으면 ‘세례(입교)’를 고르세요.</small></fieldset>' +
+      (qs.length ? '<div class="ap-qa"><p class="ap-qa-h">문답 <small>· 아는 대로 정성껏 적어 주십시오</small></p><p class="ap-note" data-qa-hint hidden>위에서 학습과 세례(입교) 가운데 하나를 고르면, 그에 맞는 문답이 나옵니다.</p>' + qs.map(function (q, i) {
+        var qp = qParts(q);
+        return '<label class="ap-field" data-only="' + esc(qp.only) + '"><span><em data-n></em>' + esc(qp.text) + '</span><textarea name="a' + i + '" rows="3" maxlength="3000" data-i="' + i + '">' + esc(ans[i] || '') + '</textarea></label>';
+      }).join('') + '</div>' : '') +
+      '<p class="ap-err" hidden></p>' +
+      '<button type="submit" class="ap-btn ap-wide">' + (e && e.status === 'active' ? '고친 내용 저장' : '신청하기') + '</button>' +
+      '<p class="ap-note">한 계정으로 한 번 신청하며, 다시 내면 앞의 신청을 고칩니다. 신청 기간 안에는 언제든 고칠 수 있습니다.</p></form>';
+    openModal(html, function (b) {
+      var form = b.querySelector('form'), err = b.querySelector('.ap-err'), btn = form.querySelector('button[type=submit]');
+      var label = e && e.status === 'active' ? '고친 내용 저장' : '신청하기';
+      function fail(msg, el) { err.textContent = msg; err.hidden = false; btn.disabled = false; btn.textContent = label; if (el && el.focus) el.focus(); }
+      var qLabels = Array.prototype.slice.call(form.querySelectorAll('.ap-qa label[data-only]'));
+      function paintQ() {   // 고른 종류에 맞는 질문만 보이고 번호를 다시 매긴다
+        var pick = form.querySelector('input[name=apply]:checked'), kind = pick ? pick.value : '', n = 0;
+        qLabels.forEach(function (l) {
+          var only = l.getAttribute('data-only'), show = !only || only === kind;
+          l.hidden = !show; if (show) { n++; l.querySelector('em[data-n]').textContent = n + '. '; }
+        });
+        var hint = form.querySelector('[data-qa-hint]'); if (hint) hint.hidden = !!kind || !qLabels.some(function (l) { return l.getAttribute('data-only'); });
+      }
+      Array.prototype.forEach.call(form.querySelectorAll('input[name=apply]'), function (r) { r.onchange = paintQ; });
+      paintQ();
+      form.onsubmit = function (ev) {
+        ev.preventDefault();
+        var name = form.name.value.trim(), phone = form.phone.value.trim(), pick = form.querySelector('input[name=apply]:checked');
+        if (!name) return fail('신청하는 분 이름을 적어 주십시오.', form.name);
+        if (!phone) return fail('연락처를 적어 주십시오.', form.phone);
+        if (!pick) return fail('학습과 세례(입교) 가운데 하나를 골라 주십시오.');
+        var answers = qs.map(function (_, i) { var l = qLabels[i]; return l && l.hidden ? '' : String(form['a' + i].value || '').trim(); });
+        var miss = answers.findIndex(function (a, i) { return !a && !(qLabels[i] && qLabels[i].hidden); });
+        if (miss >= 0) return fail('빈 문답이 있습니다. 모든 질문에 답을 적어 주십시오.', form['a' + miss]);
+        err.hidden = true; btn.disabled = true; btn.textContent = '보내는 중…';
+        rpc('app_submit_qa', { p_form: f.id, p_name: name, p_phone: phone, p_apply: pick.value, p_answers: answers }).then(function (r) {
+          if (!r || !r.ok) throw new Error((r && r.error) || '신청하지 못했습니다.');
+          changed();
+          return loadEntry(f.id).then(function (e2) { showStatus(f, e2, r.updated ? '고친 내용을 저장했습니다.' : '신청했습니다.'); });
+        }).catch(function (e2) { fail(/^\{/.test(e2.message || '') || notReady(e2) ? '신청하지 못했습니다. 잠시 뒤에 다시 해 주십시오.' : e2.message); });
+      };
+    });
   }
   function showForm(f, e, p) {
     var cur = e || {};
@@ -524,13 +591,17 @@ console.log('[forms.js] v20261010form6');
       var active = e.status === 'active', due = active && e.fee_total > 0 && !e.paid_at;
       html += '<div style="margin-top:12px">' + chip(e) + '</div>' + msgHTML(e) +
         '<dl class="ap-dl"><dt>신청한 분</dt><dd>' + esc(e.name) + '</dd><dt>연락처</dt><dd>' + esc(e.phone) + '</dd>' +
-        '<dt>인원</dt><dd>' + esc(peopleText(e, f)) + '</dd>' +
-        (partText(e, f) ? '<dt>' + esc(plabel(f)) + '</dt><dd>' + esc(partText(e, f)) + '</dd>' : '') +
-        (e.memo ? '<dt>' + esc(f.memo_label || '메모') + '</dt><dd>' + nl2br(e.memo) + '</dd>' : '') +
-        '<dt>신청비</dt><dd>' + (e.fee_total > 0 ? won(e.fee_total) + '원' : '없음') + '</dd>' +
+        (f.kind === 'baptism'
+          ? '<dt>신청 종류</dt><dd>' + esc(e.apply_kind || '') + '</dd>'
+          : '<dt>인원</dt><dd>' + esc(peopleText(e, f)) + '</dd>' +
+            (partText(e, f) ? '<dt>' + esc(plabel(f)) + '</dt><dd>' + esc(partText(e, f)) + '</dd>' : '') +
+            (e.memo ? '<dt>' + esc(f.memo_label || '메모') + '</dt><dd>' + nl2br(e.memo) + '</dd>' : '') +
+            '<dt>신청비</dt><dd>' + (e.fee_total > 0 ? won(e.fee_total) + '원' : '없음') + '</dd>') +
         '<dt>신청한 날</dt><dd>' + esc(dtText(e.created_at)) + '</dd>' +
         (e.paid_at ? '<dt>납부</dt><dd>' + esc(dtText(e.paid_at)) + (e.paid_by === 'admin' ? ' · 교회에서 납부 처리' : ' · ‘납부했습니다’') + (e.confirmed_at ? ' · 교회가 입금을 확인했습니다' : '') + '</dd>' : '') +
         '</dl>' +
+        (f.kind === 'baptism' && Array.isArray(e.answers) && e.answers.some(Boolean) ? '<div class="ap-qa-view"><p class="ap-qa-h">내가 적은 문답</p>' + (function () { var n = 0; return e.answers.map(function (a, i) {
+          if (!a) return ''; n++; return '<div class="ap-qa-i"><b>' + n + '. ' + esc(qParts((f.questions || [])[i]).text) + '</b><p>' + nl2br(a) + '</p></div>'; }).join(''); })() + '</div>' : '') +
         (due ? payHTML(f, e) : '') +
         '<div class="ap-actions">' +
         (active && open ? '<button type="button" class="ap-btn-line" data-edit>신청 고치기</button>' : '') +

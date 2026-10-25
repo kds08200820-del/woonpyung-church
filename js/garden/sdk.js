@@ -291,6 +291,8 @@
         });
       }).catch(function () { return null; });
     },
+    // 내가 신청 대상인 지금 받는 학습·세례 신청서 번호들 (20261025_1300 — SQL 전·로그인 전이면 [])
+    myFormTargets: function () { return sess() ? rpc('app_my_targets').then(function (r) { return Array.isArray(r) ? r : []; }, function () { return []; }) : Promise.resolve([]); },
     openForms: function () { return rpc('app_open_forms').then(function (r) { return r || []; }); },   // 지금 신청 기간인 신청서(서버 시계) — 로그인 전에도 읽는다
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,
     attend: attend, hasSermon: hasSermon, weather: weather,
