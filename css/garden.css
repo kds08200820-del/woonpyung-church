@@ -171,14 +171,40 @@ body.garden [hidden] { display: none !important; }
 .g-preach { position: fixed; top: calc(var(--g-hdr) + 72px); left: 50%; transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 18px;
   border-radius: 999px; background: #2f5d8a; color: #fff; font-size: .9rem; font-weight: 800; text-decoration: none; box-shadow: var(--g-shadow); white-space: nowrap; }
 .g-preach small { font-size: .74rem; font-weight: 600; opacity: .85; }
+.g-bcast { position: fixed; top: calc(var(--g-hdr) + 72px); left: 50%; transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 18px;
+  border: 0; border-radius: 999px; background: #5b3a8a; color: #fff; font: inherit; font-size: .9rem; font-weight: 800; box-shadow: var(--g-shadow); white-space: nowrap; cursor: pointer; }
+.g-bcast[hidden] { display: none; }
+.g-bcast:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+.g-root[data-mode="gate"] .g-bcast { display: none; }
+/* 두 단추가 함께 뜨면 가운데에서 나란히 */
+body.g-has-bcast.g-has-preach .g-preach { left: auto; right: calc(50% + 4px); transform: none; }
+body.g-has-bcast.g-has-preach .g-bcast { left: calc(50% + 4px); transform: none; }
+body.g-has-bcast.g-has-preach .g-preach small { display: none; }
+/* 방송실 전체 화면 카운트다운 */
+.g-bc { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 4vh 4vw; color: #fff;
+  background: radial-gradient(ellipse at 50% 30%, #5a3d2a 0%, #3a281c 55%, #241810 100%); cursor: none; }
+.g-bc.is-live { background: radial-gradient(ellipse at 50% 30%, #b5523a 0%, #7d3a28 55%, #3a1d14 100%); }
+.g-bc-x { position: absolute; top: 2vh; right: 2vw; width: 48px; height: 48px; border: 0; border-radius: 50%; background: rgba(255,255,255,.14); color: #fff; font-size: 1.3rem; cursor: pointer; opacity: 0; transition: opacity .3s; }
+.g-bc:hover .g-bc-x, .g-bc-x:focus-visible { opacity: 1; cursor: pointer; }
+.g-bc:hover { cursor: default; }
+.g-bc-eye { margin: 0; font-size: 1.5vw; letter-spacing: .3em; opacity: .75; }
+.g-bc-title { margin: 2.2vh 0 0; font-size: 6.6vw; line-height: 1.25; font-weight: 800; word-break: keep-all; }
+.g-bc-sub { margin: 2.4vh 0 0; font-size: 2.1vw; opacity: .9; }
+.g-bc-sermon { margin: 1.8vh 0 0; font-size: 2.3vw; opacity: .9; }
+.g-bc-sermon:empty { display: none; }
+.g-bc-count { display: flex; justify-content: center; gap: 4.5vw; margin-top: 5vh; font-variant-numeric: tabular-nums; }
+.g-bc-count[hidden] { display: none; }
+.g-bc-count span { font-size: 1.7vw; opacity: .8; }
+.g-bc-count b { display: block; font-size: 11vw; line-height: 1.05; font-weight: 800; opacity: 1; }
+@media (max-width: 700px) { .g-bc-eye { font-size: 3.4vw; } .g-bc-title { font-size: 11vw; } .g-bc-sub { font-size: 4vw; } .g-bc-sermon { font-size: 4.2vw; } .g-bc-count span { font-size: 3.4vw; } .g-bc-count b { font-size: 19vw; } }
 .g-preach[hidden] { display: none; }
 /* 설교하기 단추가 예배 띠 아래 한 줄을 차지하면 그 아래 줄(정원 들어가기·날씨·돌리기·알림)을 한 줄만큼 내린다 — 태블릿·PC (폰은 위 규칙대로 띠 아래) */
 @media (min-width: 761px) {
-  body.g-has-banner.g-has-preach .g-wx-float { top: calc(var(--g-hdr) + 128px); }
-  body.g-has-banner.g-has-preach .g-rotate { top: calc(var(--g-hdr) + 128px); }
-  body.g-has-banner.g-has-preach .g-toast { top: calc(var(--g-hdr) + 132px); }
+  body.g-has-banner.g-has-pill .g-wx-float { top: calc(var(--g-hdr) + 128px); }
+  body.g-has-banner.g-has-pill .g-rotate { top: calc(var(--g-hdr) + 128px); }
+  body.g-has-banner.g-has-pill .g-toast { top: calc(var(--g-hdr) + 132px); }
 }
-@media (min-width: 1001px) and (max-width: 1279px) { body.g-has-banner.g-has-preach .g-rotate { top: calc(var(--g-hdr) + 182px); } }
+@media (min-width: 1001px) and (max-width: 1279px) { body.g-has-banner.g-has-pill .g-rotate { top: calc(var(--g-hdr) + 182px); } }
 .g-preach:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
 .g-root[data-mode="gate"] .g-preach { display: none; }
 .g-banner.is-live { background: var(--g-coral); animation: g-pulse 2.4s ease-in-out infinite; }
@@ -491,7 +517,7 @@ body.g-has-banner .g-toast { top: calc(var(--g-hdr) + 76px); }
   .g-scene { position: relative; height: 56dvh; min-height: 320px; top: auto; left: auto; right: auto; border-radius: 0 0 26px 26px; }
   .g-panel { margin: 12px 14px 0; padding: 16px 16px 18px; }
   .g-banner { top: calc(var(--g-hdr) + 6px); left: 12px; right: 12px; transform: none; max-width: none; justify-content: space-between; font-size: .86rem; }
-  .g-preach { top: calc(var(--g-hdr) + 124px); }   /* 휴대폰: 새로고침·정원 들어가기 줄 아래 */
+  .g-preach, .g-bcast { top: calc(var(--g-hdr) + 124px); }   /* 휴대폰: 새로고침·정원 들어가기 줄 아래 */
   .g-bar {
     left: 0; right: 0; bottom: 0; transform: none; border-radius: 22px 22px 0 0; padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
     justify-content: space-around; background: rgba(255,250,243,.96); box-shadow: 0 -8px 22px rgba(185,164,140,.22);

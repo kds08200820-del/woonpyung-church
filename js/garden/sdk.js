@@ -252,6 +252,15 @@
     home: home, homeBuild: homeBuild, church: church, churchOffer: churchOffer, adminChurchStart: adminChurchStart, adminChurchGoal: adminChurchGoal, adminChurchStop: adminChurchStop,
     // 관리자에게만: 입금 확인이 남은 신청(신청비 있음 · 활성 · 교회 확인 전)을 신청서별로 센다 { 신청서번호: { n: 전체, claimed: '납부했습니다' 눌린 것 } } — 관리자가 아니면 null
     // 사이트 관리자(담임목사 등)인가 — admins 표에 내 uid 가 있는지. 한 번만 묻고 기억한다
+    // 방송실 담당(can_broadcast)이거나 관리자인가 — rpc broadcast_access (SQL 전이면 관리자만)
+    canBroadcast: function () {
+      var s = sess(); if (!s) return Promise.resolve(false);
+      if (!this._bc || this._bcUid !== s.uid) {
+        var self = this; this._bcUid = s.uid;
+        this._bc = rpc('broadcast_access').then(function (a) { return a ? !!(a.isAdmin || a.canBroadcast) : self.isSiteAdmin(); }, function () { return self.isSiteAdmin(); });
+      }
+      return this._bc;
+    },
     isSiteAdmin: function () {
       var s = sess(); if (!s) return Promise.resolve(false);
       if (!this._adm || this._admUid !== s.uid) { this._admUid = s.uid; this._adm = api('GET', 'admins?uid=eq.' + encodeURIComponent(s.uid) + '&select=uid').then(function (a) { return !!(a && a.length); }, function () { return false; }); }

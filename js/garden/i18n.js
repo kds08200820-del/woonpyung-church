@@ -641,6 +641,8 @@ window.GardenI18n = (function () {
     'banner.join.sun': '{part}예배 참여하기',
     'banner.open': '열기',
     'banner.sunday': '오늘은 주일입니다',
+    'bc.btn': '방송실 전체화면', 'bc.close': '닫기 (Esc)', 'bc.soon': '곧 예배가 시작됩니다', 'bc.live': '예배가 진행 중입니다', 'bc.day': '오늘은 주일입니다', 'bc.none': '예배 시간이 되면 카운트다운이 나옵니다',
+    'bc.h': '시간', 'bc.m': '분', 'bc.s': '초',
     'banner.soon': '곧 {label}가 시작됩니다',
     'attend.login': '로그인하면 출석이 기록됩니다',
     'attend.ok': '출석했습니다 — {svc} · 정시',

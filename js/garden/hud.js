@@ -690,25 +690,26 @@ window.GardenHud = (function () {
   function pname(sc) { return sc.kind === 'sunday' && !sc.single && sc.part ? t('svc.part', { n: sc.part }) + ' ' : ''; }
   function joined(date) { try { return localStorage.getItem('ws_joined_' + date); } catch (e) { return null; } }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
-  function showBanner(title, count, state, sc) {
+  function showBanner(title, count, state, sc, left) {
     var b = $('gBanner'); if (!b) return;
+    BN.state = state; BN.title = title; BN.left = left == null ? null : left;
     $('gBnT').textContent = title; $('gBnC').textContent = count || '';
     b.dataset.state = state; b.dataset.kind = sc.kind; b.dataset.part = sc.part ? String(sc.part) : ''; b.dataset.svc = sc.svc || '';
     b.classList.toggle('is-live', state === 'live'); b.hidden = false; BN.cur = sc;
     document.body.classList.add('g-has-banner');
-    syncPreach(sc);
+    syncPreach(sc); syncBcast(sc);
   }
-  function hideBanner() { var b = $('gBanner'); if (b) b.hidden = true; BN.cur = null; document.body.classList.remove('g-has-banner'); syncPreach(null); }
+  function hideBanner() { var b = $('gBanner'); if (b) b.hidden = true; BN.cur = null; BN.state = ''; BN.left = null; document.body.classList.remove('g-has-banner'); syncPreach(null); syncBcast(null); }
   /* 설교하기(발표자 모드) — 예배 띠가 뜰 때 관리자(담임목사)에게만. 누르면 새 탭에서 목회 행정이 그날 그 예배 설교를 발표자 모드로 연다
      (홈 화면 worship.js preachRow 와 같은 주소: affairs.html?present=sunday|wed|dawn&date=YYYY-MM-DD) — 2026-10-25 담임목사 "설교자용 보기가 안 나옵니다" */
   function syncPreach(sc) {
     var p = $('gPreach'); if (!p) return;
-    if (!sc || !SDK.isSiteAdmin) { p.hidden = true; document.body.classList.remove('g-has-preach'); return; }
+    if (!sc || !SDK.isSiteAdmin) { p.hidden = true; document.body.classList.remove('g-has-preach'); pills(); return; }
     var kind = sc.kind, href = 'affairs.html?present=' + encodeURIComponent(kind) + '&date=' + I.nowParts().date;
     if (p.dataset.href === href && !p.hidden) return;
     SDK.isSiteAdmin().then(function (ok) {
-      if (!ok || !BN.cur || BN.cur.kind !== kind) { p.hidden = true; document.body.classList.remove('g-has-preach'); return; }
-      p.href = href; p.dataset.href = href; p.hidden = false; document.body.classList.add('g-has-preach');
+      if (!ok || !BN.cur || BN.cur.kind !== kind) { p.hidden = true; document.body.classList.remove('g-has-preach'); pills(); return; }
+      p.href = href; p.dataset.href = href; p.hidden = false; document.body.classList.add('g-has-preach'); pills();
     });
   }
   function tick() {
@@ -737,11 +738,63 @@ window.GardenHud = (function () {
       if (BN.okCache[key] === undefined) { BN.okCache[key] = null; SDK.hasSermon(date, sc.cal).then(function (ok) { BN.okCache[key] = ok; tick(); }); }
       if (!BN.okCache[key]) { hideBanner(); return; }
     }
-    if (pick.live) { showBanner(sc.kind === 'sunday' ? t('banner.live.sun', { part: pname(sc) }) : t('banner.live', { label: sc.label }), sc.kind === 'sunday' ? t('banner.join.sun', { part: pname(sc) }) : t('banner.open'), 'live', sc); return; }
+    if (pick.live) { showBanner(sc.kind === 'sunday' ? t('banner.live.sun', { part: pname(sc) }) : t('banner.live', { label: sc.label }), sc.kind === 'sunday' ? t('banner.join.sun', { part: pname(sc) }) : t('banner.open'), 'live', sc, 0); return; }
     var l = pick.left, soon = !(sc.kind === 'sunday' && (sc.part === 1 || sc.single)) || l <= 3600;
     if (pick.day || !soon) { showBanner(t('banner.sunday'), sc.label + ' ' + sc.time, 'day', sc); return; }
     var h = Math.floor(l / 3600), m = Math.floor(l % 3600 / 60), s = l % 60;
-    showBanner(t('banner.soon', { label: sc.kind === 'sunday' ? pname(sc) + t('svc.word') : sc.label }), (h ? h + ':' : '') + pad(m) + ':' + pad(s), 'soon', sc);
+    showBanner(t('banner.soon', { label: sc.kind === 'sunday' ? pname(sc) + t('svc.word') : sc.label }), (h ? h + ':' : '') + pad(m) + ':' + pad(s), 'soon', sc, l);
+  }
+  /* ── 방송실 전체 화면 카운트다운 (2026-10-25 담임목사 "방송실용 전체화면 카운트다운 없나요?") ──
+       예배 띠가 떠 있을 때 방송실 담당(교적관리 > 권한 관리의 can_broadcast)·관리자에게만 '방송실 전체화면' 단추가 보인다.
+       예배 띠와 같은 시계(BN)를 읽어 화면 가득 큰 글씨로 남은 시간을 보여 준다. Esc 나 ✕ 로 끝낸다 */
+  var BC = { el: null, tm: 0 };
+  function bcPad(n) { return (n < 10 ? '0' : '') + n; }
+  function bcSermon() {
+    var sc = BN.cur, n = I.nowParts(); if (!sc || sc.kind !== 'sunday') return '';
+    var B = window.BULLETINS; if (!Array.isArray(B)) return '';
+    for (var i = 0; i < B.length; i++) if (B[i] && B[i].date === n.date) return (B[i].title ? '«' + B[i].title + '»' : '') + (B[i].scripture ? ' · ' + B[i].scripture : '');
+    return '';
+  }
+  function bcRender() {
+    var el = BC.el; if (!el) return;
+    var sc = BN.cur, n = I.nowParts(), st = BN.state;
+    var eye = sc && sc.kind === 'sunday' ? 'THE LORD’S DAY' : 'TODAY’S WORSHIP';
+    var title = sc ? (st === 'live' ? t('bc.live') : st === 'soon' ? t('bc.soon') : st === 'day' ? t('bc.day') : BN.title) : t('bc.none');
+    var sub = sc ? (n.m + '월 ' + n.d + '일 · ' + sc.label + ' ' + sc.time) : '';
+    var cnt = '';
+    if (sc && st === 'soon' && BN.left != null) {
+      var l = Math.max(0, BN.left), h = Math.floor(l / 3600), m = Math.floor(l % 3600 / 60), s = l % 60;
+      cnt = (h ? '<span><b>' + h + '</b>' + esc(t('bc.h')) + '</span>' : '') + '<span><b>' + bcPad(m) + '</b>' + esc(t('bc.m')) + '</span><span><b>' + bcPad(s) + '</b>' + esc(t('bc.s')) + '</span>';
+    }
+    el.querySelector('.g-bc-eye').textContent = eye; el.querySelector('.g-bc-title').textContent = title;
+    el.querySelector('.g-bc-sub').textContent = sub; el.querySelector('.g-bc-sermon').textContent = bcSermon();
+    var c = el.querySelector('.g-bc-count'); c.innerHTML = cnt; c.hidden = !cnt;
+    el.classList.toggle('is-live', st === 'live');
+  }
+  function bcClose() {
+    clearInterval(BC.tm); BC.tm = 0;
+    try { if (document.fullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) { }
+    if (BC.el) { BC.el.remove(); BC.el = null; }
+    document.removeEventListener('keydown', bcKey);
+  }
+  function bcKey(e) { if (e.key === 'Escape') { e.preventDefault(); bcClose(); } }
+  function bcOpen() {
+    if (BC.el) return;
+    var el = document.createElement('div'); el.className = 'g-bc'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', t('bc.btn'));
+    el.innerHTML = '<button type="button" class="g-bc-x" aria-label="' + esc(t('bc.close')) + '">✕</button><p class="g-bc-eye"></p><h1 class="g-bc-title"></h1><p class="g-bc-sub"></p><p class="g-bc-sermon"></p><div class="g-bc-count" hidden aria-live="polite"></div>';
+    document.body.appendChild(el); BC.el = el;
+    el.querySelector('.g-bc-x').addEventListener('click', bcClose);
+    document.addEventListener('keydown', bcKey);
+    var req = el.requestFullscreen || el.webkitRequestFullscreen;
+    try { var p = req ? req.call(el) : null; if (p && p.catch) p.catch(function () { }); } catch (e) { }   // 전체 화면이 안 열려도 화면 가득 채워 보인다(고정 배치)
+    document.addEventListener('fullscreenchange', function onFs() { if (!document.fullscreenElement) { document.removeEventListener('fullscreenchange', onFs); if (BC.el) bcClose(); } });
+    bcRender(); BC.tm = setInterval(bcRender, 500);
+  }
+  function pills() { var b = document.body, p = $('gPreach'), c = $('gBcast'); b.classList.toggle('g-has-pill', !!((p && !p.hidden) || (c && !c.hidden))); }   // 예배 띠 아래 단추 줄이 있으면 그 아래 줄을 내린다
+  function syncBcast(sc) {
+    var b = $('gBcast'); if (!b) return;
+    if (!sc || !SDK.canBroadcast) { b.hidden = true; document.body.classList.remove('g-has-bcast'); pills(); return; }
+    SDK.canBroadcast().then(function (ok) { b.hidden = !(ok && BN.cur); document.body.classList.toggle('g-has-bcast', !b.hidden); pills(); if (!b.dataset.bound) { b.dataset.bound = '1'; b.addEventListener('click', bcOpen); } });
   }
   function startBanner(force) {
     H.svcForce = /^(live|soon|day)$/.test(force || '') ? force : '';
