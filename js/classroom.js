@@ -10,7 +10,7 @@
  *  · 재시험(2026-10-26 담임목사): 70점에 못 미치면 새 문제로 다시 본다. 앞선 응시 기록은 지우지 않고(서버 edu_exam_results 에 한 줄씩)
  *    '응시 기록'으로 보여 주며 회차마다 시험지를 다시 볼 수 있다. 통과한 과정은 다시 보지 않는다(하루 10번까지 — 서버가 센다)
  */
-console.log('[classroom.js] v20261026rt1');
+console.log('[classroom.js] v20261026vw1');
 
 (function () {
   var C = window.WPC_CATECHISM;
@@ -369,20 +369,39 @@ console.log('[classroom.js] v20261026rt1');
       '<section class="cr-l-intro"><h3>📖 예식 때 이렇게 묻고 답합니다</h3><p>' + esc(C.vowNote) + '</p>' +
       (cid === 'infant' ? '<p>유아·어린이 세례 때에는 아이 대신 부모가 세 가지를 묻고 답합니다. 아이에게 그리스도의 피로 씻음과 성령으로 거듭나는 은혜가 필요함을 인정하고, 아이가 하나님의 언약의 자손임을 믿으며, 아이를 하나님께 바치고 모범과 기도와 말씀으로 기르기를 서약합니다. 부모 두 분이 함께 읽어 보십시오.</p>' :
        cid === 'baptism' ? '<p>세례를 받는 분은 ‘세례 문답’, 어려서 세례를 받고 입교하는 분은 ‘입교 문답’으로 서약합니다. ‘유아·어린이 세례 문답’은 자녀에게 세례를 받게 하는 부모가 드리는 서약으로, 장차 부모가 될 세례교인이 함께 알아 두면 좋습니다.</p>' : '<p>학습 문답은 네 가지입니다. 하나님을 믿는 고백, 예수님이 나의 구주이심을 믿는 고백, 말씀대로 살겠다는 다짐, 주일과 예배와 기도를 힘쓰겠다는 작정입니다.</p>') +
+      '<p class="cr-vow-how">✍️ 질문마다 아래 빈칸에 <b>직접 ‘예’라고 적어</b> 보십시오. 예식 때 소리 내어 드릴 고백입니다.</p>' +
       '</section>' +
+      // 서약의 '예' 는 배우는 분이 직접 적는다(2026-10-26 담임목사) — 빈칸에 흐린 글씨 '예' 로 안내, 다 적으면 다음 단계
       c.vows.map(function (k) {
         var v = C.vows[k];
         return '<section class="cr-vow"><h3>' + esc(v.title) + '<small>' + esc(v.sub) + '</small></h3><ol>' +
-          v.items.map(function (it) { return '<li>' + esc(it) + '<em>답: 예</em></li>'; }).join('') + '</ol></section>';
+          v.items.map(function (it, i) {
+            return '<li' + (isDone ? ' class="is-ok"' : '') + '>' + esc(it) +
+              '<label class="cr-vow-a"><span>답:</span><input type="text" data-vow maxlength="6" autocomplete="off" placeholder="예" value="' + (isDone ? '예' : '') + '" aria-label="' + esc(v.title) + ' ' + (i + 1) + '번에 ‘예’라고 적으세요"><i aria-hidden="true">✓</i></label></li>';
+          }).join('') + '</ol></section>';
       }).join('') +
       '<div class="cr-l-foot">' +
       (nb.prev ? '<a class="cr-line" href="#' + cid + '/' + nb.prev.key + '">‹ ' + esc(nb.prev.label) + '</a>' : '<span></span>') +
-      (isDone ? '<span class="cr-done-msg">✓ 읽은 단계입니다</span>' : '') +
-      '<button type="button" class="cr-btn' + tone(cid) + '" data-done>' + (isDone ? '시험으로 ›' : '잘 읽었습니다 ✓') + '</button>' +
+      '<span class="cr-done-msg" data-vow-cnt></span>' +
+      '<button type="button" class="cr-btn' + tone(cid) + '" data-done>' + (isDone ? '시험으로 ›' : '서약에 모두 답했습니다 ✓') + '</button>' +
       '</div></article></div>';
     root.innerHTML = html;
     centerCurrentStep();
-    root.querySelector('[data-done]').onclick = function () { markDone(cid, VOW_STEP); go('#' + cid + '/exam'); };
+    var ins = Array.prototype.slice.call(root.querySelectorAll('[data-vow]')), btn = root.querySelector('[data-done]'), cnt = root.querySelector('[data-vow-cnt]');
+    var yes = function (v) { return /^(예|네)$/.test(String(v || '').replace(/[\s.!~]/g, '')); };
+    function paintVows() {
+      var n = 0;
+      ins.forEach(function (x) { var ok = yes(x.value); x.closest('li').classList.toggle('is-ok', ok); if (ok) n++; });
+      var all = n === ins.length;
+      btn.disabled = !all;
+      cnt.textContent = all ? (isDone ? '✓ 읽은 단계입니다' : '✓ 모두 답했습니다') : n + ' / ' + ins.length + ' 답함 — 빈칸에 ‘예’라고 적어 주십시오';
+    }
+    ins.forEach(function (x, i) {
+      x.addEventListener('input', paintVows);
+      x.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var nx = ins[i + 1]; if (nx) nx.focus(); else if (!btn.disabled) btn.click(); } });
+    });
+    paintVows();
+    btn.onclick = function () { if (btn.disabled) return; markDone(cid, VOW_STEP); go('#' + cid + '/exam'); };
   }
 
   /* ═════════════ 시험 ═════════════ */

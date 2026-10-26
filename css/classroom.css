@@ -180,6 +180,16 @@
 .cr-vow li:first-child { border-top: 0; }
 .cr-vow li::before { counter-increment: vw; content: counter(vw) "."; position: absolute; left: 4px; color: var(--accent-soft); font-weight: 700; }
 .cr-vow li em { display: block; font-style: normal; text-align: right; color: var(--gold); font-weight: 800; margin-top: 2px; }
+/* 서약 답 — 배우는 분이 직접 '예' 를 적는다. 빈칸의 흐린 '예' 가 안내(2026-10-26) */
+.cr-vow-how { margin: 10px 0 0; padding: 9px 12px; border-radius: 10px; background: #fff; border: 1px dashed #E3CDB8; font-size: .9rem; color: var(--ink-soft); }
+.cr-vow-a { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 6px; color: var(--gold); font-weight: 800; }
+.cr-vow-a input { width: 88px; padding: 6px 10px; border: 0; border-bottom: 2px dashed #E3CDB8; border-radius: 0; background: transparent; font: inherit; font-size: 1.05rem; font-weight: 800; color: var(--gold); text-align: center; outline: none; }
+.cr-vow-a input::placeholder { color: #D9C6B4; opacity: 1; font-weight: 600; }
+.cr-vow-a input:focus { border-bottom-color: var(--gold); background: #FFF8F1; }
+.cr-vow-a i { font-style: normal; width: 1.2em; color: #5E7A55; visibility: hidden; }
+.cr-vow li.is-ok .cr-vow-a input { border-bottom-style: solid; border-bottom-color: #5E7A55; }
+.cr-vow li.is-ok .cr-vow-a i { visibility: visible; }
+.cr-l-foot .cr-btn:disabled { opacity: .45; cursor: default; }
 
 /* ── 시험 ── */
 .cr-exam-intro ul { margin: 0 0 18px; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
