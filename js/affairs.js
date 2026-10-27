@@ -8881,7 +8881,7 @@ console.log('[affairs.js] v20261023th1');
     panel.innerHTML =
       '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
       '<div><h3 style="margin:0 0 4px;color:var(--accent,#3A281C)">주보 제작</h3><p style="margin:0;color:var(--ink-soft,#93867C);font-size:.9rem">설교목록에서 <b>다음 주 설교</b>를 불러와 채우고, <b>게시</b>하면 홈페이지 주보란에 자동 반영됩니다. (인쇄는 금액 포함, 홈페이지는 금액 제외)</p></div>' +
-      '<button class="btn btn-solid" id="bt_new" style="white-space:nowrap">🖨 주보 제작</button></div></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-line" href="ss-bulletin.html" target="_blank" rel="noopener" style="white-space:nowrap">🧒 주일학교 주보</a><button class="btn btn-solid" id="bt_new" style="white-space:nowrap">🖨 주보 제작</button></div></div></div>' +
       '<div id="bt_list"><p class="qt-loading">불러오는 중…</p></div>';
     panel.querySelector('#bt_new').onclick = function () { bulletinEditor({}); };
     loadBulletinList(panel);

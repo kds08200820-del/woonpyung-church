@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>주일학교 주보 만들기</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- 주보 글꼴: 제목 Jua · 본문 Gowun Dodum (지난 유년 주보와 같은 글꼴) -->
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/ss-bulletin.css?v=20261027sb1" />
+</head>
+<body>
+  <!-- 주일학교 주보 자동 만들기 (2026-10-27 담임목사 지시)
+       말씀 PDF(공과 '설교예시문')·PPT 를 올리면 과·제목·본문·핵심메시지·암송을 뽑아 채우고,
+       홈페이지의 달란트·QT 인증 기록으로 '달란트 현황'을 채운다. 고쳐서 인쇄(PDF로 저장)한다.
+       js/ss-bulletin.js · 바탕 그림 images/ss-bulletin/ -->
+  <div id="bar">
+    <a href="affairs.html?tab=bulletin" class="b-btn" id="b_back">‹ 주보제작</a>
+    <b class="b-title">🧒 주일학교 주보 만들기</b>
+    <button type="button" class="b-btn solid" id="b_print">🖨 인쇄 · PDF로 저장</button>
+    <span id="st" role="status"></span>
+  </div>
+  <div id="wrap">
+    <aside id="ed" aria-label="주보 내용"><p class="ed-loading">불러오는 중…</p></aside>
+    <main id="pv" aria-label="미리보기">
+      <section class="sheet" id="sh1"><div class="lay" id="lay1"></div></section>
+      <section class="sheet" id="sh2"><div class="lay" id="lay2"></div></section>
+    </main>
+  </div>
+  <script src="js/config.js?v=20260908lib"></script>
+  <script src="js/ss-bulletin.js?v=20261027sb1"></script>
+</body>
+</html>

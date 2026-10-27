@@ -1506,7 +1506,8 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
       '<div class="form-card" style="padding:16px 18px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
       '<h3 style="margin:0;font-size:1rem;color:var(--accent,#3A281C);">주일학교 현황</h3>' +
-      '<span style="font-size:.78rem;background:#F8F1EB;color:#845C3E;border-radius:999px;padding:3px 11px;">내 직분: ' + esc(roleLabel) + '</span></div>' +
+      '<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><a href="ss-bulletin.html" target="_blank" rel="noopener" style="font-size:.8rem;font-weight:700;color:#AD5029;text-decoration:none;border:1px solid #EBC9B5;border-radius:999px;padding:3px 11px;background:#fff">🧒 주보 만들기</a>' +
+      '<span style="font-size:.78rem;background:#F8F1EB;color:#845C3E;border-radius:999px;padding:3px 11px;">내 직분: ' + esc(roleLabel) + '</span></span></div>' +
       '<div id="ssStats" style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;"></div>' +
       '<div id="ssMissionBox" style="margin-bottom:14px;"></div>' +
       '<div id="ssBoardBox" style="margin-bottom:14px;"></div>' +
