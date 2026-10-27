@@ -293,6 +293,8 @@
     },
     // 내가 신청 대상인 지금 받는 학습·세례 신청서 번호들 (20261025_1300 — SQL 전·로그인 전이면 [])
     myFormTargets: function () { return sess() ? rpc('app_my_targets').then(function (r) { return Array.isArray(r) ? r : []; }, function () { return []; }) : Promise.resolve([]); },
+    // 담임목사가 정한 대상 종류·알림 문구 [{form_id, kind, note, title, close_at}] (20261025_1700 — SQL 전이면 null → 위의 번호만 쓴다)
+    myTargetInfo: function () { return sess() ? rpc('app_my_target_info').then(function (r) { return Array.isArray(r) ? r : null; }, function () { return null; }) : Promise.resolve([]); },
     openForms: function () { return rpc('app_open_forms').then(function (r) { return r || []; }); },   // 지금 신청 기간인 신청서(서버 시계) — 로그인 전에도 읽는다
     qtToday: qtToday, amenState: amenState, amen: amen, amenRank: amenRank,
     attend: attend, hasSermon: hasSermon, weather: weather,

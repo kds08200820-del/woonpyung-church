@@ -23,6 +23,8 @@
       { href: "book.html", label: "목사님의 책" },
       { href: "audiobook.html", label: "오디오북 듣기" },
     ] },
+    // 강의실(2026-10-25 담임목사 "위 메뉴로"): 학습·세례(입교) 교육과정 — 장마다 풀이·진행 막대·이수 시험(js/classroom.js)
+    { href: "classroom.html", label: "강의실" },
     { href: "story.html", label: "우리 이야기", sub: [
       { href: "story.html#album", label: "우리들 소식" },
       { href: "story.html#notice", label: "공지사항" },
@@ -48,6 +50,8 @@
     { href: "finance.html", label: "교회행정", adminOnly: true, sub: [
       { href: "finance.html", label: "재정관리" },
       { href: "gyojeok.html", label: "교적관리" },
+      // 증명서 발급(2026-10-25 담임목사): 목회자만 — 직분에 목사·전도사 또는 '목회자' 지명이면 아래에서 보이게 한다
+      { href: "cert.html", label: "증명서 발급", id: "navCert", hidden: true },
     ] },
   ];
 
@@ -58,7 +62,7 @@
     const active = path === n.href.split("#")[0] ? ' class="active"' : "";
     const admAttr = n.adminOnly ? ` id="${n.id || "navAdmin"}" style="display:none"` : (n.memberOnly ? ' id="navMember" style="display:none"' : "");
     if (!n.sub) return `<div class="nav-item"${admAttr}><a href="${n.href}"${active}>${n.label}</a></div>`;
-    const subs = n.sub.map((s) => `<a href="${s.href}">${s.label}</a>`).join("");
+    const subs = n.sub.map((s) => `<a href="${s.href}"${s.id ? ` id="${s.id}"` : ""}${s.hidden ? ' style="display:none"' : ""}>${s.label}</a>`).join("");
     return `<div class="nav-item has-sub"${admAttr}>
         <a href="${n.href}"${active}>${n.label}<span class="nav-caret" aria-hidden="true">⌄</span></a>
         <div class="nav-dropdown"><div class="nav-dropdown-inner">${subs}</div></div>
@@ -448,6 +452,7 @@
             if (!row) return;
             const nm = row.name || baseName;
             const disp = row.role ? nm + " " + row.role : nm;
+            if (/목사|전도사/.test(row.role || "")) { const nc = document.getElementById("navCert"); if (nc) nc.style.display = ""; }
             const nameEl = document.querySelector(".auth-name");
             if (nameEl) nameEl.textContent = disp + "님 ▾";
             const acName = document.querySelector(".ac-name");
@@ -473,6 +478,7 @@
           .then((a) => {
             if (!a) return;
             roleText = [a.canBroadcast && "방송실 관리자", a.canPastor && !a.isAdmin && "목회자", a.canAccompany && "반주자"].filter(Boolean).join(" · ");
+            if (a.canPastor) { const nc = document.getElementById("navCert"); if (nc) nc.style.display = ""; }
             markBroadcast();
           })
           .catch(() => {});

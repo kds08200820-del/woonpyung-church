@@ -250,6 +250,9 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
   }
 
   /* ── 교적 추가(신규 등록 모달) ── */
+  // 등록일·학습일(2026-10-25, 학습·세례 대상 기준) — 서버에 칼럼(20261025_1700)이 있을 때만 칸을 보인다(없을 때 보내면 저장이 실패하므로)
+  function hasRegCols() { return ALL.some(function (m) { return '등록일' in m; }); }
+  var REG_FIELDS = [['등록일', '등록일', 'date'], ['학습일', '학습일', 'date']];
   var ADD_FIELDS = [
     ['이름 *', '이름', 'text'], ['생년월일', '생년월일', 'birth'], ['성별', '성별', 'sex'],
     ['휴대폰', '휴대폰', 'tel'], ['신급', '신급', 'grade'], ['직책', '직책', 'role'],
@@ -278,7 +281,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
     box.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h3 style="margin:0;color:var(--accent,#3A281C)">＋ 교적 추가</h3><button class="btn btn-line" id="ga_cancel" style="padding:4px 12px">취소</button></div>' +
       '<div class="fin-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px">' +
-      ADD_FIELDS.map(function (f) { return inp(f[0], f[1], f[2]); }).join('') +
+      ADD_FIELDS.concat(hasRegCols() ? REG_FIELDS : []).map(function (f) { return inp(f[0], f[1], f[2]); }).join('') +
       '</div>' +
       '<div style="margin-bottom:12px;border-top:1px solid #F4F1EF;padding-top:12px;display:flex;gap:18px;flex-wrap:wrap;align-items:center">' +
       '<label class="sw"><input type="checkbox" id="ga_ishead" checked> ⌂ 세대주(본인이 세대주)</label>' +
@@ -291,6 +294,10 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
       '<div style="display:flex;gap:10px;align-items:center;margin-top:6px"><button class="btn btn-solid" id="ga_save">등록</button><span class="fin-msg" id="ga_msg"></span></div>' +
       '<p class="help" style="margin-top:8px">※ 사진은 등록 후 명단에서 이름을 클릭해 <b>수정</b>에서 올릴 수 있습니다.</p>';
     box.querySelector('#ga_cancel').onclick = close;
+    (function () {   // 새로 등록하는 분의 등록일은 오늘로 미리 채운다(학습 대상: 등록 6개월 경과)
+      var rd = box.querySelector('[data-col="등록일"]'); if (!rd || rd.value) return;
+      var d = new Date(); rd.value = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    })();
     var ishead = box.querySelector('#ga_ishead'), headWrap = box.querySelector('#ga_head_wrap'), relWrap = box.querySelector('#ga_rel_wrap');
     ishead.onchange = function () { var d = ishead.checked ? 'none' : ''; headWrap.style.display = d; relWrap.style.display = d; };
     var msg = box.querySelector('#ga_msg');
@@ -376,6 +383,17 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
       return EDU_CACHE;
     }).catch(function () { return []; });
   }
+  /* ── 교육 이수(강의실, 2026-10-25) — 학습·세례(입교) 과정 이수 시험 통과 기록과 교인 증명서. 표가 없으면 조용히 비운다 ── */
+  function loadClassroom(matchKey) {
+    if (!matchKey || !window.SUPABASE_URL) return Promise.resolve(null);
+    var tok = sbToken(); if (!tok) return Promise.resolve(null);
+    var h = { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + tok }, k = encodeURIComponent(matchKey);
+    function get(path) { return fetch(window.SUPABASE_URL + '/rest/v1/' + path, { headers: h }).then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }); }
+    return Promise.all([
+      get('edu_exam_results?member_key=eq.' + k + '&passed=eq.true&select=id,course,score,created_at&order=created_at.desc'),
+      get('edu_certificates?member_key=eq.' + k + '&select=id,cert_no,kind,issued_on,voided_at&order=issued_on.desc')
+    ]).then(function (res) { return { done: res[0] || [], certs: (res[1] || []).filter(function (c) { return !c.voided_at; }) }; });
+  }
   function eduOf(matchKey) {
     if (!EDU_CACHE || !matchKey) return [];
     return EDU_CACHE.filter(function (r) {
@@ -406,11 +424,12 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
         '<div style="display:flex;gap:14px;align-items:center">' + avatar(cur, 84) + '<div><h3 style="margin:0;color:var(--accent,#3A281C)">' + esc(cur['이름']) + (cur['직책'] ? ' <span style="font-size:.8rem;color:#93867C">' + esc(cur['직책']) + '</span>' : '') + '</h3><div style="color:#93867C;font-size:.85rem;margin-top:3px">' + esc(cur['그룹'] || '') + (cur['세대주'] ? ' · ' + esc(cur['세대주']) + '의 가정' : '') + '</div></div></div>' +
         '<div style="display:flex;gap:6px"><button class="btn btn-solid" id="gd_edit" style="padding:4px 14px">수정</button><button class="btn btn-line" id="gd_del" style="padding:4px 12px;color:#A33A2A">🗑 삭제</button><button class="btn btn-line" id="gd_close" style="padding:4px 12px">닫기</button></div></div>' +
         '<div style="display:flex;gap:18px;flex-wrap:wrap"><div style="flex:1;min-width:240px">' +
-        row('생년월일', birthOf(cur) + (age ? ' (' + age + ')' : '')) + row('성별', cur['성별']) + row('휴대폰', fmtPhone(cur['휴대폰'])) + row('신급', cur['신급']) + row('세례일', cur['세례일']) +
+        row('생년월일', birthOf(cur) + (age ? ' (' + age + ')' : '')) + row('성별', cur['성별']) + row('휴대폰', fmtPhone(cur['휴대폰'])) + row('신급', cur['신급']) + row('등록일', cur['등록일']) + row('학습일', cur['학습일']) + row('세례일', cur['세례일']) +
         '</div><div style="flex:1;min-width:240px">' +
         row('세대주', cur['세대주']) + row('세대주와 관계', cur['관계']) + row('배우자', cur['배우자']) + row('회원상태', cur['회원상태']) + row('임직일', cur['임직일']) + row('주일학교', cur['주일학교']) +
         '</div></div>' + (cur['주소'] ? row('주소', cur['주소']) : '') + (groupsOf(cur).length ? '<div style="margin-top:12px"><div style="color:#93867C;font-size:.85rem;margin-bottom:5px">소속 그룹</div>' + groupsOf(cur).map(function (g) { return '<span class="fin-pill" style="background:#F8F1EB;color:#845C3E;margin:0 6px 6px 0;display:inline-block">' + esc(g) + '</span>'; }).join('') + '</div>' : '') +
         '<div id="gd_edu" style="margin-top:12px"></div>' +
+        '<div id="gd_class" style="margin-top:12px"></div>' +
         '<div style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="color:var(--accent,#3A281C)">가족 관계</b><button class="btn btn-line" id="gd_family" style="padding:3px 12px;font-size:.8rem">👪 가족 구성/수정</button></div><div style="overflow:auto;margin-top:6px"><table class="fin-table" style="font-size:.86rem"><thead><tr><th>이름</th><th>관계</th><th>생년월일</th><th>직책</th></tr></thead><tbody>' + famRows + '</tbody></table></div></div>';
       box.querySelector('#gd_close').onclick = close;
       box.querySelector('#gd_edit').onclick = function () { editMode(cur); };
@@ -423,6 +442,13 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
         if (!list.length) return;
         el.innerHTML = '<div style="color:#93867C;font-size:.85rem;margin-bottom:5px">📚 진행중인 교육</div>' +
           list.map(function (r) { return '<span class="fin-pill" style="background:#F6F2EF;color:#5D4D40;margin:0 6px 6px 0;display:inline-block">' + eduLabel(r) + '</span>'; }).join('');
+      });
+      loadClassroom(cur['매칭키']).then(function (cl) {
+        var el = box.querySelector('#gd_class'); if (!el || !cl || (!cl.done.length && !cl.certs.length)) return;
+        var CT = { learn: '학습 과정', baptism: '세례(입교) 과정', infant: '유아세례 과정(부모 교육)' }, pill = 'class="fin-pill" style="background:#F8F1EB;color:#845C3E;margin:0 6px 6px 0;display:inline-block;text-decoration:none"';
+        el.innerHTML = '<div style="color:#93867C;font-size:.85rem;margin-bottom:5px">🎓 교육 이수 (강의실)</div>' +
+          cl.done.map(function (r) { return '<a ' + pill + ' href="edu-print.html?sheet=' + r.id + '" target="_blank" rel="noopener" title="시험지 보기">' + esc(CT[r.course] || r.course) + ' 이수 · ' + esc(String(r.created_at || '').slice(0, 10)) + ' · ' + esc(r.score) + '점</a>'; }).join('') +
+          cl.certs.map(function (c) { return '<a ' + pill.replace('#F8F1EB;color:#845C3E', '#2E2016;color:#fff') + ' href="edu-print.html?cert=' + c.id + '" target="_blank" rel="noopener">' + esc(c.kind === '유아세례' ? '유아세례 증명서' : c.kind + '교인 증명서') + ' ' + esc(c.cert_no) + '</a>'; }).join('');
       });
     }
 
@@ -447,7 +473,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
         '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px">' +
         '<div style="text-align:center"><div id="gd_drop" style="border:2px dashed #E0D7D0;border-radius:14px;padding:10px;cursor:pointer;transition:.15s"><div id="gd_photo">' + avatar(cur, 96) + '</div><div style="font-size:.7rem;color:#AFA49C;margin-top:6px;line-height:1.4">사진을 여기로<br>드래그하세요</div></div><div style="margin-top:8px"><input type="file" id="gd_file" accept="image/*" style="display:none"><button type="button" class="btn btn-line" id="gd_upbtn" style="padding:4px 10px;font-size:.8rem">📷 사진 선택</button></div><input type="hidden" data-col="사진" id="gd_photourl" value="' + esc(photoUrl(cur)) + '"><div id="gd_upmsg" style="font-size:.76rem;color:#93867C;margin-top:4px"></div></div>' +
         '<div class="fin-grid" style="flex:1;min-width:260px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">' +
-        EDIT_FIELDS.map(function (f) { return inp(f[0], f[1], f[2]); }).join('') +
+        EDIT_FIELDS.concat('등록일' in cur ? REG_FIELDS : []).map(function (f) { return inp(f[0], f[1], f[2]); }).join('') +
         '</div></div>' +
         '<div style="margin-bottom:12px;border-top:1px solid #F4F1EF;padding-top:12px;display:flex;gap:18px;flex-wrap:wrap;align-items:center">' +
         '<label class="sw"><input type="checkbox" id="gd_ishead"' + (fIsHead ? ' checked' : '') + '> ⌂ 세대주(본인이 세대주)</label>' +

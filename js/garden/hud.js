@@ -279,7 +279,7 @@ window.GardenHud = (function () {
       items.push({ kind: k, rule: r, done: isDone(k), talent: +r.talent || 0, xp: r.xp | 0 });
     });
     ssTasks(rules).forEach(function (x) { items.push(x); });
-    (H.bapt || []).forEach(function (f) { items.push({ kind: 'bapt_form', label: f.title || t('forms.title'), sub: t('forms.mine'), href: 'forms.html?f=' + encodeURIComponent(f.id), done: false, talent: 0, xp: 0, rule: {} }); });
+    (H.bapt || []).forEach(function (f) { items.push({ kind: 'bapt_form', label: f.title || t('forms.title'), sub: f.t_kind ? t('forms.mineKind', { kind: f.t_kind }) : t('forms.mine'), href: 'forms.html?f=' + encodeURIComponent(f.id), done: false, talent: 0, xp: 0, rule: {} }); });
     items.forEach(function (it) { it.label = it.label || kindLabel(it.kind, rules); it.href = it.href || TASK_HREF[it.kind] || ''; });
     return items;
   }
@@ -370,10 +370,15 @@ window.GardenHud = (function () {
   /* ── 서재: 지금 받는 신청서 (신청 기간 동안만 — 서버 시계로 app_open_forms 가 거른다. SQL 전이면 조용히 숨는다) ── */
   function loadForms() {
     var box = $('gForms'); if (!box || !SDK.openForms) return Promise.resolve();
-    return Promise.all([SDK.openForms(), SDK.formsPending ? SDK.formsPending() : null, SDK.myFormTargets ? SDK.myFormTargets() : []]).then(function (rs) {
-      var rows = (rs[0] || []).filter(function (f) { return f.show_hero !== false; }), pend = rs[1], mine = rs[2] || [];
-      H.bapt = (rs[0] || []).filter(function (f) { return mine.indexOf(f.id) >= 0 || mine.indexOf(String(f.id)) >= 0; });   // 학습·세례 신청 대상 → 오늘의 할 일에 띄운다
+    return Promise.all([SDK.openForms(), SDK.formsPending ? SDK.formsPending() : null, SDK.myFormTargets ? SDK.myFormTargets() : [], SDK.myTargetInfo ? SDK.myTargetInfo() : null]).then(function (rs) {
+      var rows = (rs[0] || []).filter(function (f) { return f.show_hero !== false; }), pend = rs[1], mine = rs[2] || [], info = rs[3];
+      if (Array.isArray(info)) mine = info.map(function (x) { return x.form_id; });
+      var infoOf = function (id) { return (info || []).filter(function (x) { return String(x.form_id) === String(id); })[0] || {}; };
+      // 학습·세례 신청 대상 → 오늘의 할 일 · '오늘의 안내'(guide.js — 새 대상이면 한 번 저절로 열림) — 담임목사가 정한 종류·알림 문구를 함께
+      H.bapt = (rs[0] || []).filter(function (f) { return mine.indexOf(f.id) >= 0 || mine.indexOf(String(f.id)) >= 0; })
+        .map(function (f) { var x = infoOf(f.id); return Object.assign({}, f, { t_kind: x.kind || '', t_note: x.note || '' }); });
       renderTodo();
+      if (H.bapt.length && window.GardenGuide && window.GardenGuide.targets) window.GardenGuide.targets(H.bapt);
       if (!rows.length) { box.hidden = true; box.innerHTML = ''; return; }
       var nowMs = Date.now();
       box.innerHTML = '<h3 class="g-forms-t" id="gFormsT">' + esc(t('forms.title')) + '</h3>' + rows.map(function (f) {
@@ -384,8 +389,9 @@ window.GardenHud = (function () {
         if (pd) adm = '<a class="g-form-pay' + (pd.claimed ? ' is-claimed' : '') + '" href="affairs.html?tab=forms&f=' + encodeURIComponent(f.id) + '&filter=' + (pd.claimed ? 'claimed' : 'due') + '">' +
           esc(t(pd.claimed ? 'forms.pay.claimed' : 'forms.pay', { n: pd.claimed || pd.n })) + '</a>';
         var isMine = mine.indexOf(f.id) >= 0 || mine.indexOf(String(f.id)) >= 0;   // 학습·세례 신청 대상으로 확정된 분
+        var bt = H.bapt.filter(function (x) { return String(x.id) === String(f.id); })[0];
         return '<div class="g-form-card' + (isMine ? ' is-mine' : '') + '">' +
-          (isMine ? '<span class="g-form-badge">' + esc(t('forms.mine')) + '</span>' : '') +
+          (isMine ? '<span class="g-form-badge">' + esc(bt && bt.t_kind ? t('forms.mineKind', { kind: bt.t_kind }) : t('forms.mine')) + '</span>' : '') +
           '<b class="g-form-name">' + esc(f.title || '') + '</b>' +
           (when ? '<span class="g-form-when">' + esc(when) + '</span>' : '') +
           (until ? '<span class="g-form-until">' + esc(until) + '</span>' : '') +
@@ -1033,7 +1039,7 @@ window.GardenHud = (function () {
     gardenLevel: gardenLevel, toast: toast, openModal: openModal, closeModal: closeModal, closeThen: closeThen,openQt: openQt, openStore: openStore, openOnboarding: openOnboarding,
     loadQt: loadQt, loadForms: loadForms, setWeather: setWeather, applySync: applySync, startBanner: startBanner, tickBanner: tick, showGate: showGate, hideGate: hideGate,
     syncPlot: syncPlot, renderTodo: renderTodo, garden: garden, speciesName: speciesName, stageName: stageName,
-    todoItems: todoItems, growthInfo: growthInfo, qt: function () { return H.qt || null; }, fruitRefresh: renderFruitBtn,
+    todoItems: todoItems, growthInfo: growthInfo, qt: function () { return H.qt || null; }, fruitRefresh: renderFruitBtn, baptTargets: function () { return H.bapt || []; },
     setTalent: setTalent, talentLabel: function () { return H.talentLabel; }, afterWater: afterWater
   };
 })();
