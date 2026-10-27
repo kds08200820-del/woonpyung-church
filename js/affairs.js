@@ -213,14 +213,14 @@ console.log('[affairs.js] v20261023th1');
   };
   // 왼쪽 메뉴(2026-10-22): 위쪽 가로 탭을 묶음별 세로 메뉴로 — [묶음 이름, [[탭, 이름], …]]
   var NAV_GROUPS = [
-    ['', [['dashboard', '대시보드']]],
+    ['', [['dashboard', '대시보드'], ['ax', 'AX 관제실']]],
     ['설교 · 예배', [['sermon', '설교관리'], ['worship', '예배매니저'], ['song', '찬양관리'], ['illus', '예화 클립'], ['bulletin', '주보제작']]],
     ['목양', [['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리']]],
     ['행정', [['forms', '신청서'], ['doc', '자료실']]],
     ['서재', [['library', '나의 도서관'], ['bible', '성경 보기']]],
     ['시스템', [['settings', '설정']]]
   ];
-  var NAV_LINKS = [['ax.html', 'AX 관제실'], ['finance.html', '재정관리'], ['gyojeok.html', '교적관리'], ['home.html', '홈페이지']];
+  var NAV_LINKS = [['finance.html', '재정관리'], ['gyojeok.html', '교적관리'], ['home.html', '홈페이지']];
 
   // ── 성경 66권(설교 권별 커버리지) ──
   var BIBLE_OT = ['창세기', '출애굽기', '레위기', '민수기', '신명기', '여호수아', '사사기', '룻기', '사무엘상', '사무엘하', '열왕기상', '열왕기하', '역대상', '역대하', '에스라', '느헤미야', '에스더', '욥기', '시편', '잠언', '전도서', '아가', '이사야', '예레미야', '예레미야애가', '에스겔', '다니엘', '호세아', '요엘', '아모스', '오바댜', '요나', '미가', '나훔', '하박국', '스바냐', '학개', '스가랴', '말라기'];
@@ -324,7 +324,14 @@ console.log('[affairs.js] v20261023th1');
     else if (tab === 'edu') renderEdu(p);
     else if (tab === 'doc') renderArchive(p);
     else if (tab === 'forms') renderForms(p);
+    else if (tab === 'ax') renderAx(p);
     else renderManager(p, TYPES[tab]);
+  }
+
+  // ═══════════════ AX 관제실 (2026-10-27) — js/ax.js 를 이 패널에 그린다 ═══════════════
+  function renderAx(panel) {
+    if (window.AXRoom) { window.AXRoom.mount(panel); return; }
+    panel.innerHTML = '<div class="fin-card"><p style="margin:0">AX 관제실을 불러오지 못했습니다. 새로 고침해 주세요.</p></div>';
   }
 
   // ═══════════════ 신청서 — 행사·모임 신청 보관함 (2026-10-10) ═══════════════
@@ -11705,6 +11712,7 @@ console.log('[affairs.js] v20261023th1');
       var pq = presentQuery(); if (pq) { presentFromUrl(pq); return; }   /* 히어로 '설교하기' → 발표자 모드로 바로 */
       try {   // 정원 첫 화면 '입금 확인 하기' → affairs.html?tab=forms&f=번호&filter=claimed|due : 그 신청서의 신청 목록을 바로 연다
         var fq = new URLSearchParams(location.search);
+        if (fq.get('tab') === 'ax') tab = 'ax';   // affairs.html?tab=ax — AX 관제실로 바로
         if (fq.get('tab') === 'forms') { tab = 'forms'; if (/^\d+$/.test(fq.get('f') || '')) window.__faOpen = { id: fq.get('f'), filter: /^(claimed|due|conf|all)$/.test(fq.get('filter') || '') ? fq.get('filter') : 'claimed' }; }
       } catch (e) { /* noop */ }
       loadMembers();

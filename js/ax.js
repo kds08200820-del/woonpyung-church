@@ -24,6 +24,7 @@
     ['bible', '성경 읽기', '회'], ['posts', '나눔 글', '개'], ['form_entries', '새 신청', '건'], ['garden_people', '정원 가꾼 분', '명']
   ];
   var A = { tasks: [], role: '', filter: 'open', worker: null, stats: null, prev: null, forms: [], cfg: {} };
+  var ROOT = null;   // 그릴 자리: ax.html 의 #axPage, 또는 목회행정 'AX 관제실' 탭의 패널(AXRoom.mount)
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -76,7 +77,7 @@
 
   /* ── 시작 ── */
   function start() {
-    var box = $('axPage'), s = sess();
+    var box = ROOT, s = sess();
     if (!s || !s.uid) { box.innerHTML = '<div class="ax-card"><p class="ax-empty">관리자로 <b>로그인</b>하면 AX 관제실을 볼 수 있습니다. (화면 오른쪽 위 로그인)</p></div>'; return; }
     api('GET', 'admins?uid=eq.' + s.uid + '&select=uid').then(function (rows) {
       if (!rows || !rows.length) { box.innerHTML = '<div class="ax-card"><p class="ax-empty">AX 관제실은 관리자만 볼 수 있습니다.</p></div>'; return; }
@@ -111,7 +112,8 @@
 
   /* ── 그리기 ── */
   function render() {
-    var box = $('axPage'), kt = $('ax_text'), kv = kt ? kt.value : '', kr = $('ax_role'), krv = kr && kr.dataset.touched ? kr.value : '', kd = $('ax_due'), kdv = kd ? kd.value : '';   // 적던 명령·고른 담당·기한은 다시 그려도 남긴다
+    var box = ROOT; if (!box || !document.body.contains(box)) return;   // 다른 탭으로 옮겼으면 그리지 않는다
+    var kt = $('ax_text'), kv = kt ? kt.value : '', kr = $('ax_role'), krv = kr && kr.dataset.touched ? kr.value : '', kd = $('ax_due'), kdv = kd ? kd.value : '';   // 적던 명령·고른 담당·기한은 다시 그려도 남긴다
     var review = A.tasks.filter(function (t) { return t.status === 'review'; });
     box.innerHTML =
       '<div class="ax-top">' + pulseHTML() + '<button type="button" class="btn btn-line" id="ax_reload" style="padding:6px 14px;font-size:.85rem">새로 고침</button></div>' +
@@ -316,5 +318,7 @@
     };
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+  window.AXRoom = { mount: function (el) { ROOT = el; start(); } };
+  function auto() { var el = $('axPage'); if (el) { ROOT = el; start(); } }   // ax.html 에서는 저절로
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', auto); else auto();
 })();
