@@ -10,6 +10,7 @@
   'use strict';
   var SB = window.SUPABASE_URL, AK = window.SUPABASE_ANON_KEY;
   var ROLES = [
+    { k: 'worship', ic: '⛪', name: '예배 자료 담당', desc: '방송실 PPT·큐시트·중등부 교재(학생·교사)·주보·설교 요약 → 자료실' },
     { k: 'bulletin', ic: '📰', name: '주보 담당', desc: '주일 주보·주일학교 주보 초안' },
     { k: 'qt', ic: '📖', name: '큐티 담당', desc: '한 주 치 새벽 QT 정리·홈페이지 큐티' },
     { k: 'voice', ic: '🎙', name: '음성 담당', desc: '큐티·설교 요약 낭독 원고·음성' },
@@ -23,7 +24,11 @@
     ['qt_amen', '큐티 아멘', '회'], ['qt_people', '큐티 아멘한 분', '명'], ['ss_kids', '주일학교 인증한 어린이', '명'], ['ss_talent', '주일학교 달란트', ''],
     ['bible', '성경 읽기', '회'], ['posts', '나눔 글', '개'], ['form_entries', '새 신청', '건'], ['garden_people', '정원 가꾼 분', '명']
   ];
-  var A = { tasks: [], role: '', filter: 'open', worker: null, stats: null, prev: null, forms: [], cfg: {} };
+  var A = { tasks: [], role: '', filter: 'open', worker: null, stats: null, prev: null, forms: [], cfg: {}, jobs: [], wDate: '', wSermon: undefined };
+  // 예배 자료 = 기존 '주일 자료 일괄 생성' 큐(worship_jobs) → PC 워커(tools/worship_worker.py)가 만들어 자료실에 올린다
+  var WOUT = [['ppt', '방송실 PPT', '예배자료'], ['cuesheet', '방송 큐시트', '예배자료'], ['youth', '중등부 교재 (학생용)', '중등부'], ['teacher', '중등부 교재 (교사용)', '중등부'], ['bulletin', '주보 (게시 전)', '주보'], ['summary', '설교 요약', '설교']];
+  var WSTEP = { wait: '기다림', done: '만듦', up: '올림', fail: '못 만듦' };
+  var wTimer = 0;
   var ROOT = null;   // 그릴 자리: ax.html 의 #axPage, 또는 목회행정 'AX 관제실' 탭의 패널(AXRoom.mount)
 
   function $(id) { return document.getElementById(id); }
@@ -81,7 +86,7 @@
     if (!s || !s.uid) { box.innerHTML = '<div class="ax-card"><p class="ax-empty">관리자로 <b>로그인</b>하면 AX 관제실을 볼 수 있습니다. (화면 오른쪽 위 로그인)</p></div>'; return; }
     api('GET', 'admins?uid=eq.' + s.uid + '&select=uid').then(function (rows) {
       if (!rows || !rows.length) { box.innerHTML = '<div class="ax-card"><p class="ax-empty">AX 관제실은 관리자만 볼 수 있습니다.</p></div>'; return; }
-      return loadAll().then(render);
+      return loadAll().then(loadSermon).then(render).then(wPoll);
     }).catch(function (e) {
       if (noTable(e)) { box.innerHTML = setupHTML(); return; }
       box.innerHTML = '<div class="ax-card"><p class="ax-empty">불러오지 못했습니다: ' + esc(e.message) + '</p></div>';
@@ -100,15 +105,35 @@
       api('GET', 'church_settings?key=in.(ax_worker,ax_config)&select=key,data').catch(function () { return []; }),
       api('POST', 'rpc/ax_week_stats', { p_from: ymd(mon), p_to: ymd(today) }).catch(function () { return null; }),
       api('POST', 'rpc/ax_week_stats', { p_from: ymd(pmon), p_to: ymd(psun) }).catch(function () { return null; }),
-      api('POST', 'rpc/app_open_forms', {}).catch(function () { return []; })
+      api('POST', 'rpc/app_open_forms', {}).catch(function () { return []; }),
+      api('GET', 'worship_jobs?select=id,sermon_date,status,progress,error,result,steps,claimed_by,claimed_at,created_at,updated_at&order=created_at.desc&limit=8').catch(function () { return []; })
     ]).then(function (rs) {
+      A.jobs = rs[5] || [];
       A.tasks = rs[0] || [];
       (rs[1] || []).forEach(function (r) { if (r.key === 'ax_worker') A.worker = r.data; if (r.key === 'ax_config') A.cfg = r.data || {}; });
       A.stats = rs[2] && rs[2].ok ? rs[2] : null; A.prev = rs[3] && rs[3].ok ? rs[3] : null; A.range = [mon, today];
       A.forms = rs[4] || [];
+      return syncWorship();
     });
   }
-  function reload() { return loadAll().then(render).catch(function (e) { msg(e.message, true); }); }
+  // 예배 자료 할 일(worship_job #번호)을 작업 결과에 맞춰 '확인 기다림'·'못 함'으로 옮긴다
+  function syncWorship() {
+    var jobs = {}; A.jobs.forEach(function (j) { jobs[j.id] = j; });
+    var todo = A.tasks.filter(function (t) { return t.role === 'worship' && t.status === 'working'; }).map(function (t) {
+      var m = /worship_job #(\d+)/.exec(t.detail || ''), j = m && jobs[+m[1]];
+      if (!j || (j.status !== 'done' && j.status !== 'error')) return null;
+      var items = (j.result && j.result.items) || [], miss = (j.result && j.result.missing) || [];
+      var body = j.status === 'done'
+        ? { status: 'review', result: '자료실에 올렸습니다 (' + items.length + '건' + (j.result && j.result.minutes ? ' · ' + j.result.minutes + '분' : '') + ')\n' +
+            items.map(function (i) { return '· ' + (i.title || i.kind) + (i.path && /^https?:/.test(i.path) ? ' ' + i.path : ''); }).join('\n') +
+            (miss.length ? '\n⚠ 만들지 못함: ' + miss.map(wLabel).join(', ') + ' — 다시 맡기면 채웁니다.' : '') + '\n주보는 주보제작에서 확인 후 게시하세요.', result_url: 'affairs.html?tab=doc' }
+        : { status: 'failed', result: '만들지 못했습니다: ' + (j.error || '알 수 없는 오류') + (j.claimed_by ? ' (처리 PC: ' + j.claimed_by + ')' : '') };
+      return patch(t.id, body, j.status === 'done' ? '예배 자료 작업 #' + j.id + ' 끝' : '예배 자료 작업 #' + j.id + ' 실패').then(function () { Object.assign(t, body); });
+    }).filter(Boolean);
+    return Promise.all(todo).catch(function () { });
+  }
+  function wLabel(k) { for (var i = 0; i < WOUT.length; i++) if (WOUT[i][0] === k) return WOUT[i][1]; return k; }
+  function reload() { return loadAll().then(render).then(wPoll).catch(function (e) { msg(e.message, true); }); }
 
   /* ── 그리기 ── */
   function render() {
@@ -120,6 +145,7 @@
       '<div class="ax-grid"><div>' +
       '<div class="ax-card"><h3>🔔 확인을 기다리는 일 ' + (review.length ? '<span class="ax-badge">' + review.length + '</span>' : '') + '</h3>' +
       (review.length ? review.map(taskHTML).join('') : '<p class="ax-empty">지금 확인하실 일은 없습니다.</p>') + '</div>' +
+      worshipHTML() +
       cmdHTML() +
       '<div class="ax-card"><h3>📋 할 일 기록 <small>담당 카드를 누르면 그 담당 것만</small></h3>' + filterHTML() + '<div id="ax_list">' + listHTML() + '</div></div>' +
       '</div><div>' +
@@ -159,6 +185,51 @@
       (acts ? '<div class="ax-acts">' + acts + '</div>' : '') +
       (log.length ? '<details><summary>진행 기록 ' + log.length + '</summary><ol class="ax-log">' + log.map(function (l) { return '<li>' + esc(String(l.at || '').slice(5, 16).replace('T', ' ')) + ' · ' + esc(l.by || '') + ' · ' + esc(ST[l.status] || l.status || '') + (l.note ? ' — ' + esc(l.note) : '') + '</li>'; }).join('') + '</ol></details>' : '') +
       '</div>';
+  }
+  function worshipHTML() {
+    if (!A.wDate) A.wDate = ymd(nextSunday());
+    var sm = A.wSermon, active = A.jobs.filter(function (j) { return j.status === 'pending' || j.status === 'processing'; });
+    var last = A.jobs.filter(function (j) { return j.claimed_at; }).sort(function (a, b) { return String(b.claimed_at).localeCompare(String(a.claimed_at)); })[0];
+    var sInfo = sm === undefined ? '설교 확인 중…' : sm ? '설교: <b>' + esc(sm.title || '(제목 없음)') + '</b>' + (sm.scripture ? ' · ' + esc(sm.scripture) : '') + (sm.service ? ' <small style="color:#93867C">(' + esc(sm.service) + ')</small>' : '')
+      : '<span style="color:#A33A2A">이 날짜의 주일 설교가 설교관리에 없습니다 — 원고를 먼저 올려 주세요.</span>';
+    return '<div class="ax-card"><h3>⛪ 예배 자료 <small>PPT·큐시트·중등부 교재(학생·교사)·주보·설교 요약 → 자료실까지</small></h3>' +
+      '<div class="ax-cmd"><div class="ax-cmd-row" style="margin-top:0"><label><span>어느 주일</span><input type="date" id="ax_wdate" value="' + esc(A.wDate) + '"></label>' +
+      '<label><span>PC 워커</span><div style="padding:10px 0;font-size:.88rem;color:#5B4F46">' + (last ? esc(last.claimed_by || 'PC') + ' · ' + esc(ago(last.claimed_at)) + ' 일함' : '아직 일한 기록이 없습니다') + '</div></label></div>' +
+      '<p style="margin:8px 0;font-size:.9rem">' + sInfo + '</p>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 12px;margin:6px 0 4px">' +
+      WOUT.map(function (o) { return '<label class="ax-chk" style="margin:2px 0"><input type="checkbox" data-wout="' + o[0] + '" checked> ' + esc(o[1]) + ' <small style="color:#93867C">→ ' + esc(o[2]) + '</small></label>'; }).join('') + '</div>' +
+      '<div class="ax-acts"><button type="button" class="btn btn-solid" id="ax_wgo"' + (sm ? '' : ' disabled') + '>AX에 맡기기</button>' +
+      '<label class="ax-chk" style="margin:0 0 0 6px"><input type="checkbox" id="ax_wauto"' + (A.cfg && A.cfg.auto_worship ? ' checked' : '') + '> 매주 금요일에 AX가 저절로 맡기기</label></div>' +
+      '<p class="ax-msg" id="ax_wmsg"></p></div>' +
+      (A.jobs.length ? A.jobs.slice(0, 4).map(jobHTML).join('') : '') +
+      (active.length ? '' : '') + '</div>';
+  }
+  function jobHTML(j) {
+    var st = { pending: ['대기', 'queued'], processing: ['만드는 중', 'working'], done: ['끝', 'done'], error: ['못 함', 'failed'] }[j.status] || [j.status, 'queued'];
+    var items = (j.result && j.result.items) || [], miss = (j.result && j.result.missing) || [], steps = j.steps || {};
+    var chips = Object.keys(steps).length ? Object.keys(steps).map(function (k) { return '<span class="ax-pill ax-st-' + (steps[k] === 'up' || steps[k] === 'done' ? 'done' : steps[k] === 'fail' ? 'failed' : 'queued') + '" style="margin:2px 4px 0 0">' + esc(wLabel(k)) + ' · ' + esc(WSTEP[steps[k]] || steps[k]) + '</span>'; }).join('') : '';
+    return '<div class="ax-task" style="margin-top:10px"><div class="ax-task-h"><div><div class="ax-task-t">⛪ ' + esc(mdw(j.sermon_date)) + ' 예배 자료</div>' +
+      '<div class="ax-task-m">작업 #' + j.id + (j.claimed_by ? ' · ' + esc(j.claimed_by) : '') + ' · ' + esc(ago(j.updated_at || j.created_at)) + (j.progress && (j.status === 'processing' || j.status === 'pending') ? ' · ' + esc(j.progress) : '') + '</div></div>' +
+      '<span class="ax-pill ax-st-' + st[1] + '">' + esc(st[0]) + '</span></div>' +
+      (chips ? '<div style="margin-top:6px">' + chips + '</div>' : '') +
+      (j.status === 'pending' ? '<div class="ax-task-b" style="color:#93867C">집/교회 PC 워커가 켜져 있어야 시작합니다(30~50분).</div>' : '') +
+      (items.length ? '<div class="ax-task-r">' + items.map(function (i) { return '📎 ' + (i.path && /^https?:/.test(i.path) ? '<a href="' + esc(i.path) + '" target="_blank" rel="noopener">' + esc(i.title || i.kind) + '</a>' : esc(i.title || i.kind)); }).join('\n') + '</div>' : '') +
+      (miss.length ? '<div class="ax-task-b" style="color:#A33A2A">만들지 못함: ' + esc(miss.map(wLabel).join(', ')) + '</div>' : '') +
+      (j.status === 'error' ? '<div class="ax-task-b" style="color:#A33A2A">' + esc(j.error || '알 수 없는 오류') + '</div>' : '') + '</div>';
+  }
+  function loadSermon() {
+    if (!A.wDate) A.wDate = ymd(nextSunday());
+    var d = A.wDate; A.wSermon = undefined;
+    return api('GET', 'sermons?select=title,scripture,service&sermon_date=eq.' + d + '&order=created_at.asc').then(function (rows) {
+      if (d !== A.wDate) return;
+      rows = (rows || []).filter(function (r) { return !/새벽/.test(r.service || ''); });
+      A.wSermon = rows.filter(function (r) { return /주일/.test(r.service || ''); })[0] || rows[0] || null;
+    }).catch(function () { A.wSermon = null; });
+  }
+  function wPoll() {
+    clearTimeout(wTimer);
+    if (!A.jobs.some(function (j) { return j.status === 'pending' || j.status === 'processing'; })) return;
+    wTimer = setTimeout(function () { if (ROOT && document.body.contains(ROOT)) reload(); }, 20000);
   }
   function cmdHTML() {
     return '<div class="ax-card ax-cmd"><h3>✍️ 명령 내리기 <small>첫 줄이 제목이 됩니다</small></h3>' +
@@ -248,10 +319,8 @@
     var mon = addDays(new Date(), -((new Date().getDay() + 6) % 7) - 7), sat = addDays(mon, 6);
     var Q = {
       week: [
-        { role: 'bulletin', title: md + ' 주보 초안', detail: '설교 원고·광고를 모아 주보 초안을 만들어 주세요.', due: sun },
         { role: 'bulletin', title: md + ' 주일학교 주보 자료 정리', detail: '자료실 ‘주일학교’의 말씀 PDF·PPT를 확인하고 주일학교 주보(ss-bulletin.html) 준비 상태를 알려 주세요.', due: sun },
         { role: 'qt', title: '다음 주 새벽 QT 정리', detail: '노션 설교계획 DB의 다음 주 QT 페이지를 정리해 주세요.', due: sun },
-        { role: 'youth', title: md + ' 중등부 교재', detail: '이번 주 설교 본문으로 중등부 학생용·교사용 교재를 만들어 주세요.', due: sun },
         { role: 'schedule', title: '이번 주 일정 정리', detail: '이번 주 일정과 신청서 마감·준비할 것을 정리해 주세요.', due: sun, appr: false },
         { role: 'report', title: '지난주 참여 현황 보고', detail: mdw(mon) + '~' + mdw(sat) + ' 참여 건수를 지지난주와 비교해 보고해 주세요.', appr: false }
       ],
@@ -274,10 +343,16 @@
     };
     Array.prototype.forEach.call(document.querySelectorAll('[data-quick]'), function (b) {
       b.onclick = function () {
-        var list = quick(b.getAttribute('data-quick'));
-        if (b.dataset.armed !== '1') { b.dataset.armed = '1'; var t0 = b.textContent; b.textContent = '할 일 ' + list.length + '개를 보냅니다 — 한 번 더'; setTimeout(function () { b.dataset.armed = ''; b.textContent = t0; }, 3500); return; }
+        var kind = b.getAttribute('data-quick'), list = quick(kind), wk = kind === 'week';
+        if (b.dataset.armed !== '1') { b.dataset.armed = '1'; var t0 = b.textContent; b.textContent = (wk ? '예배 자료 + ' : '') + '할 일 ' + list.length + '개를 보냅니다 — 한 번 더'; setTimeout(function () { b.dataset.armed = ''; b.textContent = t0; }, 3500); return; }
         b.disabled = true; msg('보내는 중…');
-        addTasks(list).then(function () { msg('할 일 ' + list.length + '개를 보냈습니다.'); return reload(); }).catch(function (e) { b.disabled = false; msg('보내지 못했습니다: ' + e.message, true); });
+        var wNote = '';
+        (wk ? api('POST', 'rpc/ax_worship_enqueue', { p_date: ymd(nextSunday()), p_outputs: null }).then(function (r) {
+          wNote = r && r.ok ? (r.existing ? ' 예배 자료는 이미 만드는 중입니다.' : ' 예배 자료(작업 #' + r.job + ')도 맡겼습니다.') : ' 예배 자료는 맡기지 못했습니다: ' + ((r && r.error) || '');
+        }, function (e) { wNote = ' 예배 자료는 맡기지 못했습니다: ' + e.message; }) : Promise.resolve())
+          .then(function () { return addTasks(list); })
+          .then(function () { return reload(); }).then(function () { msg('할 일 ' + list.length + '개를 보냈습니다.' + wNote); })
+          .catch(function (e) { b.disabled = false; msg('보내지 못했습니다: ' + e.message, true); });
       };
     });
     Array.prototype.forEach.call(document.querySelectorAll('[data-role]'), function (b) {
@@ -308,6 +383,27 @@
         patch(id, body, { approve: '승인', done: '끝으로 표시', cancel: '취소', requeue: '대기로 되돌림' }[act]).then(reload).catch(function (e) { b.disabled = false; alert('바꾸지 못했습니다: ' + e.message); });
       };
     });
+    var wd = $('ax_wdate');
+    if (wd) wd.onchange = function () { if (!/^\d{4}-\d{2}-\d{2}$/.test(this.value)) return; A.wDate = this.value; A.wSermon = undefined; render(); loadSermon().then(render); };
+    var wg = $('ax_wgo');
+    if (wg) wg.onclick = function () {
+      var outs = Array.prototype.filter.call(document.querySelectorAll('[data-wout]'), function (c) { return c.checked; }).map(function (c) { return c.getAttribute('data-wout'); });
+      var wm = $('ax_wmsg');
+      if (!outs.length) { wm.textContent = '만들 자료를 하나 이상 골라 주세요.'; wm.classList.add('is-err'); return; }
+      if (wg.dataset.armed !== '1') { wg.dataset.armed = '1'; wg.textContent = mdw(A.wDate) + ' 자료 ' + outs.length + '가지 — 한 번 더 누르면 맡깁니다'; setTimeout(function () { wg.dataset.armed = ''; wg.textContent = 'AX에 맡기기'; }, 3500); return; }
+      wg.disabled = true; wm.classList.remove('is-err'); wm.textContent = '맡기는 중…';
+      api('POST', 'rpc/ax_worship_enqueue', { p_date: A.wDate, p_outputs: outs }).then(function (r) {
+        if (!r || !r.ok) { wg.disabled = false; wm.classList.add('is-err'); wm.textContent = (r && r.error) || '맡기지 못했습니다.'; return; }
+        return reload().then(function () { var m2 = $('ax_wmsg'); if (m2) m2.textContent = r.existing ? '이 주일 자료는 이미 만드는 중입니다(작업 #' + r.job + ').' : '맡겼습니다(작업 #' + r.job + '). PC 워커가 30~50분 동안 만들어 자료실에 올립니다.'; });
+      }).catch(function (e) { wg.disabled = false; wm.classList.add('is-err'); wm.textContent = '맡기지 못했습니다: ' + e.message; });
+    };
+    var wa = $('ax_wauto');
+    if (wa) wa.onchange = function () {
+      A.cfg = Object.assign({}, A.cfg, { auto_worship: wa.checked });
+      api('POST', 'church_settings?on_conflict=key', { key: 'ax_config', data: A.cfg, updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal')
+        .then(function () { var m2 = $('ax_wmsg'); if (m2) m2.textContent = wa.checked ? '매주 금요일 AX 일꾼이 다가오는 주일 자료를 저절로 맡깁니다(설교가 올라와 있을 때).' : '자동 맡기기를 껐습니다.'; })
+        .catch(function (e) { wa.checked = !wa.checked; alert('저장하지 못했습니다: ' + e.message); });
+    };
     var cs = $('ax_cal_save');
     if (cs) cs.onclick = function () {
       var v = $('ax_cal').value.trim();

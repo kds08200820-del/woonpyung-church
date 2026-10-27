@@ -11,7 +11,12 @@
 --      ax_update(번호, 상태, 결과, 링크, 메모, 승인필요) : 일꾼·관리자 — 진행 상황·결과 적기
 --      ax_report(담당, 제목, 내용, 링크) : 일꾼·관리자 — 사람이 해야 할 일·보고를 '확인 기다림'으로 올림
 --      ax_week_stats(시작일, 끝일) : 일꾼·관리자 — 그 기간 참여 '건수'만(이름 없음): 큐티 아멘·출석·주일학교 인증·달란트·성경 읽기·글·신청·정원
---  · 비파괴: 표 2개 + 함수 5개. 지우는 것 없음. 이 SQL 을 실행하기 전에는 관제실이 'SQL 실행 전' 안내만 보여 준다.
+--      ax_worship_enqueue(주일, 산출물) : 일꾼·관리자 — 그 주일 예배 자료(방송실 PPT·큐시트·중등부 교재 학생용·교사용·주보·설교 요약)를
+--                                       기존 '주일 자료 일괄 생성' 큐(worship_jobs)에 넣고, 관제실에 '예배 자료' 할 일을 만든다.
+--                                       PC 워커(tools/worship_worker.py)가 만들어 자료실(예배자료·중등부)에 올린다.
+--                                       일꾼이 부를 때는 관제실의 '자동 예배 자료'(church_settings.ax_config.auto_worship)가 켜져 있어야 한다.
+--      ax_worship_status(주일)      : 일꾼·관리자 — 그 주일 가장 최근 작업의 상태·진행·올린 파일 제목·링크
+--  · 비파괴: 표 2개 + 함수 7개. 지우는 것 없음. 이 SQL 을 실행하기 전에는 관제실이 'SQL 실행 전' 안내만 보여 준다.
 --
 -- 일꾼 등록 (SQL 실행 뒤, 사람이 한 번):
 --   1) 홈페이지에서 일꾼용 계정을 하나 만든다(예: AX 일꾼). 관리자 권한은 주지 않는다.
@@ -19,6 +24,8 @@
 --   3) 그 계정의 이메일·비밀번호를 Claude 환경 비밀값 AX_EMAIL · AX_PASSWORD 에 넣는다.
 --
 -- 되돌리기 (DROP 대신 RENAME):
+--   drop function if exists public.ax_worship_status(date);
+--   drop function if exists public.ax_worship_enqueue(date, text[]);
 --   drop function if exists public.ax_week_stats(date, date);
 --   drop function if exists public.ax_report(text, text, text, text);
 --   drop function if exists public.ax_update(bigint, text, text, text, text, boolean);
@@ -31,7 +38,7 @@
 create table if not exists public.ax_tasks (
   id             bigserial primary key,
   role           text        not null default 'auto'
-                 check (role in ('auto', 'bulletin', 'qt', 'voice', 'report', 'youth', 'schedule', 'other', 'human')),
+                 check (role in ('auto', 'worship', 'bulletin', 'qt', 'voice', 'report', 'youth', 'schedule', 'other', 'human')),
   title          text        not null check (char_length(title) between 1 and 200),
   detail         text        not null default '' check (char_length(detail) <= 4000),
   due_date       date,
@@ -151,7 +158,7 @@ begin
   if not public.ax_can_work() then return json_build_object('ok', false, 'why', 'worker', 'error', 'AX 일꾼 또는 관리자만 할 수 있습니다.'); end if;
   if btrim(coalesce(p_title, '')) = '' then return json_build_object('ok', false, 'why', 'title', 'error', '제목이 없습니다.'); end if;
   insert into public.ax_tasks (role, title, detail, status, result_url, source, created_by, log)
-  values (case when p_role in ('bulletin', 'qt', 'voice', 'report', 'youth', 'schedule', 'other', 'human') then p_role else 'other' end,
+  values (case when p_role in ('worship', 'bulletin', 'qt', 'voice', 'report', 'youth', 'schedule', 'other', 'human') then p_role else 'other' end,
           left(btrim(p_title), 200), left(coalesce(p_detail, ''), 4000), 'review', left(coalesce(p_url, ''), 1000), 'worker', null,
           jsonb_build_array(jsonb_build_object('at', now(), 'by', 'AX', 'status', 'review', 'note', '일꾼이 올림')))
   returning id into v_id;
@@ -189,6 +196,54 @@ begin
 end $$;
 revoke all on function public.ax_week_stats(date, date) from public, anon;
 grant execute on function public.ax_week_stats(date, date) to authenticated;
+
+-- 예배 자료: 그 주일을 '주일 자료 일괄 생성' 큐에 넣고 관제실 할 일을 만든다 (이미 대기·진행 중이면 그것을 알려 줌)
+create or replace function public.ax_worship_enqueue(p_date date, p_outputs text[] default null)
+returns json language plpgsql security definer set search_path = public as $$
+declare
+  v_admin boolean := exists (select 1 from public.admins a where a.uid = auth.uid());
+  v_out text[] := coalesce(p_outputs, array['ppt', 'cuesheet', 'youth', 'teacher', 'bulletin', 'summary']);
+  v_job bigint; v_task bigint; v_title text; v_sermon text;
+begin
+  if not public.ax_can_work() then return json_build_object('ok', false, 'why', 'worker', 'error', 'AX 일꾼 또는 관리자만 할 수 있습니다.'); end if;
+  if p_date is null then return json_build_object('ok', false, 'why', 'date', 'error', '주일 날짜가 없습니다.'); end if;
+  if not v_admin and coalesce((select data ->> 'auto_worship' from public.church_settings where key = 'ax_config'), 'false') <> 'true' then
+    return json_build_object('ok', false, 'why', 'auto_off', 'error', '관제실에서 자동 예배 자료가 꺼져 있습니다.');
+  end if;
+  if not (v_out <@ array['ppt', 'cuesheet', 'youth', 'teacher', 'bulletin', 'summary']) or cardinality(v_out) = 0 then
+    return json_build_object('ok', false, 'why', 'outputs', 'error', '만들 자료를 확인해 주십시오.');
+  end if;
+  select coalesce(title, '') into v_sermon from public.sermons where sermon_date = p_date and coalesce(service, '') not like '%새벽%' order by (coalesce(service, '') like '%주일%') desc, created_at limit 1;
+  if not found then return json_build_object('ok', false, 'why', 'sermon', 'error', to_char(p_date, 'MM/DD') || ' 설교가 아직 설교관리에 없습니다.'); end if;
+  select id into v_job from public.worship_jobs where sermon_date = p_date and status in ('pending', 'processing') order by created_at desc limit 1;
+  if v_job is not null then return json_build_object('ok', true, 'job', v_job, 'existing', true); end if;
+  insert into public.worship_jobs (sermon_date, job_type, outputs, requested_by) values (p_date, 'weekly', v_out, auth.uid()) returning id into v_job;
+  v_title := to_char(p_date, 'FMMM/FMDD') || ' 예배 자료 — ' || left(v_sermon, 60);
+  insert into public.ax_tasks (role, title, detail, status, needs_approval, source, log)
+  values ('worship', left(v_title, 200),
+          'worship_job #' || v_job || E'\n만들 것: ' || array_to_string(v_out, ', ') || E'\nPC 워커가 만들어 자료실(예배자료·중등부)에 올립니다. 주보는 게시 전 상태로 저장됩니다.',
+          'working', false, case when v_admin then 'admin' else 'worker' end,
+          jsonb_build_array(jsonb_build_object('at', now(), 'by', case when v_admin then '목사님' else 'AX' end, 'status', 'working', 'note', '예배 자료 생성 요청 (작업 #' || v_job || ')')))
+  returning id into v_task;
+  return json_build_object('ok', true, 'job', v_job, 'task', v_task, 'existing', false);
+end $$;
+revoke all on function public.ax_worship_enqueue(date, text[]) from public, anon;
+grant execute on function public.ax_worship_enqueue(date, text[]) to authenticated;
+
+-- 예배 자료 작업 상태 (일꾼이 결과를 확인할 때 — 파일 제목·링크·누락만)
+create or replace function public.ax_worship_status(p_date date)
+returns json language sql stable security definer set search_path = public as $$
+  select case when not public.ax_can_work() then json_build_object('ok', false, 'why', 'worker')
+    else coalesce((select json_build_object('ok', true, 'job', j.id, 'status', j.status, 'progress', j.progress, 'error', j.error,
+                     'claimed_by', j.claimed_by, 'updated_at', j.updated_at, 'steps', j.steps,
+                     'items', coalesce((select json_agg(json_build_object('kind', i ->> 'kind', 'title', i ->> 'title', 'path', i ->> 'path'))
+                                          from jsonb_array_elements(case when jsonb_typeof(j.result -> 'items') = 'array' then j.result -> 'items' else '[]'::jsonb end) i), '[]'::json),
+                     'missing', j.result -> 'missing')
+                    from public.worship_jobs j where j.sermon_date = p_date order by j.created_at desc limit 1),
+                  json_build_object('ok', true, 'job', null)) end
+$$;
+revoke all on function public.ax_worship_status(date) from public, anon;
+grant execute on function public.ax_worship_status(date) to authenticated;
 
 -- PostgREST 스키마 캐시 갱신
 notify pgrst, 'reload schema';
