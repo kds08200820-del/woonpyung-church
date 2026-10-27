@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>AX 관제실 | 운평장로교회</title>
+  <link rel="manifest" href="manifest.json?v=20261023lib1" />
+  <meta name="theme-color" content="#F6EFE5" />
+  <link rel="icon" href="images/favicon-32.png?v=20260906lib13" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20261025cr3" />
+  <link rel="stylesheet" href="css/ax.css?v=20261027ax2" />
+</head>
+<body>
+  <!-- AX 관제실 (2026-10-27 담임목사 지시): 목사님이 명령을 적으면 Claude 일꾼(AX)이 정해진 시간에 가져가
+       담당별(주보·큐티·음성·참여 현황·중등부 교재·일정)로 처리하고 결과를 올린다. 관리자 전용.
+       js/ax.js · 서버 supabase/20261027_1500_ax_control.sql · 일꾼 안내 .claude/skills/ax/SKILL.md -->
+  <section class="page-hero">
+    <p class="ph-eyebrow">AX CONTROL ROOM</p>
+    <h1>AX 관제실</h1>
+    <p>명령을 적어 두면 AX 일꾼이 담당별로 나눠 처리하고, 결과와 확인할 일을 이곳에 올립니다.</p>
+  </section>
+  <section class="block">
+    <div class="container" style="max-width:1180px">
+      <div id="axPage"><p class="qt-loading">불러오는 중…</p></div>
+    </div>
+  </section>
+  <script src="js/config.js?v=20260908lib"></script>
+  <script src="js/bulletins.js?v=20261025jb1"></script>
+  <script src="js/bulletins-live.js?v=20261025jb1"></script>
+  <script src="js/layout.js?v=20261025ct1"></script>
+  <script src="js/main.js?v=20261023lib1"></script>
+  <script src="js/ax.js?v=20261027ax2"></script>
+</body>
+</html>
