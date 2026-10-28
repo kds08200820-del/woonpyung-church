@@ -3607,14 +3607,65 @@ console.log('[affairs.js] v20261023th1');
       });
     }
     function renderView() { renderCalendar(); renderTable(); }
+    function deleteSermon(r) {
+      if (!r) return;
+      if (!confirm('「' + (r.title || '(제목없음)') + '」 ' + fmtD(r.sermon_date) + ' ' + (r.service || '') + '\n\n이 설교를 삭제할까요? 삭제하면 되돌릴 수 없습니다.')) return;
+      api('DELETE', 'sermons?id=eq.' + r.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); });
+    }
+    // ── 오른쪽 클릭 메뉴: 달력의 설교·목록의 줄을 오른쪽 클릭 → 열기(수정)·삭제 ──
+    var smCtx = null;
+    function smCtxDocDown(e) { if (smCtx && !smCtx.contains(e.target)) closeSmCtx(); }
+    function smCtxKey(e) { if (e.key === 'Escape') closeSmCtx(); }
+    function closeSmCtx() {
+      if (!smCtx) return;
+      smCtx.remove(); smCtx = null;
+      document.removeEventListener('mousedown', smCtxDocDown, true);
+      document.removeEventListener('keydown', smCtxKey, true);
+      window.removeEventListener('scroll', closeSmCtx, true);
+      window.removeEventListener('resize', closeSmCtx);
+      window.removeEventListener('blur', closeSmCtx);
+    }
+    function openSmCtx(e, r) {
+      if (!r) return;
+      e.preventDefault(); e.stopPropagation();
+      closeSmCtx();
+      var m = document.createElement('div');
+      m.setAttribute('role', 'menu');
+      m.style.cssText = 'position:fixed;z-index:10050;min-width:170px;max-width:260px;background:#fff;border:1px solid #E0D7D0;border-radius:6px;box-shadow:0 6px 20px rgba(40,28,20,.18);padding:4px;font-size:.86rem';
+      var bs = 'display:block;width:100%;text-align:left;background:none;border:0;border-radius:4px;padding:7px 10px;font:inherit;cursor:pointer;';
+      m.innerHTML = '<div style="padding:6px 10px 6px;font-size:.74rem;color:#93867C;border-bottom:1px solid #F4F1EF;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(fmtD(r.sermon_date) + ' · ' + (r.title || '(제목없음)')) + '</div>' +
+        '<button type="button" role="menuitem" data-act="open" style="' + bs + 'color:#3A281C">✏️ 열기(수정)</button>' +
+        '<button type="button" role="menuitem" data-act="del" style="' + bs + 'color:#A33A2A">🗑 삭제</button>';
+      Array.prototype.forEach.call(m.querySelectorAll('button'), function (b) {
+        b.onmouseenter = function () { b.style.background = '#F8F3F0'; };
+        b.onmouseleave = function () { b.style.background = 'none'; };
+        b.onclick = function () { closeSmCtx(); if (b.dataset.act === 'open') sermonEditor(r); else deleteSermon(r); };
+      });
+      m.oncontextmenu = function (ev) { ev.preventDefault(); };
+      document.body.appendChild(m);
+      var x = e.clientX, y = e.clientY;   // 화면 밖으로 나가지 않게
+      if (x + m.offsetWidth > window.innerWidth - 8) x = Math.max(8, window.innerWidth - m.offsetWidth - 8);
+      if (y + m.offsetHeight > window.innerHeight - 8) y = Math.max(8, window.innerHeight - m.offsetHeight - 8);
+      m.style.left = x + 'px'; m.style.top = y + 'px';
+      smCtx = m;
+      document.addEventListener('mousedown', smCtxDocDown, true);
+      document.addEventListener('keydown', smCtxKey, true);
+      window.addEventListener('scroll', closeSmCtx, true);
+      window.addEventListener('resize', closeSmCtx);
+      window.addEventListener('blur', closeSmCtx);
+    }
     function wireRows(box) {
       var byId = {}; smRows.forEach(function (r) { byId[r.id] = r; });
+      if (!worshipMode) {   // 예배 관리 화면의 '삭제'는 순서만 지우는 것이라 설교 삭제 메뉴를 달지 않는다
+        Array.prototype.forEach.call(box.querySelectorAll('.cal-item'), function (el) { el.oncontextmenu = function (e) { openSmCtx(e, byId[el.dataset.id]); }; });
+        Array.prototype.forEach.call(box.querySelectorAll('.sm-del'), function (b) { var tr = b.closest('tr'); if (tr) tr.oncontextmenu = function (e) { openSmCtx(e, byId[b.dataset.id]); }; });
+      }
       Array.prototype.forEach.call(box.querySelectorAll('.sm-read'), function (b) { b.onclick = function () { sermonReadingView(byId[b.dataset.id], { qt: false }); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-qt'), function (b) { b.onclick = function () { sermonReadingView(byId[b.dataset.id], { qt: true }); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-kakao'), function (b) { b.onclick = function () { copyKakaoQt(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-title'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-edit'), function (b) { b.onclick = function () { sermonEditor(byId[b.dataset.id]); }; });
-      Array.prototype.forEach.call(box.querySelectorAll('.sm-del'), function (b) { b.onclick = function () { if (!confirm('이 설교를 삭제할까요?')) return; api('DELETE', 'sermons?id=eq.' + b.dataset.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
+      Array.prototype.forEach.call(box.querySelectorAll('.sm-del'), function (b) { b.onclick = function () { deleteSermon(byId[b.dataset.id]); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.sm-orderdel'), function (b) { b.onclick = function () { if (!confirm('이 날짜의 예배 순서를 삭제할까요?\n(설교 내용은 설교관리에 그대로 남습니다)')) return; api('PATCH', 'sermons?id=eq.' + b.dataset.id, { worship_order: null }, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); }); }; });
       Array.prototype.forEach.call(box.querySelectorAll('.cal-item'), function (el) { el.onclick = function (e) { e.stopPropagation(); sermonEditor(byId[el.dataset.id]); }; });
     }
@@ -6609,10 +6660,29 @@ console.log('[affairs.js] v20261023th1');
         if (!ins) return;
         e.preventDefault();
         pushUndo();   // 붙여넣기 전 상태를 undo 한 단계로
-        try { document.execCommand('insertHTML', false, ins); } catch (err) { }
+        if (pasteReplacesAll()) {
+          // 전체 선택(Ctrl+A) 뒤·빈 원고에 붙여넣기 — 브라우저 insertHTML 은 이때 본문 문단들을 첫 제목 안에 통째로 넣어
+          // (<h2><p>…</p><p>…</p></h2>) 페이지 나눔이 멈추게 했고, 큰 원고에선 그 자체로도 느리다 → 원고를 직접 바꿔 넣는다
+          ed.innerHTML = ins;
+          var lastB = ed.lastElementChild, sAll = window.getSelection(), rAll = document.createRange();
+          rAll.selectNodeContents(lastB || ed); rAll.collapse(false);
+          sAll.removeAllRanges(); sAll.addRange(rAll);
+          try { ed.dispatchEvent(new Event('input', { bubbles: true })); } catch (err) { }   // 직접 넣으면 input 이 안 생김 → 미리보기·자동저장 갱신
+        } else {
+          try { document.execCommand('insertHTML', false, ins); } catch (err) { }
+        }
         saveSel(); syncContent();
         if (typeof wdRepaginate === 'function') wdRepaginate();   // 여러 문단이 한 번에 들어오므로 전체 페이지 나눔 재계산
       });
+      // 선택 앞뒤로 남는 글이 없으면(전체 선택이거나 원고가 비어 있으면) 붙여넣기가 원고 전체를 바꾸는 것
+      function pasteReplacesAll() {
+        var s = window.getSelection(); if (!s || !s.rangeCount) return false;
+        var r = s.getRangeAt(0); if (!ed.contains(r.startContainer) || !ed.contains(r.endContainer)) return false;
+        var pre = document.createRange(), post = document.createRange();
+        try { pre.selectNodeContents(ed); pre.setEnd(r.startContainer, r.startOffset); post.selectNodeContents(ed); post.setStart(r.endContainer, r.endOffset); } catch (err) { return false; }
+        function blank(x) { return !x.toString().replace(/​/g, '').trim() &&!x.cloneContents().querySelector('img,video,iframe,table,hr'); }
+        return blank(pre) && blank(post);
+      }
 
       // 툴바의 select(문단·글꼴·크기·줄간격·자간)를 누르면 편집기 포커스를 가져가 선택영역이 사라진다.
       // 열리기 직전(mousedown/focus)에 현재 선택을 저장해 둬야 글꼴·문단 스타일이 실제로 적용된다.
@@ -7138,14 +7208,66 @@ console.log('[affairs.js] v20261023th1');
           // 최상위에 문단 태그 없이 떠 있는 텍스트/인라인(예: 붙여넣기로 들어온 원본)을 <p>로 감싸 — 그래야 페이지 나눔 계산에 잡힘
           // 연속된 텍스트/인라인은 하나의 <p>로 묶고(한 줄이 여러 문단으로 쪼개지지 않게), 블록 사이의 순수 공백은 제거(빈 문단 방지)
           var BLOCK_TAGS = /^(P|DIV|H1|H2|H3|H4|H5|H6|UL|OL|BLOCKQUOTE|HR|TABLE|FIGURE|PRE)$/;
+          // ── 문단·제목 안에 들어앉은 블록 풀어내기 ──
+          // 전체 선택 뒤 붙여넣기 등에서 브라우저가 본문 문단들을 제목 안에 통째로 넣는 일이 있다(<h2><p>…</p><p>…</p></h2>).
+          // 그러면 한 쪽보다 큰 '쪼갤 수 없는 덩어리'가 되어 페이지 나눔이 끝없이 되풀이(수천 쪽·화면 멈춤)됐다 → 최상위 블록들로 펼친다.
+          var NESTED_BLOCK_SEL = 'p,div,h1,h2,h3,h4,h5,h6,ul,ol,table,blockquote,pre,figure,hr';
+          var LEAF_BLOCK_RE = /^(P|DIV|H1|H2|H3|H4|H5|H6)$/;
+          function liftNested(T) {   // T 를 최상위에 놓일 블록 목록으로 — 글자 구간은 T 와 같은 태그로, 안에 든 블록은 제 모양대로
+            var outs = [], run = null;
+            function plainClone(el) {   // 페이지 조각 표시는 복제하지 않는다(조각 짝이 엉키지 않게)
+              var c = el.cloneNode(false);
+              if (c.classList) c.classList.remove('pg-cont');
+              c.removeAttribute('data-splitbase'); c.removeAttribute('data-splitcont');
+              if (c.hasAttribute('class') && !c.className) c.removeAttribute('class');
+              return c;
+            }
+            function wrapIn(node, wraps) {   // 블록을 품고 있던 인라인 조상(span·b 등)의 서식을 복제해 다시 입힌다
+              for (var w = wraps.length - 1; w >= 0; w--) { var c = wraps[w].cloneNode(false); c.appendChild(node); node = c; }
+              return node;
+            }
+            function walk(parent, wraps) {
+              var ch = parent.firstChild;
+              while (ch) {
+                var next = ch.nextSibling;
+                if (ch.nodeType === 1 && BLOCK_TAGS.test(ch.tagName)) {
+                  run = null;
+                  var parts = (LEAF_BLOCK_RE.test(ch.tagName) && ch.querySelector(NESTED_BLOCK_SEL)) ? liftNested(ch) : [ch];
+                  parts.forEach(function (b) {
+                    if (wraps.length && LEAF_BLOCK_RE.test(b.tagName)) { var f = document.createDocumentFragment(); while (b.firstChild) f.appendChild(b.firstChild); b.appendChild(wrapIn(f, wraps)); }
+                    outs.push(b);
+                  });
+                } else if (ch.nodeType === 1 && ch.querySelector(NESTED_BLOCK_SEL)) {
+                  walk(ch, wraps.concat([ch]));   // 블록을 품은 인라인 → 껍질은 벗기고 서식은 안쪽에 다시 입힘
+                } else if (!(ch.nodeType === 3 && !ch.data.trim() && !run)) {   // 블록 사이 빈 공백은 버림
+                  if (!run) { run = T.tagName === 'DIV' ? document.createElement('p') : plainClone(T); outs.push(run); }
+                  run.appendChild(wrapIn(ch, wraps));
+                }
+                ch = next;
+              }
+            }
+            walk(T, []);
+            return outs;
+          }
           function normalizeTopLevel() {
             var node = ed.firstChild, wrapper = null;
             while (node) {
               var next = node.nextSibling;
+              if (node.nodeType === 1 && LEAF_BLOCK_RE.test(node.tagName) && !node.classList.contains('pg-break-spacer') && !node.classList.contains('pg-manual-break') && node.querySelector(NESTED_BLOCK_SEL)) {
+                liftNested(node).forEach(function (b) { ed.insertBefore(b, node); });
+                ed.removeChild(node);
+                wrapper = null; node = next; continue;
+              }
               var isBlank = node.nodeType === 3 && !node.textContent.trim();
               var isInline = (node.nodeType === 3 && !isBlank) || (node.nodeType === 1 && !node.classList.contains('pg-break-spacer') && !BLOCK_TAGS.test(node.tagName));
               if (isBlank) {
                 if (wrapper) wrapper.appendChild(node); else ed.removeChild(node);
+              } else if (isInline && node.nodeType === 1 && node.querySelector(NESTED_BLOCK_SEL)) {
+                // 블록을 품은 인라인(span 등)이 최상위에 떠 있음 — <p>로 감싸면 '문단 속 문단'이 되므로 펼쳐서 넣는다
+                var tmp = document.createElement('div'); ed.insertBefore(tmp, node); tmp.appendChild(node);
+                liftNested(tmp).forEach(function (b) { ed.insertBefore(b, tmp); });
+                ed.removeChild(tmp);
+                wrapper = null;
               } else if (isInline) {
                 if (!wrapper) { wrapper = document.createElement('p'); ed.insertBefore(wrapper, node); }
                 wrapper.appendChild(node);
@@ -7346,6 +7468,10 @@ console.log('[affairs.js] v20261023th1');
               if ((node.tagName === 'P' || node.tagName === 'DIV') && !node.firstChild)
                 return { node: lastBlock || node, pageEndY: pageEndY, totalPages: totalPages };
               var vb = node.offsetTop + node.offsetHeight;
+              if (vb > pageEndY + 0.5 && node.tagName !== 'P' && atPageTop(node)) {   // 쪽 맨 위의 한 쪽보다 큰 통짜 블록 — repaginate 와 같이 넘치는 대로 인정
+                while (vb > pageEndY + 0.5) { pageEndY += ph + GAP; totalPages++; }
+                lastBlock = node; lastBottom = vb; node = node.nextSibling; continue;
+              }
               if (vb > pageEndY + 2) {
                 // 쪼개진 앞조각(뒤에 스페이서+같은 gid 조각)은 행간 절반이 상자에 얹혀 있음 → 잉크 기준으로 재판정
                 var over = true;
@@ -7443,6 +7569,12 @@ console.log('[affairs.js] v20261023th1');
                   var res = splitParagraphAt(k, pageEndY);
                   if (res && res !== 'ALL') breakBefore = res;   // 넘치는 뒷부분(.pg-cont) 앞에서 나눔
                 }
+                // 이미 쪽 맨 위에 있는데도 한 쪽보다 큰 통짜 블록(긴 표·목록·인용, 쪼갤 수 없는 문단): 또 밀어도 다음 장에서 똑같이 넘친다.
+                // 예전엔 같은 블록 앞에 간격을 4000번 끼워(수천 쪽) 화면이 멈췄다 → 넘치는 대로 두고 그 블록이 차지한 쪽 수만 센다.
+                if (!forceBreakAfter && breakBefore === k && atPageTop(k)) {
+                  while (bottom > pageEndY + 0.5) { pageEndY += ph + GAP; totalPages++; }
+                  i++; continue;
+                }
                 var wantTop = pageEndY + 2 * mg + GAP;   // 다음 장 첫 블록이 와야 할 y(위 여백선 바로 아래)
                 var sp = document.createElement('div');
                 sp.className = 'pg-break-spacer'; sp.contentEditable = 'false';
@@ -7503,6 +7635,7 @@ console.log('[affairs.js] v20261023th1');
             return true;
           }
           function isBreakEl(el) { return el && el.nodeType === 1 && el.classList && (el.classList.contains('pg-break-spacer') || el.classList.contains('pg-manual-break')); }
+          function atPageTop(el) { var pv = el.previousElementSibling; return !pv || isBreakEl(pv); }   // 원고 맨 앞이거나 바로 앞이 쪽 나눔 → 이 쪽의 첫 블록
           function safeRepaginate(force) {   // 예기치 못한 원고 상태에서도 편집기가 멈추지 않게 — 실패 시 전체 재계산으로 복구
             try { return repaginate(force); }
             catch (err) { try { return repaginate(true); } catch (e2) { return false; } }
