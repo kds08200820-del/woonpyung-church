@@ -1,0 +1,189 @@
+/* Management workspace. Screen-only so sermon, bulletin and receipt print layouts stay intact. */
+@media screen {
+body.management-ui {
+  --ink:#1d293d; --ink-soft:#56647a; --muted:#65748a; --line:#e3e9f0;
+  --bg:#f3f6fa; --paper:#fff; --paper-alt:#eef3f8; --dark:#142238;
+  --accent:#176b66; --accent-soft:#45827e; --gold:#176b66;
+  background:var(--bg); color:var(--ink); font-size:15px;
+}
+body.management-ui #header,body.management-ui #header.scrolled {
+  background:#fff; border-bottom:1px solid var(--line); box-shadow:none;
+}
+body.management-ui #header .nav-inner { max-width:none; padding-inline:28px; }
+body.management-ui #header .logo-kr,body.management-ui #header .nav-menu a { color:var(--ink); }
+body.management-ui #header .logo-en { color:var(--muted); }
+body.management-ui #header .nav-menu { gap:20px; }
+body.management-ui #header .nav-menu a { font-size:.86rem; }
+body.management-ui .nav-dropdown-inner { border-radius:12px; border-color:var(--line); box-shadow:0 12px 32px #14223814; }
+body.management-ui .auth-card { border-color:var(--line); border-radius:12px; }
+body.management-ui :is(.fin-card,.form-card,.ax-card,.dsh-panel,.member-lock) {
+  background:#fff; border:1px solid var(--line); border-radius:14px;
+  box-shadow:0 2px 4px #14223803,0 8px 24px #14223803;
+}
+body.management-ui :is(.fin-card,.ax-card,.dsh-panel) { padding:24px; margin-bottom:20px; min-width:0; }
+body.management-ui :is(.fin-grid,.form-grid,.ax-grid) { gap:18px; }
+body.management-ui :is(h1,h2,h3,h4,.dsh-title,.dsh-sec) { color:var(--ink); letter-spacing:-.035em; }
+body.management-ui :is(.fin-card,.ax-card,.dsh-panel)>h3 { font-size:1.08rem; }
+body.management-ui .btn {
+  border-radius:8px; font-weight:600; letter-spacing:-.015em; border-width:1px;
+  transition:background .16s,border-color .16s,box-shadow .16s; box-shadow:none;
+}
+body.management-ui .btn-solid { background:var(--accent); border-color:var(--accent); color:#fff; }
+body.management-ui .btn-solid:hover { background:#12534f; border-color:#12534f; color:#fff; box-shadow:0 3px 8px #176b661c; }
+body.management-ui .btn-line { background:#fff; color:#34445b; border-color:#d7e0e9; }
+body.management-ui .btn-line:hover { background:#f0f5fa; border-color:#a5b7ca; }
+body.management-ui :is(button,a,input,select,textarea):focus-visible { outline:3px solid #219b91; outline-offset:3px; }
+body.management-ui :is(button,input,select,textarea) { accent-color:var(--accent); }
+body.management-ui .btn:disabled { opacity:.5; cursor:not-allowed; }
+body.management-ui :is(.af-field,.form-field,.ax-cmd) :is(input:not([type=checkbox]):not([type=radio]),select,textarea) {
+  border:1px solid #d6dfe9; border-radius:8px; background:#fff; color:var(--ink);
+  padding:10px 12px; font:inherit; transition:border-color .16s,box-shadow .16s;
+}
+body.management-ui :is(.af-field,.form-field,.ax-cmd) :is(input,select,textarea):focus {
+  border-color:var(--accent); box-shadow:0 0 0 3px #176b6612; outline:none;
+}
+body.management-ui :is(.af-field,.form-field) label { color:#4b5c73; font-size:.81rem; font-weight:600; margin-bottom:7px; }
+body.management-ui :is(.fin-card,.dsh-panel) :is(select,input[type=search],input[type=date],input[type=number]) {
+  border-color:#d6dfe9!important; border-radius:7px!important; color:var(--ink); background-color:#fff;
+}
+body.management-ui :is(.fin-table,.dsh-tbl,.member-table) { color:var(--ink); border-color:var(--line); font-size:.875rem; }
+body.management-ui :is(.fin-table,.dsh-tbl,.member-table) th { background:#f4f7fb; color:#62718a; font-size:.75rem; font-weight:600; letter-spacing:.015em; }
+body.management-ui :is(.fin-table,.dsh-tbl,.member-table) :is(th,td) { padding:12px 14px; border-bottom-color:#e9edf3; vertical-align:middle; }
+body.management-ui :is(.fin-table,.dsh-tbl,.member-table) tbody tr:hover { background:#f7fafc; }
+body.management-ui .fin-table td.num { font-variant-numeric:tabular-nums; }
+body.management-ui .fin-table td .btn { border-radius:6px; }
+body.management-ui :is(.fin-pill,.rcp-badge,.dsh-chip) { border-radius:6px; font-weight:600; line-height:1.6; }
+body.management-ui .fin-pill:not(.in):not(.out):not([style]) { background:#edf3f8; color:#4a5b73; }
+body.management-ui .fin-pill.in,body.management-ui .rcp-badge.ok { background:#e5f5ee; color:#21684f; }
+body.management-ui .fin-pill.out { background:#fff0ed; color:#ae4c3d; }
+body.management-ui .fin-tabs { border-bottom:1px solid var(--line); gap:6px; margin-bottom:24px; }
+body.management-ui .fin-tabs button { color:var(--muted); padding:12px 16px; }
+body.management-ui .fin-tabs button.active { color:var(--accent); }
+body.management-ui .fin-tabs button::after { background:var(--accent); bottom:-1px; height:2px; border-radius:2px; }
+body.management-ui .fin-tabs button:hover { transform:none; }
+body.management-ui .modal-box { border:1px solid var(--line); border-radius:16px; box-shadow:0 24px 80px #14223838; }
+body.management-ui .fin-sugg { border-color:var(--line); border-radius:10px; box-shadow:0 10px 30px #14223818; }
+body.management-ui .fin-sugg div { border-color:var(--line); }
+body.management-ui .fin-sugg div:hover { background:#eff7f6; }
+/* The navigation remains in one place while moving between every pastoral module. */
+body.management-ui.af-app { --accent:#176b66; --accent-soft:#45827e; background:var(--bg); }
+body.management-ui .af-side { flex-basis:232px; width:232px; background:#142238; color:#c5cfde; scrollbar-color:#3d4d65 transparent; border-right:1px solid #1c2e48; }
+body.management-ui .af-brand { padding:27px 22px 24px; border-bottom:1px solid #ffffff12; }
+body.management-ui .af-brand-t { font-size:1.25rem; gap:10px; letter-spacing:-.04em; }
+body.management-ui .af-brand-t span { background:#254b50; color:#a5e2d8; padding:4px 8px; border-radius:6px; font-size:.7rem; letter-spacing:.03em; }
+body.management-ui .af-brand-s { color:#8fa4bd; font-size:.73rem; margin-top:9px; }
+body.management-ui .af-nav { padding:16px 12px 28px; }
+body.management-ui .af-grp { padding:22px 12px 8px; color:#91a4bc; font-size:.66rem; font-weight:600; letter-spacing:.08em; }
+body.management-ui .af-nav :is(button,a) { width:100%; gap:11px; border:0; border-radius:8px; padding:10px 12px; margin:3px 0; min-height:42px; font-size:.85rem; font-weight:500; color:#bccbde; }
+body.management-ui .af-nav :is(button,a):hover { background:#20334e; color:#fff; }
+body.management-ui .af-nav button.active { background:#e2f2ed; color:#174f49; font-weight:700; border:0; box-shadow:0 2px 8px #0000000c; }
+body.management-ui .af-nav :is(button,a):focus-visible { outline-color:#77c8ba; outline-offset:1px; }
+body.management-ui .af-icon { width:18px; height:18px; flex:none; opacity:.8; }
+body.management-ui .af-nav button.active .af-icon { opacity:1; }
+body.management-ui .af-badge { background:#d4e9e3; color:#174f49; font-size:.68rem; }
+body.management-ui .af-ext { color:#94aac4; }
+body.management-ui .af-main { padding:30px clamp(20px,2.5vw,44px) 72px; background:var(--bg); }
+body.management-ui #afPanel { max-width:1720px; margin-inline:auto; }
+body.management-ui #afPanel>.fin-card:first-child { border-color:transparent; background:transparent; box-shadow:none; padding:0 0 7px; margin-bottom:24px; }
+body.management-ui #afPanel>.fin-card:first-child>div>b { font-size:1.45rem!important; color:var(--ink)!important; letter-spacing:-.04em; }
+body.management-ui #afPanel>.fin-card:first-child .btn-solid { padding:11px 20px!important; font-size:.9rem!important; }
+/* Calendar cells keep service-specific colors, and allow long titles to wrap. */
+body.management-ui #sm_cal>.fin-card { padding:24px; }
+body.management-ui .cal-grid { gap:7px!important; }
+body.management-ui .cal-wd { color:#687b92; padding:8px 0!important; }
+body.management-ui .cal-day { min-width:0; min-height:104px!important; padding:9px!important; border-color:#e4eaf2!important; border-radius:9px!important; }
+body.management-ui .cal-day:hover { background:#f6fafb!important; border-color:#b4cbc8!important; }
+body.management-ui .cal-item { padding:5px 7px!important; margin-top:6px!important; border-radius:5px!important; font-size:.73rem!important; line-height:1.45!important; overflow-wrap:anywhere; }
+body.management-ui .cal-item>div { color:#65748a!important; }
+body.management-ui .dsh-title { font-size:1.65rem; color:var(--ink); }
+body.management-ui .dsh-date { color:var(--muted); }
+body.management-ui .dsh-sec { margin-top:28px; color:var(--ink); }
+body.management-ui .dsh-kpis { gap:14px; }
+body.management-ui .dk { border:1px solid var(--line); border-radius:12px; padding:20px; min-height:126px; background:#fff; box-shadow:0 3px 12px #14223804; }
+body.management-ui .dk.click:hover { border-color:#9bbcb9; box-shadow:0 6px 18px #1422380a; }
+body.management-ui .dk.hot { border-left:3px solid var(--accent); padding-left:18px; }
+body.management-ui .dk-l { color:#5d6d83; font-size:.8rem; }
+body.management-ui .dk-n { font-size:1.9rem; color:var(--ink); margin-top:12px; }
+body.management-ui .dk-s,body.management-ui .dsh-sec small { color:#64748b; }
+body.management-ui .dsh-ph b,body.management-ui .dn-b b { color:var(--ink); }
+body.management-ui .dsh-new { background:var(--accent); border-radius:8px; }
+body.management-ui .dsh-new:hover { background:#12534f; }
+body.management-ui .dn { border-color:var(--line); padding:15px 0; }
+body.management-ui .dn-tag { border-color:#d6e3ed; background:#f1f6fb; color:#536c86; border-radius:5px; }
+body.management-ui .dn-btn,body.management-ui .dsh-seg { border-color:#d6dfe9; border-radius:7px; }
+body.management-ui .dsh-seg button.on { background:var(--accent); }
+body.management-ui .dsh-bar { border-radius:6px; background:#e8eef3; }
+body.management-ui .dsh-bar i { background:#3a8a7b; }
+body.management-ui .ax-pulse { border-color:var(--line); color:var(--ink-soft); }
+body.management-ui .ax-task { border-color:var(--line); background:#f8fafc; border-radius:10px; }
+body.management-ui .ax-task-t { color:var(--ink); }
+body.management-ui .ax-task-b,body.management-ui .ax-setup { color:var(--ink-soft); }
+body.management-ui .ax-filter button { border-color:#d6dfe9; border-radius:7px; }
+body.management-ui .ax-filter button.is-on { background:var(--accent); border-color:var(--accent); }
+/* Editor chrome shares workspace colors without styling the manuscript or PDF paper. */
+body.management-ui .sed-dark {
+  --bg:#e8eef4; --panel:#fff; --panel2:#f3f6fa; --line:#dce4ed; --line2:#edf1f6;
+  --fg:#243247; --fg2:#56647a; --fg3:#687a90; --accent:#176b66; --title:#142238;
+  --accent-bg:#e7f4ef; --sel:#e2eee9; background:#e8eef4!important;
+}
+body.management-ui .sed-dark .sed-hd { background:#142238; }
+body.management-ui .sed-dark .sed-main { background:#e4eaf1; }
+body.management-ui .lib-hero { background:linear-gradient(130deg,#142238,#25445a); border-radius:14px; box-shadow:0 8px 24px #14223814; }
+body.management-ui .sed-dark .se-toolbar button { color:#42546b; border-radius:6px; }
+body.management-ui .sed-dark .se-toolbar button:hover { background:#e9eff5; }
+body.management-ui .sed-dark .se-grp::after { color:#687a90; }
+body.management-ui .sed-dark .se-toolbar :is(select,.se-size),body.management-ui .sed-dark .se-pop { border-color:#d6dfe9; border-radius:6px; }
+body.management-ui .sed-dark .btn-solid:hover { background:#12534f; border-color:#12534f; }
+body.management-ui .sed-dark .sed-hd .btn-solid:hover { background:#f1f7fa; border-color:#f1f7fa; color:#142238; }
+/* Standalone administration pages share the same workspace surfaces. */
+body.management-ui:not(.af-app)>.page-hero { width:100%; max-width:none; margin:0; border:0; border-radius:0; text-align:left; background:var(--bg); padding:120px max(28px,calc((100% - 1224px)/2)) 30px; border-bottom:1px solid var(--line); }
+body.management-ui:not(.af-app)>.page-hero h1 { margin:8px 0 10px; }
+body.management-ui:not(.af-app)>.page-hero p { margin:0; max-width:none; }
+body.management-ui:not(.af-app)>.page-hero h1 { font-family:var(--font); font-size:2rem; font-weight:750; color:var(--ink); letter-spacing:-.05em; }
+body.management-ui:not(.af-app)>.page-hero p { color:var(--ink-soft); font-size:.9rem; }
+body.management-ui:not(.af-app)>.page-hero .ph-eyebrow { color:var(--accent); letter-spacing:.16em; font-size:.7rem; font-weight:700; }
+body.management-ui:not(.af-app)>.block { padding-block:32px 60px; }
+body.management-ui .fin-wrap { max-width:1280px; }
+body.management-ui .fin-menu { background:var(--bg); border-color:var(--line); box-shadow:none; padding-top:8px; }
+body.management-ui .fm-top.active { border-bottom-color:var(--accent); }
+body.management-ui .fm-drop { border-color:var(--line); border-radius:10px; box-shadow:0 12px 28px #14223815; }
+body.management-ui .fm-drop button.active { background:var(--accent); }
+body.management-ui .form-card { padding:28px; }
+body.management-ui .block-head h2 { font-family:var(--font); font-weight:700; }
+@media (min-width:901px) {
+  body.management-ui .af-side { height:calc(100dvh - var(--af-top,66px)); }
+}
+@media (max-width:1100px) and (min-width:901px) {
+  body.management-ui .af-side { flex-basis:208px; width:208px; }
+  body.management-ui .af-main { padding-inline:20px; }
+  body.management-ui .cal-day { padding:6px!important; }
+  body.management-ui .cal-item { padding:4px!important; font-size:.69rem!important; }
+}
+@media (max-width:900px) {
+  body.management-ui #header .nav-inner { padding-inline:18px; }
+  body.management-ui .af-side { width:100%; height:auto; border-right:0; border-bottom:1px solid #24374f; }
+  body.management-ui .af-nav { padding:8px 10px; gap:5px; }
+  body.management-ui .af-nav :is(button,a) { width:auto; flex:none; min-height:40px; margin:0; padding:9px 12px; white-space:nowrap; }
+  body.management-ui .af-nav a { display:flex; }
+  body.management-ui .af-nav button.active { border:0; }
+  body.management-ui .af-main { padding:24px 16px 50px; }
+  body.management-ui :is(.fin-card,.ax-card,.dsh-panel) { padding:18px; border-radius:12px; }
+}
+@media (max-width:700px) {
+  body.management-ui .cal-day { min-height:0!important; padding:12px!important; }
+  body.management-ui .cal-item { font-size:.82rem!important; }
+  body.management-ui #sm_cal>.fin-card { padding:16px; }
+  body.management-ui .cal-grid { grid-template-columns:1fr!important; }
+  body.management-ui .cal-grid :is(.cal-wd,.cal-pad,.cal-empty) { display:none!important; }
+  body.management-ui :is(.fin-table,.member-table) { display:block; width:100%; max-width:100%; overflow-x:auto; overscroll-behavior-inline:contain; }
+  body.management-ui .fin-table :is(th,td) { padding:10px 12px; }
+  body.management-ui .dk { min-height:110px; padding:16px; }
+  body.management-ui .dk-n { font-size:1.6rem; }
+  body.management-ui .form-card { padding:20px; }
+  body.management-ui:not(.af-app)>.page-hero { padding:110px 20px 25px; }
+  body.management-ui .fin-menu .fm-top { padding:10px 12px; font-size:.88rem; }
+}
+@media (prefers-reduced-motion:reduce) {
+  body.management-ui * { scroll-behavior:auto!important; transition:none!important; }
+}
+}

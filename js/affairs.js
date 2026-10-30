@@ -281,17 +281,39 @@ console.log('[affairs.js] v20261023th1');
     var b = root.querySelector('.af-nav [data-t="' + t + '"] .af-badge');
     if (b) { b.textContent = n || ''; b.hidden = !n; }
   }
+  // Small decorative icons; labels and existing navigation behavior remain accessible.
+  var NAV_ICONS = {
+    dashboard: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    ax: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+    sermon: '<path d="M5 3h11l3 3v15H5zM15 3v5h4M8 12h8M8 16h6"/>',
+    worship: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18M8 15h3M8 18h6"/>',
+    song: '<path d="M9 18V5l11-2v13M9 9l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/>',
+    illus: '<path d="M21 11a8 8 0 0 1-8 8H7l-4 3V11a9 9 0 0 1 18 0zM8 10h8M8 14h5"/>',
+    bulletin: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M6 8h3M6 12h3M15 8h3M15 12h3M15 16h3"/>',
+    visit: '<path d="M3 11l9-8 9 8M5 10v11h14V10M10 21v-7h4v7"/>',
+    counsel: '<path d="M4 5h16v12H9l-5 4zM8 9h8M8 13h5"/>',
+    edu: '<path d="M2 8l10-5 10 5-10 5zM6 10v7c4 3 8 3 12 0v-7M22 8v9"/>',
+    forms: '<rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 2h6v4H9zM8 11h8M8 15h8M8 19h4"/>',
+    doc: '<path d="M3 6h7l2 3h9v12H3zM3 6V3h7l2 3h9v3"/>',
+    library: '<path d="M4 3h4v18H4zM11 3h4v18h-4zM18 3l4 1-3 17-4-1z"/>',
+    bible: '<path d="M12 5c-3-2-6-2-10-1v16c4-1 7-1 10 1 3-2 6-2 10-1V4c-4-1-7-1-10 1zM12 5v16M16 8h3M16 12h3"/>',
+    settings: '<path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3"/><circle cx="16" cy="17" r="3"/>',
+    external: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 5V3h8v2M3 11h18M10 11v3h4v-3"/>'
+  };
+  function navIcon(key) {
+    return '<svg class="af-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (NAV_ICONS[key] || NAV_ICONS.external) + '</svg>';
+  }
   function shellHTML() {
     return '<div class="af-shell"><aside class="af-side">' +
       '<a class="af-brand" href="affairs.html"><div class="af-brand-t">운평<span>목회</span></div><div class="af-brand-s">운평장로교회 목회 행정</div></a>' +
       '<nav class="af-nav" aria-label="목회 행정 메뉴">' +
       NAV_GROUPS.map(function (g) {
         return (g[0] ? '<div class="af-grp">' + esc(g[0]) + '</div>' : '') + g[1].map(function (t) {
-          return '<button type="button" data-t="' + t[0] + '">' + esc(t[1]) + (t[0] === 'dashboard' ? '<span class="af-badge" hidden></span>' : '') + '</button>';
+          return '<button type="button" data-t="' + t[0] + '">' + navIcon(t[0]) + '<span>' + esc(t[1]) + '</span>' + (t[0] === 'dashboard' ? '<span class="af-badge" hidden></span>' : '') + '</button>';
         }).join('');
       }).join('') +
       '<div class="af-grp">교회 행정</div>' +
-      NAV_LINKS.map(function (l) { return '<a href="' + l[0] + '">' + esc(l[1]) + '<span class="af-ext">↗</span></a>'; }).join('') +
+      NAV_LINKS.map(function (l) { return '<a href="' + l[0] + '">' + navIcon('external') + '<span>' + esc(l[1]) + '</span><span class="af-ext">↗</span></a>'; }).join('') +
       '</nav></aside><div class="af-main"><div id="afPanel"></div></div></div>';
   }
   function render() {
