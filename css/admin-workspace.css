@@ -88,13 +88,6 @@ body.management-ui #afPanel>.fin-card:first-child { border-color:transparent; ba
 body.management-ui #afPanel>.fin-card:first-child>div>b { font-size:1.45rem!important; color:var(--ink)!important; letter-spacing:-.04em; }
 body.management-ui #afPanel>.fin-card:first-child .btn-solid { padding:11px 20px!important; font-size:.9rem!important; }
 /* Calendar cells keep service-specific colors, and allow long titles to wrap. */
-body.management-ui #sm_cal>.fin-card { padding:24px; }
-body.management-ui .cal-grid { gap:7px!important; }
-body.management-ui .cal-wd { color:#687b92; padding:8px 0!important; }
-body.management-ui .cal-day { min-width:0; min-height:104px!important; padding:9px!important; border-color:#e4eaf2!important; border-radius:9px!important; }
-body.management-ui .cal-day:hover { background:#f6fafb!important; border-color:#b4cbc8!important; }
-body.management-ui .cal-item { padding:5px 7px!important; margin-top:6px!important; border-radius:5px!important; font-size:.73rem!important; line-height:1.45!important; overflow-wrap:anywhere; }
-body.management-ui .cal-item>div { color:#65748a!important; }
 body.management-ui .dsh-title { font-size:1.65rem; color:var(--ink); }
 body.management-ui .dsh-date { color:var(--muted); }
 body.management-ui .dsh-sec { margin-top:28px; color:var(--ink); }
@@ -156,8 +149,6 @@ body.management-ui .block-head h2 { font-family:var(--font); font-weight:700; }
 @media (max-width:1100px) and (min-width:901px) {
   body.management-ui .af-side { flex-basis:208px; width:208px; }
   body.management-ui .af-main { padding-inline:20px; }
-  body.management-ui .cal-day { padding:6px!important; }
-  body.management-ui .cal-item { padding:4px!important; font-size:.69rem!important; }
 }
 @media (max-width:900px) {
   body.management-ui #header .nav-inner { padding-inline:18px; }
@@ -170,11 +161,6 @@ body.management-ui .block-head h2 { font-family:var(--font); font-weight:700; }
   body.management-ui :is(.fin-card,.ax-card,.dsh-panel) { padding:18px; border-radius:12px; }
 }
 @media (max-width:700px) {
-  body.management-ui .cal-day { min-height:0!important; padding:12px!important; }
-  body.management-ui .cal-item { font-size:.82rem!important; }
-  body.management-ui #sm_cal>.fin-card { padding:16px; }
-  body.management-ui .cal-grid { grid-template-columns:1fr!important; }
-  body.management-ui .cal-grid :is(.cal-wd,.cal-pad,.cal-empty) { display:none!important; }
   body.management-ui :is(.fin-table,.member-table) { display:block; width:100%; max-width:100%; overflow-x:auto; overscroll-behavior-inline:contain; }
   body.management-ui .fin-table :is(th,td) { padding:10px 12px; }
   body.management-ui .dk { min-height:110px; padding:16px; }
@@ -186,4 +172,123 @@ body.management-ui .block-head h2 { font-family:var(--font); font-weight:700; }
 @media (prefers-reduced-motion:reduce) {
   body.management-ui * { scroll-behavior:auto!important; transition:none!important; }
 }
+
+/* Calendar and sermon register: one visual vocabulary for dates, services and status. */
+body.management-ui #sm_cal>.sm-calendar { padding:0; overflow:hidden; }
+body.management-ui .cal-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:24px 24px 16px; }
+body.management-ui .cal-eyebrow { display:block; color:#718099; font-size:.72rem; font-weight:600; margin-bottom:8px; }
+body.management-ui .cal-month-nav { display:flex; align-items:center; gap:22px; }
+body.management-ui .cal-month-nav h3 { font-size:1.25rem; font-weight:500; letter-spacing:-.04em; white-space:nowrap; }
+body.management-ui .cal-month-nav h3 strong { font-weight:750; }
+body.management-ui .cal-nav-buttons { display:flex; gap:5px; }
+body.management-ui .cal-nav-buttons .btn { min-width:32px; min-height:32px; padding:4px 11px; font-size:.8rem; }
+body.management-ui .cal-help { color:#718099; font-size:.78rem; }
+body.management-ui .cal-legend { display:flex; flex-wrap:wrap; gap:7px 16px; padding:0 24px 20px; }
+body.management-ui .sm-service { display:inline-flex; align-items:center; gap:6px; font-size:.75rem; font-weight:600; white-space:nowrap; color:#526176; }
+body.management-ui .sm-service i { width:7px; height:7px; border-radius:50%; background:var(--service-color,#748197); flex:none; }
+body.management-ui .cal-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:1px!important; background:#e4eaf2; border-top:1px solid #e4eaf2; }
+body.management-ui .cal-wd { padding:11px 0; background:#f7f9fc; color:#77859a; text-align:center; font-size:.72rem; font-weight:600; }
+body.management-ui :is(.cal-wd,.cal-day)[data-dow="0"] .cal-date-num,body.management-ui .cal-wd[data-dow="0"] { color:#bb6662; }
+body.management-ui :is(.cal-wd,.cal-day)[data-dow="6"] .cal-date-num,body.management-ui .cal-wd[data-dow="6"] { color:#5f7bb1; }
+body.management-ui .cal-day { min-width:0; min-height:145px; background:#fff; padding:10px; border:0; border-radius:0; cursor:pointer; transition:background .15s; }
+body.management-ui .cal-day:hover { background:#f7fafc; }
+body.management-ui .cal-day.is-today { background:#f0f8f5; box-shadow:inset 0 0 0 1px #8ebdae; }
+body.management-ui .cal-date-btn { display:flex; align-items:center; gap:6px; width:100%; border:0; background:none; padding:0 0 8px; cursor:pointer; font:inherit; text-align:left; color:#53637b; }
+body.management-ui .cal-date-num { display:inline-flex; align-items:center; justify-content:center; width:25px; height:25px; border-radius:7px; font-size:.86rem; font-weight:650; }
+body.management-ui .is-today .cal-date-num { background:#176b66; color:#fff!important; }
+body.management-ui .cal-today-tag { color:#176b66; font-size:.64rem; font-weight:700; }
+body.management-ui .cal-add { margin-left:auto; color:#a6b2c2; opacity:0; font-size:.95rem; }
+body.management-ui .cal-day:hover .cal-add,body.management-ui .cal-date-btn:focus-visible .cal-add { opacity:1; }
+body.management-ui .cal-events { display:flex; flex-direction:column; gap:6px; }
+body.management-ui .cal-item { display:flex; flex-direction:column; gap:3px; width:100%; border:1px solid #e8edf3; border-left:2px solid var(--service-color,#748197); border-radius:6px; padding:7px 8px; background:#f8fafc; color:#27384f; font:inherit; text-align:left; cursor:pointer; transition:background .15s,box-shadow .15s; }
+body.management-ui .cal-item:hover { background:#fff; box-shadow:0 2px 8px #14223812; }
+body.management-ui .cal-item.is-draft { opacity:.65; border-style:dashed; }
+body.management-ui .cal-service { color:var(--service-color,#748197); font-size:.62rem; font-weight:650; }
+body.management-ui .cal-event-title { color:#34445b; font-size:.78rem; font-weight:600; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+body.management-ui .cal-scripture { font-size:.67rem; color:#7b899a; line-height:1.5; }
+body.management-ui .cal-status-row { display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
+body.management-ui .cal-status { display:inline-flex; align-items:center; gap:4px; padding:2px 5px; border-radius:4px; font-size:.61rem; font-weight:600; line-height:1.5; }
+body.management-ui .cal-status.is-sent { background:#e6f3ed; color:#35745a; }
+body.management-ui .cal-status.is-error { background:#fbeeea; color:#b05b4e; }
+body.management-ui .cal-status.is-scheduled { background:#f4f0e6; color:#916d39; }
+body.management-ui .cal-heart { font-size:.72rem; margin-left:2px; }
+body.management-ui .cal-dw { display:none; }
+body.management-ui .cal-pad { background:#f7f9fc; padding:14px; min-height:145px; color:#b8c2d0; font-size:.75rem; }
+body.management-ui .cal-footer { display:flex; align-items:center; gap:7px; padding:15px 24px; border-top:1px solid #e4eaf2; color:#8190a3; font-size:.72rem; }
+body.management-ui .cal-footer-dot { width:5px; height:5px; border-radius:50%; background:#8bb4a9; }
+body.management-ui #sm_list>.sm-list-card { padding:0; overflow:hidden; }
+body.management-ui .sm-list-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:24px 24px 16px; }
+body.management-ui .sm-list-heading h3 { display:flex; align-items:center; gap:9px; font-size:1.1rem; font-weight:700; }
+body.management-ui .sm-list-heading h3>span { display:inline-flex; padding:2px 7px; background:#edf3f8; color:#72839a; border-radius:6px; font-size:.72rem; }
+body.management-ui .sm-list-heading p { font-size:.76rem; color:#8290a3; }
+body.management-ui .sm-list-filters { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:0 24px 20px; }
+body.management-ui .sm-filter-label { font-size:.75rem; color:#7c8ca1; margin-right:3px; }
+body.management-ui .sm-list-filters :is(select,button) { min-height:33px; border-radius:7px!important; font-size:.76rem!important; }
+body.management-ui .sm-list-count { margin-left:auto; }
+body.management-ui .sm-list-count>span { color:#7c8ca1!important; font-size:.73rem!important; }
+body.management-ui .sm-table-scroll { width:100%; overflow-x:auto; }
+body.management-ui .sm-sermon-table { width:100%; min-width:960px; table-layout:auto; }
+body.management-ui .sm-sermon-table thead th { padding:13px 16px; font-size:.7rem; font-weight:600; background:#f5f8fb; border-top:1px solid #e7edf4; white-space:nowrap; }
+body.management-ui .sm-sermon-table tbody td { padding:17px 16px; border-bottom:1px solid #edf1f5; font-size:.8rem; }
+body.management-ui .sm-sermon-table tbody tr:last-child td { border-bottom:0; }
+body.management-ui .sm-sermon-table .sm-row-number { text-align:center; color:#9aa7b7; font-size:.72rem; width:46px; }
+body.management-ui .sm-date-cell { color:#65748a; font-variant-numeric:tabular-nums; white-space:nowrap; }
+body.management-ui .sm-title-cell { min-width:190px; width:32%; }
+body.management-ui #sm_list .sm-title { display:block; padding:0; border:0; background:none; color:#27394d; font:inherit; font-size:.87rem; font-weight:650; line-height:1.6; text-align:left; word-break:keep-all; cursor:pointer; }
+body.management-ui #sm_list .sm-title:hover { color:#176b66; text-decoration:underline; text-underline-offset:4px; }
+body.management-ui .sm-series-list { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+body.management-ui .sm-series { padding:1px 6px; border:1px solid #e6ebf1; border-radius:4px; background:#f7f9fb; color:#8090a4; font-size:.65rem; }
+body.management-ui .sm-scripture-cell { color:#78879a; white-space:nowrap; font-size:.77rem!important; }
+body.management-ui .sm-status { display:inline-flex; align-items:center; gap:5px; padding:3px 7px; border-radius:5px; font-size:.68rem; font-weight:600; white-space:nowrap; }
+body.management-ui .sm-status i { width:5px; height:5px; border-radius:50%; background:currentColor; }
+body.management-ui .sm-status.is-live { background:#e8f4ee; color:#3b775d; }
+body.management-ui .sm-status.is-scheduled { background:#faf2df; color:#9a7b3b; }
+body.management-ui .sm-status.is-none { background:none; color:#a5afbc; font-weight:400; }
+body.management-ui .sm-data-note { display:block; font-size:.64rem; color:#b56c59; margin-top:4px; }
+body.management-ui .sm-row-actions { display:flex; gap:5px; flex-wrap:nowrap; }
+body.management-ui .sm-row-actions .btn { padding:6px 9px; font-size:.69rem; border-radius:6px; min-height:30px; white-space:nowrap; color:#5e6e83; background:#fff; border-color:#e1e7ef; }
+body.management-ui .sm-row-actions .sm-qt { color:#176b66; background:#eef7f4; border-color:#d9ebe4; }
+body.management-ui .sm-row-actions .sm-kakao { color:#647895; background:#f3f6fb; border-color:#e1e8f3; }
+body.management-ui .sm-row-actions .sm-del { color:#9a8b8c; border-color:transparent; }
+body.management-ui .sm-row-actions .sm-del:hover { background:#fcf0ed; color:#b45d4c; border-color:#f2dbd5; }
+body.management-ui .sm-pagination { display:flex; justify-content:center; gap:5px; flex-wrap:wrap; padding:18px 24px; border-top:1px solid #edf1f5; }
+@media(max-width:1100px) and (min-width:701px) {
+  body.management-ui .cal-day { padding:7px; }
+  body.management-ui .cal-item { padding:6px; }
+  body.management-ui .cal-service { font-size:.56rem; }
+  body.management-ui .cal-event-title { font-size:.7rem; }
+}
+@media(max-width:700px) {
+  body.management-ui .cal-toolbar { padding:18px 16px 12px; align-items:flex-start; flex-direction:column; gap:8px; }
+  body.management-ui .cal-legend { padding:0 16px 16px; gap:6px 12px; }
+  body.management-ui .cal-grid { grid-template-columns:1fr; gap:0!important; background:#fff; border-top:1px solid #e4eaf2; }
+  body.management-ui .cal-grid :is(.cal-wd,.cal-pad,.cal-empty) { display:none; }
+  body.management-ui .cal-day { min-height:0; padding:14px 16px; border-bottom:1px solid #e4eaf2; }
+  body.management-ui .cal-date-num { display:none; }
+  body.management-ui .cal-dw { display:inline; color:#526176; font-size:.82rem; font-weight:650; }
+  body.management-ui .cal-add { opacity:1; }
+  body.management-ui .cal-event-title { font-size:.85rem; -webkit-line-clamp:unset; }
+  body.management-ui .cal-service { font-size:.67rem; }
+  body.management-ui .cal-scripture { font-size:.75rem; }
+  body.management-ui .cal-status { font-size:.67rem; }
+  body.management-ui .cal-footer { padding:14px 16px; line-height:1.7; }
+  body.management-ui .sm-list-heading { padding:20px 16px 12px; }
+  body.management-ui .sm-list-filters { padding:0 16px 16px; }
+  body.management-ui .sm-list-count { flex-basis:100%; margin:3px 0 0; }
+  body.management-ui .sm-sermon-table { display:block; min-width:0; width:100%; }
+  body.management-ui .sm-sermon-table thead { display:none; }
+  body.management-ui .sm-sermon-table tbody { display:block; padding:0 16px 6px; }
+  body.management-ui .sm-sermon-table tbody tr { display:grid; grid-template-columns:1fr 1fr; gap:10px; border:1px solid #e4eaf2; border-radius:9px; padding:15px; margin-bottom:12px; }
+  body.management-ui .sm-sermon-table tbody td { display:block; padding:0; width:auto; min-width:0; border:0; }
+  body.management-ui .sm-sermon-table .sm-row-number { display:none; }
+  body.management-ui .sm-title-cell { order:0; grid-column:1/-1; }
+  body.management-ui .sm-service-cell { order:1; }
+  body.management-ui .sm-date-cell { order:2; text-align:right; font-size:.73rem; }
+  body.management-ui .sm-scripture-cell { order:3; grid-column:1/-1; }
+  body.management-ui .sm-status-cell { order:4; grid-column:1/-1; }
+  body.management-ui .sm-actions-cell { order:5; grid-column:1/-1; border-top:1px solid #edf1f5!important; padding-top:11px!important; }
+  body.management-ui .sm-row-actions { flex-wrap:wrap; }
+  body.management-ui #sm_list .sm-title { font-size:.94rem; }
+}
+
 }

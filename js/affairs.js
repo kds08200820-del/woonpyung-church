@@ -3497,8 +3497,11 @@ console.log('[affairs.js] v20261023th1');
     var worshipMode = !!(opts && opts.worship);
     var _now = new Date();   // 목록 기본 필터: 오늘 기준 연·월
     var WTPL = {}, smView = 'list', smRows = [], smKk = {}, calYM = null, smTableState = { svc: '전체', ser: '전체', year: String(_now.getFullYear()), month: pad2(_now.getMonth() + 1), week: '전체', sort: 'desc', perPage: 20, page: 1 };
-    var SERVICE_COLORS = { '주일 낮 예배': '#BE8152', '주일 밤 예배': '#C58F66', '수요기도회': '#2F6B4F', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#B5542A', '특별집회': '#A33A2A', '기타': '#877568' };
+    var SERVICE_COLORS = { '주일 낮 예배': '#5267a9', '주일 밤 예배': '#8066a5', '수요기도회': '#287b70', '금요기도회': '#a66180', '새벽기도': '#388698', '매일 QT': '#ad7830', '특별집회': '#b35f53', '기타': '#748197' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#877568'; }
+    function serviceChip(service) {
+      return '<span class="sm-service" style="--service-color:' + svcColor(service) + '"><i aria-hidden="true"></i>' + esc(service || '미분류') + '</span>';
+    }
     function orderCount(r) { try { var a = JSON.parse(r.worship_order || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; } }
     function hasOrder(r) { return orderCount(r) > 0; }
     api('GET', 'worship_templates?select=*').then(function (rows) { WTPL = {}; (rows || []).forEach(function (r) { WTPL[r.service] = r.items || []; }); }).catch(function () {});
@@ -3609,14 +3612,11 @@ console.log('[affairs.js] v20261023th1');
     function kkCalBadge(jobs) {
       return (jobs || []).map(function (j) {
         var d = new Date(j.scheduled_at), hm = isNaN(d) ? '' : pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-        var t, bg, fg;
-        if (j.status === 'sent') { t = '✓ 발송됨'; bg = '#e7f6ee'; fg = '#1e8e5a'; }
-        else if (j.status === 'error') { t = '⚠ 발송 실패'; bg = '#FBEDEA'; fg = '#A33A2A'; }
-        else { t = '⏰ ' + hm + ' 예약'; bg = '#F8F2EE'; fg = '#BC7F50'; }
-        return '<span title="카카오톡 ' + (j.status === 'sent' ? '발송 완료' : j.status === 'error' ? '발송 실패' : '예약 발송') +
-          (hm ? ' · ' + hm : '') + (j.heart_minutes ? ' · 댓글 하트 ' + j.heart_minutes + '분' : '') + '" ' +
-          'style="display:inline-block;white-space:nowrap;margin-top:2px;margin-right:3px;padding:0 5px;border-radius:4px;font-size:.66rem;font-weight:700;line-height:1.5;background:' + bg + ';color:' + fg + '">' +
-          esc(t) + (j.heart_minutes ? ' 💗' : '') + '</span>';
+        var state = j.status === 'sent' ? 'sent' : j.status === 'error' ? 'error' : 'scheduled';
+        var label = state === 'sent' ? '발송 완료' : state === 'error' ? '발송 실패' : (hm ? hm + ' 예약' : '발송 예약');
+        return '<span class="cal-status is-' + state + '" title="카카오톡 ' + label + (j.heart_minutes ? ' · 댓글 하트 ' + j.heart_minutes + '분' : '') + '">' +
+          '<span aria-hidden="true">' + (state === 'sent' ? '✓' : state === 'error' ? '!' : '◷') + '</span> ' + esc(label) +
+          (j.heart_minutes ? '<span class="cal-heart" aria-label="댓글 하트 설정">♡</span>' : '') + '</span>';
       }).join('');
     }
 
@@ -3758,15 +3758,15 @@ console.log('[affairs.js] v20261023th1');
       var todayS = today();
 
       // ── 컨트롤 바 ──
-      var svcSel = '<select id="sm_flt_svc" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer">' +
+      var svcSel = '<select id="sm_flt_svc" aria-label="예배 종류" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer">' +
         svcs.map(function (s) { return '<option value="' + esc(s) + '"' + (s === filtSvc ? ' selected' : '') + '>' + esc(s === '전체' ? '전체 예배' : s) + '</option>'; }).join('') + '</select>';
-      var yrSel = '<select id="sm_flt_yr" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer">' +
+      var yrSel = '<select id="sm_flt_yr" aria-label="연도" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer">' +
         yrs.map(function (y) { return '<option value="' + esc(y) + '"' + (y === filtYear ? ' selected' : '') + '>' + (y === '전체' ? '전체 연도' : y + '년') + '</option>'; }).join('') + '</select>';
       var moList = ['전체', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-      var moSel = '<select id="sm_flt_mo" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer">' +
+      var moSel = '<select id="sm_flt_mo" aria-label="월" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer">' +
         moList.map(function (mo) { return '<option value="' + mo + '"' + (mo === filtMonth ? ' selected' : '') + '>' + (mo === '전체' ? '전체 월' : parseInt(mo, 10) + '월') + '</option>'; }).join('') + '</select>';
       // 시리즈 필터 — 시리즈가 하나라도 등록돼 있을 때만 표시
-      var serSel = sers.length > 1 ? '<select id="sm_flt_ser" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer;max-width:170px">' +
+      var serSel = sers.length > 1 ? '<select id="sm_flt_ser" aria-label="시리즈" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer;max-width:170px">' +
         sers.map(function (s) { return '<option value="' + esc(s) + '"' + (s === filtSer ? ' selected' : '') + '>' + esc(s === '전체' ? '전체 시리즈' : '📚 ' + s) + '</option>'; }).join('') + '</select>' : '';
       var sortBtn = monthOn
         ? '<button id="sm_sort_btn" class="btn btn-line" style="padding:5px 13px;font-size:.84rem;color:#9F948B;cursor:default" title="월을 선택하면 1일→31일 순으로 정렬됩니다" disabled>▲ 1일→31일 순</button>'
@@ -3780,7 +3780,7 @@ console.log('[affairs.js] v20261023th1');
             return '<button class="sm-wk" data-wk="' + w + '" style="padding:5px 11px;border:1px solid ' + (on ? 'var(--accent,#3A281C)' : '#ECE6E1') + ';border-radius:4px;background:' + (on ? 'var(--accent,#3A281C)' : '#fff') + ';color:' + (on ? '#fff' : '#5D4D40') + ';cursor:pointer;font-size:.82rem;font-weight:' + (on ? '700' : '400') + '">' + (w === '전체' ? '전체 주' : w + '주') + '</button>';
           }).join('') + '</span>';
       }
-      var ppSel = '<select id="sm_per_page" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer">' +
+      var ppSel = '<select id="sm_per_page" aria-label="페이지당 표시 수" style="padding:5px 10px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;font-size:.84rem;cursor:pointer">' +
         [20, 30, 50].map(function (n) { return '<option value="' + n + '"' + (n === perPage ? ' selected' : '') + '>' + n + '개씩</option>'; }).join('') + '</select>';
       var info = '<span style="font-size:.83rem;color:#AFA49C">' + total + '편 / ' + pageRows.length + '편 표시</span>';
 
@@ -3804,38 +3804,33 @@ console.log('[affairs.js] v20261023th1');
 
       // ── 테이블 행 ──
       var tableRows = pageRows.map(function (r, i) {
-        var num = baseIdx + i + 1;
-        var c = svcColor(r.service);
-        var isQt = (r.service === '매일 QT');   // 게시는 매일 QT만 (새벽기도는 비게시 — 2026-07 정책)
-        var ds = fmtD(r.sermon_date);
+        var num = baseIdx + i + 1, isQt = r.service === '매일 QT', ds = fmtD(r.sermon_date);
         var hasUri = !!(r.qt_bible_text && r.qt_bible_text.trim());
-        var qtCell;
-        if (!isQt) { qtCell = '<span style="color:#D9D2CD">—</span>'; }
-        else if (ds && ds <= todayS) { qtCell = '<span class="fin-pill" style="background:#e6f4ea;color:#2F6B4F">🟢 게시중</span>' + (hasUri ? '' : '<div style="font-size:.7rem;color:#A33A2A;margin-top:2px">우리말 미입력</div>'); }
-        else { qtCell = '<span class="fin-pill" style="background:#fff4e0;color:#AA4F28">🕒 ' + esc(ds) + ' 게시예정</span>' + (hasUri ? '' : '<div style="font-size:.7rem;color:#A33A2A;margin-top:2px">우리말 미입력</div>'); }
-        return '<tr><td style="text-align:center;color:#AFA49C;font-size:.8rem">' + num + '</td>' +
-          '<td style="white-space:nowrap">' + esc(ds) + '</td>' +
-          '<td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td>' +
-          '<td style="min-width:11em;word-break:keep-all"><b class="sm-title" data-id="' + esc(r.id) + '"' + (r.summary ? ' title="' + esc(String(r.summary).slice(0, 200)) + '"' : '') + ' style="cursor:pointer;color:var(--accent,#3A281C);text-decoration:underline;text-decoration-color:#E0D7D0;text-underline-offset:3px">' + esc(r.title || '(제목없음)') + '</b>' +
-          (r.series ? '<div style="margin-top:2px">' + String(r.series).split(',').map(function (s) { s = s.trim(); return s ? '<span style="display:inline-block;font-size:.66rem;background:#F8F3F0;color:#7F5F47;border:1px solid #EEE4DD;border-radius:999px;padding:1px 7px;margin:1px 3px 0 0">📚 ' + esc(s) + '</span>' : ''; }).join('') + '</div>' : '') + '</td>' +
-          '<td style="white-space:nowrap">' + esc(r.scripture || '') + '</td>' +
-          '<td style="white-space:nowrap">' + qtCell + (isQt && window.VideoStudio ? window.VideoStudio.chipHtml(ds) : '') + '</td>' +
-          '<td style="white-space:nowrap">' +
-          (isQt ? '<button class="btn btn-line sm-qt" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem;background:#fff8e6;border-color:#DEB582">📲 QT</button> <button class="btn btn-line sm-kakao" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem;background:#fff8c4;border-color:#f4d641">💬 톡 복사</button>' : '') +
-          ' <button class="btn btn-line sm-edit" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">수정</button>' +
-          ' <button class="btn btn-line sm-del" data-id="' + esc(r.id) + '" style="padding:4px 9px;font-size:.78rem">삭제</button></td></tr>';
+        var qtCell = !isQt ? '<span class="sm-status is-none">해당 없음</span>' : ds && ds <= todayS
+          ? '<span class="sm-status is-live"><i aria-hidden="true"></i>게시 중</span>'
+          : '<span class="sm-status is-scheduled">◷ ' + esc(ds) + ' 게시 예정</span>';
+        if (isQt && !hasUri) qtCell += '<span class="sm-data-note">우리말 미입력</span>';
+        var series = String(r.series || '').split(',').map(function (name) { name = name.trim(); return name ? '<span class="sm-series">' + esc(name) + '</span>' : ''; }).join('');
+        return '<tr data-sermon-id="' + esc(r.id) + '"><td class="sm-row-number" data-label="순번">' + num + '</td>' +
+          '<td class="sm-date-cell" data-label="일자"><time datetime="' + esc(ds) + '">' + esc(ds) + '</time></td>' +
+          '<td class="sm-service-cell" data-label="예배">' + serviceChip(r.service) + '</td>' +
+          '<td class="sm-title-cell" data-label="제목"><button type="button" class="sm-title" data-id="' + esc(r.id) + '"' + (r.summary ? ' title="' + esc(String(r.summary).slice(0, 200)) + '"' : '') + '>' + esc(r.title || '(제목없음)') + '</button>' +
+          (series ? '<div class="sm-series-list">' + series + '</div>' : '') + '</td>' +
+          '<td class="sm-scripture-cell" data-label="본문">' + esc(r.scripture || '—') + '</td>' +
+          '<td class="sm-status-cell" data-label="게시 상태">' + qtCell + (isQt && window.VideoStudio ? window.VideoStudio.chipHtml(ds) : '') + '</td>' +
+          '<td class="sm-actions-cell" data-label="관리"><div class="sm-row-actions">' +
+          (isQt ? '<button type="button" class="btn btn-line sm-qt" data-id="' + esc(r.id) + '">QT 보기</button><button type="button" class="btn btn-line sm-kakao" data-id="' + esc(r.id) + '">톡 복사</button>' : '') +
+          '<button type="button" class="btn btn-line sm-edit" data-id="' + esc(r.id) + '">수정</button>' +
+          '<button type="button" class="btn btn-line sm-del" data-id="' + esc(r.id) + '">삭제</button></div></td></tr>';
       }).join('');
-
-      listBox.innerHTML =
-        '<div class="fin-card">' +
-        '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #F4F1EF">' +
-        '<b style="font-size:.95rem">설교</b>' + svcSel + serSel + yrSel + moSel + weekBtns + sortBtn + ppSel +
-        '<span style="margin-left:auto">' + info + '</span></div>' +
-        '<div style="overflow:auto;-webkit-overflow-scrolling:touch"><table class="fin-table" style="min-width:660px"><thead><tr>' +
-        '<th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>오늘의 말씀(QT)</th><th>관리</th>' +
+      listBox.innerHTML = '<section class="fin-card sm-list-card" aria-label="설교 목록">' +
+        '<div class="sm-list-heading"><h3>설교 목록 <span>' + total + '</span></h3><p>작성한 말씀을 한곳에서 관리하세요.</p></div>' +
+        '<div class="sm-list-filters"><span class="sm-filter-label">필터</span>' + svcSel + serSel + yrSel + moSel + weekBtns + sortBtn + ppSel +
+        '<span class="sm-list-count">' + info + '</span></div>' +
+        '<div class="sm-table-scroll"><table class="fin-table sm-sermon-table"><thead><tr>' +
+        '<th scope="col">순번</th><th scope="col">일자</th><th scope="col">예배</th><th scope="col">제목</th><th scope="col">본문</th><th scope="col">게시 상태</th><th scope="col">관리</th>' +
         '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
-        (pageBtns ? '<div style="display:flex;justify-content:center;gap:4px;margin-top:14px;flex-wrap:wrap">' + pageBtns + '</div>' : '') +
-        '</div>';
+        (pageBtns ? '<nav class="sm-pagination" aria-label="설교 목록 페이지">' + pageBtns + '</nav>' : '') + '</section>';
 
       wireRows(listBox);
       if (window.VideoStudio) window.VideoStudio.wireChips(listBox);
@@ -3861,18 +3856,17 @@ console.log('[affairs.js] v20261023th1');
       var y = calYM.y, m = calYM.m, startDow = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
       var todayStr = today();
       var byDate = {}; smRows.forEach(function (r) { var d = fmtD(r.sermon_date);   /* 예배매니저도 저장한 설교를 모두 보인다 — 예배 순서가 없는 것은 흐리게 (2026-09-27) */ if (d) (byDate[d] = byDate[d] || []).push(r); });
-      var legend = Object.keys(SERVICE_COLORS).map(function (s) { return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:.74rem;margin:0 9px 4px 0"><span style="width:11px;height:11px;border-radius:3px;background:' + SERVICE_COLORS[s] + '"></span>' + esc(s) + '</span>'; }).join('');
+      var legend = Object.keys(SERVICE_COLORS).map(function (name) { return serviceChip(name); }).join('');
       var wd = ['일', '월', '화', '수', '목', '금', '토'];
-      var html = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
-        '<div style="display:flex;align-items:center;gap:8px"><button class="btn btn-line" id="cal_prev" style="padding:3px 11px">‹</button><b style="font-size:1.05rem;min-width:110px;text-align:center">' + y + '년 ' + (m + 1) + '월</b><button class="btn btn-line" id="cal_next" style="padding:3px 11px">›</button><button class="btn btn-line" id="cal_today" style="padding:3px 10px;font-size:.8rem">오늘</button></div>' +
-        '<div style="display:flex;flex-wrap:wrap;align-items:center"><span style="font-size:.72rem;color:#AFA49C;margin-right:10px">날짜 클릭 → ' + (worshipMode ? '예배 순서 작성' : '설교 작성') + '</span>' + legend + '</div></div>' +
-        '<div class="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' +
-        wd.map(function (w, i) { return '<div class="cal-wd" style="text-align:center;font-size:.78rem;font-weight:700;color:' + (i === 0 ? '#A33A2A' : (i === 6 ? '#BE8152' : '#93867C')) + ';padding:4px 0">' + w + '</div>'; }).join('');
-      for (var b = 0; b < startDow; b++) html += '<div class="cal-pad"></div>';
-      /* 휴대폰(좁은 화면): 7칸 달력은 화면 밖으로 잘리므로 날짜별 목록으로 — 설교가 있는 날과 오늘만 (2026-09-27) */
-      if (!document.getElementById('calNarrowCss')) { var cs = document.createElement('style'); cs.id = 'calNarrowCss';
-        cs.textContent = '.cal-dw{display:none}@media (max-width:700px){.cal-grid{grid-template-columns:1fr!important;gap:6px!important}.cal-grid .cal-wd,.cal-grid .cal-pad,.cal-grid .cal-empty{display:none!important}.cal-grid .cal-day{min-height:0!important;padding:8px 10px!important}.cal-grid .cal-day>span:first-child{display:none}.cal-dw{display:inline;margin-left:0;font-size:.8rem;font-weight:700;color:#67584C}.cal-grid .cal-item{font-size:.86rem!important}}';
-        document.head.appendChild(cs); }
+      var html = '<section class="fin-card sm-calendar" aria-label="' + y + '년 ' + (m + 1) + '월 설교 일정">' +
+        '<div class="cal-toolbar"><div class="cal-heading"><span class="cal-eyebrow">' + (worshipMode ? '예배 일정' : '설교 캘린더') + '</span>' +
+        '<div class="cal-month-nav"><h3>' + y + '년 <strong>' + (m + 1) + '월</strong></h3><div class="cal-nav-buttons">' +
+        '<button type="button" class="btn btn-line" id="cal_prev" aria-label="이전 달">‹</button><button type="button" class="btn btn-line" id="cal_today">오늘</button><button type="button" class="btn btn-line" id="cal_next" aria-label="다음 달">›</button></div></div></div>' +
+        '<p class="cal-help">날짜를 누르면 ' + (worshipMode ? '예배 순서를' : '설교를') + ' 준비할 수 있어요.</p></div>' +
+        '<div class="cal-legend" aria-label="예배 종류">' + legend + '</div><div class="cal-grid">' +
+        wd.map(function (w, i) { return '<div class="cal-wd" data-dow="' + i + '">' + w + '</div>'; }).join('');
+      var previousDays = new Date(y, m, 0).getDate();
+      for (var b = 0; b < startDow; b++) html += '<div class="cal-pad" aria-hidden="true"><span>' + (previousDays - startDow + b + 1) + '</span></div>';
       for (var dd = 1; dd <= days; dd++) {
         var ds = y + '-' + pad2(m + 1) + '-' + pad2(dd), dow = new Date(y, m, dd).getDay(), isToday = (ds === todayStr);
         var dayRows = byDate[ds] || [];
@@ -3882,23 +3876,27 @@ console.log('[affairs.js] v20261023th1');
           kkAt = 0;
           dayRows.forEach(function (r, i) { if (kkAt === 0 && r.service === '매일 QT') kkAt = i; });
         }
-        var items = dayRows.map(function (r, ri) { var c = svcColor(r.service); return '<div class="cal-item" data-id="' + esc(r.id) + '" title="' + esc((r.service || '') + ' · ' + (r.title || '') + (r.scripture ? ' · ' + r.scripture : '') + (worshipMode && !hasOrder(r) ? ' · 예배 순서 아직 없음 (눌러서 작성)' : '')) + '" style="' + (worshipMode && !hasOrder(r) ? 'opacity:.5;' : '') + 'background:' + c + '1a;border-left:3px solid ' + c + ';border-radius:4px;padding:2px 5px;margin-top:3px;cursor:pointer;font-size:.72rem;line-height:1.25"><b style="color:' + c + '">' + esc(r.title || '(제목없음)') + '</b>' + (r.scripture ? '<div style="color:#93867C">' + esc(r.scripture) + '</div>' : '') + (ri === kkAt ? '<div>' + kkHtml + '</div>' : '') + '</div>'; }).join('');
-        if (kkHtml && kkAt < 0) items = '<div>' + kkHtml + '</div>' + items;
-        var dnumColor = isToday ? '#fff' : (dow === 0 ? '#A33A2A' : (dow === 6 ? '#BE8152' : '#67584C'));
-        var dnum = isToday
-          ? '<span style="display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:50%;background:#2f5d50;color:#fff;font-size:.74rem;font-weight:700">' + dd + '</span>'
-          : '<span style="font-size:.78rem;color:' + dnumColor + '">' + dd + '</span>';
-        dnum += '<span class="cal-dw">' + (m + 1) + '월 ' + dd + '일 (' + wd[dow] + ')</span>';
-        html += '<div class="cal-day' + (!dayRows.length && !isToday && !kkHtml ? ' cal-empty' : '') + '" data-date="' + ds + '" title="' + ds + ' — 이 날짜로 설교 작성" style="min-height:86px;border:1px solid ' + (isToday ? '#2f5d50' : '#F4F1EF') + ';border-radius:4px;padding:4px 5px;background:' + (isToday ? '#f1f7f5' : '#fff') + ';cursor:pointer;transition:background .12s">' + dnum + items + '</div>';
+        var items = dayRows.map(function (r, ri) {
+          var waiting = worshipMode && !hasOrder(r);
+          return '<button type="button" class="cal-item' + (waiting ? ' is-draft' : '') + '" data-id="' + esc(r.id) + '" style="--service-color:' + svcColor(r.service) + '" title="' +
+            esc((r.service || '') + ' · ' + (r.title || '') + (r.scripture ? ' · ' + r.scripture : '') + (waiting ? ' · 예배 순서 아직 없음' : '')) + '">' +
+            '<span class="cal-service">' + esc(r.service || '미분류') + '</span><strong class="cal-event-title">' + esc(r.title || '(제목없음)') + '</strong>' +
+            (r.scripture ? '<span class="cal-scripture">' + esc(r.scripture) + '</span>' : '') +
+            (ri === kkAt ? '<span class="cal-status-row">' + kkHtml + '</span>' : '') + '</button>';
+        }).join('');
+        if (kkHtml && kkAt < 0) items = '<div class="cal-status-row">' + kkHtml + '</div>' + items;
+        html += '<div class="cal-day' + (isToday ? ' is-today' : '') + (!dayRows.length && !isToday && !kkHtml ? ' cal-empty' : '') + '" data-date="' + ds + '" data-dow="' + dow + '">' +
+          '<button type="button" class="cal-date-btn" aria-label="' + ds + ' ' + (worshipMode ? '예배 순서' : '설교') + ' 작성"><span class="cal-date-num">' + dd + '</span><span class="cal-dw">' + (m + 1) + '월 ' + dd + '일 (' + wd[dow] + ')</span>' +
+          (isToday ? '<span class="cal-today-tag">오늘</span>' : '') + '<span class="cal-add" aria-hidden="true">＋</span></button><div class="cal-events">' + items + '</div></div>';
       }
-      html += '</div><div style="font-size:.72rem;color:#AFA49C;margin-top:8px">' + (worshipMode ? '＋ 빈 날짜를 클릭하면 그 날짜로 새 예배 순서를, 예배 칸을 클릭하면 해당 예배를 엽니다.' : '＋ 빈 날짜를 클릭하면 그 날짜로 새 설교를, 설교 칸을 클릭하면 해당 설교를 엽니다.') + '</div></div>';
+      var trailing = (7 - (startDow + days) % 7) % 7;
+      for (var n = 1; n <= trailing; n++) html += '<div class="cal-pad" aria-hidden="true"><span>' + n + '</span></div>';
+      html += '</div><div class="cal-footer"><span class="cal-footer-dot" aria-hidden="true"></span> 날짜는 새 일정 작성, 제목은 작성된 ' + (worshipMode ? '예배 순서' : '설교') + ' 열기</div></section>';
       calBox.innerHTML = html;
       panel.querySelector('#cal_prev').onclick = function () { var nm = m - 1, ny = y; if (nm < 0) { nm = 11; ny--; } calYM = { y: ny, m: nm }; renderCalendar(); };
       panel.querySelector('#cal_next').onclick = function () { var nm = m + 1, ny = y; if (nm > 11) { nm = 0; ny++; } calYM = { y: ny, m: nm }; renderCalendar(); };
       panel.querySelector('#cal_today').onclick = function () { var t = new Date(); calYM = { y: t.getFullYear(), m: t.getMonth() }; renderCalendar(); };
       Array.prototype.forEach.call(calBox.querySelectorAll('.cal-day'), function (cell) {
-        cell.onmouseenter = function () { cell.style.background = '#FAF6F3'; };
-        cell.onmouseleave = function () { cell.style.background = (cell.dataset.date === todayStr) ? '#f1f7f5' : '#fff'; };
         cell.onclick = function () {
           var ds = cell.dataset.date;
           if (worshipMode) {
