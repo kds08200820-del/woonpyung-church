@@ -6345,7 +6345,9 @@ console.log('[affairs.js] v20261023th1');
             seriesLine: seriesLineInfo(),                               // 시리즈 · N번째 설교 (제목 왼쪽 위)
             hymnLine: hymnMetaLabel(saved.hymns, saved.service)         // 새벽·수요·금요 기도회: 제목 아래 '찬송가 N장'
           };
-          try { sessionStorage.setItem('wp_sermon_print', JSON.stringify(payload)); } catch (e) { }
+          // 새 창은 열리는 순간의 sessionStorage 만 복사해 가므로(그 뒤에 넣은 값은 못 봄) localStorage 와 opener 변수로 넘긴다
+          window.__WP_SERMON_PRINT__ = payload;
+          try { localStorage.setItem('wp_sermon_print', JSON.stringify(payload)); } catch (e) { }
           if (win) win.location.href = 'sermon-print.html'; else window.open('sermon-print.html', '_blank');
           msg.style.color = 'green';
           msg.textContent = '저장했습니다. 인쇄 창에서 [인쇄 · PDF로 저장] 또는 [Google Drive에 저장]을 누르세요.';

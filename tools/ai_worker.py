@@ -58,6 +58,7 @@ import subprocess
 import tempfile
 
 import claude_auth          # 워커 전용 장기 토큰 + 공용 로그인 자동 전환 (tools/claude_auth.py)
+import urllib.parse
 import urllib.request
 import urllib.error
 from datetime import datetime, date, timedelta
@@ -142,52 +143,58 @@ TIMEOUT = {             # 종류별 최대 생성 시간(초)
 # ── 설교 PDF → Google Drive (kind = sermon_pdf) ───────────────
 #  설교 매니저 '내보내기' → sermon-print.html → [Google Drive 에 저장] 이 넣는 작업.
 #  payload = { html, date, title, service } — html 은 편집 화면과 똑같이 쪽을 그리는 독립 HTML 한 장.
-#  Edge(또는 Chrome)를 창 없이 띄워 PDF 로 찍고, Apps Script(saveSermonPdf)가 '{연도}설교/{예배명}/' 폴더에 넣는다.
+#  Edge(또는 Chrome)를 창 없이 띄워 PDF 로 찍고, 교회 PC 의 Google Drive 데스크톱 폴더(F:\내 드라이브)에 바로 넣는다.
+#  그 폴더가 없을 때만 Apps Script(saveSermonPdf)가 '{연도}설교/{예배명}/' 폴더에 넣는다.
 #  (예전 Google 문서 변환 방식은 글꼴·쪽 나눔이 화면과 달라 이 방식으로 바꿈 — 2026-10-13)
 APPS_SCRIPT_URL = _env("WP_APPS_SCRIPT_URL",
                        "https://script.google.com/macros/s/AKfycbxdwH46NrPMVvkQHBKbyyfvO2UiuWTB8HarNx9UmcxGJsJR4xn6Ey166SWDMTPbVoQ/exec")
 WORKER_SECRET = _env("WP_WORKER_SECRET")
 
 
-def find_browser():
-    """PDF 를 찍을 Edge(없으면 Chrome) 실행 파일. EDGE_BIN 환경변수가 있으면 그것부터."""
+def find_browsers():
+    """PDF 를 찍을 브라우저 실행 파일들(차례대로 시도). EDGE_BIN 환경변수가 있으면 그것부터.
+    교회 PC 의 Edge 는 창 없이(--headless) 띄우면 PDF 를 만들지 않고 바로 끝나서(2026-10-31 확인) Chrome 도 둔다."""
     cands = [_env("EDGE_BIN")]
-    for base in (os.environ.get("ProgramFiles(x86)"), os.environ.get("ProgramFiles"), os.environ.get("LocalAppData")):
+    for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)"), os.environ.get("LocalAppData")):
         if base:
-            cands.append(os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"))
             cands.append(os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"))
-    cands += [shutil.which("msedge"), shutil.which("chrome"), shutil.which("google-chrome"), shutil.which("chromium")]
+            cands.append(os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"))
+    cands += [shutil.which("chrome"), shutil.which("google-chrome"), shutil.which("chromium"), shutil.which("msedge")]
+    out = []
     for c in cands:
-        if c and os.path.exists(c):
-            return c
-    return None
+        if c and os.path.exists(c) and c not in out:
+            out.append(c)
+    return out
 
 
 def render_sermon_pdf(html):
     """독립 HTML → PDF 바이트. 쪽 크기는 HTML 안의 @page 규칙(용지 설정)을 그대로 따른다."""
-    browser = find_browser()
-    if not browser:
-        raise RuntimeError("Edge(또는 Chrome)를 찾지 못했습니다 — 환경변수 EDGE_BIN 에 msedge.exe 경로를 넣어 주세요.")
+    browsers = find_browsers()
+    if not browsers:
+        raise RuntimeError("Chrome(또는 Edge)를 찾지 못했습니다 — 환경변수 EDGE_BIN 에 chrome.exe 경로를 넣어 주세요.")
     work = tempfile.mkdtemp(prefix="wp-sermon-pdf-")
     try:
         html_path = os.path.join(work, "sermon.html")
         pdf_path = os.path.join(work, "sermon.pdf")
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html)
-        args = [
-            browser, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
-            "--disable-extensions", "--hide-scrollbars", "--run-all-compositor-stages-before-draw",
-            "--virtual-time-budget=30000",            # 글꼴 내려받기·쪽 나눔(비동기)이 끝날 때까지 기다린다
-            "--no-pdf-header-footer", "--print-to-pdf-no-header",
-            f"--print-to-pdf={pdf_path}", f"--user-data-dir={os.path.join(work, 'profile')}",
-            "file:///" + html_path.replace("\\", "/"),
-        ]
-        r = subprocess.run(args, capture_output=True, timeout=180)
-        if not os.path.exists(pdf_path) or os.path.getsize(pdf_path) < 500:
-            tail = (r.stderr or b"")[-400:].decode("utf-8", "replace")
-            raise RuntimeError(f"PDF 가 만들어지지 않았습니다 (브라우저 종료 코드 {r.returncode}) {tail}")
-        with open(pdf_path, "rb") as f:
-            return f.read()
+        fails = []
+        for browser in browsers:
+            args = [
+                browser, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+                "--disable-extensions", "--hide-scrollbars", "--run-all-compositor-stages-before-draw",
+                "--virtual-time-budget=30000",            # 글꼴 내려받기·쪽 나눔(비동기)이 끝날 때까지 기다린다
+                "--no-pdf-header-footer", "--print-to-pdf-no-header",
+                f"--print-to-pdf={pdf_path}", f"--user-data-dir={os.path.join(work, 'profile-' + str(len(fails)))}",
+                "file:///" + html_path.replace("\\", "/"),
+            ]
+            r = subprocess.run(args, capture_output=True, timeout=180)
+            if os.path.exists(pdf_path) and os.path.getsize(pdf_path) >= 500:
+                with open(pdf_path, "rb") as f:
+                    return f.read()
+            tail = (r.stderr or b"")[-300:].decode("utf-8", "replace")
+            fails.append(f"{os.path.basename(browser)} 종료 코드 {r.returncode} {tail}".strip())
+        raise RuntimeError("PDF 가 만들어지지 않았습니다 — " + " / ".join(fails))
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -210,6 +217,42 @@ def save_pdf_to_drive(pdf, date, title, service):
     return res
 
 
+def _safe_name(s, fallback):
+    s = re.sub(r'[\\/:*?"<>|]', " ", str(s or ""))
+    return re.sub(r"\s+", " ", s).strip() or fallback
+
+
+def find_local_drive():
+    """교회 PC 의 'Google Drive 데스크톱' 내 드라이브 폴더(kds08200820@gmail.com, 지금은 F:\\내 드라이브).
+    WP_DRIVE_DIR 환경변수가 있으면 그것부터. 없으면 None → Apps Script 로 올린다."""
+    cands = [_env("WP_DRIVE_DIR")]
+    for letter in "DEFGHIJKLMNOPQRSTUVWXYZ":
+        for sub in ("내 드라이브", "My Drive"):
+            cands.append(f"{letter}:\\{sub}")
+    for c in cands:
+        if c and os.path.isdir(c):
+            return c
+    return None
+
+
+def save_pdf_to_local_drive(drive_dir, pdf, date, title, service):
+    """Apps Script 와 같은 자리 '{연도}설교/{예배명}/{일자 제목}.pdf' 에 바로 쓴다 — Drive 데스크톱이 올려 준다.
+    같은 이름 파일은 덮어쓴다(다시 내보내도 쌓이지 않게)."""
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date or ""):
+        raise RuntimeError("일자 형식이 올바르지 않습니다(YYYY-MM-DD).")
+    root_name = date[:4] + "설교"
+    svc_name = _safe_name(service, "기타")
+    file_name = f"{date} {_safe_name(title, '(제목없음)')}.pdf"
+    folder = os.path.join(drive_dir, root_name, svc_name)
+    os.makedirs(folder, exist_ok=True)
+    tmp = os.path.join(folder, "." + file_name + ".tmp")
+    with open(tmp, "wb") as f:
+        f.write(pdf)
+    os.replace(tmp, os.path.join(folder, file_name))
+    url = "https://drive.google.com/drive/search?q=" + urllib.parse.quote(file_name[:-4])
+    return {"ok": True, "url": url, "folder": root_name + "/" + svc_name, "fileName": file_name}
+
+
 def process_sermon_pdf(payload):
     html = payload.get("html") or ""
     if "<html" not in html.lower():
@@ -217,7 +260,12 @@ def process_sermon_pdf(payload):
     started = time.time()
     pdf = render_sermon_pdf(html)
     print(f"   · PDF 생성 {len(pdf) // 1024}KB ({time.time() - started:.1f}초)")
-    res = save_pdf_to_drive(pdf, str(payload.get("date") or "")[:10], payload.get("title") or "", payload.get("service") or "")
+    date_s, title, service = str(payload.get("date") or "")[:10], payload.get("title") or "", payload.get("service") or ""
+    drive_dir = find_local_drive()
+    if drive_dir:
+        res = save_pdf_to_local_drive(drive_dir, pdf, date_s, title, service)
+    else:
+        res = save_pdf_to_drive(pdf, date_s, title, service)
     print(f"   · Drive 저장: {res.get('folder')}/{res.get('fileName')}")
     return json.dumps({"url": res.get("url"), "folder": res.get("folder"), "fileName": res.get("fileName")}, ensure_ascii=False)
 

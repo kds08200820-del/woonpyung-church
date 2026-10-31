@@ -11,7 +11,13 @@
   var SD = window.SermonDoc;
   var mount = document.getElementById('pages'), st = document.getElementById('st');
   var payload = window.__SERMON_PRINT__ || null;
-  if (!payload) { try { payload = JSON.parse(sessionStorage.getItem('wp_sermon_print') || 'null'); } catch (e) { payload = null; } }
+  // 자료 받기: ① localStorage(설교 매니저가 막 넣은 것, 읽고 지운다) ② 여는 창의 변수 ③ 이 탭의 sessionStorage(새로 고침 대비)
+  if (!payload) {
+    try { payload = JSON.parse(localStorage.getItem('wp_sermon_print') || 'null'); localStorage.removeItem('wp_sermon_print'); } catch (e) { payload = null; }
+    if (!payload) { try { payload = window.opener && window.opener.__WP_SERMON_PRINT__ || null; } catch (e) { payload = null; } }
+    if (payload) { try { sessionStorage.setItem('wp_sermon_print', JSON.stringify(payload)); } catch (e) { } }
+    else { try { payload = JSON.parse(sessionStorage.getItem('wp_sermon_print') || 'null'); } catch (e) { payload = null; } }
+  }
   var standalone = !!window.__SERMON_PRINT__;   // 워커가 여는 파일 — 도구 막대 없이 쪽만
 
   function msg(t, bad) { if (st) { st.textContent = t; st.style.color = bad ? '#A33A2A' : ''; } }
