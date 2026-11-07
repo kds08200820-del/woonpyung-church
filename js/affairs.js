@@ -4603,7 +4603,7 @@ console.log('[affairs.js] v20261023th1');
         '<div id="bd_sun"></div>' +
         '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:var(--accent,#3A281C);margin-bottom:3px">순서 더하기 <span style="font-weight:600;font-size:.62rem;color:var(--accent,#3A281C);border:1px solid #3A281C;border-radius:4px;padding:0 4px">모두</span></div><div id="bd_sun_add_all" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
         '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:#6E523C;margin-bottom:3px">목회자 기도 <span style="font-weight:600;font-size:.62rem;color:#6E523C;border:1px solid #6E523C;border-radius:4px;padding:0 4px">목회자</span></div><div id="bd_sun_add_p" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
-        '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:#6E523C;margin-bottom:3px">성찬·학습·세례 <span style="font-weight:600;font-size:.62rem;color:#6E523C;border:1px solid #6E523C;border-radius:4px;padding:0 4px">목회자</span></div><button type="button" class="btn btn-line" id="bd_sun_comm" title="말씀 뒤에 성찬식·성찬식 설교·성찬식 진행 블록을 넣습니다" style="padding:3px 8px;font-size:.72rem;color:#6E523C;background:#F4EFEB;border-color:#CFBDB0">＋ 성찬식 넣기</button> <button type="button" class="btn btn-line" id="bd_sun_hak" style="padding:3px 8px;font-size:.72rem;color:#6E523C;background:#F4EFEB;border-color:#CFBDB0">＋ 학습 문답</button> <button type="button" class="btn btn-line" id="bd_sun_se" style="padding:3px 8px;font-size:.72rem;color:#6E523C;background:#F4EFEB;border-color:#CFBDB0">＋ 세례 문답</button><div style="font-size:.68rem;color:#93867C;margin-top:3px;line-height:1.5">성찬식 설교는 설교 관리에 함께 생기고, 진행 순서·문답은 저장해 두었다가 다음에 그대로 불러옵니다.</div></div>' +
+        '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:#6E523C;margin-bottom:3px">성찬·학습·세례·입교 <span style="font-weight:600;font-size:.62rem;color:#6E523C;border:1px solid #6E523C;border-radius:4px;padding:0 4px">목회자</span></div><button type="button" class="btn btn-line" id="bd_sun_comm" title="말씀 뒤에 성찬식·성찬식 설교·성찬식 진행 블록을 넣습니다" style="padding:3px 8px;font-size:.72rem;color:#6E523C;background:#F4EFEB;border-color:#CFBDB0">＋ 성찬식 넣기</button> <button type="button" class="btn btn-line" id="bd_sun_hak" style="padding:3px 8px;font-size:.72rem;color:#6E523C;background:#F4EFEB;border-color:#CFBDB0">＋ 학습 문답</button> <button type="button" class="btn btn-line" id="bd_sun_se" style="padding:3px 8px;font-size:.72rem;color:#6E523C;background:#F4EFEB;border-color:#CFBDB0">＋ 세례 문답</button> <button type="button" class="btn btn-line" id="bd_sun_ip" style="padding:3px 8px;font-size:.72rem;color:#6E523C;background:#F4EFEB;border-color:#CFBDB0">＋ 입교 문답</button><div style="font-size:.68rem;color:#93867C;margin-top:3px;line-height:1.5">성찬식 설교는 설교 관리에 함께 생기고, 진행 순서·문답은 저장해 두었다가 다음에 그대로 불러옵니다.</div></div>' +
         '<div class="sun-addrow" id="bd_sun_drop_a" style="margin-top:7px;border:1px dashed transparent;border-radius:7px;padding:2px"><div style="font-size:.7rem;font-weight:700;color:#9C593C;margin-bottom:3px">반주자 악보 <span style="font-weight:600;font-size:.62rem;color:#9C593C;border:1px solid #9C593C;border-radius:4px;padding:0 4px">반주자</span> <span style="font-weight:400;color:#AFA49C">악보 파일을 여기나 블록 위로 끌어다 놓아도 됩니다</span></div><div id="bd_sun_add_a" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
         '</div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
@@ -5202,11 +5202,12 @@ console.log('[affairs.js] v20261023th1');
       //    성찬식 설교 블록 = 설교 기록(service '성찬식 설교')과 sermon_id 로 이어진다. 같은 편집기로 쓰고, 설교 관리·캘린더에 그대로 나온다.
       //    성찬식 진행 블록 = 분병·분잔 진행 글. 거의 고정이라 worship_templates('성찬식 진행 양식')에 저장해 두고 다음에 불러온다.
       //    두 블록 모두 목회자 전용 · 고정 안 함(성찬식 없는 주일로 넘어가지 않게)
-      //    학습 문답·세례 문답 블록도 같은 방식 — 양식은 대상자 이름 없이 두고, 그 주일 이름은 블록에 적는다
+      //    학습·세례·입교 문답 블록도 같은 방식 — 양식은 대상자 이름 없이 두고, 그 주일 이름은 블록에 적는다
       var COM_PROC = {
         '성찬식진행': { tpl: '성찬식 진행 양식', empty: '누르면 분병·분잔 진행 순서를 적습니다', ph: '예)\n성찬 제정의 말씀 (고린도전서 11:23-26)\n성찬 기도\n분병 — 떡을 나누며 드리는 말씀\n분잔 — 잔을 나누며 드리는 말씀\n감사 기도' },
         '학습문답': { tpl: '학습 문답 양식', empty: '누르면 학습 문답 순서를 엽니다', ph: '학습 문답 순서를 적으세요.' },
-        '세례문답': { tpl: '세례 문답 양식', empty: '누르면 세례 문답 순서를 엽니다', ph: '세례 문답 순서를 적으세요.' }
+        '세례문답': { tpl: '세례 문답 양식', empty: '누르면 세례 문답 순서를 엽니다', ph: '세례 문답 순서를 적으세요.' },
+        '입교문답': { tpl: '입교 문답 양식', empty: '누르면 입교 문답 순서를 엽니다', ph: '입교 문답 순서를 적으세요.' }
       };
       function comTplLoad(key) {
         return api('GET', 'worship_templates?select=items&service=eq.' + encodeURIComponent(key) + '&limit=1').then(function (rows) {
@@ -5259,11 +5260,12 @@ console.log('[affairs.js] v20261023th1');
         if (ser) comFind(ser).then(function (r) { if (r) { ser.sermon_id = r.id; comSync(ser, r); } }).catch(function () { });
         if (proc) comTplLoad(COM_PROC['성찬식진행'].tpl).then(function (t) { if (t && !proc.body) { proc.body = t; renderOrder(); sunDirty(); } }).catch(function () { });
       }
-      function comAddRite(label) {   // 학습 문답·세례 문답 — 이미 있으면 그 블록을 연다. 성찬을 받기 전에 하는 예식이라 성찬식 앞(없으면 말씀 뒤), 학습 → 세례 차례로
+      function comAddRite(label) {   // 학습·세례·입교 문답 — 이미 있으면 그 블록을 연다. 성찬을 받기 전에 하는 예식이라 성찬식 앞(없으면 말씀 뒤), 학습 → 세례 → 입교 차례로
         if (sunNeedSql()) return;
         var k = ordKey(label), at = -1, i;
         for (i = 0; i < order.length; i++) if (ordKey(order[i].label) === k) { sunEdit(i); return; }
-        order.forEach(function (o, q) { var ok = ordKey(o.label); if (k === '학습문답' && ok === '세례문답') { if (at < 0) at = q; } else if (k === '세례문답' && ok === '학습문답') at = q + 1; });
+        var RITES = ['학습문답', '세례문답', '입교문답'], rk = RITES.indexOf(k);
+        order.forEach(function (o, q) { var r = RITES.indexOf(ordKey(o.label)); if (r < 0) return; if (r < rk) at = q + 1; else if (at < 0) at = q; });
         if (at < 0) { at = sunIdx('성찬식'); if (at < 0) { var w = sunIdx('말씀', true); at = w >= 0 ? sunAfter(w) : order.length; } }
         var it = { label: label, detail: '', url: '', aud: 'pastor' };
         order.splice(at, 0, it); renderOrder(); sunDirty();
@@ -5599,6 +5601,7 @@ console.log('[affairs.js] v20261023th1');
         ov.querySelector('#bd_sun_comm').onclick = comAdd;
         ov.querySelector('#bd_sun_hak').onclick = function () { comAddRite('학습 문답'); };
         ov.querySelector('#bd_sun_se').onclick = function () { comAddRite('세례 문답'); };
+        ov.querySelector('#bd_sun_ip').onclick = function () { comAddRite('입교 문답'); };
         ov.querySelector('#bd_sun_prev').onclick = function () {
           var btn0 = this; btn0.disabled = true;
           sunPrev().then(function (p) {
@@ -8556,7 +8559,7 @@ console.log('[affairs.js] v20261023th1');
     return pvOrder(r).map(function (it) {
       var label = String(it.label || '항목').trim(), L = label.replace(/\s+/g, ''), d = String(it.detail || ''), x = { it: it, label: label, kind: 'text' }, m;
       if (L === '성찬식설교') x.kind = 'csermon';
-      else if (/^(성찬식진행|학습문답|세례문답)$/.test(L) && String(it.body || '').trim()) x.kind = 'cproc';
+      else if (/^(성찬식진행|학습문답|세례문답|입교문답)$/.test(L) && String(it.body || '').trim()) x.kind = 'cproc';
       else if (/^(말씀강해|말씀\(설교\)|말씀|설교)$/.test(L)) x.kind = 'sermon';
       else if (/교독/.test(L)) { x.kind = 'gyodok'; m = d.match(/(\d{1,3})/) || String(r.gyodok || '').match(/(\d{1,3})/); x.g = m ? gyodokByNo(m[1]) : null; }
       else if (/신앙고백|사도신경/.test(L) || /사도신경/.test(d)) x.kind = 'creed';
@@ -9113,7 +9116,7 @@ console.log('[affairs.js] v20261023th1');
   function audOf(it) { return it && (it.aud === 'accomp' || it.aud === 'pastor') ? it.aud : 'all'; }
   /* 목회 기도·축도 — 주보 순서의 칸이지만 화면에서는 목회자 블록(2026-10-10). 주보에는 이름·내용(맡은 분)만 넣는다 */
   function ordPastorKey(l) { return /^(목회기도|축도)$/.test(ordKey(l)); }
-  function ordCommunion(l) { return /^(성찬식|성찬식설교|성찬식진행|학습문답|세례문답)$/.test(ordKey(l)); }   /* 성찬·학습·세례 — 그 주일에만 있는 예식 블록 */
+  function ordCommunion(l) { return /^(성찬식|성찬식설교|성찬식진행|학습문답|세례문답|입교문답)$/.test(ordKey(l)); }   /* 성찬·학습·세례·입교 — 그 주일에만 있는 예식 블록 */
   function ordPastorSlot(it) { return audOf(it) === 'pastor' && ordPastorKey(it.label); }
   /* 순서 이름을 같은 자리로 알아보는 열쇠 — 주보('말씀강해')와 설교 매니저('말씀(설교)')처럼 이름이 조금 달라도 같게 */
   function ordKey(l) {
