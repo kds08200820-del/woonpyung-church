@@ -668,6 +668,7 @@
     if (/^송영/.test(l)) return '송영';
     if (/^목회기도/.test(l)) return '목회기도';
     if (/^축도/.test(l)) return '축도';
+    if (/^성찬(식|예식)$/.test(l)) return '성찬식';
     if (/^(헌금|봉헌)/.test(l)) return '헌금';
     if (/소식|광고/.test(l)) return '소식';
     if (/기도/.test(l)) return '기도';
@@ -677,7 +678,7 @@
   function privSlides(it) {   /* 반주자·목회자 블록 하나 → 슬라이드 */
     var head = it.label || (it.aud === 'pastor' ? '기도' : '반주 악보'), out = [];
     if (it.aud === 'pastor') {
-      var cs = /^성찬식\s*설교/.test(head), cp = /^성찬식\s*진행/.test(head);   /* 성찬식 설교 원고는 일반 설교처럼 발표자 모드에서 — 여기는 제목·본문만 */
+      var cs = /^성찬식\s*설교/.test(head), cp = /^(성찬식\s*진행|학습\s*문답|세례\s*문답)/.test(head);   /* 성찬식 설교 원고는 일반 설교처럼 발표자 모드에서 — 여기는 제목·본문만 */
       return [{ type: 'prayer', head: head, sub: it.detail || '', body: it.body || '', role: 'pastor', none: cs ? '원고는 설교 매니저의 발표자 모드에서 봅니다.' : cp ? '진행 순서가 아직 없습니다. 설교 매니저의 주일 예배 순서에서 적을 수 있습니다.' : '' }];
     }
     var its = it.items && it.items.length ? it.items : (it.hno ? [{ b: 'h', n: +it.hno }] : []);
