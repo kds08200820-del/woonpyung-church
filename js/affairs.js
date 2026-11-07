@@ -188,7 +188,7 @@ console.log('[affairs.js] v20261023th1');
       table: 'sermons', name: '설교', dateCol: 'sermon_date',
       fields: [
         { k: 'sermon_date', label: '일자', type: 'date' },
-        { k: 'service', label: '예배', type: 'select', opts: ['주일 낮 예배', '주일 밤 예배', '수요기도회', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'] },
+        { k: 'service', label: '예배', type: 'select', opts: ['주일 낮 예배', '주일 밤 예배', '수요기도회', '금요기도회', '새벽기도', '매일 QT', '성찬식 설교', '특별집회', '기타'] },
         { k: 'title', label: '제목', type: 'text' },
         { k: 'scripture', label: '본문(성경)', type: 'text', ph: '예: 요한복음 3:16' },
         { k: 'preacher', label: '설교자', type: 'text', ph: '예: 김동석 목사' },
@@ -1128,7 +1128,8 @@ console.log('[affairs.js] v20261023th1');
     drawList('');
   }
   function selectedGyodok() { try { return JSON.parse(localStorage.getItem('wpc_sel_gyodok') || 'null'); } catch (e) { return null; } }
-  var SVC_OPTS = ['주일 낮 예배', '주일 밤 예배', '수요기도회', '금요기도회', '새벽기도', '매일 QT', '특별집회', '기타'];
+  var SVC_OPTS = ['주일 낮 예배', '주일 밤 예배', '수요기도회', '금요기도회', '새벽기도', '매일 QT', '성찬식 설교', '특별집회', '기타'];
+  var COMMUNION_SVC = '성찬식 설교';   // 주일 낮 예배의 '성찬식 설교' 블록과 이어지는 설교 기록 (2026-11-07)
 
   // 고정 전례문(설교 큐시트 자동 펼침용)
   var APOSTLES_CREED = ['전능하사 천지를 만드신 하나님 아버지를 내가 믿사오며,', '그 외아들 우리 주 예수 그리스도를 믿사오니,', '이는 성령으로 잉태하사 동정녀 마리아에게 나시고,', '본디오 빌라도에게 고난을 받으사, 십자가에 못 박혀 죽으시고, 장사한 지 사흘 만에 죽은 자 가운데서 다시 살아나시며,', '하늘에 오르사, 전능하신 하나님 우편에 앉아 계시다가,', '저리로서 산 자와 죽은 자를 심판하러 오시리라.', '성령을 믿사오며, 거룩한 공회와, 성도가 서로 교통하는 것과,', '죄를 사하여 주시는 것과, 몸이 다시 사는 것과, 영원히 사는 것을 믿사옵나이다. 아멘.'];
@@ -1815,7 +1816,7 @@ console.log('[affairs.js] v20261023th1');
       Array.prototype.forEach.call(body.querySelectorAll('.wj-date'), function (el) {
         el.onclick = function () {
           var ds = el.dataset.date;
-          api('GET', 'sermons?select=*&sermon_date=eq.' + ds + '&order=service.asc&limit=1')
+          api('GET', 'sermons?select=*&sermon_date=eq.' + ds + '&service=neq.' + encodeURIComponent(COMMUNION_SVC) + '&order=service.asc&limit=1')
             .then(function (rows) { close(); sermonEditor((rows && rows[0]) || { sermon_date: ds }); })
             .catch(function () { close(); sermonEditor({ sermon_date: ds }); });
         };
@@ -2360,7 +2361,7 @@ console.log('[affairs.js] v20261023th1');
     }
 
     function bookSermonsModal(book, list) {
-      var SVC_C = { '주일 낮 예배': '#BE8152', '주일 밤 예배': '#C58F66', '수요기도회': '#2F6B4F', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#B5542A', '특별집회': '#A33A2A', '기타': '#877568' };
+      var SVC_C = { '주일 낮 예배': '#BE8152', '주일 밤 예배': '#C58F66', '수요기도회': '#2F6B4F', '금요기도회': '#7c3aed', '새벽기도': '#0d9488', '매일 QT': '#B5542A', '성찬식 설교': '#8E4A5A', '특별집회': '#A33A2A', '기타': '#877568' };
       var ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(23,17,12,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
       var items = (list || []).map(function (r, i) {
@@ -3497,7 +3498,7 @@ console.log('[affairs.js] v20261023th1');
     var worshipMode = !!(opts && opts.worship);
     var _now = new Date();   // 목록 기본 필터: 오늘 기준 연·월
     var WTPL = {}, smView = 'list', smRows = [], smKk = {}, calYM = null, smTableState = { svc: '전체', ser: '전체', year: String(_now.getFullYear()), month: pad2(_now.getMonth() + 1), week: '전체', sort: 'desc', perPage: 20, page: 1 };
-    var SERVICE_COLORS = { '주일 낮 예배': '#5267a9', '주일 밤 예배': '#8066a5', '수요기도회': '#287b70', '금요기도회': '#a66180', '새벽기도': '#388698', '매일 QT': '#ad7830', '특별집회': '#b35f53', '기타': '#748197' };
+    var SERVICE_COLORS = { '주일 낮 예배': '#5267a9', '주일 밤 예배': '#8066a5', '수요기도회': '#287b70', '금요기도회': '#a66180', '새벽기도': '#388698', '매일 QT': '#ad7830', '성찬식 설교': '#8e4a5a', '특별집회': '#b35f53', '기타': '#748197' };
     function svcColor(s) { return SERVICE_COLORS[s] || '#877568'; }
     function serviceChip(service) {
       return '<span class="sm-service" style="--service-color:' + svcColor(service) + '"><i aria-hidden="true"></i>' + esc(service || '미분류') + '</span>';
@@ -3913,8 +3914,8 @@ console.log('[affairs.js] v20261023th1');
     loadList();
 
     // 설교 작성 페이지(전체화면)
-    function sermonEditor(rec) {
-      rec = rec || {};
+    function sermonEditor(rec, edOpts) {   // edOpts.onClose(rec): 닫힌 뒤 부른다 — 주일 순서에서 연 성찬식 설교
+      rec = rec || {}; edOpts = edOpts || {};
       // 생명의삶 자동분류 등 ed.innerHTML을 코드로 바꿔치기하는 곳에서 페이지 나눔을 다시 계산하도록 호출하는 훅
       // (wdPageView() IIFE 안에서 실제 함수가 대입됨 — 'input' 이벤트가 안 나는 프로그램적 변경 후 반드시 호출해야 함)
       var wdRepaginate = null;
@@ -4602,6 +4603,7 @@ console.log('[affairs.js] v20261023th1');
         '<div id="bd_sun"></div>' +
         '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:var(--accent,#3A281C);margin-bottom:3px">순서 더하기 <span style="font-weight:600;font-size:.62rem;color:var(--accent,#3A281C);border:1px solid #3A281C;border-radius:4px;padding:0 4px">모두</span></div><div id="bd_sun_add_all" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
         '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:#6E523C;margin-bottom:3px">목회자 기도 <span style="font-weight:600;font-size:.62rem;color:#6E523C;border:1px solid #6E523C;border-radius:4px;padding:0 4px">목회자</span></div><div id="bd_sun_add_p" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
+        '<div class="sun-addrow" style="margin-top:7px"><div style="font-size:.7rem;font-weight:700;color:#6E523C;margin-bottom:3px">성찬식 <span style="font-weight:600;font-size:.62rem;color:#6E523C;border:1px solid #6E523C;border-radius:4px;padding:0 4px">목회자</span></div><button type="button" class="btn btn-line" id="bd_sun_comm" title="말씀 뒤에 성찬식·성찬식 설교·성찬식 진행 블록을 넣습니다" style="padding:3px 8px;font-size:.72rem;color:#6E523C;background:#F4EFEB;border-color:#CFBDB0">＋ 성찬식 넣기</button><div style="font-size:.68rem;color:#93867C;margin-top:3px;line-height:1.5">성찬식 설교는 설교 관리에 함께 생기고, 진행 순서는 저장해 두었다가 다음에 그대로 불러옵니다.</div></div>' +
         '<div class="sun-addrow" id="bd_sun_drop_a" style="margin-top:7px;border:1px dashed transparent;border-radius:7px;padding:2px"><div style="font-size:.7rem;font-weight:700;color:#9C593C;margin-bottom:3px">반주자 악보 <span style="font-weight:600;font-size:.62rem;color:#9C593C;border:1px solid #9C593C;border-radius:4px;padding:0 4px">반주자</span> <span style="font-weight:400;color:#AFA49C">악보 파일을 여기나 블록 위로 끌어다 놓아도 됩니다</span></div><div id="bd_sun_add_a" style="display:flex;flex-wrap:wrap;gap:4px"></div></div>' +
         '</div>' +
         '<input type="hidden" id="se_gyodok_v" value="' + esc(rec.gyodok || '') + '"><input type="hidden" id="se_hymns_v" value="' + esc(rec.hymns || '') + '">' +
@@ -4658,7 +4660,7 @@ console.log('[affairs.js] v20261023th1');
         '</footer>';
       document.body.appendChild(ov);
       document.body.style.overflow = 'hidden';
-      var close = pushBackClose(function () { ov.remove(); document.body.style.overflow = ''; });
+      var close = pushBackClose(function () { ov.remove(); document.body.style.overflow = document.querySelector('.sed-dark') ? 'hidden' : ''; if (edOpts.onClose) edOpts.onClose(rec); });
       ov.querySelector('#se_close').onclick = close;
 
       // ── 예배 순서(드래그) + 항목별 파일 업로드 ──
@@ -4928,10 +4930,10 @@ console.log('[affairs.js] v20261023th1');
       // '말씀' 블록을 누르면 그 블록 안에 설교 요약 칸이 펼쳐진다 — 값은 숨은 #se_summary(sermons.summary)에 그대로 (2026-09-30)
       var ctSumIt = null, SUM_MAX = 2000;
       function sumVal() { var h = ov.querySelector('#se_summary'); return h ? h.value : ''; }
-      function contiOn() { var sv = (ov.querySelector('#se_service') || {}).value || ''; return !worshipMode && sv && sv !== '주일 낮 예배'; }
+      function contiOn() { var sv = (ov.querySelector('#se_service') || {}).value || ''; return !worshipMode && sv && sv !== '주일 낮 예배' && sv !== COMMUNION_SVC; }
       function paintConti() {
         var f = ov.querySelector('#bd_conti_field'), sf = ov.querySelector('#bd_songs_field'), box = ov.querySelector('#bd_conti'); if (!f || !box) return;
-        var on = contiOn(); f.style.display = on ? '' : 'none'; if (sf) sf.style.display = on ? 'none' : '';
+        var on = contiOn(); f.style.display = on ? '' : 'none'; if (sf) sf.style.display = on || (ov.querySelector('#se_service') || {}).value === COMMUNION_SVC ? 'none' : '';
         if (!on) return;
         if (order.indexOf(ctSumIt) < 0) ctSumIt = null;   /* 펼쳐 둔 말씀 블록을 뺐으면 접는다 */
         box.innerHTML = order.length ? order.map(function (it, i) {
@@ -5093,6 +5095,8 @@ console.log('[affairs.js] v20261023th1');
       }
       function sunSub(it) {
         var a = audOf(it);
+        if (ordKey(it.label) === '성찬식설교') return it.detail || '누르면 성찬식 설교를 씁니다 (설교 관리에 함께 생깁니다)';
+        if (ordKey(it.label) === '성찬식진행') return String(it.body || '').replace(/\s+/g, ' ').slice(0, 60) || '누르면 분병·분잔 진행 순서를 적습니다';
         if (a === 'accomp') {
           var t = normItems(it.items || it.jnos).map(songLabel), n = (it.images || []).length;
           if (n) t.push('악보 파일 ' + n + '개');
@@ -5194,10 +5198,108 @@ console.log('[affairs.js] v20261023th1');
         m.querySelector('#acm_close').onclick = close; m.querySelector('#acm_ok').onclick = close;
         m.addEventListener('click', function (e) { if (e.target === m) close(); });
       }
+      // ── 성찬식 (2026-11-07 담임목사 지시) ──
+      //    성찬식 설교 블록 = 설교 기록(service '성찬식 설교')과 sermon_id 로 이어진다. 같은 편집기로 쓰고, 설교 관리·캘린더에 그대로 나온다.
+      //    성찬식 진행 블록 = 분병·분잔 진행 글. 거의 고정이라 worship_templates('성찬식 진행 양식')에 저장해 두고 다음에 불러온다.
+      //    두 블록 모두 목회자 전용 · 고정 안 함(성찬식 없는 주일로 넘어가지 않게)
+      var COM_TPL = '성찬식 진행 양식';
+      function comTplLoad() {
+        return api('GET', 'worship_templates?select=items&service=eq.' + encodeURIComponent(COM_TPL) + '&limit=1').then(function (rows) {
+          var a = rows && rows[0] && rows[0].items; return a && a[0] ? String(a[0].body || '') : '';
+        });
+      }
+      function comTplSave(body) {
+        return api('POST', 'worship_templates?on_conflict=service', { service: COM_TPL, items: [{ label: '성찬식 진행', body: body }], updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal');
+      }
+      function comDetail(r) { return [r.title, r.scripture].filter(Boolean).join(' · '); }
+      function comSync(it, r) {   // 설교 기록의 제목·본문을 블록에 옮겨 적는다 — 오늘의 예배 목회자 화면이 이 글을 보여 준다
+        var d = comDetail(r); if (d !== (it.detail || '')) { it.detail = d; sunDirty(); }
+        renderOrder();
+      }
+      function comFind(it) {   // 이어진 기록, 없으면 같은 날짜의 성찬식 설교
+        var d = (ov.querySelector('#se_date') || {}).value || '';
+        return (it.sermon_id ? api('GET', 'sermons?select=*&id=eq.' + encodeURIComponent(it.sermon_id) + '&limit=1') : Promise.resolve([]))
+          .then(function (rows) {
+            if (rows && rows[0]) return rows[0];
+            return d ? api('GET', 'sermons?select=*&service=eq.' + encodeURIComponent(COMMUNION_SVC) + '&sermon_date=eq.' + d + '&order=created_at.asc&limit=1').then(function (r2) { return (r2 && r2[0]) || null; }) : null;
+          });
+      }
+      function comSermon(it) {
+        var d = (ov.querySelector('#se_date') || {}).value || '';
+        if (!d) { alert('먼저 설교 일자를 정해 주세요.'); return; }
+        var n = { sermon_date: d, service: COMMUNION_SVC, title: COMMUNION_SVC, preacher: ((ov.querySelector('#se_preacher') || {}).value || '').trim() || null };
+        comFind(it)
+          .then(function (r) { return r || api('POST', 'sermons', n, 'return=representation').then(function (rows) { return rows && rows[0]; }); })
+          .then(function (r) {
+            if (!r || !r.id) throw new Error('기록을 만들지 못했습니다');
+            if (it.sermon_id !== r.id) { it.sermon_id = r.id; sunDirty(); }
+            comSync(it, r); loadList();
+            sermonEditor(r, { onClose: function () {
+              loadList();
+              api('GET', 'sermons?select=id,title,scripture&id=eq.' + encodeURIComponent(r.id) + '&limit=1').then(function (rows) { if (rows && rows[0] && document.body.contains(ov)) comSync(it, rows[0]); }).catch(function () { });
+            } });
+          })
+          .catch(function (e) { alert('성찬식 설교를 열지 못했습니다: ' + e.message); });
+      }
+      function comAdd() {
+        if (sunNeedSql()) return;
+        var has = function (k) { return order.some(function (it) { return ordKey(it.label) === k; }); };
+        var at = -1; order.forEach(function (it, q) { if (ordCommunion(it.label)) at = q + 1; }); if (at < 0) { var w = sunIdx('말씀', true); at = w >= 0 ? sunAfter(w) : order.length; }
+        var pub = null, ser = null, proc = null;
+        if (!has('성찬식')) { pub = { label: '성찬식', detail: '', url: '', aud: 'all' }; order.splice(at++, 0, pub); }
+        if (!has('성찬식설교')) { ser = { label: '성찬식 설교', detail: '', url: '', aud: 'pastor' }; order.splice(at++, 0, ser); }
+        if (!has('성찬식진행')) { proc = { label: '성찬식 진행', detail: '', url: '', aud: 'pastor' }; order.splice(at++, 0, proc); }
+        if (!pub && !ser && !proc) { alert('성찬식 블록이 이미 있습니다. 블록을 눌러 내용을 적어 주세요.'); return; }
+        renderOrder(); sunDirty();
+        if (ser) comFind(ser).then(function (r) { if (r) { ser.sermon_id = r.id; comSync(ser, r); } }).catch(function () { });
+        if (proc) comTplLoad().then(function (t) { if (t && !proc.body) { proc.body = t; renderOrder(); sunDirty(); } }).catch(function () { });
+      }
+      function comProcModal(it) {
+        var m = document.createElement('div'), hasTpl = null;   // hasTpl: 저장된 순서가 있는가(null = 아직 모름·못 읽음)
+        m.style.cssText = 'position:fixed;inset:0;background:rgba(23,17,12,.5);z-index:9400;display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto';
+        m.innerHTML = '<div style="background:#fff;border-radius:5px;max-width:680px;width:100%;padding:18px 20px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+          '<h3 style="margin:0 0 4px;color:var(--accent,#3A281C);font-size:1.05rem">' + esc(it.label) + ' <span style="font-size:.7rem;font-weight:600;color:#6E523C;border:1px solid #6E523C;border-radius:4px;padding:0 5px;vertical-align:2px">목회자</span></h3>' +
+          '<div style="font-size:.76rem;color:#93867C;margin-bottom:10px;line-height:1.55">처음 적은 내용은 저절로 저장되어, 다음 성찬식 때 그대로 불러옵니다. 발표자 모드와 오늘의 예배 목회자 화면에 나옵니다.</div>' +
+          '<textarea id="cpm_ta" placeholder="예)&#10;성찬 제정의 말씀 (고린도전서 11:23-26)&#10;성찬 기도&#10;분병 — 떡을 나누며 드리는 말씀&#10;분잔 — 잔을 나누며 드리는 말씀&#10;감사 기도" style="width:100%;box-sizing:border-box;min-height:300px;padding:12px 14px;border:1px solid #ECE6E1;border-radius:4px;font:inherit;line-height:1.85;font-family:\'Noto Serif KR\',serif">' + esc(it.body || '') + '</textarea>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><button type="button" class="btn btn-line" id="cpm_load" style="padding:6px 12px;font-size:.8rem">저장해 둔 순서 불러오기</button><button type="button" class="btn btn-line" id="cpm_save" style="padding:6px 12px;font-size:.8rem">이 내용을 다음에도 쓸 순서로 저장</button></div>' +
+          '<div id="cpm_msg" style="font-size:.76rem;min-height:1.2em;margin-top:6px;color:#7D6C5F"></div>' +
+          '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px"><button type="button" class="btn btn-line" id="cpm_cancel" style="padding:8px 16px">취소</button><button type="button" class="btn btn-solid" id="cpm_ok" style="padding:8px 22px;font-weight:700">확인</button></div></div>';
+        document.body.appendChild(m);
+        var ta = m.querySelector('#cpm_ta'), msg = m.querySelector('#cpm_msg');
+        function say(t, bad) { msg.style.color = bad ? '#A33A2A' : '#2F6B4F'; msg.textContent = t; }
+        function close() { m.remove(); }
+        function loadErr(e) { say('저장해 둔 순서를 읽지 못했습니다: ' + e.message, true); }
+        comTplLoad().then(function (t) {
+          hasTpl = !!t;
+          if (t && !ta.value.trim()) { ta.value = t; say('저장해 둔 순서를 불러왔습니다.'); }
+        }).catch(loadErr);
+        m.querySelector('#cpm_load').onclick = function () {
+          comTplLoad().then(function (t) {
+            hasTpl = !!t;
+            if (!t) { say('아직 저장해 둔 순서가 없습니다.', true); return; }
+            if (ta.value.trim() && ta.value !== t && !confirm('지금 적힌 내용을 저장해 둔 순서로 바꿀까요?')) return;
+            ta.value = t; say('저장해 둔 순서를 불러왔습니다.');
+          }).catch(loadErr);
+        };
+        m.querySelector('#cpm_save').onclick = function () {
+          if (!ta.value.trim()) { say('적은 내용이 없습니다.', true); return; }
+          comTplSave(ta.value).then(function () { hasTpl = true; say('저장했습니다. 다음 성찬식 때 그대로 불러옵니다.'); }).catch(function (e) { say('저장 실패: ' + e.message, true); });
+        };
+        m.querySelector('#cpm_cancel').onclick = close;
+        m.addEventListener('click', function (e) { if (e.target === m) close(); });
+        m.querySelector('#cpm_ok').onclick = function () {
+          var v = ta.value; it.body = v; renderOrder(); sunDirty();
+          if (hasTpl === false && v.trim()) comTplSave(v).then(function () { close(); }).catch(function (e) { hasTpl = null; say('이번 순서에는 넣었지만 다음에 쓸 순서로 저장하지 못했습니다: ' + e.message, true); });
+          else close();
+        };
+        setTimeout(function () { ta.focus(); }, 0);
+      }
       function sunEdit(i) {
         var it = order[i]; if (!it) return;
         var a = audOf(it), k = ordKey(it.label), sk = sunSongKey(it);
         if (a === 'accomp') { accompModal(it); return; }
+        if (a === 'pastor' && k === '성찬식설교') { comSermon(it); return; }
+        if (a === 'pastor' && k === '성찬식진행') { comProcModal(it); return; }
         if (a === 'pastor') {
           if (ordPastorSlot(it)) { sunPubModal(it); return; }   /* 목회 기도·축도 — 맡은 분(주보에 나가는 내용)과 기도문 */
           orderTextModal(it, it.label + ' — 기도문', '기도문을 적으세요. 오늘의 예배와 발표자 모드의 목회자 화면에 나옵니다. 매주 같은 기도문이면 📌 고정으로 두세요.', sunDirty);
@@ -5283,11 +5385,11 @@ console.log('[affairs.js] v20261023th1');
           return '<div class="sun-row" data-i="' + i + '" style="border:1px solid ' + AUD_BD[a] + ';border-left:4px solid ' + c + ';background:' + AUD_BG[a] + ';border-radius:7px;padding:5px 7px;margin-bottom:4px">' +
             '<div style="display:flex;align-items:center;gap:6px">' +
             '<span class="sun-handle" title="끌어서 자리 옮기기" style="cursor:grab;color:#AFA49C;font-size:1rem;touch-action:none;user-select:none">≡</span>' +
-            '<div class="sun-open" data-i="' + i + '" style="flex:1;min-width:0;cursor:pointer" title="' + (a === 'accomp' || sunSongKey(it) ? '곡 고르기·악보 올리기 (파일을 이 블록 위로 끌어다 놓아도 됩니다)' : a === 'pastor' ? '기도문 적기' : ordKey(it.label) === '교독' ? '교독문 고르기' : ordKey(it.label) === '말씀' ? '설교 요약 적기' : '내용 적기') + '">' +
+            '<div class="sun-open" data-i="' + i + '" style="flex:1;min-width:0;cursor:pointer" title="' + (a === 'accomp' || sunSongKey(it) ? '곡 고르기·악보 올리기 (파일을 이 블록 위로 끌어다 놓아도 됩니다)' : ordKey(it.label) === '성찬식설교' ? '성찬식 설교 쓰기' : ordKey(it.label) === '성찬식진행' ? '진행 순서 적기' : a === 'pastor' ? '기도문 적기' : ordKey(it.label) === '교독' ? '교독문 고르기' : ordKey(it.label) === '말씀' ? '설교 요약 적기' : '내용 적기') + '">' +
               '<div style="font-weight:700;font-size:.8rem;color:' + (pub ? 'var(--accent,#3A281C)' : c) + '">' + (i + 1) + '. ' + esc(it.label || '항목') +
                 ' <span style="font-weight:600;font-size:.62rem;color:' + c + ';border:1px solid ' + c + ';border-radius:4px;padding:0 4px;margin-left:2px">' + AUD_NAME[a] + '</span></div>' +
               '<div style="font-size:.7rem;color:#93867C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(sunSub(it)) + '</div></div>' +
-            '<button type="button" class="sun-fix" data-i="' + i + '" title="고정 — 다음 주에도 그대로" style="border:0;background:none;cursor:pointer;font-size:.82rem;opacity:' + (it.fixed ? '1' : '.28') + '">📌</button>' +
+            (ordCommunion(it.label) ? '' : '<button type="button" class="sun-fix" data-i="' + i + '" title="고정 — 다음 주에도 그대로" style="border:0;background:none;cursor:pointer;font-size:.82rem;opacity:' + (it.fixed ? '1' : '.28') + '">📌</button>') +
             '<button type="button" class="sun-del" data-i="' + i + '" title="빼기" style="border:0;background:none;color:#A33A2A;cursor:pointer;font-size:.86rem">✕</button></div></div>';
         }).join('') : '<div style="font-size:.76rem;color:#AFA49C;padding:6px 2px">아직 순서가 없습니다. ‘기본 순서로’를 누르거나 아래에서 블록을 더하세요.</div>');
         Array.prototype.forEach.call(box.querySelectorAll('.sun-open'), function (b) { b.onclick = function () { sunEdit(Number(b.dataset.i)); }; });
@@ -5295,7 +5397,8 @@ console.log('[affairs.js] v20261023th1');
         Array.prototype.forEach.call(box.querySelectorAll('.sun-del'), function (b) {
           b.onclick = function () {
             var i = Number(b.dataset.i), it = order[i]; if (!it) return;
-            if ((it.body || (it.images || []).length) && !confirm('「' + (it.label || '항목') + '」 블록을 뺄까요?\n적어 둔 기도문·올린 악보도 함께 빠집니다.')) return;
+            if (it.sermon_id && !confirm('「' + (it.label || '항목') + '」 블록을 뺄까요?\n설교 원고는 설교 관리에 그대로 남습니다.')) return;
+            if (!it.sermon_id && (it.body || (it.images || []).length) && !confirm('「' + (it.label || '항목') + '」 블록을 뺄까요?\n적어 둔 기도문·올린 악보도 함께 빠집니다.')) return;
             order.splice(i, 1); renderOrder(); sunDirty();
           };
         });
@@ -5369,7 +5472,7 @@ console.log('[affairs.js] v20261023th1');
         order.splice(sunAddAt(label), 0, it); renderOrder(); sunDirty();
         sunEdit(order.indexOf(it));
       }
-      function sunHas(it) { return !!(normItems(it.items || it.jnos).length || it.hno || String(it.body || '').trim() || it.url || (it.images || []).length || String(it.detail || '').trim()); }
+      function sunHas(it) { return !!(ordCommunion(it.label) || it.sermon_id || normItems(it.items || it.jnos).length || it.hno || String(it.body || '').trim() || it.url || (it.images || []).length || String(it.detail || '').trim()); }
       // 틀(tpl: 지난 주일 순서 또는 기본 순서)로 순서를 다시 짠다
       //   · 지금 순서에서 이미 고른 곡·적은 내용은 같은 이름의 자리로 옮긴다(같은 이름이 여럿이면 앞에서부터)
       //   · 틀의 📌 고정 블록은 내용까지 그대로, 고정 아닌 블록은 빈 블록으로(곡·교독문은 주마다 고른다). 고정 아닌 목회자·반주자 블록은 가져오지 않는다
@@ -5384,6 +5487,7 @@ console.log('[affairs.js] v20261023th1');
           var a = audOf(t), key = a + '|' + ordKey(t.label) + '|' + (a === 'all' ? '' : t.label), have = (pool[key] || []).shift();
           if (have) used.push(have);
           if (have && sunHas(have)) { nu.push(have); return; }
+          if (ordCommunion(t.label)) return;   /* 지난 성찬식 주일의 블록은 틀로 삼지 않는다 — 성찬식은 그 주일에만 */
           if (t.fixed) { var c = JSON.parse(JSON.stringify(t)); delete c._up; delete c._openBody; c.aud = a; nu.push(c); return; }
           if (a !== 'all' && !ordPastorKey(t.label)) { if (have) nu.push(have); return; }   /* 목회 기도·축도는 순서 칸이라 고정이 아니어도 빈 블록으로 둔다 */
           nu.push(have || { label: t.label, detail: '', url: '', aud: a });
@@ -5476,6 +5580,7 @@ console.log('[affairs.js] v20261023th1');
           sunBuild(tpl); var b = sunBulletin(); if (b) sunFill(b);
           sunBuilt = true; renderOrder(); sunDirty();
         }
+        ov.querySelector('#bd_sun_comm').onclick = comAdd;
         ov.querySelector('#bd_sun_prev').onclick = function () {
           var btn0 = this; btn0.disabled = true;
           sunPrev().then(function (p) {
@@ -5583,6 +5688,9 @@ console.log('[affairs.js] v20261023th1');
       var renderOrder0 = renderOrder;
       renderOrder = function () { renderOrder0(); paintSongs(); paintConti(); paintSun(); };
       paintSongs(); contiAuto(); paintConti(); sunAuto(); paintSun();
+      order.forEach(function (it) {   // 설교 관리에서 제목·본문을 고쳤어도 블록에 맞춘다
+        if (it.sermon_id) api('GET', 'sermons?select=id,title,scripture&id=eq.' + encodeURIComponent(it.sermon_id) + '&limit=1').then(function (rows) { if (rows && rows[0] && document.body.contains(ov)) comSync(it, rows[0]); }).catch(function () { });
+      });
       roleSqlReady().then(function (ok) { if (!ok) { sunReady = false; paintSun(); } });   // 여는 순간: 수요·새벽 등 예전 기록이면 기본 순서를 채워 둔다 · 주일은 주보 순서·지난 주 고정 블록
       ov.querySelector('#se_joy_in').onclick = function () { joyPick('입례송'); };
       ov.querySelector('#se_joy_ch').onclick = function () { joyPick('성가대 찬양'); };
@@ -6015,7 +6123,7 @@ console.log('[affairs.js] v20261023th1');
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
           hymns: ov.querySelector('#se_hymns_v').value || null,
-          worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, items: (function () { var it = normItems(o.items || o.jnos); return it.length ? it : undefined; })(),   /* 저장할 때 옛 번호도 모두의 찬양 번호로 */ body: o.body || '', fixed: !!o.fixed, noexport: !!o.noexport, images: (o.images && o.images.length) ? o.images : undefined, aud: sunAudOut(o) }; })) : null),
+          worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, items: (function () { var it = normItems(o.items || o.jnos); return it.length ? it : undefined; })(),   /* 저장할 때 옛 번호도 모두의 찬양 번호로 */ body: o.body || '', fixed: !!o.fixed, noexport: !!o.noexport, images: (o.images && o.images.length) ? o.images : undefined, aud: sunAudOut(o), sermon_id: o.sermon_id || undefined }; })) : null),
           // 설교 매니저 확장(supabase/sermons_manager.sql): 시리즈·키워드·요약·상태
           series: seriesArr.length ? seriesArr.join(', ') : null,
           keywords: (function () { var el = ov.querySelector('#se_keywords'); if (!el) return null; var a = el.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean).slice(0, 3); return a.join(', ') || null; })(),
@@ -8429,7 +8537,9 @@ console.log('[affairs.js] v20261023th1');
     var own = pvParseRef(r.scripture), hasOwn = !!String(r.bible_text || '').trim();
     return pvOrder(r).map(function (it) {
       var label = String(it.label || '항목').trim(), L = label.replace(/\s+/g, ''), d = String(it.detail || ''), x = { it: it, label: label, kind: 'text' }, m;
-      if (/^(말씀강해|말씀\(설교\)|말씀|설교)$/.test(L)) x.kind = 'sermon';
+      if (L === '성찬식설교') x.kind = 'csermon';
+      else if (L === '성찬식진행' && String(it.body || '').trim()) x.kind = 'cproc';
+      else if (/^(말씀강해|말씀\(설교\)|말씀|설교)$/.test(L)) x.kind = 'sermon';
       else if (/교독/.test(L)) { x.kind = 'gyodok'; m = d.match(/(\d{1,3})/) || String(r.gyodok || '').match(/(\d{1,3})/); x.g = m ? gyodokByNo(m[1]) : null; }
       else if (/신앙고백|사도신경/.test(L) || /사도신경/.test(d)) x.kind = 'creed';
       else if (/주기도문/.test(L) || /주기도문/.test(d)) x.kind = 'lord';
@@ -8452,9 +8562,13 @@ console.log('[affairs.js] v20261023th1');
     if (opts.qt) { writeReadingView(w, r, opts, null); return; }
     var plan = pvPlan(r);
     var need = plan.filter(function (x) { return x.kind === 'bible' && x.p && !x.own; });
-    if (!need.length) { writeReadingView(w, r, opts, plan); return; }
+    var coms = plan.filter(function (x) { return x.kind === 'csermon'; });   // 성찬식 설교 블록 — 이어진 설교 기록의 원고를 받아 온다
+    if (!need.length && !coms.length) { writeReadingView(w, r, opts, plan); return; }
     try { w.document.open(); w.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>불러오는 중</title></head><body style="font:16px sans-serif;color:#94867C;padding:24px">성경 본문을 불러오는 중입니다…</body></html>'); w.document.close(); } catch (e) {}
-    pvLoadGyr().then(function (d) {
+    Promise.all(coms.map(function (x) {
+      var q = x.it.sermon_id ? 'id=eq.' + encodeURIComponent(x.it.sermon_id) : (r.sermon_date ? 'service=eq.' + encodeURIComponent(COMMUNION_SVC) + '&sermon_date=eq.' + fmtD(r.sermon_date) + '&order=created_at.asc' : '');
+      return q ? api('GET', 'sermons?select=*&' + q + '&limit=1').then(function (rows) { x.rec = rows && rows[0]; }).catch(function () { x.rec = null; }) : null;
+    })).then(function () { return need.length ? pvLoadGyr() : null; }).then(function (d) {
       need.forEach(function (x) { x.verses = d ? pvVerses(d, x.p) : []; });
       writeReadingView(w, r, opts, plan);
     });
@@ -8470,7 +8584,7 @@ console.log('[affairs.js] v20261023th1');
     var bibleHtml = bibleSrc ? '<div class="bible"><div class="bible-t">■ ' + bibleLabel + (r.scripture ? ' <span style="font-weight:400;color:#9B8277">' + esc(r.scripture) + '</span>' : '') + '</div>' + esc(bibleSrc).replace(/\n/g, '<br>') + '</div>' : '';
     // 설교 원고는 페이지 모드에서 화면 높이에 맞춰 동적으로 분할됨(아래 JS). '<' 이스케이프로 </script> 차단
     // 설교 원고: 서식(HTML) 원고면 블록 단위로, 옛 평문이면 줄 단위로 분할(하위호환)
-    var _craw = r.content || '';
+    function parseBody(_craw, prayerRaw) {
     var _isHtml = /<(p|div|h[1-6]|ul|ol|li|blockquote|br|span|mark|b|i|strong|em|u|s|font)\b/i.test(_craw);
     var bodyIsHtml = false, bodyBlocks, bodyLh = '', bodyLs = '';
     /* 원고 안에 따로 붙은 글자 크기·자간도 기본 글자와 같은 배율(--sk)로 키운다 (2026-10-13 2배).
@@ -8512,7 +8626,6 @@ console.log('[affairs.js] v20261023th1');
       bodyIsHtml = true;
     } else { bodyBlocks = _craw.split('\n'); }
     // 🙏 기도: 설교 원고 뒤에 이어 붙임
-    var prayerRaw = (r.prayer || '').trim();
     if (prayerRaw) {
       function _eh(x) { return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
       if (bodyIsHtml) {
@@ -8528,7 +8641,14 @@ console.log('[affairs.js] v20261023th1');
         prayerRaw.split('\n').forEach(function (l) { bodyBlocks.push(l); });
       }
     }
+    return { blocks: bodyBlocks, html: bodyIsHtml, lh: bodyLh, ls: bodyLs };
+    }
+    var _mb = parseBody(r.content || '', (r.prayer || '').trim()), bodyBlocks = _mb.blocks, bodyIsHtml = _mb.html, bodyLh = _mb.lh, bodyLs = _mb.ls;
     var bodyLinesJson = JSON.stringify(bodyBlocks).replace(/</g, '\\u003c');
+    function lhLsCss(lh, ls) { return (/^[\d.]+$/.test(lh) ? 'line-height:' + lh + ';' : '') + (/^-?[\d.]+(px|em)?$/.test(ls) ? 'letter-spacing:' + (/em$/.test(ls) ? ls : 'calc(var(--sk) * ' + parseFloat(ls) + 'px)') + ';' : ''); }
+    /* 설교 원고 말고도 여러 쪽으로 나눌 글 — 성찬식 설교 원고·성찬식 진행. 그 순서의 쪽(.pg-xb-N) 뒤에 이어진다 */
+    var extraBodies = [];
+    function addExtra(lab, blocks, html, st) { var n = extraBodies.length; extraBodies.push({ a: '.pg-xb-' + n, lab: lab, b: blocks, h: html, st: st || '' }); return ' pg-xb-' + n; }
 
     // 예배 순서 한 칸의 내용 — 교독문·사도신경·주기도문은 전문, 성경봉독은 본문(절 번호), 말씀은 제목(뒤에 원고)
     function verseP(n, t) { return '<p>' + (n ? '<span class="vn">' + esc(n) + '</span>' : '') + esc(t) + '</p>'; }
@@ -8544,6 +8664,11 @@ console.log('[affairs.js] v20261023th1');
         else if (x.verses && x.verses.length) { var multi = x.p.c1 !== x.p.c2; c += '<div class="lt-bible">' + x.verses.map(function (v) { return verseP((multi ? v.ch + ':' : '') + v.v, v.t); }).join('') + '</div><div class="it-src">개역개정</div>'; }
         else c += '<div class="it-d">본문을 찾지 못했습니다.</div>';
       }
+      else if (x.kind === 'csermon') {
+        if (x.rec) c += '<div class="it-stitle">' + esc(x.rec.title || '') + '</div>' + (x.rec.scripture ? '<div class="it-d">' + esc(x.rec.scripture) + '</div>' : '') + (x.rec.preacher ? '<div class="it-d">' + esc(x.rec.preacher) + '</div>' : '') + (x.xcls ? '<div class="it-hint">다음 쪽부터 성찬식 설교 원고</div>' : '');
+        else c += '<div class="it-d">성찬식 설교 원고를 찾지 못했습니다. 설교 매니저에서 이 블록을 눌러 써 주세요.</div>';
+      }
+      else if (x.kind === 'cproc') c += (it.detail ? '<div class="it-d">' + esc(it.detail) + '</div>' : '') + '<div class="it-hint">다음 쪽부터 진행 순서</div>';
       else if (x.kind === 'sermon') c += '<div class="it-stitle">' + esc(r.title || it.detail || '') + '</div>' + (r.scripture ? '<div class="it-d">' + esc(r.scripture) + '</div>' : '') + (r.preacher ? '<div class="it-d">' + esc(r.preacher) + '</div>' : '') + '<div class="it-hint">다음 쪽부터 설교 원고</div>';
       else if (it.detail) c += '<div class="it-d">' + esc(it.detail) + '</div>';
       return c;
@@ -8580,6 +8705,8 @@ console.log('[affairs.js] v20261023th1');
       if (x.kind === 'lord') return '주기도문';
       if (x.kind === 'bible') return x.ref || '';
       if (x.kind === 'sermon') return r.title || x.it.detail || '';
+      if (x.kind === 'csermon') return (x.rec && x.rec.title) || x.it.detail || '';
+      if (x.kind === 'cproc') return '진행 순서';
       return x.it.detail || ((x.it.images || []).length ? '악보 파일 ' + x.it.images.length + '개' : '') || (String(x.it.body || '').trim() ? '기도문' : '');   // 목회자 기도(설교 전 기도·헌금 기도)는 이름 옆에 '기도문'
     }
 
@@ -8599,8 +8726,16 @@ console.log('[affairs.js] v20261023th1');
           [].push.apply(pages, filePages(x, num));
         } else {
           var anchor = x.kind === 'sermon' && !anchored; if (anchor) anchored = true;
+          var xcls = '';
+          if (x.kind === 'csermon' && x.rec) {
+            var _cb = parseBody(x.rec.content || '', (x.rec.prayer || '').trim());
+            if (String(x.rec.bible_text || '').trim()) _cb.blocks.unshift(_cb.html ? '<div class="lt-bible">' + ownBible(x.rec.bible_text) + '</div>' : String(x.rec.bible_text));
+            if (_cb.blocks.join('').trim()) { xcls = addExtra(x.label, _cb.blocks, _cb.html, lhLsCss(_cb.lh, _cb.ls)); x.xcls = xcls; }
+          } else if (x.kind === 'cproc') {
+            xcls = addExtra(x.label, String(x.it.body).split('\n').map(function (l) { return l.trim() ? '<p>' + esc(l) + '</p>' : '<p><br></p>'; }), true);
+          }
           var fileOnly = x.kind === 'text' && (x.it.images || []).length && !x.it.detail && !String(x.it.body || '').trim() && !x.it.url;   /* 이름만 있고 올린 악보 파일뿐인 칸(성가대 찬양)은 이름만 있는 쪽을 따로 두지 않는다 */
-          if (!fileOnly) pages.push('<div class="pg pg-fixed pg-item' + (anchor ? ' pg-sermon-anchor' : '') + '"' + idA + '>' + num + '<div class="it-label">' + esc(x.label) + '</div>' + itemHtml(x) + extraHtml(x.it) + '</div>');
+          if (!fileOnly) pages.push('<div class="pg pg-fixed pg-item' + (anchor ? ' pg-sermon-anchor' : '') + xcls + '"' + idA + '>' + num + '<div class="it-label">' + esc(x.label) + '</div>' + itemHtml(x) + (x.kind === 'cproc' ? '' : extraHtml(x.it)) + '</div>');
           [].push.apply(pages, filePages(x, num, fileOnly ? idA : ''));
         }
         toc += '<button type="button" class="toc-row" data-go="it-' + i + '"><span class="toc-n">' + (i + 1) + '</span><span class="toc-l">' + esc(x.label) + '</span><span class="toc-d">' + esc(tocSub(x)) + '</span></button>';
@@ -8764,34 +8899,36 @@ console.log('[affairs.js] v20261023th1');
       presenterSplitBlock.toString() + ';' +
       'function cutHtml(h,g){return "<div class=\\"cut\\" style=\\"height:"+(g[1]-g[0])+"px\\"><div class=\\"cutin\\" style=\\"top:"+(-g[0])+"px\\">"+h+"</div></div>";}' +
       'var b=document.body,s=22,deck=document.getElementById("deck"),track=document.getElementById("track"),ind=document.getElementById("pg_ind");' +
-      'var BODY=' + bodyLinesJson + ';var HTML=' + (bodyIsHtml ? 'true' : 'false') + ';' +
+      'var BODY=' + bodyLinesJson + ';var HTML=' + (bodyIsHtml ? 'true' : 'false') + ';var XB=' + JSON.stringify(extraBodies).replace(/</g, '\\u003c') + ';' +
       'var curPg=0,total=0,reflowTimer=null;' +
       'function eh(x){return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}' +
-      'function lineHtml(x){return HTML?(x||""):((x?eh(x):"")+"<br>");}' +
-      'function fullBodyHtml(){return HTML?BODY.join(""):BODY.map(function(x){return x?eh(x):"";}).join("<br>");}' +
-      'function mkBodyPage(){var pg=document.createElement("div");pg.className="pg pg-body";var inr=document.createElement("div");inr.className="body";pg.appendChild(inr);return pg;}' +
-      /* 설교 원고를 현재 화면 높이에 맞춰 분할(페이지 모드) 또는 한 덩어리(스크롤 모드) */
+      'function lineHtml(x,H){return H?(x||""):((x?eh(x):"")+"<br>");}' +
+      'function fullBodyHtml(B,H){return H?B.join(""):B.map(function(x){return x?eh(x):"";}).join("<br>");}' +
+      'function mkBodyPage(S){var pg=document.createElement("div");pg.className="pg pg-body";if(S)pg.setAttribute("data-lab",S.lab);var inr=document.createElement("div");inr.className="body";if(S&&S.st)inr.setAttribute("style",S.st);pg.appendChild(inr);return pg;}' +
+      /* 글 한 덩이를 현재 화면 높이에 맞춰 분할(페이지 모드) 또는 한 덩어리(스크롤 모드) */
+      'function flowBody(B,H,S,addPg){' +
+        'if(!b.classList.contains("paged")){var pg=mkBodyPage(S);addPg(pg);pg.firstChild.innerHTML=fullBodyHtml(B,H);return;}' +
+        'var i=0;if(!B.length){var e=mkBodyPage(S);addPg(e);}' +
+        'while(i<B.length){var pg=mkBodyPage(S);addPg(pg);var inr=pg.firstChild,started=false;' +
+          'while(i<B.length){var prev=inr.innerHTML;inr.innerHTML=prev+lineHtml(B[i],H);' +
+            'if(started&&pg.scrollHeight>pg.clientHeight+1){inr.innerHTML=prev;break;}' +
+            /* 문단 하나가 빈 쪽에도 안 들어가면 줄 사이에서 끊어 다음 쪽들로 — 다음 문단은 마지막 조각 뒤에 이어 붙는다 */
+            'if(!started&&pg.scrollHeight>pg.clientHeight+1){var sg=presenterSplitBlock(pg,inr,lineHtml(B[i],H));' +
+              'for(var q=0;q<sg.length;q++){if(q){pg=mkBodyPage(S);addPg(pg);inr=pg.firstChild;}inr.innerHTML=cutHtml(lineHtml(B[i],H),sg[q]);}}' +
+            'started=true;i++;}' +
+        '}' +
+      '}' +
       'function buildBody(){' +
         'var olds=track.querySelectorAll(".pg-body");for(var k=0;k<olds.length;k++)olds[k].parentNode.removeChild(olds[k]);' +
         'var anchor=track.querySelector(".pg-sermon-anchor"),ref=anchor;' +
-        'function addPg(pg){if(anchor){track.insertBefore(pg,ref.nextSibling);ref=pg;}else{track.appendChild(pg);}}' +
-        'if(!b.classList.contains("paged")){var pg=mkBodyPage();addPg(pg);pg.firstChild.innerHTML=fullBodyHtml();}' +
-        'else{var i=0;if(!BODY.length){var e=mkBodyPage();addPg(e);}' +
-          'while(i<BODY.length){var pg=mkBodyPage();addPg(pg);var inr=pg.firstChild,started=false;' +
-            'while(i<BODY.length){var prev=inr.innerHTML;inr.innerHTML=prev+lineHtml(BODY[i]);' +
-              'if(started&&pg.scrollHeight>pg.clientHeight+1){inr.innerHTML=prev;break;}' +
-              /* 문단 하나가 빈 쪽에도 안 들어가면 줄 사이에서 끊어 다음 쪽들로 — 다음 문단은 마지막 조각 뒤에 이어 붙는다 */
-              'if(!started&&pg.scrollHeight>pg.clientHeight+1){var sg=presenterSplitBlock(pg,inr,lineHtml(BODY[i]));' +
-                'for(var q=0;q<sg.length;q++){if(q){pg=mkBodyPage();addPg(pg);inr=pg.firstChild;}inr.innerHTML=cutHtml(lineHtml(BODY[i]),sg[q]);}}' +
-              'started=true;i++;}' +
-          '}' +
-        '}' +
+        'flowBody(BODY,HTML,null,function(pg){if(anchor){track.insertBefore(pg,ref.nextSibling);ref=pg;}else{track.appendChild(pg);}});' +
+        'XB.forEach(function(S){var r0=track.querySelector(S.a);if(!r0)return;flowBody(S.b,S.h,S,function(pg){track.insertBefore(pg,r0.nextSibling);r0=pg;});});' +
         'total=track.querySelectorAll(".pg").length;if(curPg>total-1)curPg=total-1;if(curPg<0)curPg=0;' +
         'buildNav();' +
       '}' +
       /* 아래 길잡이 막대: 쪽마다 한 칸, 같은 순서(찬양 여러 곡·설교 원고 여러 쪽)는 붙여서 묶는다 */
       'var nav=document.getElementById("pnav_seg"),navCur=document.getElementById("pnav_cur"),navNum=document.getElementById("pnav_num"),navLab=[];' +
-      'function pgLabel(p){var c=p.classList;if(c.contains("pg-cover"))return "표지";if(c.contains("pg-toc"))return "예배 순서";if(c.contains("pg-body"))return "설교 원고";if(c.contains("pg-bible"))return "성경 본문";' +
+      'function pgLabel(p){var c=p.classList;if(c.contains("pg-cover"))return "표지";if(c.contains("pg-toc"))return "예배 순서";if(c.contains("pg-body"))return p.getAttribute("data-lab")||"설교 원고";if(c.contains("pg-bible"))return "성경 본문";' +
         'var l=p.querySelector(".it-label"),n=p.querySelector(".it-num");if(!l)return "";var t=(l.firstChild&&l.firstChild.nodeType===3?l.firstChild.textContent:l.textContent).trim();' +
         'return (n?n.textContent.split("/")[0].trim()+". ":"")+t;}' +
       'function buildNav(){if(!nav)return;var ps=track.querySelectorAll(".pg"),h="",prev=null;navLab=[];' +
@@ -8958,6 +9095,7 @@ console.log('[affairs.js] v20261023th1');
   function audOf(it) { return it && (it.aud === 'accomp' || it.aud === 'pastor') ? it.aud : 'all'; }
   /* 목회 기도·축도 — 주보 순서의 칸이지만 화면에서는 목회자 블록(2026-10-10). 주보에는 이름·내용(맡은 분)만 넣는다 */
   function ordPastorKey(l) { return /^(목회기도|축도)$/.test(ordKey(l)); }
+  function ordCommunion(l) { return /^(성찬식|성찬식설교|성찬식진행)$/.test(ordKey(l)); }
   function ordPastorSlot(it) { return audOf(it) === 'pastor' && ordPastorKey(it.label); }
   /* 순서 이름을 같은 자리로 알아보는 열쇠 — 주보('말씀강해')와 설교 매니저('말씀(설교)')처럼 이름이 조금 달라도 같게 */
   function ordKey(l) {

@@ -676,7 +676,10 @@
   }
   function privSlides(it) {   /* 반주자·목회자 블록 하나 → 슬라이드 */
     var head = it.label || (it.aud === 'pastor' ? '기도' : '반주 악보'), out = [];
-    if (it.aud === 'pastor') return [{ type: 'prayer', head: head, sub: it.detail || '', body: it.body || '', role: 'pastor' }];
+    if (it.aud === 'pastor') {
+      var cs = /^성찬식\s*설교/.test(head), cp = /^성찬식\s*진행/.test(head);   /* 성찬식 설교 원고는 일반 설교처럼 발표자 모드에서 — 여기는 제목·본문만 */
+      return [{ type: 'prayer', head: head, sub: it.detail || '', body: it.body || '', role: 'pastor', none: cs ? '원고는 설교 매니저의 발표자 모드에서 봅니다.' : cp ? '진행 순서가 아직 없습니다. 설교 매니저의 주일 예배 순서에서 적을 수 있습니다.' : '' }];
+    }
     var its = it.items && it.items.length ? it.items : (it.hno ? [{ b: 'h', n: +it.hno }] : []);
     if (its.length) [].push.apply(out, joySlides(head, [], null, its));
     var im = (it.images || []).slice(); if (it.url && im.indexOf(it.url) < 0) im.push(it.url);
@@ -991,7 +994,7 @@
         '<div class="ws-give-btns"><a class="ws-btn primary ws-give-toss" href="' + GIVE.toss + '">토스로 이체하기</a><button type="button" class="ws-btn" id="wsGiveCopy">계좌번호 복사</button></div>' +
         '<p class="ws-tip">‘토스로 이체하기’는 토스 앱이 있는 휴대폰에서 이체 화면으로 바로 연결됩니다. 그 밖에는 계좌번호를 복사해 이용해 주세요.</p></div>';
     } else if (s.type === 'prayer') {   /* 목회자 기도 (목회자 화면) */
-      h = head + (s.sub ? '<div class="ws-item-t">' + esc(s.sub) + '</div>' : '') + (prayerHtml(s.body) || '<div class="ws-none">기도문이 아직 없습니다. 설교 매니저의 주일 예배 순서에서 적을 수 있습니다.</div>');
+      h = head + (s.sub ? '<div class="ws-item-t">' + esc(s.sub) + '</div>' : '') + (prayerHtml(s.body) || '<div class="ws-none">' + esc(s.none || '기도문이 아직 없습니다. 설교 매니저의 주일 예배 순서에서 적을 수 있습니다.') + '</div>');
     } else if (s.type === 'score') {    /* 반주자가 올린 악보 파일 (반주자 화면) */
       h = head + '<div class="ws-item-t">악보' + (s.n > 1 ? ' <b>' + s.k + ' / ' + s.n + '</b>' : '') + '</div>' +
         (pdf ? '<div class="ws-none"><a class="ws-btn primary" href="' + esc(s.src) + '" target="_blank" rel="noopener">악보 PDF 열기</a></div>'
