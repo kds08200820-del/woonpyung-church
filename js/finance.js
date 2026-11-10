@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
  * 콘솔: [finance.js] v20260701di
  */
-console.log('[finance.js] v20261110fy3 (회계 기수 공유·자동 이월·마감)');
+console.log('[finance.js] v20261110fy4 (회계 기수 공유·자동 이월·마감)');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -958,19 +958,32 @@ console.log('[finance.js] v20261110fy3 (회계 기수 공유·자동 이월·마
     }
 
     // ── 지출(재정보고서) 파싱·미리보기·저장 ──
-    var EXP_SKIP = { '지출합계': 1, '차인잔액': 1, '합계': 1, '수입합계': 1, '지출항목': 1, '이월잔액': 1, '전잔액': 1 };
+    var EXP_SKIP = { '지출합계': 1, '지출누계': 1, '차인잔액': 1, '합계': 1, '수입합계': 1, '수입누계': 1, '지출항목': 1, '이월잔액': 1, '전잔액': 1, '이월금': 1 };
+    // 오직의 재정보고서(수입항목·적요·금액 | 지출항목·적요·금액)와 지출내역서(지출항목·적요·금액이 두 단)를 모두 읽는다.
+    // 머리줄의 '지출항목' 칸마다 그 오른쪽의 '적요'·'금액' 칸을 짝지어, 단마다 지출을 모은다.
     function parseExpRows(rows) {
-      var accCol = -1, amtCol = -1, memoCol = -1;
-      for (var r = 0; r < rows.length; r++) { var ai = rows[r].indexOf('지출항목'); if (ai >= 0) { accCol = ai; amtCol = rows[r].indexOf('금액'); memoCol = rows[r].indexOf('적요'); break; } }
-      if (accCol < 0) { accCol = 3; amtCol = 5; memoCol = 4; }   // 헤더 못 찾으면 기본 열 위치
-      if (amtCol < 0) amtCol = accCol + 2;
+      var sets = [];
+      for (var r = 0; r < rows.length; r++) {
+        var hd = rows[r].map(function (c) { return String(c == null ? '' : c).replace(/\s+/g, ''); });
+        if (hd.indexOf('지출항목') < 0) continue;
+        hd.forEach(function (c, i) {
+          if (c !== '지출항목') return;
+          var amt = -1, memo = -1;
+          for (var j = i + 1; j < hd.length && hd[j] !== '지출항목' && hd[j] !== '수입항목'; j++) { if (hd[j] === '금액' && amt < 0) amt = j; if (hd[j] === '적요' && memo < 0) memo = j; }
+          sets.push({ acc: i, amt: amt < 0 ? i + 2 : amt, memo: memo });
+        });
+        break;
+      }
+      if (!sets.length) sets.push({ acc: 3, amt: 5, memo: 4 });   // 머리줄을 못 찾으면 기본 칸 위치
       var items = [];
-      rows.forEach(function (row) {
-        var acc = (row[accCol] || '').trim();
-        if (!acc || EXP_SKIP[acc] || EXP_SKIP[acc.replace(/\s+/g, '')]) return;
-        var amt = parseNum(row[amtCol]);
-        if (!amt) return;
-        items.push({ account: acc, amount: amt, memo: (memoCol >= 0 ? (row[memoCol] || '') : '').trim() });
+      sets.forEach(function (st) {   // 왼쪽 단을 다 읽은 뒤 오른쪽 단
+        rows.forEach(function (row) {
+          var acc = String(row[st.acc] == null ? '' : row[st.acc]).trim();
+          if (!acc || EXP_SKIP[acc] || EXP_SKIP[acc.replace(/\s+/g, '')]) return;
+          var amt = parseNum(row[st.amt]);
+          if (!amt) return;
+          items.push({ account: acc, amount: amt, memo: (st.memo >= 0 ? String(row[st.memo] == null ? '' : row[st.memo]) : '').trim() });
+        });
       });
       return items;
     }
@@ -1012,9 +1025,11 @@ console.log('[finance.js] v20261110fy3 (회계 기수 공유·자동 이월·마
         // 기간(예: 2026.06.29 ~ 2026.07.05)에서 종료일=주일을 일자로 자동 세팅
         var mper = flat.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})\s*[~\-]\s*(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);
         if (mper) { var de = panel.querySelector('#b_date'); if (de) de.value = mper[4] + '-' + ('0' + mper[5]).slice(-2) + '-' + ('0' + mper[6]).slice(-2); }
-        var isExp = /재정\s*보고서/.test(flat) || rows.some(function (r) { return r.indexOf('지출항목') >= 0; });
+        var isExp = /재정\s*보고서/.test(flat) || rows.some(function (r) { return r.some(function (c) { return String(c).replace(/\s+/g, '') === '지출항목'; }); });
         var isOff = /헌금자\s*리스트/.test(flat) || rows.some(function (r) { return r.some(function (c) { return OFFER_CATS[String(c).replace(/\s+/g, '')]; }); });
-        if (isExp && !isOff) {
+        // 재정보고서에는 수입 쪽에 헌금 항목 이름(십일조 등)이 함께 나온다. 그것만 보고 헌금자 리스트로 읽으면
+        // 지출이 헌금으로 들어간다(2026-11-01 주에 실제로 그랬다). '헌금자 리스트' 제목이 없으면 재정보고서가 먼저다.
+        if (isExp && !/헌금자\s*리스트/.test(flat)) {
           var items = parseExpRows(rows);
           msg.style.color = '#93867C'; msg.textContent = '✓ 재정보고서(지출) 인식 — ' + items.length + '건. 아래 미리보기를 확인하고 [일괄 저장]을 누르세요.';
           previewExp(items);
