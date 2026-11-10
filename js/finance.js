@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
  * 콘솔: [finance.js] v20260701di
  */
-console.log('[finance.js] v20261110fy (회계 기수 공유·자동 이월·마감)');
+console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마감)');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -271,9 +271,9 @@ console.log('[finance.js] v20261110fy (회계 기수 공유·자동 이월·마�
   function carryInfo(fy) {
     fy = fy || M.fy;
     var st = storedCarry(fy), calc = calcCarry(fy);
-    // 앞 연도에 기준 이월금이 있을 때만 '다르다'고 알린다(기준 없이 계산한 값과 견주면 헛경고가 난다)
-    var based = false, first = firstDataFY();
-    if (first != null) for (var y = first; y < fy; y++) if (storedCarry(y) != null) based = true;
+    // 앞 연도를 이 장부에서 결산했을 때만 '다르다'고 알린다.
+    // (앞 연도 전표가 일부만 들어 있거나 이월금을 직접 넣은 경우에는 두 값이 달라도 잘못이 아니다)
+    var based = !!(M.settings || {})['fy_closed_' + (fy - 1)];
     return { value: st != null ? st : (calc != null ? calc : 0), stored: st, calc: calc, auto: st == null && calc != null, mismatch: st != null && calc != null && based && st !== calc };
   }
   function carryover(fy) { return carryInfo(fy).value; }
@@ -1731,13 +1731,13 @@ console.log('[finance.js] v20261110fy (회계 기수 공유·자동 이월·마�
         '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px"><b>' + r.from + '</b> 시작 시점의 <b>이월 잔액</b>입니다. 앞 회계연도를 결산하면 그 기말 잔액이 여기로 넘어옵니다. 저장된 값이 없으면 앞 회계연도 장부로 자동 계산합니다.</p>' +
         '<table class="fin-table" style="margin-bottom:12px"><tbody>' +
         '<tr><td>저장된 이월금</td><td class="num">' + (ci.stored != null ? won(ci.stored) : '없음') + '</td></tr>' +
-        '<tr><td>' + (M.fy - 1) + '년도 장부로 계산한 이월금</td><td class="num">' + (ci.calc != null ? won(ci.calc) : '앞 연도 자료 없음') + '</td></tr>' +
+        ((ci.stored == null || ci.mismatch) ? '<tr><td>' + (M.fy - 1) + '년도 장부로 계산한 이월금</td><td class="num">' + (ci.calc != null ? won(ci.calc) : '앞 연도 자료 없음') + '</td></tr>' : '') +
         '<tr style="font-weight:700;background:#FBF8F6"><td>지금 쓰는 값' + (ci.auto ? ' (자동 계산)' : '') + '</td><td class="num">' + won(carry) + '</td></tr>' +
         '</tbody></table>' +
         (ci.mismatch ? '<p style="font-size:.86rem;color:#A33A2A;margin-bottom:10px">저장된 값과 장부로 계산한 값이 ' + won(ci.stored - ci.calc) + '원 다릅니다. ' + (M.fy - 1) + '년도 전표가 이월 뒤에 바뀌었을 수 있습니다.</p>' : '') +
         '<div class="form-field" style="max-width:260px"><label>이월금 직접 넣기 (원)</label><input type="text" id="set_carry" inputmode="numeric" value="' + (ci.stored != null ? won(ci.stored) : '') + '" placeholder="비우면 자동 계산" style="text-align:right;font-weight:700"></div>' +
         '<div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-solid" id="set_carry_save">이월금 저장</button>' +
-        (ci.calc != null && ci.stored != null && ci.stored !== ci.calc ? '<button class="btn btn-line" id="set_carry_sync">장부로 계산한 값으로 맞추기</button>' : '') +
+        (ci.mismatch ? '<button class="btn btn-line" id="set_carry_sync">장부로 계산한 값으로 맞추기</button>' : '') +
         '<span class="fin-msg" id="set_carry_msg"></span></div></div>' +
         '<div class="fin-card" style="max-width:560px">' +
         '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">결산 후 이월 — ' + M.fy + '년도</h3>' +
