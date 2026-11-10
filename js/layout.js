@@ -38,9 +38,9 @@
       { href: "story.html#history", label: "교회 연혁" },
       { href: "story.html#communities", label: "그리스도의 몸 된 지체들" },
     ] },
-    { href: "world.html", label: "지역과 세상", sub: [
+    { href: "world.html", label: "지역과 세상", also: ["mission.html"], sub: [
       { href: "world.html#local", label: "지역 연합사역" },
-      { href: "world.html#mission", label: "선교" },
+      { href: "mission.html", label: "구제선교위원회" },   // 2026-11-10 담임목사: 선교 → 구제선교위원회(회원·연간 사역·후원처) — js/mission.js
     ] },
     { href: "library.html", label: "자료실", sub: [
       { href: "library.html#edu", label: "교육 자료실" },
@@ -59,7 +59,7 @@
 
   // ===== 헤더 =====
   const navLinks = NAV.map((n) => {
-    const active = path === n.href.split("#")[0] ? ' class="active"' : "";
+    const active = (path === n.href.split("#")[0] || (n.also || []).indexOf(path) >= 0) ? ' class="active"' : "";
     const admAttr = n.adminOnly ? ` id="${n.id || "navAdmin"}" style="display:none"` : (n.memberOnly ? ' id="navMember" style="display:none"' : "");
     if (!n.sub) return `<div class="nav-item"${admAttr}><a href="${n.href}"${active}>${n.label}</a></div>`;
     const subs = n.sub.map((s) => `<a href="${s.href}"${s.id ? ` id="${s.id}"` : ""}${s.hidden ? ' style="display:none"' : ""}>${s.label}</a>`).join("");
