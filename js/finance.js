@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
  * 콘솔: [finance.js] v20260701di
  */
-console.log('[finance.js] v20261110fy4 (회계 기수 공유·자동 이월·마감)');
+console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마감)');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -413,8 +413,10 @@ console.log('[finance.js] v20261110fy4 (회계 기수 공유·자동 이월·마
           var kids = (byParent[gr['계정코드']] || []).sort(function (a, b) { return String(a['계정코드']).localeCompare(String(b['계정코드'])); });
           var gs = cols.map(function () { return 0; });
           var kidRows = kids.map(function (k) {
-            var nm = k['계정이름']; seen[nm] = 1;
-            var vals = maps.map(function (mp, i) { var v = mp[nm] || 0; gs[i] += v; return v; });
+            // 전표에는 계정 이름만 있어서, 같은 이름의 목이 두 항에 있으면(예: 목회비-원로목사 · 휴가비-원로목사)
+            // 금액을 양쪽에 다 넣으면 합계가 두 배가 된다. 코드가 앞선 쪽에만 넣는다.
+            var nm = k['계정이름'], dupName = !!seen[nm]; seen[nm] = 1;
+            var vals = maps.map(function (mp, i) { var v = dupName ? 0 : (mp[nm] || 0); gs[i] += v; return v; });
             if (vals.every(function (v) { return !v; })) return '';   // 빈(0) 목 숨김
             return '<tr><td style="padding-left:20px;color:#67584C">' + esc(nm) + '</td>' + vals.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>';
           }).join('');
