@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
  * 콘솔: [finance.js] v20260701di
  */
-console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마감)');
+console.log('[finance.js] v20261110fy3 (회계 기수 공유·자동 이월·마감)');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -45,6 +45,8 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
   }
   function inFY(x) { var r = fyRange(M.fy), d = String(x['일자']).slice(0, 10); return d >= r.from && d <= r.to; }
   function vouchersFY() { return M.vouchers.filter(inFY); }
+  // 기부금영수증(연말정산)은 회계연도가 아니라 귀속연도(달력 1/1 ~ 12/31)로 센다 — 오직 재정·세법과 같다.
+  function vouchersTaxYear() { var y = String(M.fy); return M.vouchers.filter(function (x) { return String(x['일자']).slice(0, 4) === y; }); }
   M.fy = curFY();
   // 지출 계정 표시: 항-목 (예: 전도비-선물비). 저장·집계는 목(계정명) 그대로.
   function expHang(name) { for (var i = 0; i < M.accounts.length; i++) { var a = M.accounts[i]; if (String(a['구분']) === '지출' && a['계정명'] === name) return a['분류'] || a['상위'] || ''; } return ''; }
@@ -875,7 +877,9 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
         if (!cells.length) return;
         var joined = cells.join(' ');
         if (/^헌금자\s*리스트/.test(joined) || /^기간/.test(joined) || /누\s*계/.test(joined) || /합\s*계/.test(joined)) return;
-        if (cells.length === 1 && !isAmount(cells[0])) { cat = cells[0]; return; } // 항목 구분 줄
+        if (/^\(?\d{4}[.\-\/]\d{1,2}[.\-\/]\d{1,2}/.test(joined)) return;   // 기간 줄 "(2026.10.26~2026.11.01)" 은 항목이 아니다
+        // 항목 구분 줄: 금액이 하나도 없는 줄. 띄어쓰기가 든 항목("명절 가정 감사")도 한 항목으로 읽는다.
+        if (!cells.some(isAmount)) { cat = joined; return; }
         for (var i = 0; i < cells.length; i += 2) {
           var name = cells[i], amt = cells[i + 1];
           if (!name || isAmount(name)) continue;
@@ -913,7 +917,7 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
         '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><b>' + items.length + '건</b><b style="color:#2F6B4F">' + won(tot) + '원</b>' +
         '<span class="fin-pill in">교적매칭 ' + nMatch + '</span>' + (nNone ? '<span class="fin-pill out">미등록 ' + nNone + '</span>' : '') + (nDup ? '<span class="fin-pill out">동명이인 ' + nDup + '</span>' : '') + '</div>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + catOrder.map(function (c) { return '<span class="fin-pill" style="background:#F6F2EF;color:#5D4D40">' + esc(c) + ' ' + byCat[c].c + '건 · ' + won(byCat[c].s) + '</span>'; }).join('') + '</div>' +
-        (unkList.length ? '<p class="help" style="color:#A33A2A">⚠ 계정과목 마스터에 없는 항목: <b>' + esc(unkList.join(', ')) + '</b> — 그대로 저장되며 거래장부엔 보이지만, 결산 분류에서 빠질 수 있습니다. 필요하면 설정에서 계정 추가 후 다시 하세요.</p>' : '') +
+        (unkList.length ? '<p class="help" style="color:#A33A2A">계정과목에 없는 항목: <b>' + esc(unkList.join(', ')) + '</b> — <b>저장할 수 없습니다.</b> 헌금자 리스트 파일이 맞는지 확인하십시오(재정보고서를 넣으면 이렇게 됩니다). 새 헌금 항목이면 예산·계정에서 먼저 추가하십시오.</p>' : '') +
         '<div style="overflow:auto;max-height:420px"><table class="fin-table"><thead><tr><th>항목</th><th>헌금자</th><th class="num">금액</th><th>교적</th></tr></thead><tbody>' +
         items.map(function (i) {
           var badge = i.match === 'ok' ? '<span class="fin-pill in">✓ ' + esc(i.matchName) + '</span>' : i.match === 'dup' ? '<span class="fin-pill out">동명이인(수동확인)</span>' : '<span style="color:#AFA49C">미등록</span>';
@@ -921,12 +925,13 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
         }).join('') + '</tbody></table></div>' +
         (nNone || nDup ? '<p class="help">미등록·동명이인 건도 헌금자 이름은 그대로 저장됩니다(헌금자통계엔 표시). 다만 개인 "내 헌금 조회"에는 교적 매칭된 건만 잡히므로, 저장 후 <b>거래장부</b>에서 해당 건을 열어 헌금자를 교적과 연결하면 됩니다.</p>' : '') +
         '</div>';
-      saveBtn.disabled = false;
+      saveBtn.disabled = unkList.length > 0;   // 모르는 항목이 있으면 저장을 막는다(오직도 등록된 계정만 받는다)
     }
 
     function save() {
       if (!parsed.length) { preview(); }
       if (!parsed.length) return;
+      if (parsed.some(function (i) { return !i.accountKnown; })) { alert('계정과목에 없는 항목이 있어 저장할 수 없습니다.'); return; }
       var date = panel.querySelector('#b_date').value;
       var svc = panel.querySelector('#b_svc').value;
       var method = panel.querySelector('#b_method').value;
@@ -1315,7 +1320,7 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
   function birthDigits(k) { return (k || '').split('|')[1] || ''; }
   function memByKey(k) { for (var i = 0; i < M.members.length; i++) if (M.members[i].key === k) return M.members[i]; return null; }
   // 키 집합의 회계연도 헌금 전표
-  function receiptVouchers(keys) { return vouchersFY().filter(function (x) { return String(x['종류']) === '헌금' && keys.indexOf(x['매칭키']) >= 0; }); }
+  function receiptVouchers(keys) { return vouchersTaxYear().filter(function (x) { return String(x['종류']) === '헌금' && keys.indexOf(x['매칭키']) >= 0; }); }
   // 명세방식별 기부내용 행 [{date,content,amount}]
   function detailRowsFor(vs, mode) {
     var rows = [];
@@ -1348,15 +1353,15 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
     loading(panel);
     Promise.all([ensureVouchers(), ensureSettings(), ensureReceipts()]).then(function () {
       var map = {};
-      vouchersFY().filter(function (x) { return String(x['종류']) === '헌금' && x['매칭키']; }).forEach(function (v) { var k = v['매칭키']; if (!map[k]) map[k] = { name: v['헌금자'], key: k, total: 0, count: 0 }; map[k].total += Number(v['금액']) || 0; map[k].count++; });
+      vouchersTaxYear().filter(function (x) { return String(x['종류']) === '헌금' && x['매칭키']; }).forEach(function (v) { var k = v['매칭키']; if (!map[k]) map[k] = { name: v['헌금자'], key: k, total: 0, count: 0 }; map[k].total += Number(v['금액']) || 0; map[k].count++; });
       var rows = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return b.total - a.total; });
       var tot = rows.reduce(function (s, r) { return s + r.total; }, 0);
       var cov = coveredMap();
       var org = orgInfo();
       panel.innerHTML =
         (org.bizno ? '' : '<div style="background:#FBEDEA;border:1px solid #f5b7b1;color:#922b21;padding:9px 13px;border-radius:8px;font-size:.83rem;margin-bottom:10px">⚠ 발급기관 <b>고유번호(사업자등록번호)</b>가 비어 있습니다. <b>설정 → 기부금영수증 발급기관</b>에서 먼저 입력하세요. (영수증 효력에 필요)</div>') +
-        '<div class="fin-card"><div style="background:#fff8e8;border:1px solid #E8C294;color:#7E3B1E;padding:10px 14px;border-radius:9px;font-size:.85rem;margin-bottom:12px">연말정산 기부금영수증 — 교적 매칭된 교인의 헌금 누계입니다. <b>발급</b> 버튼으로 공식 양식(소득세법 시행규칙 별지 제45호의2서식) 영수증을 출력/PDF 저장합니다. (미등록 헌금자 제외)</div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px"><b>교인별 헌금 누계 (' + rows.length + '명) · ' + M.fy + '년도</b><span><b style="color:#2F6B4F;margin-right:12px">' + won(tot) + '원</b><button class="btn btn-line" id="rcp_xls">⬇ 엑셀</button></span></div>' +
+        '<div class="fin-card"><div style="background:#fff8e8;border:1px solid #E8C294;color:#7E3B1E;padding:10px 14px;border-radius:9px;font-size:.85rem;margin-bottom:12px">연말정산 기부금영수증 — 교적 매칭된 교인의 <b>' + M.fy + '년 귀속(' + M.fy + '-01-01 ~ ' + M.fy + '-12-31)</b> 헌금 누계입니다. 회계연도가 아니라 달력 1년으로 셉니다(오직 재정과 같음). <b>발급</b> 버튼으로 공식 양식(소득세법 시행규칙 별지 제45호의2서식) 영수증을 출력/PDF 저장합니다. (미등록 헌금자 제외)</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px"><b>교인별 헌금 누계 (' + rows.length + '명) · ' + M.fy + '년 귀속</b><span><b style="color:#2F6B4F;margin-right:12px">' + won(tot) + '원</b><button class="btn btn-line" id="rcp_xls">⬇ 엑셀</button></span></div>' +
         '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th class="num">건수</th><th class="num">헌금 누계</th><th>발급</th></tr></thead><tbody>' +
         rows.map(function (r, i) {
           var rc = cov[r.key];
@@ -1401,7 +1406,7 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
     ov.innerHTML =
       '<div style="background:#fff;border-radius:14px;max-width:680px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:22px 24px 26px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;color:var(--accent,#3A281C)">기부금영수증 발급 — ' + esc(member.name) + '</h3><button id="rc_x" style="border:0;background:none;font-size:1.5rem;cursor:pointer;color:#ADA29A">&times;</button></div>' +
-      '<p style="color:var(--ink-soft);font-size:.84rem;margin:0 0 14px">' + M.fy + '년도 헌금 누계 <b>' + won(member.total) + '원</b> · ' + member.count + '건. 발급 옵션을 선택하면 미리보기가 갱신됩니다.</p>' +
+      '<p style="color:var(--ink-soft);font-size:.84rem;margin:0 0 14px">' + M.fy + '년 귀속 헌금 누계 <b>' + won(member.total) + '원</b> · ' + member.count + '건. 발급 옵션을 선택하면 미리보기가 갱신됩니다.</p>' +
       '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px">' +
       '<div><div style="font-size:.78rem;color:var(--ink-soft);margin-bottom:4px">명세 방식</div>' +
       '<label class="rc-r"><input type="radio" name="rc_detail" value="sum" checked> 합계(1줄)</label> ' +
@@ -1458,12 +1463,12 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
       if (!g.total) { ov.querySelector('#rc_msg').textContent = '발급할 헌금 내역이 없습니다.'; return; }
       var rrn = ov.querySelector('#rc_rrn').value.trim();
       var addrV = ov.querySelector('#rc_addr').value.trim();
-      var r = fyRange(M.fy);
+      var r = { from: M.fy + '-01-01', to: M.fy + '-12-31' };   // 귀속연도
       var no = nextReceiptNo();
       var rec = {
         no: no, fy: M.fy, key: member.key, name: member.name, birth: birthDigits(member.key),
         rrn: rrn, addr: addrV, includedKeys: g.keys, detail: g.mode, spouse: g.spouse,
-        period: M.fy + '년도(' + r.from + '~' + r.to + ')', amount: g.total, cnt: g.vs.length, method: method
+        period: M.fy + '년 귀속(' + r.from + '~' + r.to + ')', amount: g.total, cnt: g.vs.length, method: method
       };
       var btnP = ov.querySelector('#rc_print'), btnD = ov.querySelector('#rc_pdf');
       btnP.disabled = btnD.disabled = true; ov.querySelector('#rc_msg').style.color = '#93867C'; ov.querySelector('#rc_msg').textContent = '발급 기록 중…';
@@ -1551,7 +1556,7 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
       '<p class="stmt">위와 같이 기부금을 기부받았음을 증명합니다.</p>' +
       '<p class="dt">' + dateK + '</p>' +
       '<p class="sign">기부금 수령인 &nbsp; <span class="ul big">' + esc(org.name) + '</span>' + (org.imgSeal ? '<img class="seal" src="' + esc(org.imgSeal) + '" alt="직인">' : ' &nbsp;(직인)') + '</p>' +
-      '<div class="foot">발급방식: ' + (rec.method === 'pdf' ? 'PDF 저장' : '인쇄 출력') + ' · 회계연도: ' + esc(rec.period || (M.fy + '년도')) + ' · 발급일 ' + dt + ' · 운평장로교회 회계시스템</div>' +
+      '<div class="foot">발급방식: ' + (rec.method === 'pdf' ? 'PDF 저장' : '인쇄 출력') + ' · 귀속연도: ' + esc(rec.period || (M.fy + '년')) + ' · 발급일 ' + dt + ' · 운평장로교회 회계시스템</div>' +
       (org.imgUid ? '<div class="attach"><div class="attach-t">[붙임 1] 고유번호증</div><img src="' + esc(org.imgUid) + '" alt="고유번호증"></div>' : '') +
       (org.imgAssoc ? '<div class="attach"><div class="attach-t">[붙임 2] 총회소속증명서</div><img src="' + esc(org.imgAssoc) + '" alt="총회소속증명서"></div>' : '') +
       '<div class="noprint" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#543C2A;color:#fff;border-radius:8px">🖨 인쇄 / PDF 저장</button></div>' +
@@ -1571,7 +1576,7 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
       panel.innerHTML = '<div class="fin-card">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px"><b>기부금영수증 발급대장 (전체 ' + list.length + '건 · 유효 ' + issued.length + '건)</b>' +
         '<span><b style="color:#2F6B4F;margin-right:12px">' + won(totAmt) + '원</b><button class="btn btn-line" id="rcl_xls">⬇ 엑셀(세무서 보고용)</button></span></div>' +
-        '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>일련번호</th><th>발급일</th><th>기부자</th><th>생년월일</th><th>회계연도</th><th>명세</th><th>합산</th><th class="num">금액</th><th>방식</th><th>상태</th><th>관리</th></tr></thead><tbody>' +
+        '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>일련번호</th><th>발급일</th><th>기부자</th><th>생년월일</th><th>귀속연도</th><th>명세</th><th>합산</th><th class="num">금액</th><th>방식</th><th>상태</th><th>관리</th></tr></thead><tbody>' +
         (list.length ? list.map(function (r) {
           var cancelled = r.status === 'cancelled';
           return '<tr' + (cancelled ? ' style="color:#BBB2AC;text-decoration:line-through"' : '') + '><td>' + esc(r.no) + '</td><td>' + esc(fmtD(r.issuedAt)) + '</td><td><b>' + esc(r.name) + '</b></td><td>' + esc(r.birth ? (r.birth.slice(0, 4) + '-' + r.birth.slice(4, 6) + '-' + r.birth.slice(6, 8)) : '') + '</td><td>' + esc(String(r.fy)) + '년</td><td>' + esc(detailK[r.detail] || r.detail) + '</td><td>' + (r.spouse ? '부부' : '-') + '</td><td class="num"><b>' + won(r.amount) + '</b></td><td>' + (r.method === 'pdf' ? 'PDF' : '출력') + '</td><td>' + (cancelled ? '취소됨' : '<span style="color:#2F6B4F">유효</span>') + '</td><td>' + (cancelled ? '' : '<button class="btn btn-line" data-cancel="' + r.id + '" style="padding:3px 9px;font-size:.76rem">발급취소</button>') + '</td></tr>';
@@ -1590,7 +1595,7 @@ console.log('[finance.js] v20261110fy2 (회계 기수 공유·자동 이월·마
   }
 
   function exportReceiptCSV(list, detailK) {
-    var head = ['일련번호', '발급일', '기부자성명', '생년월일', '주민등록번호', '주소', '회계연도', '명세방식', '부부합산', '헌금건수', '금액', '발급방식', '상태'];
+    var head = ['일련번호', '발급일', '기부자성명', '생년월일', '주민등록번호', '주소', '귀속연도', '명세방식', '부부합산', '헌금건수', '금액', '발급방식', '상태'];
     function q(v) { v = String(v == null ? '' : v); return '"' + v.replace(/"/g, '""') + '"'; }
     var lines = [head.map(q).join(',')];
     list.forEach(function (r) {
