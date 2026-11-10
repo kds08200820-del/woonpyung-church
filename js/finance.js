@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
  * 콘솔: [finance.js] v20260701di
  */
-console.log('[finance.js] v20260701di');
+console.log('[finance.js] v20261110fy (회계 기수 공유·자동 이월·마감)');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -16,7 +16,10 @@ console.log('[finance.js] v20260701di');
   var today = function () { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
 
   // ── 회계연도 ──
-  function fyStartMonth() { var v = Number(localStorage.getItem('wpf_fy_start')); return (v >= 1 && v <= 12) ? v : 1; }
+  // 시작 월은 서버 설정(app_settings.fy_start_month)에 둔다 — 모든 기기가 같은 회계 기수를 쓴다.
+  // 예전에는 브라우저마다 따로 저장해서 기기에 따라 회계연도 범위와 이월금이 달라졌다.
+  // 설정이 아직 없으면 12월(오직 재정의 회계 기수: 12/1 ~ 익년 11/30).
+  function fyStartMonth() { var v = Number((M.settings || {}).fy_start_month); return (v >= 1 && v <= 12) ? v : 12; }
   function lastDay(y, m) { return new Date(y, m, 0).getDate(); }
   // 회계연도 명명: 시작월이 8월 이상(하반기)이면 '종료 연도'로 부른다.
   //  예) 시작월 12월 → 2025-12 ~ 2026-11 회계연도는 "2026년도".
@@ -33,6 +36,13 @@ console.log('[finance.js] v20260701di');
     if (sm >= 8) return (m >= sm) ? y + 1 : y;             // 하반기 시작 → 종료연도로 명명
     return (m >= sm) ? y : y - 1;
   }
+  // 날짜가 속한 회계연도
+  function fyOfDate(ds) {
+    var y = Number(String(ds).slice(0, 4)), m = Number(String(ds).slice(5, 7)), sm = fyStartMonth();
+    if (sm === 1) return y;
+    if (sm >= 8) return (m >= sm) ? y + 1 : y;
+    return (m >= sm) ? y : y - 1;
+  }
   function inFY(x) { var r = fyRange(M.fy), d = String(x['일자']).slice(0, 10); return d >= r.from && d <= r.to; }
   function vouchersFY() { return M.vouchers.filter(inFY); }
   M.fy = curFY();
@@ -47,6 +57,35 @@ console.log('[finance.js] v20260701di');
     return s || '—';
   }
 
+  // ── 마감(오직 방식): 마감일 이전 전표는 추가·수정·삭제할 수 없다 ──
+  // 마감일 = 설정의 마감일(fin_lock_date)과, 결산한 회계연도들의 종료일 가운데 가장 늦은 날.
+  function lockDate() {
+    var s = M.settings || {}, d = (s.fin_lock_on === '1' && /^\d{4}-\d\d-\d\d$/.test(s.fin_lock_date || '')) ? s.fin_lock_date : '';
+    Object.keys(s).forEach(function (k) {
+      var m = /^fy_closed_(\d{4})$/.exec(k); if (!m || !s[k]) return;
+      var e = fyRange(Number(m[1])).to; if (e > d) d = e;
+    });
+    return d;
+  }
+  function lockMsg(d) { return '마감된 기간(' + lockDate() + ' 이전)의 전표입니다' + (d ? ' — ' + d : '') + '.\n추가·수정·삭제하려면 설정에서 마감일을 바꾸거나 결산을 취소하십시오.'; }
+  function voucherDate(id) { for (var i = 0; i < M.vouchers.length; i++) if (String(M.vouchers[i]['전표ID']) === String(id)) return fmtD(M.vouchers[i]['일자']); return ''; }
+  // 전표를 바꾸는 호출만 가로채서 마감 여부를 본다. 나머지는 그대로 넘긴다.
+  var WPF = {
+    token: function () { return window.WPF && window.WPF.token(); },
+    call: function (action, params) {
+      var lk = lockDate(), bad = '';
+      if (lk) {
+        var p = params || {};
+        if (action === 'addVoucher' || action === 'updateVoucher') { var nd = fmtD((p.voucher || {}).date); if (nd && nd <= lk) bad = nd; }
+        if (!bad && (action === 'updateVoucher' || action === 'deleteVoucher')) { var od = voucherDate(p.id); if (od && od <= lk) bad = od; }
+        if (action === 'addVouchersBulk') (p.vouchers || []).forEach(function (v) { var bd = fmtD(v.date); if (!bad && bd && bd <= lk) bad = bd; });
+        if (action === 'clearVouchers') bad = '전체 삭제';
+      }
+      if (bad) { alert(lockMsg(bad)); return Promise.reject(new Error('마감된 기간의 전표입니다 (' + bad + ')')); }
+      return window.WPF.call(action, params);
+    }
+  };
+
   var tries = 0;
   function boot() {
     if (!window.FINANCE_API_URL) { root.innerHTML = msgCard('준비 중', '재정 API가 설정되지 않았습니다.'); return; }
@@ -59,7 +98,8 @@ console.log('[finance.js] v20260701di');
       if (!me.canFinance) { root.innerHTML = msgCard('접근 권한이 없습니다', '재정관리는 관리자 승인을 받은 회원만 이용할 수 있습니다.'); return; }
       WPF.call('masters').then(function (m) {
         M.members = m.members || []; M.accounts = m.accounts || []; M.services = m.services || [];
-        ensureSettings().then(render);   // 설정(로고 등)을 미리 로드 → 모든 출력물에 로고 사용 가능
+        // 설정(시작 월·이월금·로고)을 먼저 읽은 뒤 회계연도를 정한다
+        ensureSettings().then(function () { M.fy = curFY(); render(); });
       }).catch(function (e) { root.innerHTML = msgCard('불러오기 실패', e.message); });
     }).catch(function (e) { root.innerHTML = msgCard('확인 실패', e.message); });
   }
@@ -203,7 +243,48 @@ console.log('[finance.js] v20260701di');
     if (M._s) return Promise.resolve();
     return WPF.call('getSettings').then(function (r) { M.settings = r.settings || {}; M._s = true; }).catch(function () { M.settings = {}; M._s = true; });
   }
-  function carryover(fy) { return parseNum((M.settings || {})['carryover_' + (fy || M.fy)]); } // 회계연도별 전기 이월금
+  // ── 전기 이월금 (오직 방식) ──
+  // 1) 저장된 이월금(결산 후 이월한 값 또는 직접 넣은 값)이 있으면 그 값.
+  // 2) 없으면 앞 회계연도의 '이월금 + 수입 - 지출'을 자동으로 계산한다(앞 연도를 결산하지 않아도 0 이 되지 않는다).
+  function storedCarry(fy) { var v = (M.settings || {})['carryover_' + fy]; return (v == null || String(v).trim() === '') ? null : parseNum(v); }
+  function netBetween(from, toExcl) { // from <= 일자 < toExcl 의 수입 - 지출
+    var n = 0;
+    (M.vouchers || []).forEach(function (v) { var d = fmtD(v['일자']); if (d >= from && d < toExcl) { var a = Number(v['금액']) || 0; n += (String(v['구분']) === '수입') ? a : -a; } });
+    return n;
+  }
+  function netFY(fy) { return netBetween(fyRange(fy).from, fyRange(fy + 1).from); }
+  function firstDataFY() { // 전표나 저장된 이월금이 있는 가장 이른 회계연도
+    var min = null;
+    (M.vouchers || []).forEach(function (v) { var d = fmtD(v['일자']); if (d.length === 10) { var f = fyOfDate(d); if (min == null || f < min) min = f; } });
+    Object.keys(M.settings || {}).forEach(function (k) { var m = /^carryover_(\d{4})$/.exec(k); if (m && storedCarry(Number(m[1])) != null) { var f = Number(m[1]); if (min == null || f < min) min = f; } });
+    return min;
+  }
+  // 앞 회계연도 장부로 계산한 이월금. 앞 연도에 자료가 없으면 null.
+  function calcCarry(fy) {
+    var first = firstDataFY();
+    if (first == null || fy <= first) return null;
+    var c = 0;
+    for (var y = first; y < fy; y++) { var st = storedCarry(y); if (st != null) c = st; c += netFY(y); }
+    return c;
+  }
+  // { value: 쓰는 값, stored: 저장값|null, calc: 계산값|null, auto: 자동 계산 여부, mismatch: 저장값과 장부가 다름 }
+  function carryInfo(fy) {
+    fy = fy || M.fy;
+    var st = storedCarry(fy), calc = calcCarry(fy);
+    // 앞 연도에 기준 이월금이 있을 때만 '다르다'고 알린다(기준 없이 계산한 값과 견주면 헛경고가 난다)
+    var based = false, first = firstDataFY();
+    if (first != null) for (var y = first; y < fy; y++) if (storedCarry(y) != null) based = true;
+    return { value: st != null ? st : (calc != null ? calc : 0), stored: st, calc: calc, auto: st == null && calc != null, mismatch: st != null && calc != null && based && st !== calc };
+  }
+  function carryover(fy) { return carryInfo(fy).value; }
+  // 어느 날짜든 그날 시작 전 잔액 = 그날이 속한 회계연도의 이월금 + 회계연도 시작 ~ 전날 순증감
+  function balanceBefore(ds) { var f = fyOfDate(ds); return carryover(f) + netBetween(fyRange(f).from, ds); }
+  function carryNote(fy) {
+    fy = fy || M.fy; var ci = carryInfo(fy);
+    if (ci.mismatch) return '<div class="fin-card" style="border-left:4px solid #A33A2A;font-size:.9rem"><b style="color:#A33A2A">전기 이월금을 확인하십시오.</b> 저장된 ' + fy + '년도 전기 이월금은 <b>' + won(ci.stored) + '</b>원인데, ' + (fy - 1) + '년도 장부의 기말 잔액은 <b>' + won(ci.calc) + '</b>원입니다(차이 ' + won(ci.stored - ci.calc) + '원). ' + (fy - 1) + '년도 전표가 이월 뒤에 바뀌었을 수 있습니다. <b>설정</b>에서 다시 이월하십시오.</div>';
+    if (ci.auto) return '<p class="help" style="margin:0 0 10px">전기 이월금은 ' + (fy - 1) + '년도 장부의 기말 잔액으로 자동 계산한 값입니다. ' + (fy - 1) + '년도를 결산하면 이 값으로 고정됩니다.</p>';
+    return '';
+  }
   function ensureReceipts() {
     if (M._rc) return Promise.resolve();
     return WPF.call('listReceipts', {}).then(function (r) { M.receipts = r.receipts || []; M._rc = true; }).catch(function () { M.receipts = []; M._rc = true; });
@@ -407,7 +488,7 @@ console.log('[finance.js] v20260701di');
           '<div><b>🍩 헌금 항목별 (연간)</b>' + donut() + '</div>' +
         '</div></div>' +
         // KPI 요약
-        '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">' + stat('전기 이월금', carry, '#93867C') + stat('당기 수입', ti, '#2F6B4F') + stat('당기 지출', te, '#A33A2A') + stat('현재 잔액', bal, '#3A281C') + '</div>' +
+        carryNote() + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">' + stat('전기 이월금', carry, '#93867C') + stat('당기 수입', ti, '#2F6B4F') + stat('당기 지출', te, '#A33A2A') + stat('현재 잔액', bal, '#3A281C') + '</div>' +
         // 주간 수입/지출 현황
         '<h3 style="margin:6px 0 10px;color:var(--accent,#3A281C)">주간 현황 <span style="font-size:.8rem;font-weight:400;color:#AFA49C">지난주 ' + esc(lastWk.from) + '~' + esc(lastWk.to) + ' · 이번주 ' + esc(thisWk.from) + '~' + esc(thisWk.to) + '</span></h3>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-bottom:8px">' +
@@ -1100,7 +1181,7 @@ console.log('[finance.js] v20260701di');
       M.budget.forEach(function (b) { var code = String(b['계정코드'] || ''); var amt = Number(b['예산']) || 0; if (code.slice(-4) === '0000') return; if (/^1/.test(code)) budIn += amt; else if (/^2/.test(code)) budExp += amt; });
       var carry = carryover();
       withPrint(panel, '결산보고서',
-        '<div class="fin-card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center"><div>전기 이월금 <b>' + won(carry) + '</b></div><div>당기 수입 <b style="color:#2F6B4F">' + won(ti) + '</b></div><div>당기 지출 <b style="color:#A33A2A">' + won(te) + '</b></div><div style="margin-left:auto;font-size:1.05rem">기말 잔액 <b style="color:var(--accent,#3A281C)">' + won(carry + ti - te) + '</b></div></div>' +
+        carryNote() + '<div class="fin-card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center"><div>전기 이월금 <b>' + won(carry) + '</b></div><div>당기 수입 <b style="color:#2F6B4F">' + won(ti) + '</b></div><div>당기 지출 <b style="color:#A33A2A">' + won(te) + '</b></div><div style="margin-left:auto;font-size:1.05rem">기말 잔액 <b style="color:var(--accent,#3A281C)">' + won(carry + ti - te) + '</b></div></div>' +
         '<div class="fin-card"><b>월별 수입·지출 현황</b><div style="overflow:auto;margin-top:8px"><table class="fin-table"><thead><tr><th>월</th><th class="num">수입</th><th class="num">지출</th><th class="num">차액</th></tr></thead><tbody>' + monthTbl +
         '</tbody><tfoot><tr style="font-weight:700;background:#FBF8F6"><td>합계</td><td class="num">' + won(ti) + '</td><td class="num">' + won(te) + '</td><td class="num">' + won(ti - te) + '</td></tr></tfoot></table></div></div>' +
         (M.budget.length ? '<div class="fin-card"><b>예산 대비 실적</b><div style="overflow:auto;margin-top:8px"><table class="fin-table"><thead><tr><th>구분</th><th class="num">연간 예산</th><th class="num">실적 누계</th><th class="num">집행률</th></tr></thead><tbody>' +
@@ -1116,14 +1197,16 @@ console.log('[finance.js] v20260701di');
       '<div class="fin-card"><div class="fin-grid" style="align-items:end">' +
       '<div class="form-field"><label>기간 구분</label><select id="fr_type"><option value="month">월별</option><option value="week">주별</option><option value="quarter">분기별</option><option value="custom">직접 선택</option></select></div>' +
       '<div class="form-field" id="fr_month_wrap"><label>월</label><select id="fr_month"></select></div>' +
-      '<div class="form-field" id="fr_quarter_wrap" style="display:none"><label>분기</label><select id="fr_quarter"><option value="1">1분기(1~3월)</option><option value="2">2분기(4~6월)</option><option value="3">3분기(7~9월)</option><option value="4">4분기(10~12월)</option></select></div>' +
+      '<div class="form-field" id="fr_quarter_wrap" style="display:none"><label>분기</label><select id="fr_quarter">' + [1, 2, 3, 4].map(function (q) { var a = (fyStartMonth() - 1 + (q - 1) * 3) % 12 + 1, b = (a + 1) % 12 + 1; return '<option value="' + q + '">' + q + '분기(' + a + '~' + b + '월)</option>'; }).join('') + '</select></div>' +
       '<div class="form-field" id="fr_week_wrap" style="display:none"><label>기준일(해당 주)</label><input type="date" id="fr_week" value="' + today() + '"></div>' +
       '<div class="form-field" id="fr_from_wrap" style="display:none"><label>시작일</label><input type="date" id="fr_from"></div>' +
       '<div class="form-field" id="fr_to_wrap" style="display:none"><label>종료일</label><input type="date" id="fr_to"></div>' +
       '<div class="form-field"><button class="btn btn-solid" id="fr_go">조회</button></div>' +
       '</div></div><div id="fr_out"></div>';
+    // 월·분기는 회계연도 안의 달이다(12월 시작이면 2026년도의 12월 = 2025년 12월). 회계연도 차례로 늘어놓는다.
     var msel = panel.querySelector('#fr_month'), nowM = new Date().getMonth() + 1, im = '';
-    for (var i = 1; i <= 12; i++) im += '<option value="' + i + '"' + (i === nowM ? ' selected' : '') + '>' + i + '월</option>';
+    function ymOfFY(k) { var sy = Number(fyRange(M.fy).from.slice(0, 4)), mm = fyStartMonth() - 1 + k; return { y: sy + Math.floor(mm / 12), m: mm % 12 + 1 }; } // k = 회계연도의 k번째 달(0부터)
+    for (var i = 0; i < 12; i++) { var ym0 = ymOfFY(i); im += '<option value="' + i + '"' + (ym0.m === nowM ? ' selected' : '') + '>' + ym0.y + '년 ' + ym0.m + '월</option>'; }
     msel.innerHTML = im;
     var typeSel = panel.querySelector('#fr_type');
     function toggle() {
@@ -1136,9 +1219,9 @@ console.log('[finance.js] v20260701di');
     }
     typeSel.onchange = toggle; toggle();
     function range() {
-      var t = typeSel.value, y = M.fy;
-      if (t === 'month') { var m = Number(msel.value); return { from: y + '-' + pad2(m) + '-01', to: y + '-' + pad2(m) + '-' + pad2(lastDay(y, m)), label: y + '년 ' + m + '월' }; }
-      if (t === 'quarter') { var q = Number(panel.querySelector('#fr_quarter').value), sm = (q - 1) * 3 + 1, em = sm + 2; return { from: y + '-' + pad2(sm) + '-01', to: y + '-' + pad2(em) + '-' + pad2(lastDay(y, em)), label: y + '년 ' + q + '분기 (' + sm + '~' + em + '월)' }; }
+      var t = typeSel.value;
+      if (t === 'month') { var a = ymOfFY(Number(msel.value)); return { from: a.y + '-' + pad2(a.m) + '-01', to: a.y + '-' + pad2(a.m) + '-' + pad2(lastDay(a.y, a.m)), label: a.y + '년 ' + a.m + '월' }; }
+      if (t === 'quarter') { var q = Number(panel.querySelector('#fr_quarter').value), qa = ymOfFY((q - 1) * 3), qb = ymOfFY((q - 1) * 3 + 2); return { from: qa.y + '-' + pad2(qa.m) + '-01', to: qb.y + '-' + pad2(qb.m) + '-' + pad2(lastDay(qb.y, qb.m)), label: M.fy + '년도 ' + q + '분기 (' + qa.y + '.' + qa.m + '~' + qb.y + '.' + qb.m + ')' }; }
       if (t === 'week') { var w = weekRange(panel.querySelector('#fr_week').value); return { from: w.from, to: w.to, label: w.from + ' ~ ' + w.to + ' (주간)' }; }
       var f = panel.querySelector('#fr_from').value, tt = panel.querySelector('#fr_to').value; return { from: f, to: tt, label: (f || '?') + ' ~ ' + (tt || '?') };
     }
@@ -1151,10 +1234,9 @@ console.log('[finance.js] v20260701di');
         var list = M.vouchers.filter(function (x) { var d = fmtD(x['일자']); return d >= rg.from && d <= rg.to; });
         var inc = 0, exp = 0, accIn = {}, accEx = {};
         list.forEach(function (v) { var amt = Number(v['금액']) || 0, a = v['계정'] || '?'; if (String(v['구분']) === '수입') { inc += amt; if (!accIn[a]) accIn[a] = { c: 0, s: 0 }; accIn[a].c++; accIn[a].s += amt; } else { exp += amt; if (!accEx[a]) accEx[a] = { c: 0, s: 0 }; accEx[a].c++; accEx[a].s += amt; } });
-        // 기초 이월 잔액 = 회계연도 이월금 + (회계연도 시작 ~ 기간 시작 전) 순증감
-        var fyStart = fyRange(M.fy).from, priorNet = 0;
-        M.vouchers.forEach(function (v) { var d = fmtD(v['일자']); if (d >= fyStart && d < rg.from) { var amt = Number(v['금액']) || 0; priorNet += (String(v['구분']) === '수입') ? amt : -amt; } });
-        var opening = carryover() + priorNet, ending = opening + inc - exp;
+        // 기초 이월 잔액 = 기간 시작일이 속한 회계연도의 이월금 + (그 회계연도 시작 ~ 기간 시작 전) 순증감
+        // (주별·직접 선택처럼 기간이 회계연도 경계에 걸려도 맞게 나온다)
+        var opening = balanceBefore(rg.from), ending = opening + inc - exp;
         function tbl(map, tot) { var rows = Object.keys(map).map(function (k) { return { a: k, c: map[k].c, s: map[k].s }; }).sort(function (a, b) { return b.s - a.s; }); if (!rows.length) return '<p class="help">내역 없음</p>'; return '<table class="fin-table"><thead><tr><th>계정</th><th class="num">건수</th><th class="num">금액</th><th class="num">비율</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + esc(r.a) + '</td><td class="num">' + r.c + '</td><td class="num"><b>' + won(r.s) + '</b></td><td class="num">' + (tot ? (r.s / tot * 100).toFixed(1) + '%' : '-') + '</td></tr>'; }).join('') + '</tbody><tfoot><tr style="font-weight:700;background:#FBF8F6"><td>합계</td><td class="num">' + rows.reduce(function (s, r) { return s + r.c; }, 0) + '</td><td class="num">' + won(tot) + '</td><td class="num">100%</td></tr></tfoot></table>'; }
         var content = '<div class="fin-card" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center"><b>' + esc(rg.label) + '</b>' +
           '<div style="margin-left:auto">기초 이월 <b>' + won(opening) + '</b></div>' +
@@ -1628,7 +1710,8 @@ console.log('[finance.js] v20260701di');
       var mopts = '';
       for (var i = 1; i <= 12; i++) mopts += '<option value="' + i + '"' + (i === sm ? ' selected' : '') + '>' + i + '월</option>';
       var r = fyRange(M.fy);
-      var carry = carryover();
+      var carry = carryover(), ci = carryInfo(M.fy), lk = lockDate(), S0 = M.settings || {};
+      var nextClosed = !!S0['fy_closed_' + (M.fy + 1)];
       // 회계연도 마감용 집계
       var incFY = 0, expFY = 0;
       vouchersFY().forEach(function (x) { if (String(x['구분']) === '수입') incFY += Number(x['금액']) || 0; else expFY += Number(x['금액']) || 0; });
@@ -1639,26 +1722,43 @@ console.log('[finance.js] v20260701di');
         '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">회계연도 설정</h3>' +
         '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:16px">회계연도가 시작하는 월을 정합니다. 거래장부·통계·결산보고서·기부금영수증이 선택한 회계연도 범위로 집계됩니다.</p>' +
         '<div class="form-field" style="max-width:220px"><label>회계연도 시작 월</label><select id="set_sm">' + mopts + '</select></div>' +
-        '<p class="help" style="margin-top:10px">예) <b>1월</b> → 1/1 ~ 12/31 · <b>12월</b> → 12/1 ~ 익년 11/30(오직 방식) · <b>3월</b> → 3/1 ~ 익년 2/말</p>' +
+        '<p class="help" style="margin-top:10px">예) <b>12월</b> → 12/1 ~ 익년 11/30(오직 재정과 같음) · <b>1월</b> → 1/1 ~ 12/31 · <b>3월</b> → 3/1 ~ 익년 2/말</p>' +
         '<p style="margin-top:6px;font-size:.86rem">현재 <b>' + M.fy + '년도</b> 범위: <b>' + r.from + ' ~ ' + r.to + '</b></p>' +
         '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_save">저장</button><span class="fin-msg" id="set_msg"></span></div>' +
-        '<p style="color:#AFA49C;font-size:.78rem;margin-top:12px">※ 시작월은 현재 브라우저에 저장됩니다. 회계연도 선택은 상단 드롭다운에서 바꿀 수 있습니다.</p></div>' +
+        '<p style="color:#AFA49C;font-size:.78rem;margin-top:12px">※ 시작 월은 서버에 저장되어 모든 기기에 똑같이 적용됩니다. 시작 월을 바꾸면 회계연도 범위와 이월금 기준일이 함께 바뀝니다.</p></div>' +
         '<div class="fin-card" style="max-width:560px">' +
         '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">전기 이월금 — ' + M.fy + '년도</h3>' +
-        '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px">회계연도 시작 시점의 <b>이월 잔액</b>입니다. 결산보고서의 기말 잔액(이월금＋수입－지출) 계산에 반영됩니다. 회계연도마다 따로 저장됩니다.</p>' +
-        '<div class="form-field" style="max-width:260px"><label>이월금 (원)</label><input type="text" id="set_carry" inputmode="numeric" value="' + (carry ? won(carry) : '') + '" placeholder="0" style="text-align:right;font-weight:700"></div>' +
-        '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_carry_save">이월금 저장</button><span class="fin-msg" id="set_carry_msg"></span></div></div>' +
+        '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px"><b>' + r.from + '</b> 시작 시점의 <b>이월 잔액</b>입니다. 앞 회계연도를 결산하면 그 기말 잔액이 여기로 넘어옵니다. 저장된 값이 없으면 앞 회계연도 장부로 자동 계산합니다.</p>' +
+        '<table class="fin-table" style="margin-bottom:12px"><tbody>' +
+        '<tr><td>저장된 이월금</td><td class="num">' + (ci.stored != null ? won(ci.stored) : '없음') + '</td></tr>' +
+        '<tr><td>' + (M.fy - 1) + '년도 장부로 계산한 이월금</td><td class="num">' + (ci.calc != null ? won(ci.calc) : '앞 연도 자료 없음') + '</td></tr>' +
+        '<tr style="font-weight:700;background:#FBF8F6"><td>지금 쓰는 값' + (ci.auto ? ' (자동 계산)' : '') + '</td><td class="num">' + won(carry) + '</td></tr>' +
+        '</tbody></table>' +
+        (ci.mismatch ? '<p style="font-size:.86rem;color:#A33A2A;margin-bottom:10px">저장된 값과 장부로 계산한 값이 ' + won(ci.stored - ci.calc) + '원 다릅니다. ' + (M.fy - 1) + '년도 전표가 이월 뒤에 바뀌었을 수 있습니다.</p>' : '') +
+        '<div class="form-field" style="max-width:260px"><label>이월금 직접 넣기 (원)</label><input type="text" id="set_carry" inputmode="numeric" value="' + (ci.stored != null ? won(ci.stored) : '') + '" placeholder="비우면 자동 계산" style="text-align:right;font-weight:700"></div>' +
+        '<div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-solid" id="set_carry_save">이월금 저장</button>' +
+        (ci.calc != null && ci.stored != null && ci.stored !== ci.calc ? '<button class="btn btn-line" id="set_carry_sync">장부로 계산한 값으로 맞추기</button>' : '') +
+        '<span class="fin-msg" id="set_carry_msg"></span></div></div>' +
         '<div class="fin-card" style="max-width:560px">' +
-        '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">회계연도 마감 — ' + M.fy + '년도</h3>' +
-        '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">현재 회계연도를 마감하면 <b>기말 잔액이 다음 연도(' + nextFY + '년도) 전기 이월금으로 자동 이월</b>되고, 화면이 ' + nextFY + '년도로 전환됩니다. 이월된 금액은 위 <b>전기 이월금</b>에서 수정할 수 있습니다.</p>' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">결산 후 이월 — ' + M.fy + '년도</h3>' +
+        '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">결산하면 <b>기말 잔액이 ' + nextFY + '년도 전기 이월금으로 고정</b>되고, ' + M.fy + '년도 전표(' + r.to + ' 이전)는 <b>추가·수정·삭제할 수 없게 잠깁니다</b>. 고칠 일이 생기면 결산을 취소한 뒤 고치고 다시 결산하십시오.</p>' +
         '<table class="fin-table" style="margin-bottom:12px"><tbody>' +
         '<tr><td>전기 이월금</td><td class="num">' + won(carry) + '</td></tr>' +
         '<tr><td>당기 수입</td><td class="num" style="color:#2F6B4F">＋ ' + won(incFY) + '</td></tr>' +
         '<tr><td>당기 지출</td><td class="num" style="color:#A33A2A">－ ' + won(expFY) + '</td></tr>' +
         '<tr style="font-weight:700;background:#FBF8F6"><td>기말 잔액 (다음 연도 이월액)</td><td class="num">' + won(ending) + '</td></tr>' +
         '</tbody></table>' +
-        (closedAt ? '<p style="font-size:.82rem;color:#2F6B4F;margin-bottom:8px">✓ 이미 마감됨 (' + esc(fmtD(closedAt)) + ') — 다시 마감하면 ' + nextFY + '년도 이월금이 재계산되어 덮어쓰입니다.</p>' : '') +
-        '<div style="display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_close" style="background:#543C2A">▶ ' + M.fy + '년도 마감하고 ' + nextFY + '년도로 이월</button><span class="fin-msg" id="set_close_msg"></span></div></div>' +
+        (closedAt ? '<p style="font-size:.82rem;color:#2F6B4F;margin-bottom:8px">결산 후 이월 완료 (' + esc(fmtD(closedAt)) + ')' + (nextClosed ? ' — ' + nextFY + '년도 결산을 먼저 취소해야 이 결산을 취소할 수 있습니다.' : '') + '</p>' : '<p style="font-size:.82rem;color:#A33A2A;margin-bottom:8px">미결산</p>') +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+        (closedAt ? (nextClosed ? '' : '<button class="btn btn-line" id="set_unclose">결산 취소</button>') : '<button class="btn btn-solid" id="set_close" style="background:#543C2A">' + M.fy + '년도 결산 후 ' + nextFY + '년도로 이월</button>') +
+        '<span class="fin-msg" id="set_close_msg"></span></div></div>' +
+        '<div class="fin-card" style="max-width:560px">' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">마감 관리</h3>' +
+        '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">마감 기능을 쓰면 정한 날짜 이전의 전표는 추가·수정·삭제할 수 없습니다. 주간·월간 보고를 마친 뒤 숫자가 바뀌지 않게 할 때 씁니다.</p>' +
+        '<label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" id="lock_on"' + (S0.fin_lock_on === '1' ? ' checked' : '') + '> 마감 기능 사용</label>' +
+        '<div class="form-field" style="max-width:220px"><label>마감일</label><input type="date" id="lock_date" value="' + esc(S0.fin_lock_date || '') + '"></div>' +
+        '<p style="font-size:.86rem;margin-top:6px">지금 잠긴 기간: <b>' + (lk ? lk + ' 이전' : '없음') + '</b>' + (lk && lk !== S0.fin_lock_date ? ' (결산한 회계연도 포함)' : '') + '</p>' +
+        '<div style="margin-top:10px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="lock_save">마감 저장</button><span class="fin-msg" id="lock_msg"></span></div></div>' +
         (function () {
           var o = orgInfo();
           return '<div class="fin-card" style="max-width:560px">' +
@@ -1698,34 +1798,71 @@ console.log('[finance.js] v20260701di');
         })();
       panel.querySelector('#set_save').onclick = function () {
         var v = Number(panel.querySelector('#set_sm').value);
-        localStorage.setItem('wpf_fy_start', v);
-        M.fy = curFY();
-        var msg = panel.querySelector('#set_msg'); msg.style.color = 'green'; msg.textContent = '✓ 저장됨';
-        setTimeout(render, 700);
+        var msg = panel.querySelector('#set_msg'); msg.style.color = '#93867C'; msg.textContent = '저장 중…';
+        WPF.call('setSetting', { key: 'fy_start_month', value: v }).then(function () {
+          M.settings.fy_start_month = String(v);
+          M.fy = curFY();
+          msg.style.color = 'green'; msg.textContent = '저장됨';
+          setTimeout(render, 700);
+        }).catch(function (e) { msg.style.color = '#A33A2A'; msg.textContent = '저장 실패: ' + e.message; });
       };
       var carryEl = panel.querySelector('#set_carry');
       carryEl.addEventListener('input', function () { var n = parseNum(carryEl.value); carryEl.value = n ? won(n) : ''; });
-      panel.querySelector('#set_carry_save').onclick = function () {
-        var amt = parseNum(carryEl.value);
+      function saveCarry(val) { // val: 숫자 또는 ''(자동 계산으로 되돌림)
         var msg = panel.querySelector('#set_carry_msg'); msg.style.color = '#93867C'; msg.textContent = '저장 중…';
-        WPF.call('setSetting', { key: 'carryover_' + M.fy, value: amt }).then(function () {
-          M.settings['carryover_' + M.fy] = String(amt);
-          msg.style.color = 'green'; msg.textContent = '✓ 저장됨';
+        WPF.call('setSetting', { key: 'carryover_' + M.fy, value: val }).then(function () {
+          M.settings['carryover_' + M.fy] = String(val);
+          msg.style.color = 'green'; msg.textContent = '저장됨';
+          setTimeout(render, 600);
         }).catch(function (e) { msg.style.color = '#A33A2A'; msg.textContent = '저장 실패: ' + e.message; });
+      }
+      panel.querySelector('#set_carry_save').onclick = function () { saveCarry(carryEl.value.trim() === '' ? '' : parseNum(carryEl.value)); };
+      var syncBtn = panel.querySelector('#set_carry_sync');
+      if (syncBtn) syncBtn.onclick = function () {
+        if (!confirm(M.fy + '년도 전기 이월금을 ' + won(ci.stored) + '원에서 ' + won(ci.calc) + '원(' + (M.fy - 1) + '년도 장부의 기말 잔액)으로 바꿉니다. 진행할까요?')) return;
+        saveCarry(ci.calc);
       };
-      panel.querySelector('#set_close').onclick = function () {
-        if (!confirm(M.fy + '년도를 마감합니다.\n\n기말 잔액 ' + won(ending) + '원이 ' + nextFY + '년도 전기 이월금으로 이월되고, 화면이 ' + nextFY + '년도로 전환됩니다.\n\n진행할까요?')) return;
-        var cmsg = panel.querySelector('#set_close_msg'); cmsg.style.color = '#93867C'; cmsg.textContent = '마감 처리 중…';
+      var uncloseBtn = panel.querySelector('#set_unclose');
+      if (uncloseBtn) uncloseBtn.onclick = function () {
+        if (!confirm(M.fy + '년도 결산을 취소합니다.\n\n' + M.fy + '년도 전표를 다시 고칠 수 있게 되고, ' + nextFY + '년도 전기 이월금은 ' + M.fy + '년도 장부에 따라 자동으로 계산됩니다.\n\n진행할까요?')) return;
+        var um = panel.querySelector('#set_close_msg'); um.style.color = '#93867C'; um.textContent = '취소 처리 중…';
+        Promise.all([
+          WPF.call('setSetting', { key: 'fy_closed_' + M.fy, value: '' }),
+          WPF.call('setSetting', { key: 'carryover_' + nextFY, value: '' })
+        ]).then(function () {
+          M.settings['fy_closed_' + M.fy] = ''; M.settings['carryover_' + nextFY] = '';
+          um.style.color = 'green'; um.textContent = '결산을 취소했습니다.';
+          setTimeout(render, 700);
+        }).catch(function (e) { um.style.color = '#A33A2A'; um.textContent = '취소 실패: ' + e.message; });
+      };
+      panel.querySelector('#lock_save').onclick = function () {
+        var on = panel.querySelector('#lock_on').checked, dt = panel.querySelector('#lock_date').value;
+        var lm = panel.querySelector('#lock_msg');
+        if (on && !dt) { lm.style.color = '#A33A2A'; lm.textContent = '마감일을 고르십시오.'; return; }
+        lm.style.color = '#93867C'; lm.textContent = '저장 중…';
+        Promise.all([
+          WPF.call('setSetting', { key: 'fin_lock_on', value: on ? '1' : '0' }),
+          WPF.call('setSetting', { key: 'fin_lock_date', value: dt })
+        ]).then(function () {
+          M.settings.fin_lock_on = on ? '1' : '0'; M.settings.fin_lock_date = dt;
+          lm.style.color = 'green'; lm.textContent = '저장됨';
+          setTimeout(render, 600);
+        }).catch(function (e) { lm.style.color = '#A33A2A'; lm.textContent = '저장 실패: ' + e.message; });
+      };
+      var closeBtn = panel.querySelector('#set_close');
+      if (closeBtn) closeBtn.onclick = function () {
+        if (!confirm(M.fy + '년도를 결산합니다.\n\n기말 잔액 ' + won(ending) + '원이 ' + nextFY + '년도 전기 이월금으로 이월되고, ' + M.fy + '년도 전표(' + r.to + ' 이전)는 잠깁니다. 화면은 ' + nextFY + '년도로 바뀝니다.\n\n진행할까요?')) return;
+        var cmsg = panel.querySelector('#set_close_msg'); cmsg.style.color = '#93867C'; cmsg.textContent = '결산 처리 중…';
         Promise.all([
           WPF.call('setSetting', { key: 'carryover_' + nextFY, value: ending }),
           WPF.call('setSetting', { key: 'fy_closed_' + M.fy, value: today() })
         ]).then(function () {
           M.settings['carryover_' + nextFY] = String(ending);
           M.settings['fy_closed_' + M.fy] = today();
-          cmsg.style.color = 'green'; cmsg.textContent = '✓ 마감 완료 — ' + nextFY + '년도로 이월되었습니다.';
+          cmsg.style.color = 'green'; cmsg.textContent = '결산 완료 — ' + nextFY + '년도로 이월했습니다.';
           M.fy = nextFY;
           setTimeout(render, 800);
-        }).catch(function (e) { cmsg.style.color = '#A33A2A'; cmsg.textContent = '마감 실패: ' + e.message; });
+        }).catch(function (e) { cmsg.style.color = '#A33A2A'; cmsg.textContent = '결산 실패: ' + e.message; });
       };
       var orgSave = panel.querySelector('#org_save');
       if (orgSave) orgSave.onclick = function () {
