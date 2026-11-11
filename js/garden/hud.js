@@ -714,7 +714,7 @@ window.GardenHud = (function () {
   function sched() {
     var D = I.db;
     return [
-      { kind: 'dawn', label: t('svc.dawn'), time: t('svc.dawn.time'), days: [1, 2, 3, 4, 5, 6], from: 4 * 60 + 30, to: 6 * 60, lead: 30, cal: D.cal_dawn, svc: D.svc_dawn },
+      { kind: 'dawn', label: t('svc.dawn'), time: t('svc.dawn.time'), days: [1, 2, 3, 4, 5, 6], from: 5 * 60, to: 6 * 60, lead: 30, cal: D.cal_dawn, svc: D.svc_dawn },   /* 2026-11-11: 시작 5시(예전 4:30) — js/worship.js 와 같게 */
       { kind: 'wed', label: t('svc.wed'), time: t('svc.wed.time'), days: [3], from: 11 * 60, to: 12 * 60, lead: 60, cal: D.cal_wed, svc: D.svc_wed },
       { kind: 'sunday', part: 1, label: t('svc.sun1'), time: t('svc.sun1.time'), days: [0], from: 9 * 60 + 20, to: 10 * 60 + 40, lead: 200, cal: '', svc: D.svc_sun1 },
       { kind: 'sunday', part: 2, label: t('svc.sun2'), time: t('svc.sun2.time'), days: [0], from: 11 * 60, to: 12 * 60 + 30, lead: 30, cal: '', svc: D.svc_sun2 }
