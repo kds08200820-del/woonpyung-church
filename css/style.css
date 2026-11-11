@@ -2290,3 +2290,9 @@ body.management-ui .af-shell.af-home .af-main, .af-shell.af-home .af-main { padd
   .hp-plinth { width: min(20vw, 160px); }
   .hp-today { max-width: 420px; }
 }
+
+/* 첫 화면 예배 칸: 다음 예배를 음영 상자로 강조 + 남은 시간 (2026-11-11 담임목사) */
+.hp-wshade { display: inline-block; min-width: min(250px, 100%); max-width: 100%; box-sizing: border-box; padding: 16px 20px 16px 18px; background: rgba(17,17,17,.56); border-left: 2px solid #fff; }
+.hp-wshade h2 { margin-top: 2px; }
+.hp-wshade em { display: block; font-style: normal; font-size: clamp(1.3rem, 2.2vw, 1.8rem); font-weight: 300; line-height: 1.25; letter-spacing: .02em; font-variant-numeric: tabular-nums; margin-top: 8px; white-space: nowrap; }
+.hp-wshade em:empty { display: none; }
