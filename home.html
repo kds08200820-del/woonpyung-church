@@ -121,7 +121,7 @@
         <p class="hp-sub" style="color:#555">내가 가꾸는 믿음의 정원</p>
         <div class="hp-today">
           <span data-go="worship" class="hp-wbox"><i>오늘의 예배</i><b id="hpGW">예배 안내</b><em id="hpGC" aria-live="off"></em><small id="hpGL"></small></span>
-          <span data-go="#qt" class="hp-qbox"><i>오늘의 QT</i><b id="hpGQ">오늘의 말씀 묵상</b><span class="hp-qgo" aria-hidden="true">묵상하기 →</span></span>
+          <span data-go="qt" class="hp-qbox"><i>오늘의 QT</i><b id="hpGQ">오늘의 말씀 묵상</b><span class="hp-qgo" aria-hidden="true">묵상하기 →</span></span>
         </div>
         <!-- 목회자·방송실에게만: 아래 예배 판에 '설교하기'(관리자)·'전체 보기'(방송실 담당) 단추가 떠 있을 때 여기에도 같은 단추를 보여 준다 -->
         <div class="hp-staff" id="hpStaff" hidden>
@@ -217,6 +217,7 @@
       var go = e.target.closest("[data-go]"); if (!go) return;
       e.preventDefault();
       if (go.getAttribute("data-go") === "worship") { openWorship(); return; }
+      if (go.getAttribute("data-go") === "qt") { openQt(go); return; }
       if (go.getAttribute("data-go") === "preach") { var pb = document.querySelector("#home .hw-preach"); if (pb) pb.click(); return; }
       if (go.getAttribute("data-go") === "fs") { var fb = document.querySelector("#home .hw-fsbtn"), hero = document.getElementById("home"); if (fb) { hero.scrollIntoView(); fb.click(); } return; }
       var t = document.querySelector(go.getAttribute("data-go")); if (t) t.scrollIntoView({ behavior: "smooth" });
@@ -229,6 +230,24 @@
       location.href = "worship.html";
     }
     document.getElementById("hpWorship").addEventListener("click", function (e) { e.preventDefault(); openWorship(); });
+    /* 오늘의 QT 를 그 자리에서: 아래 QT 칸으로 내려가지 않고 묵상 창(#qtModal)을 바로 연다 (2026-11-11 담임목사: "이동하지 말고").
+       창은 js/main.js 가 QT 를 불러온 뒤 만드는 '묵상 전문 읽기' 단추(#qtOpen)가 연다 — 그 단추를 누른 것과 같게.
+       아직 불러오는 중이면 잠깐(길어야 6초) 기다렸다가 열고, QT 가 없거나 못 불러왔으면 아래 QT 칸으로 내려가 그 안내 글을 보여 준다 */
+    var qtWait = null;
+    function openQt(row) {
+      var b = document.getElementById("qtOpen");
+      if (b) { b.click(); return; }
+      if (qtWait) return;
+      var lab = row && row.querySelector(".hp-qgo"), was = lab ? lab.textContent : "", n = 0;
+      if (lab) lab.textContent = "여는 중…";
+      function end() { clearInterval(qtWait); qtWait = null; if (lab) lab.textContent = was; }
+      qtWait = setInterval(function () {
+        var x = document.getElementById("qtOpen"), box = document.getElementById("qtToday");
+        if (x) { end(); x.click(); return; }
+        var loading = !box || document.readyState === "loading" || /불러오는 중/.test(box.textContent);   /* 쪽을 다 읽기 전에 누른 경우도 기다린다 */
+        if (!loading || ++n >= 30) { end(); var s = document.getElementById("qt"); if (s) s.scrollIntoView({ behavior: "smooth" }); }
+      }, 200);
+    }
     /* 오늘의 QT 제목(공개 보기 qt_published 에서 오늘 이전 가장 최근 한 건의 제목만) */
     document.addEventListener("DOMContentLoaded", function () { try {
       if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
