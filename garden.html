@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261111m11" />
-  <link rel="stylesheet" href="css/garden.css?v=20261111m11" />
+  <link rel="stylesheet" href="css/garden.css?v=20261111m14" />
 </head>
 <body class="garden" data-church="woonpyung">
 
@@ -193,6 +193,8 @@
       <div class="g-ob-step" id="gObStep1">
         <label class="g-field"><span class="g-flabel" data-i18n="onboard.nick.label"></span><input type="text" id="gObNick" maxlength="20" autocomplete="nickname" data-i18n-ph="onboard.nick.ph" /></label>
         <!-- 내 모습 만들기(avatar.js): 얼굴·눈·눈썹·코·입·귀·머리·몸·옷을 하나하나 (2026-10-25 담임목사) -->
+        <!-- 그림 캐릭터 고르기(2026-11-11 담임목사: 예쁜 캐릭터로 — 남자는 잘생기고 여자는 예쁘게). 고르면 그 그림이 내 모습이 되고, 아래에서 하나하나 고치면 직접 만든 모습으로 바뀐다 -->
+        <div class="g-field"><span class="g-flabel">그림 캐릭터 고르기</span><div class="g-pics" id="gObPics" role="radiogroup" aria-label="그림 캐릭터"></div><p class="g-avx-note">마음에 드는 그림을 고르십시오. 아래에서 얼굴과 옷을 하나하나 고쳐 직접 만들 수도 있습니다.</p></div>
         <div class="g-field"><span class="g-flabel" data-i18n="onboard.avatar.label"></span><p class="g-avx-note" id="gObDraft" hidden data-i18n="avx.draft"></p><div class="g-avx-host" id="gObAvatars"></div></div>
         <div class="g-mfoot"><button type="button" class="g-btn g-btn-primary" id="gObNext" data-i18n="onboard.next"></button></div>
       </div>
@@ -322,7 +324,7 @@
   <script src="js/garden/sdk.js?v=20261025tg1"></script>
   <script src="js/garden/avatar.js?v=20261111m12"></script>
   <script src="js/garden/scene.js?v=20261025ip1"></script>
-  <script src="js/garden/hud.js?v=20261025tg1"></script>
+  <script src="js/garden/hud.js?v=20261111m14"></script>
   <script src="js/garden/plantsim.js?v=20261024mg1"></script>
   <script src="js/garden/shop.js?v=20261024mg1"></script>
   <script src="js/garden/farm.js?v=20261025sp1"></script>

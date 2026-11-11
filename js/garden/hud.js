@@ -557,11 +557,30 @@ window.GardenHud = (function () {
   function startAvatar(me, plant) {
     var AV = window.GardenAvatar, key = me.avatar_key || avatarKeyOf(me.avatar_url) || '';
     var base = plant && !AV.isCustom(key) ? AV.defaults() : AV.fromKey(key), draft = !plant && ob.draft;
-    if (!ob.avx) ob.avx = AV.editor($('gObAvatars'), { t: t, onChange: function (s) { ob.avatar = AV.encode(s); SCENE.setCharacter(ob.avatar, { nickname: $('gObNick').value }); } });
+    if (!ob.avx) ob.avx = AV.editor($('gObAvatars'), { t: t, onChange: function (s) { ob.avatar = AV.encode(s); markPic(''); SCENE.setCharacter(ob.avatar, { nickname: $('gObNick').value }); } });
     ob.avx.set(draft || base, base);
     ob.avatar = AV.encode(draft || base);
+    /* 그림 캐릭터(2026-11-11): 저장된 것이 그림 키면 그 그림을 고른 채로 연다 */
+    drawPics();
+    if (!draft && key && !AV.isCustom(key) && PIC_KEYS.indexOf(key) >= 0) { ob.avatar = key; markPic(key); } else markPic('');
     $('gObDraft').hidden = !draft;
     if (draft) SCENE.setCharacter(ob.avatar, { nickname: me.nickname || '' });
+  }
+  /* 그림 캐릭터 고르기 — images/garden/default/chars/char-<키>.webp. 새 그림(m5~f8)을 앞에, 예전 그림을 뒤에 */
+  var PIC_KEYS = ['m5', 'f5', 'm6', 'f6', 'm7', 'f7', 'm8', 'f8', 'pastor', 'm1', 'f1', 'm2', 'f2', 'm3', 'f3', 'm4', 'f4'];
+  function markPic(k) {
+    Array.prototype.forEach.call($('gObPics').querySelectorAll('button'), function (b) { b.setAttribute('aria-checked', b.getAttribute('data-k') === k ? 'true' : 'false'); });
+  }
+  function drawPics() {
+    var host = $('gObPics'); if (host.childNodes.length) return;
+    host.innerHTML = PIC_KEYS.filter(function (k) { return SCENE.has('chars/char-' + k + '.webp'); }).map(function (k) {
+      return '<button type="button" class="g-pic" role="radio" aria-checked="false" data-k="' + k + '"><img alt="" loading="lazy" src="' + esc(SCENE.asset('chars/char-' + k + '.webp')) + '"></button>';
+    }).join('');
+    host.addEventListener('click', function (e) {
+      var b = e.target.closest('.g-pic'); if (!b) return;
+      ob.avatar = b.getAttribute('data-k'); markPic(ob.avatar);
+      SCENE.setCharacter(ob.avatar, { nickname: $('gObNick').value });
+    });
   }
   /* 모습 바꾸기 — 첫 심기 창의 1단계(이름·모습)만 열어 저장한다. 저장 없이 닫으면 원래 모습으로 되돌린다 */
   function openProfile() {
@@ -576,7 +595,7 @@ window.GardenHud = (function () {
     ob.rec = openModal('gmPlant', { initialFocus: '#gObNick', onClose: function () {
       ob.rec = null;
       if (ob.mode === 'profile') {
-        ob.draft = ob.avatar !== window.GardenAvatar.encode(window.GardenAvatar.fromKey(ob.savedAvatar)) ? ob.avx.get() : null;
+        ob.draft = window.GardenAvatar.isCustom(ob.avatar) && ob.avatar !== window.GardenAvatar.encode(window.GardenAvatar.fromKey(ob.savedAvatar)) ? ob.avx.get() : null;   /* 그림 캐릭터를 고른 채 닫았으면 남겨 둘 초안이 없다 */
         SCENE.setCharacter((H.state && H.state.me && H.state.me.avatar_key) || ob.savedAvatar, { avatarUrl: H.state && H.state.me && H.state.me.avatar_url, nickname: (H.state && H.state.me && H.state.me.nickname) || '' });
       }
       ob.mode = 'plant';
