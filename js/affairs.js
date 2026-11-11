@@ -11091,10 +11091,18 @@ console.log('[affairs.js] v20261023th1');
         classInp.addEventListener('blur', function () { setTimeout(closePop, 180); });
       })();
 
-      function closeOv() { ov.remove(); }
+      // 닫기: × · 닫기 단추 · 배경(누르기 시작과 떼기가 모두 배경일 때만 — 글을 끌다 밖에서 놓아도 안 닫힘) · Esc
+      var opener = document.activeElement, bodyOv = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+      function closeOv() { document.removeEventListener('keydown', onEsc); document.body.style.overflow = bodyOv; ov.remove(); if (opener && opener.focus && document.body.contains(opener)) opener.focus(); }
+      function onEsc(e) { if (e.key === 'Escape' && !ov.querySelector('.fin-sugg') && document.body.contains(ov)) closeOv(); }
+      document.addEventListener('keydown', onEsc);
       ov.querySelector('#edu_xbtn').onclick = closeOv;
       ov.querySelector('#edu_cancel_btn').onclick = closeOv;
-      ov.addEventListener('click', function (e) { if (e.target === ov) closeOv(); });
+      var downOnOv = false;
+      ov.addEventListener('mousedown', function (e) { downOnOv = (e.target === ov); });
+      ov.addEventListener('click', function (e) { if (downOnOv && e.target === ov) closeOv(); downOnOv = false; });
 
       ov.querySelector('#edu_save_btn').onclick = function () {
         var title = ov.querySelector('#edu_f_title').value.trim();
@@ -11121,12 +11129,14 @@ console.log('[affairs.js] v20261023th1');
         // 이수 달란트: 칸이 있는 DB(20261023_1500 실행 후)에서만 보낸다 — 값이 있거나 이미 칸이 있는 기록일 때
         var tv = parseFloat(ov.querySelector('#edu_f_talent').value);
         if (tv > 0 || rec.talent_reward != null) data.talent_reward = tv > 0 ? Math.min(1000, Math.round(tv * 10) / 10) : 0;
+        var saveBtn = ov.querySelector('#edu_save_btn'); if (saveBtn.disabled) return; saveBtn.disabled = true;
         msgEl.style.color = '#898885'; msgEl.textContent = '저장 중…';
         var isNew = !rec.id;
         var pr = rec.id
           ? api('PATCH', 'edu_records?id=eq.' + rec.id, data, 'return=minimal')
           : api('POST', 'edu_records', data, 'return=representation');
         pr.then(function (rows) {
+          saveBtn.disabled = false;
           msgEl.style.color = 'green'; msgEl.textContent = '✓ 저장되었습니다';
           if (isNew && rows && rows[0] && rows[0].id) {
             rec.id = rows[0].id;
@@ -11139,6 +11149,7 @@ console.log('[affairs.js] v20261023th1');
             setTimeout(function () { closeOv(); loadList(); }, 600);
           }
         }).catch(function (e) {
+          saveBtn.disabled = false;
           msgEl.style.color = '#A33A2A';
           msgEl.textContent = '저장 실패: ' + e.message;
           if (/participants|end_date|cohort|class_name|talent_reward|course_code|meet_info|leaders/i.test(e.message))
