@@ -10,7 +10,7 @@
  *  · 재시험(2026-10-26 담임목사): 70점에 못 미치면 새 문제로 다시 본다. 앞선 응시 기록은 지우지 않고(서버 edu_exam_results 에 한 줄씩)
  *    '응시 기록'으로 보여 주며 회차마다 시험지를 다시 볼 수 있다. 통과한 과정은 다시 보지 않는다(하루 10번까지 — 서버가 센다)
  */
-console.log('[classroom.js] v20261026vw1');
+console.log('[classroom.js] v20261111dc2');
 
 (function () {
   var C = window.WPC_CATECHISM;
@@ -188,6 +188,7 @@ console.log('[classroom.js] v20261026vw1');
   /* ── 주소(#) 로 화면 고르기 ── */
   function route() {
     var h = decodeURIComponent((location.hash || '').replace(/^#\/?/, '')), p = h.split('/');
+    if (p[0] === 'disciple') return { disc: p.slice(1), cid: null, step: '' };   // 제자훈련 양육반 — js/disciple.js
     var cid = C.courses[p[0]] ? p[0] : null;
     return { cid: cid, step: cid ? (p[1] || '') : '' };
   }
@@ -199,13 +200,17 @@ console.log('[classroom.js] v20261026vw1');
   // 화면이 바뀌면 맨 위로 — 과정 화면은 히어로를 건너뛰어 진행 막대·본문 첫머리가 머리글 바로 아래에 오게
   function toTop() {
     var y = 0, h = document.getElementById('header');
-    if (route().cid) y = Math.max(0, root.getBoundingClientRect().top + window.pageYOffset - (h ? h.offsetHeight : 0) - 12);
+    var rt = route();
+    if (rt.cid || (rt.disc && rt.disc.length)) y = Math.max(0, root.getBoundingClientRect().top + window.pageYOffset - (h ? h.offsetHeight : 0) - 12);
     try { window.scrollTo({ top: y, behavior: 'instant' }); } catch (e) { window.scrollTo(0, y); }
   }
   window.addEventListener('hashchange', function () { render(); toTop(); });
 
+  // 양육반(js/disciple.js)에 넘기는 도구
+  var DCTX = { root: root, api: api, rpc: rpc, esc: esc, sess: S, openLogin: openLogin, notReady: notReady, rerender: function () { render(); } };
   function render() {
     var r = route();
+    if (r.disc) { if (window.WPCDisciple) return window.WPCDisciple.render(r.disc, DCTX); return go('#', true); }
     if (!r.cid) return renderHome();
     if (!S) return renderNeedLogin(r.cid);
     if (!r.step) return go('#' + r.cid + '/' + firstTodo(r.cid), true);
@@ -217,10 +222,14 @@ console.log('[classroom.js] v20261026vw1');
     renderLesson(r.cid, ch);
   }
 
-  /* ═════════════ 첫 화면 ═════════════ */
+  /* ═════════════ 첫 화면 ═════════════
+     (2026-11-11 담임목사) 강의를 둘로 나눈다 — ① 문답 교육(학습·세례(입교)·유아세례, 누구나 혼자 공부)
+     ② 제자훈련 양육반(반 모임) — 양육반은 반에 등록된 수강생·인도자·관리자에게만 보인다(js/disciple.js mount). */
   function renderHome() {
     var html = '<div class="cr-wrap is-home">' +
-      '<section class="cr-guide" aria-labelledby="crGuideT"><h2 id="crGuideT">강의실은 이렇게 진행됩니다</h2>' +
+      '<section class="cr-sect" aria-labelledby="crSecQ"><header class="cr-sect-head"><p class="cr-sect-eye">문답 교육</p>' +
+      '<h2 id="crSecQ">학습 · 세례(입교) · 유아세례</h2><p>혼자 장마다 공부하고 이수 시험을 봅니다. 당회 문답과 예식을 준비하는 과정입니다.</p></header>' +
+      '<section class="cr-guide" aria-labelledby="crGuideT"><h2 id="crGuideT">문답 교육은 이렇게 진행됩니다</h2>' +
       '<p>대한예수교장로회총회 「학습·세례문답서」를 한 장씩 친절한 풀이와 함께 배웁니다. 공부한 곳은 위쪽 진행 막대에 표시되고, 다 마치면 시험을 봅니다.</p>' +
       '<ol class="cr-flow">' +
       '<li><b>과정 고르기</b>학습 · 세례(입교) · 유아세례(부모)</li>' +
@@ -234,9 +243,13 @@ console.log('[classroom.js] v20261026vw1');
       '<div class="cr-courses">' + ORDER.map(courseCard).join('') + '</div>' +
       (S ? mineHTML() : '<div class="cr-card" style="margin-top:22px"><h2>로그인하고 시작하세요</h2><p>공부한 진도와 시험 결과는 내 계정에 기록되어 교적에 이수로 남습니다.</p><div class="cr-acts"><button type="button" class="cr-btn" data-login>로그인</button></div></div>') +
       '<p class="cr-note">' + esc(C.source) + ' 이 강의실의 이수는 교육을 마쳤다는 기록이며, 학습·세례(입교)·유아세례는 당회의 문답과 예식을 거쳐 받습니다.</p>' +
+      '</section>' +
+      '<section class="cr-sect is-disc" id="crDisc" aria-labelledby="crSecD" hidden></section>' +
       '</div>';
     root.innerHTML = html;
     bindLogin();
+    // 양육반: 등록된 분(수강생·인도자)과 관리자에게만 — 서버에서 내 반을 확인한 뒤에 채운다
+    if (S && window.WPCDisciple && window.WPCDisciple.mount) window.WPCDisciple.mount(root.querySelector('#crDisc'), DCTX);
   }
   function courseCard(cid) {
     var c = C.courses[cid], p = pct(cid), pass = passedOf(cid), started = doneOf(cid).length > 0;

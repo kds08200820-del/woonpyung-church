@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 위)');
+console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도·출결·모임 메모)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -203,7 +203,8 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
 
   /* ================= 나의 출석 (2026-09-27) =================
      어른: 홈페이지 '오늘의 예배' 단추(예배 시간에만)로 · 어린이: 주일학교 달란트 '출석'·'출석(지각)'으로.
-     출석률 = 출석한 주일 ÷ 첫 출석 기록 뒤로 지난 주일 수 (기록을 시작한 2026-09-27 이전은 세지 않는다) */
+     출석률 = 출석한 주일 ÷ 첫 출석 기록 뒤로 지난 주일 수 (기록을 시작한 2026-09-27 이전은 세지 않는다)
+     → 2026-11-11 부터 어른은 담임목사 기준(모인 예배: 주일·수요기도회·새벽기도회) — 아래 attPersonBasis. 어린이는 그대로 */
   var ATT_START = '2026-09-27';
   function attYmd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function attSundays(from, to) {
@@ -254,7 +255,8 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
     }).join(' &nbsp;') + '</div>';
   }
   /* 출석 월별 그래프 — 달마다 모인 날(회색) 위에 출석한 날(초록)을 쌓는다 */
-  function attMonthChart(st, fromYm, toYm) {
+  function attMonthChart(st, fromYm, toYm, heldWord) {   /* heldWord: '날'(주일) · '예배'(모인 예배 기준) */
+    heldWord = heldWord || '날';
     var per = monthRange(fromYm, toYm).map(function (ym) {
       var ds = st.days.filter(function (d) { return d.slice(0, 7) === ym; });
       return { ym: ym, held: ds.length, came: ds.filter(function (d) { return st.byDay[d]; }).length };
@@ -262,29 +264,30 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
     var max = Math.max(1, Math.max.apply(null, per.map(function (x) { return x.held; }))), unit = CH_H / max;
     return monthColumns(per.map(function (x) {
       var mon = (+x.ym.slice(5, 7)) + '월';
-      return { label: mon, tip: x.ym.slice(0, 4) + '년 ' + mon + (x.held ? ': 모인 날 ' + x.held + '번, 출석 ' + x.came + '번' : ': 기록 없음'),
+      return { label: mon, tip: x.ym.slice(0, 4) + '년 ' + mon + (x.held ? ': 모인 ' + heldWord + ' ' + x.held + '번, 출석 ' + x.came + '번' : ': 기록 없음'),
         segs: x.held ? [{ h: (x.held - x.came) * unit, color: '#E6E5E1' }, { h: x.came * unit, color: '#111111' }].filter(function (sg) { return sg.h > 0; }) : [],
         text: x.held ? x.came + '/' + x.held : '–', textStyle: x.held ? 'font-weight:700;color:' + (x.came === x.held ? '#111111' : '#333333') : '' };
-    })) + chartLegend([['#111111', '출석'], ['#E6E5E1', '결석 · 숫자는 출석/모인 날']]);
+    })) + chartLegend([['#111111', '출석'], ['#E6E5E1', '결석 · 숫자는 출석/모인 ' + heldWord]]);
   }
-  /* 출석 그래프(상세 보기 전) — 진행 막대 + 월별 그래프 + (어린이) 격려 한 줄. isChild 면 1월부터, 어른은 셈을 시작한 달부터 */
-  function attGraph(st, isChild, unitWord) {
-    if (!st.days.length) return '<div style="font-size:.82rem;color:#8A8A86;margin-top:4px">아직 기록된 ' + unitWord + '이 없습니다</div>';
+  /* 출석 그래프(상세 보기 전) — 진행 막대 + 월별 그래프 + (어린이) 격려 한 줄. isChild 면 1월부터, 어른은 셈을 시작한 달부터
+     st.days 는 날짜('YYYY-MM-DD') 또는 모인 예배('YYYY-MM-DD|종류') — 앞 10자가 날짜 */
+  function attGraph(st, isChild, unitWord, heldWord) {
+    if (!st.days.length) { var lc = unitWord.charCodeAt(unitWord.length - 1) - 0xAC00; return '<div style="font-size:.82rem;color:#8A8A86;margin-top:4px">아직 기록된 ' + unitWord + (lc >= 0 && lc < 11172 && lc % 28 === 0 ? '가' : '이') + ' 없습니다</div>'; }
     var today = todayStr(), yr = today.slice(0, 4);
     var fromYm = isChild ? yr + '-01' : st.days[0].slice(0, 7), toYm = today.slice(0, 7);
     return '<div title="출석률 ' + st.rate + '%" style="background:#E6E5E1;border-radius:2px;height:12px;overflow:hidden;margin-top:6px"><div style="width:' + st.rate + '%;height:12px;background:' + attColor(st.rate) + ';border-radius:2px"></div></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:.78rem;color:#8A8A86;margin-top:3px"><span>' + (isChild ? '올해 주일학교가 모인 ' : '') + unitWord + ' ' + st.days.length + '번 중 ' + st.came + '번 출석</span><span>' + esc(st.days[0].slice(5).replace('-', '/')) + '부터</span></div>' +
-      attMonthChart(st, fromYm, toYm);
+      '<div style="display:flex;justify-content:space-between;font-size:.78rem;color:#8A8A86;margin-top:3px"><span>' + (isChild ? '올해 주일학교가 모인 ' : '') + unitWord + ' ' + st.days.length + '번 중 ' + st.came + '번 출석</span><span>' + esc(st.days[0].slice(5, 10).replace('-', '/')) + '부터</span></div>' +
+      attMonthChart(st, fromYm, toYm, heldWord);
   }
-  /* 출석 숫자 칸(상세 보기 안) — 출석·결석·연속 (지각 칸은 2026-09-29 뺌) */
-  function attNumbers(st) {
+  /* 출석 숫자 칸(상세 보기 안) — 출석·결석·연속 (지각 칸은 2026-09-29 뺌). streakUnit: '주'(주일) · '번'(모인 예배) */
+  function attNumbers(st, streakUnit) {
     var cell = function (label, val, color) {
       return '<div style="flex:1;min-width:64px;background:#FFFFFF;border:1px solid #E6E5E1;border-radius:2px;padding:8px 6px;text-align:center">' +
         '<div style="font-size:.72rem;color:#8A8A86">' + label + '</div><div style="font-size:1.05rem;font-weight:800;color:' + color + '">' + val + '</div></div>';
     };
     return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">' +
       cell('출석', st.came + '번', '#111111') + cell('결석', st.absent + '번', st.absent ? '#333333' : '#8A8A86') +
-      cell('연속 출석', st.streak + '주', 'var(--accent,#111111)') + '</div>';
+      cell('연속 출석', st.streak + (streakUnit || '주'), 'var(--accent,#111111)') + '</div>';
   }
   function attRateHead(st) {
     return '<span style="margin-left:auto;white-space:nowrap"><span style="font-size:.78rem;color:#8A8A86">출석률 </span><span style="font-size:1.5rem;font-weight:800;color:' + attColor(st.rate) + '">' + st.rate + '%</span></span>';
@@ -311,6 +314,48 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
       (wed || dawn ? '<div style="font-size:.85rem;color:#333333;margin-top:4px">올해 수요기도회 ' + wed + '번 · 새벽기도회 ' + dawn + '번</div>' : '') +
       attGraph(st, false, '주일') +
       (rows.length ? detailsBox('상세 보기 — 출석 횟수·예배별 날짜', attNumbers(st) + attDetail(rows)) : '') + '</div>';
+  }
+  /* ── 출석률의 기준 = 담임목사 (2026-11-11 담임목사: "담임 목사는 예배 인도자이기 때문에 모든 예배에 100% 참석 합니다.
+       김동석 목사의 출결이 100이고 그것을 기준으로 다른 사람들의 출결이 비율에 따라 조정 되어야 합니다")
+       · 분모 = 모인 예배: 주일(1부·2부·통합은 하루 한 번)·수요기도회·새벽기도회 가운데 누구든 출석한 예배 = 담임목사가 인도한 예배.
+         서버 attendance_basis() 가 날짜·종류만 돌려준다(누가 왔는지는 주지 않는다) — supabase/20261111_2330_attendance_pastor_basis.sql
+       · 내 출석률 = 내가 출석한 모인 예배 ÷ 내 첫 출석 기록 뒤로 모인 예배. 오늘 예배는 출석했을 때만 셈에 넣는다
+       · 담임목사(서버가 내 열쇠 가운데 알려 준 열쇠)는 늘 100% — 기록 시작(9/27) 뒤 모인 예배를 모두 출석으로 본다
+       · 그 SQL 을 실행하기 전(함수 없음)이면 예전 셈(주일만, attPerson) ── */
+  var ATT_KIND_NAME = { sunday: '주일', wed: '수요기도회', dawn: '새벽기도회' };
+  function attKind(service) { return service === '주일학교' ? '' : /^주일/.test(service) ? 'sunday' : service === '수요기도회' ? 'wed' : service === '새벽기도회' ? 'dawn' : ''; }
+  var attBasisP = null;
+  function attBasis() {
+    if (!attBasisP) attBasisP = brFetch('rpc/attendance_basis', { method: 'POST', body: '{}' })
+      .then(function (j) { return j && j.ok && Array.isArray(j.held) ? j : null; }).catch(function () { return null; });
+    return attBasisP;
+  }
+  function attPersonBasis(name, rows, basis, isPastor) {
+    var today = attYmd(new Date());
+    var mine = {};
+    rows.forEach(function (r) { var k = attKind(r.service); if (k) mine[r.att_date + '|' + k] = 1; });
+    var first = rows.length ? rows.map(function (r) { return r.att_date; }).sort()[0] : today;
+    var start = isPastor || first < ATT_START ? ATT_START : first;
+    var held = {};
+    basis.held.forEach(function (h) { if (h && h.d && ATT_KIND_NAME[h.k]) held[String(h.d).slice(0, 10) + '|' + h.k] = 1; });
+    Object.keys(mine).forEach(function (u) { held[u] = 1; });   /* 내가 출석한 예배는 늘 모인 예배 */
+    var days = Object.keys(held).filter(function (u) { var d = u.slice(0, 10); return d >= start && d <= today && (d < today || isPastor || mine[u]); }).sort();
+    var st = attStats(days, days.filter(function (u) { return isPastor || mine[u]; }).map(function (u) { return { att_date: u, late: false }; }));
+    if (isPastor) st.rate = 100;
+    var per = ['sunday', 'wed', 'dawn'].map(function (k) {
+      var ds = days.filter(function (u) { return u.slice(11) === k; });
+      return { k: k, held: ds.length, came: ds.filter(function (u) { return st.byDay[u]; }).length };
+    });
+    var line = isPastor
+      ? '모든 예배를 인도하므로 출석률의 기준(100%)입니다 · ' + per.map(function (p) { return ATT_KIND_NAME[p.k] + ' ' + p.held + '번'; }).join(' · ')
+      : per.map(function (p) { return ATT_KIND_NAME[p.k] + ' ' + p.came + '/' + p.held; }).join(' · ');
+    var detailRows = isPastor ? days.map(function (u) { return { att_date: u.slice(0, 10), service: u.slice(11) === 'sunday' ? '주일 예배' : ATT_KIND_NAME[u.slice(11)] }; }) : rows;
+    return '<div class="att-person" style="padding:10px 0;border-top:1px solid #E6E5E1">' +
+      '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b>' + esc(name) + '</b>' +
+        (isPastor ? '<span style="font-size:.72rem;border:1px solid #111111;border-radius:999px;padding:0 7px;color:#111111">담임목사 · 기준</span>' : '') + attRateHead(st) + '</div>' +
+      '<div class="att-kinds" style="font-size:.85rem;color:#333333;margin-top:4px">' + esc(line) + '</div>' +
+      attGraph(st, false, '모인 예배', '예배') +
+      (detailRows.length ? detailsBox('상세 보기 — 출석 횟수·예배별 날짜', attNumbers(st, '번') + attDetail(detailRows)) : '') + '</div>';
   }
   /* 예배 종류별 출석 횟수와 날짜 표 (최근 것부터) */
   var ATT_KINDS = ['주일 1부', '주일 2부', '주일 예배', '수요기도회', '새벽기도회', '주일학교'];
@@ -339,11 +384,16 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
       if (isSsStudent(ctx)) { box.innerHTML = ''; return null; }
       if (!people.length) { card('<p class="qt-empty" style="margin:0">교적이 연결되면 출석이 여기에 보입니다.</p>'); return null; }
       var inList = people.map(function (x) { return '"' + String(x.key).replace(/"/g, '') + '"'; }).join(',');
-      return brFetch('attendance?select=att_date,service,member_key,late,late_min&member_key=in.(' + encodeURIComponent(inList) + ')&order=att_date.desc&limit=2000');
-    }).then(function (rows) {
-      if (!rows) return;
-      var body = people.map(function (x) { return attPerson(x.name, rows.filter(function (r) { return r.member_key === x.key; })); }).join('');
-      card('<p style="margin:0 0 4px;font-size:.82rem;color:#8A8A86">예배 시간에 홈페이지 첫 화면의 <b>오늘의 예배</b> 단추를 누르면 출석이 됩니다.' + (people.length > 1 ? ' 나와 배우자의 출석입니다.' : '') + '</p>' + body);
+      return Promise.all([brFetch('attendance?select=att_date,service,member_key,late,late_min&member_key=in.(' + encodeURIComponent(inList) + ')&order=att_date.desc&limit=2000'), attBasis()]);
+    }).then(function (res) {
+      if (!res || !res[0]) return;
+      var rows = res[0], basis = res[1], pk = (basis && basis.pastor) || [];
+      var body = people.map(function (x) {
+        var mine = rows.filter(function (r) { return r.member_key === x.key; });
+        return basis ? attPersonBasis(x.name, mine, basis, pk.indexOf(x.key) >= 0) : attPerson(x.name, mine);
+      }).join('');
+      card('<p style="margin:0 0 4px;font-size:.82rem;color:#8A8A86">예배 시간에 홈페이지 첫 화면의 <b>오늘의 예배</b> 단추를 누르면 출석이 됩니다.' + (people.length > 1 ? ' 나와 배우자의 출석입니다.' : '') +
+        (basis ? ' 출석률은 모인 예배(주일·수요기도회·새벽기도회)를 기준으로 셉니다 — 모든 예배를 인도하시는 담임목사님이 100%입니다.' : '') + '</p>' + body);
     }).catch(function () { card('<p class="qt-empty" style="margin:0">출석을 읽지 못했습니다.</p>'); });
   }
   /* 관리자: 최근 5주 예배별 출석 수 */
@@ -821,14 +871,26 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
       .then(function (rows) {
         rows = rows || [];
         if (!rows.length) { el.innerHTML = empty; return; }
-        var d = function (f) { return (String(f.doc_date || '').slice(0, 10)) || (String(f.created_at || '').slice(0, 10)); };
-        el.innerHTML = head + '<div style="overflow:auto"><table class="fin-table" style="font-size:.88rem"><thead><tr><th>분류</th><th>파일</th><th>일자</th></tr></thead><tbody>' +
+        var d = function (f) { return ((String(f.doc_date || '').slice(0, 10)) || (String(f.created_at || '').slice(0, 10))).replace(/^(\d{4})-(\d\d)-(\d\d)$/, '$1. $2. $3.'); };
+        // (2026-11-11 담임목사 "분류·파일·일자가 붙어 있어 보기 불편") 표 대신 한 줄에 한 문서 — 분류 꼬리표 · 파일 이름 · 일자(오른쪽), 줄마다 구분선
+        if (!document.getElementById('mdocCss')) {
+          var cs = document.createElement('style'); cs.id = 'mdocCss';
+          cs.textContent = '.mdoc{list-style:none;margin:0;padding:0}' +
+            '.mdoc li{display:grid;grid-template-columns:7.5em 1fr auto;gap:8px 14px;align-items:center;padding:11px 2px;border-top:1px solid #EFEDE8;font-size:.9rem;line-height:1.5}' +
+            '.mdoc li:first-child{border-top:0;padding-top:4px}' +
+            '.mdoc-cat{justify-self:start;max-width:100%;padding:2px 10px;border-radius:999px;background:#F3F2EE;color:#5F5E5A;font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            '.mdoc-name{min-width:0;overflow-wrap:anywhere;word-break:keep-all}.mdoc-name a{color:var(--accent,#111);text-decoration:underline;text-underline-offset:3px}' +
+            '.mdoc-date{color:#8A8984;font-size:.82rem;white-space:nowrap;font-variant-numeric:tabular-nums}' +
+            '@media (max-width:480px){.mdoc li{grid-template-columns:1fr auto;gap:4px 10px}.mdoc-cat{grid-column:1/-1}}';
+          document.head.appendChild(cs);
+        }
+        el.innerHTML = head + '<ul class="mdoc">' +
           rows.map(function (f) {
             var name = f.file_name || f.title || '문서';
             var cell = f.file_url ? '<a href="' + esc(f.file_url) + '" target="_blank" rel="noopener noreferrer">' + esc(name) + '</a>' : esc(name);
-            return '<tr><td>' + esc(f.category || '') + '</td><td>' + cell + '</td><td style="white-space:nowrap">' + esc(d(f)) + '</td></tr>';
+            return '<li>' + (f.category ? '<span class="mdoc-cat">' + esc(f.category) + '</span>' : '<span></span>') + '<span class="mdoc-name">' + cell + '</span><span class="mdoc-date">' + esc(d(f)) + '</span></li>';
           }).join('') +
-          '</tbody></table></div></div>';
+          '</ul></div>';
       })
       .catch(function (e) {
         var m = (e && e.message) || '';
@@ -1034,18 +1096,112 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
   /* ================= 진행중인 교육 ================= */
   function fmtSize(n) { if (!n && n !== 0) return ''; if (n < 1024) return n + ' B'; if (n < 1048576) return (n / 1024).toFixed(0) + ' KB'; return (n / 1048576).toFixed(1) + ' MB'; }
   function eduLabel(r) { return esc(r.title) + (r.cohort ? ' · ' + esc(r.cohort) : '') + (r.class_name ? ' · ' + esc(r.class_name) : ''); }
+  /* ── 제자훈련 양육반(2026-11-11 담임목사 "메모를 남기면 회원 대시보드의 교육과정에 보이고, 출결·진도도"):
+        내 반(rpc edu_my_classes)마다 진도·내 출결·모임 기록(날짜·나간 대목·인도자 메모) — rpc edu_class_state.
+        강 이름은 js/disciple-data.js 를 필요할 때 불러 쓴다. 교적 본문은 읽지 않는다. ── */
+  var DISC_DATA = 'js/disciple-data.js?v=20261111q';
+  function eduRpc(name, args, tok, url, ak) {
+    return fetch(url + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: ak, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  }
+  function discData() {
+    if (window.WPC_DISCIPLE) return Promise.resolve(window.WPC_DISCIPLE);
+    return new Promise(function (res) { var s = document.createElement('script'); s.src = DISC_DATA; s.onload = function () { res(window.WPC_DISCIPLE || null); }; s.onerror = function () { res(null); }; document.body.appendChild(s); });
+  }
+  function discCss() {
+    if (document.getElementById('medCss')) return;
+    var s = document.createElement('style'); s.id = 'medCss';
+    s.textContent = '.med{border:1px solid #E6E4DF;border-radius:2px;padding:12px 14px;margin-bottom:10px;background:#fff}' +
+      '.med-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}.med-h b{font-size:.95rem}' +
+      '.med-role{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#111;color:#fff;font-size:.72rem;vertical-align:1px}' +
+      '.med-go{font-size:.82rem;color:var(--accent,#111);white-space:nowrap}.med-sub{margin:2px 0 8px;color:#8A8984;font-size:.8rem}' +
+      '.med-prog{display:flex;justify-content:space-between;gap:8px;font-size:.84rem;margin:6px 0 4px}.med-prog b{font-variant-numeric:tabular-nums}' +
+      '.med-bar{height:6px;border-radius:999px;background:#EFEDE8;overflow:hidden}.med-bar i{display:block;height:100%;background:#111}' +
+      '.med-next{margin:6px 0 0;font-size:.82rem;color:#5F5E5A}' +
+      '.med-att{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;font-size:.82rem}.med-att span{padding:2px 9px;border-radius:999px;background:#F3F2EE}' +
+      '.med-att .is-ok{background:#E6F2EC;color:#155e32}.med-att .is-late{background:#FFF3D6;color:#7a5600}.med-att .is-no{background:#FBE4E1;color:#9b2c20}' +
+      '.med-log{list-style:none;margin:10px 0 0;padding:0}.med-log li{padding:8px 0;border-top:1px solid #F0EEEA;font-size:.84rem;line-height:1.6}' +
+      '.med-log .d{font-weight:700;margin-right:6px}.med-log .p{color:#5F5E5A}.med-log .m{display:block;margin-top:3px;padding:6px 10px;background:#FAF9F6;border-left:3px solid #4F6B4A;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}' +
+      '.med-log .s{float:right;font-size:.76rem;color:#8A8984}.med details summary{cursor:pointer;font-size:.82rem;color:#5F5E5A;margin-top:6px;min-height:32px;display:flex;align-items:center}' +
+      '.med-done{margin:8px 0 0;font-size:.84rem;color:#155e32;font-weight:700}';
+    document.head.appendChild(s);
+  }
+  function discProg(D, done) {
+    var set = {}; (done || []).forEach(function (k) { set[k] = 1; });
+    var got = 0, total = 0, cur = null, next = null, curN = 0, curAll = 0;
+    D.lessons.forEach(function (l) {
+      var n = 0;
+      l.parts.forEach(function (p, i) { total++; if (set[l.no + '-' + (i + 1)]) { n++; got++; } else if (!next) next = { lesson: l.no, part: i + 1, label: p }; });
+      if (!cur && n < l.parts.length) { cur = l.no; curN = n; curAll = l.parts.length; }
+    });
+    var label = !got ? '시작 전' : got === total ? '13강 모두 마침' : curN ? cur + '강 진행 중 · ' + curAll + '대목 중 ' + curN : (cur - 1) + '강까지 마침';
+    return { pct: total ? Math.round(got / total * 100) : 0, label: label, next: got && got < total ? next : null };
+  }
+  // ['7-1',…,'7-11','8-1',…,'8-4'] → '7강 1~11, 8강 1~4'
+  function partsText(parts) {
+    var by = {}; (parts || []).forEach(function (k) { var a = String(k).split('-'); (by[a[0]] = by[a[0]] || []).push(+a[1]); });
+    return Object.keys(by).sort(function (a, b) { return a - b; }).map(function (l) {
+      var ns = by[l].sort(function (a, b) { return a - b; }), out = [], s = ns[0], p = ns[0];
+      for (var i = 1; i <= ns.length; i++) { if (ns[i] === p + 1) { p = ns[i]; continue; } out.push(s === p ? String(s) : s + '~' + p); s = p = ns[i]; }
+      return l + '강 ' + out.join('·');
+    }).join(', ');
+  }
+  function kmd(s) { var m = String(s || '').match(/^\d{4}-(\d\d)-(\d\d)/); return m ? (+m[1]) + '월 ' + (+m[2]) + '일' : ''; }
+  function discHTML(c, st, D) {
+    var lead = st.role === 'leader' || st.role === 'admin';
+    var p = discProg(D, st.done), live = (st.meetings || []).filter(function (m) { return !m.voided; }).slice().sort(function (a, b) { return a.meet_date < b.meet_date ? 1 : -1; });
+    var my = {}; (st.my_attend || []).forEach(function (a) { my[a.meet_date] = a.status; });
+    var cnt = { '출석': 0, '지각': 0, '결석': 0 }; (st.my_attend || []).forEach(function (a) { if (cnt[a.status] != null) cnt[a.status]++; });
+    var byM = {}; (st.attend || []).forEach(function (a) { if (a.status === '출석' || a.status === '지각') byM[a.meeting_id] = (byM[a.meeting_id] || 0) + 1; });
+    var cls = function (s) { return s === '출석' ? 'is-ok' : s === '지각' ? 'is-late' : s === '결석' ? 'is-no' : ''; };
+    var row = function (m) {
+      var s = lead ? (byM[m.id] ? '출석 ' + byM[m.id] + '명' : '') : (my[m.meet_date] || '출결 기록 없음');
+      return '<li><span class="s">' + esc(s) + '</span><span class="d">' + esc(kmd(m.meet_date)) + ' 모임</span>' +
+        '<span class="p">' + ((m.parts || []).length ? '나간 대목 ' + esc(partsText(m.parts)) : '나간 대목 기록 없음') + '</span>' +
+        (m.memo ? '<span class="m">' + esc(m.memo) + '</span>' : '') + '</li>';
+    };
+    return '<div class="med-h"><b>' + eduLabel(c) + (lead ? '<span class="med-role">' + (st.role === 'admin' ? '관리자' : '인도자') + '</span>' : '') + '</b>' +
+      '<a class="med-go" href="classroom.html#disciple/c/' + encodeURIComponent(c.id) + '">강의실에서 보기 →</a></div>' +
+      (c.meet_info ? '<p class="med-sub">' + esc(c.meet_info) + '</p>' : '') +
+      '<div class="med-prog"><span>진도 · ' + esc(p.label) + '</span><b>' + p.pct + '%</b></div><div class="med-bar" role="progressbar" aria-label="우리 반 진도" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + p.pct + '"><i style="width:' + p.pct + '%"></i></div>' +
+      (p.next ? '<p class="med-next">다음 모임은 ' + p.next.lesson + '강 「' + esc(p.next.label) + '」부터</p>' : '') +
+      (st.completion ? '<p class="med-done">✓ 수료 · 제 ' + esc(st.completion.cert_no) + ' 호</p>' : '') +
+      (lead ? '' : '<div class="med-att" aria-label="내 출결"><span class="is-ok">출석 ' + cnt['출석'] + '</span><span class="is-late">지각 ' + cnt['지각'] + '</span><span class="is-no">결석 ' + cnt['결석'] + '</span><span>모임 ' + live.length + '회</span></div>') +
+      (live.length ? '<ul class="med-log" aria-label="모임 기록">' + row(live[0]) + '</ul>' +
+        (live.length > 1 ? '<details><summary>지난 모임 기록 ' + (live.length - 1) + '번 보기</summary><ul class="med-log">' + live.slice(1).map(row).join('') + '</ul></details>' : '')
+        : '<p class="med-next">아직 모임 기록이 없습니다.</p>');
+  }
+  function fillDisc(item, c, tok, url, ak) {
+    var body = item.querySelector('.med-body');
+    Promise.all([eduRpc('edu_class_state', { p_edu: c.id }, tok, url, ak), discData()]).then(function (out) {
+      var st = out[0], D = out[1];
+      if (!st || !st.ok || !D) throw new Error('state');
+      body.innerHTML = discHTML(c, st, D);
+    }).catch(function () {
+      body.innerHTML = '<div class="med-h"><b>' + eduLabel(c) + '</b><a class="med-go" href="classroom.html#disciple/c/' + encodeURIComponent(c.id) + '">강의실에서 보기 →</a></div><p class="med-next">반 기록을 불러오지 못했습니다.</p>';
+    });
+  }
   function loadMyEdu(me) {
     var el = document.getElementById('myEdu'); if (!el) return;
     var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, tok = (window.WPF && WPF.token && WPF.token());
     if (!url || !ak || !tok) return;
     var t = todayStr();
-    fetch(url + '/rest/v1/edu_records?select=id,title,cohort,class_name,edu_date,end_date,teacher&edu_date=lte.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
-      .then(function (r) { return r.ok ? r.json() : []; })
-      .then(function (rows) {
-        var ongoing = (rows || []).filter(function (r) { return !r.end_date || r.end_date >= t; });
-        if (!ongoing.length) { el.innerHTML = ''; return; }
+    Promise.all([
+      fetch(url + '/rest/v1/edu_records?select=id,title,cohort,class_name,edu_date,end_date,teacher,course_code&edu_date=lte.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
+        .then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
+      eduRpc('edu_my_classes', { p_course: 'disciple' }, tok, url, ak).catch(function () { return []; })
+    ]).then(function (res) {
+        var discs = Array.isArray(res[1]) ? res[1] : [], did = {};
+        discs.forEach(function (c) { did[c.id] = 1; });
+        // 양육반은 아래 '내 반' 칸으로 보여 주고, 나머지 교육은 예전처럼
+        var ongoing = (res[0] || []).filter(function (r) { return (!r.end_date || r.end_date >= t) && r.course_code !== 'disciple' && !did[r.id]; });
+        if (!ongoing.length && !discs.length) { el.innerHTML = ''; return; }
+        if (discs.length) discCss();
         var box = '<div class="form-card" style="padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#111111);">진행중인 교육</h3>';
-        el.innerHTML = box + ongoing.map(function (r) {
+        el.innerHTML = box + discs.map(function (c) {
+          return '<div class="med" data-disc="' + esc(c.id) + '"><div class="med-body"><p class="qt-loading" style="margin:0">' + eduLabel(c) + ' 불러오는 중…</p></div>' +
+            '<details class="med-mat" data-id="' + esc(c.id) + '"><summary>교육 자료 보기</summary><div class="my-edu-body" style="margin-top:6px;font-size:.83rem"></div></details></div>';
+        }).join('') + ongoing.map(function (r) {
           return '<div class="my-edu-item" data-id="' + esc(r.id) + '" style="border:1px solid #F7F6F3;border-radius:2px;padding:10px 12px;margin-bottom:8px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" class="my-edu-head">' +
             '<b style="font-size:.92rem">' + eduLabel(r) + '</b>' +
@@ -1059,6 +1215,10 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
             bodyEl.hidden = !bodyEl.hidden;
             if (!bodyEl.hidden && !loaded) { loaded = true; loadMyEduMaterials(box2.dataset.id, bodyEl, tok, url, ak); }
           };
+        });
+        discs.forEach(function (c) { var it = el.querySelector('.med[data-disc="' + c.id + '"]'); if (it) fillDisc(it, c, tok, url, ak); });
+        Array.prototype.forEach.call(el.querySelectorAll('.med-mat'), function (d) {
+          d.addEventListener('toggle', function () { if (d.open && !d.dataset.ok) { d.dataset.ok = '1'; loadMyEduMaterials(d.dataset.id, d.querySelector('.my-edu-body'), tok, url, ak); } });
         });
       })
       .catch(function () { el.innerHTML = ''; });
