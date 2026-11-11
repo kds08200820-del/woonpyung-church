@@ -2,7 +2,7 @@
    · 앱 껍데기(html·css·js·글꼴)는 판(version)마다 새 저장소에 담고 옛것은 지운다
    · 큰 자료(R2 의 성경·사전·지도·주석)는 한 번 받으면 오래 둔다 (자료 판이 바뀌면 주소가 바뀐다)
    · Supabase(로그인·메모)는 늘 네트워크 */
-var VERSION = '1.0.83';
+var VERSION = '1.0.84';
 var SHELL = 'modu-shell-' + VERSION, DATA = 'modu-data-v2';   /* v2: crossOrigin 없이 받아 둔 불투명 응답을 버린다 */
 var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'worship-banner.js', 'mini.js', 'activity.js', 'compare.js', 'exeg-engine.js', 'exeg.js', 'hymn.js', 'hymn-data.js', 'ccm-data.js', 'gyodok.js', 'icon.png', 'manifest.webmanifest',
   /* 1.0.83 파스텔 점토 바탕: 화면 글꼴(Pretendard subset 두 굵기)과 점토 아이콘 */
@@ -15,8 +15,14 @@ self.addEventListener('install', function(e){
   /* 새 판은 브라우저 HTTP 캐시(GitHub Pages 10분)를 건너뛰고 서버에서 받는다 — 안 그러면 새 판 이름에 옛 파일이 담긴다 */
   e.waitUntil(caches.open(SHELL).then(function(c){ return c.addAll(CORE.map(function(u){ return new Request(u, { cache:'reload' }); })).catch(function(){}); }));
 });
+/* 주소(?v=)가 바뀌어 다시는 찾지 않는 옛 큰 자료 — 새 판으로 갈아탈 때 저장소에서 지운다 (그냥 두면 휴대폰에 수십 MB 가 남는다)
+   · 1.0.84: 성경 본문 bible.js 를 손봐(개역개정 책 끝 절에 붙어 있던 다음 책 1:1 삭제) 주소가 ?v=20261111 로 바뀌었다 */
+var STALE_DATA = ['data/d1/bible.js?v=20260926'];
+
 self.addEventListener('activate', function(e){
-  e.waitUntil(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return (k.indexOf('modu-shell-') === 0 && k !== SHELL) || (k.indexOf('modu-data-') === 0 && k !== DATA); }).map(function(k){ return caches.delete(k); })); }).then(function(){ return self.clients.claim(); }));
+  e.waitUntil(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return (k.indexOf('modu-shell-') === 0 && k !== SHELL) || (k.indexOf('modu-data-') === 0 && k !== DATA); }).map(function(k){ return caches.delete(k); })); })
+    .then(function(){ return caches.open(DATA).then(function(c){ return Promise.all(STALE_DATA.map(function(u){ return c.delete(u); })); }).catch(function(){}); })
+    .then(function(){ return self.clients.claim(); }));
 });
 self.addEventListener('message', function(e){ if(e.data && e.data.type === 'skip') self.skipWaiting(); });
 

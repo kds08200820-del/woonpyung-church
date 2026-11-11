@@ -5986,7 +5986,7 @@ console.log('[affairs.js] v20261023th1');
         function loadBible(trans) {
           var cached = trans === 'gyr' ? window.BIBLE_GYR : window.BIBLE_URM;
           if (cached) return Promise.resolve(cached);
-          return fetch('data/bible-' + trans + '.json?v=20260729')
+          return fetch('data/bible-' + trans + '.json?v=' + (trans === 'gyr' ? '20261111' : '20260729'))
             .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
             .then(function (d) { if (trans === 'gyr') window.BIBLE_GYR = d; else window.BIBLE_URM = d; return d; });
         }
@@ -6028,7 +6028,7 @@ console.log('[affairs.js] v20261023th1');
         function mbLoad(trans) {
           var cached = trans === 'gyr' ? window.BIBLE_GYR : window.BIBLE_URM;
           if (cached) return Promise.resolve(cached);
-          return fetch('data/bible-' + trans + '.json?v=20260729').then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+          return fetch('data/bible-' + trans + '.json?v=' + (trans === 'gyr' ? '20261111' : '20260729')).then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
             .then(function (d) { if (trans === 'gyr') window.BIBLE_GYR = d; else window.BIBLE_URM = d; return d; });
         }
         function show() {
@@ -8535,7 +8535,7 @@ console.log('[affairs.js] v20261023th1');
   }
   function pvLoadGyr() {   // 편집기의 '불러오기'와 같은 파일·캐시(window.BIBLE_GYR)
     if (window.BIBLE_GYR) return Promise.resolve(window.BIBLE_GYR);
-    return fetch('data/bible-gyr.json?v=20260729').then(function (res) { return res.ok ? res.json() : null; })
+    return fetch('data/bible-gyr.json?v=20261111').then(function (res) { return res.ok ? res.json() : null; })
       .then(function (d) { if (d) window.BIBLE_GYR = d; return d; }).catch(function () { return null; });
   }
   function pvNorm(s) { return String(s || '').replace(/[\s,.·!?~\-()]/g, '').toLowerCase(); }
@@ -10659,7 +10659,7 @@ console.log('[affairs.js] v20261023th1');
       var d = getCached();
       if (d) { showVerses(d); return; }
       textEl.innerHTML = '<p class="bv-hint">성경 데이터 로드 중… (최초 1회, 약 5~10초)</p>';
-      fetch('data/bible-' + bvTrans + '.json?v=20260729')
+      fetch('data/bible-' + bvTrans + '.json?v=' + (bvTrans === 'gyr' ? '20261111' : '20260729'))
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (bvTrans === 'gyr') window.BIBLE_GYR = data;
