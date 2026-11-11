@@ -228,7 +228,7 @@ console.log('[classroom.js] v20261111dc2');
      (2026-11-12 담임목사 "양육반 수업을 맨 위로 — 학습·세례 등은 자주 있는 것이 아닙니다") 양육반 칸을 맨 위에 둔다. */
   function renderHome() {
     var html = '<div class="cr-wrap is-home">' +
-      '<section class="cr-sect is-disc" id="crDisc" aria-labelledby="crSecD" hidden></section>' +
+      '<section class="cr-sect is-disc" id="crDisc" aria-label="제자훈련 양육반" hidden></section>' +
       '<section class="cr-sect" aria-labelledby="crSecQ"><header class="cr-sect-head"><p class="cr-sect-eye">문답 교육</p>' +
       '<h2 id="crSecQ">학습 · 세례(입교) · 유아세례</h2><p>혼자 장마다 공부하고 이수 시험을 봅니다. 당회 문답과 예식을 준비하는 과정입니다.</p></header>' +
       '<section class="cr-guide" aria-labelledby="crGuideT"><h2 id="crGuideT">문답 교육은 이렇게 진행됩니다</h2>' +

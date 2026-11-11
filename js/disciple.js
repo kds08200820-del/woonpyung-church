@@ -901,9 +901,8 @@ console.log('[disciple.js] v20261111g');
   /* ═════════════ 강의실 첫 화면의 '제자훈련' 칸 — 등록된 분·관리자에게만 ═════════════ */
   function sectHTML(acc) {
     var list = acc.list || [], one = list.length === 1 ? list[0] : null;
-    return '<header class="cr-sect-head"><p class="cr-sect-eye">제자훈련</p><h2 id="crSecD">' + esc(D.title) + '</h2>' +
-      '<p>반 모임에서 인도자와 함께 13강을 배웁니다. ' + (acc.admin ? '반에 등록된 수강생·인도자와 관리자에게만 보입니다.' : '반에 등록된 분께만 보입니다.') + '</p></header>' +
-      '<article class="cr-course dc-home">' +
+    // (2026-11-12 담임목사 "이 문구 삭제") 칸 머리 제목·안내 문구('제자훈련 양육반 / 반 모임에서 … 보입니다')는 두지 않는다
+    return '<article class="cr-course dc-home">' +
       '<div><p class="cr-c-part">' + esc(D.sub) + '</p><h2>' + (!list.length ? esc(D.title) : acc.admin ? '양육반 반 목록' : '우리 반') + '</h2>' +
       '<p class="cr-c-lead">' + esc(D.lead) + '</p>' +
       (list.length ? '<ul class="dc-qcs">' + list.slice(0, 6).map(function (c) {
