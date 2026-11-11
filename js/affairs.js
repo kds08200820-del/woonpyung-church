@@ -10713,24 +10713,104 @@ console.log('[affairs.js] v20261023th1');
       '<div id="edu_list"><p class="qt-loading">불러오는 중…</p></div>';
 
     var eduAllRows = [];
+    var eduSummary = {};   // 양육반 반별 요약(rpc edu_my_classes): id → { done:['3-4',…], meetings, last_date }
     panel.querySelector('#edu_new_btn').onclick = function () { eduEditor(null); };
 
+    // ── 제자훈련 양육반(2026-11-11 담임목사 지시): 기수 → 반 → 수강생. 반 하나 = edu_records 한 줄(course_code 'disciple') ──
+    //    강의 내용·대목은 js/disciple-data.js(처음 열 때 한 번 불러온다), 반별 진도·출석은 supabase/20261111_1900_edu_disciple.sql
+    function isDisc(r) { return !!r && r.course_code === 'disciple'; }
+    function eduPeople(txt) { try { var a = JSON.parse(txt || '[]'); return Array.isArray(a) ? a.filter(function (p) { return p && p.name; }) : []; } catch (e) { return []; } }
+    function withDisciple(cb) {
+      if (window.WPC_DISCIPLE) { cb(); return; }
+      var s = document.createElement('script'); s.src = 'js/disciple-data.js?v=20261111a';
+      s.onload = cb; s.onerror = cb; document.body.appendChild(s);
+    }
+    // 마친 대목 열쇠 ['3-4', …] → '3강 · 6대목 중 4' (다 나가지 못한 첫 강이 지금 자리다)
+    function eduProgLabel(done) {
+      var D = window.WPC_DISCIPLE; if (!D) return '';
+      var set = {}, got = 0, cur = null;
+      (done || []).forEach(function (k) { set[k] = 1; });
+      D.lessons.forEach(function (l) {
+        var n = 0; l.parts.forEach(function (p, i) { if (set[l.no + '-' + (i + 1)]) { n++; got++; } });
+        if (!cur && n < l.parts.length) cur = { no: l.no, n: n, all: l.parts.length };
+      });
+      if (!got) return '시작 전';
+      if (!cur) return D.lessons.length + '강 마침';
+      if (cur.n === 0) return cur.no > 1 ? (cur.no - 1) + '강 마침' : '1강 시작 전';
+      return cur.no + '강 · ' + cur.all + '대목 중 ' + cur.n;
+    }
+    // 반 이름의 요일 차례(월~토, 주일) — 목요반·토요반·주일반 순서로 보이게
+    function eduDayRank(name) {
+      var s = String(name || '');
+      if (/주일|일요/.test(s)) return 6;
+      var i = '월화수목금토'.split('').findIndex(function (d) { return s.indexOf(d) >= 0; });
+      return i < 0 ? 9 : i;
+    }
+    function eduDelete(id) {
+      if (!confirm('이 교육 과정을 삭제할까요?')) return;
+      api('DELETE', 'edu_records?id=eq.' + id, null, 'return=minimal').then(loadList).catch(function (e) {
+        if (/foreign key|23503|edu_meetings|edu_completions|edu_lesson/i.test(e.message)) alert('모임·과제·수료 기록이 달린 반은 삭제할 수 없습니다. 기록을 지키기 위해 막아 두었습니다.');
+        else alert('삭제 실패: ' + e.message);
+      });
+    }
+
+    function discHTML(rows) {
+      // 기수 묶음: 교육명 + 기수가 같은 반들
+      var groups = [], idx = {};
+      rows.forEach(function (r) {
+        var k = (r.title || '') + '\u0001' + (r.cohort || '');
+        if (idx[k] == null) { idx[k] = groups.length; groups.push({ title: r.title || '(제목없음)', cohort: r.cohort || '', rows: [] }); }
+        groups[idx[k]].rows.push(r);
+      });
+      groups.forEach(function (g) { g.rows.sort(function (a, b) { return eduDayRank(a.class_name) - eduDayRank(b.class_name) || String(a.class_name || '').localeCompare(String(b.class_name || '')); }); });
+      groups.sort(function (a, b) { return (parseInt(String(b.cohort).replace(/\D/g, ''), 10) || 0) - (parseInt(String(a.cohort).replace(/\D/g, ''), 10) || 0); });
+      return { groups: groups, html: groups.map(function (g, gi) {
+        var total = 0; g.rows.forEach(function (r) { total += eduPeople(r.participants).length; });
+        return '<div class="fin-card edu-cohort">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+          '<div><b style="font-size:1.02rem">' + esc(g.title) + (g.cohort ? ' ' + esc(g.cohort) : '') + '</b> <span class="fin-pill">13강 · 반별 진도</span>' +
+          '<div style="font-size:.8rem;color:var(--ink-soft);margin-top:3px">반 ' + g.rows.length + '개 · 수강생 ' + total + '명</div></div>' +
+          '<button type="button" class="btn btn-line edu-addclass" data-gi="' + gi + '" style="padding:6px 14px;font-size:.84rem">＋ 반 추가</button></div>' +
+          '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>반</th><th>인도자</th><th>모임</th><th>수강생</th><th>지금 진도</th><th>모임 횟수</th><th>관리</th></tr></thead><tbody>' +
+          g.rows.map(function (r) {
+            var lead = eduPeople(r.leaders), sum = eduSummary[r.id] || {}, n = eduPeople(r.participants).length;
+            return '<tr>' +
+              '<td style="white-space:nowrap"><b class="edu-edit" data-id="' + esc(r.id) + '" style="cursor:pointer;color:var(--accent,#111111)">' + esc(r.class_name || '(반 이름 없음)') + '</b></td>' +
+              '<td style="white-space:nowrap">' + (lead.length ? lead.map(function (p) { return esc(p.name) + (p.key ? '' : ' <span title="교적에 잇지 않아 인도자 화면을 쓸 수 없습니다" style="color:#A33A2A;font-size:.74rem">교적 미연결</span>'); }).join(', ')
+                : '<span style="color:#898885">' + esc(r.teacher || '담임목사') + ' <span style="font-size:.74rem">(관리자)</span></span>') + '</td>' +
+              '<td style="min-width:11em">' + (r.meet_info ? esc(r.meet_info) : '<span style="color:#CFCECB">—</span>') + '</td>' +
+              '<td style="white-space:nowrap">' + n + '명</td>' +
+              '<td style="white-space:nowrap">' + esc(eduProgLabel(sum.done) || '—') + '</td>' +
+              '<td style="white-space:nowrap">' + (sum.meetings ? sum.meetings + '회' : '<span style="color:#CFCECB">—</span>') + '</td>' +
+              '<td style="white-space:nowrap"><button class="btn btn-line edu-edit" data-id="' + esc(r.id) + '" style="padding:3px 9px;font-size:.78rem">수정</button>' +
+              (sum.meetings ? '' : ' <button class="btn btn-line edu-del" data-id="' + esc(r.id) + '" style="padding:3px 9px;font-size:.78rem">삭제</button>') + '</td></tr>';
+          }).join('') + '</tbody></table></div></div>';
+      }).join('') };
+    }
+
     function loadList() {
-      api('GET', 'edu_records?select=*&order=edu_date.desc,created_at.desc')
-        .then(function (rows) {
+      Promise.all([
+        api('GET', 'edu_records?select=*&order=edu_date.desc,created_at.desc'),
+        api('POST', 'rpc/edu_my_classes', { p_course: 'disciple' }).catch(function () { return []; }),   // 표가 아직 없으면 요약 없이 목록만
+        new Promise(function (res) { withDisciple(res); })
+      ]).then(function (out) {
+          var rows = out[0];
           eduAllRows = rows || [];
+          eduSummary = {};
+          (Array.isArray(out[1]) ? out[1] : []).forEach(function (c) { eduSummary[c.id] = c; });
           var box = panel.querySelector('#edu_list');
+          if (!document.body.contains(box)) return;
           if (!rows || !rows.length) {
             box.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">개설된 교육이 없습니다. 위 <b>교육 개설</b>로 시작하세요.</p></div>'; return;
           }
-          box.innerHTML =
-            '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b>교육 목록 (' + rows.length + '건)</b></div>' +
+          var disc = discHTML(rows.filter(isDisc)), plain = rows.filter(function (r) { return !isDisc(r); });
+          box.innerHTML = disc.html + (plain.length ?
+            '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><b>교육 목록 (' + plain.length + '건)</b></div>' +
             '<div style="overflow:auto"><table class="fin-table"><thead><tr>' +
             '<th>교육명</th><th>기수</th><th>반</th><th>기간</th><th>대상/부서</th><th>강사</th><th>참석자</th><th>관리</th>' +
             '</tr></thead><tbody>' +
-            rows.map(function (r) {
-              var parts = [];
-              try { parts = JSON.parse(r.participants || '[]'); } catch (e) {}
+            plain.map(function (r) {
+              var parts = eduPeople(r.participants);
               var s = r.edu_date || '', e2 = r.end_date || '';
               var period = s + (e2 && e2 !== s ? ' ~ ' + e2 : '');
               return '<tr>' +
@@ -10745,15 +10825,20 @@ console.log('[affairs.js] v20261023th1');
                 }).join('') : '<span style="color:#CFCECB">—</span>') + '</td>' +
                 '<td style="white-space:nowrap"><button class="btn btn-line edu-edit" data-id="' + esc(r.id) + '" style="padding:3px 9px;font-size:.78rem">수정</button>' +
                 ' <button class="btn btn-line edu-del" data-id="' + esc(r.id) + '" style="padding:3px 9px;font-size:.78rem">삭제</button></td></tr>';
-            }).join('') + '</tbody></table></div></div>';
+            }).join('') + '</tbody></table></div></div>' : '');
           var byId = {}; rows.forEach(function (r) { byId[r.id] = r; });
           Array.prototype.forEach.call(box.querySelectorAll('.edu-edit'), function (b) {
             b.onclick = function () { eduEditor(byId[b.dataset.id]); };
           });
           Array.prototype.forEach.call(box.querySelectorAll('.edu-del'), function (b) {
+            b.onclick = function () { eduDelete(b.dataset.id); };
+          });
+          // ＋ 반 추가: 같은 기수에 반을 하나 더 — 교육명·기수·기간·인도자를 그 기수의 첫 반에서 가져온다
+          Array.prototype.forEach.call(box.querySelectorAll('.edu-addclass'), function (b) {
             b.onclick = function () {
-              if (!confirm('이 교육 과정을 삭제할까요?')) return;
-              api('DELETE', 'edu_records?id=eq.' + b.dataset.id, null, 'return=minimal').then(loadList).catch(function (e) { alert('삭제 실패: ' + e.message); });
+              var g = disc.groups[+b.dataset.gi]; if (!g) return;
+              var f = g.rows[0] || {};
+              eduEditor({ title: g.title, cohort: g.cohort, course_code: 'disciple', edu_date: f.edu_date, end_date: f.end_date, target: f.target, teacher: f.teacher, leaders: f.leaders, talent_reward: f.talent_reward });
             };
           });
         })
@@ -10769,6 +10854,8 @@ console.log('[affairs.js] v20261023th1');
       rec = rec || {};
       var participants = [];
       try { participants = JSON.parse(rec.participants || '[]'); } catch (e) {}
+      var leaders = eduPeople(rec.leaders);   // 인도자 [{name,key}] — 양육반 반만
+      var acct = {};                          // 수강생의 홈페이지 계정 여부(rpc edu_class_state 의 roster): 교적 열쇠 → true/false
 
       var ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 16px 60px';
@@ -10778,6 +10865,8 @@ console.log('[affairs.js] v20261023th1');
         '<h3 style="margin:0;color:var(--accent,#111111)">' + (rec.id ? '교육 수정' : '교육 개설') + '</h3>' +
         '<button type="button" id="edu_xbtn" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#A7A6A3;line-height:1">×</button></div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:18px">' +
+        '<div class="af-field" style="grid-column:1/-1"><label>과정 틀</label><select id="edu_f_course" style="width:100%;box-sizing:border-box"><option value="">일반 교육</option><option value="disciple"' + (isDisc(rec) ? ' selected' : '') + '>제자훈련 양육반 (13강 · 반별 진도)</option></select>' +
+        '<div id="edu_course_hint" style="font-size:.75rem;color:#898885;margin-top:4px;display:none">교육명과 기수가 같은 반(목요반·토요반·주일반)을 하나씩 개설합니다. 진도와 출석은 반마다 따로 남습니다.</div></div>' +
         '<div class="af-field" style="grid-column:1/-1;position:relative"><label>교육명</label><input type="text" id="edu_f_title" autocomplete="off" value="' + esc(rec.title || '') + '" placeholder="예: 새가족반, 제자훈련반" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field"><label>기수</label><input type="text" id="edu_f_cohort" value="' + esc(rec.cohort || '') + '" placeholder="예: 1기" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field" style="position:relative"><label>반</label><input type="text" id="edu_f_class" autocomplete="off" value="' + esc(rec.class_name || '') + '" placeholder="예: 목요일 반" style="width:100%;box-sizing:border-box"></div>' +
@@ -10785,18 +10874,26 @@ console.log('[affairs.js] v20261023th1');
         '<div class="af-field"><label>종료일</label><input type="date" id="edu_f_end" value="' + esc(rec.end_date || '') + '" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field"><label>대상/부서</label><input type="text" id="edu_f_target" value="' + esc(rec.target || '') + '" placeholder="예: 새가족, 중등부" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field"><label>강사/인도자</label><input type="text" id="edu_f_teacher" value="' + esc(rec.teacher || '') + '" style="width:100%;box-sizing:border-box"></div>' +
+        '<div class="af-field edu-disc-only" style="grid-column:1/-1"><label>모임 안내</label><input type="text" id="edu_f_meet" value="' + esc(rec.meet_info || '') + '" placeholder="예: 목요일 오전 10시 · 교육관" style="width:100%;box-sizing:border-box"></div>' +
         '<div class="af-field" style="grid-column:1/-1"><label>이수 달란트</label><input type="number" id="edu_f_talent" min="0" max="1000" step="0.5" value="' + esc(rec.talent_reward ? rec.talent_reward : '') + '" placeholder="0" style="width:140px;box-sizing:border-box"> <span style="font-size:.75rem;color:#898885">종료일이 지나면 아래 참석자·이수자의 신앙 정원 지갑에 한 번 들어갑니다. 비우면 주지 않습니다.</span></div>' +
         '<div class="af-field" style="grid-column:1/-1"><label>내용/비고</label><textarea id="edu_f_content" style="min-height:70px;width:100%;box-sizing:border-box">' + esc(rec.content || '') + '</textarea></div>' +
         '</div>' +
+        '<div class="edu-disc-only" style="margin-bottom:20px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<label style="font-size:.82rem;color:var(--ink-soft);font-weight:600">인도자 <span style="font-weight:400;color:#A7A6A3">(강의실에서 인도자용 화면을 쓰는 사람)</span></label>' +
+        '<button type="button" id="edu_add_l" class="btn btn-line" style="padding:4px 13px;font-size:.82rem">＋ 추가</button></div>' +
+        '<div id="edu_lbox" style="display:flex;flex-wrap:wrap;gap:6px;min-height:46px;padding:8px 10px;border:1px solid #F4F3F0;border-radius:4px;background:#FEFDFA;align-items:flex-start"></div>' +
+        '<div style="font-size:.75rem;color:#A7A6A3;margin-top:5px">비워 두면 관리자(담임목사)가 인도합니다. 교적에서 고른 사람(🔗)이 자기 계정으로 강의실에 들어오면 인도자용 화면이 나옵니다.</div>' +
+        '</div>' +
         '<div style="margin-bottom:20px">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-        '<label style="font-size:.82rem;color:var(--ink-soft);font-weight:600">참석자 / 이수자 <span id="edu_pcnt" style="color:var(--accent,#111111)">(' + participants.length + '명)</span></label>' +
+        '<label style="font-size:.82rem;color:var(--ink-soft);font-weight:600"><span id="edu_plabel">참석자 / 이수자</span> <span id="edu_pcnt" style="color:var(--accent,#111111)">(' + participants.length + '명)</span></label>' +
         '<button type="button" id="edu_add_p" class="btn btn-line" style="padding:4px 13px;font-size:.82rem">＋ 추가</button></div>' +
         '<div id="edu_pbox" style="display:flex;flex-wrap:wrap;gap:6px;min-height:46px;padding:8px 10px;border:1px solid #F4F3F0;border-radius:4px;background:#FEFDFA;align-items:flex-start"></div>' +
         '<div style="font-size:.75rem;color:#A7A6A3;margin-top:5px">추가 버튼을 누르면 입력창이 생깁니다. 이름을 입력하면 교적부에서 검색합니다. Enter 또는 선택으로 추가됩니다.</div>' +
         '</div>' +
         '<div style="margin-bottom:20px">' +
-        '<label style="font-size:.82rem;color:var(--ink-soft);font-weight:600;display:block;margin-bottom:8px">📁 강의 자료실 <span style="font-weight:400;color:#A7A6A3">(수강생만 접근 가능)</span></label>' +
+        '<label style="font-size:.82rem;color:var(--ink-soft);font-weight:600;display:block;margin-bottom:8px">📁 강의 자료실 <span style="font-weight:400;color:#A7A6A3">(수강생·인도자만 접근 가능)</span></label>' +
         '<div id="edu_mat_box">' + (rec.id ? '<p class="qt-loading">불러오는 중…</p>' : '<p style="color:#A7A6A3;font-size:.83rem;padding:10px;border:1px dashed #F4F3F0;border-radius:4px">먼저 저장한 뒤 자료를 첨부할 수 있습니다.</p>') + '</div>' +
         '</div>' +
         '<div style="display:flex;gap:10px;align-items:center">' +
@@ -10809,30 +10906,40 @@ console.log('[affairs.js] v20261023th1');
       var pbox = ov.querySelector('#edu_pbox');
       var pcnt = ov.querySelector('#edu_pcnt');
 
-      function renderParts() {
-        pbox.innerHTML = participants.map(function (p, i) {
+      var lbox = ov.querySelector('#edu_lbox');
+      // 사람 칩(수강생·인도자 공용): 🔗 = 교적 연결. 수강생은 홈페이지 계정이 있는지도 보인다(저장된 양육반 반만)
+      function chips(list, box, cnt, showAcct) {
+        box.innerHTML = list.map(function (p, i) {
+          var a = showAcct && p.key && acct[p.key] != null
+            ? (acct[p.key] ? ' <span title="홈페이지 계정이 있습니다" style="font-size:.68rem;opacity:.7">계정</span>'
+                           : ' <span title="홈페이지 계정이 없습니다 — 출석과 과제는 인도자가 표시합니다" style="font-size:.68rem;color:#A33A2A">계정 없음</span>') : '';
           return '<span style="display:inline-flex;align-items:center;gap:5px;background:#E6F2EC;color:#155e32;border-radius:999px;padding:5px 11px;font-size:.83rem;font-weight:600">' +
-            esc(p.name) + (p.key ? ' <span style="font-size:.68rem;opacity:.55">🔗</span>' : '') +
+            esc(p.name) + (p.key ? ' <span style="font-size:.68rem;opacity:.55">🔗</span>' : '') + a +
             ' <b data-rm="' + i + '" style="cursor:pointer;opacity:.45;font-size:.9rem;margin-left:1px">×</b></span>';
         }).join('');
-        Array.prototype.forEach.call(pbox.querySelectorAll('[data-rm]'), function (b) {
-          b.onclick = function () { participants.splice(Number(b.dataset.rm), 1); renderParts(); if (pcnt) pcnt.textContent = '(' + participants.length + '명)'; };
+        Array.prototype.forEach.call(box.querySelectorAll('[data-rm]'), function (b) {
+          b.onclick = function () { list.splice(Number(b.dataset.rm), 1); chips(list, box, cnt, showAcct); };
         });
-        if (pcnt) pcnt.textContent = '(' + participants.length + '명)';
+        if (cnt) cnt.textContent = '(' + list.length + '명)';
       }
+      function renderParts() { chips(participants, pbox, pcnt, true); }
+      function renderLeaders() { if (lbox) chips(leaders, lbox, null, false); }
 
-      function addPartInput() {
+      // 이름을 치면 교적에서 찾아 준다. list·box·rerender 를 주면 그 목록(인도자)에, 없으면 참석자에 더한다
+      function addPartInput(list, box, rerender) {
+        list = list || participants; box = box || pbox; rerender = rerender || renderParts;
         var wrap = document.createElement('div');
         wrap.style.cssText = 'position:relative;display:inline-block;vertical-align:middle';
         var inp = document.createElement('input');
         inp.type = 'text'; inp.placeholder = '이름 검색…';
         inp.style.cssText = 'padding:5px 10px;border:2px solid #797875;border-radius:2px;font:inherit;font-size:.85rem;width:130px;outline:none';
         inp.setAttribute('autocomplete', 'off');
-        wrap.appendChild(inp); pbox.appendChild(wrap); inp.focus();
+        wrap.appendChild(inp); box.appendChild(wrap); inp.focus();
         var pop = null, hi = -1, matches = [];
         function closePop() { if (pop) { pop.remove(); pop = null; hi = -1; } }
-        function pickMember(m) { participants.push({ name: m.name, key: m.key || '' }); wrap.remove(); renderParts(); }
-        function pickRaw() { var n = inp.value.trim(); if (n) { participants.push({ name: n, key: '' }); } wrap.remove(); renderParts(); }
+        function has(name, key) { return list.some(function (p) { return key ? p.key === key : (!p.key && p.name === name); }); }   // 같은 사람 두 번 넣지 않기
+        function pickMember(m) { if (!has(m.name, m.key || '')) list.push({ name: m.name, key: m.key || '' }); wrap.remove(); rerender(); }
+        function pickRaw() { var n = inp.value.trim(); if (n && !has(n, '')) { list.push({ name: n, key: '' }); } wrap.remove(); rerender(); }
         inp.addEventListener('input', function () {
           closePop();
           var q = inp.value.trim().toLowerCase(); if (!q || !MEMBERS.length) return;
@@ -10860,7 +10967,27 @@ console.log('[affairs.js] v20261023th1');
         inp.addEventListener('blur', function () { setTimeout(function () { if (wrap.parentNode) pickRaw(); }, 220); });
       }
 
-      ov.querySelector('#edu_add_p').onclick = addPartInput;
+      ov.querySelector('#edu_add_p').onclick = function () { addPartInput(); };
+      ov.querySelector('#edu_add_l').onclick = function () { addPartInput(leaders, lbox, renderLeaders); };
+
+      // 과정 틀에 따라 양육반 칸(모임 안내·인도자)을 보이고 숨긴다
+      var courseSel = ov.querySelector('#edu_f_course');
+      function syncCourse(fromUser) {
+        var on = courseSel.value === 'disciple';
+        Array.prototype.forEach.call(ov.querySelectorAll('.edu-disc-only'), function (el) { el.style.display = on ? '' : 'none'; });
+        ov.querySelector('#edu_course_hint').style.display = on ? '' : 'none';
+        ov.querySelector('#edu_plabel').textContent = on ? '수강생' : '참석자 / 이수자';
+        if (on && fromUser) {
+          var ti = ov.querySelector('#edu_f_title'), ci = ov.querySelector('#edu_f_cohort');
+          if (!ti.value.trim()) ti.value = '제자훈련 양육반';
+          if (!ci.value.trim()) {
+            // 보통은 지금 진행 중인 기수(가장 큰 기수)에 반을 더한다. 처음이면 1기
+            var nums = eduAllRows.filter(isDisc).map(function (r) { return parseInt(String(r.cohort || '').replace(/\D/g, ''), 10) || 0; });
+            ci.value = ((nums.length ? Math.max.apply(null, nums) : 0) || 1) + '기';
+          }
+        }
+      }
+      courseSel.onchange = function () { syncCourse(true); };
 
       // ── 교육명 자동완성 (기존 교육 추천) + 기수 자동 제안 ──
       (function setupTitleSuggest() {
@@ -10974,6 +11101,7 @@ console.log('[affairs.js] v20261023th1');
         var start = ov.querySelector('#edu_f_start').value;
         var msgEl = ov.querySelector('#edu_msg');
         if (!title || !start) { msgEl.style.color = '#A33A2A'; msgEl.textContent = '교육명과 시작일은 필수입니다.'; return; }
+        if (courseSel.value === 'disciple' && !ov.querySelector('#edu_f_class').value.trim()) { msgEl.style.color = '#A33A2A'; msgEl.textContent = '양육반은 반 이름이 필요합니다. (예: 목요반)'; return; }
         var data = {
           title: title,
           cohort: ov.querySelector('#edu_f_cohort').value.trim() || null,
@@ -10984,7 +11112,11 @@ console.log('[affairs.js] v20261023th1');
           teacher: ov.querySelector('#edu_f_teacher').value.trim() || null,
           content: ov.querySelector('#edu_f_content').value || null,
           attendance: String(participants.length),
-          participants: JSON.stringify(participants)
+          participants: JSON.stringify(participants),
+          // 양육반(20261111_1900_edu_disciple.sql): 과정 틀 · 모임 안내 · 인도자
+          course_code: courseSel.value === 'disciple' ? 'disciple' : null,
+          meet_info: courseSel.value === 'disciple' ? (ov.querySelector('#edu_f_meet').value.trim() || null) : null,
+          leaders: JSON.stringify(courseSel.value === 'disciple' ? leaders : [])
         };
         // 이수 달란트: 칸이 있는 DB(20261023_1500 실행 후)에서만 보낸다 — 값이 있거나 이미 칸이 있는 기록일 때
         var tv = parseFloat(ov.querySelector('#edu_f_talent').value);
@@ -11009,7 +11141,7 @@ console.log('[affairs.js] v20261023th1');
         }).catch(function (e) {
           msgEl.style.color = '#A33A2A';
           msgEl.textContent = '저장 실패: ' + e.message;
-          if (/participants|end_date|cohort|class_name|talent_reward/i.test(e.message))
+          if (/participants|end_date|cohort|class_name|talent_reward|course_code|meet_info|leaders/i.test(e.message))
             msgEl.textContent += ' — Supabase SQL Editor에서 컬럼을 추가해 주세요.';
         });
       };
@@ -11102,6 +11234,16 @@ console.log('[affairs.js] v20261023th1');
       }
 
       renderParts();
+      renderLeaders();
+      syncCourse(false);
+      // 저장된 양육반 반: 수강생의 홈페이지 계정 여부를 받아 칩에 표시한다(명단은 위 participants 그대로)
+      if (rec.id && isDisc(rec)) {
+        api('POST', 'rpc/edu_class_state', { p_edu: rec.id }).then(function (st) {
+          if (!st || !st.ok || !document.body.contains(ov)) return;
+          (st.roster || []).forEach(function (m) { if (m.linked) acct[m.pid] = !!m.has_account; });
+          renderParts();
+        }).catch(function () { });
+      }
       if (rec.id) loadMaterials();
     }
 
