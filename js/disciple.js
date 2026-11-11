@@ -6,9 +6,10 @@
  *    #disciple/c/<반>           반 화면 — 진도(13강·대목) · (인도자) 모임 기록·명단·출석·이수 / (수강생) 내 출석·과제
  *    #disciple/c/<반>/l/<강>    강 화면 — 요약·목표·대목·구절·나눔 질문·과제·암송 + (인도자) 과제 확인 / (수강생) 내 글
  *    #disciple/c/<반>/m[/<날짜>] 인도자: 모임 기록(그날 나간 대목·출석·메모) — 같은 날짜는 고쳐 쓴다
+ *    #disciple/c/<반>/s[/<날짜>] 인도자: 모임 찬양 고르기(모두의 찬양 — supabase/20261111_2100_edu_meeting_songs.sql). 반 화면에 '이번 모임 찬양'
  *  · 진도는 반마다 '강-대목'('3-4')으로 남고, 한 과를 여러 모임에 나누어 나갈 수 있다. 다음 모임은 못 다 나간 대목부터.
  */
-console.log('[disciple.js] v20261111a');
+console.log('[disciple.js] v20261111b');
 
 (function () {
   var D = window.WPC_DISCIPLE;
@@ -66,6 +67,130 @@ console.log('[disciple.js] v20261111a');
     return X.rpc('edu_class_state', { p_edu: id }).then(function (r) { if (r && r.ok) ST[id] = r; return r; });
   }
 
+  /* ── 모임 찬양(2026-11-11 담임목사): 모두의 찬양(modu/ccm-data.js)에서 모임 날짜마다 고른 곡 — 표 edu_meeting_songs ──
+       SONGS[반] = [{meet_date, songs:[{b:'c', n}]}] (최근 날짜부터) · 표가 아직 없으면 'none' */
+  var SONGS = {};
+  function loadSongs(id) {
+    return X.api('GET', 'edu_meeting_songs?edu_id=eq.' + encodeURIComponent(id) + '&select=meet_date,songs&order=meet_date.desc&limit=40')
+      .then(function (r) { SONGS[id] = Array.isArray(r) ? r : []; return SONGS[id]; })
+      .catch(function (e) { SONGS[id] = X.notReady(e) ? 'none' : []; return SONGS[id]; });
+  }
+  function withCcm() {
+    return new Promise(function (res) {
+      if (window.CCMS) return res();
+      var s = document.createElement('script'); s.src = 'modu/ccm-data.js?v=20260928ccm2'; s.onload = res; s.onerror = res; document.body.appendChild(s);
+    });
+  }
+  function ccm(n) { var L = window.CCMS || []; n = Number(n); for (var i = 0; i < L.length; i++) if (L[i].no === n) return L[i]; return null; }
+  function songUrl(x) { return 'modu/index.html#' + (x.b === 'h' ? 'hymn' : 'ccm') + '=' + x.n; }
+  function songName(x) { if (x.b === 'h') return '새찬송가 ' + x.n + '장'; var c = ccm(x.n); return c ? c.title : '모두의 찬양 ' + x.n + '번'; }
+  // 보여 줄 날짜: 오늘이나 그 뒤 가장 가까운 날(곡이 있는 날), 없으면 가장 최근 날
+  function songsNow(rows) {
+    if (!Array.isArray(rows)) return null;
+    var t = today(), up = rows.filter(function (r) { return r.meet_date >= t && (r.songs || []).length; }).sort(function (a, b) { return a.meet_date < b.meet_date ? -1 : 1; })[0];
+    return up || rows.filter(function (r) { return (r.songs || []).length; })[0] || null;
+  }
+  function songRowsHTML(list) {
+    return '<ol class="dc-songs">' + list.map(function (x) {
+      var c = x.b === 'c' ? ccm(x.n) : null;
+      return '<li><span class="n">' + (x.b === 'h' ? x.n + '장' : x.n + '번') + '</span><span class="t"><b>' + esc(songName(x)) + '</b>' +
+        (c && c.key ? '<small>' + esc(c.key) + '조' + (c.tags && c.tags.length ? ' · ' + esc(c.tags.slice(0, 2).join(', ')) : '') + '</small>' : '') + '</span>' +
+        '<a class="cr-line cr-sm" href="' + esc(songUrl(x)) + '" target="_blank" rel="noopener">악보 보기</a></li>';
+    }).join('') + '</ol>';
+  }
+  function songsHTML(st) {
+    var id = st['class'].id, rows = SONGS[id], lead_ = isLeader(st);
+    if (rows === 'none') return lead_ ? '<section class="cr-card dc-left"><h2 class="dc-h">모임 찬양</h2><p style="margin:0">모임 찬양을 저장할 칸을 준비하고 있습니다.</p></section>' : '';
+    var cur = songsNow(rows), t = today();
+    var past = (rows || []).filter(function (r) { return (r.songs || []).length && (!cur || r.meet_date !== cur.meet_date); }).slice(0, 8);
+    if (!cur && !lead_) return '';
+    return '<section class="cr-card dc-left dc-songbox"><h2 class="dc-h">' + (cur ? (cur.meet_date === t ? '오늘 모임 찬양' : cur.meet_date > t ? '다음 모임 찬양' : '지난 모임 찬양') + ' <small>' + esc(kd(cur.meet_date)) + ' · 모두의 찬양</small>' : '모임 찬양') + '</h2>' +
+      (cur ? songRowsHTML(cur.songs) + '<p class="cr-note" style="margin-top:10px">\'악보 보기\'를 누르면 모두의 성경 악보 창이 열립니다. 함께 보며 부르십시오.</p>'
+        : '<p style="margin:0 0 12px">아직 고른 찬양이 없습니다. 모임에서 함께 부를 곡을 모두의 찬양에서 골라 두면 수강생 화면에도 보입니다.</p>') +
+      (lead_ ? '<div class="cr-acts" style="margin-top:12px"><a class="cr-btn" href="#disciple/c/' + esc(id) + '/s' + (cur && cur.meet_date >= t ? '/' + esc(cur.meet_date) : '') + '">찬양 고르기</a></div>' : '') +
+      (past.length ? '<details class="dc-past"><summary>지난 모임 찬양 ' + past.length + '번</summary><ul>' + past.map(function (r) {
+        return '<li><b>' + esc(kd(r.meet_date)) + '</b> ' + r.songs.map(function (x) { return '<a href="' + esc(songUrl(x)) + '" target="_blank" rel="noopener">' + esc(songName(x)) + '</a>'; }).join(', ') +
+          (lead_ ? ' <a class="dc-dim" href="#disciple/c/' + esc(id) + '/s/' + esc(r.meet_date) + '">고치기</a>' : '') + '</li>';
+      }).join('') + '</ul></details>' : '') + '</section>';
+  }
+
+  /* ── 인도자: 찬양 고르기 (#disciple/c/<반>/s[/<날짜>]) — 모두의 찬양에서 찾아 더하고 순서를 정한다 ── */
+  function renderSongs(st, date) {
+    var id = st['class'].id, rows = Array.isArray(SONGS[id]) ? SONGS[id] : [];
+    if (SONGS[id] === 'none') return msg('<h2>모임 찬양</h2><p>모임 찬양을 저장할 칸을 준비하고 있습니다.</p><div class="cr-acts"><a class="cr-line" href="#disciple/c/' + esc(id) + '">‹ 우리 반</a></div>');
+    date = /^\d{4}-\d\d-\d\d$/.test(date) ? date : today();
+    var hit = rows.filter(function (r) { return r.meet_date === date; })[0];
+    var pick = (hit ? hit.songs : []).filter(function (x) { return x.b === 'c' || x.b === 'h'; }).map(function (x) { return { b: x.b, n: +x.n }; });
+    var L = window.CCMS || [];
+    setHTML('<div class="cr-wrap">' +
+      '<nav class="dc-crumb"><a href="#disciple/c/' + esc(id) + '">‹ ' + esc(className(st['class'])) + '</a></nav>' +
+      '<form class="cr-card dc-left dc-meet" id="dcSongs" novalidate><h2>모임 찬양 고르기</h2>' +
+      '<div class="dc-field"><label for="dcSDate">모임 날짜</label><input type="date" id="dcSDate" value="' + esc(date) + '"><small>모임 전에 미리 골라 두면 수강생 화면에 \'다음 모임 찬양\'으로 보입니다.</small></div>' +
+      '<h3 class="dc-h3">고른 곡 <small id="dcSCnt"></small></h3><ol class="dc-songs dc-chosen" id="dcSel"></ol>' +
+      '<h3 class="dc-h3">모두의 찬양에서 찾기 <small>' + L.length + '곡</small></h3>' +
+      '<div class="dc-field"><input type="search" id="dcSQ" placeholder="번호, 곡명·첫 줄, 조(D·Em), 주제(감사·은혜)" autocomplete="off" aria-label="모두의 찬양에서 찾기"></div>' +
+      '<ul class="dc-sres" id="dcSRes"></ul>' +
+      '<div class="cr-acts dc-foot"><button type="submit" class="cr-btn" id="dcSSave">저장</button><a class="cr-line" href="#disciple/c/' + esc(id) + '">취소</a><span class="dc-msg" id="dcSMsg" role="status"></span></div>' +
+      '</form></div>');
+    var f = lead().querySelector('#dcSongs'), selEl = f.querySelector('#dcSel'), resEl = f.querySelector('#dcSRes'), q = f.querySelector('#dcSQ');
+    function has(n) { return pick.some(function (x) { return x.b === 'c' && x.n === n; }); }
+    function drawSel() {
+      f.querySelector('#dcSCnt').textContent = pick.length ? pick.length + '곡 · 부를 순서대로' : '';
+      selEl.innerHTML = pick.length ? pick.map(function (x, i) {
+        return '<li><span class="n">' + (i + 1) + '</span><span class="t"><b>' + esc(songName(x)) + '</b><small>' + (x.b === 'h' ? '새찬송가 ' + x.n + '장' : '모두의 찬양 ' + x.n + '번') + '</small></span>' +
+          '<span class="dc-ord"><button type="button" class="cr-line cr-sm" data-up="' + i + '"' + (i ? '' : ' disabled') + ' aria-label="위로">↑</button>' +
+          '<button type="button" class="cr-line cr-sm" data-dn="' + i + '"' + (i < pick.length - 1 ? '' : ' disabled') + ' aria-label="아래로">↓</button>' +
+          '<button type="button" class="cr-line cr-sm" data-rm="' + i + '" aria-label="빼기">×</button></span></li>';
+      }).join('') : '<li class="dc-dim">아래에서 곡을 찾아 더하십시오.</li>';
+    }
+    function drawRes() {
+      var s = q.value.trim().toLowerCase(), num = /^\d+$/.test(s) ? +s : 0;
+      var list = !s ? L.slice(0, 30) : L.filter(function (c) {
+        if (num) return c.no === num || String(c.no).indexOf(s) === 0;
+        return (c.title || '').toLowerCase().indexOf(s) >= 0 || (c.alt || []).some(function (a) { return String(a).toLowerCase().indexOf(s) >= 0; }) ||
+          (c.tags || []).some(function (t) { return t.indexOf(s) >= 0; }) || String(c.key || '').toLowerCase() === s;
+      }).slice(0, 40);
+      resEl.innerHTML = list.length ? list.map(function (c) {
+        var on = has(c.no);
+        return '<li><span class="n">' + c.no + '</span><span class="t"><b>' + esc(c.title) + '</b><small>' + esc(c.key ? c.key + '조' : '') + (c.tags && c.tags.length ? ' · ' + esc(c.tags.join(', ')) : '') + '</small></span>' +
+          '<a class="cr-line cr-sm" href="modu/index.html#ccm=' + c.no + '" target="_blank" rel="noopener">악보</a>' +
+          '<button type="button" class="cr-btn cr-sm" data-add="' + c.no + '"' + (on ? ' disabled' : '') + '>' + (on ? '고름' : '더하기') + '</button></li>';
+      }).join('') : '<li class="dc-dim">찾는 곡이 없습니다.</li>';
+    }
+    selEl.onclick = function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var i;
+      if (b.dataset.rm != null) { pick.splice(+b.dataset.rm, 1); }
+      else if (b.dataset.up != null) { i = +b.dataset.up; if (i > 0) pick.splice(i - 1, 0, pick.splice(i, 1)[0]); }
+      else if (b.dataset.dn != null) { i = +b.dataset.dn; if (i < pick.length - 1) pick.splice(i + 1, 0, pick.splice(i, 1)[0]); }
+      dirty = true; drawSel(); drawRes();
+    };
+    resEl.onclick = function (e) {
+      var b = e.target.closest('button[data-add]'); if (!b) return;
+      if (pick.length >= 12) { f.querySelector('#dcSMsg').textContent = '한 모임에 12곡까지 고를 수 있습니다.'; return; }
+      pick.push({ b: 'c', n: +b.dataset.add }); dirty = true; drawSel(); drawRes();
+    };
+    q.oninput = drawRes;
+    q.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); var b = resEl.querySelector('button[data-add]:not([disabled])'); if (b) b.click(); } };
+    f.querySelector('#dcSDate').onchange = function () {
+      var v = this.value; if (!v || v === date) return;
+      if (dirty && !confirm('고르던 곡이 있습니다. 날짜를 바꾸면 그 날짜의 찬양을 새로 엽니다. 바꿀까요?')) { this.value = date; return; }
+      dirty = false; go('#disciple/c/' + id + '/s/' + v);
+    };
+    f.onsubmit = function (e) {
+      e.preventDefault();
+      var b = f.querySelector('#dcSSave'), out = f.querySelector('#dcSMsg');
+      if (b.disabled) return;
+      var d = f.querySelector('#dcSDate').value; if (!d) { out.textContent = '모임 날짜를 골라 주십시오.'; return; }
+      b.disabled = true; b.textContent = '저장 중…'; out.textContent = '';
+      X.rpc('edu_songs_save', { p_edu: id, p_date: d, p_songs: pick }).then(function (r) {
+        if (!r || !r.ok) throw new Error(r && r.error || '저장하지 못했습니다.');
+        dirty = false; go('#disciple/c/' + id);
+      }).catch(function (err) { b.disabled = false; b.textContent = '저장'; out.textContent = '저장하지 못했습니다: ' + err.message; });
+    };
+    drawSel(); drawRes();
+  }
+
   /* ═════════════ 라우팅 ═════════════ */
   function render(rest, ctx) {
     X = ctx;
@@ -75,7 +200,9 @@ console.log('[disciple.js] v20261111a');
     if (!id) return renderHome();
     if (!X.sess) return renderNeedLogin();
     setHTML('<div class="cr-wrap"><p class="qt-loading">불러오는 중…</p></div>');
-    loadState(id, true).then(function (st) {
+    var needSongs = !rest[2] || rest[2] === 's';   // 반 화면·찬양 고르기에서만 찬양 자료를 부른다
+    Promise.all([loadState(id, true), needSongs ? loadSongs(id) : null, needSongs ? withCcm() : null]).then(function (out) {
+      var st = out[0];
       if (!st || !st.ok) return msg('<h2>' + esc(D.title) + '</h2><p>이 반은 볼 수 없습니다. 반에 등록된 수강생과 인도자만 들어올 수 있습니다.</p><div class="cr-acts"><a class="cr-line" href="#disciple">‹ 양육반</a></div>');
       if (rest[2] === 'l') {
         var no = parseInt(rest[3], 10), l = D.lesson(no);
@@ -84,6 +211,7 @@ console.log('[disciple.js] v20261111a');
         return renderLesson(st, l);
       }
       if (rest[2] === 'm' && isLeader(st)) return renderMeeting(st, rest[3] || '');
+      if (rest[2] === 's' && isLeader(st)) return renderSongs(st, rest[3] || '');
       renderClass(st);
     }).catch(fail);
   }
@@ -174,6 +302,7 @@ console.log('[disciple.js] v20261111a');
         '<li><b>' + (st.completion ? '수료' : '수강 중') + '</b><span>' + (st.completion ? esc(kdy(st.completion.completed_on)) + ' · 제 ' + esc(st.completion.cert_no) + ' 호' : '13강을 마치면 수료') + '</span></li></ul>') +
         (p.cur && p.cur <= 13 ? '<div class="cr-acts" style="margin:0 0 18px"><a class="cr-btn" href="#disciple/c/' + esc(id) + '/l/' + p.cur + '">' + p.cur + '강 공부하기 ›</a>' +
           (p.cur < 13 ? '<a class="cr-line" href="#disciple/c/' + esc(id) + '/l/' + (p.cur + 1) + '">' + (p.cur + 1) + '강 예습</a>' : '') + '</div>' : '') +
+        songsHTML(st) +
         '<section class="cr-card dc-left"><h2 class="dc-h">13강</h2>' + lessonsHTML(st, p) + '</section>' +
         '<p class="cr-note">' + esc(D.textbook) + '</p></div>');
       return;
@@ -185,6 +314,7 @@ console.log('[disciple.js] v20261111a');
     setHTML('<div class="cr-wrap">' + headHTML(st,
       '<div class="cr-acts" style="margin-top:14px"><a class="cr-btn" href="#disciple/c/' + esc(id) + '/m">오늘 모임 기록하기</a>' +
       (p.cur ? '<a class="cr-line" href="#disciple/c/' + esc(id) + '/l/' + p.cur + '">' + p.cur + '강 내용 보기</a>' : '') + '</div>') +
+      songsHTML(st) +
       '<section class="cr-card dc-left"><h2 class="dc-h">수강생 <small>' + (st.roster || []).length + '명 · 모임 ' + lv.length + '회</small></h2>' +
       ((st.roster || []).length ? '<div class="dc-scroll"><table class="dc-table"><thead><tr><th>이름</th><th>출석</th><th>삶의 과제</th><th>수료</th></tr></thead><tbody>' +
         st.roster.map(function (m) {

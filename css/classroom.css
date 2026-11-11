@@ -364,3 +364,25 @@
 .dc-chk { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; min-height: 40px; cursor: pointer; font-weight: 600; }
 .dc-chk input { width: 20px; height: 20px; }
 .dc-chk small { font-weight: 400; color: var(--muted); }
+/* 모임 찬양(모두의 찬양) */
+.dc-songs { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.dc-songs li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 2px; background: #fff; }
+.dc-songs .n { flex: 0 0 auto; min-width: 44px; font-weight: 800; color: var(--accent); }
+.dc-songs .t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dc-songs .t small { color: var(--muted); font-size: .8rem; }
+.dc-songs li.dc-dim { border-style: dashed; }
+.dc-ord { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.dc-ord .cr-sm { min-width: 40px; min-height: 40px; padding: 0; }
+.dc-sres { margin: 0; padding: 0; list-style: none; max-height: 420px; overflow: auto; overscroll-behavior: contain; border: 1px solid var(--line); border-radius: 2px; }
+.dc-sres li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.dc-sres li:last-child { border-bottom: 0; }
+.dc-sres .n { flex: 0 0 auto; min-width: 36px; font-weight: 700; color: var(--ink-soft); }
+.dc-sres .t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.dc-sres .t small { color: var(--muted); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-sres .cr-btn.cr-sm { min-height: 36px; padding: 0 14px; font-size: .82rem; }
+.dc-field input[type=search] { font: inherit; padding: 10px 12px; min-height: 44px; border: 1px solid var(--line); border-radius: 2px; box-sizing: border-box; width: 100%; }
+.dc-past { margin-top: 14px; }
+.dc-past summary { cursor: pointer; font-size: .88rem; color: var(--ink-soft); }
+.dc-past ul { margin: 8px 0 0; padding-left: 1.2em; font-size: .9rem; line-height: 1.8; }
+.dc-past a { color: var(--accent); }
+@media (max-width: 560px) { .dc-songs li, .dc-sres li { flex-wrap: wrap; } .dc-songs .t, .dc-sres .t { flex-basis: calc(100% - 60px); } }
