@@ -118,7 +118,7 @@ console.log('[classroom.js] v20261111dc2');
   function bestOf(list) { return list.length ? Math.max.apply(null, list.map(function (r) { return +r.score || 0; })) : null; }
   function historyHTML(cid, curId) {
     var list = triesOf(cid); if (!list.length) return '';
-    return '<section class="cr-hist" aria-label="응시 기록"><h3 class="cr-sub-h">응시 기록 <small>지난 기록은 지워지지 않고 그대로 남습니다</small></h3><ol>' +
+    return '<section class="cr-hist" aria-label="응시 기록"><h3 class="cr-sub-h">응시 기록</h3><ol>' +
       list.map(function (r, i) {
         var url = r.id ? 'edu-print.html?sheet=' + r.id : 'edu-print.html?local=' + cid;
         return '<li class="' + (r.passed ? 'is-pass' : 'is-fail') + (curId && r.id === curId ? ' is-cur' : '') + '"><span class="n">' + (i + 1) + '회</span>' +
@@ -230,21 +230,12 @@ console.log('[classroom.js] v20261111dc2');
     var html = '<div class="cr-wrap is-home">' +
       '<section class="cr-sect is-disc" id="crDisc" aria-label="제자훈련 양육반" hidden></section>' +
       '<section class="cr-sect" aria-labelledby="crSecQ"><header class="cr-sect-head"><p class="cr-sect-eye">문답 교육</p>' +
-      '<h2 id="crSecQ">학습 · 세례(입교) · 유아세례</h2><p>혼자 장마다 공부하고 이수 시험을 봅니다. 당회 문답과 예식을 준비하는 과정입니다.</p></header>' +
-      '<section class="cr-guide" aria-labelledby="crGuideT"><h2 id="crGuideT">문답 교육은 이렇게 진행됩니다</h2>' +
-      '<p>대한예수교장로회총회 「학습·세례문답서」를 한 장씩 친절한 풀이와 함께 배웁니다. 공부한 곳은 위쪽 진행 막대에 표시되고, 다 마치면 시험을 봅니다.</p>' +
-      '<ol class="cr-flow">' +
-      '<li><b>과정 고르기</b>학습 · 세례(입교) · 유아세례(부모)</li>' +
-      '<li><b>장마다 공부</b>문답 원문과 풀이</li>' +
-      '<li><b>서약 문답</b>예식 때 드릴 고백 미리 보기</li>' +
-      '<li><b>이수 시험</b>20문항 · 70점 이상 통과</li>' +
-      '<li class="is-church"><b>교적에 이수 기록</b>목회자가 확인</li>' +
-      '<li class="is-church"><b>당회 문답·예식</b>증명서 발급</li>' +
-      '</ol></section>' +
-      (S && SV.ready === false ? '<p class="cr-warn">강의실 기록 저장을 준비하고 있습니다. 공부와 시험은 지금도 할 수 있고, 결과는 이 기기에 먼저 보관됩니다.</p>' : '') +
+      '<h2 id="crSecQ">학습 · 세례(입교) · 유아세례</h2></header>' +
+      // (2026-11-12 담임목사 "설명하려 하지 말 것") '이렇게 진행됩니다' 안내 칸·설명 문단은 두지 않는다
+      (S && SV.ready === false ? '<p class="cr-warn">강의실 기록 저장을 준비하고 있습니다. 결과는 이 기기에 먼저 보관됩니다.</p>' : '') +
       '<div class="cr-courses">' + ORDER.map(courseCard).join('') + '</div>' +
-      (S ? mineHTML() : '<div class="cr-card" style="margin-top:22px"><h2>로그인하고 시작하세요</h2><p>공부한 진도와 시험 결과는 내 계정에 기록되어 교적에 이수로 남습니다.</p><div class="cr-acts"><button type="button" class="cr-btn" data-login>로그인</button></div></div>') +
-      '<p class="cr-note">' + esc(C.source) + ' 이 강의실의 이수는 교육을 마쳤다는 기록이며, 학습·세례(입교)·유아세례는 당회의 문답과 예식을 거쳐 받습니다.</p>' +
+      (S ? mineHTML() : '<div class="cr-card" style="margin-top:22px"><h2>로그인하고 시작하세요</h2><div class="cr-acts"><button type="button" class="cr-btn" data-login>로그인</button></div></div>') +
+      '<p class="cr-note">' + esc(C.source) + '</p>' +
       '</section>' +
       '</div>';
     root.innerHTML = html;
@@ -263,7 +254,6 @@ console.log('[classroom.js] v20261111dc2');
     return '<article class="cr-course is-' + cid + '">' +
       '<p class="cr-c-part">' + esc(c.part) + '</p><h2>' + esc(c.title) + '</h2>' +
       '<p class="cr-c-sub">' + esc(c.sub) + ' · 이수 시험 ' + C.exam.count + '문항</p>' +
-      '<p class="cr-c-lead">' + esc(c.lead) + '</p>' +
       '<p class="cr-c-who"><b>대상</b>' + esc(c.who) + '</p>' +
       '<div class="cr-c-prog"><div class="cr-c-stat"><span>' + (badge || '진행률') + '</span><b>' + p.pct + '%</b></div>' +
       '<div class="cr-bar" role="progressbar" aria-label="' + esc(c.title) + ' 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + p.pct + '"><i style="width:' + p.pct + '%"></i></div>' +
@@ -283,13 +273,13 @@ console.log('[classroom.js] v20261111dc2');
       rows.push('<li><span><b>' + esc(ct.kind === '유아세례' ? '유아세례 증명서' + (ct.member_name ? ' (' + ct.member_name + ')' : '') : ct.kind + '교인 증명서') + '</b> 제 ' + esc(ct.cert_no) + ' 호<small>' + esc(ct.issued_on) + ' 발급</small></span><a class="cr-line cr-sm" href="edu-print.html?cert=' + ct.id + '" target="_blank" rel="noopener">증명서 보기</a></li>');
     });
     return '<section class="cr-mine" aria-labelledby="crMineT"><h2 id="crMineT">내 기록</h2>' +
-      (rows.length ? '<ul class="cr-mine-list">' + rows.join('') + '</ul>' : '<p class="cr-note" style="margin:0">아직 이수한 과정이 없습니다. 위에서 과정을 골라 시작해 보세요.</p>') +
+      (rows.length ? '<ul class="cr-mine-list">' + rows.join('') + '</ul>' : '<p class="cr-note" style="margin:0">아직 이수한 과정이 없습니다.</p>') +
       '</section>';
   }
   function bindLogin() { Array.prototype.forEach.call(root.querySelectorAll('[data-login]'), function (b) { b.addEventListener('click', function (e) { e.preventDefault(); openLogin(); }); }); }
   function renderNeedLogin(cid) {
     var c = C.courses[cid];
-    root.innerHTML = '<div class="cr-wrap"><div class="cr-card"><h2>' + esc(c.title) + '</h2><p>강의실은 로그인한 뒤 들어올 수 있습니다. 공부한 진도와 시험 결과가 내 계정에 기록됩니다.</p>' +
+    root.innerHTML = '<div class="cr-wrap"><div class="cr-card"><h2>' + esc(c.title) + '</h2><p>로그인한 뒤 들어올 수 있습니다.</p>' +
       '<div class="cr-acts"><button type="button" class="cr-btn" data-login>로그인</button><a class="cr-line" href="#">강의실 첫 화면</a></div></div></div>';
     bindLogin();
   }
@@ -383,7 +373,7 @@ console.log('[classroom.js] v20261111dc2');
       '<section class="cr-l-intro"><h3>📖 예식 때 이렇게 묻고 답합니다</h3><p>' + esc(C.vowNote) + '</p>' +
       (cid === 'infant' ? '<p>유아·어린이 세례 때에는 아이 대신 부모가 세 가지를 묻고 답합니다. 아이에게 그리스도의 피로 씻음과 성령으로 거듭나는 은혜가 필요함을 인정하고, 아이가 하나님의 언약의 자손임을 믿으며, 아이를 하나님께 바치고 모범과 기도와 말씀으로 기르기를 서약합니다. 부모 두 분이 함께 읽어 보십시오.</p>' :
        cid === 'baptism' ? '<p>세례를 받는 분은 ‘세례 문답’, 어려서 세례를 받고 입교하는 분은 ‘입교 문답’으로 서약합니다. ‘유아·어린이 세례 문답’은 자녀에게 세례를 받게 하는 부모가 드리는 서약으로, 장차 부모가 될 세례교인이 함께 알아 두면 좋습니다.</p>' : '<p>학습 문답은 네 가지입니다. 하나님을 믿는 고백, 예수님이 나의 구주이심을 믿는 고백, 말씀대로 살겠다는 다짐, 주일과 예배와 기도를 힘쓰겠다는 작정입니다.</p>') +
-      '<p class="cr-vow-how">✍️ 질문마다 아래 빈칸에 <b>직접 ‘예’라고 적어</b> 보십시오. 예식 때 소리 내어 드릴 고백입니다.</p>' +
+      '<p class="cr-vow-how">✍️ 질문마다 빈칸에 <b>‘예’</b>라고 적으십시오.</p>' +
       '</section>' +
       // 서약의 '예' 는 배우는 분이 직접 적는다(2026-10-26 담임목사) — 빈칸에 흐린 글씨 '예' 로 안내, 다 적으면 다음 단계
       c.vows.map(function (k) {
@@ -443,13 +433,12 @@ console.log('[classroom.js] v20261111dc2');
     var todo = st.filter(function (s) { return !s.exam && !s.done; });
     var html = '<div class="cr-wrap">' + navHTML(cid, 'exam') +
       '<article class="cr-lesson cr-exam-intro">' +
-      '<header class="cr-l-head"><p class="cr-l-eye">' + esc(c.title) + '</p><h2>이수 시험</h2><p class="cr-l-meta">문제은행에서 무작위로 출제됩니다. 볼 때마다 문제가 달라집니다.</p></header>' +
+      '<header class="cr-l-head"><p class="cr-l-eye">' + esc(c.title) + '</p><h2>이수 시험</h2></header>' +
       '<ul style="margin-top:18px"><li><b>' + C.exam.count + '</b>문항</li><li><b>' + (100 / C.exam.count) + '</b>점씩</li><li><b>' + C.exam.pass + '</b>점 이상 통과</li><li><b>' + c.bank.length + '</b>문제 은행</li></ul>' +
       (exam.lock ? '<p class="cr-warn">아래 단계를 마치면 시험을 볼 수 있습니다.</p><ul class="cr-todo">' + todo.map(function (s) {
         return '<li><span>' + (s.vows ? '서약 문답' : '제' + s.n + '장 ' + esc(s.title)) + '</span><a class="cr-line cr-sm" href="#' + cid + '/' + s.key + '">공부하기</a></li>';
       }).join('') + '</ul>' :
-        (fails.length ? '<p class="cr-retry"><b>재시험</b>지난 시험 ' + fails.length + '회 · 최고 ' + bestOf(fails) + '점 — ' + C.exam.pass + '점에 못 미쳐 다시 봅니다. 새 문제가 나오며, 지난 기록은 지워지지 않고 그대로 남습니다.</p>' : '') +
-        '<p class="cr-note" style="margin:0 0 16px">모든 장을 마쳤습니다. 준비가 되면 시작하세요. 시험 중에 창을 닫아도 이 기기에서 이어서 볼 수 있습니다. 통과하면 교적에 이수가 기록되고, 목회자가 확인한 뒤 당회 문답을 안내합니다.</p>' +
+        (fails.length ? '<p class="cr-retry"><b>재시험</b>지난 시험 ' + fails.length + '회 · 최고 ' + bestOf(fails) + '점</p>' : '') +
         '<div class="cr-acts"><button type="button" class="cr-btn' + tone(cid) + '" data-start>' + (fails.length ? '재시험 시작하기' : '시험 시작하기') + '</button><a class="cr-line" href="#' + cid + '/1">처음부터 복습하기</a></div>') +
       historyHTML(cid) +
       '</article></div>';
@@ -556,9 +545,9 @@ console.log('[classroom.js] v20261111dc2');
       '<div class="cr-result' + (pass ? ' is-pass' : '') + '">' +
       '<div class="cr-score" style="--p:' + rec.score + '"><b>' + rec.score + '</b><span>점 · ' + rec.correct + '/' + rec.total + ' 정답</span></div>' +
       (pass ? '<h2>축하합니다! ' + esc(c.title) + '을 이수했습니다</h2>' +
-        '<p>' + (rec.id ? (rec.linked === false ? '이수 기록이 저장되었습니다. 계정이 아직 교적과 연결되지 않아 목회자가 확인한 뒤 교적에 연결해 드립니다.' : '이수 기록이 교적에 저장되었습니다. 목회자가 확인한 뒤 당회 문답과 예식을 안내해 드립니다.') : '') + '</p>' +
+        (rec.id && rec.linked === false ? '<p>계정이 아직 교적과 연결되지 않아 목회자가 확인한 뒤 연결해 드립니다.</p>' : '') +
         '<p>' + esc(c.next) + '</p>'
-        : '<h2>아쉽지만 ' + C.exam.pass + '점에 조금 모자랍니다</h2><p>틀린 문항의 풀이를 살펴보고, 해당 장을 복습한 뒤 <b>재시험</b>을 보세요. 재시험에는 새 문제가 나오며, 이번 기록(' + rec.score + '점)도 지워지지 않고 응시 기록에 남습니다.</p>') +
+        : '<h2>아쉽지만 ' + C.exam.pass + '점에 조금 모자랍니다</h2><p>틀린 문항을 복습한 뒤 <b>재시험</b>을 보세요.</p>') +
       (rec.saveMsg ? '<p class="cr-warn" style="text-align:left;margin-top:12px">' + esc(rec.saveMsg) + '</p>' : '') +
       '<div class="cr-acts">' +
       (pass ? '<a class="cr-btn" href="' + printUrl + '" target="_blank" rel="noopener">🖨 시험지·결과 PDF</a>' + (cid === 'infant' ? '' : '<a class="cr-line" href="forms.html">학습·세례 신청서 보기</a>')
