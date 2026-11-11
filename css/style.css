@@ -2231,3 +2231,9 @@ body { background: #fff; letter-spacing: .01em; }
 .hp-today .hp-wbox em { font-style: normal; font-size: 1.7rem; font-weight: 300; line-height: 1.25; letter-spacing: .02em; font-variant-numeric: tabular-nums; margin-top: 6px; white-space: nowrap; }
 .hp-today .hp-wbox small { font-size: .66rem; letter-spacing: .1em; color: var(--muted); }
 .hp-today span.hp-wbox:hover { background: rgba(17,17,17,.11); }
+
+/* 대시보드 칸: 검은 면 대신 따뜻한 책상 사진(필사 공책·성경·찻잔) (2026-11-11 담임목사: 단조롭고 정감이 없다) */
+.hp-dash { background: #3A2E24; }
+.hp-dash .hp-veil { background: rgba(30,22,14,.34); }
+.hp-dash:hover .hp-veil { background: rgba(30,22,14,.5); }
+.hp-dash .hp-cap { color: rgba(255,255,255,.78); }
