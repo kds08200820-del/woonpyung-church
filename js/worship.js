@@ -12,7 +12,7 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  var BIBLE_VER = '20260729';
+  var BIBLE_VER = '20261111';   /* 2026-11-11: 책 끝 절에 붙어 있던 다음 책 1:1 을 잘라 낸 판 */
   /* 온라인 헌금 계좌 (js/layout.js 의 온라인 헌금 모달과 같은 계좌) */
   var GIVE = { bank: '농협', no: '3511344798723', pretty: '351-1344-7987-23', holder: '운평장로교회', toss: 'supertoss://send?bank=농협&accountNo=3511344798723' };
   var HYMN_IMG = 'modu/data/hymn/';
