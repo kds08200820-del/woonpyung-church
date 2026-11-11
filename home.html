@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261111m4" />
+  <link rel="stylesheet" href="css/style.css?v=20261111m5" />
   <link rel="stylesheet" href="css/worship.css?v=20261111m1" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <style>
@@ -119,6 +119,10 @@
         <div class="hp-num"><span class="hp-cap">01</span><span class="hp-cap">My Garden</span></div>
         <h2 style="margin-top:14px">나의 신앙정원</h2>
         <p class="hp-sub" style="color:#555">내가 가꾸는 믿음의 정원</p>
+        <div class="hp-today">
+          <span data-go="#home"><i>오늘의 예배</i><b id="hpGW">예배 안내</b></span>
+          <span data-go="#qt"><i>오늘의 QT</i><b id="hpGQ">오늘의 말씀 묵상</b></span>
+        </div>
         <div class="hp-reveal"><div><div class="hp-in">
           <div class="hp-rows">
             <div><span>오늘의 묵상</span><span>물 주기</span></div>
@@ -182,13 +186,22 @@
   <script>
   /* 첫 화면 네 칸: 정원 식물은 마우스를 따라 움직이고, 갤러리 사진은 차례로 바뀌고, 예배 칸은 시각에 맞춰 '지금·다음 예배'를 보여 준다 */
   (function () {
-    var pg = document.getElementById("hpGarden"), plant = document.getElementById("hpPlant");
-    pg.addEventListener("pointermove", function (e) {
-      var r = pg.getBoundingClientRect();
-      plant.style.setProperty("--mx", ((e.clientX - r.left) / r.width - .5) * 22 + "px");
-      plant.style.setProperty("--my", ((e.clientY - r.top) / r.height - .5) * 12 + "px");
+    /* 정원 칸의 '오늘' 줄: 누르면 그 자리로 간다(칸 전체는 정원으로 가는 고리라 따로 받는다) */
+    var pg = document.getElementById("hpGarden");
+    pg.addEventListener("click", function (e) {
+      var go = e.target.closest("[data-go]"); if (!go) return;
+      e.preventDefault(); var t = document.querySelector(go.getAttribute("data-go")); if (t) t.scrollIntoView({ behavior: "smooth" });
     });
-    pg.addEventListener("pointerleave", function () { plant.style.setProperty("--mx", "0px"); plant.style.setProperty("--my", "0px"); });
+    /* 오늘의 QT 제목(공개 보기 qt_published 에서 오늘 이전 가장 최근 한 건의 제목만) */
+    document.addEventListener("DOMContentLoaded", function () { try {
+      if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+        var n0 = new Date(), ymd = n0.getFullYear() + "-" + ("0" + (n0.getMonth() + 1)).slice(-2) + "-" + ("0" + n0.getDate()).slice(-2);
+        fetch(window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/qt_published?select=sermon_date,title,scripture&sermon_date=lte." + ymd + "&order=sermon_date.desc&limit=1", { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + window.SUPABASE_ANON_KEY } })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (rows) { var r = rows && rows[0]; if (r && (r.title || r.scripture)) document.getElementById("hpGQ").textContent = r.title || r.scripture; })
+          .catch(function () {});
+      }
+    } catch (_) {} });
     var shots = [].slice.call(document.querySelectorAll("#hpGallery .hp-bg")), gi = 0;
     setInterval(function () { shots[gi].classList.remove("on"); gi = (gi + 1) % shots.length; shots[gi].classList.add("on"); }, 3600);
     /* 예배 시간표(welcome.html 과 같게): 요일 0=주일. 새벽기도회는 화~금 */
@@ -201,6 +214,7 @@
       var c = list[0], live = c.diff <= 0;
       document.getElementById("hpNow").textContent = live ? "지금 드리는 예배" : "다음 예배 · " + (c.wd === d && c.diff < 1440 ? "오늘" : DAY[c.wd]);
       document.getElementById("hpTitle").textContent = c.name;
+      document.getElementById("hpGW").textContent = (live ? "지금 · " : (c.wd === d && c.diff < 1440 ? "오늘 " : DAY[c.wd] + " ")) + c.name.replace(/^주일 /, "") + " " + hm(c.h, c.m);
       document.getElementById("hpSub").textContent = hm(c.h, c.m) + (live ? " 시작" : c.diff < 60 ? " · " + c.diff + "분 뒤" : c.diff < 1440 ? " · " + Math.round(c.diff / 60) + "시간 뒤" : "");
       document.getElementById("hpRows").innerHTML = list.slice(0, 4).map(function (x, i) { return '<div class="' + (i === 0 ? "now" : "") + '"><span>' + DAY[x.wd] + " " + x.name.replace(/^주일 /, "") + "</span><span>" + hm(x.h, x.m) + "</span></div>"; }).join("");
     }

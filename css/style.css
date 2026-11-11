@@ -2203,3 +2203,23 @@ body { background: #fff; letter-spacing: .01em; }
 .hp-plinth { background: transparent; border-radius: 0; aspect-ratio: 1 / .8; }
 .hp-plinth::before { left: 0; right: 0; top: 0; bottom: 0; height: auto; background: linear-gradient(#8F8B84 0 9%, #A5A19A 9% 100%); clip-path: polygon(0 0, 100% 0, 87% 100%, 13% 100%); }
 .hp-plinth::after { left: -8%; right: -8%; }
+
+
+/* 첫 화면 정원 칸: 실물 화분 사진(로컬 AI로 만든 회색 화분) + 나무는 움직이지 않는다 + 오늘의 예배·QT (2026-11-11 담임목사 지시)
+   화분은 두 겹: 뒤(::before, 나무 아래) · 앞(::after, 입구 앞 테두리부터 아래 — 나무 밑동을 가린다) */
+.hp-plinth { background: none; width: clamp(120px, 11vw, 190px); aspect-ratio: 516 / 496; margin-bottom: 74px; }
+.hp-plinth::before { left: 0; right: 0; top: 0; bottom: 0; height: auto; background: url("../images/home/pot.webp?v=20261111m5") center / 100% 100% no-repeat; clip-path: none; z-index: -1; filter: drop-shadow(0 16px 14px rgba(60,50,35,.20)); }
+.hp-plinth::after { left: 0; right: 0; top: 0; bottom: 0; height: auto; background: url("../images/home/pot.webp?v=20261111m5") center / 100% 100% no-repeat; border-radius: 0; filter: none; z-index: auto; clip-path: polygon(0 4.5%, 4.0% 4.5%, 11.7% 7.5%, 19.3% 8.6%, 27.0% 9.3%, 34.7% 9.7%, 42.3% 9.9%, 50.0% 10.0%, 57.7% 9.9%, 65.3% 9.7%, 73.0% 9.3%, 80.7% 8.6%, 88.3% 7.5%, 96.0% 4.5%, 100% 4.5%, 100% 100%, 0 100%); }
+.hp-plant { transform: none; transition: none; margin-bottom: calc(clamp(200px, 23vw, 400px) * -.10 - clamp(120px, 11vw, 190px) * .17); }
+.hp-garden:hover .hp-plant img { animation: none; }
+@media (max-width: 720px) {
+  .hp-plinth { width: min(34vw, 160px); margin-bottom: 78px; }
+  .hp-plant { margin-bottom: calc(min(68vw, 320px) * -.10 - min(34vw, 160px) * .17); }
+}
+/* 정원 칸의 오늘 줄: 오늘의 예배 · 오늘의 QT (늘 보인다) */
+.hp-today { margin-top: 18px; max-width: 300px; border-top: 1px solid rgba(17,17,17,.28); }
+.hp-today span[data-go] { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 9px 0; border-bottom: 1px solid rgba(17,17,17,.14); font-size: .8rem; white-space: nowrap; cursor: pointer; }
+.hp-today span[data-go]:hover b { text-decoration: underline; }
+.hp-today i { font-style: normal; font-size: .66rem; letter-spacing: .14em; color: var(--muted); flex: none; }
+.hp-today b { font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
+.hp-garden .hp-rows { display: none; }
