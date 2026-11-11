@@ -9,7 +9,7 @@
  *    #disciple/c/<반>/s[/<날짜>] 인도자: 모임 찬양 고르기(모두의 찬양 — supabase/20261111_2100_edu_meeting_songs.sql). 반 화면에 '이번 모임 찬양'
  *  · 진도는 반마다 '강-대목'('3-4')으로 남고, 한 과를 여러 모임에 나누어 나갈 수 있다. 다음 모임은 못 다 나간 대목부터.
  */
-console.log('[disciple.js] v20261111d');
+console.log('[disciple.js] v20261111e');
 
 (function () {
   var D = window.WPC_DISCIPLE;
@@ -452,7 +452,7 @@ console.log('[disciple.js] v20261111d');
   }
   function verseRows(l) { return refRows(l.verses); }
   function bibleLoad() {
-    return BIBLE ? Promise.resolve(BIBLE) : fetch('data/bible-gyr.json?v=20261111b').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) { BIBLE = j; return j; });
+    return BIBLE ? Promise.resolve(BIBLE) : fetch('data/bible-gyr.json?v=20261111c').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) { BIBLE = j; return j; });
   }
   function reciteHTML(lines) {
     return '<div class="cr-recite"><div class="cr-recite-bar"><span>가린 줄을 누르면 하나씩 보입니다</span><button type="button" class="cr-line cr-sm" data-recite>가리고 외워 보기</button></div>' +
