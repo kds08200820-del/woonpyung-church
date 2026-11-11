@@ -16,7 +16,7 @@
   var M = { state: null, offline: false, manifest: null, wx: null, bootDay: '', lastSync: 0, church: null, demo: false };
 
   function reduceMotion() { try { return P.reduce || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return P.reduce; } }
-  function fixHeader() { var a = document.querySelector('#header .logo'); if (a) a.setAttribute('href', 'garden.html'); }
+  function fixHeader() { var a = document.querySelector('#header .logo'); if (a) a.setAttribute('href', 'home.html'); }   /* 2026-11-11 담임목사: 교회 이름을 누르면 처음 화면(네 칸)으로. 예전에는 정원에 머물렀다 */
   function setTitle() { document.title = t('page.title'); }
 
   /* ── 시각·날씨·계절 ── */
