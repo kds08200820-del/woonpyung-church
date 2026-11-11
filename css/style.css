@@ -2245,6 +2245,8 @@ body { background: #fff; letter-spacing: .01em; }
 /* 목회행정 매니저 첫 화면: 왼쪽 메뉴 없이 사진 칸만 (js/affairs.js renderHome) */
 .af-shell.af-home .af-side { display: none; }
 body.management-ui .af-shell.af-home .af-main, .af-shell.af-home .af-main { padding: 0; }
+/* 홈 첫 화면처럼 화면 가득 넓게 — 다른 화면에 두는 폭 제한(admin-workspace.css 의 #afPanel 1720px)을 이 화면에서는 푼다 (2026-11-11 담임목사: 넓은 모니터에서 가운데만 차지했다) */
+body.management-ui .af-shell.af-home #afPanel, .af-shell.af-home #afPanel { max-width: none; }
 .af-hp { margin-top: 0; height: calc(100vh - var(--af-top, 56px)); min-height: 520px; border-bottom: 0; }
 .af-hp .hp-panel { cursor: pointer; }
 .af-hp .hp-veil { background: rgba(24,20,15,.46); }
