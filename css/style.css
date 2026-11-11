@@ -2259,3 +2259,34 @@ body.management-ui .af-shell.af-home .af-main, .af-shell.af-home .af-main { padd
 /* 홈 예배 판: 예배 안내·카운트다운 슬라이드는 높이를 스스로 차지해 아래 단추가 잘리지 않게 (2026-11-11) */
 .hero:not(.hw-fs) .hero-slide.hero-worship { position: static; }
 .hero:not(.hw-fs) .hero-rotator:has(.hero-worship) { min-height: 0; }
+
+/* 머리글 흐림 효과를 끈다 — backdrop-filter 가 있으면 서랍 메뉴 아래의 '내 정보·로그아웃' 칸(position:fixed; bottom:0)이
+   화면이 아니라 머리글을 기준으로 놓여 화면 위로 밀려 올라가 안 보였다 (2026-11-11 담임목사 폰 화면) */
+#header, #header.scrolled { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+#header.hdr-drawer .auth-slot .auth-btn { border-radius: 0; }
+#header.hdr-drawer .auth-slot a.auth-name { border-radius: 0; background: #fff !important; }
+/* 정원 칸 오늘의 예배: 좁은 칸에서 글자·카운터가 상자 밖으로 넘치지 않게 */
+.hp-today { max-width: 100%; }
+.hp-today .hp-wbox { min-width: 0; overflow: hidden; }
+.hp-today .hp-wbox b { white-space: normal; }
+.hp-today .hp-wbox em { font-size: clamp(1.15rem, 2.1vw, 1.7rem); }
+.hp-today span[data-go] { min-width: 0; }
+/* 접는 폰·태블릿(721~1000px): 네 칸이 너무 좁아지므로 휴대폰처럼 위아래로 쌓는다 */
+@media (min-width: 721px) and (max-width: 1000px) {
+  .hp { flex-direction: column; height: auto; }
+  .hp-panel { flex: none !important; min-height: 46vh; border-right: 0; border-bottom: 1px solid var(--line); padding: 22px 20px 24px; }
+  .hp-garden { min-height: 84vh; }
+  .hp-garden .hp-rows { display: none; }
+  .hp-garden .hp-in { padding-top: 0; }
+  .hp-reveal { grid-template-rows: 1fr; opacity: 1; }
+  .hp-plant { width: min(68vw, 320px); }
+  .hp-plinth { width: min(46vw, 220px); }
+ .hp-plinth { width: min(30vw, 150px); margin-bottom: 20%; } 
+ .hp-plant { margin-bottom: calc(min(68vw, 320px) * -.165); } .hp-plinth { margin-bottom: 78px; } 
+  .hp-plinth { width: min(34vw, 160px); margin-bottom: 78px; }
+  .hp-plant { margin-bottom: calc(min(68vw, 320px) * -.10 - min(34vw, 160px) * .17); }
+ .af-hp { height: auto; } .af-hp .hp-panel { min-height: 0; padding-top: 26px; } .af-hp .hp-num { margin-bottom: 70px; } 
+  .hp-plant { width: min(40vw, 320px); margin-bottom: calc(min(40vw, 320px) * -.10 - min(20vw, 160px) * .17); }
+  .hp-plinth { width: min(20vw, 160px); }
+  .hp-today { max-width: 420px; }
+}
