@@ -3736,7 +3736,7 @@ console.log('[affairs.js] v20261023th1');
       if (worshipMode) {
         var wrows = smRows.filter(hasOrder);
         if (!wrows.length) { listBox.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);margin:0">작성된 예배 순서가 없습니다. <b>예배 순서 작성</b>을 누르거나 위 달력에서 날짜를 클릭해 시작하세요.</p></div>'; return; }
-        listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>예배 (' + wrows.length + '건)</b></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>순서</th><th>관리</th></tr></thead><tbody>' +
+        listBox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>예배 (' + wrows.length + '건)</b></div><div style="overflow:auto"><table class="fin-table sm-tbl"><thead><tr><th style="width:40px;text-align:center">순번</th><th>일자</th><th>예배</th><th>제목</th><th>본문</th><th>순서</th><th>관리</th></tr></thead><tbody>' +
           wrows.map(function (r, i) {
             var c = svcColor(r.service), ds = fmtD(r.sermon_date), n = orderCount(r);
             return '<tr><td style="text-align:center;color:#A7A6A3;font-size:.8rem">' + (i + 1) + '</td><td style="white-space:nowrap">' + esc(ds) + '</td><td style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + c + ';margin-right:5px"></span>' + esc(r.service || '') + '</td>' +
@@ -3867,7 +3867,7 @@ console.log('[affairs.js] v20261023th1');
         '<div class="sm-list-heading"><h3>설교 목록 <span>' + total + '</span></h3><p>작성한 말씀을 한곳에서 관리하세요.</p></div>' +
         '<div class="sm-list-filters"><span class="sm-filter-label">필터</span>' + svcSel + serSel + yrSel + moSel + weekBtns + sortBtn + ppSel +
         '<span class="sm-list-count">' + info + '</span></div>' +
-        '<div class="sm-table-scroll"><table class="fin-table sm-sermon-table"><thead><tr>' +
+        '<div class="sm-table-scroll"><table class="fin-table sm-sermon-table sm-tbl"><thead><tr>' +
         '<th scope="col">순번</th><th scope="col">일자</th><th scope="col">예배</th><th scope="col">제목</th><th scope="col">본문</th><th scope="col">게시 상태</th><th scope="col">관리</th>' +
         '</tr></thead><tbody>' + tableRows + '</tbody></table></div>' +
         (pageBtns ? '<nav class="sm-pagination" aria-label="설교 목록 페이지">' + pageBtns + '</nav>' : '') + '</section>';
