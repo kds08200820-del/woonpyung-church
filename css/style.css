@@ -2302,3 +2302,11 @@ body.management-ui .af-shell.af-home .af-main, .af-shell.af-home .af-main { padd
 .hero:not(.hw-fs) .hero-cta.hw-preach b, .hero:not(.hw-fs) .hero-cta.hw-preach small { color: #fff; opacity: 1; }
 .hero:not(.hw-fs) .hero-cta.hw-preach small { color: rgba(255,255,255,.72); }
 .hero:not(.hw-fs) .hero-cta.hw-preach:hover { background: #333; border-color: #333; color: #fff; }
+
+/* 정원 칸: 목회자·방송실 단추(설교하기 · 방송실 전체화면) (2026-11-11 담임목사) */
+.hp-staff { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; max-width: 420px; }
+.hp-staff[hidden], .hp-sbtn[hidden] { display: none; }
+.hp-sbtn { flex: 1 1 130px; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; background: #111; color: #fff; border: 1px solid #111; font-size: .84rem; font-weight: 500; letter-spacing: .04em; white-space: nowrap; cursor: pointer; }
+.hp-sbtn:hover { background: #333; border-color: #333; }
+.hp-sbtn-line { background: #fff; color: #111; }
+.hp-sbtn-line:hover { background: #111; color: #fff; }

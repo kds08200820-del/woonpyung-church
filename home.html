@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261111m16" />
+  <link rel="stylesheet" href="css/style.css?v=20261111m17" />
   <link rel="stylesheet" href="css/worship.css?v=20261111m1" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <style>
@@ -122,6 +122,11 @@
         <div class="hp-today">
           <span data-go="worship" class="hp-wbox"><i>오늘의 예배</i><b id="hpGW">예배 안내</b><em id="hpGC" aria-live="off"></em><small id="hpGL"></small></span>
           <span data-go="#qt"><i>오늘의 QT</i><b id="hpGQ">오늘의 말씀 묵상</b></span>
+        </div>
+        <!-- 목회자·방송실에게만: 아래 예배 판에 '설교하기'(관리자)·'전체 보기'(방송실 담당) 단추가 떠 있을 때 여기에도 같은 단추를 보여 준다 -->
+        <div class="hp-staff" id="hpStaff" hidden>
+          <span data-go="preach" class="hp-sbtn" id="hpPreach" hidden>설교하기</span>
+          <span data-go="fs" class="hp-sbtn hp-sbtn-line" id="hpFs" hidden>방송실 전체화면</span>
         </div>
         <div class="hp-reveal"><div><div class="hp-in">
           <div class="hp-rows">
@@ -212,6 +217,8 @@
       var go = e.target.closest("[data-go]"); if (!go) return;
       e.preventDefault();
       if (go.getAttribute("data-go") === "worship") { openWorship(); return; }
+      if (go.getAttribute("data-go") === "preach") { var pb = document.querySelector("#home .hw-preach"); if (pb) pb.click(); return; }
+      if (go.getAttribute("data-go") === "fs") { var fb = document.querySelector("#home .hw-fsbtn"), hero = document.getElementById("home"); if (fb) { hero.scrollIntoView(); fb.click(); } return; }
       var t = document.querySelector(go.getAttribute("data-go")); if (t) t.scrollIntoView({ behavior: "smooth" });
     });
     /* 오늘의 예배로 바로: 아래로 내려가지 않고 예배 순서 화면을 연다 (2026-11-11 담임목사).
@@ -260,7 +267,13 @@
     /* 카운터: 다음 예배까지 남은 시간을 1초마다 (하루 넘게 남으면 'N일'을 앞에) */
     var hpNext = 0, hpLive = false;
     function p2(n) { return (n < 10 ? "0" : "") + n; }
+    /* 목회자·방송실 단추: 예배 판(worship.js)이 권한을 확인해 띄운 단추가 있을 때만 정원 칸에도 보인다 */
+    function staff() {
+      var p = !!document.querySelector("#home .hw-preach"), f = !!document.querySelector("#home .hw-fsbtn");
+      document.getElementById("hpPreach").hidden = !p; document.getElementById("hpFs").hidden = !f; document.getElementById("hpStaff").hidden = !(p || f);
+    }
     function count() {
+      staff();
       var el = document.getElementById("hpGC"), lb = document.getElementById("hpGL");
       var wc = document.getElementById("hpWC");
       if (hpLive) { el.textContent = "예배 중"; lb.textContent = "지금 드리고 있습니다"; wc.textContent = "예배 중"; return; }
