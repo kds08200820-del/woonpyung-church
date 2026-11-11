@@ -2310,3 +2310,23 @@ body.management-ui .af-shell.af-home .af-main, .af-shell.af-home .af-main { padd
 .hp-sbtn:hover { background: #333; border-color: #333; }
 .hp-sbtn-line { background: #fff; color: #111; }
 .hp-sbtn-line:hover { background: #111; color: #fff; }
+
+/* 아이패드 점검 (2026-11-11)
+   · 터치 화면: 누른 칸(.is-open)이 마우스를 올린 칸처럼 넓어지고 줄이 펼쳐진다
+   · 사파리 주소 막대 높이만큼 칸 아래가 가려지지 않게 100dvh
+   · 가로로 눕힌 화면(높이가 낮을 때): 정원 칸의 나무·화분을 줄여 위 글·단추와 겹치지 않게 */
+.hp:has(.hp-panel.is-open) .hp-panel { flex-grow: .82; }
+.hp .hp-panel.is-open { flex-grow: 1.75; }
+.hp-panel.is-open .hp-reveal { grid-template-rows: 1fr; opacity: 1; }
+.hp-panel.is-open .hp-bg { transform: scale(1.1); }
+@supports (height: 100dvh) {
+  .hp { height: calc(100dvh - 56px); }
+  .af-hp { height: calc(100dvh - var(--af-top, 56px)); }
+}
+@media (min-width: 1001px) and (max-height: 860px) {
+  .hp-plant { width: clamp(150px, 15vw, 250px); margin-bottom: calc(clamp(150px, 15vw, 250px) * -.10 - clamp(92px, 8vw, 140px) * .17); }
+  .hp-plinth { width: clamp(92px, 8vw, 140px); margin-bottom: 62px; }
+  .hp-today .hp-wbox { padding: 10px 14px 11px; }
+  .hp-today .hp-wbox em { margin-top: 2px; }
+}
+@media (max-width: 1000px) { .hp, .af-hp { height: auto; } }

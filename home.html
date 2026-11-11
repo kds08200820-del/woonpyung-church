@@ -63,8 +63,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261111m17" />
-  <link rel="stylesheet" href="css/worship.css?v=20261111m1" />
+  <link rel="stylesheet" href="css/style.css?v=20261111m18" />
+  <link rel="stylesheet" href="css/worship.css?v=20261111m18" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <style>
     .hb-card{max-width:860px;margin:0 auto;border:1px solid var(--line,#F5F4F1);border-radius:2px;overflow:hidden;box-shadow:0 4px 20px rgba(17,17,17,.07)}
@@ -246,6 +246,20 @@
         if (nav && p && nav.style.display !== "none") { p.hidden = false; clearInterval(t); }
         if (++n > 60) clearInterval(t);
       }, 500);
+    })();
+    /* 아이패드 등 터치 화면(마우스 올리기가 없는 기기)에서 칸이 옆으로 나란할 때: 첫 번째로 누르면 그 칸이 넓어지며 안의 줄이 펼쳐지고,
+       한 번 더 누르면 들어간다. 늘 보이는 줄(오늘의 예배·QT·설교하기 등)은 한 번에 동작한다 (2026-11-11 담임목사: 아이패드 점검) */
+    (function () {
+      var hp = document.getElementById("homePanels");
+      if (!(window.matchMedia && matchMedia("(hover: none)").matches)) return;
+      hp.addEventListener("click", function (e) {
+        if (getComputedStyle(hp).flexDirection !== "row") return;
+        var p = e.target.closest(".hp-panel"); if (!p || p.classList.contains("is-open")) return;
+        if (e.target.closest(".hp-today, .hp-staff")) return;
+        e.preventDefault(); e.stopPropagation();
+        [].forEach.call(hp.querySelectorAll(".hp-panel.is-open"), function (x) { x.classList.remove("is-open"); });
+        p.classList.add("is-open");
+      }, true);
     })();
     var shots = [].slice.call(document.querySelectorAll("#hpGallery .hp-bg")), gi = 0;
     setInterval(function () { shots[gi].classList.remove("on"); gi = (gi + 1) % shots.length; shots[gi].classList.add("on"); }, 3600);

@@ -373,9 +373,16 @@ console.log('[affairs.js] v20261023th1');
         '</div></div></div></div></div></div>';
     }).join('') + '</div>';
     function go(k) { if (k.charAt(0) === '@') location.href = k.slice(1); else goTab(k); }
-    panel.querySelector('.af-hp').addEventListener('click', function (e) {
+    var hpEl = panel.querySelector('.af-hp'), touch = !!(window.matchMedia && matchMedia('(hover: none)').matches);
+    hpEl.addEventListener('click', function (e) {
+      var p = e.target.closest('.hp-panel');
+      /* 터치 화면에서 칸이 옆으로 나란할 때: 처음 누르면 펼치고, 한 번 더(또는 펼쳐진 줄을) 누르면 들어간다 */
+      if (touch && p && !p.classList.contains('is-open') && getComputedStyle(hpEl).flexDirection === 'row') {
+        Array.prototype.forEach.call(hpEl.querySelectorAll('.hp-panel.is-open'), function (x) { x.classList.remove('is-open'); });
+        p.classList.add('is-open'); return;
+      }
       var row = e.target.closest('[data-go]'); if (row) { go(row.getAttribute('data-go')); return; }
-      var p = e.target.closest('.hp-panel'); if (p) go(p.getAttribute('data-first'));
+      if (p) go(p.getAttribute('data-first'));
     });
     panel.querySelector('.af-hp').addEventListener('keydown', function (e) {
       if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('hp-panel')) { e.preventDefault(); go(e.target.getAttribute('data-first')); }

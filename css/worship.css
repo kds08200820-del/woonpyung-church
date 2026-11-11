@@ -238,3 +238,27 @@ body.hw-fs-body { overflow: hidden; }
 #wsOverlay.ws-full .ws-card { width: 100%; height: 100%; height: 100dvh; border-radius: 0; box-shadow: none; }
 #wsOverlay.ws-fake { z-index: 5000; }
 .ws-ib.ws-x { font-size: .9rem; padding: 6px 12px; }
+
+/* ============================================================
+   모던 테마 (2026-11-11 담임목사 지시: 오늘의 예배 화면도 같은 테마로)
+   · 위 띠는 흰 바탕에 가는 줄, 단추·순서 칸은 각진 모양, 제목은 가는 글씨
+   ============================================================ */
+.ws-card { background: #fff; border-radius: 0; }
+.ws-top { background: #fff; color: #111; border-bottom: 1px solid #E6E5E1; padding: 14px 16px; }
+.ws-top b { font-size: 1rem; font-weight: 500; letter-spacing: .04em; }
+.ws-step { color: #8A8A86; opacity: 1; font-variant-numeric: tabular-nums; }
+.ws-ib { background: #fff; color: #111; border: 1px solid #111; border-radius: 0; font-weight: 500; letter-spacing: .02em; }
+.ws-ib:hover { background: #111; color: #fff; }
+.ws-strip { background: #fff; border-bottom: 1px solid #E6E5E1; gap: 0; padding: 0 10px; }
+.ws-chip { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: #8A8A86; padding: 12px 12px 10px; font-size: .84rem; }
+.ws-chip.on { background: none; color: #111; border-color: #111; font-weight: 600; }
+.ws-nav { border-top: 1px solid #E6E5E1; }
+.ws-btn { border-radius: 0; border-color: #111; font-weight: 500; letter-spacing: .04em; }
+.ws-head { font-size: .72em; letter-spacing: .2em; color: #8A8A86; font-weight: 400; }
+.ws-title { font-weight: 300; font-size: 1.5em; letter-spacing: -.01em; }
+.ws-title b, .ws-item-t b { font-weight: 600; }
+.ws-cover-k { letter-spacing: .3em; font-weight: 400; color: #8A8A86; }
+.ws-cover-t { font-weight: 300; font-size: 1.9em; letter-spacing: -.01em; }
+.ws-cover-q { border-radius: 0; background: #F4F3F0; border-color: #E6E5E1; }
+.ws-img { border-color: #E6E5E1; }
+.ws-give, .ws-give-acct, .ws-edit-list li { border-radius: 0; }
