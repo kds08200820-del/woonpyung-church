@@ -213,7 +213,7 @@ console.log('[affairs.js] v20261023th1');
   };
   // 왼쪽 메뉴(2026-10-22): 위쪽 가로 탭을 묶음별 세로 메뉴로 — [묶음 이름, [[탭, 이름], …]]
   var NAV_GROUPS = [
-    ['', [['dashboard', '대시보드'], ['ax', 'AX 관제실']]],
+    ['', [['home', '처음 화면'], ['dashboard', '대시보드'], ['ax', 'AX 관제실']]],
     ['설교 · 예배', [['sermon', '설교관리'], ['worship', '예배매니저'], ['song', '찬양관리'], ['illus', '예화 클립'], ['bulletin', '주보제작']]],
     ['목양', [['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리']]],
     ['행정', [['forms', '신청서'], ['doc', '자료실']]],
@@ -258,7 +258,7 @@ console.log('[affairs.js] v20261023th1');
     { name: '예언서', t: '신약', books: ['요한계시록'] }
   ];
 
-  var tab = 'dashboard';
+  var tab = 'home';   // 2026-11-11: 첫 화면 = 매니저 홈(사진 칸). 예전에는 'dashboard'
   var pendingSermon = null;   // 설교 제안에서 '이 책으로 시작' 클릭 시, 설교관리 탭이 열며 편집기 prefill
   // 고정 머리글(#header) 높이만큼 본문·왼쪽 메뉴를 내린다 — 모바일에서 머리글 높이가 달라 재서 쓴다
   function syncTop() {
@@ -283,6 +283,7 @@ console.log('[affairs.js] v20261023th1');
   }
   // Small decorative icons; labels and existing navigation behavior remain accessible.
   var NAV_ICONS = {
+    home: '<path d="M3 11l9-8 9 8M5 10v11h14V10"/>',
     dashboard: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
     ax: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
     sermon: '<path d="M5 3h11l3 3v15H5zM15 3v5h4M8 12h8M8 16h6"/>',
@@ -305,8 +306,8 @@ console.log('[affairs.js] v20261023th1');
   }
   function shellHTML() {
     return '<div class="af-shell"><aside class="af-side">' +
-      '<a class="af-brand" href="affairs.html"><div class="af-brand-t">운평<span>목회</span></div><div class="af-brand-s">운평장로교회 목회 행정</div></a>' +
-      '<nav class="af-nav" aria-label="목회 행정 메뉴">' +
+      '<a class="af-brand" href="affairs.html"><div class="af-brand-t">운평<span>목회</span></div><div class="af-brand-s">목회행정 매니저</div></a>' +
+      '<nav class="af-nav" aria-label="목회행정 매니저 메뉴">' +
       NAV_GROUPS.map(function (g) {
         return (g[0] ? '<div class="af-grp">' + esc(g[0]) + '</div>' : '') + g[1].map(function (t) {
           return '<button type="button" data-t="' + t[0] + '">' + navIcon(t[0]) + '<span>' + esc(t[1]) + '</span>' + (t[0] === 'dashboard' ? '<span class="af-badge" hidden></span>' : '') + '</button>';
@@ -332,9 +333,11 @@ console.log('[affairs.js] v20261023th1');
     // 모바일(가로 메뉴)에서는 고른 메뉴를 가운데로
     if (act && nav.scrollWidth > nav.clientWidth + 4) nav.scrollLeft = act.offsetLeft - (nav.clientWidth - act.offsetWidth) / 2;
     // 탭마다 새 패널 — 이전 탭의 이벤트·폴링(document.body.contains(panel) 확인)이 따라오지 않게
+    root.querySelector('.af-shell').classList.toggle('af-home', tab === 'home');
     var old = document.getElementById('afPanel'), p = document.createElement('div');
     p.id = 'afPanel'; old.parentNode.replaceChild(p, old);
-    if (tab === 'dashboard') renderSermonDashboard(p);
+    if (tab === 'home') renderHome(p);
+    else if (tab === 'dashboard') renderSermonDashboard(p);
     else if (tab === 'illus') renderIllustrations(p);
     else if (tab === 'sermon') renderSermon(p);
     else if (tab === 'worship') renderSermon(p, { worship: true });
@@ -348,6 +351,35 @@ console.log('[affairs.js] v20261023th1');
     else if (tab === 'forms') renderForms(p);
     else if (tab === 'ax') renderAx(p);
     else renderManager(p, TYPES[tab]);
+  }
+
+  // ═══════════════ 매니저 첫 화면 (2026-11-11 담임목사) — 홈 첫 화면처럼 큰 사진 칸으로 묶음을 나누고, 골라서 들어간다 ═══════════════
+  //  칸 = 왼쪽 메뉴의 묶음. 칸을 누르면 그 묶음의 첫 화면, 펼쳐진 줄을 누르면 그 화면으로 간다. 이 화면에서는 왼쪽 메뉴를 감춘다.
+  var HOME_SECTIONS = [
+    { cap: 'Today', title: '대시보드', sub: '오늘 해야 할 일과 현황', img: 'desk', items: [['dashboard', '대시보드'], ['ax', 'AX 관제실']] },
+    { cap: 'Word & Worship', title: '설교 · 예배', sub: '말씀을 준비하고 예배를 세웁니다', img: 'bible', items: [['sermon', '설교관리'], ['worship', '예배매니저'], ['song', '찬양관리'], ['illus', '예화 클립'], ['bulletin', '주보제작']] },
+    { cap: 'Pastoral Care', title: '목양', sub: '찾아가고, 듣고, 가르칩니다', img: 'mgr-care', items: [['visit', '심방관리'], ['counsel', '상담관리'], ['edu', '교육관리']] },
+    { cap: 'Office', title: '행정', sub: '신청서와 자료, 재정과 교적', img: 'mgr-office', items: [['forms', '신청서'], ['doc', '자료실'], ['@finance.html', '재정관리'], ['@gyojeok.html', '교적관리']] },
+    { cap: 'Study', title: '서재', sub: '책과 성경, 그리고 설정', img: 'mgr-study', items: [['library', '나의 도서관'], ['bible', '성경 보기'], ['settings', '설정']] }
+  ];
+  function renderHome(panel) {
+    panel.innerHTML = '<div class="hp af-hp">' + HOME_SECTIONS.map(function (s, i) {
+      return '<div class="hp-panel hp-photo" role="button" tabindex="0" data-first="' + s.items[0][0] + '">' +
+        '<div class="hp-bg" style="background-image:url(\'images/home/' + s.img + '.webp?v=20261111m9\')"></div><div class="hp-veil"></div>' +
+        '<div class="hp-num"><span class="hp-cap">0' + (i + 1) + '</span><span class="hp-cap">' + esc(s.cap) + '</span></div>' +
+        '<div><h2>' + esc(s.title) + '</h2><p class="hp-sub">' + esc(s.sub) + '</p>' +
+        '<div class="hp-reveal"><div><div class="hp-in"><div class="hp-rows">' +
+        s.items.map(function (t) { return '<div data-go="' + t[0] + '"><span>' + esc(t[1]) + '</span><span>→</span></div>'; }).join('') +
+        '</div></div></div></div></div></div>';
+    }).join('') + '</div>';
+    function go(k) { if (k.charAt(0) === '@') location.href = k.slice(1); else goTab(k); }
+    panel.querySelector('.af-hp').addEventListener('click', function (e) {
+      var row = e.target.closest('[data-go]'); if (row) { go(row.getAttribute('data-go')); return; }
+      var p = e.target.closest('.hp-panel'); if (p) go(p.getAttribute('data-first'));
+    });
+    panel.querySelector('.af-hp').addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('hp-panel')) { e.preventDefault(); go(e.target.getAttribute('data-first')); }
+    });
   }
 
   // ═══════════════ AX 관제실 (2026-10-27) — js/ax.js 를 이 패널에 그린다 ═══════════════

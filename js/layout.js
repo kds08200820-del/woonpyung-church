@@ -6,7 +6,7 @@
   const NAV = [
     { href: "dashboard.html", label: "대시보드", memberOnly: true },
     // 목회행정(2026-10-23): 교회행정 메뉴 밖으로 빼서 바로 — 관리자(admins)에게만 보인다
-    { href: "affairs.html", label: "목회행정", adminOnly: true, id: "navAffairs" },
+    { href: "affairs.html", label: "목회행정 매니저", adminOnly: true, id: "navAffairs" },
     { href: "welcome.html", label: "처음 오셨나요", sub: [
       { href: "welcome.html#worship", label: "예배 안내" },
       { href: "welcome.html#directions", label: "교회 가는 길" },
@@ -415,7 +415,7 @@
                 a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#111111);color:#fff;border-radius:2px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
                 a.onmouseenter = function () { this.style.opacity = ".86"; };
                 a.onmouseleave = function () { this.style.opacity = ""; };
-                a.textContent = "목회행정";
+                a.textContent = "목회행정 매니저";
                 card.appendChild(a);
               }
             }
