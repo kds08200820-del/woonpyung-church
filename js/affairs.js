@@ -10893,7 +10893,7 @@ console.log('[affairs.js] v20261023th1');
         '<div style="font-size:.75rem;color:#A7A6A3;margin-top:5px">추가 버튼을 누르면 입력창이 생깁니다. 이름을 입력하면 교적부에서 검색합니다. Enter 또는 선택으로 추가됩니다.</div>' +
         '</div>' +
         '<div style="margin-bottom:20px">' +
-        '<label style="font-size:.82rem;color:var(--ink-soft);font-weight:600;display:block;margin-bottom:8px">📁 강의 자료실 <span style="font-weight:400;color:#A7A6A3">(수강생·인도자만 접근 가능)</span></label>' +
+        '<label style="font-size:.82rem;color:var(--ink-soft);font-weight:600;display:block;margin-bottom:8px">📁 강의 자료실 <span style="font-weight:400;color:#A7A6A3">(수강생·인도자만 접근 가능 · 양육반은 강을 고르면 강의 창에 그림·음성·영상 슬라이드로 나옵니다)</span></label>' +
         '<div id="edu_mat_box">' + (rec.id ? '<p class="qt-loading">불러오는 중…</p>' : '<p style="color:#A7A6A3;font-size:.83rem;padding:10px;border:1px dashed #F4F3F0;border-radius:4px">먼저 저장한 뒤 자료를 첨부할 수 있습니다.</p>') + '</div>' +
         '</div>' +
         '<div style="display:flex;gap:10px;align-items:center">' +
@@ -11091,10 +11091,18 @@ console.log('[affairs.js] v20261023th1');
         classInp.addEventListener('blur', function () { setTimeout(closePop, 180); });
       })();
 
-      function closeOv() { ov.remove(); }
+      // 닫기: × · 닫기 단추 · 배경(누르기 시작과 떼기가 모두 배경일 때만 — 글을 끌다 밖에서 놓아도 안 닫힘) · Esc
+      var opener = document.activeElement, bodyOv = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+      function closeOv() { document.removeEventListener('keydown', onEsc); document.body.style.overflow = bodyOv; ov.remove(); if (opener && opener.focus && document.body.contains(opener)) opener.focus(); }
+      function onEsc(e) { if (e.key === 'Escape' && !ov.querySelector('.fin-sugg') && document.body.contains(ov)) closeOv(); }
+      document.addEventListener('keydown', onEsc);
       ov.querySelector('#edu_xbtn').onclick = closeOv;
       ov.querySelector('#edu_cancel_btn').onclick = closeOv;
-      ov.addEventListener('click', function (e) { if (e.target === ov) closeOv(); });
+      var downOnOv = false;
+      ov.addEventListener('mousedown', function (e) { downOnOv = (e.target === ov); });
+      ov.addEventListener('click', function (e) { if (downOnOv && e.target === ov) closeOv(); downOnOv = false; });
 
       ov.querySelector('#edu_save_btn').onclick = function () {
         var title = ov.querySelector('#edu_f_title').value.trim();
@@ -11121,12 +11129,14 @@ console.log('[affairs.js] v20261023th1');
         // 이수 달란트: 칸이 있는 DB(20261023_1500 실행 후)에서만 보낸다 — 값이 있거나 이미 칸이 있는 기록일 때
         var tv = parseFloat(ov.querySelector('#edu_f_talent').value);
         if (tv > 0 || rec.talent_reward != null) data.talent_reward = tv > 0 ? Math.min(1000, Math.round(tv * 10) / 10) : 0;
+        var saveBtn = ov.querySelector('#edu_save_btn'); if (saveBtn.disabled) return; saveBtn.disabled = true;
         msgEl.style.color = '#898885'; msgEl.textContent = '저장 중…';
         var isNew = !rec.id;
         var pr = rec.id
           ? api('PATCH', 'edu_records?id=eq.' + rec.id, data, 'return=minimal')
           : api('POST', 'edu_records', data, 'return=representation');
         pr.then(function (rows) {
+          saveBtn.disabled = false;
           msgEl.style.color = 'green'; msgEl.textContent = '✓ 저장되었습니다';
           if (isNew && rows && rows[0] && rows[0].id) {
             rec.id = rows[0].id;
@@ -11139,6 +11149,7 @@ console.log('[affairs.js] v20261023th1');
             setTimeout(function () { closeOv(); loadList(); }, 600);
           }
         }).catch(function (e) {
+          saveBtn.disabled = false;
           msgEl.style.color = '#A33A2A';
           msgEl.textContent = '저장 실패: ' + e.message;
           if (/participants|end_date|cohort|class_name|talent_reward|course_code|meet_info|leaders/i.test(e.message))
@@ -11164,11 +11175,13 @@ console.log('[affairs.js] v20261023th1');
             box.innerHTML =
               '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">' +
               '<input type="file" id="edu_mat_file" multiple style="display:none">' +
+              (courseSel.value === 'disciple' ? '<select id="edu_mat_lesson" title="이 자료를 쓸 강 — 강의실 강의 창에 그 강의 슬라이드로 나옵니다" style="padding:5px 8px;font:inherit;font-size:.82rem"><option value="">강 고르기(과정 전체)</option>' +
+                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(function (n) { return '<option value="' + n + '">' + n + '강</option>'; }).join('') + '</select>' : '') +
               '<button type="button" id="edu_mat_pick" class="btn btn-line" style="padding:5px 13px;font-size:.82rem">📎 파일 추가</button>' +
               '<span id="edu_mat_upmsg" style="font-size:.8rem;color:#898885"></span></div>' +
               (rows.length ? '<div style="border:1px solid #F9F8F5;border-radius:4px;overflow:hidden">' + rows.map(function (r) {
                 return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 11px;border-bottom:1px solid #FAF9F6;font-size:.86rem">' +
-                  '<span>' + matIcon(r.title) + ' ' + esc(r.title) + (r.size ? ' <span style="color:#A7A6A3;font-size:.76rem">· ' + fmtSize(r.size) + '</span>' : '') + '</span>' +
+                  '<span>' + matIcon(r.title) + ' ' + (r.lesson_no ? '<b class="fin-pill" style="margin-right:4px">' + r.lesson_no + '강</b>' : '') + esc(r.title) + (r.size ? ' <span style="color:#A7A6A3;font-size:.76rem">· ' + fmtSize(r.size) + '</span>' : '') + '</span>' +
                   '<span style="display:flex;gap:10px;align-items:center"><a href="#" class="mat-dl" data-id="' + esc(r.id) + '" style="color:var(--accent,#111111)">다운로드</a><b class="mat-del" data-id="' + esc(r.id) + '" style="cursor:pointer;color:#A33A2A;font-size:.8rem">삭제</b></span></div>';
               }).join('') + '</div>' : '<p style="color:#A7A6A3;font-size:.83rem;padding:8px 0">등록된 자료가 없습니다.</p>');
             var byId = {}; rows.forEach(function (r) { byId[r.id] = r; });
@@ -11220,7 +11233,9 @@ console.log('[affairs.js] v20261023th1');
           body: file
         }).then(function (r) {
           if (!r.ok) return r.text().then(function (t) { throw new Error(t || ('HTTP ' + r.status)); });
-          return api('POST', 'edu_materials', { edu_id: rec.id, title: file.name, path: key, size: file.size }, 'return=minimal');
+          var ls = ov.querySelector('#edu_mat_lesson'), row = { edu_id: rec.id, title: file.name, path: key, size: file.size };
+          if (ls && ls.value) row.lesson_no = +ls.value;   // 양육반: 이 자료를 쓸 강(강의실 강의 창의 슬라이드)
+          return api('POST', 'edu_materials', row, 'return=minimal');
         });
       }
       function signedMaterialUrl(path, title) {
