@@ -2198,3 +2198,8 @@ body { background: #fff; letter-spacing: .01em; }
 .hp-plant { margin-bottom: calc(clamp(200px, 23vw, 400px) * -.165); }
 .hp-plinth { margin-bottom: 74px; }
 @media (max-width: 720px) { .hp-plant { margin-bottom: calc(min(68vw, 320px) * -.165); } .hp-plinth { margin-bottom: 78px; } }
+
+/* 화분: 회색, 아래로 살짝 좁아지는 단순한 꼴 (2026-11-11 담임목사: 그레이 컬러로) */
+.hp-plinth { background: transparent; border-radius: 0; aspect-ratio: 1 / .8; }
+.hp-plinth::before { left: 0; right: 0; top: 0; bottom: 0; height: auto; background: linear-gradient(#8F8B84 0 9%, #A5A19A 9% 100%); clip-path: polygon(0 0, 100% 0, 87% 100%, 13% 100%); }
+.hp-plinth::after { left: -8%; right: -8%; }
