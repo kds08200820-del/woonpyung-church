@@ -611,18 +611,30 @@ window.GardenAvatar = (function () {
       '<linearGradient id="hc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + lt(hc, 0.16) + '"/><stop offset=".55" stop-color="' + hc + '"/><stop offset="1" stop-color="' + dk(hc, 0.14) + '"/></linearGradient>',
       '<linearGradient id="tc" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="' + dk(top, 0.07) + '"/><stop offset=".45" stop-color="' + lt(top, 0.07) + '"/><stop offset="1" stop-color="' + dk(top, 0.1) + '"/></linearGradient>',
       '<radialGradient id="bl"><stop offset="0" stop-color="#F2827A"/><stop offset="1" stop-color="#F2827A" stop-opacity="0"/></radialGradient>',
+      /* 입체(2026-11-11 담임목사: "캐릭터가 입체적이지 않다") — 몸 덩어리마다 왼쪽 위에서 비추는 빛을 입힌다.
+         윤곽을 흐려 볼록한 면으로 삼고(feGaussianBlur) 그 면에 퍼지는 빛·반짝이는 빛을 얹는다. 테두리 줄은 옅게 */
+      '<filter id="cl" x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">' +
+        '<feGaussianBlur in="SourceAlpha" stdDeviation="5" result="b"/>' +
+        '<feDiffuseLighting in="b" surfaceScale="6" diffuseConstant="1" lighting-color="#fff" result="d"><feDistantLight azimuth="235" elevation="50"/></feDiffuseLighting>' +
+        '<feComposite in="d" in2="SourceAlpha" operator="in" result="dl"/>' +
+        '<feComposite in="SourceGraphic" in2="dl" operator="arithmetic" k1=".72" k2=".40" k3="0" k4="0" result="lit"/>' +
+        '<feSpecularLighting in="b" surfaceScale="8" specularConstant=".32" specularExponent="30" lighting-color="#fff" result="sp"><feDistantLight azimuth="235" elevation="58"/></feSpecularLighting>' +
+        '<feComposite in="sp" in2="SourceAlpha" operator="in" result="sl"/>' +
+        '<feComposite in="lit" in2="sl" operator="arithmetic" k1="0" k2="1" k3=".3" k4="0"/>' +
+      '</filter>',
+      '<style>.v [fill]:not([fill="none"]){stroke-opacity:.28}</style>',   /* 면이 있는 꼴의 테두리만 옅게 — 팔다리는 굵은 줄(stroke)로 그리므로 건드리지 않는다 */
       '</defs>'];
+    var V3 = function (x) { return x ? '<g class="v" filter="url(#cl)">' + x + '</g>' : ''; };
     o.push(ell(cx, g.ground + 1, Math.max(g.SH, g.HPH + 12) * 1.15, 9, '#503c28', ' opacity=".16"'));
-    o.push(hairLayer(H, 'b', P, g, hc));
-    o.push(lower(s, g, skin, bot, shoe));
-    o.push(arms(s, g, skin, top));
+    o.push(V3(hairLayer(H, 'b', P, g, hc)));
+    o.push(V3(lower(s, g, skin, bot, shoe)));
+    o.push(V3(arms(s, g, skin, top)));
     if (s.top === 5) o.push(ell(cx, g.ySh - 1, g.NW + 20, 11, dk(top, 0.08), ' stroke="' + dk(top, 0.3) + '" stroke-width="2"'));   /* 후드 */
     o.push(shape('M' + pt(cx - g.NW, g.yChin - 18) + 'L' + pt(cx + g.NW, g.yChin - 18) + 'L' + pt(cx + g.NW + 1, g.ySh + 10) + 'L' + pt(cx - g.NW - 1, g.ySh + 10) + 'Z', dk(skin, 0.06), ln, 2));
     o.push(ell(cx, g.yChin + 2, g.NW + 1, 4, dk(skin, 0.2), ' opacity=".45"'));
-    o.push(torso(s, g, top));
-    o.push(hands(g, skin, ln));
-    o.push(ears(s, g, skin, ln));
-    o.push(shape(facePath(g), 'url(#fc)', ln, 2));
+    o.push(V3(torso(s, g, top)));
+    o.push(V3(hands(g, skin, ln)));
+    o.push(V3(ears(s, g, skin, ln) + shape(facePath(g), 'url(#fc)', ln, 2)));
     if (s.blush) { var op = [0, 0.3, 0.45, 0.62][s.blush]; [-1, 1].forEach(function (sd) { o.push(ell(cx + sd * g.a * 0.56, g.ey + g.er * 1.55 + 3 * g.hs, 13 * g.hs, 8 * g.hs, 'url(#bl)', ' opacity="' + op + '"')); }); }
     o.push(marks(s, g, skin));
     if (s.beard && s.beard !== 2) o.push(beard(s, g, hc));
@@ -632,7 +644,7 @@ window.GardenAvatar = (function () {
     o.push(mouth(s, g));
     if (s.beard === 2 || s.beard >= 4) o.push(mustache(s, g, hc));
     o.push(glasses(s, g));
-    o.push(hairLayer(H, 'f', P, g, hc));
+    o.push(V3(hairLayer(H, 'f', P, g, hc)));
     var vb = viewBox(g, view);
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + vb.vb + '" width="' + vb.w + '" height="' + vb.h + '">' + o.join('') + '</svg>';
   }
