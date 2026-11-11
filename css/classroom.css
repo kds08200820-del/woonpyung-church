@@ -456,6 +456,8 @@
 .dc-ldl-dl dt:first-child { margin-top: 0; }
 .dc-ldl-dl dd { margin: 4px 0 0; line-height: 1.8; word-break: keep-all; }
 .dc-ldl-dl ol { margin: 0; padding-left: 1.3em; }
+.dc-ldl-dl dd p { margin: 0 0 4px; }
+.dc-ldl-dl dd p:last-child { margin-bottom: 0; }
 /* 문항별 답 — 수강생: 내 답 칸 / 인도자: 수강생 답 펼치기 */
 .dc-ans { margin: 8px 0 4px; }
 .dc-ans label { display: block; margin: 0 0 4px; font-size: .8rem; font-weight: 700; color: var(--ink-soft); }

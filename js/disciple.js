@@ -590,12 +590,15 @@ console.log('[disciple.js] v20261111g');
         '<button type="button" class="cr-line cr-sm" data-greset' + (x.own ? '' : ' hidden') + '>기본 질문으로</button></div><p class="dc-msg" role="status"></p></div>' : '') +
       '</div>';
   }
+  // (2026-11-12 담임목사 "학습 목표 등 정리된 것은 인도자용으로") 한 줄로·요약·학습 목표는 수강생 화면에서 빼고 이 강의안 칸 맨 앞에 둔다
   function ldLesson(l) {
     var g = guide(l.no);
-    if (!g) return '<section class="dc-sec dc-ldl"><h3 class="cr-sub-h">인도자용 강의안 <small>인도자에게만 보입니다</small></h3><p class="cr-note">강의안을 불러오지 못했습니다. 쪽을 새로 고쳐 주십시오.</p></section>';
+    var head = '<dt>한 줄로</dt><dd><p><b>' + esc(l.one) + '</b></p>' + l.summary.map(function (s) { return '<p>' + esc(s) + '</p>'; }).join('') + '</dd>' +
+      '<dt>학습 목표</dt><dd><ol>' + l.goals.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></dd>';
+    if (!g) return '<section class="dc-sec dc-ldl"><h3 class="cr-sub-h">인도자용 강의안</h3><dl class="dc-ldl-dl">' + head + '</dl><p class="cr-note">강의안을 불러오지 못했습니다. 쪽을 새로 고쳐 주십시오.</p></section>';
     var C = window.WPC_DISCIPLE_GUIDE.common || [];
-    return '<section class="dc-sec dc-ldl"><h3 class="cr-sub-h">인도자용 강의안 <small>인도자에게만 보입니다 · 수강생 화면에는 질문과 강의안이 없습니다</small></h3>' +
-      '<dl class="dc-ldl-dl">' +
+    return '<section class="dc-sec dc-ldl"><h3 class="cr-sub-h">인도자용 강의안</h3>' +
+      '<dl class="dc-ldl-dl">' + head +
       (g.plan ? '<dt>나누어 가기</dt><dd>' + esc(g.plan) + '</dd>' : '') +
       (C.length ? '<dt>모임 순서</dt><dd><ol>' + C.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') + '</ol></dd>' : '') +
       (g.open ? '<dt>여는 말</dt><dd>' + esc(g.open) + '</dd>' : '') +
@@ -650,7 +653,7 @@ console.log('[disciple.js] v20261111g');
   // 교재 문항: 대목마다 문항(짧은 주제)·교재 쪽·성경 구절 — 질문 문장은 인도자에게만(ldBox)
   function qsHTML(l, p, nextPart, ax) {
     var qn = 0, ld = ax && ax.leader;
-    return '<section class="dc-sec"><h3 class="cr-sub-h">교재 문항과 성경 구절 <small>교재 ' + esc(l.pages) + '쪽 · 구절을 눌러 읽으며 ' + (ax && !ax.leader ? '답을 적으십시오 — 적는 대로 저장됩니다' : ld ? '문항마다 질문·답의 방향(인도자에게만 보임)과 수강생이 적은 답을 볼 수 있습니다' : '교재에 답을 적으십시오') + '</small></h3>' +
+    return '<section class="dc-sec"><h3 class="cr-sub-h">교재 문항과 성경 구절 <small>교재 ' + esc(l.pages) + '쪽</small></h3>' +   // (2026-11-12 담임목사 "설명을 많이 하지 말 것") 쪽수만
       l.sections.map(function (sec) {
         var k = l.no + '-' + sec.part, done = p.set[k], here = nextPart === sec.part, pr = pgRange(sec.items);
         return '<div class="dc-qsec' + (done ? ' is-done' : here ? ' is-next' : '') + '"><h4><span class="n">' + sec.part + '</span>' + esc(l.parts[sec.part - 1] || '') +
@@ -789,9 +792,7 @@ console.log('[disciple.js] v20261111g');
       '<header class="cr-l-head"><p class="cr-l-eye">' + esc(l.group) + ' · 제' + l.no + '강</p><h2>' + esc(l.title) + '</h2>' +
       '<p class="cr-l-meta">교재 ' + esc(l.pages) + '쪽 · 우리 반 ' + (lp.state === 'done' ? '마침' : lp.n ? lp.all + '대목 중 ' + lp.n + ' 나감' : '아직') + '</p>' +
       '<div class="cr-acts" style="margin-top:12px"><button type="button" class="cr-btn" data-enter>강의실 입장 ▶</button></div></header>' +
-      '<section class="cr-l-intro"><h3>한 줄로</h3><p><b>' + esc(l.one) + '</b></p>' + l.summary.map(function (s) { return '<p>' + esc(s) + '</p>'; }).join('') + '</section>' +
-      '<section class="dc-sec"><h3 class="cr-sub-h">학습 목표</h3><ul class="dc-goals">' + l.goals.map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ul></section>' +
-      (lead_ ? ldLesson(l) : '') +
+      (lead_ ? ldLesson(l) : '') +   // 한 줄로·학습 목표는 인도자 강의안 안에만 (수강생 화면에는 없음)
       (l.sections && l.sections.length ? qsHTML(l, p, nextPart, ax) :
       '<section class="dc-sec"><h3 class="cr-sub-h">교재의 흐름 <small>우리 반 진도</small></h3><ol class="dc-flow">' + l.parts.map(function (x, i) {
         var k = l.no + '-' + (i + 1), done = p.set[k];

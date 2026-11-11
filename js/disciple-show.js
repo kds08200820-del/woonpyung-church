@@ -8,7 +8,7 @@
  *  · 닫기: × · Esc · 휴대폰 '뒤로'(창을 열 때 기록을 하나 넣는다). 열린 동안 뒤 화면 스크롤 막음, 닫으면 초점 되돌림.
  *  · 악보는 화면에 맞춰 보이고(object-fit:contain), 크게 보기는 모두의 성경 악보 창(손가락 확대·넘기기를 이미 갖춘 곳)으로 연다.
  */
-console.log('[disciple-show.js] v20261111a');
+console.log('[disciple-show.js] v20261112ld1');
 
 (function () {
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -24,7 +24,7 @@ console.log('[disciple-show.js] v20261111a');
     var L = o.lesson, S = [], today = new Date();
     S.push({ k: 'cover', h: '표지', html:
       '<div class="dcs-cover"><p class="dcs-eye">제자훈련 양육반 · 제' + L.no + '강 · ' + esc(L.group) + '</p><h1>' + esc(L.title) + '</h1>' +
-      '<p class="dcs-one">' + esc(L.one) + '</p><p class="dcs-meta">' + esc(o.className || '') + ' · ' + today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ' + today.getDate() + '일 · 교재 ' + esc(L.pages) + '쪽</p></div>' });
+      (o.leader ? '<p class="dcs-one">' + esc(L.one) + '</p>' : '') + '<p class="dcs-meta">' + esc(o.className || '') + ' · ' + today.getFullYear() + '년 ' + (today.getMonth() + 1) + '월 ' + today.getDate() + '일 · 교재 ' + esc(L.pages) + '쪽</p></div>' });
     var songs = (o.songs || []).filter(function (x) { return x && x.n; });
     if (songs.length) {
       S.push({ k: 'songs', h: '함께 부를 찬양', html: '<div class="dcs-text"><p class="dcs-eye">' + esc(o.songsLabel || '함께 부를 찬양') + '</p><h2>함께 부를 찬양</h2><ol class="dcs-list">' +
@@ -35,7 +35,8 @@ console.log('[disciple-show.js] v20261111a');
           '<figcaption>' + esc(name) + ' <a href="' + esc(songUrl(x)) + '" target="_blank" rel="noopener">악보 크게 보기 ↗</a></figcaption></figure>' });
       });
     }
-    S.push({ k: 'goals', h: '학습 목표', html: '<div class="dcs-text"><p class="dcs-eye">제' + L.no + '강</p><h2>학습 목표</h2><ol class="dcs-list">' + L.goals.map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ol>' +
+    // (2026-11-12 담임목사) 한 줄로·학습 목표·요약은 인도자 화면에만
+    if (o.leader) S.push({ k: 'goals', h: '학습 목표', html: '<div class="dcs-text"><p class="dcs-eye">제' + L.no + '강</p><h2>학습 목표</h2><ol class="dcs-list">' + L.goals.map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ol>' +
       '<div class="dcs-sum">' + L.summary.map(function (s) { return '<p>' + esc(s) + '</p>'; }).join('') + '</div></div>' });
     (o.materials || []).forEach(function (m) {
       var t = esc(m.title || '자료');
