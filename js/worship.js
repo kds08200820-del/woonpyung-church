@@ -195,12 +195,13 @@
   }
 
   /* ── 오늘의 예배 목록 — 예배 시간 앞뒤 10분 안에서만 뜬다 (한국 시각)
-       · 새벽기도회 04:30~06:00 → 04:20~06:10 (달력에 '새벽기도'가 있는 날만, 주일 제외)
+       · 새벽기도회 05:00~06:00 → 04:50~06:10 (달력에 '새벽기도'가 있는 날만, 주일 제외)
+           — 2026-11-11 담임목사: 시작을 5시로 맞춤(예전엔 4:30 으로 잡아 4:00~4:20 에 4:30 을 향해 셌다). 출석 창(att_window)도 같은 시각이어야 한다
        · 수요기도회 수 11:00 (약 한 시간) → 10:50~12:10
        · 주일 1부 09:20~10:40 → 09:10~10:50, 2부 11:00~12:30 → 10:50~12:40 (둘 다 같은 주보 순서) ── */
   var PAD = 10;
   var SCHED = [
-    { kind: 'dawn',   label: '새벽기도회', time: '새벽 4:30 ~ 6:00',   days: [1, 2, 3, 4, 5, 6], from: 4 * 60 + 30,  to: 6 * 60 },   /* 보통 화~금 — 실제로는 설교작성관리 달력에 '새벽기도'가 있는 날만 뜬다(주일 제외) */
+    { kind: 'dawn',   label: '새벽기도회', time: '오전 5:00',          days: [1, 2, 3, 4, 5, 6], from: 5 * 60,       to: 6 * 60, lead: 30 },   /* 30분 전(4:30)부터 카운트. 보통 화~금 — 실제로는 설교작성관리 달력에 '새벽기도'가 있는 날만 뜬다(주일 제외) */
     { kind: 'wed',    label: '수요기도회', time: '오전 11:00',          days: [3],          from: 11 * 60,       to: 12 * 60, lead: 60 },   /* 1시간 전부터 카운트 */
     { kind: 'sunday', part: 1, label: '주일 1부 예배', time: '오전 9:20',  days: [0], from: 9 * 60 + 20, to: 10 * 60 + 40, lead: 200 },   /* 안내는 오전 6시(200분 전)부터 */
     { kind: 'sunday', part: 2, label: '주일 2부 예배', time: '오전 11:00', days: [0], from: 11 * 60,     to: 12 * 60 + 30, lead: 30 }
@@ -279,7 +280,7 @@
     var list = services(force); heroForce = force;
     if (!force) heroLast = heroSig();               /* 지금 띄운 예배 상태 — 시간이 흘러 달라지면 heroRefresh 가 다시 그린다 */
     if (!list.length) {
-      /* 예배 전 안내: 주일은 오전 6시부터 '오늘은 주일입니다'(1시간 전부터 카운트), 수요·새벽은 30분 전부터 '곧 예배가 시작됩니다' + 카운트
+      /* 예배 전 안내: 주일은 오전 6시부터 '오늘은 주일입니다'(1시간 전부터 카운트), 수요는 1시간 전·새벽은 30분 전(4:30)부터 '곧 예배가 시작됩니다' + 카운트
          — 그날 예배가 있을 때만(새벽: 달력의 '새벽기도', 수요: 주보의 수요기도회 줄 또는 달력의 '수요기도회') */
       if (typeof force === 'string' && force.indexOf('countdown') === 0) { var pk = force === 'countdown-wed' ? byKind('wed') : force === 'countdown-dawn' ? byKind('dawn') : force === 'countdown-2' ? byPart(2) : byPart(1); return mountCountdown(rot, pk, true); }
       if (force) return;
@@ -400,7 +401,7 @@
   /* ── 예배 전 안내 슬라이드 — 시간이 되면(예배 10분 전) 스스로 '오늘의 예배'로 바뀐다
        · 주일 1부: 오전 6시부터 '오늘은 주일입니다', 1시간 전부터 '곧 1부 예배가 시작됩니다' + 남은 시간
        · 주일 2부: 10:30부터 '곧 2부 예배가 시작됩니다' + 남은 시간 (1부에 들어간 사람 제외)
-       · 수요: 1시간 전, 새벽: 30분 전부터 '곧 예배가 시작됩니다' + 남은 시간 ── */
+       · 수요: 1시간 전, 새벽: 30분 전(오전 4:30)부터 '곧 예배가 시작됩니다' + 남은 시간 ── */
   function byKind(k) { for (var i = 0; i < SCHED.length; i++) if (SCHED[i].kind === k) return SCHED[i]; return SCHED[2]; }
   function mountCountdown(rot, sc, preview) {
     var b = sundayBulletin(), w = sc.kind === 'wed' ? wedInfo() : null, soonSec = (sc.kind === 'sunday' && (sc.part === 1 || sc.single)) || sc.kind === 'wed' ? 3600 : 1800;   /* 주일 1부(통합이면 그 예배)·수요는 1시간 전, 2부·새벽은 30분 전부터 카운트 */

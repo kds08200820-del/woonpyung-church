@@ -635,7 +635,7 @@ window.GardenI18n = (function () {
     'onboard.err.save': '심지 못했습니다. 다시 시도해 주세요',
 
     'svc.dawn': '새벽기도회',
-    'svc.dawn.time': '새벽 4:30',
+    'svc.dawn.time': '오전 5:00',
     'svc.wed': '수요기도회',
     'svc.wed.time': '오전 11:00',
     'svc.sun1': '주일 1부 예배',
