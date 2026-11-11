@@ -2,7 +2,7 @@
    · 앱 껍데기(html·css·js·글꼴)는 판(version)마다 새 저장소에 담고 옛것은 지운다
    · 큰 자료(R2 의 성경·사전·지도·주석)는 한 번 받으면 오래 둔다 (자료 판이 바뀌면 주소가 바뀐다)
    · Supabase(로그인·메모)는 늘 네트워크 */
-var VERSION = '1.0.85';
+var VERSION = '1.0.86';
 var SHELL = 'modu-shell-' + VERSION, DATA = 'modu-data-v2';   /* v2: crossOrigin 없이 받아 둔 불투명 응답을 버린다 */
 var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'worship-banner.js', 'mini.js', 'activity.js', 'compare.js', 'exeg-engine.js', 'exeg.js', 'hymn.js', 'hymn-data.js', 'ccm-data.js', 'gyodok.js', 'icon.png', 'manifest.webmanifest',
   /* 1.0.83 파스텔 점토 바탕: 화면 글꼴(Pretendard subset 두 굵기)과 점토 아이콘 */
@@ -17,8 +17,10 @@ self.addEventListener('install', function(e){
 });
 /* 주소(?v=)가 바뀌어 다시는 찾지 않는 옛 큰 자료 — 새 판으로 갈아탈 때 저장소에서 지운다 (그냥 두면 휴대폰에 수십 MB 가 남는다)
    · 1.0.84: 성경 본문 bible.js 를 손봐(개역개정 책 끝 절에 붙어 있던 다음 책 1:1 삭제) 주소가 ?v=20261111 로 바뀌었다
-   · 1.0.85: 개역개정 1:1 낱말·깨진 글자·각주 번호·합쳐진 절을 손봐 주소가 ?v=20261111b 로 바뀌었다 */
+   · 1.0.85: 개역개정 1:1 낱말·깨진 글자·각주 번호·합쳐진 절을 손봐 주소가 ?v=20261111b 로 바뀌었다
+   · 1.0.86: 갈아타는 사이 옛 화면이 옛 주소를 새로 받으면 지운 뒤에 다시 담기던 빈틈을 막았다 — 옛 주소는 받아 주기만 하고 담지 않는다 */
 var STALE_DATA = ['data/d1/bible.js?v=20260926', 'data/d1/bible.js?v=20261111'];
+var STALE_URLS = STALE_DATA.map(function(u){ return new URL(u, self.location).href; });
 
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return (k.indexOf('modu-shell-') === 0 && k !== SHELL) || (k.indexOf('modu-data-') === 0 && k !== DATA); }).map(function(k){ return caches.delete(k); })); })
@@ -37,7 +39,7 @@ self.addEventListener('fetch', function(e){
       return c.match(req).then(function(hit){
         /* CORS 로 달라는 요청(캔버스·WebGL 에 쓰는 그림)에 불투명 응답을 주면 텍스처가 막힌다 → 다시 받는다 */
         if(hit && !(req.mode === 'cors' && hit.type === 'opaque')) return hit;
-        return fetch(req).then(function(r){ if(r && r.ok) c.put(req, r.clone()); return r; });
+        return fetch(req).then(function(r){ if(r && r.ok && STALE_URLS.indexOf(req.url) < 0) c.put(req, r.clone()); return r; });
       });
     }));
     return;
