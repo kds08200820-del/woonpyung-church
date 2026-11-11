@@ -242,10 +242,10 @@
 .cr-rv li.is-x { border-color: #C5C4C1; background: #FFF8F4; }
 .cr-rv .h { display: flex; gap: 8px; align-items: flex-start; color: var(--accent); font-weight: 600; }
 .cr-rv .m { flex: 0 0 auto; font-weight: 800; width: 22px; text-align: center; }
-.cr-rv li.is-o .m { color: #2F6B4F; }
+.cr-rv li.is-o .m { color: #111111; }
 .cr-rv li.is-x .m { color: #A33A2A; }
 .cr-rv .d { margin: 6px 0 0 30px; color: var(--ink-soft); }
 .cr-rv .d span { display: block; }
-.cr-rv .d .ok { color: #2F6B4F; font-weight: 600; }
+.cr-rv .d .ok { color: #111111; font-weight: 600; }
 .cr-rv .d .no { color: #A33A2A; }
 .cr-rv .d .ex { color: var(--muted); font-size: .84rem; }

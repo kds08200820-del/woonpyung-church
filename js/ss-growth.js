@@ -44,7 +44,7 @@ console.log('[ss-growth.js] v20260908pubonce');
 
   function pill(stype) {
     var qt = stype === 'QT', ms = stype === '미션';
-    return '<span style="font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;background:' + (ms ? '#fdf3e0' : qt ? '#F9F8F5' : '#E6F2EC') + ';color:' + (ms ? '#6C6B68' : qt ? '#62615E' : '#2F6B4F') + ';">' + esc(stype) + '</span>';
+    return '<span style="font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 9px;background:' + (ms ? '#fdf3e0' : qt ? '#F9F8F5' : '#E6F2EC') + ';color:' + (ms ? '#6C6B68' : qt ? '#62615E' : '#111111') + ';">' + esc(stype) + '</span>';
   }
   // 이번주 미션 배너 — 기록이 없어도, 미션만 정해져 있으면 보여 준다
   function missionBanner() {
@@ -68,7 +68,7 @@ console.log('[ss-growth.js] v20260908pubonce');
     return 'border:1px solid ' + (mine ? '#e0639b' : '#F5F4F1') +
       ';background:' + (mine ? '#fdeef5' : '#fff') +
       ';color:' + (mine ? '#e0639b' : '#A7A6A3') +
-      ';border-radius:999px;padding:3px 10px;font:inherit;font-size:.76rem;cursor:pointer;line-height:1.4;';
+      ';border-radius:0;padding:3px 10px;font:inherit;font-size:.76rem;cursor:pointer;line-height:1.4;';
   }
   // 누른 뒤 그 버튼만 고쳐 그린다 — 목록을 다시 그리면 스크롤이 맨 위로 튄다(휴대폰에서 특히)
   function paintLike(btn, likes, mine) {
@@ -108,14 +108,14 @@ console.log('[ss-growth.js] v20260908pubonce');
       '<span style="display:flex;align-items:center;gap:6px;">' +
       '<button type="button" class="ssg-like" data-id="' + esc(r.id) + '" title="' + (mine ? '좋아요 취소' : '어린이를 응원해 주세요') + '" ' +
       'style="' + likeStyle(mine) + '">' + (mine ? '❤' : '♡') + ' ' + (r.likes || 0) + '</button>' +
-      (r.confirmed ? '<span style="color:#2F6B4F;font-weight:700;">✓ 확인</span>' : '') +
+      (r.confirmed ? '<span style="color:#111111;font-weight:700;">✓ 확인</span>' : '') +
       '</span></div>' +
       (isTeacher ? pubArea(r) : '') +
       '</div></div>';
   }
   // [교사] 카드 아래 게시 영역 — 이미 게시된 인증샷이면 버튼 대신 표시만(누가 로그인해도 같음)
   function publishedLabel() {
-    return '<div class="ssg-pubdone" style="margin-top:8px;width:100%;box-sizing:border-box;border:1px solid #bfe0c8;background:#f0f9f2;color:#2F6B4F;border-radius:2px;padding:5px 8px;font-size:.78rem;font-weight:600;text-align:center;">✓ 이미 우리들 소식에 게시되었습니다</div>';
+    return '<div class="ssg-pubdone" style="margin-top:8px;width:100%;box-sizing:border-box;border:1px solid #bfe0c8;background:#f0f9f2;color:#111111;border-radius:2px;padding:5px 8px;font-size:.78rem;font-weight:600;text-align:center;">✓ 이미 우리들 소식에 게시되었습니다</div>';
   }
   function pubArea(r) {
     if (pubUrls === null) return '';                 // 게시 여부를 아직 못 받았으면 버튼을 내지 않는다(중복 게시 방지)
@@ -280,10 +280,10 @@ console.log('[ss-growth.js] v20260908pubonce');
       '<p style="text-align:center;color:var(--ink-soft,#898885);font-size:.86rem;margin:0 0 14px;">함께 자라는 어린이 <b style="color:var(--accent,#111111);">' + names.length + '명</b> · 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b>' + (mMs ? ' · 미션 <b>' + mMs + '회</b>' : '') + '</p>' +
       (names.length > 1 ?
         '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;">' +
-        '<button type="button" class="ssg-chip" data-n="" style="border:1px solid ' + (!filterName ? 'var(--accent,#111111)' : '#D9D8D5') + ';background:' + (!filterName ? 'var(--accent,#111111)' : '#fff') + ';color:' + (!filterName ? '#fff' : 'var(--accent,#111111)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.82rem;cursor:pointer;">전체</button>' +
+        '<button type="button" class="ssg-chip" data-n="" style="border:1px solid ' + (!filterName ? 'var(--accent,#111111)' : '#D9D8D5') + ';background:' + (!filterName ? 'var(--accent,#111111)' : '#fff') + ';color:' + (!filterName ? '#fff' : 'var(--accent,#111111)') + ';border-radius:0;padding:5px 14px;font:inherit;font-size:.82rem;cursor:pointer;">전체</button>' +
         names.map(function (n) {
           var on = filterName === n;
-          return '<button type="button" class="ssg-chip" data-n="' + esc(n) + '" style="border:1px solid ' + (on ? 'var(--accent,#111111)' : '#D9D8D5') + ';background:' + (on ? 'var(--accent,#111111)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#111111)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.82rem;cursor:pointer;">' + esc(n) + '</button>';
+          return '<button type="button" class="ssg-chip" data-n="' + esc(n) + '" style="border:1px solid ' + (on ? 'var(--accent,#111111)' : '#D9D8D5') + ';background:' + (on ? 'var(--accent,#111111)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#111111)') + ';border-radius:0;padding:5px 14px;font:inherit;font-size:.82rem;cursor:pointer;">' + esc(n) + '</button>';
         }).join('') + '</div>' : '') +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;">' + shown.map(card).join('') + '</div>' +
       // '더 보기'와 '접기'는 함께 보인다 — 지난 기록이 아직 남아 있어도 펼친 걸 되접을 수 있게

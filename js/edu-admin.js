@@ -294,7 +294,7 @@ console.log('[edu-admin.js] v20261026rt1');
     m.box.querySelector('#eduLinkX').onclick = m.close;
     loadGJ().then(function () {
       hint.textContent = GJ.length ? '이름을 입력해 목록에서 고르십시오.' : '교적을 불러오지 못했습니다(교적관리 권한 필요).';
-      memberPicker(inp, hint, function (mm) { pick = mm; go.disabled = !mm; hint.style.color = mm ? '#2F6B4F' : '#A7A6A3'; hint.innerHTML = mm ? '🔗 ' + esc(mm.name) + ' · ' + esc(mm.key) : '목록에서 고르십시오.'; });
+      memberPicker(inp, hint, function (mm) { pick = mm; go.disabled = !mm; hint.style.color = mm ? '#111111' : '#A7A6A3'; hint.innerHTML = mm ? '🔗 ' + esc(mm.name) + ' · ' + esc(mm.key) : '목록에서 고르십시오.'; });
       inp.dispatchEvent(new Event('input'));
     });
     go.onclick = function () {
@@ -329,7 +329,7 @@ console.log('[edu-admin.js] v20261026rt1');
       '</div>' +
       '<div id="ci_link" style="font-size:.8rem;margin-top:8px;min-height:1.2em;color:#A7A6A3"></div>' +
       '<div id="ci_day" style="font-size:.8rem;margin-top:4px"></div>' +
-      '<div id="ci_res" style="font-size:.8rem;margin-top:4px;color:#2F6B4F"></div>' +
+      '<div id="ci_res" style="font-size:.8rem;margin-top:4px;color:#111111"></div>' +
       '<label id="ci_gjw" style="display:none;align-items:center;gap:7px;margin-top:10px;font-size:.86rem;color:#201F1C"><input type="checkbox" id="ci_gj" checked> <span id="ci_gjt"></span></label>' +
       '<div style="display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap"><button class="btn btn-solid" id="ci_go" style="padding:9px 22px">발급하고 인쇄</button><button class="btn btn-line" id="ci_x" style="padding:9px 16px">닫기</button><span id="ci_msg" style="font-size:.84rem"></span></div>';
     var $ = function (id) { return m.box.querySelector('#' + id); };
@@ -350,7 +350,7 @@ console.log('[edu-admin.js] v20261026rt1');
       });
       var lab = $('ci_rite_l').textContent, day = $('ci_day'), col = k === '학습' ? '학습일' : (k === '세례' || k === '유아세례') ? '세례일' : '';
       if (!m) { day.textContent = ''; return; }
-      if (rite) { day.style.color = '#2F6B4F'; day.textContent = '📅 ' + lab + ' ' + rite + ' — ' + from + '에서 가져왔습니다.'; }
+      if (rite) { day.style.color = '#111111'; day.textContent = '📅 ' + lab + ' ' + rite + ' — ' + from + '에서 가져왔습니다.'; }
       else if (col) { day.style.color = '#62615E'; day.textContent = '📅 교적에 ' + col + '이 비어 있습니다. ' + lab + '을 적으시면 아래 ‘교적도 고치기’로 교적에도 저장됩니다.'; }
       else day.textContent = '';
     }
@@ -379,8 +379,8 @@ console.log('[edu-admin.js] v20261026rt1');
       pick = mm;
       if (mm && !kindTouched && KIND_BY_GRADE[mm.grade || ''] && Object.prototype.hasOwnProperty.call(KIND_BY_GRADE, mm.grade || '')) $('ci_kind').value = KIND_BY_GRADE[mm.grade || ''];
       var h = $('ci_link');
-      if (mm) { h.style.color = '#2F6B4F'; h.innerHTML = '🔗 교적 연결: <b>' + esc(mm.name) + '</b> · ' + esc([mm.birth, mm.grade, mm.role].filter(Boolean).join(' · ')); if (mm.birth && !$('ci_birth').value) $('ci_birth').value = mm.birth; }
-      else if (r && r.member_key && $('ci_kind').value !== '유아세례') { h.style.color = '#2F6B4F'; h.textContent = '🔗 교적 연결: ' + r.member_key; }
+      if (mm) { h.style.color = '#111111'; h.innerHTML = '🔗 교적 연결: <b>' + esc(mm.name) + '</b> · ' + esc([mm.birth, mm.grade, mm.role].filter(Boolean).join(' · ')); if (mm.birth && !$('ci_birth').value) $('ci_birth').value = mm.birth; }
+      else if (r && r.member_key && $('ci_kind').value !== '유아세례') { h.style.color = '#111111'; h.textContent = '🔗 교적 연결: ' + r.member_key; }
       else { h.style.color = '#A7A6A3'; h.textContent = '교적 미연결 — 이름만 기록됩니다(이름을 지우고 다시 입력하면 교적에서 고를 수 있습니다).'; }
       syncKind(); fillDays(); findRes();
     }

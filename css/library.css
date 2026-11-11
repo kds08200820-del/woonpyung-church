@@ -7,7 +7,7 @@
 :root {
   --bg: #FFFFFF; --paper: #FFFFFF; --paper2: #F4F3F0; --ink: #111111; --sub: #555555; --mute: #8A8A86; --line: #E6E5E1;
   --accent: #111111; --accent-h: #333333; --accent-ink: #FFFFFF; --accent-bg: #F4F3F0;
-  --mint: #DDEFE7; --ok: #2F6B4F; --ok-bg: #E6F2EC; --bad: #A33A2A; --bad-bg: #FBEDEA;
+  --mint: #DDEFE7; --ok: #111111; --ok-bg: #E6F2EC; --bad: #A33A2A; --bad-bg: #FBEDEA;
   --brand: #6B1328;
   --r: 14px; --r2: 22px;
   --font: "Pretendard Variable", Pretendard, "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;

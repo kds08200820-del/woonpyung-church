@@ -36,7 +36,7 @@ window.WPCFormsAdmin = (function () {
     '.fa-stat b{font-size:1.1rem;color:var(--accent,#111111)}' +
     '.fa-stat small{display:block;font-size:.76rem;color:#333333;margin-top:2px}' +
     '.fa-filter{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 10px}' +
-    '.fa-filter button{border:1px solid var(--line,#E6E5E1);background:#fff;border-radius:999px;padding:5px 12px;font:inherit;font-size:.82rem;cursor:pointer;color:#333333}' +
+    '.fa-filter button{border:1px solid var(--line,#E6E5E1);background:#fff;border-radius:0;padding:5px 12px;font:inherit;font-size:.82rem;cursor:pointer;color:#333333}' +
     '.fa-filter button.on{background:var(--accent,#111111);border-color:var(--accent,#111111);color:#fff}' +
     '.fa-ents{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}' +
     '.fa-ent{border:1px solid var(--line,#E6E5E1);border-radius:5px;padding:12px 14px;background:#fff}' +

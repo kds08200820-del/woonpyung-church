@@ -39,7 +39,7 @@
 .ax-st-queued { background: #EEF1F6; color: #4F5D75; }
 .ax-st-working { background: #E7F1FB; color: #2563A8; }
 .ax-st-review { background: #FDE7DE; color: #71706D; }
-.ax-st-approved { background: #E8F5EC; color: #2F7A4C; }
+.ax-st-approved { background: #E8F5EC; color: #111111; }
 .ax-st-done { background: #EEF6EF; color: #3F7A52; }
 .ax-st-failed { background: #F8E3E1; color: #A33A2A; }
 .ax-st-cancelled { background: #F8F7F4; color: #81807D; }
@@ -61,7 +61,7 @@
 .ax-stat b { display: block; font-size: 1.35rem; color: #111111; }
 .ax-stat span { display: block; font-size: .8rem; color: #81807D; }
 .ax-stat small { display: block; font-size: .74rem; margin-top: 2px; }
-.ax-up { color: #2F7A4C; } .ax-down { color: #A33A2A; } .ax-same { color: #898885; }
+.ax-up { color: #111111; } .ax-down { color: #A33A2A; } .ax-same { color: #898885; }
 
 /* 일정 */
 .ax-agenda { list-style: none; margin: 0; padding: 0; }

@@ -347,7 +347,7 @@
   function statTag(r) {
     if (r.withdrawn_at) return `<span class="prov-tag" style="background:#F7F6F3;color:#676663">탈퇴</span>`;
     if (r.suspended_at) return `<span class="prov-tag" style="background:#FBEDEA;color:#A33A2A">정지</span>`;
-    return `<span class="prov-tag" style="background:#e8f3ec;color:#2f7d46">정상</span>`;
+    return `<span class="prov-tag" style="background:#e8f3ec;color:#111111">정상</span>`;
   }
   function suspendBtn(r, meId) {
     if (r.withdrawn_at || r.id === meId) return "";

@@ -288,7 +288,7 @@ var WPCTts = (function () {
     seekEl = document.createElement("input");
     seekEl.type = "range"; seekEl.min = "0"; seekEl.max = "1000"; seekEl.value = "0"; seekEl.step = "1";
     seekEl.setAttribute("aria-label", "낭독 위치 이동");
-    seekEl.style.cssText = "flex:1;height:6px;cursor:pointer;accent-color:#2f5d3a";
+    seekEl.style.cssText = "flex:1;height:6px;cursor:pointer;accent-color:#111111";
     timeEl = document.createElement("span");
     timeEl.style.cssText = "font-size:.8rem;color:#898885;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:84px;text-align:right";
     timeEl.textContent = "0:00 / 0:00";
@@ -773,7 +773,7 @@ window.WPCQtText = (function () {
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => {
         if (rows && rows.length) { amenDoneBox(box, cd, sess); return; }
-        box.innerHTML = `<label style="display:flex;align-items:center;gap:10px;margin-top:16px;padding:14px 16px;background:#eef5ef;border:1px solid #cfe3d4;border-radius:2px;color:#2f5133;font-size:.95rem;cursor:pointer"><input type="checkbox" id="qtAmenInput" style="width:18px;height:18px"> 기도문까지 읽고, 오늘의 큐티에 <b>아멘</b> 합니다</label>`;
+        box.innerHTML = `<label style="display:flex;align-items:center;gap:10px;margin-top:16px;padding:14px 16px;background:#eef5ef;border:1px solid #cfe3d4;border-radius:2px;color:#111111;font-size:.95rem;cursor:pointer"><input type="checkbox" id="qtAmenInput" style="width:18px;height:18px"> 기도문까지 읽고, 오늘의 큐티에 <b>아멘</b> 합니다</label>`;
         const chk = document.getElementById("qtAmenInput");
         chk.addEventListener("change", () => {
           if (!chk.checked) return;

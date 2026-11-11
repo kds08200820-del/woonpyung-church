@@ -165,7 +165,7 @@
   function renderCarousel() {
     if (loadError) {   // 불러오기 실패 → '소식 없음'과 헷갈리지 않게 오류+다시 시도 안내
       stop();
-      carEl.innerHTML = `<div class="hn-empty"><span>⚠️</span><p>소식을 불러오지 못했어요.<br>잠시 후 다시 시도해 주세요.</p><button type="button" class="hn-retry" style="margin-top:14px;padding:9px 22px;border:0;background:#2f5d3a;color:#fff;border-radius:999px;font-weight:700;cursor:pointer">다시 불러오기</button></div>`;
+      carEl.innerHTML = `<div class="hn-empty"><p>소식을 불러오지 못했어요.<br>잠시 후 다시 시도해 주세요.</p><button type="button" class="hn-retry" style="margin-top:14px;padding:9px 22px;border:0;background:#111111;color:#fff;border-radius:0;font-weight:700;cursor:pointer">다시 불러오기</button></div>`;
       const rb = carEl.querySelector(".hn-retry");
       if (rb) rb.addEventListener("click", () => { rb.textContent = "불러오는 중…"; rb.disabled = true; _autoReloads = 0; load(); });
       return;
@@ -290,7 +290,7 @@
     feedSsTeacher = await isSsTeacherUser();
     if (loadError) {
       feedList.className = "album-feed empty";
-      feedList.innerHTML = `<p class="placeholder-note">소식을 불러오지 못했어요. <button type="button" class="hn-retry2" style="margin-left:6px;padding:5px 14px;border:0;background:#2f5d3a;color:#fff;border-radius:999px;font-weight:600;cursor:pointer">다시</button></p>`;
+      feedList.innerHTML = `<p class="placeholder-note">소식을 불러오지 못했어요. <button type="button" class="hn-retry2" style="margin-left:6px;padding:5px 14px;border:0;background:#111111;color:#fff;border-radius:0;font-weight:600;cursor:pointer">다시</button></p>`;
       const rb = feedList.querySelector(".hn-retry2");
       if (rb) rb.addEventListener("click", async () => { rb.textContent = "…"; rb.disabled = true; _autoReloads = 0; await load(); openFeed(); });
     } else if (!photos.length) {

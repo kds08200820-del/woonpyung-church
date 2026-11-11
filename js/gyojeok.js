@@ -498,7 +498,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
       box.querySelector('#gd_upbtn').onclick = function () { fileInp.click(); };
       drop.onclick = function () { fileInp.click(); };
       fileInp.onchange = function () { doUpload(fileInp.files && fileInp.files[0]); };
-      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.borderColor = '#2F6B4F'; drop.style.background = '#f0faf3'; }); });
+      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.borderColor = '#111111'; drop.style.background = '#f0faf3'; }); });
       ['dragleave', 'dragend'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = '#D9D8D5'; drop.style.background = ''; }); });
       drop.addEventListener('drop', function (e) { e.preventDefault(); e.stopPropagation(); drop.style.borderColor = '#D9D8D5'; drop.style.background = ''; var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; doUpload(f); });
       // 세대주/분가 체크박스

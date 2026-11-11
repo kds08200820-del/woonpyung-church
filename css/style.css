@@ -770,7 +770,7 @@ ul { list-style: none; }
 /* 버튼 */
 .btn { display: inline-block; font-family: inherit; font-weight: 700; font-size: .95rem; border-radius: 2px; padding: 13px 30px; cursor: pointer; transition: all .25s ease; border: 1.5px solid transparent; }
 .btn-solid { background: var(--accent); color: #fff; }
-.btn-solid:hover { background: #2f463a; }
+.btn-solid:hover { background: #111111; }
 .btn-line { border-color: var(--accent); color: var(--accent); background: transparent; }
 .btn-line:hover { background: var(--accent); color: #fff; }
 
@@ -1138,7 +1138,7 @@ ul { list-style: none; }
 .up-or { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px; color: var(--muted); font-size: .8rem; }
 .up-or::before, .up-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .up-link-hint { margin-top: 6px; font-size: .8rem; font-weight: 600; }
-.up-link-hint.ok { color: #2f7d46; }
+.up-link-hint.ok { color: #111111; }
 .up-link-hint.bad { color: #A33A2A; }
 .up-link-hint[hidden] { display: none; }
 .hn-linkbadge { position: absolute; top: 12px; left: 12px; z-index: 2; padding: 5px 12px; border-radius: 999px; font-size: .76rem; font-weight: 700; color: #fff; letter-spacing: .02em; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
@@ -1478,7 +1478,7 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 
 /* 푸터 버튼 그룹 + 온라인 헌금 버튼 */
 .footer-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.give-btn { display: inline-flex; align-items: center; gap: 7px; background: #2F6B4F; color: #fff; font-size: .9rem; font-weight: 700; padding: 11px 20px; border-radius: 2px; cursor: pointer; transition: filter .2s ease; }
+.give-btn { display: inline-flex; align-items: center; gap: 7px; background: #111111; color: #fff; font-size: .9rem; font-weight: 700; padding: 11px 20px; border-radius: 2px; cursor: pointer; transition: filter .2s ease; }
 .give-btn:hover { filter: brightness(1.06); color: #fff; }
 
 /* 온라인 헌금 모달 */
@@ -1487,15 +1487,15 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 .give-head h3 { margin: 0 0 6px; font-size: 1.25rem; }
 .give-head p { margin: 0 0 18px; font-size: .85rem; color: var(--ink-soft, #898885); line-height: 1.55; }
 .give-acct { background: #f4f8f5; border: 1px solid #dcebe1; border-radius: 2px; padding: 16px; margin-bottom: 16px; }
-.give-acct .give-bank { display: inline-block; background: #2F6B4F; color: #fff; font-size: .72rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; margin-bottom: 8px; }
-.give-acct .give-no { display: block; font-size: 1.4rem; font-weight: 700; letter-spacing: .5px; color: #11261a; font-variant-numeric: tabular-nums; }
+.give-acct .give-bank { display: inline-block; background: #111111; color: #fff; font-size: .72rem; font-weight: 700; padding: 2px 10px; border-radius: 999px; margin-bottom: 8px; }
+.give-acct .give-no { display: block; font-size: 1.4rem; font-weight: 700; letter-spacing: .5px; color: #111111; font-variant-numeric: tabular-nums; }
 .give-acct .give-holder { display: block; margin-top: 6px; font-size: .82rem; color: var(--ink-soft, #898885); }
 .give-actions { display: flex; flex-direction: column; gap: 9px; }
 .give-toss { display: block; background: #81807D; color: #fff; font-weight: 700; font-size: .95rem; padding: 13px; border-radius: 2px; text-align: center; transition: filter .2s ease; }
 .give-toss:hover { filter: brightness(1.08); color: #fff; }
 .give-copy { display: block; background: #fff; color: #111111; border: 1.5px solid #DFDEDB; font-weight: 700; font-size: .95rem; padding: 13px; border-radius: 2px; cursor: pointer; font-family: inherit; transition: background .2s ease; }
 .give-copy:hover { background: #FDFCF9; }
-.give-copy.copied { background: #E6F2EC; color: #2F6B4F; border-color: #bfe4cd; }
+.give-copy.copied { background: #E6F2EC; color: #111111; border-color: #bfe4cd; }
 .give-note { margin: 14px 0 0; font-size: .76rem; color: var(--ink-soft, #A4A3A0); line-height: 1.5; }
 
 /* ============================================================
@@ -2179,3 +2179,9 @@ body { background: #fff; letter-spacing: .01em; }
 @media (prefers-reduced-motion: reduce) { .hp-panel, .hp-bg, .hp-plant, .hp-reveal { transition: none; } .hp-garden:hover .hp-plant img { animation: none; } }
 
 .section-head .eyebrow { display: block; }
+
+/* 소식 오류·빈 칸: 그림 없이 글과 각진 단추만 (모던 테마) */
+.hn-empty { background: var(--paper-alt); }
+.hn-retry, .hn-retry2 { letter-spacing: .06em; font-weight: 500 !important; }
+.give-btn, .kakao-channel-btn { border-radius: 0 !important; }
+.hn-carousel { box-shadow: none; border: 1px solid var(--line); }

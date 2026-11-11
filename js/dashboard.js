@@ -477,7 +477,7 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
             ? '<div style="margin-top:9px;padding-top:9px;border-top:1px dashed #d9e2d2;font-size:.87rem;line-height:1.75;color:#3f5240">' + esc(window.BIBLE_NOTES.days[day.d - 1]) + '</div>'
             : '') +
           '</div>'
-        : '<div style="background:#f0f7ef;border:1px solid #d8e8d4;border-radius:2px;padding:14px;text-align:center;margin-bottom:12px;font-weight:700;color:#2f5d3a">365일 완주</div>') +
+        : '<div style="background:#f0f7ef;border:1px solid #d8e8d4;border-radius:2px;padding:14px;text-align:center;margin-bottom:12px;font-weight:700;color:#111111">365일 완주</div>') +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:' + (meta.length ? '10px' : '0') + '">' +
       (day
         ? '<button type="button" id="brRead" style="padding:9px 18px;border:0;border-radius:2px;background:var(--accent,#111111);color:#fff;font:inherit;font-weight:700;cursor:pointer">본문 읽기</button>' +
@@ -607,7 +607,7 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
     pl.style.cssText = 'flex:0 0 auto;display:none;margin-top:8px;background:#eef4ee;border:1px solid #cfe0cf;border-radius:2px;padding:9px 12px';
     pl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">' +
       '<button type="button" class="btn btn-line" id="brm_prev" style="padding:2px 10px">⏮</button>' +
-      '<div id="brm_plabel" style="flex:1;text-align:center;font-weight:700;color:#2f5133;font-size:.92rem">–</div>' +
+      '<div id="brm_plabel" style="flex:1;text-align:center;font-weight:700;color:#111111;font-size:.92rem">–</div>' +
       '<button type="button" class="btn btn-line" id="brm_next" style="padding:2px 10px">⏭</button></div>' +
       '<audio id="brm_audio" controls preload="metadata" style="width:100%;height:38px"></audio>';
     var scrollRef = ov.querySelector('#brm_scroll');   // 재생바는 스크롤 영역 밖(헤더 아래 고정) — 본문만 스크롤
@@ -2124,9 +2124,9 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
       loadSsItems(true).then(function (items) {
         wrap.innerHTML = items.map(function (it, i) {
           var a = Number(it.amount) || 0;
-          return '<button type="button" class="ssbk-chip" data-i="' + i + '" style="border:1px solid #BFBEBB;background:#FBFAF7;color:#61605D;border-radius:999px;padding:5px 13px;font:inherit;font-size:.82rem;cursor:pointer;">' + esc(it.name) + ' <b>' + (a > 0 ? '+' : '') + a + '</b></button>';
+          return '<button type="button" class="ssbk-chip" data-i="' + i + '" style="border:1px solid #BFBEBB;background:#FBFAF7;color:#61605D;border-radius:0;padding:5px 13px;font:inherit;font-size:.82rem;cursor:pointer;">' + esc(it.name) + ' <b>' + (a > 0 ? '+' : '') + a + '</b></button>';
         }).join('') +
-        '<button type="button" id="ssbkManage" style="border:1px dashed #D9D8D5;background:#fff;color:#898885;border-radius:999px;padding:5px 13px;font:inherit;font-size:.82rem;cursor:pointer;">항목 관리</button>';
+        '<button type="button" id="ssbkManage" style="border:1px dashed #D9D8D5;background:#fff;color:#898885;border-radius:0;padding:5px 13px;font:inherit;font-size:.82rem;cursor:pointer;">항목 관리</button>';
         Array.prototype.forEach.call(wrap.querySelectorAll('.ssbk-chip'), function (c) {
           c.onclick = function () {
             var it = items[Number(c.dataset.i)]; if (!it) return;
@@ -2492,7 +2492,7 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
           '<div class="form-card" style="padding:12px 18px;margin-bottom:14px;">' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' + kids.map(function (k, i) {
             var on = i === cur;
-            return '<button type="button" class="ssg-kid" data-i="' + i + '" style="border:1px solid ' + (on ? 'var(--accent,#111111)' : '#D9D8D5') + ';background:' + (on ? 'var(--accent,#111111)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#111111)') + ';border-radius:999px;padding:5px 14px;font:inherit;font-size:.84rem;cursor:pointer;">' + esc(k.name) + '</button>';
+            return '<button type="button" class="ssg-kid" data-i="' + i + '" style="border:1px solid ' + (on ? 'var(--accent,#111111)' : '#D9D8D5') + ';background:' + (on ? 'var(--accent,#111111)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#111111)') + ';border-radius:0;padding:5px 14px;font:inherit;font-size:.84rem;cursor:pointer;">' + esc(k.name) + '</button>';
           }).join('') +
           // 고른 아이가 맨 앞이 아닐 때만 — 누르면 서버에 저장되어 다음부터 이 아이가 먼저 선택된다
           (cur > 0 ? '<button type="button" class="btn btn-line" id="ssgFront" title="이 아이를 맨 앞에 두면 들어올 때 자동으로 선택됩니다" style="padding:4px 11px;font-size:.76rem;margin-left:auto;">◀ ' + esc(c.name) + ' 맨 앞으로</button>' : '') +
@@ -2708,7 +2708,7 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
           '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' +
           ['all', 'QT', '필사', '미션'].map(function (t) {
             var on = fType === t;
-            return '<button type="button" class="ssct-type" data-t="' + t + '" style="border:1px solid ' + (on ? 'var(--accent,#111111)' : '#D9D8D5') + ';background:' + (on ? 'var(--accent,#111111)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#111111)') + ';border-radius:999px;padding:3px 13px;font:inherit;font-size:.76rem;cursor:pointer;">' + (t === 'all' ? '전체' : t) + '</button>';
+            return '<button type="button" class="ssct-type" data-t="' + t + '" style="border:1px solid ' + (on ? 'var(--accent,#111111)' : '#D9D8D5') + ';background:' + (on ? 'var(--accent,#111111)' : '#fff') + ';color:' + (on ? '#fff' : 'var(--accent,#111111)') + ';border-radius:0;padding:3px 13px;font:inherit;font-size:.76rem;cursor:pointer;">' + (t === 'all' ? '전체' : t) + '</button>';
           }).join('') +
           '<label class="sw" style="font-size:.78rem;margin-left:4px;"><input type="checkbox" id="ssctPending"' + (fPending ? ' checked' : '') + '> 미확인만</label>' +
           '<select id="ssctChild" style="padding:4px 8px;border:1px solid #D9D8D5;border-radius:2px;font:inherit;font-size:.78rem;"><option value="">자녀 전체</option>' +
