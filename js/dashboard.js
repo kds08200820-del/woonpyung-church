@@ -927,12 +927,22 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
             '</div>';
           loadAmenState(me, qDate);
         }
-        function openFull() { var full = document.getElementById('dashQtFull'); if (!full) return; renderFullOnce(); opened = true; full.hidden = false; }
+        /* 뒤로 가기(2026-11-11 담임목사): 묵상을 펼치거나 듣는 중에 뒤로 가기를 누르면 처음 화면으로 나가지 않고
+           펼친 묵상만 닫혀 대시보드에 그대로 남는다. 펼칠 때 방문 기록을 한 칸 쌓아 두고, 뒤로 가기가 그 칸을 쓰게 한다 */
+        var qtHist = false;
+        function pushQt() { if (qtHist) return; try { history.pushState({ dashQt: 1 }, ''); qtHist = true; } catch (e) {} }
+        function closeFull(fromBack) {
+          var full = document.getElementById('dashQtFull'); opened = false; if (full) full.hidden = true;
+          if (fromBack) { try { if (window.WPCTts && window.WPCTts.stop) window.WPCTts.stop(); } catch (e) {} }
+          else if (qtHist) { qtHist = false; try { history.back(); } catch (e) {} }
+        }
+        if (window.__dashQtPop) window.removeEventListener('popstate', window.__dashQtPop);
+        window.__dashQtPop = function () { if (qtHist) { qtHist = false; closeFull(true); } };
+        window.addEventListener('popstate', window.__dashQtPop);
+        function openFull() { var full = document.getElementById('dashQtFull'); if (!full) return; renderFullOnce(); opened = true; full.hidden = false; pushQt(); }
         document.getElementById('dashQtOpen').onclick = function () {
-          opened = !opened;
-          var full = document.getElementById('dashQtFull');
-          full.hidden = !opened;
-          if (opened) renderFullOnce();
+          if (opened) { closeFull(false); return; }
+          openFull();
         };
         // 오늘의 말씀 듣기 — 누르면 본문(묵상 전문)을 자동으로 펼치고 낭독
         (function () {
