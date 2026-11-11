@@ -399,6 +399,22 @@
 .dc-qt small { color: var(--muted); font-size: .78rem; margin-left: 4px; }
 .dc-qs .dc-verses { gap: 4px; }
 .dc-qs .dc-vbtn { min-height: 40px; padding: 7px 10px; }
+/* 문항별 답 — 수강생: 내 답 칸 / 인도자: 수강생 답 펼치기 */
+.dc-ans { margin: 8px 0 4px; }
+.dc-ans label { display: block; margin: 0 0 4px; font-size: .8rem; font-weight: 700; color: var(--ink-soft); }
+.dc-ans-st { font-weight: 400; color: var(--muted); }
+.dc-ans textarea { display: block; width: 100%; box-sizing: border-box; min-height: 64px; padding: 9px 11px; font: inherit; font-size: .95rem; line-height: 1.6; border: 1px solid var(--line); border-radius: 2px; background: #fff; color: var(--ink); resize: vertical; }
+.dc-ans textarea:focus { outline: 2px solid #111; outline-offset: 1px; }
+.dc-ans textarea::placeholder { color: #9A9893; }
+.dc-ansl { margin: 8px 0 4px; font-size: .88rem; }
+.dc-ansl summary { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; cursor: pointer; user-select: none; color: var(--ink-soft); }
+.dc-ansl ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.cr-think .dc-ansl ul { padding-left: 0; list-style: none; }
+.dc-ansl li { display: grid; grid-template-columns: 6.5em 1fr; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--line); background: #fff; line-height: 1.6; }
+.dc-ansl li b { color: var(--ink); }
+.dc-ansl li span { white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; color: var(--ink-soft); }
+.cr-think > ul > li { margin: 0 0 12px; }
+@media (max-width: 560px) { .dc-ansl li { grid-template-columns: 1fr; gap: 2px; } }
 
 /* ── 강의 창 (js/disciple-show.js) — 오늘의 예배 슬라이드처럼 화면 가득 ── */
 .dcs { position: fixed; inset: 0; z-index: 9600; display: flex; flex-direction: column; height: 100vh; height: 100dvh; background: #141414; color: #F4F3EF; outline: none; }
