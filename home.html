@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261111m5" />
+  <link rel="stylesheet" href="css/style.css?v=20261111m6" />
   <link rel="stylesheet" href="css/worship.css?v=20261111m1" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <style>
@@ -120,7 +120,7 @@
         <h2 style="margin-top:14px">나의 신앙정원</h2>
         <p class="hp-sub" style="color:#555">내가 가꾸는 믿음의 정원</p>
         <div class="hp-today">
-          <span data-go="#home"><i>오늘의 예배</i><b id="hpGW">예배 안내</b></span>
+          <span data-go="#home" class="hp-wbox"><i>오늘의 예배</i><b id="hpGW">예배 안내</b><em id="hpGC" aria-live="off"></em><small id="hpGL"></small></span>
           <span data-go="#qt"><i>오늘의 QT</i><b id="hpGQ">오늘의 말씀 묵상</b></span>
         </div>
         <div class="hp-reveal"><div><div class="hp-in">
@@ -214,11 +214,24 @@
       var c = list[0], live = c.diff <= 0;
       document.getElementById("hpNow").textContent = live ? "지금 드리는 예배" : "다음 예배 · " + (c.wd === d && c.diff < 1440 ? "오늘" : DAY[c.wd]);
       document.getElementById("hpTitle").textContent = c.name;
+      hpNext = Date.now() + (c.diff * 60 - now.getSeconds()) * 1000; hpLive = live;
       document.getElementById("hpGW").textContent = (live ? "지금 · " : (c.wd === d && c.diff < 1440 ? "오늘 " : DAY[c.wd] + " ")) + c.name.replace(/^주일 /, "") + " " + hm(c.h, c.m);
       document.getElementById("hpSub").textContent = hm(c.h, c.m) + (live ? " 시작" : c.diff < 60 ? " · " + c.diff + "분 뒤" : c.diff < 1440 ? " · " + Math.round(c.diff / 60) + "시간 뒤" : "");
       document.getElementById("hpRows").innerHTML = list.slice(0, 4).map(function (x, i) { return '<div class="' + (i === 0 ? "now" : "") + '"><span>' + DAY[x.wd] + " " + x.name.replace(/^주일 /, "") + "</span><span>" + hm(x.h, x.m) + "</span></div>"; }).join("");
     }
-    tick(); setInterval(tick, 60000);
+    /* 카운터: 다음 예배까지 남은 시간을 1초마다 (하루 넘게 남으면 'N일'을 앞에) */
+    var hpNext = 0, hpLive = false;
+    function p2(n) { return (n < 10 ? "0" : "") + n; }
+    function count() {
+      var el = document.getElementById("hpGC"), lb = document.getElementById("hpGL");
+      if (hpLive) { el.textContent = "예배 중"; lb.textContent = "지금 드리고 있습니다"; return; }
+      var s = Math.max(0, Math.round((hpNext - Date.now()) / 1000));
+      if (s === 0) { tick(); return; }
+      var dd = Math.floor(s / 86400), hh = Math.floor(s % 86400 / 3600), mm = Math.floor(s % 3600 / 60), ss = s % 60;
+      el.textContent = (dd ? dd + "일 " : "") + p2(hh) + ":" + p2(mm) + ":" + p2(ss);
+      lb.textContent = "시작까지 남은 시간";
+    }
+    tick(); setInterval(tick, 60000); count(); setInterval(count, 1000);
   })();
   </script>
 

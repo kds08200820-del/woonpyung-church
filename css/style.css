@@ -2223,3 +2223,11 @@ body { background: #fff; letter-spacing: .01em; }
 .hp-today i { font-style: normal; font-size: .66rem; letter-spacing: .14em; color: var(--muted); flex: none; }
 .hp-today b { font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
 .hp-garden .hp-rows { display: none; }
+
+/* 정원 칸 '오늘의 예배': 음영 상자로 강조 + 남은 시간 카운터 (2026-11-11 담임목사 지시) */
+.hp-today { border-top: 0; }
+.hp-today span.hp-wbox { display: grid; grid-template-columns: 1fr; gap: 2px; padding: 14px 16px 15px; margin-bottom: 4px; background: rgba(17,17,17,.075); border-bottom: 0; border-left: 2px solid var(--ink); white-space: normal; }
+.hp-today .hp-wbox b { font-size: .92rem; font-weight: 500; white-space: nowrap; }
+.hp-today .hp-wbox em { font-style: normal; font-size: 1.7rem; font-weight: 300; line-height: 1.25; letter-spacing: .02em; font-variant-numeric: tabular-nums; margin-top: 6px; white-space: nowrap; }
+.hp-today .hp-wbox small { font-size: .66rem; letter-spacing: .1em; color: var(--muted); }
+.hp-today span.hp-wbox:hover { background: rgba(17,17,17,.11); }
