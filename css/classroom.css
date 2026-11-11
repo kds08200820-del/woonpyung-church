@@ -253,6 +253,7 @@
 /* ════════ 제자훈련 양육반 (js/disciple.js · 2026-11-11 담임목사 지시) — 접두사 dc- ════════ */
 /* 강의실 첫 화면: 문답 교육 / 제자훈련 두 칸으로 나눔(2026-11-11) */
 .cr-sect + .cr-sect { margin-top: 44px; }
+.cr-sect[hidden] + .cr-sect { margin-top: 0; }   /* 양육반 칸(맨 위)이 안 보이는 분은 문답 교육이 바로 맨 위 (2026-11-12) */
 .cr-sect-head { margin: 0 0 16px; padding: 14px 0 0; border-top: 3px solid #111; }
 .cr-sect-eye { margin: 0 0 4px; font-size: .76rem; font-weight: 700; letter-spacing: .08em; color: var(--muted); }
 .cr-sect-head h2 { margin: 0 0 6px; font-size: 1.4rem; line-height: 1.35; }

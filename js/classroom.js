@@ -223,10 +223,12 @@ console.log('[classroom.js] v20261111dc2');
   }
 
   /* ═════════════ 첫 화면 ═════════════
-     (2026-11-11 담임목사) 강의를 둘로 나눈다 — ① 문답 교육(학습·세례(입교)·유아세례, 누구나 혼자 공부)
-     ② 제자훈련 양육반(반 모임) — 양육반은 반에 등록된 수강생·인도자·관리자에게만 보인다(js/disciple.js mount). */
+     (2026-11-11 담임목사) 강의를 둘로 나눈다 — ① 제자훈련 양육반(반 모임) — 반에 등록된 수강생·인도자·관리자에게만 보인다(js/disciple.js mount)
+     ② 문답 교육(학습·세례(입교)·유아세례, 누구나 혼자 공부).
+     (2026-11-12 담임목사 "양육반 수업을 맨 위로 — 학습·세례 등은 자주 있는 것이 아닙니다") 양육반 칸을 맨 위에 둔다. */
   function renderHome() {
     var html = '<div class="cr-wrap is-home">' +
+      '<section class="cr-sect is-disc" id="crDisc" aria-labelledby="crSecD" hidden></section>' +
       '<section class="cr-sect" aria-labelledby="crSecQ"><header class="cr-sect-head"><p class="cr-sect-eye">문답 교육</p>' +
       '<h2 id="crSecQ">학습 · 세례(입교) · 유아세례</h2><p>혼자 장마다 공부하고 이수 시험을 봅니다. 당회 문답과 예식을 준비하는 과정입니다.</p></header>' +
       '<section class="cr-guide" aria-labelledby="crGuideT"><h2 id="crGuideT">문답 교육은 이렇게 진행됩니다</h2>' +
@@ -244,7 +246,6 @@ console.log('[classroom.js] v20261111dc2');
       (S ? mineHTML() : '<div class="cr-card" style="margin-top:22px"><h2>로그인하고 시작하세요</h2><p>공부한 진도와 시험 결과는 내 계정에 기록되어 교적에 이수로 남습니다.</p><div class="cr-acts"><button type="button" class="cr-btn" data-login>로그인</button></div></div>') +
       '<p class="cr-note">' + esc(C.source) + ' 이 강의실의 이수는 교육을 마쳤다는 기록이며, 학습·세례(입교)·유아세례는 당회의 문답과 예식을 거쳐 받습니다.</p>' +
       '</section>' +
-      '<section class="cr-sect is-disc" id="crDisc" aria-labelledby="crSecD" hidden></section>' +
       '</div>';
     root.innerHTML = html;
     bindLogin();
