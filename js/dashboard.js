@@ -203,7 +203,8 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
 
   /* ================= 나의 출석 (2026-09-27) =================
      어른: 홈페이지 '오늘의 예배' 단추(예배 시간에만)로 · 어린이: 주일학교 달란트 '출석'·'출석(지각)'으로.
-     출석률 = 출석한 주일 ÷ 첫 출석 기록 뒤로 지난 주일 수 (기록을 시작한 2026-09-27 이전은 세지 않는다) */
+     출석률 = 출석한 주일 ÷ 첫 출석 기록 뒤로 지난 주일 수 (기록을 시작한 2026-09-27 이전은 세지 않는다)
+     → 2026-11-11 부터 어른은 담임목사 기준(모인 예배: 주일·수요기도회·새벽기도회) — 아래 attPersonBasis. 어린이는 그대로 */
   var ATT_START = '2026-09-27';
   function attYmd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function attSundays(from, to) {
@@ -254,7 +255,8 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
     }).join(' &nbsp;') + '</div>';
   }
   /* 출석 월별 그래프 — 달마다 모인 날(회색) 위에 출석한 날(초록)을 쌓는다 */
-  function attMonthChart(st, fromYm, toYm) {
+  function attMonthChart(st, fromYm, toYm, heldWord) {   /* heldWord: '날'(주일) · '예배'(모인 예배 기준) */
+    heldWord = heldWord || '날';
     var per = monthRange(fromYm, toYm).map(function (ym) {
       var ds = st.days.filter(function (d) { return d.slice(0, 7) === ym; });
       return { ym: ym, held: ds.length, came: ds.filter(function (d) { return st.byDay[d]; }).length };
@@ -262,29 +264,30 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
     var max = Math.max(1, Math.max.apply(null, per.map(function (x) { return x.held; }))), unit = CH_H / max;
     return monthColumns(per.map(function (x) {
       var mon = (+x.ym.slice(5, 7)) + '월';
-      return { label: mon, tip: x.ym.slice(0, 4) + '년 ' + mon + (x.held ? ': 모인 날 ' + x.held + '번, 출석 ' + x.came + '번' : ': 기록 없음'),
+      return { label: mon, tip: x.ym.slice(0, 4) + '년 ' + mon + (x.held ? ': 모인 ' + heldWord + ' ' + x.held + '번, 출석 ' + x.came + '번' : ': 기록 없음'),
         segs: x.held ? [{ h: (x.held - x.came) * unit, color: '#E6E5E1' }, { h: x.came * unit, color: '#111111' }].filter(function (sg) { return sg.h > 0; }) : [],
         text: x.held ? x.came + '/' + x.held : '–', textStyle: x.held ? 'font-weight:700;color:' + (x.came === x.held ? '#111111' : '#333333') : '' };
-    })) + chartLegend([['#111111', '출석'], ['#E6E5E1', '결석 · 숫자는 출석/모인 날']]);
+    })) + chartLegend([['#111111', '출석'], ['#E6E5E1', '결석 · 숫자는 출석/모인 ' + heldWord]]);
   }
-  /* 출석 그래프(상세 보기 전) — 진행 막대 + 월별 그래프 + (어린이) 격려 한 줄. isChild 면 1월부터, 어른은 셈을 시작한 달부터 */
-  function attGraph(st, isChild, unitWord) {
-    if (!st.days.length) return '<div style="font-size:.82rem;color:#8A8A86;margin-top:4px">아직 기록된 ' + unitWord + '이 없습니다</div>';
+  /* 출석 그래프(상세 보기 전) — 진행 막대 + 월별 그래프 + (어린이) 격려 한 줄. isChild 면 1월부터, 어른은 셈을 시작한 달부터
+     st.days 는 날짜('YYYY-MM-DD') 또는 모인 예배('YYYY-MM-DD|종류') — 앞 10자가 날짜 */
+  function attGraph(st, isChild, unitWord, heldWord) {
+    if (!st.days.length) { var lc = unitWord.charCodeAt(unitWord.length - 1) - 0xAC00; return '<div style="font-size:.82rem;color:#8A8A86;margin-top:4px">아직 기록된 ' + unitWord + (lc >= 0 && lc < 11172 && lc % 28 === 0 ? '가' : '이') + ' 없습니다</div>'; }
     var today = todayStr(), yr = today.slice(0, 4);
     var fromYm = isChild ? yr + '-01' : st.days[0].slice(0, 7), toYm = today.slice(0, 7);
     return '<div title="출석률 ' + st.rate + '%" style="background:#E6E5E1;border-radius:2px;height:12px;overflow:hidden;margin-top:6px"><div style="width:' + st.rate + '%;height:12px;background:' + attColor(st.rate) + ';border-radius:2px"></div></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:.78rem;color:#8A8A86;margin-top:3px"><span>' + (isChild ? '올해 주일학교가 모인 ' : '') + unitWord + ' ' + st.days.length + '번 중 ' + st.came + '번 출석</span><span>' + esc(st.days[0].slice(5).replace('-', '/')) + '부터</span></div>' +
-      attMonthChart(st, fromYm, toYm);
+      '<div style="display:flex;justify-content:space-between;font-size:.78rem;color:#8A8A86;margin-top:3px"><span>' + (isChild ? '올해 주일학교가 모인 ' : '') + unitWord + ' ' + st.days.length + '번 중 ' + st.came + '번 출석</span><span>' + esc(st.days[0].slice(5, 10).replace('-', '/')) + '부터</span></div>' +
+      attMonthChart(st, fromYm, toYm, heldWord);
   }
-  /* 출석 숫자 칸(상세 보기 안) — 출석·결석·연속 (지각 칸은 2026-09-29 뺌) */
-  function attNumbers(st) {
+  /* 출석 숫자 칸(상세 보기 안) — 출석·결석·연속 (지각 칸은 2026-09-29 뺌). streakUnit: '주'(주일) · '번'(모인 예배) */
+  function attNumbers(st, streakUnit) {
     var cell = function (label, val, color) {
       return '<div style="flex:1;min-width:64px;background:#FFFFFF;border:1px solid #E6E5E1;border-radius:2px;padding:8px 6px;text-align:center">' +
         '<div style="font-size:.72rem;color:#8A8A86">' + label + '</div><div style="font-size:1.05rem;font-weight:800;color:' + color + '">' + val + '</div></div>';
     };
     return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">' +
       cell('출석', st.came + '번', '#111111') + cell('결석', st.absent + '번', st.absent ? '#333333' : '#8A8A86') +
-      cell('연속 출석', st.streak + '주', 'var(--accent,#111111)') + '</div>';
+      cell('연속 출석', st.streak + (streakUnit || '주'), 'var(--accent,#111111)') + '</div>';
   }
   function attRateHead(st) {
     return '<span style="margin-left:auto;white-space:nowrap"><span style="font-size:.78rem;color:#8A8A86">출석률 </span><span style="font-size:1.5rem;font-weight:800;color:' + attColor(st.rate) + '">' + st.rate + '%</span></span>';
@@ -311,6 +314,48 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
       (wed || dawn ? '<div style="font-size:.85rem;color:#333333;margin-top:4px">올해 수요기도회 ' + wed + '번 · 새벽기도회 ' + dawn + '번</div>' : '') +
       attGraph(st, false, '주일') +
       (rows.length ? detailsBox('상세 보기 — 출석 횟수·예배별 날짜', attNumbers(st) + attDetail(rows)) : '') + '</div>';
+  }
+  /* ── 출석률의 기준 = 담임목사 (2026-11-11 담임목사: "담임 목사는 예배 인도자이기 때문에 모든 예배에 100% 참석 합니다.
+       김동석 목사의 출결이 100이고 그것을 기준으로 다른 사람들의 출결이 비율에 따라 조정 되어야 합니다")
+       · 분모 = 모인 예배: 주일(1부·2부·통합은 하루 한 번)·수요기도회·새벽기도회 가운데 누구든 출석한 예배 = 담임목사가 인도한 예배.
+         서버 attendance_basis() 가 날짜·종류만 돌려준다(누가 왔는지는 주지 않는다) — supabase/20261111_2330_attendance_pastor_basis.sql
+       · 내 출석률 = 내가 출석한 모인 예배 ÷ 내 첫 출석 기록 뒤로 모인 예배. 오늘 예배는 출석했을 때만 셈에 넣는다
+       · 담임목사(서버가 내 열쇠 가운데 알려 준 열쇠)는 늘 100% — 기록 시작(9/27) 뒤 모인 예배를 모두 출석으로 본다
+       · 그 SQL 을 실행하기 전(함수 없음)이면 예전 셈(주일만, attPerson) ── */
+  var ATT_KIND_NAME = { sunday: '주일', wed: '수요기도회', dawn: '새벽기도회' };
+  function attKind(service) { return service === '주일학교' ? '' : /^주일/.test(service) ? 'sunday' : service === '수요기도회' ? 'wed' : service === '새벽기도회' ? 'dawn' : ''; }
+  var attBasisP = null;
+  function attBasis() {
+    if (!attBasisP) attBasisP = brFetch('rpc/attendance_basis', { method: 'POST', body: '{}' })
+      .then(function (j) { return j && j.ok && Array.isArray(j.held) ? j : null; }).catch(function () { return null; });
+    return attBasisP;
+  }
+  function attPersonBasis(name, rows, basis, isPastor) {
+    var today = attYmd(new Date());
+    var mine = {};
+    rows.forEach(function (r) { var k = attKind(r.service); if (k) mine[r.att_date + '|' + k] = 1; });
+    var first = rows.length ? rows.map(function (r) { return r.att_date; }).sort()[0] : today;
+    var start = isPastor || first < ATT_START ? ATT_START : first;
+    var held = {};
+    basis.held.forEach(function (h) { if (h && h.d && ATT_KIND_NAME[h.k]) held[String(h.d).slice(0, 10) + '|' + h.k] = 1; });
+    Object.keys(mine).forEach(function (u) { held[u] = 1; });   /* 내가 출석한 예배는 늘 모인 예배 */
+    var days = Object.keys(held).filter(function (u) { var d = u.slice(0, 10); return d >= start && d <= today && (d < today || isPastor || mine[u]); }).sort();
+    var st = attStats(days, days.filter(function (u) { return isPastor || mine[u]; }).map(function (u) { return { att_date: u, late: false }; }));
+    if (isPastor) st.rate = 100;
+    var per = ['sunday', 'wed', 'dawn'].map(function (k) {
+      var ds = days.filter(function (u) { return u.slice(11) === k; });
+      return { k: k, held: ds.length, came: ds.filter(function (u) { return st.byDay[u]; }).length };
+    });
+    var line = isPastor
+      ? '모든 예배를 인도하므로 출석률의 기준(100%)입니다 · ' + per.map(function (p) { return ATT_KIND_NAME[p.k] + ' ' + p.held + '번'; }).join(' · ')
+      : per.map(function (p) { return ATT_KIND_NAME[p.k] + ' ' + p.came + '/' + p.held; }).join(' · ');
+    var detailRows = isPastor ? days.map(function (u) { return { att_date: u.slice(0, 10), service: u.slice(11) === 'sunday' ? '주일 예배' : ATT_KIND_NAME[u.slice(11)] }; }) : rows;
+    return '<div class="att-person" style="padding:10px 0;border-top:1px solid #E6E5E1">' +
+      '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b>' + esc(name) + '</b>' +
+        (isPastor ? '<span style="font-size:.72rem;border:1px solid #111111;border-radius:999px;padding:0 7px;color:#111111">담임목사 · 기준</span>' : '') + attRateHead(st) + '</div>' +
+      '<div class="att-kinds" style="font-size:.85rem;color:#333333;margin-top:4px">' + esc(line) + '</div>' +
+      attGraph(st, false, '모인 예배', '예배') +
+      (detailRows.length ? detailsBox('상세 보기 — 출석 횟수·예배별 날짜', attNumbers(st, '번') + attDetail(detailRows)) : '') + '</div>';
   }
   /* 예배 종류별 출석 횟수와 날짜 표 (최근 것부터) */
   var ATT_KINDS = ['주일 1부', '주일 2부', '주일 예배', '수요기도회', '새벽기도회', '주일학교'];
@@ -339,11 +384,16 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
       if (isSsStudent(ctx)) { box.innerHTML = ''; return null; }
       if (!people.length) { card('<p class="qt-empty" style="margin:0">교적이 연결되면 출석이 여기에 보입니다.</p>'); return null; }
       var inList = people.map(function (x) { return '"' + String(x.key).replace(/"/g, '') + '"'; }).join(',');
-      return brFetch('attendance?select=att_date,service,member_key,late,late_min&member_key=in.(' + encodeURIComponent(inList) + ')&order=att_date.desc&limit=2000');
-    }).then(function (rows) {
-      if (!rows) return;
-      var body = people.map(function (x) { return attPerson(x.name, rows.filter(function (r) { return r.member_key === x.key; })); }).join('');
-      card('<p style="margin:0 0 4px;font-size:.82rem;color:#8A8A86">예배 시간에 홈페이지 첫 화면의 <b>오늘의 예배</b> 단추를 누르면 출석이 됩니다.' + (people.length > 1 ? ' 나와 배우자의 출석입니다.' : '') + '</p>' + body);
+      return Promise.all([brFetch('attendance?select=att_date,service,member_key,late,late_min&member_key=in.(' + encodeURIComponent(inList) + ')&order=att_date.desc&limit=2000'), attBasis()]);
+    }).then(function (res) {
+      if (!res || !res[0]) return;
+      var rows = res[0], basis = res[1], pk = (basis && basis.pastor) || [];
+      var body = people.map(function (x) {
+        var mine = rows.filter(function (r) { return r.member_key === x.key; });
+        return basis ? attPersonBasis(x.name, mine, basis, pk.indexOf(x.key) >= 0) : attPerson(x.name, mine);
+      }).join('');
+      card('<p style="margin:0 0 4px;font-size:.82rem;color:#8A8A86">예배 시간에 홈페이지 첫 화면의 <b>오늘의 예배</b> 단추를 누르면 출석이 됩니다.' + (people.length > 1 ? ' 나와 배우자의 출석입니다.' : '') +
+        (basis ? ' 출석률은 모인 예배(주일·수요기도회·새벽기도회)를 기준으로 셉니다 — 모든 예배를 인도하시는 담임목사님이 100%입니다.' : '') + '</p>' + body);
     }).catch(function () { card('<p class="qt-empty" style="margin:0">출석을 읽지 못했습니다.</p>'); });
   }
   /* 관리자: 최근 5주 예배별 출석 수 */

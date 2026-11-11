@@ -258,20 +258,37 @@
     if (kind === 'sunday') { var p = byPart(+part); return p && p.single ? '주일 예배' : '주일 ' + part + '부'; }
     return kind === 'wed' ? '수요기도회' : kind === 'dawn' ? '새벽기도회' : '';
   }
+  function attRpc(fn, s, svc) {
+    return fetch(window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/rpc/' + fn, { method: 'POST', keepalive: true,   /* keepalive: 설교하기가 이 탭을 떠나도(팝업 막힘) 기록은 끝까지 */
+      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + s.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_service: svc }) });
+  }
+  function attToast(j, svc) {
+    if (!j) return;
+    if (j.ok && !j.already) toastWs('출석했습니다 — ' + svc + (j.late ? ' · ' + j.late_min + '분 늦음' : ' · 정시'));
+    else if (j.ok && j.already) toastWs('오늘 ' + svc + ' 출석은 이미 되어 있습니다');
+    else if (j.why === 'member') toastWs('내 정보에서 교적을 연결하면 출석이 기록됩니다');
+  }
   function attend(kind, part) {
     var s = session(), svc = serviceName(kind, part);
     if (!svc || heroForce) return;
     if (!s) { toastWs('로그인하면 출석이 기록됩니다'); return; }
-    fetch(window.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/rpc/attend_hero', { method: 'POST',
-      headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + s.token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_service: svc }) })
+    attRpc('attend_hero', s, svc)
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) {
-        if (!j) return;
-        if (j.ok && !j.already) toastWs('출석했습니다 — ' + svc + (j.late ? ' · ' + j.late_min + '분 늦음' : ' · 정시'));
-        else if (j.ok && j.already) toastWs('오늘 ' + svc + ' 출석은 이미 되어 있습니다');
-        else if (j.why === 'member') toastWs('내 정보에서 교적을 연결하면 출석이 기록됩니다');
-      }).catch(function () {});
+      .then(function (j) { attToast(j, svc); }).catch(function () {});
+  }
+  /* 설교하기를 누르면 그 예배 출석 (2026-11-11 담임목사 "수요기도회 설교하기를 누르면 출결이 체크 되어야 합니다")
+     — attend_preach: 관리자만, 예배 전 카운트 때(시작 4시간 전부터) 눌러도 출석·정시 (supabase/20261111_2330_attendance_pastor_basis.sql)
+     — 그 SQL 을 실행하기 전(함수 없음 404)·서버 오류면 오늘의 예배 단추와 같은 attend_hero 로(예배 시간 10분 전부터만 된다) */
+  function attendPreach(kind, part) {
+    var s = session();
+    if (!s || heroForce) return;                    /* 미리 보기(?worship=)는 세지 않는다 */
+    if (kind === 'sunday' && !part) { var sv = services(false).filter(function (x) { return x.kind === 'sunday'; })[0]; part = sv ? sv.part : (byPart(2).single ? 2 : 1); }
+    var svc = serviceName(kind, part); if (!svc) return;
+    attRpc('attend_preach', s, svc)
+      .then(function (r) { return r.ok ? r : attRpc('attend_hero', s, svc); })   /* 함수가 없거나(404) 서버 오류면 예전 함수로 */
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { attToast(j, svc); }).catch(function () {});
   }
   function heroSlide() {
     var rot = $('heroRotator'); if (!rot) return;
@@ -361,18 +378,22 @@
   }
   /* ── 설교하기 (2026-10-10 담임목사 요청): 주일·수요·새벽 예배가 히어로에 뜨면 관리자(담임목사)에게만 '설교하기' —
        누르면 새 탭에서 목회 행정이 그날 그 예배의 설교를 발표자 모드로 바로 연다(affairs.html?present=종류&date=날짜).
-       발표자 모드는 목회 행정(관리자 전용)에 있어 관리자에게만 보인다. 방송실 전체 화면에서는 숨긴다. ── */
+       발표자 모드는 목회 행정(관리자 전용)에 있어 관리자에게만 보인다. 방송실 전체 화면에서는 숨긴다.
+       누르면 그 예배 출석도 남는다(attendPreach, 2026-11-11). items: [{ kind, part }] — 주일은 몇 부인지 알아야 출석을 남긴다 ── */
   var PREACH_NAME = { sunday: '주일 낮 예배', wed: '수요기도회', dawn: '새벽기도' };
-  function preachRow(d, kinds) {
-    kinds = kinds.filter(function (k, i) { return PREACH_NAME[k] && kinds.indexOf(k) === i; });
+  function preachRow(d, items) {
+    var parts = {};
+    var kinds = items.map(function (it) { var k = typeof it === 'string' ? it : it.kind; if (it && it.part && !parts[k]) parts[k] = it.part; return k; })
+      .filter(function (k, i, a) { return PREACH_NAME[k] && a.indexOf(k) === i; });
     if (!kinds.length || !session()) return;
     isAdmin().then(function (ok) {
       if (!ok || !d.isConnected || d.querySelector('.hw-preach-row')) return;
       var row = document.createElement('div'); row.className = 'hw-preach-row';
-      row.innerHTML = kinds.map(function (k) { return '<button type="button" class="hero-cta hw-preach" data-k="' + k + '">' + (kinds.length > 1 ? esc(PREACH_NAME[k]) + ' ' : '') + '설교하기<small>발표자 모드 · 담임목사</small></button>'; }).join('');
+      row.innerHTML = kinds.map(function (k) { return '<button type="button" class="hero-cta hw-preach" data-k="' + k + '" data-part="' + (parts[k] || '') + '">' + (kinds.length > 1 ? esc(PREACH_NAME[k]) + ' ' : '') + '설교하기<small>발표자 모드 · 담임목사</small></button>'; }).join('');
       var after = d.querySelector('.hw-btns'); if (after && after.nextSibling) d.insertBefore(row, after.nextSibling); else d.appendChild(row);
       row.addEventListener('click', function (e) {
         var b = e.target.closest('.hw-preach'); if (!b) return;
+        attendPreach(b.dataset.k, b.dataset.part);
         var w = window.open('affairs.html?present=' + encodeURIComponent(b.dataset.k) + '&date=' + todayStr, '_blank');
         if (!w) location.href = 'affairs.html?present=' + encodeURIComponent(b.dataset.k) + '&date=' + todayStr;   /* 팝업이 막히면 이 탭에서 */
       });
@@ -392,7 +413,7 @@
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
     d.addEventListener('click', function (e) { var b = e.target.closest('.hw-btn'); if (!b) return; enter(b.dataset.kind, b.dataset.part); });
-    preachRow(d, list.map(function (s) { return s.kind; }));
+    preachRow(d, list.map(function (s) { return { kind: s.kind, part: s.part }; }));
     var again = null; try { again = sessionStorage.getItem('ws_enter'); sessionStorage.removeItem('ws_enter'); } catch (e) {}
     if (again) { var b0 = d.querySelector('.hw-btn'); if (b0) setTimeout(function () { b0.click(); }, 0); }   /* 날이 바뀐 채 단추를 눌러 새로 읽었으면 바로 들어간다 */
   }
@@ -420,7 +441,7 @@
     /* 카운트가 도는 동안(1시간·30분 전)에도 예배 순서·본문을 미리 볼 수 있다 — 출석은 예배 시간에만 (2026-09-27)
        방송실 전체 화면(.hw-fs)에서는 .hw-btns 가 숨겨져 카운트만 나간다 */
     d.querySelector('#hwPrep button').addEventListener('click', function () { enter(sc.kind, sc.part, true); });
-    preachRow(d, [sc.kind]);
+    preachRow(d, [{ kind: sc.kind, part: sc.part }]);
     var hero = rot.closest('.hero') || document.body;
     ['.hero-verse', '#heroDots', '.hero-since'].forEach(function (sel) { var el = hero.querySelector(sel); if (el) el.hidden = true; });
     hero.classList.add('hero-worship-only');
