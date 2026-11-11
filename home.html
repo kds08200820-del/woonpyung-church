@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261111m7" />
+  <link rel="stylesheet" href="css/style.css?v=20261111m8" />
   <link rel="stylesheet" href="css/worship.css?v=20261111m1" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <style>
@@ -182,6 +182,23 @@
         </div></div></div>
       </div>
     </a>
+    <a class="hp-panel hp-photo hp-affairs" href="affairs.html" id="hpAffairs" hidden>
+      <div class="hp-bg" style="background-image:url('images/home/bible.webp?v=20261111m1')"></div><div class="hp-veil"></div>
+      <div class="hp-num"><span class="hp-cap">05</span><span class="hp-cap">Pastoral Office</span></div>
+      <div>
+        <p class="hp-cap">목회자 · 관리자</p>
+        <h2>목회행정</h2>
+        <p class="hp-sub">설교와 예배, 심방과 교육</p>
+        <div class="hp-reveal"><div><div class="hp-in">
+          <div class="hp-rows">
+            <div><span>설교 · 예배</span><span>설교관리 · 주보</span></div>
+            <div><span>목양</span><span>심방 · 상담 · 교육</span></div>
+            <div><span>행정</span><span>신청서 · 자료 · 설정</span></div>
+          </div>
+          <span class="hp-go">목회행정 열기 →</span>
+        </div></div></div>
+      </div>
+    </a>
   </div>
   <script>
   /* 첫 화면 네 칸: 정원 식물은 마우스를 따라 움직이고, 갤러리 사진은 차례로 바뀌고, 예배 칸은 시각에 맞춰 '지금·다음 예배'를 보여 준다 */
@@ -202,6 +219,14 @@
           .catch(function () {});
       }
     } catch (_) {} });
+    /* 목회행정 칸: 관리자에게만 (layout.js 가 메뉴의 '목회행정'(#navAffairs)을 보이게 하면 이 칸도 보인다) */
+    (function () {
+      var n = 0, t = setInterval(function () {
+        var nav = document.getElementById("navAffairs"), p = document.getElementById("hpAffairs");
+        if (nav && p && nav.style.display !== "none") { p.hidden = false; clearInterval(t); }
+        if (++n > 60) clearInterval(t);
+      }, 500);
+    })();
     var shots = [].slice.call(document.querySelectorAll("#hpGallery .hp-bg")), gi = 0;
     setInterval(function () { shots[gi].classList.remove("on"); gi = (gi + 1) % shots.length; shots[gi].classList.add("on"); }, 3600);
     /* 예배 시간표(welcome.html 과 같게): 요일 0=주일. 새벽기도회는 화~금 */

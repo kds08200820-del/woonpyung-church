@@ -2237,3 +2237,7 @@ body { background: #fff; letter-spacing: .01em; }
 .hp-dash .hp-veil { background: rgba(30,22,14,.34); }
 .hp-dash:hover .hp-veil { background: rgba(30,22,14,.5); }
 .hp-dash .hp-cap { color: rgba(255,255,255,.78); }
+
+/* 첫 화면 다섯째 칸: 목회행정 (관리자에게만 보인다) */
+.hp-panel[hidden] { display: none; }
+.hp-affairs .hp-bg { background-position: 38% center; }
