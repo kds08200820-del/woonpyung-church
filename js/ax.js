@@ -190,14 +190,14 @@
     if (!A.wDate) A.wDate = ymd(nextSunday());
     var sm = A.wSermon, active = A.jobs.filter(function (j) { return j.status === 'pending' || j.status === 'processing'; });
     var last = A.jobs.filter(function (j) { return j.claimed_at; }).sort(function (a, b) { return String(b.claimed_at).localeCompare(String(a.claimed_at)); })[0];
-    var sInfo = sm === undefined ? '설교 확인 중…' : sm ? '설교: <b>' + esc(sm.title || '(제목 없음)') + '</b>' + (sm.scripture ? ' · ' + esc(sm.scripture) : '') + (sm.service ? ' <small style="color:#93867C">(' + esc(sm.service) + ')</small>' : '')
+    var sInfo = sm === undefined ? '설교 확인 중…' : sm ? '설교: <b>' + esc(sm.title || '(제목 없음)') + '</b>' + (sm.scripture ? ' · ' + esc(sm.scripture) : '') + (sm.service ? ' <small style="color:#898885">(' + esc(sm.service) + ')</small>' : '')
       : '<span style="color:#A33A2A">이 날짜의 주일 설교가 설교관리에 없습니다 — 원고를 먼저 올려 주세요.</span>';
     return '<div class="ax-card"><h3>⛪ 예배 자료 <small>PPT·큐시트·중등부 교재(학생·교사)·주보·설교 요약 → 자료실까지</small></h3>' +
       '<div class="ax-cmd"><div class="ax-cmd-row" style="margin-top:0"><label><span>어느 주일</span><input type="date" id="ax_wdate" value="' + esc(A.wDate) + '"></label>' +
-      '<label><span>PC 워커</span><div style="padding:10px 0;font-size:.88rem;color:#5B4F46">' + (last ? esc(last.claimed_by || 'PC') + ' · ' + esc(ago(last.claimed_at)) + ' 일함' : '아직 일한 기록이 없습니다') + '</div></label></div>' +
+      '<label><span>PC 워커</span><div style="padding:10px 0;font-size:.88rem;color:#51504D">' + (last ? esc(last.claimed_by || 'PC') + ' · ' + esc(ago(last.claimed_at)) + ' 일함' : '아직 일한 기록이 없습니다') + '</div></label></div>' +
       '<p style="margin:8px 0;font-size:.9rem">' + sInfo + '</p>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 12px;margin:6px 0 4px">' +
-      WOUT.map(function (o) { return '<label class="ax-chk" style="margin:2px 0"><input type="checkbox" data-wout="' + o[0] + '" checked> ' + esc(o[1]) + ' <small style="color:#93867C">→ ' + esc(o[2]) + '</small></label>'; }).join('') + '</div>' +
+      WOUT.map(function (o) { return '<label class="ax-chk" style="margin:2px 0"><input type="checkbox" data-wout="' + o[0] + '" checked> ' + esc(o[1]) + ' <small style="color:#898885">→ ' + esc(o[2]) + '</small></label>'; }).join('') + '</div>' +
       '<div class="ax-acts"><button type="button" class="btn btn-solid" id="ax_wgo"' + (sm ? '' : ' disabled') + '>AX에 맡기기</button>' +
       '<label class="ax-chk" style="margin:0 0 0 6px"><input type="checkbox" id="ax_wauto"' + (A.cfg && A.cfg.auto_worship ? ' checked' : '') + '> 매주 금요일에 AX가 저절로 맡기기</label></div>' +
       '<p class="ax-msg" id="ax_wmsg"></p></div>' +
@@ -212,7 +212,7 @@
       '<div class="ax-task-m">작업 #' + j.id + (j.claimed_by ? ' · ' + esc(j.claimed_by) : '') + ' · ' + esc(ago(j.updated_at || j.created_at)) + (j.progress && (j.status === 'processing' || j.status === 'pending') ? ' · ' + esc(j.progress) : '') + '</div></div>' +
       '<span class="ax-pill ax-st-' + st[1] + '">' + esc(st[0]) + '</span></div>' +
       (chips ? '<div style="margin-top:6px">' + chips + '</div>' : '') +
-      (j.status === 'pending' ? '<div class="ax-task-b" style="color:#93867C">집/교회 PC 워커가 켜져 있어야 시작합니다(30~50분).</div>' : '') +
+      (j.status === 'pending' ? '<div class="ax-task-b" style="color:#898885">집/교회 PC 워커가 켜져 있어야 시작합니다(30~50분).</div>' : '') +
       (items.length ? '<div class="ax-task-r">' + items.map(function (i) { return '📎 ' + (i.path && /^https?:/.test(i.path) ? '<a href="' + esc(i.path) + '" target="_blank" rel="noopener">' + esc(i.title || i.kind) + '</a>' : esc(i.title || i.kind)); }).join('\n') + '</div>' : '') +
       (miss.length ? '<div class="ax-task-b" style="color:#A33A2A">만들지 못함: ' + esc(miss.map(wLabel).join(', ')) + '</div>' : '') +
       (j.status === 'error' ? '<div class="ax-task-b" style="color:#A33A2A">' + esc(j.error || '알 수 없는 오류') + '</div>' : '') + '</div>';
@@ -273,7 +273,7 @@
     var s = A.stats.stats || {}, p = (A.prev && A.prev.stats) || {};
     var cells = STATS.filter(function (x) { return s[x[0]] != null; }).map(function (x) {
       var v = +s[x[0]] || 0, pv = p[x[0]] == null ? null : +p[x[0]] || 0, d = pv == null ? '' : v - pv;
-      return '<div class="ax-stat"><b>' + v.toLocaleString() + (x[2] ? '<small style="display:inline;font-size:.8rem;color:#8B7F76"> ' + x[2] + '</small>' : '') + '</b><span>' + esc(x[1]) + '</span>' +
+      return '<div class="ax-stat"><b>' + v.toLocaleString() + (x[2] ? '<small style="display:inline;font-size:.8rem;color:#81807D"> ' + x[2] + '</small>' : '') + '</b><span>' + esc(x[1]) + '</span>' +
         (pv == null ? '' : '<small class="' + (d > 0 ? 'ax-up' : d < 0 ? 'ax-down' : 'ax-same') + '">지난주 ' + pv.toLocaleString() + (d ? ' (' + (d > 0 ? '+' : '') + d + ')' : '') + '</small>') + '</div>';
     });
     var att = s.attendance || {}, attKeys = Object.keys(att);
@@ -294,9 +294,9 @@
     return '<div class="ax-card"><h3>🗓 다가오는 일정 <small>3주 안</small></h3>' +
       (items.length ? '<ul class="ax-agenda">' + items.slice(0, 14).map(function (x) { return '<li><span class="d">' + mdw(x.d) + '</span><span>' + esc(x.t) + '</span></li>'; }).join('') + '</ul>' : '<p class="ax-empty">다가오는 일정이 없습니다.</p>') +
       cal +
-      '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.82rem;color:#93867C">구글 캘린더 붙이기</summary>' +
+      '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.82rem;color:#898885">구글 캘린더 붙이기</summary>' +
       '<p class="ax-empty" style="font-size:.8rem;margin:6px 0">구글 캘린더 설정 › 캘린더 통합 › ‘삽입 코드’의 src 주소(https://calendar.google.com/calendar/embed?…)를 넣으세요.</p>' +
-      '<div style="display:flex;gap:6px"><input type="text" id="ax_cal" value="' + esc((A.cfg && A.cfg.calendar_src) || '') + '" placeholder="https://calendar.google.com/calendar/embed?src=…" style="flex:1;font:inherit;font-size:.85rem;padding:6px 9px;border:1px solid #D9D1CB;border-radius:8px">' +
+      '<div style="display:flex;gap:6px"><input type="text" id="ax_cal" value="' + esc((A.cfg && A.cfg.calendar_src) || '') + '" placeholder="https://calendar.google.com/calendar/embed?src=…" style="flex:1;font:inherit;font-size:.85rem;padding:6px 9px;border:1px solid #D3D2CF;border-radius:2px">' +
       '<button type="button" class="btn btn-line" id="ax_cal_save" style="padding:5px 12px;font-size:.82rem">저장</button></div></details></div>';
   }
 

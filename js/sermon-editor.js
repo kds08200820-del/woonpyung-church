@@ -62,7 +62,7 @@ window.SermonEditor = (function () {
     video: {   // 유튜브 등 영상 — 블록
       group: 'block', atom: true, selectable: true, attrs: { src: {} },
       parseDOM: [{ tag: 'iframe[src]', getAttrs: function (d) { return { src: d.getAttribute('src') }; } }, { tag: 'div.sdoc-video', getAttrs: function (d) { var f = d.querySelector('iframe'); return f ? { src: f.getAttribute('src') } : false; } }],
-      toDOM: function (n) { return ['div', { 'class': 'sdoc-video' }, ['iframe', { src: n.attrs.src, allowfullscreen: '', style: 'width:100%;aspect-ratio:16/9;border:0;border-radius:8px' }]]; }
+      toDOM: function (n) { return ['div', { 'class': 'sdoc-video' }, ['iframe', { src: n.attrs.src, allowfullscreen: '', style: 'width:100%;aspect-ratio:16/9;border:0;border-radius:2px' }]]; }
     },
     image: {
       inline: true, group: 'inline', draggable: true, attrs: { src: {}, alt: { default: '' }, width: { default: null } },

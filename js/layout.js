@@ -97,7 +97,7 @@
         <div class="footer-actions">
           <a class="kakao-channel-btn" href="https://pf.kakao.com/_xkdNxfX" target="_blank" rel="noopener">카카오톡 채널 추가</a>
           <a class="give-btn" id="giveOnlineBtn" href="javascript:void(0)">온라인헌금</a>
-          <a class="cts-partner" href="https://www.cts.tv" target="_blank" rel="noopener" title="CTS 기독교TV 홈페이지로 이동"><img src="images/cts-partner.png?v=20261010" alt="CTS 기독교TV 동역교회" style="display:block;height:64px;width:auto;border-radius:32px" /></a>
+          <a class="cts-partner" href="https://www.cts.tv" target="_blank" rel="noopener" title="CTS 기독교TV 홈페이지로 이동"><img src="images/cts-partner.png?v=20261010" alt="CTS 기독교TV 동역교회" style="display:block;height:64px;width:auto;border-radius:2px" /></a>
         </div>
         <div class="footer-meta">
           <p>담임목사 김동석 · 원로목사 김충현 · 협동목사 안창선</p>
@@ -191,7 +191,7 @@
       const t = document.createElement("div");
       t.className = "flash-toast";
       t.textContent = msg;
-      t.setAttribute("style", "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(58,40,28,.96);color:#fff;padding:12px 22px;border-radius:30px;font-size:.95rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999;opacity:0;transition:opacity .25s;");
+      t.setAttribute("style", "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(17,17,17,.96);color:#fff;padding:12px 22px;border-radius:2px;font-size:.95rem;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999;opacity:0;transition:opacity .25s;");
       document.body.appendChild(t);
       requestAnimationFrame(() => { t.style.opacity = "1"; });
       setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 2600);
@@ -412,7 +412,7 @@
                 a.href = "affairs.html";
                 a.className = "ac-admin-go";
                 // 색은 페이지 테마(var(--accent))를 따른다 — 목회 행정 화면에서는 먹색
-                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#3A281C);color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
+                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#111111);color:#fff;border-radius:2px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
                 a.onmouseenter = function () { this.style.opacity = ".86"; };
                 a.onmouseleave = function () { this.style.opacity = ""; };
                 a.textContent = "목회행정";
@@ -436,7 +436,7 @@
                 const a = document.createElement("a");
                 a.href = "dashboard.html";
                 a.className = "ac-dash-go";
-                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#3A281C);color:#fff;border-radius:8px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
+                a.style.cssText = "display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;padding:9px 14px;background:var(--accent,#111111);color:#fff;border-radius:2px;font-size:.84rem;font-weight:700;text-decoration:none;letter-spacing:.03em;transition:opacity .18s";
                 a.onmouseenter = function () { this.style.opacity = ".86"; };
                 a.onmouseleave = function () { this.style.opacity = ""; };
                 a.textContent = "대시보드";

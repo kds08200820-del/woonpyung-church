@@ -290,7 +290,7 @@ var WPCTts = (function () {
     seekEl.setAttribute("aria-label", "낭독 위치 이동");
     seekEl.style.cssText = "flex:1;height:6px;cursor:pointer;accent-color:#2f5d3a";
     timeEl = document.createElement("span");
-    timeEl.style.cssText = "font-size:.8rem;color:#93867C;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:84px;text-align:right";
+    timeEl.style.cssText = "font-size:.8rem;color:#898885;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:84px;text-align:right";
     timeEl.textContent = "0:00 / 0:00";
     barWrap.appendChild(seekEl); barWrap.appendChild(timeEl);
     function applySeek() { if (audio && audio.duration) { audio.currentTime = (Number(seekEl.value) / 1000) * audio.duration; updateBar(); } }
@@ -749,8 +749,8 @@ window.WPCQtText = (function () {
       return (uid && token) ? { uid, token } : null;
     } catch (e) { return null; }
   }
-  const AMEN_NOTE = "margin-top:16px;padding:12px 15px;background:#F3EFEB;border-radius:11px;color:#796A5F;font-size:.9rem;line-height:1.55;text-align:center";
-  const AMEN_DONE = "margin-top:16px;padding:13px 15px;background:#e7f4ea;border:1px solid #bfe0c8;border-radius:11px;color:#1e7a45;font-weight:700;font-size:.95rem;text-align:center";
+  const AMEN_NOTE = "margin-top:16px;padding:12px 15px;background:#F8F7F4;border-radius:2px;color:#6D6C69;font-size:.9rem;line-height:1.55;text-align:center";
+  const AMEN_DONE = "margin-top:16px;padding:13px 15px;background:#e7f4ea;border:1px solid #bfe0c8;border-radius:2px;color:#1e7a45;font-weight:700;font-size:.95rem;text-align:center";
   function amenDoneBox(box, cd, sess, rankMsg) {
     box.innerHTML = `<div style="${AMEN_DONE}">${escQt(rankMsg || "✓ 오늘의 큐티를 마치고 아멘 하셨습니다")}</div>`;
     if (rankMsg) return;
@@ -765,7 +765,7 @@ window.WPCQtText = (function () {
     const cd = dotToDash(date), SB = window.SUPABASE_URL, AK = window.SUPABASE_ANON_KEY;
     const sess = qtSession();
     if (!SB || !AK) { box.innerHTML = ""; return; }
-    if (!sess) { box.innerHTML = `<div style="${AMEN_NOTE}"><b>로그인</b>하시면 오늘의 큐티에 <b>아멘</b> 체크를 할 수 있어요. <span style="color:#AFA49C">(화면 오른쪽 위 로그인)</span></div>`; return; }
+    if (!sess) { box.innerHTML = `<div style="${AMEN_NOTE}"><b>로그인</b>하시면 오늘의 큐티에 <b>아멘</b> 체크를 할 수 있어요. <span style="color:#A7A6A3">(화면 오른쪽 위 로그인)</span></div>`; return; }
     const H = { apikey: AK, Authorization: "Bearer " + sess.token };
     box.innerHTML = `<div style="${AMEN_NOTE}">확인 중…</div>`;
     // 본인(user_id) 것만 조회 — 관리자는 전체 qt_checks를 읽을 수 있어 필터 없으면 남의 아멘이 잡힘
@@ -773,7 +773,7 @@ window.WPCQtText = (function () {
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => {
         if (rows && rows.length) { amenDoneBox(box, cd, sess); return; }
-        box.innerHTML = `<label style="display:flex;align-items:center;gap:10px;margin-top:16px;padding:14px 16px;background:#eef5ef;border:1px solid #cfe3d4;border-radius:12px;color:#2f5133;font-size:.95rem;cursor:pointer"><input type="checkbox" id="qtAmenInput" style="width:18px;height:18px"> 기도문까지 읽고, 오늘의 큐티에 <b>아멘</b> 합니다</label>`;
+        box.innerHTML = `<label style="display:flex;align-items:center;gap:10px;margin-top:16px;padding:14px 16px;background:#eef5ef;border:1px solid #cfe3d4;border-radius:2px;color:#2f5133;font-size:.95rem;cursor:pointer"><input type="checkbox" id="qtAmenInput" style="width:18px;height:18px"> 기도문까지 읽고, 오늘의 큐티에 <b>아멘</b> 합니다</label>`;
         const chk = document.getElementById("qtAmenInput");
         chk.addEventListener("change", () => {
           if (!chk.checked) return;
@@ -1167,7 +1167,7 @@ if (modal) {
     let m = document.getElementById("iosGuideModal");
     if (!m) {
       const shareSvg =
-        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3A281C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="M8.5 7.5 12 4l3.5 3.5"/><rect x="5" y="11" width="14" height="9" rx="2"/></svg>';
+        '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4"/><path d="M8.5 7.5 12 4l3.5 3.5"/><rect x="5" y="11" width="14" height="9" rx="2"/></svg>';
       const safariSteps =
         '<li><span class="ios-step-no">1</span><div>화면 아래(아이패드는 위)의 <b>공유 버튼</b> <span class="ios-share">' + shareSvg + '</span> 을 누릅니다.</div></li>' +
         '<li><span class="ios-step-no">2</span><div>메뉴를 내려 <b>‘홈 화면에 추가’</b> 를 누릅니다.</div></li>' +

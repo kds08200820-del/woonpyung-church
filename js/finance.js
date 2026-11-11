@@ -105,7 +105,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       }).catch(function (e) { root.innerHTML = msgCard('불러오기 실패', e.message); });
     }).catch(function (e) { root.innerHTML = msgCard('확인 실패', e.message); });
   }
-  function msgCard(t, x) { return '<div class="fin-card" style="text-align:center;padding:40px 18px;"><h3 style="margin:0 0 8px;color:var(--accent,#3A281C);">' + esc(t) + '</h3><p style="color:var(--ink-soft,#93867C);">' + esc(x) + '</p></div>'; }
+  function msgCard(t, x) { return '<div class="fin-card" style="text-align:center;padding:40px 18px;"><h3 style="margin:0 0 8px;color:var(--accent,#111111);">' + esc(t) + '</h3><p style="color:var(--ink-soft,#898885);">' + esc(x) + '</p></div>'; }
 
   // ── 보고서 인쇄/PDF (회의 배포용 전문 양식) ──
   function printDoc(title, inner, sub) {
@@ -117,35 +117,35 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     var dt = today();
     var css = [
       '*{box-sizing:border-box}',
-      'body{font-family:"Noto Sans KR","Malgun Gothic","맑은 고딕",sans-serif;color:#3A281C;margin:0;padding:20px 26px;font-size:11px;line-height:1.32}',
+      'body{font-family:"Noto Sans KR","Malgun Gothic","맑은 고딕",sans-serif;color:#111111;margin:0;padding:20px 26px;font-size:11px;line-height:1.32}',
       '.doc{max-width:780px;margin:0 auto}',
       '.head{display:flex;align-items:flex-start;gap:14px;margin-bottom:12px}',
       '.head .spacer{flex:1}',
       '.head .rt{text-align:center;padding-top:4px}',
-      '.head .rt h1{font-family:"Noto Serif KR",serif;font-size:19px;margin:0;letter-spacing:.12em;color:#36281D}',
-      '.head .rt .period{color:#5E544C;font-size:11.5px;margin-top:5px}',
-      '.head .rt .meta{color:#AFA49C;font-size:10px;margin-top:3px}',
+      '.head .rt h1{font-family:"Noto Serif KR",serif;font-size:19px;margin:0;letter-spacing:.12em;color:#1A1916}',
+      '.head .rt .period{color:#565552;font-size:11.5px;margin-top:5px}',
+      '.head .rt .meta{color:#A7A6A3;font-size:10px;margin-top:3px}',
       '.signwrap{flex:1;display:flex;justify-content:flex-end}',
       '.sign{border-collapse:collapse}',
-      '.sign td{border:1px solid #CCC3BC;text-align:center;padding:0;width:62px}',
-      '.sign .role{background:#F6F2EF;font-weight:600;font-size:10px;padding:3px 0;border-bottom:1px solid #CCC3BC}',
-      '.sign .role small{font-weight:400;color:#947E6B;font-size:8px}',
+      '.sign td{border:1px solid #C5C4C1;text-align:center;padding:0;width:62px}',
+      '.sign .role{background:#FAF9F6;font-weight:600;font-size:10px;padding:3px 0;border-bottom:1px solid #C5C4C1}',
+      '.sign .role small{font-weight:400;color:#81807D;font-size:8px}',
       '.sign .box{height:40px}',
       '.fin-card{margin-bottom:4px}',
-      '.fin-card>b{display:block;font-size:12px;font-weight:700;color:#543C2A;margin:11px 0 5px;padding-left:8px;border-left:3px solid #C25A2E}',
+      '.fin-card>b{display:block;font-size:12px;font-weight:700;color:#272623;margin:11px 0 5px;padding-left:8px;border-left:3px solid #797875}',
       'table{width:100%;border-collapse:collapse;font-size:11px;margin:0 0 9px}',
-      'th{background:#543C2A;color:#fff;font-weight:600;padding:5px 8px;text-align:left;border:1px solid #543C2A}',
-      'td{padding:4px 8px;border:1px solid #E1DBD6}',
-      'tbody tr:nth-child(even){background:#FAF8F7}',
+      'th{background:#272623;color:#fff;font-weight:600;padding:5px 8px;text-align:left;border:1px solid #272623}',
+      'td{padding:4px 8px;border:1px solid #DDDCD9}',
+      'tbody tr:nth-child(even){background:#FDFCF9}',
       '.num{text-align:right!important;font-variant-numeric:tabular-nums}',
-      'tfoot td,tr[style*="bold"] td,tr[style*="700"] td{font-weight:700;background:#F6F2EF}',
-      '.fin-pill{font-size:9px;padding:1px 5px;border-radius:7px;border:1px solid #DBD4CE}',
-      '.help{font-size:9px;color:#AFA49C}',
-      '.issuer{text-align:center;margin-top:18px;padding-top:11px;border-top:2px solid #543C2A}',
+      'tfoot td,tr[style*="bold"] td,tr[style*="700"] td{font-weight:700;background:#FAF9F6}',
+      '.fin-pill{font-size:9px;padding:1px 5px;border-radius:2px;border:1px solid #D5D4D1}',
+      '.help{font-size:9px;color:#A7A6A3}',
+      '.issuer{text-align:center;margin-top:18px;padding-top:11px;border-top:2px solid #272623}',
       '.issuer .ilogo{height:44px;display:block;margin:0 auto 6px}',
-      '.issuer .kr{font-family:"Noto Serif KR",serif;font-size:18px;font-weight:700;letter-spacing:.2em;color:#543C2A;margin:0}',
-      '.issuer .en{font-size:8px;letter-spacing:.32em;color:#9F948B;margin-top:3px}',
-      '.issuer .gen{font-size:9px;color:#BBB2AC;margin-top:5px}',
+      '.issuer .kr{font-family:"Noto Serif KR",serif;font-size:18px;font-weight:700;letter-spacing:.2em;color:#272623;margin:0}',
+      '.issuer .en{font-size:8px;letter-spacing:.32em;color:#969592;margin-top:3px}',
+      '.issuer .gen{font-size:9px;color:#B4B3B0;margin-top:5px}',
       '.mng{display:none!important}',
       '@page{size:A4;margin:14mm 13mm}',
       '@media print{body{padding:0}.noprint{display:none}}'
@@ -161,7 +161,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       '<div class="signwrap">' + sign + '</div></div>' +
       inner +
       '<div class="issuer">' + (logo ? '<img class="ilogo" src="' + esc(logo) + '" alt="로고">' : '') + '<p class="kr">운평장로교회</p><div class="en">UNPYEONG PRESBYTERIAN CHURCH</div><div class="gen">재정부 · 교회 회계시스템 생성 (' + dt + ')</div></div>' +
-      '<div class="noprint" style="text-align:center;margin-top:22px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#543C2A;color:#fff;border-radius:8px">🖨 인쇄 / PDF 저장</button></div>' +
+      '<div class="noprint" style="text-align:center;margin-top:22px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#272623;color:#fff;border-radius:2px">🖨 인쇄 / PDF 저장</button></div>' +
       '<scr' + 'ipt>window.addEventListener("load",function(){setTimeout(function(){try{window.print()}catch(e){}},450)});</scr' + 'ipt>' +
       '</div></body></html>';
     w.document.write(html); w.document.close(); w.focus();
@@ -318,11 +318,11 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     var d = new Date(), y = d.getFullYear(), opts = '';
     for (var yr = y + 1; yr >= y - 4; yr--) opts += '<option value="' + yr + '"' + (yr === M.fy ? ' selected' : '') + '>' + yr + '년도</option>';
     var r = fyRange(M.fy);
-    return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:#FBF8F6;border:1px solid #F2EBE6;border-radius:10px;">' +
-      '<b style="color:var(--accent,#3A281C)">📅 회계연도</b>' +
-      '<select id="fySel" style="padding:6px 10px;border:1px solid #E0D7D0;border-radius:8px;font:inherit;background:#fff;">' + opts + '</select>' +
-      '<span style="color:#93867C;font-size:.86rem;">' + r.from + ' ~ ' + r.to + '</span>' +
-      '<span style="color:#AFA49C;font-size:.8rem;margin-left:auto;">시작월·범위는 <b>설정</b> 탭에서</span></div>';
+    return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:#FDFCF9;border:1px solid #F7F6F3;border-radius:2px;">' +
+      '<b style="color:var(--accent,#111111)">📅 회계연도</b>' +
+      '<select id="fySel" style="padding:6px 10px;border:1px solid #D9D8D5;border-radius:2px;font:inherit;background:#fff;">' + opts + '</select>' +
+      '<span style="color:#898885;font-size:.86rem;">' + r.from + ' ~ ' + r.to + '</span>' +
+      '<span style="color:#A7A6A3;font-size:.8rem;margin-left:auto;">시작월·범위는 <b>설정</b> 탭에서</span></div>';
   }
   // 상위 카테고리(호버 드롭다운). 항목은 위 TABS의 키.
   var GROUPS = [
@@ -418,25 +418,25 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
             var nm = k['계정이름'], dupName = !!seen[nm]; seen[nm] = 1;
             var vals = maps.map(function (mp, i) { var v = dupName ? 0 : (mp[nm] || 0); gs[i] += v; return v; });
             if (vals.every(function (v) { return !v; })) return '';   // 빈(0) 목 숨김
-            return '<tr><td style="padding-left:20px;color:#67584C">' + esc(nm) + '</td>' + vals.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>';
+            return '<tr><td style="padding-left:20px;color:#5B5A57">' + esc(nm) + '</td>' + vals.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>';
           }).join('');
           gs.forEach(function (v, i) { totals[i] += v; });
           if (gs.every(function (v) { return !v; })) return '';      // 빈(0) 항 숨김
-          return '<tr style="font-weight:700;background:#FBF8F6"><td>' + esc(gr['계정이름']) + '</td>' + gs.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>' + kidRows;
+          return '<tr style="font-weight:700;background:#FDFCF9"><td>' + esc(gr['계정이름']) + '</td>' + gs.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>' + kidRows;
         }).join('');
         var others = cols.map(function () { return 0; }), hasOther = false;
         maps.forEach(function (mp, i) { Object.keys(mp).forEach(function (nm) { if (!seen[nm]) { others[i] += mp[nm]; if (mp[nm]) hasOther = true; } }); });
-        if (hasOther) { totals = totals.map(function (v, i) { return v + others[i]; }); body += '<tr><td style="padding-left:20px;color:#AFA49C">기타</td>' + others.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>'; }
-        if (!body) body = '<tr><td colspan="' + (cols.length + 1) + '" style="color:#AFA49C;padding:14px;text-align:center">내역 없음</td></tr>';
+        if (hasOther) { totals = totals.map(function (v, i) { return v + others[i]; }); body += '<tr><td style="padding-left:20px;color:#A7A6A3">기타</td>' + others.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>'; }
+        if (!body) body = '<tr><td colspan="' + (cols.length + 1) + '" style="color:#A7A6A3;padding:14px;text-align:center">내역 없음</td></tr>';
         return '<div style="overflow:auto;max-height:430px;margin-top:10px"><table class="fin-table"><thead><tr><th>' + gubun + ' 항목</th>' + cols.map(function (c) { return '<th class="num">' + c.label + '</th>'; }).join('') + '</tr></thead>' +
           '<tbody><tr style="font-weight:700;color:' + (gubun === '수입' ? '#2F6B4F' : '#A33A2A') + '"><td>' + gubun + ' 합계</td>' + totals.map(function (v) { return '<td class="num">' + won(v) + '</td>'; }).join('') + '</tr>' + body + '</tbody></table></div>';
       }
 
-      function stat(label, val, color) { return '<div style="flex:1;min-width:150px;background:#fff;border:1px solid #F1EDEA;border-radius:12px;padding:14px 16px"><div style="color:#93867C;font-size:.78rem;margin-bottom:6px">' + label + '</div><div style="font-size:1.3rem;font-weight:700;color:' + color + '">' + won(val) + '<span style="font-size:.8rem;font-weight:400">원</span></div></div>'; }
+      function stat(label, val, color) { return '<div style="flex:1;min-width:150px;background:#fff;border:1px solid #F7F6F3;border-radius:2px;padding:14px 16px"><div style="color:#898885;font-size:.78rem;margin-bottom:6px">' + label + '</div><div style="font-size:1.3rem;font-weight:700;color:' + color + '">' + won(val) + '<span style="font-size:.8rem;font-weight:400">원</span></div></div>'; }
 
       // 월별 차트 (막대 + 추세선 + 호버 hit영역)
       function monthChart() {
-        var n = order.length; if (!n) return '<p style="color:#AFA49C;margin-top:14px">내역 없음</p>';
+        var n = order.length; if (!n) return '<p style="color:#A7A6A3;margin-top:14px">내역 없음</p>';
         var W = Math.max(360, n * 80), H = 210, PT = 14, PB = 30, PL = 12, PR = 12;
         var ph = H - PT - PB, pw = W - PL - PR, baseY = PT + ph;
         var maxV = Math.max.apply(null, order.map(function (m) { return Math.max(months[m].inc, months[m].exp); }).concat([1]));
@@ -452,7 +452,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
           expPts.push((xe + bw / 2).toFixed(1) + ',' + yv(exp).toFixed(1));
           dots += '<circle cx="' + (xi + bw / 2) + '" cy="' + yv(inc) + '" r="3.6" fill="' + INC + '" stroke="#fff" stroke-width="1.6"></circle><circle cx="' + (xe + bw / 2) + '" cy="' + yv(exp) + '" r="3.6" fill="' + EXP + '" stroke="#fff" stroke-width="1.6"></circle>';
           hits += '<rect class="mc-hit" data-i="' + i + '" x="' + (c - (pw / n) / 2) + '" y="' + PT + '" width="' + (pw / n) + '" height="' + ph + '" fill="transparent" style="cursor:pointer"></rect>';
-          labels += '<text x="' + c + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#9E8B7A">' + m.slice(5) + '월</text>';
+          labels += '<text x="' + c + '" y="' + (H - 10) + '" text-anchor="middle" font-size="11" fill="#8D8C89">' + m.slice(5) + '월</text>';
         });
         return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" preserveAspectRatio="xMidYMid meet" style="height:auto;max-width:' + W + 'px">' +
           rects +
@@ -463,18 +463,18 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
 
       // 헌금 항목별 도넛(연간 수입) — 클릭 상세
       var incFY = sumByAcc('수입', fyR.from, fyR.to);
-      var PAL = ['#BC7D4D', '#30D158', '#FF9F0A', '#FF453A', '#BF5AF2', '#FF375F', '#D4AD8F', '#FF9500', '#CB9B77', '#AE7C66', '#66D4CF', '#FFD60A', '#FF6482', '#C08558', '#A4725C', '#34C759'];
+      var PAL = ['#858481', '#30D158', '#FF9F0A', '#FF453A', '#BF5AF2', '#FF375F', '#B3B2AF', '#FF9500', '#A2A19E', '#8B8A87', '#66D4CF', '#FFD60A', '#FF6482', '#8D8C89', '#81807D', '#34C759'];
       var dnEnts = Object.keys(incFY).map(function (k) { return { k: k, v: incFY[k] }; }).filter(function (e) { return e.v > 0; }).sort(function (a, b) { return b.v - a.v; });
       var dnTotal = dnEnts.reduce(function (s, e) { return s + e.v; }, 0);
       var dnCount = {}; M.vouchers.forEach(function (v) { if (String(v['구분']) !== '수입') return; var d = fmtD(v['일자']); if (d < fyR.from || d > fyR.to) return; var a = v['계정'] || ''; dnCount[a] = (dnCount[a] || 0) + 1; });
       function donut() {
-        if (!dnTotal) return '<p style="color:#AFA49C;margin-top:12px">내역 없음</p>';
+        if (!dnTotal) return '<p style="color:#A7A6A3;margin-top:12px">내역 없음</p>';
         var R = 68, SW = 22, C = 2 * Math.PI * R, GAP = dnEnts.length > 1 ? 2.5 : 0, off = 0;
         var segs = dnEnts.map(function (e, i) { var frac = e.v / dnTotal * C, len = Math.max(0.5, frac - GAP); var s = '<circle class="dn-seg" data-i="' + i + '" r="' + R + '" cx="90" cy="90" fill="none" stroke="' + PAL[i % PAL.length] + '" stroke-width="' + SW + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 90 90)" style="cursor:pointer;transition:opacity .15s"></circle>'; off += frac; return s; }).join('');
-        var svg = '<svg viewBox="0 0 180 180" width="230" height="230" style="flex:0 0 auto;max-width:64vw">' + segs + '<text x="90" y="85" text-anchor="middle" font-size="11" fill="#9E8B7A">헌금 합계</text><text x="90" y="107" text-anchor="middle" font-size="14" font-weight="700" fill="#211E1B">' + won(dnTotal) + '</text></svg>';
-        var legend = '<div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px">' + dnEnts.map(function (e, i) { return '<div class="dn-leg" data-i="' + i + '" style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer;padding:3px 7px;border-radius:7px"><span style="width:10px;height:10px;border-radius:50%;background:' + PAL[i % PAL.length] + ';flex:0 0 auto"></span><span style="flex:1;color:#211E1B">' + esc(e.k) + '</span><b style="font-variant-numeric:tabular-nums">' + won(e.v) + '</b><span style="color:#AFA49C;width:42px;text-align:right">' + (e.v / dnTotal * 100).toFixed(0) + '%</span></div>'; }).join('') + '</div>';
+        var svg = '<svg viewBox="0 0 180 180" width="230" height="230" style="flex:0 0 auto;max-width:64vw">' + segs + '<text x="90" y="85" text-anchor="middle" font-size="11" fill="#8D8C89">헌금 합계</text><text x="90" y="107" text-anchor="middle" font-size="14" font-weight="700" fill="#13120F">' + won(dnTotal) + '</text></svg>';
+        var legend = '<div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px">' + dnEnts.map(function (e, i) { return '<div class="dn-leg" data-i="' + i + '" style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer;padding:3px 7px;border-radius:2px"><span style="width:10px;height:10px;border-radius:50%;background:' + PAL[i % PAL.length] + ';flex:0 0 auto"></span><span style="flex:1;color:#13120F">' + esc(e.k) + '</span><b style="font-variant-numeric:tabular-nums">' + won(e.v) + '</b><span style="color:#A7A6A3;width:42px;text-align:right">' + (e.v / dnTotal * 100).toFixed(0) + '%</span></div>'; }).join('') + '</div>';
         return '<div><div style="display:flex;gap:22px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:12px">' + svg + legend + '</div>' +
-          '<div id="dnDetail" style="margin-top:14px;padding:11px 14px;background:#FAF8F7;border:1px solid #F4F1EF;border-radius:10px;font-size:.9rem;color:#93867C">항목(도넛·범례)을 클릭하면 금액·비율·건수가 표시됩니다.</div></div>';
+          '<div id="dnDetail" style="margin-top:14px;padding:11px 14px;background:#FDFCF9;border:1px solid #F9F8F5;border-radius:2px;font-size:.9rem;color:#898885">항목(도넛·범례)을 클릭하면 금액·비율·건수가 표시됩니다.</div></div>';
       }
 
       var wkCols = [{ label: '지난주', from: lastWk.from, to: lastWk.to }, { label: '이번주', from: thisWk.from, to: thisWk.to }];
@@ -482,25 +482,25 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var incLT = totMap(sumByAcc('수입', lastWk.from, lastWk.to)), incTT = totMap(sumByAcc('수입', thisWk.from, thisWk.to));
       var expLT = totMap(sumByAcc('지출', lastWk.from, lastWk.to)), expTT = totMap(sumByAcc('지출', thisWk.from, thisWk.to));
       var incFYt = totMap(incFY), expFYt = totMap(sumByAcc('지출', fyR.from, fyR.to));
-      function wkRight(l, t) { return '<span style="color:#AFA49C">지난주</span> <b>' + won(l) + '</b> <span style="color:#AFA49C">· 이번주</span> <b>' + won(t) + '</b>'; }
+      function wkRight(l, t) { return '<span style="color:#A7A6A3">지난주</span> <b>' + won(l) + '</b> <span style="color:#A7A6A3">· 이번주</span> <b>' + won(t) + '</b>'; }
       function cardHead(title, color, right) { return '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px"><b style="color:' + color + '">' + title + '</b><span style="font-size:.85rem">' + right + '</span></div>'; }
       panel.innerHTML =
         // 월별 차트 + 도넛 (상단)
         '<div class="fin-card"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:24px">' +
-          '<div><b>📊 월별 수입·지출</b> <span style="font-size:.76rem"><span style="color:#34C759">● 수입</span> <span style="color:#FF3B30">● 지출</span> <span style="color:#AFA49C">· 막대+추세선</span></span>' +
-            '<div id="mcWrap" style="position:relative;margin-top:14px">' + monthChart() + '<div id="mcTip" style="position:absolute;display:none;background:#3A281C;color:#fff;font-size:.76rem;line-height:1.45;padding:6px 9px;border-radius:7px;pointer-events:none;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.25)"></div></div></div>' +
+          '<div><b>📊 월별 수입·지출</b> <span style="font-size:.76rem"><span style="color:#34C759">● 수입</span> <span style="color:#FF3B30">● 지출</span> <span style="color:#A7A6A3">· 막대+추세선</span></span>' +
+            '<div id="mcWrap" style="position:relative;margin-top:14px">' + monthChart() + '<div id="mcTip" style="position:absolute;display:none;background:#111111;color:#fff;font-size:.76rem;line-height:1.45;padding:6px 9px;border-radius:2px;pointer-events:none;white-space:nowrap;z-index:5;box-shadow:0 4px 12px rgba(0,0,0,.25)"></div></div></div>' +
           '<div><b>🍩 헌금 항목별 (연간)</b>' + donut() + '</div>' +
         '</div></div>' +
         // KPI 요약
-        carryNote() + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">' + stat('전기 이월금', carry, '#93867C') + stat('당기 수입', ti, '#2F6B4F') + stat('당기 지출', te, '#A33A2A') + stat('현재 잔액', bal, '#3A281C') + '</div>' +
+        carryNote() + '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px">' + stat('전기 이월금', carry, '#898885') + stat('당기 수입', ti, '#2F6B4F') + stat('당기 지출', te, '#A33A2A') + stat('현재 잔액', bal, '#111111') + '</div>' +
         // 주간 수입/지출 현황
-        '<h3 style="margin:6px 0 10px;color:var(--accent,#3A281C)">주간 현황 <span style="font-size:.8rem;font-weight:400;color:#AFA49C">지난주 ' + esc(lastWk.from) + '~' + esc(lastWk.to) + ' · 이번주 ' + esc(thisWk.from) + '~' + esc(thisWk.to) + '</span></h3>' +
+        '<h3 style="margin:6px 0 10px;color:var(--accent,#111111)">주간 현황 <span style="font-size:.8rem;font-weight:400;color:#A7A6A3">지난주 ' + esc(lastWk.from) + '~' + esc(lastWk.to) + ' · 이번주 ' + esc(thisWk.from) + '~' + esc(thisWk.to) + '</span></h3>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-bottom:8px">' +
           '<div class="fin-card">' + cardHead('＋ 수입 현황', '#2F6B4F', wkRight(incLT, incTT)) + statusTable('수입', wkCols) + '</div>' +
           '<div class="fin-card">' + cardHead('－ 지출 현황', '#A33A2A', wkRight(expLT, expTT)) + statusTable('지출', wkCols) + '</div>' +
         '</div>' +
         // 연간 현황
-        '<h3 style="margin:22px 0 10px;color:var(--accent,#3A281C)">' + M.fy + '년 현황 <span style="font-size:.8rem;font-weight:400;color:#AFA49C">' + esc(fyR.from) + ' ~ ' + esc(fyR.to) + '</span></h3>' +
+        '<h3 style="margin:22px 0 10px;color:var(--accent,#111111)">' + M.fy + '년 현황 <span style="font-size:.8rem;font-weight:400;color:#A7A6A3">' + esc(fyR.from) + ' ~ ' + esc(fyR.to) + '</span></h3>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px">' +
           '<div class="fin-card">' + cardHead('수입 (연간 누계)', '#2F6B4F', '<b style="color:#2F6B4F">' + won(incFYt) + '원</b>') + statusTable('수입', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
           '<div class="fin-card">' + cardHead('지출 (연간 누계)', '#A33A2A', '<b style="color:#A33A2A">' + won(expFYt) + '원</b>') + statusTable('지출', [{ label: '금액', from: fyR.from, to: fyR.to }]) + '</div>' +
@@ -521,9 +521,9 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var dnDetail = panel.querySelector('#dnDetail');
       function selDonut(i) {
         var e = dnEnts[i]; if (!e || !dnDetail) return;
-        dnDetail.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:' + PAL[i % PAL.length] + ';margin-right:9px;vertical-align:middle"></span><b style="color:#211E1B">' + esc(e.k) + '</b> &nbsp;·&nbsp; <b style="color:#2F6B4F">' + won(e.v) + '원</b> &nbsp;·&nbsp; ' + (e.v / dnTotal * 100).toFixed(1) + '% &nbsp;·&nbsp; ' + (dnCount[e.k] || 0) + '건';
+        dnDetail.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:' + PAL[i % PAL.length] + ';margin-right:9px;vertical-align:middle"></span><b style="color:#13120F">' + esc(e.k) + '</b> &nbsp;·&nbsp; <b style="color:#2F6B4F">' + won(e.v) + '원</b> &nbsp;·&nbsp; ' + (e.v / dnTotal * 100).toFixed(1) + '% &nbsp;·&nbsp; ' + (dnCount[e.k] || 0) + '건';
         Array.prototype.forEach.call(panel.querySelectorAll('.dn-seg'), function (s) { s.style.opacity = (+s.getAttribute('data-i') === i) ? '1' : '0.25'; });
-        Array.prototype.forEach.call(panel.querySelectorAll('.dn-leg'), function (l) { l.style.background = (+l.getAttribute('data-i') === i) ? '#F9F4F0' : 'transparent'; });
+        Array.prototype.forEach.call(panel.querySelectorAll('.dn-leg'), function (l) { l.style.background = (+l.getAttribute('data-i') === i) ? '#FBFAF7' : 'transparent'; });
       }
       Array.prototype.forEach.call(panel.querySelectorAll('.dn-seg,.dn-leg'), function (x) { x.addEventListener('click', function () { selDonut(+x.getAttribute('data-i')); }); });
     }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
@@ -545,7 +545,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       '</div><div id="o_sub"></div>';
     var sub = panel.querySelector('#o_sub');
     var tabs = panel.querySelectorAll('.os2');
-    function setA(b) { Array.prototype.forEach.call(tabs, function (x) { x.style.background = '#fff'; x.style.color = 'var(--accent,#3A281C)'; x.style.border = '1px solid #E0D7D0'; }); b.style.background = 'var(--accent,#3A281C)'; b.style.color = '#fff'; b.style.border = '1px solid var(--accent,#3A281C)'; }
+    function setA(b) { Array.prototype.forEach.call(tabs, function (x) { x.style.background = '#fff'; x.style.color = 'var(--accent,#111111)'; x.style.border = '1px solid #D9D8D5'; }); b.style.background = 'var(--accent,#111111)'; b.style.color = '#fff'; b.style.border = '1px solid var(--accent,#111111)'; }
     function show(s, b) { setA(b); if (s === 'lookup') renderOfferingLookup(sub); else renderOfferingInput(sub); }
     Array.prototype.forEach.call(tabs, function (b) { b.onclick = function () { show(b.dataset.s, b); }; });
     show('input', tabs[0]);
@@ -613,7 +613,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     amt.addEventListener('input', function () { var n = parseNum(amt.value); amt.value = n ? won(n) : ''; });
     function doAddOffering(v) {
       var msg = panel.querySelector('#o_msg');
-      msg.style.color = '#93867C'; msg.textContent = '저장 중…';
+      msg.style.color = '#898885'; msg.textContent = '저장 중…';
       WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; panel.querySelector('#o_payer').value = ''; panel.querySelector('#o_key').value = ''; panel.querySelector('#o_spouseKey').value = ''; panel.querySelector('#o_spouse').value = ''; panel.querySelector('#o_spouse_key').value = ''; amt.value = ''; panel.querySelector('#o_memo').value = ''; M.loaded = false; loadToday(v.date); panel.querySelector('#o_payer').focus(); }).catch(function (e) { msg.style.color = '#A33A2A'; msg.textContent = e.message; });
     }
     function submitOffering() {
@@ -656,7 +656,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         if (!list.length) { box.innerHTML = '<div class="fin-card"><b>' + esc(d) + '</b> 헌금 내역이 없습니다.</div>'; return; }
         var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
         box.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>' + esc(d) + ' 헌금</b><div style="display:flex;gap:10px;align-items:center"><button class="btn btn-line" style="padding:4px 12px;font-size:.8rem" data-bulk>🗑 선택 삭제</button><b style="color:#2F6B4F">' + won(tot) + '원</b></div></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th style="width:30px;text-align:center"><input type="checkbox" data-all></th><th>예배</th><th>항목</th><th>헌금자</th><th class="num">금액</th><th>입력/수정</th><th>관리</th></tr></thead><tbody>' +
-          list.map(function (x) { return '<tr><td style="text-align:center"><input type="checkbox" class="rowck" value="' + esc(x['전표ID']) + '"></td><td>' + esc(x['예배'] || '') + '</td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || '') + '</td><td class="num">' + won(x['금액']) + '</td><td style="font-size:.74rem;color:#93867C;white-space:nowrap">' + auditText(x) + '</td><td style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table></div></div>';
+          list.map(function (x) { return '<tr><td style="text-align:center"><input type="checkbox" class="rowck" value="' + esc(x['전표ID']) + '"></td><td>' + esc(x['예배'] || '') + '</td><td>' + esc(x['계정']) + '</td><td>' + esc(x['헌금자'] || '') + '</td><td class="num">' + won(x['금액']) + '</td><td style="font-size:.74rem;color:#898885;white-space:nowrap">' + auditText(x) + '</td><td style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table></div></div>';
         wireChecks(box, function () { loadToday(d); });
         Array.prototype.forEach.call(box.querySelectorAll('[data-edit]'), function (b) { b.onclick = function () { openEditor(byId[b.dataset.edit], function () { loadToday(d); }); }; });
         Array.prototype.forEach.call(box.querySelectorAll('[data-del]'), function (b) { b.onclick = function () { if (!confirm('삭제할까요?')) return; WPF.call('deleteVoucher', { id: b.dataset.del }).then(function () { M.loaded = false; loadToday(d); }); }; });
@@ -673,7 +673,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       matches = M.members.filter(function (m) { return (m.name || '').toLowerCase().indexOf(q) >= 0; }).slice(0, 8); if (!matches.length) return;
       pop = document.createElement('div'); pop.className = 'fin-sugg';
       pop.style.top = '100%'; pop.style.left = '0'; pop.style.right = '0'; pop.style.marginTop = '4px'; pop.style.minWidth = '0';
-      matches.forEach(function (m) { var bd = (String(m.key || '').split('|')[1]) || ''; var bs = bd.length === 8 ? bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8) : String(m.birth || '').slice(0, 10); var d = document.createElement('div'); d.innerHTML = esc(m.name) + ' <span style="color:#AFA49C;font-size:.78rem">' + esc(bs) + ' · ' + esc(m.group || '') + '</span>'; d.onmousedown = function (e) { e.preventDefault(); pick(m); }; pop.appendChild(d); });
+      matches.forEach(function (m) { var bd = (String(m.key || '').split('|')[1]) || ''; var bs = bd.length === 8 ? bd.slice(0, 4) + '-' + bd.slice(4, 6) + '-' + bd.slice(6, 8) : String(m.birth || '').slice(0, 10); var d = document.createElement('div'); d.innerHTML = esc(m.name) + ' <span style="color:#A7A6A3;font-size:.78rem">' + esc(bs) + ' · ' + esc(m.group || '') + '</span>'; d.onmousedown = function (e) { e.preventDefault(); pick(m); }; pop.appendChild(d); });
       input.parentElement.appendChild(pop);
     });
     input.addEventListener('keydown', function (e) { if (!pop) return; var rows = pop.querySelectorAll('div'); if (e.key === 'ArrowDown') { e.preventDefault(); hi = Math.min(hi + 1, rows.length - 1); } else if (e.key === 'ArrowUp') { e.preventDefault(); hi = Math.max(hi - 1, 0); } else if (e.key === 'Enter') { if (matches.length) { e.preventDefault(); pick(matches[hi >= 0 ? hi : 0]); } return; } else if (e.key === 'Escape') { close(); return; } else return; Array.prototype.forEach.call(rows, function (r, i) { r.classList.toggle('hi', i === hi); }); });
@@ -696,7 +696,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       pop.style.maxHeight = '300px'; pop.style.top = '100%'; pop.style.left = '0'; pop.style.right = '0'; pop.style.marginTop = '4px'; pop.style.minWidth = '0';
       matches.forEach(function (a) {
         var d = document.createElement('div');
-        d.innerHTML = '<b>' + esc(a['계정명']) + '</b> <span style="color:#AFA49C;font-size:.78rem;float:right">' + esc(hangOf(a)) + '</span>';
+        d.innerHTML = '<b>' + esc(a['계정명']) + '</b> <span style="color:#A7A6A3;font-size:.78rem;float:right">' + esc(hangOf(a)) + '</span>';
         d.addEventListener('mousedown', function (e) { e.preventDefault(); pick(a); });
         pop.appendChild(d);
       });
@@ -726,7 +726,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
     ov.innerHTML = '<div class="fin-card" style="max-width:420px;width:100%;background:#fff">' +
-      '<h3 style="margin:0 0 8px;color:var(--accent,#3A281C)">교적에 등록할까요?</h3>' +
+      '<h3 style="margin:0 0 8px;color:var(--accent,#111111)">교적에 등록할까요?</h3>' +
       '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px"><b>' + esc(name) + '</b>님은 교적에 없습니다. 등록하면 다음부터 검색·헌금 집계가 연결됩니다. <b>생년월일은 비워도 됩니다.</b></p>' +
       '<div class="form-field"><label>이름</label><input type="text" id="rg_name" value="' + esc(name) + '"></div>' +
       '<div class="form-field" style="margin-top:8px"><label>생년월일 (선택)</label><input type="text" id="rg_birth" maxlength="10" placeholder="예: 1981-08-19 (없으면 비움)" inputmode="numeric"></div>' +
@@ -743,7 +743,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var msg = ov.querySelector('#rg_msg');
       if (!nm) { msg.style.color = '#A33A2A'; msg.textContent = '이름을 입력하세요.'; return; }
       if (birth && birth.length !== 8) { msg.style.color = '#A33A2A'; msg.textContent = '생년월일은 8자리(예: 19810819)로 입력하거나 비워 두세요.'; return; }
-      msg.style.color = '#93867C'; msg.textContent = '교적 등록 중…';
+      msg.style.color = '#898885'; msg.textContent = '교적 등록 중…';
       WPF.call('addGyojeok', { name: nm, birth: birth }).then(function (r) {
         WPF.call('masters').then(function (m) { M.members = m.members || M.members; }).catch(function () { });
         close(); cb({ key: r.key, name: nm });
@@ -761,7 +761,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     var ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px';
     ov.innerHTML = '<div class="fin-card" style="max-width:460px;width:100%;background:#fff;max-height:90vh;overflow:auto">' +
-      '<h3 style="margin:0 0 14px;color:var(--accent,#3A281C)">' + (isExp ? '지출' : '헌금') + ' 전표 수정</h3>' +
+      '<h3 style="margin:0 0 14px;color:var(--accent,#111111)">' + (isExp ? '지출' : '헌금') + ' 전표 수정</h3>' +
       '<div class="form-field"><label>일자</label><input type="date" id="ed_date" value="' + esc(ymdStr(x['일자'])) + '"></div>' +
       '<div class="form-field"><label>계정</label><select id="ed_acc">' + (isExp ? accOptions('지출') : accOptions('수입', '헌금')) + '</select></div>' +
       (isExp ? '' : '<div class="form-field"><label>예배</label><select id="ed_svc">' + svcOptions() + '</select></div>') +
@@ -770,7 +770,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       '<div class="form-field"><label>수단</label><select id="ed_method"><option>현금</option><option>통장</option></select></div>' +
       '<div class="form-field"><label>적요</label><input type="text" id="ed_memo" value="' + esc(x['적요'] || '') + '"></div>' +
       '<div style="display:flex;gap:10px;align-items:center;margin-top:16px"><button class="btn btn-solid" id="ed_save">저장</button><button class="btn btn-line" id="ed_cancel">취소</button><span class="fin-msg" id="ed_msg"></span></div>' +
-      '<p style="margin:12px 0 0;font-size:.76rem;color:#AFA49C;border-top:1px solid #F4F1EF;padding-top:8px">' + auditText(x) + '</p></div>';
+      '<p style="margin:12px 0 0;font-size:.76rem;color:#A7A6A3;border-top:1px solid #F9F8F5;padding-top:8px">' + auditText(x) + '</p></div>';
     document.body.appendChild(ov);
     ov.querySelector('#ed_acc').value = x['계정'] || '';
     if (!isExp) ov.querySelector('#ed_svc').value = x['예배'] || '';
@@ -789,7 +789,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       };
       var msg = ov.querySelector('#ed_msg');
       if (!v.date || !v.amount) { msg.style.color = '#A33A2A'; msg.textContent = '일자·금액을 확인하세요.'; return; }
-      msg.style.color = '#93867C'; msg.textContent = '저장 중…';
+      msg.style.color = '#898885'; msg.textContent = '저장 중…';
       WPF.call('updateVoucher', { id: x['전표ID'], voucher: v }).then(function () { M.loaded = false; close(); if (onSaved) onSaved(); }).catch(function (e) { msg.style.color = '#A33A2A'; msg.textContent = e.message; });
     };
   }
@@ -844,11 +844,11 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         .map(function (a) { return String(a['계정명']); });
     }
     panel.innerHTML =
-      '<div class="fin-card" style="border-color:#EEE0D6;background:#fbfdff">' +
-      '<div id="b_drop" style="border:2px dashed #E0D7D0;border-radius:12px;padding:22px 16px;text-align:center;color:#7D6C5F;cursor:pointer;transition:background .15s,border-color .15s">' +
+      '<div class="fin-card" style="border-color:#F1F0ED;background:#fbfdff">' +
+      '<div id="b_drop" style="border:2px dashed #D9D8D5;border-radius:2px;padding:22px 16px;text-align:center;color:#6F6E6B;cursor:pointer;transition:background .15s,border-color .15s">' +
       '<div style="font-size:1.5rem;margin-bottom:6px">📂 엑셀 파일 자동 입력</div>' +
       '<div style="font-size:.92rem"><b>헌금자 리스트</b> 또는 <b>재정보고서(지출)</b> 엑셀(.xlsx)을 여기로 <b>끌어다 놓거나</b> 클릭해서 선택하세요.</div>' +
-      '<div style="font-size:.78rem;color:#AFA49C;margin-top:6px">파일 종류를 자동 판별해 항목별로 분류하고, 헌금은 교적까지 매칭해 미리보기로 보여줍니다. (저장 전 반드시 확인)</div>' +
+      '<div style="font-size:.78rem;color:#A7A6A3;margin-top:6px">파일 종류를 자동 판별해 항목별로 분류하고, 헌금은 교적까지 매칭해 미리보기로 보여줍니다. (저장 전 반드시 확인)</div>' +
       '<input type="file" id="b_file" accept=".xlsx" style="display:none">' +
       '</div></div>' +
       '<div class="fin-card"><div class="fin-grid" style="align-items:end">' +
@@ -857,7 +857,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       '<div class="form-field"><label>수단</label><select id="b_method"><option>현금</option><option>통장</option></select></div>' +
       '</div>' +
       '<div class="form-field" style="margin-top:10px"><label>헌금자 명단 붙여넣기 <span style="font-weight:400;color:var(--ink-soft);font-size:.82rem">— 엑셀(헌금자 리스트)에서 항목·이름·금액 영역을 그대로 복사해 붙여넣으세요</span></label>' +
-      '<textarea id="b_text" style="width:100%;min-height:190px;padding:10px;border:1px solid #ECE6E1;border-radius:8px;font:inherit;white-space:pre;overflow:auto" placeholder="십일조&#9;&#10;신용화(차영선)&#9;100000&#9;임수만(정춘란)&#9;50000&#10;감사헌금&#10;구성호&#9;50000&#9;김가엘&#9;5000 ..."></textarea></div>' +
+      '<textarea id="b_text" style="width:100%;min-height:190px;padding:10px;border:1px solid #F4F3F0;border-radius:2px;font:inherit;white-space:pre;overflow:auto" placeholder="십일조&#9;&#10;신용화(차영선)&#9;100000&#9;임수만(정춘란)&#9;50000&#10;감사헌금&#10;구성호&#9;50000&#9;김가엘&#9;5000 ..."></textarea></div>' +
       '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap"><button class="btn btn-line" id="b_prev">미리보기 · 교적매칭</button><button class="btn btn-solid" id="b_save" disabled>일괄 저장</button><span class="fin-msg" id="b_msg"></span></div>' +
       '<p class="help" style="margin-top:8px">· 항목명만 있는 줄(예: 십일조, 감사헌금)은 <b>항목 구분</b>으로 인식하고, 그 아래 「이름〔탭〕금액」들을 해당 항목 헌금으로 읽습니다.<br>· 「신용화(차영선)」처럼 괄호가 있으면 <b>부부 합산</b>으로 보고 대표자(신용화)로 교적 매칭합니다. · 제목·기간·누계·합계 줄은 자동 무시됩니다.</p>' +
       '</div>' +
@@ -918,11 +918,11 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       out.innerHTML = '<div class="fin-card">' +
         '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:10px"><b>' + items.length + '건</b><b style="color:#2F6B4F">' + won(tot) + '원</b>' +
         '<span class="fin-pill in">교적매칭 ' + nMatch + '</span>' + (nNone ? '<span class="fin-pill out">미등록 ' + nNone + '</span>' : '') + (nDup ? '<span class="fin-pill out">동명이인 ' + nDup + '</span>' : '') + '</div>' +
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + catOrder.map(function (c) { return '<span class="fin-pill" style="background:#F6F2EF;color:#5D4D40">' + esc(c) + ' ' + byCat[c].c + '건 · ' + won(byCat[c].s) + '</span>'; }).join('') + '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">' + catOrder.map(function (c) { return '<span class="fin-pill" style="background:#FAF9F6;color:#4F4E4B">' + esc(c) + ' ' + byCat[c].c + '건 · ' + won(byCat[c].s) + '</span>'; }).join('') + '</div>' +
         (unkList.length ? '<p class="help" style="color:#A33A2A">계정과목에 없는 항목: <b>' + esc(unkList.join(', ')) + '</b> — <b>저장할 수 없습니다.</b> 헌금자 리스트 파일이 맞는지 확인하십시오(재정보고서를 넣으면 이렇게 됩니다). 새 헌금 항목이면 예산·계정에서 먼저 추가하십시오.</p>' : '') +
         '<div style="overflow:auto;max-height:420px"><table class="fin-table"><thead><tr><th>항목</th><th>헌금자</th><th class="num">금액</th><th>교적</th></tr></thead><tbody>' +
         items.map(function (i) {
-          var badge = i.match === 'ok' ? '<span class="fin-pill in">✓ ' + esc(i.matchName) + '</span>' : i.match === 'dup' ? '<span class="fin-pill out">동명이인(수동확인)</span>' : '<span style="color:#AFA49C">미등록</span>';
+          var badge = i.match === 'ok' ? '<span class="fin-pill in">✓ ' + esc(i.matchName) + '</span>' : i.match === 'dup' ? '<span class="fin-pill out">동명이인(수동확인)</span>' : '<span style="color:#A7A6A3">미등록</span>';
           return '<tr><td>' + esc(i.cat) + '</td><td>' + esc(i.payer) + '</td><td class="num">' + won(i.amount) + '</td><td>' + badge + '</td></tr>';
         }).join('') + '</tbody></table></div>' +
         (nNone || nDup ? '<p class="help">미등록·동명이인 건도 헌금자 이름은 그대로 저장됩니다(헌금자통계엔 표시). 다만 개인 "내 헌금 조회"에는 교적 매칭된 건만 잡히므로, 저장 후 <b>거래장부</b>에서 해당 건을 열어 헌금자를 교적과 연결하면 됩니다.</p>' : '') +
@@ -944,7 +944,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var vouchers = parsed.map(function (i) {
         return { date: date, type: '수입', kind: '헌금', account: i.cat, service: svc, payer: i.payer, memberKey: i.key || '', amount: i.amount, method: method, memo: '' };
       });
-      saveBtn.disabled = true; msg.style.color = '#93867C'; msg.textContent = '저장 중… (' + vouchers.length + '건)';
+      saveBtn.disabled = true; msg.style.color = '#898885'; msg.textContent = '저장 중… (' + vouchers.length + '건)';
       function done(n) { msg.style.color = 'green'; msg.textContent = '✓ ' + n + '건 저장 완료. 거래장부·내 헌금 조회에서 확인하세요.'; M.loaded = false; saveBtn.disabled = false; }
       function seq(i) {
         if (i >= vouchers.length) { done(i); return; }
@@ -1010,7 +1010,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       if (!parsedExp.length) return;
       if (!confirm(date + ' 지출 ' + parsedExp.length + '건을 저장할까요?')) return;
       var vouchers = parsedExp.map(function (i) { return { date: date, type: '지출', account: i.account, payer: '', amount: i.amount, method: method, memo: i.memo || '' }; });
-      saveBtn.disabled = true; msg.style.color = '#93867C'; msg.textContent = '저장 중… (' + vouchers.length + '건)';
+      saveBtn.disabled = true; msg.style.color = '#898885'; msg.textContent = '저장 중… (' + vouchers.length + '건)';
       WPF.call('addVouchersBulk', { vouchers: vouchers })
         .then(function (r) { msg.style.color = 'green'; msg.textContent = '✓ 지출 ' + (r.count || vouchers.length) + '건 저장 완료. 거래장부에서 확인하세요.'; M.loaded = false; saveBtn.disabled = false; })
         .catch(function (e) { msg.style.color = '#A33A2A'; msg.textContent = '저장 실패: ' + e.message; saveBtn.disabled = false; });
@@ -1020,7 +1020,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     function handleFile(file) {
       var msg = panel.querySelector('#b_msg');
       if (!file || !/\.xlsx$/i.test(file.name)) { msg.style.color = '#A33A2A'; msg.textContent = '엑셀(.xlsx) 파일만 지원합니다. (헌금자 리스트 / 재정보고서)'; return; }
-      msg.style.color = '#93867C'; msg.textContent = '📄 ' + file.name + ' 읽는 중…';
+      msg.style.color = '#898885'; msg.textContent = '📄 ' + file.name + ' 읽는 중…';
       file.arrayBuffer().then(parseXlsx).then(function (rows) {
         if (!rows || !rows.length) throw new Error('빈 파일이거나 데이터를 찾지 못했습니다.');
         var flat = rows.map(function (r) { return r.join(' '); }).join('\n');
@@ -1033,11 +1033,11 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         // 지출이 헌금으로 들어간다(2026-11-01 주에 실제로 그랬다). '헌금자 리스트' 제목이 없으면 재정보고서가 먼저다.
         if (isExp && !/헌금자\s*리스트/.test(flat)) {
           var items = parseExpRows(rows);
-          msg.style.color = '#93867C'; msg.textContent = '✓ 재정보고서(지출) 인식 — ' + items.length + '건. 아래 미리보기를 확인하고 [일괄 저장]을 누르세요.';
+          msg.style.color = '#898885'; msg.textContent = '✓ 재정보고서(지출) 인식 — ' + items.length + '건. 아래 미리보기를 확인하고 [일괄 저장]을 누르세요.';
           previewExp(items);
         } else if (isOff) {
           panel.querySelector('#b_text').value = rowsToTsv(rows);
-          msg.style.color = '#93867C'; msg.textContent = '✓ 헌금자 리스트 인식 — 아래 미리보기·교적매칭 결과를 확인하고 [일괄 저장]을 누르세요.';
+          msg.style.color = '#898885'; msg.textContent = '✓ 헌금자 리스트 인식 — 아래 미리보기·교적매칭 결과를 확인하고 [일괄 저장]을 누르세요.';
           preview();
         } else {
           msg.style.color = '#A33A2A'; msg.textContent = '파일 형식을 알 수 없습니다. 헌금자 리스트 또는 재정보고서 엑셀인지 확인해 주세요.';
@@ -1052,9 +1052,9 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     if (drop && fileInp) {
       drop.onclick = function () { fileInp.click(); };
       fileInp.onchange = function () { if (fileInp.files && fileInp.files[0]) handleFile(fileInp.files[0]); fileInp.value = ''; };
-      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = '#FAF6F3'; drop.style.borderColor = '#C9A88E'; }); });
-      ['dragleave', 'dragend'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = ''; drop.style.borderColor = '#E0D7D0'; }); });
-      drop.addEventListener('drop', function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = ''; drop.style.borderColor = '#E0D7D0'; var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) handleFile(f); });
+      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = '#FCFBF8'; drop.style.borderColor = '#ADACA9'; }); });
+      ['dragleave', 'dragend'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = ''; drop.style.borderColor = '#D9D8D5'; }); });
+      drop.addEventListener('drop', function (e) { e.preventDefault(); e.stopPropagation(); drop.style.background = ''; drop.style.borderColor = '#D9D8D5'; var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) handleFile(f); });
     }
 
     panel.querySelector('#b_prev').onclick = preview;
@@ -1067,8 +1067,8 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var cm = panel.querySelector('#b_clearmsg');
       if (!confirm('기존 수입(헌금) 전표를 전부 삭제합니다.\n지출 내역은 보존됩니다. 계속할까요?')) return;
       var t = prompt('정말 삭제하려면 "삭제" 라고 입력하세요.');
-      if (t !== '삭제') { cm.style.color = '#93867C'; cm.textContent = '취소되었습니다.'; return; }
-      clearBtn.disabled = true; cm.style.color = '#93867C'; cm.textContent = '삭제 중…';
+      if (t !== '삭제') { cm.style.color = '#898885'; cm.textContent = '취소되었습니다.'; return; }
+      clearBtn.disabled = true; cm.style.color = '#898885'; cm.textContent = '삭제 중…';
       WPF.call('clearVouchers', { type: '수입' }).then(function (r) {
         cm.style.color = 'green'; cm.textContent = '✓ 수입 전표 ' + (r.deleted || 0) + '건 삭제됨' + (r.kept != null ? ' (지출 ' + r.kept + '건 보존)' : '');
         M.loaded = false; clearBtn.disabled = false;
@@ -1109,7 +1109,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var v = { date: panel.querySelector('#e_date').value, type: '지출', kind: '일반', account: accHidden.value, service: '', payer: epEl.value.trim(), memberKey: '', amount: parseNum(amt.value), method: panel.querySelector('#e_method').value, memo: emEl.value.trim() };
       var msg = panel.querySelector('#e_msg');
       if (!v.date || !v.account || !v.amount) { msg.style.color = '#A33A2A'; msg.textContent = '일자·계정·금액을 입력하세요. (계정은 목록에서 선택)'; return; }
-      msg.style.color = '#93867C'; msg.textContent = '저장 중…';
+      msg.style.color = '#898885'; msg.textContent = '저장 중…';
       WPF.call('addVoucher', { voucher: v }).then(function () { msg.style.color = 'green'; msg.textContent = '✓ 추가됨'; emEl.value = ''; epEl.value = ''; amt.value = ''; accName.value = ''; accHidden.value = ''; M.loaded = false; loadExp(v.date); accName.focus(); }).catch(function (e) { msg.style.color = '#A33A2A'; msg.textContent = e.message; });
     }
     amt.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitExpense(); } else if (e.key === 'Tab' && !e.shiftKey && !emOn.checked && !epOn.checked) { e.preventDefault(); submitExpense(); } });
@@ -1123,7 +1123,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         if (!list.length) { ebox.innerHTML = '<div class="fin-card"><b>' + esc(d) + '</b> 지출 내역이 없습니다.</div>'; return; }
         var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
         ebox.innerHTML = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>' + esc(d) + ' 지출</b><div style="display:flex;gap:10px;align-items:center"><button class="btn btn-line" style="padding:4px 12px;font-size:.8rem" data-bulk>🗑 선택 삭제</button><b style="color:#A33A2A">' + won(tot) + '원</b></div></div><div style="overflow:auto"><table class="fin-table"><thead><tr><th style="width:30px;text-align:center"><input type="checkbox" data-all></th><th>계정</th><th>적요</th><th>거래처</th><th class="num">금액</th><th>입력/수정</th><th>관리</th></tr></thead><tbody>' +
-          list.map(function (x) { return '<tr><td style="text-align:center"><input type="checkbox" class="rowck" value="' + esc(x['전표ID']) + '"></td><td>' + esc(accLabelExp(x['계정'])) + '</td><td>' + esc(x['적요'] || '') + '</td><td>' + esc(x['헌금자'] || '') + '</td><td class="num">' + won(x['금액']) + '</td><td style="font-size:.74rem;color:#93867C;white-space:nowrap">' + auditText(x) + '</td><td style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table></div></div>';
+          list.map(function (x) { return '<tr><td style="text-align:center"><input type="checkbox" class="rowck" value="' + esc(x['전표ID']) + '"></td><td>' + esc(accLabelExp(x['계정'])) + '</td><td>' + esc(x['적요'] || '') + '</td><td>' + esc(x['헌금자'] || '') + '</td><td class="num">' + won(x['금액']) + '</td><td style="font-size:.74rem;color:#898885;white-space:nowrap">' + auditText(x) + '</td><td style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 9px;font-size:.78rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table></div></div>';
         wireChecks(ebox, function () { loadExp(d); });
         Array.prototype.forEach.call(ebox.querySelectorAll('[data-edit]'), function (b) { b.onclick = function () { openEditor(byId[b.dataset.edit], function () { loadExp(d); }); }; });
         Array.prototype.forEach.call(ebox.querySelectorAll('[data-del]'), function (b) { b.onclick = function () { if (!confirm('삭제할까요?')) return; WPF.call('deleteVoucher', { id: b.dataset.del }).then(function () { M.loaded = false; loadExp(d); }); }; });
@@ -1146,7 +1146,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         var inc = 0, exp = 0; list.forEach(function (x) { if (String(x['구분']) === '수입') inc += Number(x['금액']) || 0; else exp += Number(x['금액']) || 0; });
         withPrint(out, '거래장부', '<div class="fin-card" style="display:flex;gap:24px;flex-wrap:wrap;align-items:center"><div>수입 <b style="color:#2F6B4F">' + won(inc) + '</b></div><div>지출 <b style="color:#A33A2A">' + won(exp) + '</b></div><div>차액 <b>' + won(inc - exp) + '</b></div><div style="margin-left:auto">' + list.length + '건</div><button class="btn btn-line mng" style="padding:4px 12px;font-size:.8rem" data-bulk>🗑 선택 삭제</button></div>' +
           '<div class="fin-card" style="overflow:auto;max-height:560px"><table class="fin-table"><thead><tr><th class="mng" style="width:30px;text-align:center"><input type="checkbox" data-all></th><th>일자</th><th>구분</th><th>계정</th><th>상대/적요</th><th class="num">수입</th><th class="num">지출</th><th class="mng">입력/수정</th><th class="mng">관리</th></tr></thead><tbody>' +
-          list.slice(0, 1500).map(function (x) { var isIn = String(x['구분']) === '수입'; return '<tr><td class="mng" style="text-align:center"><input type="checkbox" class="rowck" value="' + esc(x['전표ID']) + '"></td><td>' + esc(fmtD(x['일자'])) + '</td><td><span class="fin-pill ' + (isIn ? 'in' : 'out') + '">' + esc(x['구분']) + '</span></td><td>' + esc(isIn ? x['계정'] : accLabelExp(x['계정'])) + '</td><td>' + esc(x['헌금자'] || x['적요'] || '') + '</td><td class="num">' + (isIn ? won(x['금액']) : '') + '</td><td class="num">' + (!isIn ? won(x['금액']) : '') + '</td><td class="mng" style="font-size:.74rem;color:#93867C;white-space:nowrap">' + auditText(x) + '</td><td class="mng" style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table>' + (list.length > 1500 ? '<p class="help" style="padding:8px">최근 1,500건만 표시(합계·엑셀은 전체 기준).</p>' : '') + '</div>',
+          list.slice(0, 1500).map(function (x) { var isIn = String(x['구분']) === '수입'; return '<tr><td class="mng" style="text-align:center"><input type="checkbox" class="rowck" value="' + esc(x['전표ID']) + '"></td><td>' + esc(fmtD(x['일자'])) + '</td><td><span class="fin-pill ' + (isIn ? 'in' : 'out') + '">' + esc(x['구분']) + '</span></td><td>' + esc(isIn ? x['계정'] : accLabelExp(x['계정'])) + '</td><td>' + esc(x['헌금자'] || x['적요'] || '') + '</td><td class="num">' + (isIn ? won(x['금액']) : '') + '</td><td class="num">' + (!isIn ? won(x['금액']) : '') + '</td><td class="mng" style="font-size:.74rem;color:#898885;white-space:nowrap">' + auditText(x) + '</td><td class="mng" style="white-space:nowrap"><button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-edit="' + esc(x['전표ID']) + '">수정</button> <button class="btn btn-line" style="padding:3px 8px;font-size:.76rem" data-del="' + esc(x['전표ID']) + '">삭제</button></td></tr>'; }).join('') + '</tbody></table>' + (list.length > 1500 ? '<p class="help" style="padding:8px">최근 1,500건만 표시(합계·엑셀은 전체 기준).</p>' : '') + '</div>',
           null,
           { headers: ['일자', '구분', '계정', '상대/적요', '수입', '지출'], rows: list.map(function (x) { var isIn = String(x['구분']) === '수입'; return [fmtD(x['일자']), x['구분'], x['계정'], (x['헌금자'] || x['적요'] || ''), (isIn ? (Number(x['금액']) || 0) : ''), (!isIn ? (Number(x['금액']) || 0) : '')]; }) });
         var byId = {}; list.forEach(function (x) { byId[x['전표ID']] = x; });
@@ -1170,7 +1170,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var rows = Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return b.total - a.total; });
       var tot = rows.reduce(function (s, r) { return s + r.total; }, 0);
       withPrint(panel, '헌금자 통계', '<div class="fin-card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>헌금자 순위 (' + rows.length + '명/팀)</b><b style="color:#2F6B4F">' + won(tot) + '원</b></div><div style="overflow:auto;max-height:600px"><table class="fin-table"><thead><tr><th>순위</th><th>헌금자</th><th>구분</th><th class="num">건수</th><th class="num">총 헌금액</th></tr></thead><tbody>' +
-        rows.map(function (r, i) { return '<tr><td>' + (i + 1) + '</td><td><b>' + esc(r.name) + '</b></td><td>' + (r.key ? '<span class="fin-pill in">교인</span>' : '<span style="color:#AFA49C">미등록</span>') + '</td><td class="num">' + r.count + '</td><td class="num"><b>' + won(r.total) + '</b></td></tr>'; }).join('') + '</tbody></table></div></div>');
+        rows.map(function (r, i) { return '<tr><td>' + (i + 1) + '</td><td><b>' + esc(r.name) + '</b></td><td>' + (r.key ? '<span class="fin-pill in">교인</span>' : '<span style="color:#A7A6A3">미등록</span>') + '</td><td class="num">' + r.count + '</td><td class="num"><b>' + won(r.total) + '</b></td></tr>'; }).join('') + '</tbody></table></div></div>');
     }).catch(function (e) { panel.innerHTML = msgCard('조회 실패', e.message); });
   }
 
@@ -1203,9 +1203,9 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       M.budget.forEach(function (b) { var code = String(b['계정코드'] || ''); var amt = Number(b['예산']) || 0; if (code.slice(-4) === '0000') return; if (/^1/.test(code)) budIn += amt; else if (/^2/.test(code)) budExp += amt; });
       var carry = carryover();
       withPrint(panel, '결산보고서',
-        carryNote() + '<div class="fin-card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center"><div>전기 이월금 <b>' + won(carry) + '</b></div><div>당기 수입 <b style="color:#2F6B4F">' + won(ti) + '</b></div><div>당기 지출 <b style="color:#A33A2A">' + won(te) + '</b></div><div style="margin-left:auto;font-size:1.05rem">기말 잔액 <b style="color:var(--accent,#3A281C)">' + won(carry + ti - te) + '</b></div></div>' +
+        carryNote() + '<div class="fin-card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:center"><div>전기 이월금 <b>' + won(carry) + '</b></div><div>당기 수입 <b style="color:#2F6B4F">' + won(ti) + '</b></div><div>당기 지출 <b style="color:#A33A2A">' + won(te) + '</b></div><div style="margin-left:auto;font-size:1.05rem">기말 잔액 <b style="color:var(--accent,#111111)">' + won(carry + ti - te) + '</b></div></div>' +
         '<div class="fin-card"><b>월별 수입·지출 현황</b><div style="overflow:auto;margin-top:8px"><table class="fin-table"><thead><tr><th>월</th><th class="num">수입</th><th class="num">지출</th><th class="num">차액</th></tr></thead><tbody>' + monthTbl +
-        '</tbody><tfoot><tr style="font-weight:700;background:#FBF8F6"><td>합계</td><td class="num">' + won(ti) + '</td><td class="num">' + won(te) + '</td><td class="num">' + won(ti - te) + '</td></tr></tfoot></table></div></div>' +
+        '</tbody><tfoot><tr style="font-weight:700;background:#FDFCF9"><td>합계</td><td class="num">' + won(ti) + '</td><td class="num">' + won(te) + '</td><td class="num">' + won(ti - te) + '</td></tr></tfoot></table></div></div>' +
         (M.budget.length ? '<div class="fin-card"><b>예산 대비 실적</b><div style="overflow:auto;margin-top:8px"><table class="fin-table"><thead><tr><th>구분</th><th class="num">연간 예산</th><th class="num">실적 누계</th><th class="num">집행률</th></tr></thead><tbody>' +
           '<tr><td>수입</td><td class="num">' + won(budIn) + '</td><td class="num">' + won(ti) + '</td><td class="num">' + (budIn ? (ti / budIn * 100).toFixed(1) + '%' : '-') + '</td></tr>' +
           '<tr><td>지출</td><td class="num">' + won(budExp) + '</td><td class="num">' + won(te) + '</td><td class="num">' + (budExp ? (te / budExp * 100).toFixed(1) + '%' : '-') + '</td></tr>' +
@@ -1259,14 +1259,14 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         // 기초 이월 잔액 = 기간 시작일이 속한 회계연도의 이월금 + (그 회계연도 시작 ~ 기간 시작 전) 순증감
         // (주별·직접 선택처럼 기간이 회계연도 경계에 걸려도 맞게 나온다)
         var opening = balanceBefore(rg.from), ending = opening + inc - exp;
-        function tbl(map, tot) { var rows = Object.keys(map).map(function (k) { return { a: k, c: map[k].c, s: map[k].s }; }).sort(function (a, b) { return b.s - a.s; }); if (!rows.length) return '<p class="help">내역 없음</p>'; return '<table class="fin-table"><thead><tr><th>계정</th><th class="num">건수</th><th class="num">금액</th><th class="num">비율</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + esc(r.a) + '</td><td class="num">' + r.c + '</td><td class="num"><b>' + won(r.s) + '</b></td><td class="num">' + (tot ? (r.s / tot * 100).toFixed(1) + '%' : '-') + '</td></tr>'; }).join('') + '</tbody><tfoot><tr style="font-weight:700;background:#FBF8F6"><td>합계</td><td class="num">' + rows.reduce(function (s, r) { return s + r.c; }, 0) + '</td><td class="num">' + won(tot) + '</td><td class="num">100%</td></tr></tfoot></table>'; }
+        function tbl(map, tot) { var rows = Object.keys(map).map(function (k) { return { a: k, c: map[k].c, s: map[k].s }; }).sort(function (a, b) { return b.s - a.s; }); if (!rows.length) return '<p class="help">내역 없음</p>'; return '<table class="fin-table"><thead><tr><th>계정</th><th class="num">건수</th><th class="num">금액</th><th class="num">비율</th></tr></thead><tbody>' + rows.map(function (r) { return '<tr><td>' + esc(r.a) + '</td><td class="num">' + r.c + '</td><td class="num"><b>' + won(r.s) + '</b></td><td class="num">' + (tot ? (r.s / tot * 100).toFixed(1) + '%' : '-') + '</td></tr>'; }).join('') + '</tbody><tfoot><tr style="font-weight:700;background:#FDFCF9"><td>합계</td><td class="num">' + rows.reduce(function (s, r) { return s + r.c; }, 0) + '</td><td class="num">' + won(tot) + '</td><td class="num">100%</td></tr></tfoot></table>'; }
         var content = '<div class="fin-card" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center"><b>' + esc(rg.label) + '</b>' +
           '<div style="margin-left:auto">기초 이월 <b>' + won(opening) + '</b></div>' +
           '<div>수입 <b style="color:#2F6B4F">' + won(inc) + '</b></div>' +
           '<div>지출 <b style="color:#A33A2A">' + won(exp) + '</b></div>' +
           '<div>당기차액 <b>' + won(inc - exp) + '</b></div>' +
-          '<div>기말 잔액 <b style="color:var(--accent,#3A281C)">' + won(ending) + '</b></div>' +
-          '<div style="color:#AFA49C">' + list.length + '건</div></div>' +
+          '<div>기말 잔액 <b style="color:var(--accent,#111111)">' + won(ending) + '</b></div>' +
+          '<div style="color:#A7A6A3">' + list.length + '건</div></div>' +
           '<div class="fin-card"><b>수입 계정별</b><div style="overflow:auto;margin-top:8px">' + tbl(accIn, inc) + '</div></div>' +
           '<div class="fin-card"><b>지출 계정별</b><div style="overflow:auto;margin-top:8px">' + tbl(accEx, exp) + '</div></div>';
         withPrint(out, '재정보고서', content, rg.label);
@@ -1284,7 +1284,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       '<div class="form-field"><label>주간 선택</label><div style="display:flex;gap:6px"><button class="btn btn-line" id="gl2_this">이번주</button><button class="btn btn-line" id="gl2_last">지난주</button></div></div>' +
       '<div class="form-field"><button class="btn btn-solid" id="gl2_go">조회</button></div>' +
       '</div>' +
-      '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #F4F1EF"><b style="font-size:.85rem;color:var(--ink-soft);margin-right:10px">출력 항목</b>' +
+      '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #F9F8F5"><b style="font-size:.85rem;color:var(--ink-soft);margin-right:10px">출력 항목</b>' +
       ck('opt_name', '이름', true) + ck('opt_role', '직분', false) + ck('opt_memo', '헌금 사유', false) + ck('opt_spouse', '배우자 함께 표시', false) +
       '</div><p class="help" style="margin-top:8px">주보용 헌금자 명단 — 항목별 명단을 <b>한 칸에 모아</b> 표시합니다(드래그 복사용). 금액은 표기하지 않습니다. ‘배우자 함께 표시’ 체크 시 <b>김동석 (신은주)</b> 형식으로 나옵니다.</p></div><div id="gl2_out"></div>';
     var dateInp = panel.querySelector('#gl2_date');
@@ -1322,7 +1322,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         var blocks = order.map(function (a) {
           var names = byAcc[a].map(nameOf);
           // 이름 사이에 '실제 공백 문자'를 넣어 복사·붙여넣기 해도 이름이 붙지 않도록 한다(margin은 화면 여백용).
-          return '<div style="margin-bottom:12px"><b style="color:var(--accent,#3A281C)">' + esc(a) + ' (' + names.length + '명)</b>' +
+          return '<div style="margin-bottom:12px"><b style="color:var(--accent,#111111)">' + esc(a) + ' (' + names.length + '명)</b>' +
             '<div style="line-height:2;font-size:.95rem;margin-top:2px">' + names.map(function (n) { return '<span style="margin-right:12px">' + esc(n) + '</span>'; }).join(' ') + '</div></div>';
         }).join('');
         var content = '<div class="fin-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>' + w.from + ' ~ ' + w.to + ' 헌금자 명단</b><span style="color:var(--ink-soft);font-size:.9rem">총 ' + list.length + '건</span></div>' + blocks + '</div>';
@@ -1376,8 +1376,8 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var cov = coveredMap();
       var org = orgInfo();
       panel.innerHTML =
-        (org.bizno ? '' : '<div style="background:#FBEDEA;border:1px solid #f5b7b1;color:#922b21;padding:9px 13px;border-radius:8px;font-size:.83rem;margin-bottom:10px">⚠ 발급기관 <b>고유번호(사업자등록번호)</b>가 비어 있습니다. <b>설정 → 기부금영수증 발급기관</b>에서 먼저 입력하세요. (영수증 효력에 필요)</div>') +
-        '<div class="fin-card"><div style="background:#fff8e8;border:1px solid #E8C294;color:#7E3B1E;padding:10px 14px;border-radius:9px;font-size:.85rem;margin-bottom:12px">연말정산 기부금영수증 — 교적 매칭된 교인의 <b>' + M.fy + '년 귀속(' + M.fy + '-01-01 ~ ' + M.fy + '-12-31)</b> 헌금 누계입니다. 회계연도가 아니라 달력 1년으로 셉니다(오직 재정과 같음). <b>발급</b> 버튼으로 공식 양식(소득세법 시행규칙 별지 제45호의2서식) 영수증을 출력/PDF 저장합니다. (미등록 헌금자 제외)</div>' +
+        (org.bizno ? '' : '<div style="background:#FBEDEA;border:1px solid #f5b7b1;color:#922b21;padding:9px 13px;border-radius:2px;font-size:.83rem;margin-bottom:10px">⚠ 발급기관 <b>고유번호(사업자등록번호)</b>가 비어 있습니다. <b>설정 → 기부금영수증 발급기관</b>에서 먼저 입력하세요. (영수증 효력에 필요)</div>') +
+        '<div class="fin-card"><div style="background:#fff8e8;border:1px solid #BFBEBB;color:#4F4E4B;padding:10px 14px;border-radius:2px;font-size:.85rem;margin-bottom:12px">연말정산 기부금영수증 — 교적 매칭된 교인의 <b>' + M.fy + '년 귀속(' + M.fy + '-01-01 ~ ' + M.fy + '-12-31)</b> 헌금 누계입니다. 회계연도가 아니라 달력 1년으로 셉니다(오직 재정과 같음). <b>발급</b> 버튼으로 공식 양식(소득세법 시행규칙 별지 제45호의2서식) 영수증을 출력/PDF 저장합니다. (미등록 헌금자 제외)</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px"><b>교인별 헌금 누계 (' + rows.length + '명) · ' + M.fy + '년 귀속</b><span><b style="color:#2F6B4F;margin-right:12px">' + won(tot) + '원</b><button class="btn btn-line" id="rcp_xls">⬇ 엑셀</button></span></div>' +
         '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>이름</th><th>생년월일</th><th class="num">건수</th><th class="num">헌금 누계</th><th>발급</th></tr></thead><tbody>' +
         rows.map(function (r, i) {
@@ -1421,8 +1421,8 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(23,17,12,.55);z-index:9000;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 14px';
     var addr = me.address || '';
     ov.innerHTML =
-      '<div style="background:#fff;border-radius:14px;max-width:680px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:22px 24px 26px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;color:var(--accent,#3A281C)">기부금영수증 발급 — ' + esc(member.name) + '</h3><button id="rc_x" style="border:0;background:none;font-size:1.5rem;cursor:pointer;color:#ADA29A">&times;</button></div>' +
+      '<div style="background:#fff;border-radius:2px;max-width:680px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:22px 24px 26px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;color:var(--accent,#111111)">기부금영수증 발급 — ' + esc(member.name) + '</h3><button id="rc_x" style="border:0;background:none;font-size:1.5rem;cursor:pointer;color:#A4A3A0">&times;</button></div>' +
       '<p style="color:var(--ink-soft);font-size:.84rem;margin:0 0 14px">' + M.fy + '년 귀속 헌금 누계 <b>' + won(member.total) + '원</b> · ' + member.count + '건. 발급 옵션을 선택하면 미리보기가 갱신됩니다.</p>' +
       '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px">' +
       '<div><div style="font-size:.78rem;color:var(--ink-soft);margin-bottom:4px">명세 방식</div>' +
@@ -1432,10 +1432,10 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       (spouseKey ? '<div><div style="font-size:.78rem;color:var(--ink-soft);margin-bottom:4px">부부합산</div><label class="rc-r"><input type="checkbox" id="rc_spouse"> 배우자(' + esc(spouseMem ? spouseMem.name : (me.spouse || '')) + ') 헌금 합산</label></div>' : '') +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">' +
-      '<div class="form-field" style="margin:0"><label>주민등록번호 <span style="color:#ADA29A;font-weight:400">(선택)</span></label><input type="text" id="rc_rrn" placeholder="앞 6자리 또는 전체" autocomplete="off"></div>' +
+      '<div class="form-field" style="margin:0"><label>주민등록번호 <span style="color:#A4A3A0;font-weight:400">(선택)</span></label><input type="text" id="rc_rrn" placeholder="앞 6자리 또는 전체" autocomplete="off"></div>' +
       '<div class="form-field" style="margin:0"><label>주소</label><input type="text" id="rc_addr" value="' + esc(addr) + '" placeholder="기부자 주소"></div>' +
       '</div>' +
-      '<div id="rc_prev" style="border:1px solid #ECE8E5;border-radius:10px;padding:12px;background:#fafbfd;margin-bottom:14px;max-height:230px;overflow:auto"></div>' +
+      '<div id="rc_prev" style="border:1px solid #F5F4F1;border-radius:2px;padding:12px;background:#fafbfd;margin-bottom:14px;max-height:230px;overflow:auto"></div>' +
       '<div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;align-items:center"><span id="rc_msg" style="font-size:.82rem;color:#A33A2A;margin-right:auto"></span>' +
       '<button class="btn btn-line" id="rc_print">🖨 인쇄(출력)</button><button class="btn btn-solid" id="rc_pdf">📄 PDF로 저장</button></div>' +
       '</div>';
@@ -1488,7 +1488,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         period: M.fy + '년 귀속(' + r.from + '~' + r.to + ')', amount: g.total, cnt: g.vs.length, method: method
       };
       var btnP = ov.querySelector('#rc_print'), btnD = ov.querySelector('#rc_pdf');
-      btnP.disabled = btnD.disabled = true; ov.querySelector('#rc_msg').style.color = '#93867C'; ov.querySelector('#rc_msg').textContent = '발급 기록 중…';
+      btnP.disabled = btnD.disabled = true; ov.querySelector('#rc_msg').style.color = '#898885'; ov.querySelector('#rc_msg').textContent = '발급 기록 중…';
       WPF.call('addReceipt', { receipt: rec }).then(function (res) {
         printReceipt(rec, orgInfo(), g.rows);
         M._rc = false;
@@ -1519,32 +1519,32 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     }).join('');
     var css = [
       '*{box-sizing:border-box}',
-      'body{font-family:"Noto Sans KR","Malgun Gothic",sans-serif;color:#13110F;margin:0;padding:24px 30px;font-size:12px;line-height:1.4}',
+      'body{font-family:"Noto Sans KR","Malgun Gothic",sans-serif;color:#111111;margin:0;padding:24px 30px;font-size:12px;line-height:1.4}',
       '.doc{max-width:760px;margin:0 auto}',
-      '.no{font-size:11px;color:#38332E;margin-bottom:2px}',
-      '.lh{display:flex;align-items:center;justify-content:center;gap:12px;margin:0 0 6px;padding-bottom:10px;border-bottom:2px solid #543C2A}',
+      '.no{font-size:11px;color:#201F1C;margin-bottom:2px}',
+      '.lh{display:flex;align-items:center;justify-content:center;gap:12px;margin:0 0 6px;padding-bottom:10px;border-bottom:2px solid #272623}',
       '.lh img{height:50px}',
-      '.lh .lh-kr{font-family:"Noto Serif KR",serif;font-size:21px;font-weight:700;letter-spacing:.14em;color:#543C2A}',
+      '.lh .lh-kr{font-family:"Noto Serif KR",serif;font-size:21px;font-weight:700;letter-spacing:.14em;color:#272623}',
       'h1{text-align:center;font-size:24px;letter-spacing:.5em;margin:6px 0 4px;font-weight:700}',
-      '.law-top{text-align:center;font-size:10.5px;color:#4B443D;margin:0 0 14px}',
+      '.law-top{text-align:center;font-size:10.5px;color:#2A2926;margin:0 0 14px}',
       'table{width:100%;border-collapse:collapse;margin-bottom:6px}',
-      'td,th{border:1px solid #5E544C;padding:5px 7px;vertical-align:middle}',
-      '.sec{background:#F4F0EB;font-weight:700;text-align:center;width:96px}',
-      '.lbl{background:#F9F7F5;font-weight:600;text-align:center;width:104px;font-size:11px}',
+      'td,th{border:1px solid #565552;padding:5px 7px;vertical-align:middle}',
+      '.sec{background:#F8F7F4;font-weight:700;text-align:center;width:96px}',
+      '.lbl{background:#FCFBF8;font-weight:600;text-align:center;width:104px;font-size:11px}',
       '.c{text-align:center}.r{text-align:right;font-variant-numeric:tabular-nums}',
-      'thead th{background:#F2EEEB;text-align:center;font-weight:700;font-size:11.5px}',
-      'tfoot td{background:#F7F3EF;font-weight:700}',
+      'thead th{background:#F8F7F4;text-align:center;font-weight:700;font-size:11.5px}',
+      'tfoot td{background:#FAF9F6;font-weight:700}',
       '.subt{font-weight:700;margin:12px 0 4px;font-size:12.5px}',
       '.stmt{font-size:11.5px;margin:16px 0 4px;line-height:1.6}',
       '.dt{text-align:center;margin:14px 0 6px;font-size:12.5px}',
       '.sign{text-align:right;margin:4px 0;font-size:12.5px}',
-      '.ul{display:inline-block;min-width:120px;border-bottom:1px solid #13110F;text-align:center;font-weight:700}',
+      '.ul{display:inline-block;min-width:120px;border-bottom:1px solid #111111;text-align:center;font-weight:700}',
       '.ul.big{min-width:180px;font-size:15px;font-family:"Noto Serif KR",serif}',
-      '.foot{margin-top:18px;font-size:9.5px;color:#9B8775;border-top:1px solid #E7DCD3;padding-top:8px}',
+      '.foot{margin-top:18px;font-size:9.5px;color:#898885;border-top:1px solid #DEDDDA;padding-top:8px}',
       '.seal{height:58px;vertical-align:middle;margin-left:-6px;position:relative;top:-2px}',
       '.attach{page-break-before:always;break-before:page;padding-top:6px}',
-      '.attach-t{font-size:12.5px;font-weight:700;color:#543C2A;margin:0 0 8px;border-left:3px solid #C25A2E;padding-left:8px}',
-      '.attach img{display:block;max-width:100%;max-height:245mm;margin:0 auto;border:1px solid #D4CBC4}',
+      '.attach-t{font-size:12.5px;font-weight:700;color:#272623;margin:0 0 8px;border-left:3px solid #797875;padding-left:8px}',
+      '.attach img{display:block;max-width:100%;max-height:245mm;margin:0 auto;border:1px solid #CDCCC9}',
       '@page{size:A4;margin:16mm 14mm}',
       '@media print{body{padding:0}.noprint{display:none}}'
     ].join('');
@@ -1576,7 +1576,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       '<div class="foot">발급방식: ' + (rec.method === 'pdf' ? 'PDF 저장' : '인쇄 출력') + ' · 귀속연도: ' + esc(rec.period || (M.fy + '년')) + ' · 발급일 ' + dt + ' · 운평장로교회 회계시스템</div>' +
       (org.imgUid ? '<div class="attach"><div class="attach-t">[붙임 1] 고유번호증</div><img src="' + esc(org.imgUid) + '" alt="고유번호증"></div>' : '') +
       (org.imgAssoc ? '<div class="attach"><div class="attach-t">[붙임 2] 총회소속증명서</div><img src="' + esc(org.imgAssoc) + '" alt="총회소속증명서"></div>' : '') +
-      '<div class="noprint" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#543C2A;color:#fff;border-radius:8px">🖨 인쇄 / PDF 저장</button></div>' +
+      '<div class="noprint" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#272623;color:#fff;border-radius:2px">🖨 인쇄 / PDF 저장</button></div>' +
       '<scr' + 'ipt>window.addEventListener("load",function(){setTimeout(function(){try{window.print()}catch(e){}},500)});</scr' + 'ipt>' +
       '</div></body></html>';
     w.document.write(html); w.document.close(); w.focus();
@@ -1596,8 +1596,8 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         '<div style="overflow:auto;max-height:640px"><table class="fin-table"><thead><tr><th>일련번호</th><th>발급일</th><th>기부자</th><th>생년월일</th><th>귀속연도</th><th>명세</th><th>합산</th><th class="num">금액</th><th>방식</th><th>상태</th><th>관리</th></tr></thead><tbody>' +
         (list.length ? list.map(function (r) {
           var cancelled = r.status === 'cancelled';
-          return '<tr' + (cancelled ? ' style="color:#BBB2AC;text-decoration:line-through"' : '') + '><td>' + esc(r.no) + '</td><td>' + esc(fmtD(r.issuedAt)) + '</td><td><b>' + esc(r.name) + '</b></td><td>' + esc(r.birth ? (r.birth.slice(0, 4) + '-' + r.birth.slice(4, 6) + '-' + r.birth.slice(6, 8)) : '') + '</td><td>' + esc(String(r.fy)) + '년</td><td>' + esc(detailK[r.detail] || r.detail) + '</td><td>' + (r.spouse ? '부부' : '-') + '</td><td class="num"><b>' + won(r.amount) + '</b></td><td>' + (r.method === 'pdf' ? 'PDF' : '출력') + '</td><td>' + (cancelled ? '취소됨' : '<span style="color:#2F6B4F">유효</span>') + '</td><td>' + (cancelled ? '' : '<button class="btn btn-line" data-cancel="' + r.id + '" style="padding:3px 9px;font-size:.76rem">발급취소</button>') + '</td></tr>';
-        }).join('') : '<tr><td colspan="11" style="text-align:center;color:#AFA49C;padding:24px">발급된 영수증이 없습니다.</td></tr>') +
+          return '<tr' + (cancelled ? ' style="color:#B4B3B0;text-decoration:line-through"' : '') + '><td>' + esc(r.no) + '</td><td>' + esc(fmtD(r.issuedAt)) + '</td><td><b>' + esc(r.name) + '</b></td><td>' + esc(r.birth ? (r.birth.slice(0, 4) + '-' + r.birth.slice(4, 6) + '-' + r.birth.slice(6, 8)) : '') + '</td><td>' + esc(String(r.fy)) + '년</td><td>' + esc(detailK[r.detail] || r.detail) + '</td><td>' + (r.spouse ? '부부' : '-') + '</td><td class="num"><b>' + won(r.amount) + '</b></td><td>' + (r.method === 'pdf' ? 'PDF' : '출력') + '</td><td>' + (cancelled ? '취소됨' : '<span style="color:#2F6B4F">유효</span>') + '</td><td>' + (cancelled ? '' : '<button class="btn btn-line" data-cancel="' + r.id + '" style="padding:3px 9px;font-size:.76rem">발급취소</button>') + '</td></tr>';
+        }).join('') : '<tr><td colspan="11" style="text-align:center;color:#A7A6A3;padding:24px">발급된 영수증이 없습니다.</td></tr>') +
         '</tbody></table></div></div>';
       Array.prototype.forEach.call(panel.querySelectorAll('[data-cancel]'), function (b) {
         b.onclick = function () {
@@ -1675,11 +1675,11 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         var tb = tbl.querySelector('tbody');
         function budgetInput(b) {
           var inp = document.createElement('input'); inp.type = 'text'; inp.inputMode = 'numeric'; inp.value = won(b['예산']);
-          inp.style.cssText = 'width:120px;text-align:right;border:1px solid #ECE6E1;border-radius:6px;padding:4px 7px;font:inherit';
+          inp.style.cssText = 'width:120px;text-align:right;border:1px solid #F4F3F0;border-radius:2px;padding:4px 7px;font:inherit';
           inp.addEventListener('input', function () { var n = parseNum(inp.value); inp.value = n ? won(n) : ''; });
           inp.addEventListener('change', function () {
             var n = parseNum(inp.value), prev = Number(b['예산']) || 0; if (n === prev) return;
-            WPF.call('updateBudget', { code: b['계정코드'], amount: n }).then(function () { b['예산'] = n; M._b = false; inp.style.borderColor = '#2F6B4F'; head.querySelector('.g-total').textContent = won(total()) + '원'; flash('✓ 저장됨', true); setTimeout(function () { inp.style.borderColor = '#ECE6E1'; }, 1000); })
+            WPF.call('updateBudget', { code: b['계정코드'], amount: n }).then(function () { b['예산'] = n; M._b = false; inp.style.borderColor = '#2F6B4F'; head.querySelector('.g-total').textContent = won(total()) + '원'; flash('✓ 저장됨', true); setTimeout(function () { inp.style.borderColor = '#F4F3F0'; }, 1000); })
               .catch(function (e) { inp.style.borderColor = '#A33A2A'; inp.value = won(prev); flash('저장 실패: ' + e.message, false); });
           });
           return inp;
@@ -1688,7 +1688,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         function detailRows(parentCode) {
           (byParent[parentCode] || []).sort(function (a, b) { return String(a['계정코드']).localeCompare(String(b['계정코드'])); }).forEach(function (b) {
             var tr = document.createElement('tr');
-            tr.innerHTML = '<td style="color:#AFA49C">' + esc(b['계정코드']) + '</td><td>' + esc(b['계정이름']) + '</td><td class="num">' + won(b['전년예산']) + '</td><td class="num">' + won(b['전년결산']) + '</td>';
+            tr.innerHTML = '<td style="color:#A7A6A3">' + esc(b['계정코드']) + '</td><td>' + esc(b['계정이름']) + '</td><td class="num">' + won(b['전년예산']) + '</td><td class="num">' + won(b['전년결산']) + '</td>';
             var td = document.createElement('td'); td.className = 'num'; td.appendChild(budgetInput(b)); tr.appendChild(td);
             if (editing) tr.appendChild(mng([
               { label: '✏ 수정', fn: function () { var nm = prompt('목(계정) 이름 수정', b['계정이름']); if (nm && nm.trim()) WPF.call('updateAccount', { code: b['계정코드'], fields: { name: nm.trim() } }).then(reload).catch(function (e) { flash(e.message, false); }); } },
@@ -1699,8 +1699,8 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         }
         groups.forEach(function (gr) {
           var sub = (byParent[gr['계정코드']] || []).reduce(function (s, b) { return s + (Number(b['예산']) || 0); }, 0);
-          var tr = document.createElement('tr'); tr.style.cssText = 'font-weight:700;background:#FBF8F6';
-          tr.innerHTML = '<td>' + esc(gr['계정코드']) + '</td><td>' + esc(gr['계정이름']) + ' <span style="color:#AFA49C;font-weight:400">(항)</span></td><td class="num"></td><td class="num"></td><td class="num">' + won(sub) + '</td>';
+          var tr = document.createElement('tr'); tr.style.cssText = 'font-weight:700;background:#FDFCF9';
+          tr.innerHTML = '<td>' + esc(gr['계정코드']) + '</td><td>' + esc(gr['계정이름']) + ' <span style="color:#A7A6A3;font-weight:400">(항)</span></td><td class="num"></td><td class="num"></td><td class="num">' + won(sub) + '</td>';
           if (editing) tr.appendChild(mng([
             { label: '＋ 목 추가', fn: function () { var nm = prompt('「' + gr['계정이름'] + '」에 추가할 목(계정) 이름'); if (nm && nm.trim()) WPF.call('addAccount', { code: nextDetail(gr['계정코드'], g), atype: g, name: nm.trim(), budget: 0 }).then(reload).catch(function (e) { flash(e.message, false); }); } },
             { label: '✏ 수정', fn: function () { var nm = prompt('항(분류) 이름 수정', gr['계정이름']); if (nm && nm.trim()) WPF.call('updateAccount', { code: gr['계정코드'], fields: { name: nm.trim() } }).then(reload).catch(function (e) { flash(e.message, false); }); } },
@@ -1741,20 +1741,20 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var nextFY = M.fy + 1;
       var closedAt = (M.settings || {})['fy_closed_' + M.fy] || '';
       panel.innerHTML = '<div class="fin-card" style="max-width:560px">' +
-        '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">회계연도 설정</h3>' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#111111)">회계연도 설정</h3>' +
         '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:16px">회계연도가 시작하는 월을 정합니다. 거래장부·통계·결산보고서·기부금영수증이 선택한 회계연도 범위로 집계됩니다.</p>' +
         '<div class="form-field" style="max-width:220px"><label>회계연도 시작 월</label><select id="set_sm">' + mopts + '</select></div>' +
         '<p class="help" style="margin-top:10px">예) <b>12월</b> → 12/1 ~ 익년 11/30(오직 재정과 같음) · <b>1월</b> → 1/1 ~ 12/31 · <b>3월</b> → 3/1 ~ 익년 2/말</p>' +
         '<p style="margin-top:6px;font-size:.86rem">현재 <b>' + M.fy + '년도</b> 범위: <b>' + r.from + ' ~ ' + r.to + '</b></p>' +
         '<div style="margin-top:14px;display:flex;gap:10px;align-items:center"><button class="btn btn-solid" id="set_save">저장</button><span class="fin-msg" id="set_msg"></span></div>' +
-        '<p style="color:#AFA49C;font-size:.78rem;margin-top:12px">※ 시작 월은 서버에 저장되어 모든 기기에 똑같이 적용됩니다. 시작 월을 바꾸면 회계연도 범위와 이월금 기준일이 함께 바뀝니다.</p></div>' +
+        '<p style="color:#A7A6A3;font-size:.78rem;margin-top:12px">※ 시작 월은 서버에 저장되어 모든 기기에 똑같이 적용됩니다. 시작 월을 바꾸면 회계연도 범위와 이월금 기준일이 함께 바뀝니다.</p></div>' +
         '<div class="fin-card" style="max-width:560px">' +
-        '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">전기 이월금 — ' + M.fy + '년도</h3>' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#111111)">전기 이월금 — ' + M.fy + '년도</h3>' +
         '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px"><b>' + r.from + '</b> 시작 시점의 <b>이월 잔액</b>입니다. 앞 회계연도를 결산하면 그 기말 잔액이 여기로 넘어옵니다. 저장된 값이 없으면 앞 회계연도 장부로 자동 계산합니다.</p>' +
         '<table class="fin-table" style="margin-bottom:12px"><tbody>' +
         '<tr><td>저장된 이월금</td><td class="num">' + (ci.stored != null ? won(ci.stored) : '없음') + '</td></tr>' +
         ((ci.stored == null || ci.mismatch) ? '<tr><td>' + (M.fy - 1) + '년도 장부로 계산한 이월금</td><td class="num">' + (ci.calc != null ? won(ci.calc) : '앞 연도 자료 없음') + '</td></tr>' : '') +
-        '<tr style="font-weight:700;background:#FBF8F6"><td>지금 쓰는 값' + (ci.auto ? ' (자동 계산)' : '') + '</td><td class="num">' + won(carry) + '</td></tr>' +
+        '<tr style="font-weight:700;background:#FDFCF9"><td>지금 쓰는 값' + (ci.auto ? ' (자동 계산)' : '') + '</td><td class="num">' + won(carry) + '</td></tr>' +
         '</tbody></table>' +
         (ci.mismatch ? '<p style="font-size:.86rem;color:#A33A2A;margin-bottom:10px">저장된 값과 장부로 계산한 값이 ' + won(ci.stored - ci.calc) + '원 다릅니다. ' + (M.fy - 1) + '년도 전표가 이월 뒤에 바뀌었을 수 있습니다.</p>' : '') +
         '<div class="form-field" style="max-width:260px"><label>이월금 직접 넣기 (원)</label><input type="text" id="set_carry" inputmode="numeric" value="' + (ci.stored != null ? won(ci.stored) : '') + '" placeholder="비우면 자동 계산" style="text-align:right;font-weight:700"></div>' +
@@ -1762,20 +1762,20 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         (ci.mismatch ? '<button class="btn btn-line" id="set_carry_sync">장부로 계산한 값으로 맞추기</button>' : '') +
         '<span class="fin-msg" id="set_carry_msg"></span></div></div>' +
         '<div class="fin-card" style="max-width:560px">' +
-        '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">결산 후 이월 — ' + M.fy + '년도</h3>' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#111111)">결산 후 이월 — ' + M.fy + '년도</h3>' +
         '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">결산하면 <b>기말 잔액이 ' + nextFY + '년도 전기 이월금으로 고정</b>되고, ' + M.fy + '년도 전표(' + r.to + ' 이전)는 <b>추가·수정·삭제할 수 없게 잠깁니다</b>. 고칠 일이 생기면 결산을 취소한 뒤 고치고 다시 결산하십시오.</p>' +
         '<table class="fin-table" style="margin-bottom:12px"><tbody>' +
         '<tr><td>전기 이월금</td><td class="num">' + won(carry) + '</td></tr>' +
         '<tr><td>당기 수입</td><td class="num" style="color:#2F6B4F">＋ ' + won(incFY) + '</td></tr>' +
         '<tr><td>당기 지출</td><td class="num" style="color:#A33A2A">－ ' + won(expFY) + '</td></tr>' +
-        '<tr style="font-weight:700;background:#FBF8F6"><td>기말 잔액 (다음 연도 이월액)</td><td class="num">' + won(ending) + '</td></tr>' +
+        '<tr style="font-weight:700;background:#FDFCF9"><td>기말 잔액 (다음 연도 이월액)</td><td class="num">' + won(ending) + '</td></tr>' +
         '</tbody></table>' +
         (closedAt ? '<p style="font-size:.82rem;color:#2F6B4F;margin-bottom:8px">결산 후 이월 완료 (' + esc(fmtD(closedAt)) + ')' + (nextClosed ? ' — ' + nextFY + '년도 결산을 먼저 취소해야 이 결산을 취소할 수 있습니다.' : '') + '</p>' : '<p style="font-size:.82rem;color:#A33A2A;margin-bottom:8px">미결산</p>') +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
-        (closedAt ? (nextClosed ? '' : '<button class="btn btn-line" id="set_unclose">결산 취소</button>') : '<button class="btn btn-solid" id="set_close" style="background:#543C2A">' + M.fy + '년도 결산 후 ' + nextFY + '년도로 이월</button>') +
+        (closedAt ? (nextClosed ? '' : '<button class="btn btn-line" id="set_unclose">결산 취소</button>') : '<button class="btn btn-solid" id="set_close" style="background:#272623">' + M.fy + '년도 결산 후 ' + nextFY + '년도로 이월</button>') +
         '<span class="fin-msg" id="set_close_msg"></span></div></div>' +
         '<div class="fin-card" style="max-width:560px">' +
-        '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">마감 관리</h3>' +
+        '<h3 style="margin:0 0 6px;color:var(--accent,#111111)">마감 관리</h3>' +
         '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">마감 기능을 쓰면 정한 날짜 이전의 전표는 추가·수정·삭제할 수 없습니다. 주간·월간 보고를 마친 뒤 숫자가 바뀌지 않게 할 때 씁니다.</p>' +
         '<label style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input type="checkbox" id="lock_on"' + (S0.fin_lock_on === '1' ? ' checked' : '') + '> 마감 기능 사용</label>' +
         '<div class="form-field" style="max-width:220px"><label>마감일</label><input type="date" id="lock_date" value="' + esc(S0.fin_lock_date || '') + '"></div>' +
@@ -1784,7 +1784,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         (function () {
           var o = orgInfo();
           return '<div class="fin-card" style="max-width:560px">' +
-            '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">기부금영수증 발급기관</h3>' +
+            '<h3 style="margin:0 0 6px;color:var(--accent,#111111)">기부금영수증 발급기관</h3>' +
             '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px">공식 기부금영수증(별지 제45호의2서식)에 인쇄되는 <b>기부금 수령인(교회)</b> 정보입니다. 특히 <b>고유번호(사업자등록번호)</b>는 영수증 효력에 필요합니다.</p>' +
             '<div class="form-field"><label>단체명</label><input type="text" id="org_name" value="' + esc(o.name) + '"></div>' +
             '<div class="form-field"><label>고유번호(사업자등록번호)</label><input type="text" id="org_bizno" value="' + esc(o.bizno) + '" placeholder="000-00-00000"></div>' +
@@ -1802,8 +1802,8 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
             { key: 'rcp_img_seal', label: '직인', url: o.imgSeal, hint: '운평장로교회 옆에 날인 (투명 PNG 권장)' }
           ];
           function slotHTML(s) {
-            return '<div class="rcp-up" data-key="' + s.key + '" style="border:1px solid #ECE8E5;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:center">' +
-              '<div class="rcp-up-prev" style="width:96px;height:72px;flex:0 0 auto;border:1px dashed #E0D7D0;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#FBFAF9;font-size:.72rem;color:#AFA49C">' +
+            return '<div class="rcp-up" data-key="' + s.key + '" style="border:1px solid #F5F4F1;border-radius:2px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:center">' +
+              '<div class="rcp-up-prev" style="width:96px;height:72px;flex:0 0 auto;border:1px dashed #D9D8D5;border-radius:2px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#FDFCF9;font-size:.72rem;color:#A7A6A3">' +
               (s.url ? '<img src="' + esc(s.url) + '" style="max-width:100%;max-height:100%">' : '미등록') + '</div>' +
               '<div style="flex:1;min-width:0"><div style="font-weight:700">' + s.label + '</div><div style="font-size:.78rem;color:var(--ink-soft)">' + s.hint + '</div>' +
               '<div style="margin-top:7px;display:flex;gap:7px;align-items:center;flex-wrap:wrap">' +
@@ -1812,7 +1812,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
               '<span class="rcp-up-msg" style="font-size:.78rem"></span></div></div></div>';
           }
           return '<div class="fin-card" style="max-width:560px">' +
-            '<h3 style="margin:0 0 6px;color:var(--accent,#3A281C)">기부금영수증 증빙 이미지</h3>' +
+            '<h3 style="margin:0 0 6px;color:var(--accent,#111111)">기부금영수증 증빙 이미지</h3>' +
             '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px">고유번호증·총회소속증명서·직인 이미지를 업로드하면 기부금영수증 출력 시 자동으로 반영됩니다. (고유번호증·총회소속증명서는 뒷장에 첨부, 직인은 교회명 옆에 날인)</p>' +
             slots.map(slotHTML).join('') +
             (window.ChurchUpload && ChurchUpload.isReady() ? '' : '<p style="color:#A33A2A;font-size:.8rem">⚠ 업로드 서버가 설정되지 않아 업로드를 사용할 수 없습니다.</p>') +
@@ -1820,7 +1820,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         })();
       panel.querySelector('#set_save').onclick = function () {
         var v = Number(panel.querySelector('#set_sm').value);
-        var msg = panel.querySelector('#set_msg'); msg.style.color = '#93867C'; msg.textContent = '저장 중…';
+        var msg = panel.querySelector('#set_msg'); msg.style.color = '#898885'; msg.textContent = '저장 중…';
         WPF.call('setSetting', { key: 'fy_start_month', value: v }).then(function () {
           M.settings.fy_start_month = String(v);
           M.fy = curFY();
@@ -1831,7 +1831,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var carryEl = panel.querySelector('#set_carry');
       carryEl.addEventListener('input', function () { var n = parseNum(carryEl.value); carryEl.value = n ? won(n) : ''; });
       function saveCarry(val) { // val: 숫자 또는 ''(자동 계산으로 되돌림)
-        var msg = panel.querySelector('#set_carry_msg'); msg.style.color = '#93867C'; msg.textContent = '저장 중…';
+        var msg = panel.querySelector('#set_carry_msg'); msg.style.color = '#898885'; msg.textContent = '저장 중…';
         WPF.call('setSetting', { key: 'carryover_' + M.fy, value: val }).then(function () {
           M.settings['carryover_' + M.fy] = String(val);
           msg.style.color = 'green'; msg.textContent = '저장됨';
@@ -1847,7 +1847,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var uncloseBtn = panel.querySelector('#set_unclose');
       if (uncloseBtn) uncloseBtn.onclick = function () {
         if (!confirm(M.fy + '년도 결산을 취소합니다.\n\n' + M.fy + '년도 전표를 다시 고칠 수 있게 되고, ' + nextFY + '년도 전기 이월금은 ' + M.fy + '년도 장부에 따라 자동으로 계산됩니다.\n\n진행할까요?')) return;
-        var um = panel.querySelector('#set_close_msg'); um.style.color = '#93867C'; um.textContent = '취소 처리 중…';
+        var um = panel.querySelector('#set_close_msg'); um.style.color = '#898885'; um.textContent = '취소 처리 중…';
         Promise.all([
           WPF.call('setSetting', { key: 'fy_closed_' + M.fy, value: '' }),
           WPF.call('setSetting', { key: 'carryover_' + nextFY, value: '' })
@@ -1861,7 +1861,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         var on = panel.querySelector('#lock_on').checked, dt = panel.querySelector('#lock_date').value;
         var lm = panel.querySelector('#lock_msg');
         if (on && !dt) { lm.style.color = '#A33A2A'; lm.textContent = '마감일을 고르십시오.'; return; }
-        lm.style.color = '#93867C'; lm.textContent = '저장 중…';
+        lm.style.color = '#898885'; lm.textContent = '저장 중…';
         Promise.all([
           WPF.call('setSetting', { key: 'fin_lock_on', value: on ? '1' : '0' }),
           WPF.call('setSetting', { key: 'fin_lock_date', value: dt })
@@ -1874,7 +1874,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       var closeBtn = panel.querySelector('#set_close');
       if (closeBtn) closeBtn.onclick = function () {
         if (!confirm(M.fy + '년도를 결산합니다.\n\n기말 잔액 ' + won(ending) + '원이 ' + nextFY + '년도 전기 이월금으로 이월되고, ' + M.fy + '년도 전표(' + r.to + ' 이전)는 잠깁니다. 화면은 ' + nextFY + '년도로 바뀝니다.\n\n진행할까요?')) return;
-        var cmsg = panel.querySelector('#set_close_msg'); cmsg.style.color = '#93867C'; cmsg.textContent = '결산 처리 중…';
+        var cmsg = panel.querySelector('#set_close_msg'); cmsg.style.color = '#898885'; cmsg.textContent = '결산 처리 중…';
         Promise.all([
           WPF.call('setSetting', { key: 'carryover_' + nextFY, value: ending }),
           WPF.call('setSetting', { key: 'fy_closed_' + M.fy, value: today() })
@@ -1888,7 +1888,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
       };
       var orgSave = panel.querySelector('#org_save');
       if (orgSave) orgSave.onclick = function () {
-        var omsg = panel.querySelector('#org_msg'); omsg.style.color = '#93867C'; omsg.textContent = '저장 중…';
+        var omsg = panel.querySelector('#org_msg'); omsg.style.color = '#898885'; omsg.textContent = '저장 중…';
         var fields = { rcp_org: '#org_name', rcp_bizno: '#org_bizno', rcp_addr: '#org_addr', rcp_rep: '#org_rep', rcp_law: '#org_law' };
         var jobs = Object.keys(fields).map(function (k) { var v = panel.querySelector(fields[k]).value.trim(); return WPF.call('setSetting', { key: k, value: v }).then(function () { M.settings[k] = v; }); });
         Promise.all(jobs).then(function () { omsg.style.color = 'green'; omsg.textContent = '✓ 저장됨'; })
@@ -1907,7 +1907,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         file.addEventListener('change', function () {
           var f = file.files && file.files[0]; if (!f) return;
           if (!(window.ChurchUpload && ChurchUpload.isReady())) { msg.style.color = '#A33A2A'; msg.textContent = '업로드 서버 미설정'; return; }
-          msg.style.color = '#93867C'; msg.textContent = '업로드 중…';
+          msg.style.color = '#898885'; msg.textContent = '업로드 중…';
           // 직인은 투명 PNG 보존 위해 압축하지 않음
           ChurchUpload.upload(f, { folder: 'finance/receipt', compress: !seal }).then(function (res) {
             var url = res.url;
@@ -1922,7 +1922,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
         var del = slot.querySelector('.rcp-up-del');
         if (del) del.onclick = function () {
           if (!confirm('이 이미지를 삭제할까요?')) return;
-          msg.style.color = '#93867C'; msg.textContent = '삭제 중…';
+          msg.style.color = '#898885'; msg.textContent = '삭제 중…';
           WPF.call('setSetting', { key: key, value: '' }).then(function () {
             M.settings[key] = ''; setPrev(''); renderSettings(panel);
           }).catch(function (e) { msg.style.color = '#A33A2A'; msg.textContent = '실패: ' + e.message; });

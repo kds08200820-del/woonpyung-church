@@ -8,6 +8,7 @@
      · 카카오 로그인 복귀(#access_token=…)는 auth.js 가 세션을 만든 뒤(sb-ready → SIGNED_IN) 보낸다
      · 로그인 전 방문자·검색엔진에는 아무 변화 없음. 저장소 오류가 나도 홈은 그대로 열린다 */
   (function () { try {
+    return;   /* 2026-11-11 모던 테마: 첫 화면이 '세로 네 칸'으로 바뀌어, 로그인한 사람도 홈에 머문다(정원은 첫 칸을 눌러 들어간다). 아래는 예전 자동 이동 */
     var q = location.search;
     if (/[?&](home=1|worship=)/.test(q)) return;
     if (/(^|[#&])(access_token|error)=/.test(location.hash) || /[?&]code=/.test(q)) {
@@ -52,7 +53,7 @@
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json?v=20261023lib1" />
-  <meta name="theme-color" content="#F6EFE5" />
+  <meta name="theme-color" content="#FFFFFF" />
   <link rel="icon" href="images/favicon-32.png?v=20260906lib13" />
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260906lib13" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -62,27 +63,27 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261025cr3" />
-  <link rel="stylesheet" href="css/worship.css?v=20261025acc1" />
+  <link rel="stylesheet" href="css/style.css?v=20261111m1" />
+  <link rel="stylesheet" href="css/worship.css?v=20261111m1" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <style>
-    .hb-card{max-width:860px;margin:0 auto;border:1px solid var(--line,#ECE8E5);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(58,40,28,.07)}
-    .hb-hd{display:flex;justify-content:space-between;align-items:center;background:var(--accent,#3A281C);color:#fff;padding:14px 26px}
+    .hb-card{max-width:860px;margin:0 auto;border:1px solid var(--line,#F5F4F1);border-radius:2px;overflow:hidden;box-shadow:0 4px 20px rgba(17,17,17,.07)}
+    .hb-hd{display:flex;justify-content:space-between;align-items:center;background:var(--accent,#111111);color:#fff;padding:14px 26px}
     .hb-hd-week{font-weight:700;font-size:.9rem;letter-spacing:.04em}
     .hb-hd-date{font-size:.84rem;color:rgba(255,255,255,.75)}
     .hb-body{display:grid;grid-template-columns:1fr 1fr;background:#fff}
     .hb-col{padding:22px 24px}
-    .hb-col:first-child{border-right:1px solid var(--line,#ECE8E5)}
-    .hb-col-title{font-size:.74rem;font-weight:700;color:var(--accent,#3A281C);text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line,#ECE8E5)}
-    .hb-order{margin:0;padding-left:18px;font-size:.84rem;line-height:1.9;color:var(--ink,#2E251E)}
-    .hb-extra{margin:0 0 14px;padding-left:0;list-style:none;font-size:.83rem;line-height:1.85;color:var(--ink-soft,#93867C)}
-    .hb-extra li::before{content:"▸ ";color:var(--accent,#3A281C);font-size:.8rem}
+    .hb-col:first-child{border-right:1px solid var(--line,#F5F4F1)}
+    .hb-col-title{font-size:.74rem;font-weight:700;color:var(--accent,#111111);text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line,#F5F4F1)}
+    .hb-order{margin:0;padding-left:18px;font-size:.84rem;line-height:1.9;color:var(--ink,#181714)}
+    .hb-extra{margin:0 0 14px;padding-left:0;list-style:none;font-size:.83rem;line-height:1.85;color:var(--ink-soft,#898885)}
+    .hb-extra li::before{content:"▸ ";color:var(--accent,#111111);font-size:.8rem}
     .hb-news{margin:0;padding-left:0;list-style:none;font-size:.82rem;line-height:1.75}
-    .hb-news li{padding:3px 0;border-bottom:1px dashed #F4F1EF}
+    .hb-news li{padding:3px 0;border-bottom:1px dashed #F9F8F5}
     .hb-news li:last-child{border-bottom:none}
-    .hb-news strong{color:var(--accent,#3A281C);margin-right:5px}
-    .hb-ft{border-top:1px solid var(--line,#ECE8E5);padding:14px 24px;text-align:center;background:#fafbfd}
-    @media(max-width:640px){.hb-body{grid-template-columns:1fr}.hb-col:first-child{border-right:none;border-bottom:1px solid var(--line,#ECE8E5)}}
+    .hb-news strong{color:var(--accent,#111111);margin-right:5px}
+    .hb-ft{border-top:1px solid var(--line,#F5F4F1);padding:14px 24px;text-align:center;background:#fafbfd}
+    @media(max-width:640px){.hb-body{grid-template-columns:1fr}.hb-col:first-child{border-right:none;border-bottom:1px solid var(--line,#F5F4F1)}}
   </style>
   <script type="application/ld+json">
   {
@@ -106,6 +107,106 @@
   </script>
 </head>
 <body>
+
+  <!-- ===== 첫 화면: 세로 네 칸 (2026-11-11 모던 테마) — 나의 신앙정원 · 오늘의 예배 · 갤러리 · 대시보드 ===== -->
+  <div class="hp" id="homePanels">
+    <a class="hp-panel hp-garden" href="garden.html" id="hpGarden">
+      <div class="hp-stage">
+        <div class="hp-plant" id="hpPlant"><img src="images/garden/default/plants/olive-4.webp" alt="신앙정원의 올리브나무" /></div>
+        <div class="hp-plinth"><div class="hp-label"><b>올리브나무</b><span>말씀과 기도로 자라는 나무</span></div></div>
+      </div>
+      <div>
+        <div class="hp-num"><span class="hp-cap">01</span><span class="hp-cap">My Garden</span></div>
+        <h2 style="margin-top:14px">나의 신앙정원</h2>
+        <p class="hp-sub" style="color:#555">내가 가꾸는 믿음의 정원</p>
+        <div class="hp-reveal"><div><div class="hp-in">
+          <div class="hp-rows">
+            <div><span>오늘의 묵상</span><span>물 주기</span></div>
+            <div><span>예배와 기도</span><span>달란트</span></div>
+          </div>
+          <span class="hp-go">정원으로 들어가기 →</span>
+        </div></div></div>
+      </div>
+      <span></span>
+    </a>
+    <a class="hp-panel hp-photo" href="#home">
+      <div class="hp-bg" style="background-image:url('images/home/bible-tall.webp?v=20261111m1')"></div><div class="hp-veil"></div>
+      <div class="hp-num"><span class="hp-cap">02</span><span class="hp-cap">Today's Worship</span></div>
+      <div>
+        <p class="hp-cap" id="hpNow">다음 예배</p>
+        <h2 id="hpTitle">오늘의 예배</h2>
+        <p class="hp-sub" id="hpSub"></p>
+        <div class="hp-reveal"><div><div class="hp-in">
+          <div class="hp-rows" id="hpRows"></div>
+          <span class="hp-go">오늘의 예배 보기 →</span>
+        </div></div></div>
+      </div>
+    </a>
+    <a class="hp-panel hp-photo hp-gallery" href="story.html#album" id="hpGallery">
+      <div class="hp-bg on" style="background-image:url('images/home/gallery1.webp?v=20261111m1')"></div>
+      <div class="hp-bg" style="background-image:url('images/home/gallery2.webp?v=20261111m1')"></div>
+      <div class="hp-bg" style="background-image:url('images/home/gallery3.webp?v=20261111m1')"></div>
+      <div class="hp-veil"></div>
+      <div class="hp-num"><span class="hp-cap">03</span><span class="hp-cap">Gallery</span></div>
+      <div>
+        <p class="hp-cap">우리들 소식</p>
+        <h2>갤러리</h2>
+        <p class="hp-sub">말씀 안에서 자라는 아이들</p>
+        <div class="hp-reveal"><div><div class="hp-in">
+          <div class="hp-rows">
+            <div><span>우리들 소식</span><span>사진·영상</span></div>
+            <div><span>주일학교 성장기</span><span>QT·필사</span></div>
+          </div>
+          <span class="hp-go">사진 모두 보기 →</span>
+        </div></div></div>
+      </div>
+    </a>
+    <a class="hp-panel hp-dash" href="dashboard.html">
+      <span class="hp-ring"></span><span class="hp-ring"></span>
+      <div class="hp-num"><span class="hp-cap">04</span><span class="hp-cap">Dashboard</span></div>
+      <div>
+        <p class="hp-cap">나의 신앙 여정</p>
+        <h2>대시보드</h2>
+        <p class="hp-sub" style="opacity:.7">정회원 전용</p>
+        <div class="hp-reveal"><div><div class="hp-in">
+          <div class="hp-rows">
+            <div><span>오늘의 큐티</span><span>묵상·필사</span></div>
+            <div><span>나 · 자녀 · 맡은 일</span><span>한눈에</span></div>
+            <div><span>신청서 · 공지</span><span>확인</span></div>
+          </div>
+          <span class="hp-go">대시보드 열기 →</span>
+        </div></div></div>
+      </div>
+    </a>
+  </div>
+  <script>
+  /* 첫 화면 네 칸: 정원 식물은 마우스를 따라 움직이고, 갤러리 사진은 차례로 바뀌고, 예배 칸은 시각에 맞춰 '지금·다음 예배'를 보여 준다 */
+  (function () {
+    var pg = document.getElementById("hpGarden"), plant = document.getElementById("hpPlant");
+    pg.addEventListener("pointermove", function (e) {
+      var r = pg.getBoundingClientRect();
+      plant.style.setProperty("--mx", ((e.clientX - r.left) / r.width - .5) * 22 + "px");
+      plant.style.setProperty("--my", ((e.clientY - r.top) / r.height - .5) * 12 + "px");
+    });
+    pg.addEventListener("pointerleave", function () { plant.style.setProperty("--mx", "0px"); plant.style.setProperty("--my", "0px"); });
+    var shots = [].slice.call(document.querySelectorAll("#hpGallery .hp-bg")), gi = 0;
+    setInterval(function () { shots[gi].classList.remove("on"); gi = (gi + 1) % shots.length; shots[gi].classList.add("on"); }, 3600);
+    /* 예배 시간표(welcome.html 과 같게): 요일 0=주일. 새벽기도회는 화~금 */
+    var WEEK = [[0, 9, 20, "주일 1부 예배"], [0, 11, 0, "주일 2부 예배"], [2, 5, 0, "새벽기도회"], [3, 5, 0, "새벽기도회"], [3, 11, 0, "수요기도회"], [4, 5, 0, "새벽기도회"], [5, 5, 0, "새벽기도회"]];
+    var DAY = ["주일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+    function hm(h, m) { return (h < 12 ? "오전 " : "오후 ") + ((h + 11) % 12 + 1) + ":" + (m < 10 ? "0" : "") + m; }
+    function tick() {
+      var now = new Date(), d = now.getDay(), mins = d * 1440 + now.getHours() * 60 + now.getMinutes();
+      var list = WEEK.map(function (w) { var diff = w[0] * 1440 + w[1] * 60 + w[2] - mins; if (diff < -70) diff += 10080; return { wd: w[0], h: w[1], m: w[2], name: w[3], diff: diff }; }).sort(function (a, b) { return a.diff - b.diff; });
+      var c = list[0], live = c.diff <= 0;
+      document.getElementById("hpNow").textContent = live ? "지금 드리는 예배" : "다음 예배 · " + (c.wd === d && c.diff < 1440 ? "오늘" : DAY[c.wd]);
+      document.getElementById("hpTitle").textContent = c.name;
+      document.getElementById("hpSub").textContent = hm(c.h, c.m) + (live ? " 시작" : c.diff < 60 ? " · " + c.diff + "분 뒤" : c.diff < 1440 ? " · " + Math.round(c.diff / 60) + "시간 뒤" : "");
+      document.getElementById("hpRows").innerHTML = list.slice(0, 4).map(function (x, i) { return '<div class="' + (i === 0 ? "now" : "") + '"><span>' + DAY[x.wd] + " " + x.name.replace(/^주일 /, "") + "</span><span>" + hm(x.h, x.m) + "</span></div>"; }).join("");
+    }
+    tick(); setInterval(tick, 60000);
+  })();
+  </script>
 
   <!-- ===== Hero ===== -->
   <section id="home" class="hero">
@@ -367,15 +468,15 @@
   <script src="js/gyodok-data.js?v=20260926ws"></script>
   <script src="js/hymn-data.js?v=20260927meta"></script>
   <script src="modu/ccm-data.js?v=20260928ccm2"></script>
-  <script src="js/worship.js?v=20261107com3"></script>
-  <script src="js/layout.js?v=20261110ms1"></script>
+  <script src="js/worship.js?v=20261111m1"></script>
+  <script src="js/layout.js?v=20261111m1"></script>
   <script src="js/counsel.js?v=20260906fix"></script>
-  <script src="js/main.js?v=20261023lib1"></script>
-  <script src="js/forms.js?v=20261025ia1"></script>
+  <script src="js/main.js?v=20261111m1"></script>
+  <script src="js/forms.js?v=20261111m1"></script>
   <script src="js/upload.js?v=20261025vid1"></script>
   <script src="js/categories.js?v=20260906news2"></script>
   <script src="js/notices.js?v=20260906clean"></script>
-  <script src="js/home-news.js?v=20261025vid1"></script>
-  <script src="js/ss-growth.js?v=20261023lib1"></script>
+  <script src="js/home-news.js?v=20261111m1"></script>
+  <script src="js/ss-growth.js?v=20261111m1"></script>
 </body>
 </html>

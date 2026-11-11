@@ -4,31 +4,31 @@
    ============================================================ */
 
 /* 회원 */
-.ms-member { background: #FFFBF5; border: 1px solid var(--line); border-radius: 16px; padding: 30px 32px; border-left: 4px solid var(--accent); }
+.ms-member { background: #FFFFFF; border: 1px solid var(--line); border-radius: 2px; padding: 30px 32px; border-left: 4px solid var(--accent); }
 .ms-member-term { font-size: .88rem; color: var(--muted); }
 .ms-member-count { font-family: var(--font); font-size: 1.5rem; color: var(--accent); margin-top: 6px; }
 .ms-member-count b { font-size: 2.1rem; font-weight: 600; color: var(--gold); margin: 0 4px; }
 .ms-member-rule { color: var(--ink-soft); font-weight: 300; margin-top: 12px; }
-.ms-member-me { margin-top: 14px; padding: 10px 14px; background: var(--paper-alt); border-radius: 10px; font-size: .93rem; color: var(--ink); display: inline-block; }
+.ms-member-me { margin-top: 14px; padding: 10px 14px; background: var(--paper-alt); border-radius: 2px; font-size: .93rem; color: var(--ink); display: inline-block; }
 .ms-names { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
 .ms-names h4 { font-size: .95rem; color: var(--accent-soft); margin-bottom: 10px; }
 .ms-names-note { font-size: .82rem; color: var(--muted); margin-bottom: 10px; }
 .ms-name-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0; }
-.ms-name-list li { border: 1px solid var(--line); border-radius: 20px; padding: 5px 13px; font-size: .9rem; background: #fff; color: var(--ink); }
+.ms-name-list li { border: 1px solid var(--line); border-radius: 2px; padding: 5px 13px; font-size: .9rem; background: #fff; color: var(--ink); }
 .ms-name-list li small { color: var(--muted); margin-left: 6px; font-size: .78rem; }
 .ms-name-list li.unlinked { border-style: dashed; }
 .ms-vis { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: .9rem; color: var(--ink-soft); }
-.ms-vis select { font-family: inherit; font-size: .9rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); max-width: 100%; }
+.ms-vis select { font-family: inherit; font-size: .9rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: 2px; background: #fff; color: var(--ink); max-width: 100%; }
 .ms-vis-status { font-size: .84rem; color: var(--accent-soft); }
 
 /* 연간 사역 게시판 */
 .ms-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .ms-years { display: flex; flex-wrap: wrap; gap: 8px; }
-.ms-year { font-family: inherit; font-size: .9rem; padding: 7px 15px; border: 1px solid var(--line); border-radius: 20px; background: #fff; color: var(--ink-soft); cursor: pointer; }
+.ms-year { font-family: inherit; font-size: .9rem; padding: 7px 15px; border: 1px solid var(--line); border-radius: 2px; background: #fff; color: var(--ink-soft); cursor: pointer; }
 .ms-year.on { background: var(--accent); border-color: var(--accent); color: #fff; }
 .ms-term { font-size: .86rem; color: var(--muted); margin-bottom: 16px; }
 .ms-posts { display: flex; flex-direction: column; gap: 12px; }
-.ms-post { border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; background: #fff; }
+.ms-post { border: 1px solid var(--line); border-radius: 2px; padding: 20px 22px; background: #fff; }
 .ms-post.is-hidden { background: var(--paper-alt); border-style: dashed; }
 .ms-post-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; justify-content: space-between; }
 .ms-post-head h4 { font-family: var(--font); font-size: 1.1rem; color: var(--accent); }
@@ -37,7 +37,7 @@
 .ms-post-meta { margin-top: 12px; display: flex; gap: 14px; justify-content: flex-end; font-size: .8rem; color: var(--muted); }
 .ms-link { border: 0; background: none; color: var(--accent); font-family: inherit; font-size: .8rem; cursor: pointer; padding: 2px 4px; }
 .ms-link:hover { text-decoration: underline; }
-.ms-tag-hidden { font-size: .74rem; color: #A33A2A; border: 1px solid #A33A2A; border-radius: 12px; padding: 1px 8px; margin-left: 8px; font-family: inherit; font-weight: 400; }
+.ms-tag-hidden { font-size: .74rem; color: #A33A2A; border: 1px solid #A33A2A; border-radius: 2px; padding: 1px 8px; margin-left: 8px; font-family: inherit; font-weight: 400; }
 .ms-empty { text-align: center; color: var(--muted); font-size: .92rem; padding: 26px 0; }
 
 /* 후원하는 교회와 기관 */
@@ -50,7 +50,7 @@
 .ms-partner-admin { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; gap: 12px; }
 
 /* 입력 창 */
-.ms-form select { width: 100%; font-family: inherit; font-size: .95rem; color: var(--ink); padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; outline: none; }
+.ms-form select { width: 100%; font-family: inherit; font-size: .95rem; color: var(--ink); padding: 10px 12px; border: 1px solid var(--line); border-radius: 2px; background: #fff; outline: none; }
 .ms-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .ms-form-hint { font-size: .8rem; color: var(--muted); font-weight: 400; }
 
