@@ -73,7 +73,7 @@
           <span class="w-en">WEDNESDAY</span>
           <ul>
             <li><span>오전 예배</span><strong>오전 11:00</strong></li>
-            <li class="w-note">하이델베르크 교리문답 강해</li>
+            <li class="w-note" id="wlWedNote" style="display:none"></li><!-- 이번 주 주보의 '수요기도회' 칸 — 아래 스크립트가 채운다 -->
           </ul>
         </div>
         <div class="worship-card">
@@ -81,7 +81,7 @@
           <span class="w-en">DAWN · 화~금</span>
           <ul>
             <li><span>새벽예배</span><strong>오전 05:00</strong></li>
-            <li class="w-note">요나 · 나훔서 강해</li>
+            <li class="w-note" id="wlDawnNote" style="display:none"></li><!-- 이번 주 주보의 '새벽기도회' 칸 -->
           </ul>
         </div>
       </div>
@@ -220,9 +220,44 @@
 
   <script src="js/config.js?v=20260908lib"></script>
   <script src="js/bulletins.js?v=20261108b1"></script>
-  <script src="js/bulletins-live.js?v=20261025jb1"></script>
+  <script src="js/bulletins-live.js?v=20261111wd1"></script>
   <script src="js/layout.js?v=20261111m9"></script>
   <script src="js/counsel.js?v=20260906fix"></script>
   <script src="js/main.js?v=20261111m2"></script>
+  <script>
+  /* 예배 안내의 수요기도회·새벽기도회 줄: 올라온 주보(이번 주 주보)의 '수요기도회'·'새벽기도회' 칸을 보여 준다 (2026-11-11 담임목사).
+     예전에는 여기에 강해 이름을 손으로 적어 두어, 강해가 바뀌어도 옛 글이 남았다.
+     · 주보 = js/bulletins.js(손으로 넣은 것) + js/bulletins-live.js(설교 매니저에서 게시한 것 — 받아 오면 'bulletins:live' 로 다시 그린다)
+     · 이번 주 주보 = 내일까지의 가장 최근 주보(토요일에 올린 내일 주보가 바로 보인다 — js/worship.js 와 같은 규칙)
+     · 주보에 그 칸이 비어 있으면 줄을 숨긴다 */
+  (function () {
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+    function ymd(d) { return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+    function week() {
+      var L = []; try { L = (typeof BULLETINS !== "undefined" && BULLETINS) || []; } catch (e) { }
+      var lim = ymd(new Date(Date.now() + 864e5));
+      for (var i = 0; i < L.length; i++) if (L[i] && L[i].date <= lim) return L[i];
+      return null;
+    }
+    function strip(s, head) { return String(s || "").replace(new RegExp("^\\s*" + head + "\\s*[·:]\\s*"), "").trim(); }
+    function wedLines(b) {
+      /* 게시한 주보는 칸이 나뉘어 온다: 강해 이름 — 제목 / 날짜 · 본문 · 설교자 */
+      if (b.wedSeries || b.wedTitle) return [[b.wedSeries, b.wedTitle].filter(Boolean).join(" — "), b.wedLine || ""].filter(Boolean);
+      /* 손으로 넣은 주보는 한 줄: 수요기도회 · 강해 «제목» — 본문 (날짜) / 설교자  →  제목 줄과 본문 줄로 나눈다 */
+      var s = strip(b.wed, "수요기도회"); if (!s) return [];
+      var cut = s.indexOf("—", s.indexOf("»") + 1);
+      return cut > 0 ? [s.slice(0, cut).trim(), s.slice(cut + 1).trim()].filter(Boolean) : [s];
+    }
+    function dawnLines(b) { var s = strip(b.dawn, "새벽기도회"); return s ? [s] : []; }
+    function put(id, L) {
+      var el = document.getElementById(id); if (!el) return;
+      el.innerHTML = L.map(function (t, i) { return i ? '<span style="display:block;margin-top:5px;font-size:.92em;opacity:.85">' + esc(t) + "</span>" : "<span>" + esc(t) + "</span>"; }).join("");
+      el.style.display = L.length ? "" : "none";
+    }
+    function draw() { var b = week(); put("wlWedNote", b ? wedLines(b) : []); put("wlDawnNote", b ? dawnLines(b) : []); }
+    draw();
+    window.addEventListener("bulletins:live", draw);
+  })();
+  </script>
 </body>
 </html>

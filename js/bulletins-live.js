@@ -25,6 +25,7 @@
       week: d.week || '', title: r.title || '', scripture: r.scripture || '', preacher: r.preacher || '', quote: d.headline || '',
       order: (d.order || []).filter(function (o) { return o && !o.spacer && o.name; }).map(function (o) { return o.name + (o.detail ? ' · ' + o.detail : ''); }),
       wed: [d.wed_series, d.wed_title, d.wed_dateline].filter(Boolean).join(' · '),
+      wedSeries: d.wed_series || '', wedTitle: d.wed_title || '', wedLine: d.wed_dateline || '',   /* 나뉜 칸 그대로 — '처음 오셨나요'(welcome.html) 예배 안내가 제목 줄·본문 줄로 나눠 보여 준다 */
       dawn: d.dawn || '', qt: d.qt || '',
       news: news,
       offering: Object.keys(off).filter(function (k) { return off[k]; }).map(function (k) { return { cat: k, names: off[k] }; }),
