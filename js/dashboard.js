@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 위)');
+console.log('[dashboard.js] v20261111dsh1 (진행중인 교육: 양육반 진도·출결·모임 메모)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -1034,18 +1034,112 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
   /* ================= 진행중인 교육 ================= */
   function fmtSize(n) { if (!n && n !== 0) return ''; if (n < 1024) return n + ' B'; if (n < 1048576) return (n / 1024).toFixed(0) + ' KB'; return (n / 1048576).toFixed(1) + ' MB'; }
   function eduLabel(r) { return esc(r.title) + (r.cohort ? ' · ' + esc(r.cohort) : '') + (r.class_name ? ' · ' + esc(r.class_name) : ''); }
+  /* ── 제자훈련 양육반(2026-11-11 담임목사 "메모를 남기면 회원 대시보드의 교육과정에 보이고, 출결·진도도"):
+        내 반(rpc edu_my_classes)마다 진도·내 출결·모임 기록(날짜·나간 대목·인도자 메모) — rpc edu_class_state.
+        강 이름은 js/disciple-data.js 를 필요할 때 불러 쓴다. 교적 본문은 읽지 않는다. ── */
+  var DISC_DATA = 'js/disciple-data.js?v=20261111q';
+  function eduRpc(name, args, tok, url, ak) {
+    return fetch(url + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: ak, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  }
+  function discData() {
+    if (window.WPC_DISCIPLE) return Promise.resolve(window.WPC_DISCIPLE);
+    return new Promise(function (res) { var s = document.createElement('script'); s.src = DISC_DATA; s.onload = function () { res(window.WPC_DISCIPLE || null); }; s.onerror = function () { res(null); }; document.body.appendChild(s); });
+  }
+  function discCss() {
+    if (document.getElementById('medCss')) return;
+    var s = document.createElement('style'); s.id = 'medCss';
+    s.textContent = '.med{border:1px solid #E6E4DF;border-radius:2px;padding:12px 14px;margin-bottom:10px;background:#fff}' +
+      '.med-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}.med-h b{font-size:.95rem}' +
+      '.med-role{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#111;color:#fff;font-size:.72rem;vertical-align:1px}' +
+      '.med-go{font-size:.82rem;color:var(--accent,#111);white-space:nowrap}.med-sub{margin:2px 0 8px;color:#8A8984;font-size:.8rem}' +
+      '.med-prog{display:flex;justify-content:space-between;gap:8px;font-size:.84rem;margin:6px 0 4px}.med-prog b{font-variant-numeric:tabular-nums}' +
+      '.med-bar{height:6px;border-radius:999px;background:#EFEDE8;overflow:hidden}.med-bar i{display:block;height:100%;background:#111}' +
+      '.med-next{margin:6px 0 0;font-size:.82rem;color:#5F5E5A}' +
+      '.med-att{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;font-size:.82rem}.med-att span{padding:2px 9px;border-radius:999px;background:#F3F2EE}' +
+      '.med-att .is-ok{background:#E6F2EC;color:#155e32}.med-att .is-late{background:#FFF3D6;color:#7a5600}.med-att .is-no{background:#FBE4E1;color:#9b2c20}' +
+      '.med-log{list-style:none;margin:10px 0 0;padding:0}.med-log li{padding:8px 0;border-top:1px solid #F0EEEA;font-size:.84rem;line-height:1.6}' +
+      '.med-log .d{font-weight:700;margin-right:6px}.med-log .p{color:#5F5E5A}.med-log .m{display:block;margin-top:3px;padding:6px 10px;background:#FAF9F6;border-left:3px solid #4F6B4A;white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere}' +
+      '.med-log .s{float:right;font-size:.76rem;color:#8A8984}.med details summary{cursor:pointer;font-size:.82rem;color:#5F5E5A;margin-top:6px;min-height:32px;display:flex;align-items:center}' +
+      '.med-done{margin:8px 0 0;font-size:.84rem;color:#155e32;font-weight:700}';
+    document.head.appendChild(s);
+  }
+  function discProg(D, done) {
+    var set = {}; (done || []).forEach(function (k) { set[k] = 1; });
+    var got = 0, total = 0, cur = null, next = null, curN = 0, curAll = 0;
+    D.lessons.forEach(function (l) {
+      var n = 0;
+      l.parts.forEach(function (p, i) { total++; if (set[l.no + '-' + (i + 1)]) { n++; got++; } else if (!next) next = { lesson: l.no, part: i + 1, label: p }; });
+      if (!cur && n < l.parts.length) { cur = l.no; curN = n; curAll = l.parts.length; }
+    });
+    var label = !got ? '시작 전' : got === total ? '13강 모두 마침' : curN ? cur + '강 진행 중 · ' + curAll + '대목 중 ' + curN : (cur - 1) + '강까지 마침';
+    return { pct: total ? Math.round(got / total * 100) : 0, label: label, next: got && got < total ? next : null };
+  }
+  // ['7-1',…,'7-11','8-1',…,'8-4'] → '7강 1~11, 8강 1~4'
+  function partsText(parts) {
+    var by = {}; (parts || []).forEach(function (k) { var a = String(k).split('-'); (by[a[0]] = by[a[0]] || []).push(+a[1]); });
+    return Object.keys(by).sort(function (a, b) { return a - b; }).map(function (l) {
+      var ns = by[l].sort(function (a, b) { return a - b; }), out = [], s = ns[0], p = ns[0];
+      for (var i = 1; i <= ns.length; i++) { if (ns[i] === p + 1) { p = ns[i]; continue; } out.push(s === p ? String(s) : s + '~' + p); s = p = ns[i]; }
+      return l + '강 ' + out.join('·');
+    }).join(', ');
+  }
+  function kmd(s) { var m = String(s || '').match(/^\d{4}-(\d\d)-(\d\d)/); return m ? (+m[1]) + '월 ' + (+m[2]) + '일' : ''; }
+  function discHTML(c, st, D) {
+    var lead = st.role === 'leader' || st.role === 'admin';
+    var p = discProg(D, st.done), live = (st.meetings || []).filter(function (m) { return !m.voided; }).slice().sort(function (a, b) { return a.meet_date < b.meet_date ? 1 : -1; });
+    var my = {}; (st.my_attend || []).forEach(function (a) { my[a.meet_date] = a.status; });
+    var cnt = { '출석': 0, '지각': 0, '결석': 0 }; (st.my_attend || []).forEach(function (a) { if (cnt[a.status] != null) cnt[a.status]++; });
+    var byM = {}; (st.attend || []).forEach(function (a) { if (a.status === '출석' || a.status === '지각') byM[a.meeting_id] = (byM[a.meeting_id] || 0) + 1; });
+    var cls = function (s) { return s === '출석' ? 'is-ok' : s === '지각' ? 'is-late' : s === '결석' ? 'is-no' : ''; };
+    var row = function (m) {
+      var s = lead ? (byM[m.id] ? '출석 ' + byM[m.id] + '명' : '') : (my[m.meet_date] || '출결 기록 없음');
+      return '<li><span class="s">' + esc(s) + '</span><span class="d">' + esc(kmd(m.meet_date)) + ' 모임</span>' +
+        '<span class="p">' + ((m.parts || []).length ? '나간 대목 ' + esc(partsText(m.parts)) : '나간 대목 기록 없음') + '</span>' +
+        (m.memo ? '<span class="m">' + esc(m.memo) + '</span>' : '') + '</li>';
+    };
+    return '<div class="med-h"><b>' + eduLabel(c) + (lead ? '<span class="med-role">' + (st.role === 'admin' ? '관리자' : '인도자') + '</span>' : '') + '</b>' +
+      '<a class="med-go" href="classroom.html#disciple/c/' + encodeURIComponent(c.id) + '">강의실에서 보기 →</a></div>' +
+      (c.meet_info ? '<p class="med-sub">' + esc(c.meet_info) + '</p>' : '') +
+      '<div class="med-prog"><span>진도 · ' + esc(p.label) + '</span><b>' + p.pct + '%</b></div><div class="med-bar" role="progressbar" aria-label="우리 반 진도" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + p.pct + '"><i style="width:' + p.pct + '%"></i></div>' +
+      (p.next ? '<p class="med-next">다음 모임은 ' + p.next.lesson + '강 「' + esc(p.next.label) + '」부터</p>' : '') +
+      (st.completion ? '<p class="med-done">✓ 수료 · 제 ' + esc(st.completion.cert_no) + ' 호</p>' : '') +
+      (lead ? '' : '<div class="med-att" aria-label="내 출결"><span class="is-ok">출석 ' + cnt['출석'] + '</span><span class="is-late">지각 ' + cnt['지각'] + '</span><span class="is-no">결석 ' + cnt['결석'] + '</span><span>모임 ' + live.length + '회</span></div>') +
+      (live.length ? '<ul class="med-log" aria-label="모임 기록">' + row(live[0]) + '</ul>' +
+        (live.length > 1 ? '<details><summary>지난 모임 기록 ' + (live.length - 1) + '번 보기</summary><ul class="med-log">' + live.slice(1).map(row).join('') + '</ul></details>' : '')
+        : '<p class="med-next">아직 모임 기록이 없습니다.</p>');
+  }
+  function fillDisc(item, c, tok, url, ak) {
+    var body = item.querySelector('.med-body');
+    Promise.all([eduRpc('edu_class_state', { p_edu: c.id }, tok, url, ak), discData()]).then(function (out) {
+      var st = out[0], D = out[1];
+      if (!st || !st.ok || !D) throw new Error('state');
+      body.innerHTML = discHTML(c, st, D);
+    }).catch(function () {
+      body.innerHTML = '<div class="med-h"><b>' + eduLabel(c) + '</b><a class="med-go" href="classroom.html#disciple/c/' + encodeURIComponent(c.id) + '">강의실에서 보기 →</a></div><p class="med-next">반 기록을 불러오지 못했습니다.</p>';
+    });
+  }
   function loadMyEdu(me) {
     var el = document.getElementById('myEdu'); if (!el) return;
     var url = window.SUPABASE_URL, ak = window.SUPABASE_ANON_KEY, tok = (window.WPF && WPF.token && WPF.token());
     if (!url || !ak || !tok) return;
     var t = todayStr();
-    fetch(url + '/rest/v1/edu_records?select=id,title,cohort,class_name,edu_date,end_date,teacher&edu_date=lte.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
-      .then(function (r) { return r.ok ? r.json() : []; })
-      .then(function (rows) {
-        var ongoing = (rows || []).filter(function (r) { return !r.end_date || r.end_date >= t; });
-        if (!ongoing.length) { el.innerHTML = ''; return; }
+    Promise.all([
+      fetch(url + '/rest/v1/edu_records?select=id,title,cohort,class_name,edu_date,end_date,teacher,course_code&edu_date=lte.' + t, { headers: { apikey: ak, Authorization: 'Bearer ' + tok } })
+        .then(function (r) { return r.ok ? r.json() : []; }).catch(function () { return []; }),
+      eduRpc('edu_my_classes', { p_course: 'disciple' }, tok, url, ak).catch(function () { return []; })
+    ]).then(function (res) {
+        var discs = Array.isArray(res[1]) ? res[1] : [], did = {};
+        discs.forEach(function (c) { did[c.id] = 1; });
+        // 양육반은 아래 '내 반' 칸으로 보여 주고, 나머지 교육은 예전처럼
+        var ongoing = (res[0] || []).filter(function (r) { return (!r.end_date || r.end_date >= t) && r.course_code !== 'disciple' && !did[r.id]; });
+        if (!ongoing.length && !discs.length) { el.innerHTML = ''; return; }
+        if (discs.length) discCss();
         var box = '<div class="form-card" style="padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#111111);">진행중인 교육</h3>';
-        el.innerHTML = box + ongoing.map(function (r) {
+        el.innerHTML = box + discs.map(function (c) {
+          return '<div class="med" data-disc="' + esc(c.id) + '"><div class="med-body"><p class="qt-loading" style="margin:0">' + eduLabel(c) + ' 불러오는 중…</p></div>' +
+            '<details class="med-mat" data-id="' + esc(c.id) + '"><summary>교육 자료 보기</summary><div class="my-edu-body" style="margin-top:6px;font-size:.83rem"></div></details></div>';
+        }).join('') + ongoing.map(function (r) {
           return '<div class="my-edu-item" data-id="' + esc(r.id) + '" style="border:1px solid #F7F6F3;border-radius:2px;padding:10px 12px;margin-bottom:8px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" class="my-edu-head">' +
             '<b style="font-size:.92rem">' + eduLabel(r) + '</b>' +
@@ -1059,6 +1153,10 @@ console.log('[dashboard.js] v20261010form1 (신청서 카드 — 헌금 바로 �
             bodyEl.hidden = !bodyEl.hidden;
             if (!bodyEl.hidden && !loaded) { loaded = true; loadMyEduMaterials(box2.dataset.id, bodyEl, tok, url, ak); }
           };
+        });
+        discs.forEach(function (c) { var it = el.querySelector('.med[data-disc="' + c.id + '"]'); if (it) fillDisc(it, c, tok, url, ak); });
+        Array.prototype.forEach.call(el.querySelectorAll('.med-mat'), function (d) {
+          d.addEventListener('toggle', function () { if (d.open && !d.dataset.ok) { d.dataset.ok = '1'; loadMyEduMaterials(d.dataset.id, d.querySelector('.my-edu-body'), tok, url, ak); } });
         });
       })
       .catch(function () { el.innerHTML = ''; });

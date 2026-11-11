@@ -9,7 +9,7 @@
  *    #disciple/c/<반>/s[/<날짜>] 인도자: 모임 찬양 고르기(모두의 찬양 — supabase/20261111_2100_edu_meeting_songs.sql). 반 화면에 '이번 모임 찬양'
  *  · 진도는 반마다 '강-대목'('3-4')으로 남고, 한 과를 여러 모임에 나누어 나갈 수 있다. 다음 모임은 못 다 나간 대목부터.
  */
-console.log('[disciple.js] v20261111e');
+console.log('[disciple.js] v20261111f');
 
 (function () {
   var D = window.WPC_DISCIPLE;
@@ -65,6 +65,18 @@ console.log('[disciple.js] v20261111e');
   function loadClasses(force) {
     if (CLS && !force) return Promise.resolve(CLS);
     return X.rpc('edu_my_classes', { p_course: 'disciple' }).then(function (r) { CLS = Array.isArray(r) ? r : []; return CLS; });
+  }
+  // 양육반을 볼 수 있는 사람(2026-11-11 담임목사 "강의는 학습 대상자만"): 반에 등록된 수강생·인도자 + 관리자.
+  //  관리자는 반이 하나도 없어도 본다 — edu_my_role 은 관리자면 반과 상관없이 'admin' 을 돌려준다.
+  var ACC = null;
+  function checkAccess(force) {
+    if (!X.sess) return Promise.resolve({ ok: false, list: [] });
+    if (ACC && !force) return Promise.resolve(ACC);
+    return loadClasses(true).then(function (list) {
+      if (list.length) return { ok: true, list: list, admin: list.some(function (c) { return c.role === 'admin'; }) };
+      return X.rpc('edu_my_role', { p_edu: '00000000-0000-0000-0000-000000000000' })
+        .then(function (r) { return { ok: r === 'admin', list: [], admin: r === 'admin' }; }, function () { return { ok: false, list: [] }; });
+    }).then(function (a) { ACC = a; return a; });
   }
   function loadState(id, force) {
     if (ST[id] && !force) return Promise.resolve(ST[id]);
@@ -126,14 +138,24 @@ console.log('[disciple.js] v20261111e');
     var hit = rows.filter(function (r) { return r.meet_date === date; })[0];
     var pick = (hit ? hit.songs : []).filter(function (x) { return x.b === 'c' || x.b === 'h'; }).map(function (x) { return { b: x.b, n: +x.n }; });
     var L = window.CCMS || [];
+    // 주제 색인(2026-11-11 담임목사 "모든 곡을 보여 주되 주제별로 선곡"): 모두의 찬양의 주제(CCM_TAGS 순서)와 곡 수, 조 거르기
+    var TC = {}, KC = {};
+    L.forEach(function (c) { (c.tags || []).forEach(function (t) { TC[t] = (TC[t] || 0) + 1; }); if (c.key) KC[c.key] = (KC[c.key] || 0) + 1; });
+    var TAGS = (window.CCM_TAGS || []).filter(function (t) { return TC[t]; });
+    Object.keys(TC).forEach(function (t) { if (TAGS.indexOf(t) < 0) TAGS.push(t); });
+    var KEYS = Object.keys(KC).sort(function (a, b) { return KC[b] - KC[a]; });
+    var F = { tag: '', key: '' };
     setHTML('<div class="cr-wrap">' +
       '<nav class="dc-crumb"><a href="#disciple/c/' + esc(id) + '">‹ ' + esc(className(st['class'])) + '</a></nav>' +
       '<form class="cr-card dc-left dc-meet" id="dcSongs" novalidate><h2>모임 찬양 고르기</h2>' +
       '<div class="dc-field"><label for="dcSDate">모임 날짜</label><input type="date" id="dcSDate" value="' + esc(date) + '"><small>모임 전에 미리 골라 두면 수강생 화면에 \'다음 모임 찬양\'으로 보입니다.</small></div>' +
       '<h3 class="dc-h3">고른 곡 <small id="dcSCnt"></small></h3><ol class="dc-songs dc-chosen" id="dcSel"></ol>' +
-      '<h3 class="dc-h3">모두의 찬양에서 찾기 <small>' + L.length + '곡</small></h3>' +
-      '<div class="dc-field"><input type="search" id="dcSQ" placeholder="번호, 곡명·첫 줄, 조(D·Em), 주제(감사·은혜)" autocomplete="off" aria-label="모두의 찬양에서 찾기"></div>' +
-      '<ul class="dc-sres" id="dcSRes"></ul>' +
+      '<h3 class="dc-h3">모두의 찬양에서 고르기 <small id="dcSShown">' + L.length + '곡</small></h3>' +
+      '<div class="dc-topics" role="group" aria-label="주제로 고르기"><button type="button" class="dc-topic" data-tag="" aria-pressed="true">모든 곡 <span>' + L.length + '</span></button>' +
+        TAGS.map(function (t) { return '<button type="button" class="dc-topic" data-tag="' + esc(t) + '" aria-pressed="false">' + esc(t) + ' <span>' + TC[t] + '</span></button>'; }).join('') + '</div>' +
+      '<div class="dc-sfind"><input type="search" id="dcSQ" placeholder="번호, 곡명·첫 줄로 찾기" autocomplete="off" aria-label="모두의 찬양에서 찾기">' +
+        '<select id="dcSKey" aria-label="조로 거르기"><option value="">모든 조</option>' + KEYS.map(function (k) { return '<option value="' + esc(k) + '">' + esc(k) + '조 (' + KC[k] + ')</option>'; }).join('') + '</select></div>' +
+      '<ul class="dc-sres" id="dcSRes" aria-live="polite"></ul>' +
       '<div class="cr-acts dc-foot"><button type="submit" class="cr-btn" id="dcSSave">저장</button><a class="cr-line" href="#disciple/c/' + esc(id) + '">취소</a><span class="dc-msg" id="dcSMsg" role="status"></span></div>' +
       '</form></div>');
     var f = lead().querySelector('#dcSongs'), selEl = f.querySelector('#dcSel'), resEl = f.querySelector('#dcSRes'), q = f.querySelector('#dcSQ');
@@ -147,20 +169,32 @@ console.log('[disciple.js] v20261111e');
           '<button type="button" class="cr-line cr-sm" data-rm="' + i + '" aria-label="빼기">×</button></span></li>';
       }).join('') : '<li class="dc-dim">아래에서 곡을 찾아 더하십시오.</li>';
     }
+    // 모든 곡을 보여 준다(자르지 않음) — 주제·조·찾는 말로 좁힌다
     function drawRes() {
       var s = q.value.trim().toLowerCase(), num = /^\d+$/.test(s) ? +s : 0;
-      var list = !s ? L.slice(0, 30) : L.filter(function (c) {
+      var list = L.filter(function (c) {
+        if (F.tag && (c.tags || []).indexOf(F.tag) < 0) return false;
+        if (F.key && c.key !== F.key) return false;
+        if (!s) return true;
         if (num) return c.no === num || String(c.no).indexOf(s) === 0;
         return (c.title || '').toLowerCase().indexOf(s) >= 0 || (c.alt || []).some(function (a) { return String(a).toLowerCase().indexOf(s) >= 0; }) ||
           (c.tags || []).some(function (t) { return t.indexOf(s) >= 0; }) || String(c.key || '').toLowerCase() === s;
-      }).slice(0, 40);
+      });
+      f.querySelector('#dcSShown').textContent = list.length === L.length ? L.length + '곡' : L.length + '곡 중 ' + list.length + '곡' + (F.tag ? ' · ' + F.tag : '') + (F.key ? ' · ' + F.key + '조' : '');
       resEl.innerHTML = list.length ? list.map(function (c) {
         var on = has(c.no);
         return '<li><span class="n">' + c.no + '</span><span class="t"><b>' + esc(c.title) + '</b><small>' + esc(c.key ? c.key + '조' : '') + (c.tags && c.tags.length ? ' · ' + esc(c.tags.join(', ')) : '') + '</small></span>' +
           '<a class="cr-line cr-sm" href="modu/index.html#ccm=' + c.no + '" target="_blank" rel="noopener">악보</a>' +
           '<button type="button" class="cr-btn cr-sm" data-add="' + c.no + '"' + (on ? ' disabled' : '') + '>' + (on ? '고름' : '더하기') + '</button></li>';
-      }).join('') : '<li class="dc-dim">찾는 곡이 없습니다.</li>';
+      }).join('') : '<li class="dc-dim">' + (s ? '찾는 곡이 없습니다.' : '이 주제·조에 맞는 곡이 없습니다.') + '</li>';
     }
+    f.querySelector('.dc-topics').onclick = function (e) {
+      var b = e.target.closest('button[data-tag]'); if (!b) return;
+      F.tag = b.dataset.tag;
+      Array.prototype.forEach.call(f.querySelectorAll('.dc-topic'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      drawRes(); resEl.scrollTop = 0;
+    };
+    f.querySelector('#dcSKey').onchange = function () { F.key = this.value; drawRes(); resEl.scrollTop = 0; };
     selEl.onclick = function (e) {
       var b = e.target.closest('button'); if (!b) return;
       var i;
@@ -237,21 +271,29 @@ console.log('[disciple.js] v20261111e');
         }).join('') + '</ol></div>';
     }).join('');
   }
+  function notMineHTML() {
+    return '<h2>' + esc(D.title) + '</h2><p>양육반은 반에 등록된 수강생과 인도자만 볼 수 있습니다.</p>' +
+      '<p class="cr-note">등록은 교회(목회행정 매니저 → 교육관리)에서 합니다. 등록되었는데 보이지 않으면 계정이 교적과 이어졌는지(정회원) 교회에 확인해 주십시오.</p>' +
+      '<div class="cr-acts"><a class="cr-line" href="#">‹ 강의실 첫 화면</a></div>';
+  }
   function renderHome() {
-    setHTML('<div class="cr-wrap">' +
-      '<nav class="dc-crumb"><a href="#">‹ 강의실</a></nav>' +
-      '<section class="cr-card dc-intro dc-left"><p class="cr-c-part">' + esc(D.part) + '</p><h2>' + esc(D.title) + '</h2>' +
-      '<p class="cr-c-lead">' + esc(D.lead) + '</p><p class="cr-note" style="margin-top:0">' + esc(D.textbook) + '</p></section>' +
-      '<section class="dc-mine" aria-labelledby="dcMineT"><h2 id="dcMineT">내 반</h2><div id="dcMine"><p class="qt-loading">불러오는 중…</p></div></section>' +
-      '<section class="cr-card dc-tocbox dc-left"><h2>13강 차례</h2>' + tocHTML() + '</section>' +
-      '</div>');
-    var box = lead().querySelector('#dcMine');
-    if (!X.sess) { box.innerHTML = '<div class="cr-card"><p style="margin:0 0 12px">로그인하면 등록된 반이 여기에 나타납니다.</p><button type="button" class="cr-btn" data-login>로그인</button></div>'; bindLogin(); return; }
-    loadClasses(true).then(function (list) {
-      if (!document.body.contains(box)) return;
+    if (!X.sess) return renderNeedLogin();
+    setHTML('<div class="cr-wrap"><p class="qt-loading">불러오는 중…</p></div>');
+    var mark = lead().firstChild;
+    checkAccess(true).then(function (acc) {
+      if (lead().firstChild !== mark) return;   // 그사이 다른 화면으로 옮김
+      if (!acc.ok) return msg(notMineHTML());
+      var list = acc.list;
+      setHTML('<div class="cr-wrap">' +
+        '<nav class="dc-crumb"><a href="#">‹ 강의실</a></nav>' +
+        '<section class="cr-card dc-intro dc-left"><p class="cr-c-part">' + esc(D.part) + '</p><h2>' + esc(D.title) + '</h2>' +
+        '<p class="cr-c-lead">' + esc(D.lead) + '</p><p class="cr-note" style="margin-top:0">' + esc(D.textbook) + '</p></section>' +
+        '<section class="dc-mine" aria-labelledby="dcMineT"><h2 id="dcMineT">' + (acc.admin ? '양육반 반 목록' : '내 반') + '</h2><div id="dcMine"></div></section>' +
+        '<section class="cr-card dc-tocbox dc-left"><h2>13강 차례</h2>' + tocHTML() + '</section>' +
+        '</div>');
+      var box = lead().querySelector('#dcMine');
       if (!list.length) {
-        box.innerHTML = '<div class="cr-card"><p style="margin:0">아직 등록된 반이 없습니다. 양육반에 등록되면 여기에 우리 반이 나타납니다.</p>' +
-          '<p class="cr-note">등록은 교회(목회행정 매니저 → 교육관리)에서 합니다. 교적과 이어진 계정(정회원)이어야 내 반이 보입니다.</p></div>';
+        box.innerHTML = '<div class="cr-card"><p style="margin:0">아직 만든 반이 없습니다. 목회행정 매니저 → 교육관리에서 \'제자훈련 양육반\' 틀로 반을 만들면 여기에 나타납니다.</p></div>';
         return;
       }
       box.innerHTML = '<div class="dc-classes">' + list.map(function (c) {
@@ -266,7 +308,8 @@ console.log('[disciple.js] v20261111e');
           '</a>';
       }).join('') + '</div>';
     }).catch(function (e) {
-      box.innerHTML = '<div class="cr-card"><p style="margin:0">' + (X.notReady(e) ? '양육반 기록 저장을 준비하고 있습니다.' : '내 반을 불러오지 못했습니다.') + '</p></div>';
+      if (lead().firstChild !== mark) return;
+      msg('<h2>' + esc(D.title) + '</h2><p>' + (X.notReady(e) ? '양육반 기록 저장을 준비하고 있습니다.' : '내 반을 불러오지 못했습니다. 잠시 뒤 다시 들어와 주십시오.') + '</p><div class="cr-acts"><a class="cr-line" href="#">‹ 강의실 첫 화면</a></div>');
     });
   }
 
@@ -296,6 +339,20 @@ console.log('[disciple.js] v20261111e');
     return n;
   }
   function liveMeetings(st) { return (st.meetings || []).filter(function (m) { return !m.voided; }); }
+  // 수강생: 모임 기록(날짜 · 나간 대목 · 내 출결 · 인도자 메모) — 2026-11-11 담임목사 "메모·출결·진도가 보여야"
+  function myMeetsHTML(st, lv) {
+    if (!lv.length) return '';
+    var my = {}; (st.my_attend || []).forEach(function (a) { my[a.meet_date] = a.status; });
+    var rows = lv.slice().sort(function (a, b) { return a.meet_date < b.meet_date ? 1 : -1; });
+    var li = function (m) {
+      var s = my[m.meet_date] || '';
+      return '<li><span class="d">' + esc(kd(m.meet_date)) + '</span><span class="t">' + esc(partsSummary(m.parts)) + (m.memo ? '<small>' + esc(m.memo) + '</small>' : '') + '</span>' +
+        '<span class="c">' + (s ? esc(s) : '<span class="dc-dim">출결 기록 없음</span>') + '</span></li>';
+    };
+    return '<section class="cr-card dc-left"><h2 class="dc-h">모임 기록 <small>' + lv.length + '회 · 인도자 메모와 내 출결</small></h2><ul class="dc-meets is-mine">' +
+      rows.slice(0, 4).map(li).join('') + '</ul>' +
+      (rows.length > 4 ? '<details class="dc-past"><summary>지난 모임 ' + (rows.length - 4) + '번 더 보기</summary><ul class="dc-meets is-mine">' + rows.slice(4).map(li).join('') + '</ul></details>' : '') + '</section>';
+  }
 
   function renderClass(st) {
     var c = st['class'], p = prog(st.done), id = c.id, lv = liveMeetings(st);
@@ -308,6 +365,7 @@ console.log('[disciple.js] v20261111e');
         (p.cur && p.cur <= 13 ? '<div class="cr-acts" style="margin:0 0 18px"><button type="button" class="cr-btn" data-enter>강의실 입장 ▶</button><a class="cr-line" href="#disciple/c/' + esc(id) + '/l/' + p.cur + '">' + p.cur + '강 내용 보기</a>' +
           (p.cur < 13 ? '<a class="cr-line" href="#disciple/c/' + esc(id) + '/l/' + (p.cur + 1) + '">' + (p.cur + 1) + '강 예습</a>' : '') + '</div>' : '') +
         songsHTML(st) +
+        myMeetsHTML(st, lv) +
         '<section class="cr-card dc-left"><h2 class="dc-h">13강</h2>' + lessonsHTML(st, p) + '</section>' +
         '<p class="cr-note">' + esc(D.textbook) + '</p></div>');
       bindEnter(st);
@@ -409,7 +467,8 @@ console.log('[disciple.js] v20261111e');
         return '<li data-pid="' + esc(m.pid) + '"><b>' + esc(m.name) + '</b><span class="dc-seg" role="group" aria-label="' + esc(m.name) + ' 출석">' +
           ['출석', '지각', '결석'].map(function (v) { return '<button type="button" data-v="' + v + '" aria-pressed="' + (s === v) + '" class="' + (s === v ? 'is-on' : '') + '">' + v + '</button>'; }).join('') + '</span></li>';
       }).join('') + '</ul>' : '<p>등록된 수강생이 없습니다.</p>') +
-      '<div class="dc-field"><label for="dcMemo">메모</label><textarea id="dcMemo" rows="3" maxlength="500" placeholder="예: 3강 삼위일체에서 나눔이 길어 다음 주에 이어서">' + esc(mt && mt.memo || '') + '</textarea></div>' +
+      '<div class="dc-field"><label for="dcMemo">메모</label><textarea id="dcMemo" rows="3" maxlength="500" placeholder="예: 3강 삼위일체에서 나눔이 길어 다음 주에 이어서">' + esc(mt && mt.memo || '') + '</textarea>' +
+        '<small>메모는 우리 반 수강생의 대시보드(진행중인 교육)와 반 화면에도 보입니다.</small></div>' +
       '<div class="cr-acts dc-foot"><button type="submit" class="cr-btn" id="dcSave">저장</button><a class="cr-line" href="#disciple/c/' + esc(id) + '">취소</a><span class="dc-msg" id="dcMsg" role="status"></span></div>' +
       '</form></div>');
     var form = lead().querySelector('#dcMeet');
@@ -438,7 +497,15 @@ console.log('[disciple.js] v20261111e');
       btn.disabled = true; btn.textContent = '저장 중…'; out.textContent = '';
       X.rpc('edu_meeting_save', { p_edu: id, p_date: d, p_parts: parts, p_memo: form.querySelector('#dcMemo').value, p_attend: attend }).then(function (r) {
         if (!r || !r.ok) throw new Error(r && r.error || '저장하지 못했습니다.');
-        dirty = false; CLS = null;
+        CLS = null;
+        var lost = lostParts(parts, r);
+        if (lost.length) {   // 서버가 받지 못한 대목이 있으면 조용히 넘어가지 않고 알린다(출석·메모는 저장됨)
+          dirty = false; btn.disabled = false; btn.textContent = '저장';
+          out.innerHTML = '<b>출석·메모는 저장했지만, 대목 ' + lost.length + '개가 저장되지 않았습니다:</b> ' + esc(lost.map(partLabel).join(', ')) +
+            '<br>한 모임 기록에 대목을 너무 많이 몰아 적으면 서버가 다 받지 못합니다(고치는 중). 지금은 앞선 강의 진도를 지난 날짜의 모임 기록으로 나눠 적어 주십시오.';
+          return;
+        }
+        dirty = false;
         go('#disciple/c/' + id);
       }).catch(function (err) { btn.disabled = false; btn.textContent = '저장'; out.textContent = '저장하지 못했습니다: ' + err.message; });
     };
@@ -565,12 +632,21 @@ console.log('[disciple.js] v20261111e');
       })).then(function (list) { return list.filter(Boolean); });
     }).catch(function () { return []; });
   }
+  // 서버가 돌려준 parts 에 없는(받지 못한) 대목 — 예전 서버는 한 모임에 60대목까지만 받았다(20261111_2300 에서 200 으로)
+  function lostParts(sent, r) {
+    var got = {}; ((r && r.parts) || []).forEach(function (k) { got[k] = 1; });
+    var seen = {}; return (sent || []).filter(function (k) { if (seen[k]) return false; seen[k] = 1; return !got[k]; });
+  }
+  function partLabel(k) { var a = String(k).split('-'), l = D.lesson(+a[0]); return a[0] + '강 ' + a[1] + (l && l.parts[a[1] - 1] ? '. ' + l.parts[a[1] - 1] : ''); }
   function saveParts(st, keys) {
     var id = st['class'].id, t = today(), mt = (st.meetings || []).filter(function (m) { return m.meet_date === t; })[0];
     var set = {}; (mt ? mt.parts : []).concat(keys).forEach(function (k) { set[k] = 1; });
     return X.rpc('edu_meeting_save', { p_edu: id, p_date: t, p_parts: Object.keys(set), p_memo: mt ? mt.memo : null, p_attend: null }).then(function (r) {
       if (!r || !r.ok) throw new Error(r && r.error || '저장하지 못했습니다.');
-      CLS = null; return r;
+      CLS = null;
+      var lost = lostParts(Object.keys(set), r);
+      if (lost.length) throw new Error('대목 ' + lost.length + '개가 저장되지 않았습니다(' + lost.map(partLabel).join(', ') + '). 오늘 모임 기록에 대목이 너무 많습니다 — 출석·모임 기록에서 앞선 강을 지난 날짜로 나눠 적어 주십시오.');
+      return r;
     });
   }
   function enterClass(st, no, startPart, btn) {
@@ -724,15 +800,30 @@ console.log('[disciple.js] v20261111e');
     });
   }
 
-  /* ═════════════ 강의실 첫 화면의 카드 ═════════════ */
-  function cardHTML(hasSession) {
-    if (!D) return '';
-    return '<article class="cr-course dc-home">' +
-      '<div><p class="cr-c-part">' + esc(D.part) + '</p><h2>' + esc(D.title) + '</h2>' +
-      '<p class="cr-c-sub">' + esc(D.sub) + '</p><p class="cr-c-lead">' + esc(D.lead) + '</p><p class="cr-c-who"><b>대상</b>' + esc(D.who) + '</p></div>' +
-      '<div class="dc-home-act"><a class="cr-btn" href="#disciple"' + (hasSession ? '' : ' data-login') + '>' + (hasSession ? '양육반 들어가기' : '로그인하고 들어가기') + '</a>' +
+  /* ═════════════ 강의실 첫 화면의 '제자훈련' 칸 — 등록된 분·관리자에게만 ═════════════ */
+  function sectHTML(acc) {
+    var list = acc.list || [], one = list.length === 1 ? list[0] : null;
+    return '<header class="cr-sect-head"><p class="cr-sect-eye">제자훈련</p><h2 id="crSecD">' + esc(D.title) + '</h2>' +
+      '<p>반 모임에서 인도자와 함께 13강을 배웁니다. ' + (acc.admin ? '반에 등록된 수강생·인도자와 관리자에게만 보입니다.' : '반에 등록된 분께만 보입니다.') + '</p></header>' +
+      '<article class="cr-course dc-home">' +
+      '<div><p class="cr-c-part">' + esc(D.sub) + '</p><h2>' + (!list.length ? esc(D.title) : acc.admin ? '양육반 반 목록' : '우리 반') + '</h2>' +
+      '<p class="cr-c-lead">' + esc(D.lead) + '</p>' +
+      (list.length ? '<ul class="dc-qcs">' + list.slice(0, 6).map(function (c) {
+        var p = prog(c.done);
+        return '<li><a href="#disciple/c/' + esc(c.id) + '"><span class="dc-role is-' + esc(c.role) + '">' + roleLabel(c.role) + '</span><b>' + esc(className(c)) + '</b><small>' + esc(progLabel(p)) + ' · ' + p.pct + '%</small></a></li>';
+      }).join('') + '</ul>' : '<p class="cr-c-who"><b>반</b>아직 만든 반이 없습니다 — 목회행정 매니저 → 교육관리에서 만듭니다</p>') + '</div>' +
+      '<div class="dc-home-act">' + (one ? '<a class="cr-btn" href="#disciple/c/' + esc(one.id) + '">우리 반 들어가기</a>' : '<a class="cr-btn" href="#disciple">양육반 들어가기</a>') +
       '<a class="cr-line" href="#disciple">13강 차례 보기</a></div></article>';
   }
+  function mount(slot, ctx) {
+    X = ctx;
+    if (!D || !slot || !ctx.sess) return;
+    checkAccess(true).then(function (acc) {
+      if (!acc.ok || !document.body.contains(slot)) return;
+      slot.innerHTML = sectHTML(acc);
+      slot.hidden = false;
+    }).catch(function () { });
+  }
 
-  window.WPCDisciple = { render: render, card: function (ctx, hasSession) { X = X || ctx; return cardHTML(hasSession); } };
+  window.WPCDisciple = { render: render, mount: mount };
 })();

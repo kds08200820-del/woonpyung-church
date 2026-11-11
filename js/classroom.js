@@ -10,7 +10,7 @@
  *  · 재시험(2026-10-26 담임목사): 70점에 못 미치면 새 문제로 다시 본다. 앞선 응시 기록은 지우지 않고(서버 edu_exam_results 에 한 줄씩)
  *    '응시 기록'으로 보여 주며 회차마다 시험지를 다시 볼 수 있다. 통과한 과정은 다시 보지 않는다(하루 10번까지 — 서버가 센다)
  */
-console.log('[classroom.js] v20261111dc1');
+console.log('[classroom.js] v20261111dc2');
 
 (function () {
   var C = window.WPC_CATECHISM;
@@ -222,10 +222,14 @@ console.log('[classroom.js] v20261111dc1');
     renderLesson(r.cid, ch);
   }
 
-  /* ═════════════ 첫 화면 ═════════════ */
+  /* ═════════════ 첫 화면 ═════════════
+     (2026-11-11 담임목사) 강의를 둘로 나눈다 — ① 문답 교육(학습·세례(입교)·유아세례, 누구나 혼자 공부)
+     ② 제자훈련 양육반(반 모임) — 양육반은 반에 등록된 수강생·인도자·관리자에게만 보인다(js/disciple.js mount). */
   function renderHome() {
     var html = '<div class="cr-wrap is-home">' +
-      '<section class="cr-guide" aria-labelledby="crGuideT"><h2 id="crGuideT">강의실은 이렇게 진행됩니다</h2>' +
+      '<section class="cr-sect" aria-labelledby="crSecQ"><header class="cr-sect-head"><p class="cr-sect-eye">문답 교육</p>' +
+      '<h2 id="crSecQ">학습 · 세례(입교) · 유아세례</h2><p>혼자 장마다 공부하고 이수 시험을 봅니다. 당회 문답과 예식을 준비하는 과정입니다.</p></header>' +
+      '<section class="cr-guide" aria-labelledby="crGuideT"><h2 id="crGuideT">문답 교육은 이렇게 진행됩니다</h2>' +
       '<p>대한예수교장로회총회 「학습·세례문답서」를 한 장씩 친절한 풀이와 함께 배웁니다. 공부한 곳은 위쪽 진행 막대에 표시되고, 다 마치면 시험을 봅니다.</p>' +
       '<ol class="cr-flow">' +
       '<li><b>과정 고르기</b>학습 · 세례(입교) · 유아세례(부모)</li>' +
@@ -237,12 +241,15 @@ console.log('[classroom.js] v20261111dc1');
       '</ol></section>' +
       (S && SV.ready === false ? '<p class="cr-warn">강의실 기록 저장을 준비하고 있습니다. 공부와 시험은 지금도 할 수 있고, 결과는 이 기기에 먼저 보관됩니다.</p>' : '') +
       '<div class="cr-courses">' + ORDER.map(courseCard).join('') + '</div>' +
-      (window.WPCDisciple ? window.WPCDisciple.card(DCTX, !!S) : '') +
       (S ? mineHTML() : '<div class="cr-card" style="margin-top:22px"><h2>로그인하고 시작하세요</h2><p>공부한 진도와 시험 결과는 내 계정에 기록되어 교적에 이수로 남습니다.</p><div class="cr-acts"><button type="button" class="cr-btn" data-login>로그인</button></div></div>') +
       '<p class="cr-note">' + esc(C.source) + ' 이 강의실의 이수는 교육을 마쳤다는 기록이며, 학습·세례(입교)·유아세례는 당회의 문답과 예식을 거쳐 받습니다.</p>' +
+      '</section>' +
+      '<section class="cr-sect is-disc" id="crDisc" aria-labelledby="crSecD" hidden></section>' +
       '</div>';
     root.innerHTML = html;
     bindLogin();
+    // 양육반: 등록된 분(수강생·인도자)과 관리자에게만 — 서버에서 내 반을 확인한 뒤에 채운다
+    if (S && window.WPCDisciple && window.WPCDisciple.mount) window.WPCDisciple.mount(root.querySelector('#crDisc'), DCTX);
   }
   function courseCard(cid) {
     var c = C.courses[cid], p = pct(cid), pass = passedOf(cid), started = doneOf(cid).length > 0;
