@@ -2255,3 +2255,7 @@ body.management-ui .af-shell.af-home .af-main, .af-shell.af-home .af-main { padd
 .af-hp .hp-panel h2, body.management-ui .af-hp .hp-panel h2 { color: #fff; font-weight: 300; margin: 0; }
 .af-hp .hp-sub { color: rgba(255,255,255,.88); }
 .af-hp .hp-rows div { color: #fff; }
+
+/* 홈 예배 판: 예배 안내·카운트다운 슬라이드는 높이를 스스로 차지해 아래 단추가 잘리지 않게 (2026-11-11) */
+.hero:not(.hw-fs) .hero-slide.hero-worship { position: static; }
+.hero:not(.hw-fs) .hero-rotator:has(.hero-worship) { min-height: 0; }
