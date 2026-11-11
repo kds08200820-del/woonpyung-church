@@ -1224,3 +1224,6 @@ body.garden #header.scrolled .auth-btn { color: #fff !important; background: #11
 .g-pic:hover { border-color: var(--g-fg3); }
 .g-pic[aria-checked="true"] { border: 2px solid var(--g-fg); background: #fff; }
 .g-pic:focus-visible { outline: 3px solid var(--g-coral-ring); outline-offset: 2px; }
+
+/* 정원 안에서는 예배 안내를 띄우지 않는다 — 예배 띠·방송실 전체화면·설교하기는 첫 화면(home.html)에서만 (2026-11-11 담임목사) */
+body.garden .g-banner, body.garden .g-preach, body.garden .g-bcast { display: none !important; }

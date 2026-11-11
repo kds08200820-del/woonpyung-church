@@ -736,6 +736,7 @@ window.GardenHud = (function () {
   function joined(date) { try { return localStorage.getItem('ws_joined_' + date); } catch (e) { return null; } }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   function showBanner(title, count, state, sc, left) {
+    return;   /* 2026-11-11 담임목사: 정원 안에서는 예배 안내(예배 띠·방송실 전체화면·설교하기)를 띄우지 않는다 — 첫 화면(home.html)에서만. 아래는 예전 동작 */
     var b = $('gBanner'); if (!b) return;
     BN.state = state; BN.title = title; BN.left = left == null ? null : left;
     $('gBnT').textContent = title; $('gBnC').textContent = count || '';
