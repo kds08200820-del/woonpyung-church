@@ -386,3 +386,77 @@
 .dc-past ul { margin: 8px 0 0; padding-left: 1.2em; font-size: .9rem; line-height: 1.8; }
 .dc-past a { color: var(--accent); }
 @media (max-width: 560px) { .dc-songs li, .dc-sres li { flex-wrap: wrap; } .dc-songs .t, .dc-sres .t { flex-basis: calc(100% - 60px); } }
+/* 교재 문항(강 화면) */
+.dc-qsec { margin: 14px 0 0; border: 1px solid var(--line); border-radius: 2px; background: #fff; }
+.dc-qsec h4 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; padding: 10px 14px; font-size: .98rem; background: var(--paper-alt); }
+.dc-qsec h4 .n { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; background: #fff; color: var(--ink-soft); }
+.dc-qsec.is-done h4 .n { background: #111; color: #fff; }
+.dc-qsec h4 em { font-style: normal; font-size: .74rem; padding: 1px 8px; border-radius: 999px; background: #E6F2EC; color: #155e32; }
+.dc-qsec h4 em.is-next { background: #111; color: #fff; }
+.dc-qs { margin: 0; padding: 6px 14px 12px 2.4em; }
+.dc-qs > li { margin: 10px 0 0; }
+.dc-qt { margin: 0 0 6px; }
+.dc-qt small { color: var(--muted); font-size: .78rem; margin-left: 4px; }
+.dc-qs .dc-verses { gap: 4px; }
+.dc-qs .dc-vbtn { min-height: 40px; padding: 7px 10px; }
+
+/* ── 강의 창 (js/disciple-show.js) — 오늘의 예배 슬라이드처럼 화면 가득 ── */
+.dcs { position: fixed; inset: 0; z-index: 9600; display: flex; flex-direction: column; height: 100vh; height: 100dvh; background: #141414; color: #F4F3EF; outline: none; }
+.dcs-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #0B0B0B; border-bottom: 1px solid #2A2A2A; }
+.dcs-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .95rem; }
+.dcs-pg { font-size: .82rem; color: #B9B8B4; font-variant-numeric: tabular-nums; }
+.dcs-ic, .dcs-stopbtn { min-width: 44px; min-height: 44px; border: 1px solid #3A3A3A; border-radius: 999px; background: transparent; color: #F4F3EF; font: inherit; font-size: 1.05rem; cursor: pointer; user-select: none; }
+.dcs-stopbtn { padding: 0 14px; font-size: .86rem; font-weight: 700; border-color: #C9524A; color: #FFD9D4; }
+.dcs-ic:hover, .dcs-stopbtn:hover { background: #262626; }
+.dcs-stage { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; touch-action: pan-y; display: flex; }
+.dcs-stage.is-fit { overflow: hidden; touch-action: none; }
+.dcs-slide { margin: auto; width: 100%; max-width: 1100px; padding: 28px 28px 36px; box-sizing: border-box; }
+.dcs-stage.is-fit .dcs-slide { max-width: none; height: 100%; padding: 10px; display: flex; flex-direction: column; }
+.dcs-eye { margin: 0 0 10px; font-size: .9rem; letter-spacing: .04em; color: #C9B98F; }
+.dcs-cover { text-align: center; padding: 6vh 0; }
+.dcs-cover h1 { margin: 0 0 18px; font-size: clamp(2rem, 6vw, 3.6rem); line-height: 1.25; font-family: "Noto Serif KR", serif; }
+.dcs-part h1 { font-size: clamp(1.8rem, 5vw, 3rem); }
+.dcs-one { font-size: clamp(1.1rem, 2.6vw, 1.5rem); line-height: 1.7; color: #E7E5DF; max-width: 860px; margin: 0 auto 16px; }
+.dcs-meta { color: #A9A8A4; font-size: .95rem; }
+.dcs-text h2 { margin: 0 0 18px; font-size: clamp(1.6rem, 4.4vw, 2.6rem); line-height: 1.3; font-family: "Noto Serif KR", serif; }
+.dcs-list { margin: 0; padding-left: 1.4em; font-size: clamp(1.1rem, 2.6vw, 1.5rem); line-height: 1.75; }
+.dcs-list li { margin: 0 0 10px; }
+.dcs-list small { color: #A9A8A4; font-size: .8em; }
+.dcs-sum { margin-top: 22px; padding-top: 16px; border-top: 1px solid #2E2E2E; color: #CFCDC7; font-size: clamp(1rem, 2.2vw, 1.2rem); line-height: 1.8; }
+.dcs-sum p { margin: 0 0 8px; }
+.dcs-verses { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.dcs-verses li { padding: 14px 18px; border-left: 4px solid #C9B98F; background: #1D1D1D; border-radius: 2px; }
+.dcs-verses b { display: block; margin-bottom: 6px; color: #C9B98F; font-size: 1rem; }
+.dcs-vt { font-family: "Noto Serif KR", serif; font-size: clamp(1.15rem, 2.8vw, 1.6rem); line-height: 1.8; }
+.dcs-vt sup { color: #A9A8A4; font-size: .6em; margin: 0 2px; }
+.dcs-note { color: #A9A8A4; font-size: .95rem; }
+.dcs-figure { flex: 1; min-height: 0; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.dcs-fit { flex: 1; min-height: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; border-radius: 2px; }
+video.dcs-fit { background: #000; }
+.dcs-figure figcaption { flex: 0 0 auto; font-size: .9rem; color: #CFCDC7; }
+.dcs-figure figcaption a { color: #C9B98F; margin-left: 8px; }
+.dcs-media audio { width: 100%; max-width: 640px; margin-top: 12px; }
+.dcs-memtext { font-family: "Noto Serif KR", serif; font-size: clamp(1.4rem, 3.6vw, 2.2rem); line-height: 1.9; }
+.dcs-memtext.is-hidden .dcs-w:not(.is-shown) { color: transparent; background: #3A3A3A; border-radius: 3px; cursor: pointer; }
+.dcs-btn { display: inline-flex; align-items: center; min-height: 46px; padding: 0 22px; border-radius: 999px; border: 0; background: #F4F3EF; color: #111; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; margin: 4px; }
+.dcs-btn.dcs-ghost { background: transparent; color: #F4F3EF; border: 1px solid #555; }
+.dcs-btn:disabled { opacity: .5; cursor: default; }
+.dcs-nav { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #0B0B0B; border-top: 1px solid #2A2A2A; }
+.dcs-nb { min-width: 56px; min-height: 48px; border-radius: 999px; border: 1px solid #3A3A3A; background: #1E1E1E; color: #F4F3EF; font-size: 1.6rem; cursor: pointer; user-select: none; }
+.dcs-nb:disabled { opacity: .35; cursor: default; }
+.dcs-prog { flex: 1; height: 6px; border-radius: 999px; background: #2A2A2A; overflow: hidden; }
+.dcs-prog i { display: block; height: 100%; background: #C9B98F; transition: width .2s ease; }
+.dcs-toc, .dcs-stop { position: absolute; inset: 60px 0 64px; overflow: auto; overscroll-behavior: contain; background: rgba(10,10,10,.96); padding: 16px; z-index: 2; }
+.dcs-toc ol { max-width: 720px; margin: 0 auto; padding-left: 1.6em; }
+.dcs-toc button { width: 100%; text-align: left; min-height: 44px; padding: 8px 10px; background: transparent; border: 0; border-bottom: 1px solid #2A2A2A; color: #F4F3EF; font: inherit; cursor: pointer; }
+.dcs-toc button:hover { background: #222; }
+.dcs-stop-card { max-width: 640px; margin: 0 auto; }
+.dcs-stop-card h2 { margin: 0 0 8px; }
+.dcs-stop-card p { color: #CFCDC7; }
+.dcs-stop-card ul { list-style: none; margin: 12px 0; padding: 0; }
+.dcs-stop-card li label { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 6px; border-bottom: 1px solid #2A2A2A; cursor: pointer; }
+.dcs-stop-card input { width: 20px; height: 20px; }
+.dcs-stop-card em { font-style: normal; font-size: .76rem; padding: 1px 8px; border-radius: 999px; background: #2E3B32; color: #BFE3C8; }
+.dcs-stop-card em.is-now { background: #C9524A; color: #fff; }
+.dcs-msg { color: #FFB4AA; min-height: 1.2em; }
+@media (max-width: 560px) { .dcs-slide { padding: 18px 16px 24px; } .dcs-title { font-size: .86rem; } .dcs-stopbtn { padding: 0 10px; font-size: .8rem; } }
