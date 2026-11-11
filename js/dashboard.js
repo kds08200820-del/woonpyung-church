@@ -2,7 +2,7 @@
  * 오늘의 큐티(아멘 체크)·이번주 설교·주보·진행중인 교육·헌금·가계도·QT 진행표
  * 콘솔: [dashboard.js] v20260701da
  */
-console.log('[dashboard.js] v20261111dsh1 (진행중인 교육: 양육반 진도·출결·모임 메모)');
+console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도·출결·모임 메모)');
 
 (function () {
   var root = document.getElementById('dashRoot');
@@ -821,14 +821,26 @@ console.log('[dashboard.js] v20261111dsh1 (진행중인 교육: 양육반 진도
       .then(function (rows) {
         rows = rows || [];
         if (!rows.length) { el.innerHTML = empty; return; }
-        var d = function (f) { return (String(f.doc_date || '').slice(0, 10)) || (String(f.created_at || '').slice(0, 10)); };
-        el.innerHTML = head + '<div style="overflow:auto"><table class="fin-table" style="font-size:.88rem"><thead><tr><th>분류</th><th>파일</th><th>일자</th></tr></thead><tbody>' +
+        var d = function (f) { return ((String(f.doc_date || '').slice(0, 10)) || (String(f.created_at || '').slice(0, 10))).replace(/^(\d{4})-(\d\d)-(\d\d)$/, '$1. $2. $3.'); };
+        // (2026-11-11 담임목사 "분류·파일·일자가 붙어 있어 보기 불편") 표 대신 한 줄에 한 문서 — 분류 꼬리표 · 파일 이름 · 일자(오른쪽), 줄마다 구분선
+        if (!document.getElementById('mdocCss')) {
+          var cs = document.createElement('style'); cs.id = 'mdocCss';
+          cs.textContent = '.mdoc{list-style:none;margin:0;padding:0}' +
+            '.mdoc li{display:grid;grid-template-columns:7.5em 1fr auto;gap:8px 14px;align-items:center;padding:11px 2px;border-top:1px solid #EFEDE8;font-size:.9rem;line-height:1.5}' +
+            '.mdoc li:first-child{border-top:0;padding-top:4px}' +
+            '.mdoc-cat{justify-self:start;max-width:100%;padding:2px 10px;border-radius:999px;background:#F3F2EE;color:#5F5E5A;font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+            '.mdoc-name{min-width:0;overflow-wrap:anywhere;word-break:keep-all}.mdoc-name a{color:var(--accent,#111);text-decoration:underline;text-underline-offset:3px}' +
+            '.mdoc-date{color:#8A8984;font-size:.82rem;white-space:nowrap;font-variant-numeric:tabular-nums}' +
+            '@media (max-width:480px){.mdoc li{grid-template-columns:1fr auto;gap:4px 10px}.mdoc-cat{grid-column:1/-1}}';
+          document.head.appendChild(cs);
+        }
+        el.innerHTML = head + '<ul class="mdoc">' +
           rows.map(function (f) {
             var name = f.file_name || f.title || '문서';
             var cell = f.file_url ? '<a href="' + esc(f.file_url) + '" target="_blank" rel="noopener noreferrer">' + esc(name) + '</a>' : esc(name);
-            return '<tr><td>' + esc(f.category || '') + '</td><td>' + cell + '</td><td style="white-space:nowrap">' + esc(d(f)) + '</td></tr>';
+            return '<li>' + (f.category ? '<span class="mdoc-cat">' + esc(f.category) + '</span>' : '<span></span>') + '<span class="mdoc-name">' + cell + '</span><span class="mdoc-date">' + esc(d(f)) + '</span></li>';
           }).join('') +
-          '</tbody></table></div></div>';
+          '</ul></div>';
       })
       .catch(function (e) {
         var m = (e && e.message) || '';
