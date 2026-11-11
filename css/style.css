@@ -2185,3 +2185,16 @@ body { background: #fff; letter-spacing: .01em; }
 .hn-retry, .hn-retry2 { letter-spacing: .06em; font-weight: 500 !important; }
 .give-btn, .kakao-channel-btn { border-radius: 0 !important; }
 .hn-carousel { box-shadow: none; border: 1px solid var(--line); }
+
+/* 첫 화면 정원 칸: 전시대 대신 단순한 화분 (2026-11-11 담임목사: 모던하고 심플한 화분에 담기게) */
+.hp-plinth { width: clamp(104px, 9.5vw, 168px); height: auto; aspect-ratio: 1 / .86; background: #2B2A27; box-shadow: none; margin-bottom: 15%;
+  clip-path: none; border-radius: 0 0 6px 6px; }
+.hp-plinth::before { content: ""; position: absolute; left: -5%; right: -5%; top: 0; height: 13%; background: #1F1E1C; }   /* 화분 테두리 */
+.hp-plinth::after { content: ""; position: absolute; left: -22%; right: -22%; bottom: -7%; height: 14%; background: rgba(60,50,35,.16); border-radius: 50%; filter: blur(7px); z-index: -1; }   /* 바닥 그림자 */
+.hp-plant { margin-bottom: -4.5%; }
+.hp-label { left: 50%; right: auto; bottom: auto; top: calc(100% + 26px); transform: translateX(-50%); text-align: center; overflow: visible; }
+@media (max-width: 720px) { .hp-plinth { width: min(30vw, 150px); margin-bottom: 20%; } }
+.hp-stage::before { z-index: -2; }
+.hp-plant { margin-bottom: calc(clamp(200px, 23vw, 400px) * -.165); }
+.hp-plinth { margin-bottom: 74px; }
+@media (max-width: 720px) { .hp-plant { margin-bottom: calc(min(68vw, 320px) * -.165); } .hp-plinth { margin-bottom: 78px; } }
