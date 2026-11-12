@@ -140,6 +140,7 @@ TIMEOUT = {             # 종류별 최대 생성 시간(초)
     "review": 300,
     "sermon_pdf": 240,
     "sermon_style": 600,
+    "sermon_hymn": 240,
 }
 
 # ── 설교 PDF → Google Drive (kind = sermon_pdf) ───────────────
@@ -394,6 +395,23 @@ SYSTEM = {
 #  tools/sermon_style.py 가 같은 기준을 쓴다.
 STYLE_PROMPT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sermon_style_prompt.md")
 STYLE_BAN = ["사랑하는 성도 여러분", "축복합니다", "축원합니다", "할렐루야"]
+
+
+HYMN_SYSTEM = """당신은 한국 장로교회 새벽기도회의 찬송을 고르는 일을 한다.
+설교(제목·본문·글)와 새찬송가 목록(번호 제목)을 받는다. 설교의 중심 내용과 맺음의 권면에 가장 잘 맞는 찬송 한 곡을 목록에서 고른다.
+- 반드시 목록에 있는 번호만 고른다. 제목으로 뜻을 판단하되, 회중이 널리 아는 곡을 먼저 생각한다.
+- 송영(1~7장)과 절기 전용 곡(성탄·부활 등)은 설교가 그 절기를 다룰 때만 고른다.
+- 출력은 번호 숫자 하나뿐이다. 설명·제목·"장" 글자를 붙이지 않는다."""
+
+
+def hymn_pick(material, timeout=240):
+    """설교와 찬송가 목록을 받아 번호 하나를 돌려준다(문자열)."""
+    for _ in range(2):
+        text = run_claude(HYMN_SYSTEM, material + "\n[지금 할 일]\n번호 숫자 하나만 출력하세요.\n", MODEL_ADMIN, timeout).strip()
+        m = re.fullmatch(r"\D*(\d{1,3})\D*", text)
+        if m and 1 <= int(m.group(1)) <= 645 and re.search(r"(?m)^%s " % int(m.group(1)), material):
+            return str(int(m.group(1)))
+    raise RuntimeError("찬송 번호를 고르지 못했습니다: " + text[:60])
 
 
 def style_system():
@@ -764,7 +782,7 @@ def _run_claude_once(args, prompt, workdir, timeout, env):
 
 LABEL = {"counsel": "말씀지기", "prayer": "마침 기도문",
          "headline": "표지 헤드라인", "review": "주보 검수", "sermon_pdf": "설교 PDF",
-         "sermon_style": "주중 설교 변환"}
+         "sermon_style": "주중 설교 변환", "sermon_hymn": "새찬송가 선곡"}
 
 
 def process(job):
@@ -777,6 +795,10 @@ def process(job):
         text = style_convert(_clip(payload.get("content"), 16000), timeout=TIMEOUT["sermon_style"])
         print(f"   · 주중 설교 변환 완료 ({time.time() - started:.1f}초, {len(text)}자)")
         return text
+    if kind == "sermon_hymn":                     # 설교에 맞는 새찬송가 한 곡(번호)
+        n = hymn_pick(_clip(payload.get("content"), 40000), timeout=TIMEOUT["sermon_hymn"])
+        print(f"   · 새찬송가 선곡: {n}장")
+        return n
     if kind not in SYSTEM:
         raise RuntimeError(f"알 수 없는 작업 종류: {kind}")
 

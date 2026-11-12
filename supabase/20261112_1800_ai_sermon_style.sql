@@ -1,15 +1,15 @@
 -- ============================================================
 --  주중 설교 변환 작업 종류 추가 (2026-11-12) — Supabase → SQL Editor 에서 1회 실행
 --
---  설교 매니저 캘린더의 「주중 설교 일괄 변환」 단추가 ai_jobs 큐에 kind = 'sermon_style' 작업을 넣는다.
+--  설교 매니저 캘린더의 「주중 설교 일괄 변환」 단추가 ai_jobs 큐에 kind = 'sermon_style'(설교문 변환)·'sermon_hymn'(새찬송가 선곡) 작업을 넣는다.
 --  교회 PC 워커(tools/ai_worker.py)가 받아 둔 설교문을 목사님 새벽설교 방식으로 다시 써서 돌려준다
 --  (기준: tools/sermon_style_prompt.md).
 --
---  바뀌는 것: ai_enqueue() 가 받는 작업 종류에 'sermon_style' 추가(관리자 전용). 표·정책 변경 없음(비파괴).
+--  바뀌는 것: ai_enqueue() 가 받는 작업 종류에 'sermon_style'·'sermon_hymn' 추가(관리자 전용). 표·정책 변경 없음(비파괴).
 --  나머지 내용은 20261013_1800_sermon_pdf_job.sql 의 정의와 같다.
 --
 --  되돌리기: supabase/20261013_1800_sermon_pdf_job.sql 의 ai_enqueue 정의를 다시 실행하면 된다
---           (허용 목록에서 'sermon_style' 만 빠진다).
+--           (허용 목록에서 두 종류만 빠진다).
 -- ============================================================
 
 create or replace function public.ai_enqueue(p_kind text, p_payload jsonb)
@@ -30,7 +30,7 @@ begin
                              'error', '로그인이 필요합니다.');
   end if;
 
-  if p_kind not in ('counsel', 'prayer', 'headline', 'review', 'sermon_pdf', 'sermon_style') then
+  if p_kind not in ('counsel', 'prayer', 'headline', 'review', 'sermon_pdf', 'sermon_style', 'sermon_hymn') then
     return json_build_object('ok', false, 'error', '알 수 없는 요청입니다.');
   end if;
 
@@ -81,4 +81,4 @@ revoke all on function public.ai_enqueue(text, jsonb) from public, anon;
 grant execute on function public.ai_enqueue(text, jsonb) to authenticated;
 
 comment on column public.ai_jobs.kind is
-  'counsel(교인 말씀지기) / prayer(마침 기도문) / headline(표지 말씀) / review(주보 검수) / sermon_pdf(설교 PDF → Drive) / sermon_style(주중 설교 변환)';
+  'counsel(교인 말씀지기) / prayer(마침 기도문) / headline(표지 말씀) / review(주보 검수) / sermon_pdf(설교 PDF → Drive) / sermon_style(주중 설교 변환) / sermon_hymn(설교에 맞는 새찬송가 선곡)';
