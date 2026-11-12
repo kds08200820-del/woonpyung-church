@@ -107,10 +107,18 @@ class Supa:
     def req(self, method, path, body=None, prefer=None):
         if not self.token:
             self.login()
-        h = {"apikey": self.anon, "Authorization": f"Bearer {self.token}"}
-        if prefer:
-            h["Prefer"] = prefer
-        return http_json(method, self.url + path, body, h)
+        for attempt in (1, 2):
+            h = {"apikey": self.anon, "Authorization": f"Bearer {self.token}"}
+            if prefer:
+                h["Prefer"] = prefer
+            try:
+                return http_json(method, self.url + path, body, h)
+            except RuntimeError as e:
+                # 로그인은 1시간이면 끝난다 — 그림을 그리는 동안(2~3시간) 끝난 것이면 다시 로그인해 한 번 더
+                if attempt == 1 and ("JWT expired" in str(e) or "→ 401" in str(e)):
+                    self.login()
+                    continue
+                raise
 
 
 def strip_html(s):
@@ -463,8 +471,7 @@ def web_copy(cfg, out_mp4):
 
 def upload_site(supa, cfg, path, date):
     """교회 파일 저장소에 올린다(관리자 로그인 토큰). 주소에 난수가 들어가 그날 전에는 밖에서 알 수 없다."""
-    if not supa.token:
-        supa.login()
+    supa.login()      # 제작이 몇 시간 걸려 처음 로그인이 끝났을 수 있다 — 올리기 직전에 늘 새로 로그인
     size = os.path.getsize(path)
     if size > 95 * 1024 * 1024:
         raise RuntimeError(f"홈페이지용 영상이 너무 큽니다({size // 1048576}MB, 한도 100MB). config.json 의 web_bitrate 를 낮추세요.")
