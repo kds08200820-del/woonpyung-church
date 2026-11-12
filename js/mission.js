@@ -83,8 +83,8 @@
 
     if (m && Array.isArray(m.detail)) {
       h += `<div class="ms-names"><h4>회원 명단 (관리자·재정 담당에게만 보입니다)</h4>
-        <p class="ms-names-note">이름 옆 숫자는 이 회기에 선교헌금을 드린 횟수입니다. 점선 테두리는 교적에 연결되지 않아 헌금자 이름으로 센 분입니다.</p>
-        ${m.detail.length ? `<ul class="ms-name-list">${m.detail.map((d) => `<li class="${d.linked ? "" : "unlinked"}">${esc(d.name)}<small>${esc(d.cnt)}회</small></li>`).join("")}</ul>` : `<p class="ms-empty">이 회기에 선교헌금을 드린 분이 아직 없습니다.</p>`}
+        <p class="ms-names-note">점선 테두리는 교적에 연결되지 않아 헌금자 이름으로 센 분입니다.</p>
+        ${m.detail.length ? `<ul class="ms-name-list">${m.detail.map((d) => `<li class="${d.linked ? "" : "unlinked"}">${esc(d.name)}</li>`).join("")}</ul>` : `<p class="ms-empty">이 회기에 선교헌금을 드린 분이 아직 없습니다.</p>`}
       </div>`;
     } else if (m && Array.isArray(m.names)) {
       h += `<div class="ms-names"><h4>회원 명단</h4>
