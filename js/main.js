@@ -576,18 +576,53 @@ window.WPCQtText = (function () {
 
   let entries = []; // [{date, content, title, ref}] (최신 → 과거)
 
-  // 오늘의 말씀 영상(유튜브) — 교회 PC 가 매일 만들어 sermons.media_url 에 넣은 주소.
-  // qt_published 뷰에 media_url 이 아직 없으면(SQL 20261112_1100 실행 전) 요청이 실패하고 단추는 숨은 채로 둔다.
+  // 오늘의 말씀 영상 — 교회 PC 가 매일 만들어 교회 파일 저장소에 올리고 sermons.media_url 에 넣은 주소.
+  // 저장소의 mp4 는 이 화면 안에서 바로 틀고, 유튜브 주소는 새 창으로 연다. 주소가 없으면 단추는 숨은 채로 둔다.
+  const qtVideoByDate = {};   // "YYYY.MM.DD" → 영상 주소 (날짜별 글 화면에서도 쓴다)
+  let qtOpenVideo = null;     // (url) → 저장소 영상이면 화면 안에서 틀고 true
   (function () {
     const a = document.getElementById("qtHomeVideo");
-    if (!a || !(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return;
-    const u = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/qt_published?select=sermon_date,media_url&order=sermon_date.desc&limit=1";
+    if (!(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return;
+    const store = (window.R2_UPLOAD_URL || "https://church-files.kds08200820.workers.dev").replace(/\/$/, "") + "/f/";
+    function openPlayer(url) {
+      const ov = document.createElement("div");
+      ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", "오늘의 말씀 영상");
+      ov.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px";
+      const v = document.createElement("video");
+      v.src = url; v.controls = true; v.autoplay = true; v.playsInline = true;
+      v.setAttribute("playsinline", ""); v.setAttribute("controlslist", "nodownload");
+      v.style.cssText = "max-width:100%;max-height:100%;background:#000";
+      const x = document.createElement("button");
+      x.type = "button"; x.textContent = "닫기";
+      x.style.cssText = "position:absolute;top:14px;right:14px;padding:8px 16px;border:1px solid #fff;background:transparent;color:#fff;font:inherit;cursor:pointer";
+      function close() { v.pause(); ov.remove(); document.removeEventListener("keydown", onKey); }
+      function onKey(e) { if (e.key === "Escape") close(); }
+      x.addEventListener("click", close);
+      ov.addEventListener("click", (e) => { if (e.target === ov) close(); });
+      document.addEventListener("keydown", onKey);
+      ov.appendChild(v); ov.appendChild(x); document.body.appendChild(ov);
+    }
+    const isMine = (url) => url.indexOf(store) === 0 && /\.mp4$/i.test(url);
+    const isTube = (url) => /^https:\/\/(youtu\.be\/|(www\.)?youtube\.com\/)/.test(url);
+    qtOpenVideo = (url) => { if (!isMine(url)) return false; openPlayer(url); return true; };
+    const u = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/qt_published?select=sermon_date,media_url&media_url=not.is.null&order=sermon_date.desc&limit=180";
     fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + window.SUPABASE_ANON_KEY } })
       .then((r) => r.ok ? r.json() : null)
       .then((rows) => {
-        const url = rows && rows[0] && String(rows[0].media_url || "").trim();
-        if (!url || !/^https:\/\/(youtu\.be\/|(www\.)?youtube\.com\/)/.test(url)) return;   // 유튜브 주소만
-        a.href = url; a.hidden = false;
+        (rows || []).forEach((r) => {
+          const url = String(r.media_url || "").trim();
+          const m = String(r.sermon_date || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (m && url && (isMine(url) || isTube(url))) qtVideoByDate[`${m[1]}.${m[2]}.${m[3]}`] = url;
+        });
+        // 홈 '오늘의 말씀' 단추: 오늘(한국 시각) 글에 영상이 있을 때만
+        const k = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10).replace(/-/g, ".");
+        const url = qtVideoByDate[k];
+        if (a && url) {
+          a.href = url; a.hidden = false;
+          a.addEventListener("click", (e) => { if (qtOpenVideo(url)) e.preventDefault(); });
+        }
+        const cur = document.querySelector("#qtDetail #qtVideoBtn[data-date]");   // 이미 열려 있는 날짜별 글
+        if (cur && qtVideoByDate[cur.dataset.date]) { cur.href = qtVideoByDate[cur.dataset.date]; cur.hidden = false; }
       })
       .catch(() => {});
   })();
@@ -824,10 +859,16 @@ window.WPCQtText = (function () {
       </div>
       <div class="qt-d-controls">
         <button type="button" class="qt-d-listen" id="qtTtsBtn" style="border:0;font:inherit;cursor:pointer">오늘의 말씀 듣기</button>
+        <a class="qt-d-listen" id="qtVideoBtn" data-date="${escQt(date)}" href="${escQt(qtVideoByDate[date] || "#")}" target="_blank" rel="noopener" ${qtVideoByDate[date] ? "" : "hidden"} style="margin-left:8px;text-decoration:none">말씀 영상</a>
       </div>
       ${secHtml || `<div class="qt-d-sec"><p>${escQt(e.content)}</p></div>`}
       <div id="qtAmenBox"></div>`;
     loadHomeAmen(date);
+    const vBtn = detailEl.querySelector("#qtVideoBtn");
+    if (vBtn) vBtn.addEventListener("click", (ev) => {
+      const href = vBtn.getAttribute("href");
+      if (qtOpenVideo && qtOpenVideo(href)) { ev.preventDefault(); if (window.WPCTts) window.WPCTts.stop(); }
+    });
     (function wireTts() {
       const btn = detailEl.querySelector("#qtTtsBtn");
       if (!btn) return;

@@ -3,14 +3,15 @@ r"""
 매일 QT 모션 영상 — 하루 한 편을 처음부터 끝까지 만든다 (교회 PC 전용).
 
   QT 원고 읽기 → Claude 가 영상 계획(plan.json) 작성 → QT 목소리로 내레이션 → 로컬 AI 그림
-  → 틀에 넣어 MP4 로 굽기 → 유튜브에 예약 공개로 올리기 → 홈페이지 QT 글에 영상 주소 넣기
+  → 틀에 넣어 MP4 로 굽기 → 교회 파일 저장소에 올리기 → 홈페이지 QT 글에 영상 주소 넣기
+  (홈페이지 '오늘의 말씀 영상' 단추가 그 영상을 바로 튼다. 유튜브에는 올리지 않는다 — 올리려면 --youtube)
 
 사용:
   python qt_motion.py                    내일 날짜 QT (예: 13일 새벽 1시에 돌리면 14일자)
   python qt_motion.py --date 2026-11-14  날짜 지정
   python qt_motion.py --date 2026-11-11 --plan examples\2026-11-11.plan.json   계획을 직접 줌(시험)
-  python qt_motion.py --date ... --until render      굽기까지만 (유튜브·링크 안 함)
-  python qt_motion.py --date ... --no-youtube        유튜브에 올리지 않음
+  python qt_motion.py --date ... --until render      굽기까지만 (올리기·링크 안 함)
+  python qt_motion.py --date ... --youtube           유튜브에도 올림(유튜브 연결이 되어 있을 때)
   python qt_motion.py --doctor                       준비 상태 점검
 
 단계마다 결과를 C:\qt-video\motion\work\<날짜>\ 에 남기므로, 멈춘 뒤 같은 명령을 다시 돌리면 이어서 한다.
@@ -41,7 +42,10 @@ DEFAULTS = {
     "render_fps": 30,
     "bridge_port": 9881,
     "claude_model": "sonnet",
-    "publish_time": "00:00",        # 그날(QT 날짜) 한국 시각 몇 시에 공개할지 — 음성 QT 가 열리는 때와 같게
+    "file_store": "https://church-files.kds08200820.workers.dev",   # 교회 파일 저장소(음성 QT 와 같은 곳)
+    "web_bitrate": "950k",          # 홈페이지용 사본의 화질(1분 44초에 12MB 쯤)
+    "youtube": False,               # True 면 유튜브에도 올린다
+    "publish_time": "00:00",        # (유튜브 전용) 그날 한국 시각 몇 시에 공개할지
     "youtube_privacy": "public",    # 예약 시각이 지나 있으면 이 값으로 바로 올린다
     "youtube_category": "29",
     "youtube_playlist": "",
@@ -421,7 +425,39 @@ def render(cfg, proj, out_mp4):
     run([sys.executable, os.path.join(proj, "render.py"), proj, "--screenshot", "--gapframe", str(cfg["render_fps"] * 6), "--fps", str(cfg["render_fps"])], check=False, timeout=1800)
 
 
-# ─────────────────────────────── 7. 유튜브 · 홈페이지
+# ─────────────────────────────── 7. 홈페이지(교회 파일 저장소) · 유튜브
+
+def web_copy(cfg, out_mp4):
+    """홈페이지에서 바로 틀 수 있게 줄인 사본. 앞부분만 받아도 재생이 시작되게(faststart) 한다."""
+    web = out_mp4[:-4] + "_web.mp4"
+    if os.path.exists(web) and os.path.getmtime(web) >= os.path.getmtime(out_mp4) and os.path.getsize(web) > 200_000:
+        return web
+    br = cfg["web_bitrate"]
+    run(["ffmpeg", "-y", "-loglevel", "error", "-i", out_mp4, "-c:v", "libx264", "-preset", "medium", "-b:v", br, "-maxrate", br, "-bufsize", "2M",
+         "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", web], timeout=3600)
+    return web
+
+
+def upload_site(supa, cfg, path, date):
+    """교회 파일 저장소에 올린다(관리자 로그인 토큰). 주소에 난수가 들어가 그날 전에는 밖에서 알 수 없다."""
+    if not supa.token:
+        supa.login()
+    size = os.path.getsize(path)
+    if size > 95 * 1024 * 1024:
+        raise RuntimeError(f"홈페이지용 영상이 너무 큽니다({size // 1048576}MB, 한도 100MB). config.json 의 web_bitrate 를 낮추세요.")
+    with open(path, "rb") as f:
+        req = urllib.request.Request(cfg["file_store"].rstrip("/") + "/upload", data=f, method="POST", headers={
+            "Authorization": f"Bearer {supa.token}", "x-folder": "qtmotion", "x-filename": f"qt_{date}.mp4",
+            "Content-Type": "video/mp4", "Content-Length": str(size), "User-Agent": "qt-motion"})
+        try:
+            with urllib.request.urlopen(req, timeout=1800) as r:
+                j = json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            raise RuntimeError(f"저장소 올리기 실패({e.code}): {e.read().decode('utf-8', 'replace')[:300]}")
+    if not j.get("url"):
+        raise RuntimeError("저장소가 주소를 돌려주지 않았습니다: " + json.dumps(j, ensure_ascii=False)[:200])
+    return j["url"]
+
 
 def youtube_meta(cfg, plan, qt):
     d = dt.date.fromisoformat(plan["date"])
@@ -437,8 +473,8 @@ def youtube_meta(cfg, plan, qt):
 
 def main():
     ap = argparse.ArgumentParser(description="매일 QT 모션 영상 자동 제작")
-    ap.add_argument("--date"); ap.add_argument("--plan"); ap.add_argument("--until", choices=["plan", "voice", "images", "render", "youtube"])
-    ap.add_argument("--no-youtube", action="store_true"); ap.add_argument("--no-link", action="store_true")
+    ap.add_argument("--date"); ap.add_argument("--plan"); ap.add_argument("--until", choices=["plan", "voice", "images", "render", "site"])
+    ap.add_argument("--youtube", action="store_true"); ap.add_argument("--no-youtube", action="store_true"); ap.add_argument("--no-link", action="store_true")
     ap.add_argument("--doctor", action="store_true"); ap.add_argument("--no-log", action="store_true")
     o = ap.parse_args()
     cfg = load_cfg()
@@ -496,27 +532,46 @@ def main():
         if o.until == "images":
             return progress(100, "그림까지 완료", status="done")
 
-        progress(75, f"영상 굽는 중({dur:.0f}초 분량)")
-        render(cfg, proj, out_mp4)
-        if o.until == "render" or o.no_youtube or cfg.get("no_youtube"):
-            return progress(100, "영상 완성(유튜브에는 올리지 않음)", status="done")
-
-        import youtube
-        yj = os.path.join(work, "youtube.json")
-        if os.path.exists(yj):
-            yt = json.load(open(yj, encoding="utf-8"))
+        rsig = hashlib.sha1(open(pp, "rb").read()).hexdigest(); rs = os.path.join(work, "render.sig")
+        if os.path.exists(out_mp4) and os.path.exists(rs) and open(rs).read().strip() == rsig:
+            log("  이미 구운 영상이 있어 굽기를 건너뜁니다.")
         else:
-            progress(90, "유튜브에 올리는 중")
-            title, desc, when = youtube_meta(cfg, plan, qt)
-            yt = youtube.upload(out_mp4, title, desc, publish_at=when, privacy=cfg["youtube_privacy"],
-                                category=cfg["youtube_category"], playlist=cfg.get("youtube_playlist") or None)
-            json.dump(yt, open(yj, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+            progress(75, f"영상 굽는 중({dur:.0f}초 분량)")
+            render(cfg, proj, out_mp4)
+            open(rs, "w").write(rsig)
+        if o.until == "render":
+            return progress(100, "영상 완성(올리지 않음)", status="done")
+
+        sj = os.path.join(work, "site.json")
+        if os.path.exists(sj):
+            site = json.load(open(sj, encoding="utf-8"))
+        else:
+            progress(90, "홈페이지용으로 줄여 교회 파일 저장소에 올리는 중")
+            web = web_copy(cfg, out_mp4)
+            site = {"url": upload_site(supa, cfg, web, date), "bytes": os.path.getsize(web)}
+            json.dump(site, open(sj, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+        store = cfg["file_store"].rstrip("/") + "/f/"
         if not o.no_link:
-            progress(96, "홈페이지 QT 글에 영상 주소 넣는 중")
+            progress(95, "홈페이지 QT 글에 영상 주소 넣는 중")
             cur = (qt.get("media_url") or "").strip()
-            if not cur or "youtu" in cur:   # 사람이 넣어 둔 다른 주소는 건드리지 않는다
-                supa.req("PATCH", f"/rest/v1/sermons?id=eq.{qt['id']}", {"media_url": yt["url"]}, "return=minimal")
-        progress(100, "완료 · 유튜브 " + yt.get("state", ""), status="done", video_url=yt["url"])
+            if not cur or cur.startswith(store) or "youtu" in cur:   # 사람이 넣어 둔 다른 주소는 건드리지 않는다
+                supa.req("PATCH", f"/rest/v1/sermons?id=eq.{qt['id']}", {"media_url": site["url"]}, "return=minimal")
+            else:
+                log("  QT 글에 다른 영상 주소가 이미 있어 바꾸지 않았습니다.")
+        note = ""
+        if (o.youtube or cfg.get("youtube")) and not o.no_youtube and o.until != "site":
+            import youtube
+            yj = os.path.join(work, "youtube.json")
+            if os.path.exists(yj):
+                yt = json.load(open(yj, encoding="utf-8"))
+            else:
+                progress(97, "유튜브에 올리는 중")
+                title, desc, when = youtube_meta(cfg, plan, qt)
+                yt = youtube.upload(out_mp4, title, desc, publish_at=when, privacy=cfg["youtube_privacy"],
+                                    category=cfg["youtube_category"], playlist=cfg.get("youtube_playlist") or None)
+                json.dump(yt, open(yj, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+            note = " · 유튜브 " + yt.get("state", "")
+        progress(100, "완료 · 홈페이지에 올림" + note, status="done", video_url=site["url"])
     except SystemExit as e:
         if e.code not in (None, 0):
             progress(0, "멈춤", status="error", error=str(e.code)[:900])
@@ -548,9 +603,17 @@ def doctor(cfg):
     except BaseException:
         good = False
     line(good, "Claude CLI", "목회AI_로그인.bat 로 로그인")
-    import youtube
-    line(os.path.exists(youtube.CLIENT), "유튜브 앱 열쇠(client_secret.json)", "README 의 '유튜브 연결' 1~3번")
-    line(os.path.exists(youtube.TOKEN), "유튜브 로그인(youtube_token.json)", "유튜브_연결.bat 실행")
+    try:
+        urllib.request.urlopen(urllib.request.Request(cfg["file_store"].rstrip("/") + "/f/_", headers={"User-Agent": "qt-motion"}), timeout=10); good = True
+    except urllib.error.HTTPError:
+        good = True      # 404 라도 저장소가 대답한 것
+    except Exception:
+        good = False
+    line(good, "교회 파일 저장소(영상 올리는 곳)", "인터넷 연결 확인")
+    if cfg.get("youtube"):
+        import youtube
+        line(os.path.exists(youtube.CLIENT), "유튜브 앱 열쇠(client_secret.json)", "README 의 '유튜브 연결' 1~3번")
+        line(os.path.exists(youtube.TOKEN), "유튜브 로그인(youtube_token.json)", "유튜브_연결.bat 실행")
     print("모두 준비됨" if ok else "위 ✗ 항목을 먼저 해결해 주세요.")
     return 0 if ok else 1
 
