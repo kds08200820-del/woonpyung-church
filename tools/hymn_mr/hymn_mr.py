@@ -1,0 +1,285 @@
+# -*- coding: utf-8 -*-
+"""새찬송가 MR 만들기 — 점검한 악보 자료(scores/NNN.json) → 전주 + 전곡 → 오케스트라·피아노 소리 (2026-11-13, 담임목사 지시)
+
+교회 PC 전용. 설계: docs/찬송가-MR-제작-설계.md
+  python hymn_mr.py 305                 # 오케스트라·피아노 둘 다
+  python hymn_mr.py 305 --only piano
+
+폴더(HYMN_MR_HOME, 기본 C:\\hymn-mr):
+  scores\\NNN.json   점검한 악보(성부별 음/박). 새찬송가 악보는 저작물이라 공개 저장소에 두지 않는다.
+  vsco2\\            VSCO 2 CE 오케스트라 음원(CC0) + .sfz
+  dl\\sfizz\\...\\sfizz_render.exe
+  out\\NNN_orch.m4a, out\\NNN_piano.m4a
+
+악보 자료 적는 법: "D4/1 G4/.5 B4/.5"  (음이름+옥타브 / 박 수, 4분음표 = 1).  "~" 를 붙이면 다음 음과 이어진다(붙임줄).
+편곡 규칙: 전주 = intro_from 마디부터 끝까지(마지막 4마디), 그다음 1절~끝 절을 간주 없이, 마지막 절 끝줄은 느려지고, 아멘은 끝에 한 번.
+"""
+import json, os, re, subprocess, sys, argparse
+import numpy as np
+
+HOME = os.environ.get("HYMN_MR_HOME", r"C:\hymn-mr")
+SR = 48000
+SFIZZ = os.path.join(HOME, "dl", "sfizz", "bin", "Release", "sfizz_render.exe")
+VS = os.path.join(HOME, "vsco2")
+NOTE = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
+
+
+def midi_no(p):
+    m = re.fullmatch(r"([A-G])([#b]?)(-?\d)", p)
+    n = NOTE[m.group(1)] + (1 if m.group(2) == "#" else -1 if m.group(2) == "b" else 0)
+    return 12 * (int(m.group(3)) + 1) + n
+
+
+def parse_voice(txt):
+    out = []
+    for tok in txt.split():
+        tie = tok.endswith("~")
+        p, d = tok.rstrip("~").split("/")
+        out.append((None if p == "r" else midi_no(p), float(d), tie))
+    return out
+
+
+# ───────────────────────── 1. 악보 → 시간표(박 단위)
+
+def build(score):
+    """[(section, start_beat, dur_beats, voice, midi)] 와 각 구역의 박 범위."""
+    ms = score["measures"]
+    beats_per_bar = score["time"][0] * 4 / score["time"][1]
+    intro_ms = [m for m in ms if m["n"] >= score["intro_from"]]
+    secs = [("intro", intro_ms)] + [(f"v{i + 1}", ms) for i in range(score["verses"])]
+    if score.get("amen"):
+        secs.append(("amen", score["amen"]))
+    notes, ranges, t = [], {}, 0.0
+    for name, mlist in secs:
+        start = t
+        for v in "SATB":
+            tv = start
+            hold = None          # 붙임줄로 이어지는 음 (pitch, start, dur)
+            for m in mlist:
+                for p, d, tie in parse_voice(m[v]):
+                    if hold and hold[0] == p:
+                        hold = (p, hold[1], hold[2] + d)
+                    else:
+                        if hold:
+                            notes.append((name, hold[1], hold[2], v, hold[0]))
+                        hold = (p, tv, d)
+                    if not tie:
+                        if hold and hold[0] is not None:
+                            notes.append((name, hold[1], hold[2], v, hold[0]))
+                        hold = None
+                    tv += d
+            if hold and hold[0] is not None:
+                notes.append((name, hold[1], hold[2], v, hold[0]))
+        t = start + sum(sum(d for _, d, _ in parse_voice(m["S"])) for m in mlist)
+        ranges[name] = (start, t)
+    return notes, ranges, beats_per_bar
+
+
+def time_map(score, ranges, bpb):
+    """박 → 초. 마지막 절 끝 4마디는 점점 느리게, 아멘은 더 느리게, 마지막 음은 늘인다."""
+    spb = 60.0 / score["bpm"]
+    last = f"v{score['verses']}"
+    rit_from = ranges[last][1] - 4 * bpb
+    end = max(r[1] for r in ranges.values())
+    grid = np.arange(0, end + 8, 0.01)
+    rate = np.ones_like(grid)
+    k = (grid >= rit_from) & (grid < ranges[last][1])
+    rate[k] = 1 + 0.22 * ((grid[k] - rit_from) / (4 * bpb)) ** 1.5      # 22% 까지 느려짐
+    if "amen" in ranges:
+        a0, a1 = ranges["amen"]
+        k = grid >= a0
+        rate[k] = 1.30
+    sec = np.concatenate([[0], np.cumsum(rate[:-1] * 0.01 * spb)])
+    return lambda b: float(np.interp(b, grid, sec))
+
+
+# ───────────────────────── 2. 악기 배치
+
+LV = {"intro": 0.55, "v1": 0.50, "v2": 0.62, "v3": 0.74, "v4": 0.92, "amen": 0.95}
+
+ORCH = [
+    # 이름, sfz, 성부, 옮김(반음), 구역, 세기 배율, 소리 크기, 좌우(-1~1)
+    ("violin1", "ViolinEnsSusVib.sfz", "S", 0, "all", 1.0, 1.00, -0.35),
+    ("violin2", "ViolinEnsSusVib.sfz", "A", 0, "all", 0.9, 0.70, -0.15),
+    ("viola", "ViolaEnsSusVib.sfz", "T", 0, "all", 0.9, 0.75, 0.15),
+    ("cello", "CelloEnsSusVib.sfz", "B", 0, "all", 1.0, 0.95, 0.35),
+    ("bass", "ContrabassSusVB.sfz", "B", -12, "v2 v3 v4 amen", 0.9, 0.70, 0.45),
+    ("flute", "FluteSusVib.sfz", "S", 12, "intro v2 v3", 0.85, 0.45, -0.25),
+    ("clarinet", "ClarinetSus.sfz", "A", 0, "v3", 0.8, 0.40, -0.05),
+    ("horn", "FHornSus.sfz", "T", 0, "v2 v3 v4 amen", 0.85, 0.55, 0.25),
+    ("trumpet", "TrumpetSus.sfz", "S", 0, "v4 amen", 0.85, 0.55, 0.05),
+    ("trombone", "TromboneSus.sfz", "B", 12, "v4 amen", 0.85, 0.45, 0.30),
+    ("tuba", "TubaSus.sfz", "B", -12, "v4 amen", 0.85, 0.45, 0.40),
+    ("organ_q", "OrganQuiet.sfz", "SATB", 0, "intro v1 v2 v3", 0.7, 0.35, 0.0),
+    ("organ_l", "OrganLoud.sfz", "SATB", 0, "v4 amen", 0.8, 0.40, 0.0),
+]
+PIANO = [("piano", "UprightPiano.sfz", "SATB", 0, "all", 1.0, 1.0, 0.0)]
+PIANO_LV = {"intro": 0.55, "v1": 0.55, "v2": 0.62, "v3": 0.66, "v4": 0.78, "amen": 0.80}
+
+
+def in_sec(spec, name):
+    return spec == "all" or name in spec.split()
+
+
+# ───────────────────────── 3. MIDI 쓰기 (박자 120 고정, 시간은 초로 넣는다)
+
+def vlq(n):
+    b = [n & 0x7F]
+    while n > 0x7F:
+        n >>= 7
+        b.append((n & 0x7F) | 0x80)
+    return bytes(reversed(b))
+
+
+def write_midi(path, evs):
+    """evs: [(초, 'on'|'off', note, vel)]"""
+    tpq = 960                      # 120bpm → 1초 = 1920틱
+    evs = sorted(evs, key=lambda e: (e[0], 0 if e[1] == "off" else 1))
+    trk, last = bytearray(), 0
+    trk += b"\x00\xFF\x51\x03" + (500000).to_bytes(3, "big")
+    for s, kind, n, v in evs:
+        tick = int(round(s * 1920))
+        trk += vlq(max(0, tick - last)); last = tick
+        trk += bytes([0x90 if kind == "on" else 0x80, n, v if kind == "on" else 0])
+    trk += vlq(1920 * 6) + b"\xFF\x2F\x00"            # 끝난 뒤 6초 울림
+    with open(path, "wb") as f:
+        f.write(b"MThd" + (6).to_bytes(4, "big") + (0).to_bytes(2, "big") + (1).to_bytes(2, "big") + tpq.to_bytes(2, "big"))
+        f.write(b"MTrk" + len(trk).to_bytes(4, "big") + trk)
+
+
+def render(sfz, mid, wav):
+    subprocess.run([SFIZZ, "--sfz", os.path.join(VS, sfz), "--midi", mid, "--wav", wav, "-s", str(SR), "-q", "3", "-p", "128"],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", wav, "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"],
+                         check=True, capture_output=True).stdout
+    return np.frombuffer(raw, dtype=np.float32).reshape(-1, 2).copy()
+
+
+# ───────────────────────── 4. 울림(홀) — 만든 잔향으로 곱하기
+
+def hall_ir(seconds=2.6, seed=7):
+    rng = np.random.default_rng(seed)
+    n = int(SR * seconds)
+    t = np.arange(n) / SR
+    env = np.exp(-6.9 * t / seconds)                  # -60dB 까지
+    ir = rng.standard_normal((n, 2)) * env[:, None]
+    # 높은 소리가 먼저 사라지게: 시간에 따라 점점 어두워지는 간단한 거르기
+    for c in range(2):
+        y = np.empty(n); acc = 0.0
+        x = ir[:, c]
+        for i0 in range(0, n, 4800):
+            a = 0.25 + 0.7 * min(1.0, i0 / n * 2.5)
+            seg = x[i0:i0 + 4800]
+            out = np.empty_like(seg)
+            for i, v in enumerate(seg):
+                acc = acc * a + v * (1 - a); out[i] = acc
+            y[i0:i0 + 4800] = out
+        ir[:, c] = y
+    ir[: int(SR * 0.02)] = 0                          # 첫 반사 전 틈
+    return ir / np.sqrt((ir ** 2).sum(axis=0, keepdims=True))
+
+
+def convolve(x, ir):
+    n = len(x) + len(ir)
+    nf = 1 << (n - 1).bit_length()
+    out = np.zeros((n, 2), dtype=np.float32)
+    for c in range(2):
+        X = np.fft.rfft(x[:, c].astype(np.float64), nf)
+        H = np.fft.rfft(ir[:, c], nf)
+        out[:, c] = np.fft.irfft(X * H, nf)[:n]
+    return out
+
+
+# ───────────────────────── 5. 만들기
+
+def make(score, kind, work, out):
+    notes, ranges, bpb = build(score)
+    tm = time_map(score, ranges, bpb)
+    plan, lv = (ORCH, LV) if kind == "orch" else (PIANO, PIANO_LV)
+    final_end = max(s + d for _, s, d, _, _ in notes)
+    mix = None
+    for name, sfz, voices, shift, spec, vmul, gain, pan in plan:
+        evs = []
+        for sec, s, d, v, p in notes:
+            if v not in voices or not in_sec(spec, sec):
+                continue
+            t0, t1 = tm(s), tm(s + d)
+            if abs(s + d - final_end) < 1e-6:
+                t1 = t0 + (t1 - t0) * 1.6                   # 마지막 음은 길게
+            legato = 0.03 if kind == "orch" else 0.08
+            vel = int(max(20, min(127, 127 * lv[sec] * vmul * (1.04 if v == "S" else 0.94))))
+            if kind == "piano" and v in "AT":
+                vel = int(vel * 0.88)
+            evs.append((t0, "on", p + shift, vel))
+            evs.append((max(t0 + 0.05, t1 - legato), "off", p + shift, 0))
+        if name == "organ_l":       # 오르간 페달: 마지막 절과 아멘에서 베이스 한 옥타브 아래
+            for sec, s, d, v, p in notes:
+                if v == "B" and in_sec(spec, sec):
+                    evs.append((tm(s), "on", p - 12, 90)); evs.append((tm(s + d) - 0.03, "off", p - 12, 0))
+        if not evs:
+            continue
+        mid = os.path.join(work, f"{kind}_{name}.mid"); wav = os.path.join(work, f"{kind}_{name}.wav")
+        write_midi(mid, evs)
+        a = render(sfz, mid, wav)
+        l, r = np.cos((pan + 1) * np.pi / 4), np.sin((pan + 1) * np.pi / 4)
+        a = a * gain
+        a[:, 0] *= l * 1.414; a[:, 1] *= r * 1.414
+        if mix is None:
+            mix = a
+        else:
+            n = max(len(mix), len(a))
+            mix = np.pad(mix, ((0, n - len(mix)), (0, 0))) + np.pad(a, ((0, n - len(a)), (0, 0)))
+        print(f"  {name}: {len(a) / SR:.1f}초")
+    if kind == "orch":                  # 팀파니: 마지막 절 시작·끝 마디, 아멘에서 굴림
+        tev = []
+        v4 = ranges[f"v{score['verses']}"]
+        for b, n_, vel in [(v4[0] + score["pickup"], 43, 100), (v4[1] - 4 * bpb + score["pickup"], 43, 95)]:
+            tev += [(tm(b), "on", n_, vel), (tm(b) + 1.5, "off", n_, 0)]
+        if mix is not None and tev:
+            write_midi(os.path.join(work, "timp.mid"), tev)
+            a = render("Timpani.sfz", os.path.join(work, "timp.mid"), os.path.join(work, "timp.wav")) * 0.55
+            n = max(len(mix), len(a)); mix = np.pad(mix, ((0, n - len(mix)), (0, 0))) + np.pad(a, ((0, n - len(a)), (0, 0)))
+        if "amen" in ranges:
+            a0, a1 = ranges["amen"]
+            write_midi(os.path.join(work, "roll.mid"), [(tm(a1 - 3), "on", 43, 70), (tm(a1) + 2.5, "off", 43, 0)])
+            a = render("TimpaniRolls.sfz", os.path.join(work, "roll.mid"), os.path.join(work, "roll.wav")) * 0.45
+            n = max(len(mix), len(a)); mix = np.pad(mix, ((0, n - len(mix)), (0, 0))) + np.pad(a, ((0, n - len(a)), (0, 0)))
+    wet = 0.34 if kind == "orch" else 0.22
+    print("  울림 입히는 중")
+    ir = hall_ir(2.8 if kind == "orch" else 1.8)
+    rev = convolve(mix, ir)
+    dry = np.pad(mix, ((0, len(rev) - len(mix)), (0, 0)))
+    y = dry * (1 - wet) + rev * wet * 0.9
+    # 끝 소리가 사라질 때까지 자르고, 처음의 빈 곳은 0.3초만 남긴다
+    amp = np.abs(y).max(axis=1)
+    nz = np.nonzero(amp > amp.max() * 0.001)[0]
+    y = y[max(0, nz[0] - int(0.3 * SR)): nz[-1] + int(0.2 * SR)]
+    y = y / (np.abs(y).max() + 1e-9) * 0.9
+    raw = os.path.join(work, f"{kind}_mix.f32")
+    y.astype(np.float32).tofile(raw)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "2", "-i", raw,
+                    "-af", "loudnorm=I=-16:TP=-1.5:LRA=14,afade=t=in:d=0.01,areverse,afade=t=in:d=1.5,areverse",
+                    "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out], check=True)
+    secs = {k: (round(tm(v[0]), 2), round(tm(v[1]), 2)) for k, v in ranges.items()}
+    return secs
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("no", type=int)
+    ap.add_argument("--only", choices=["orch", "piano"])
+    o = ap.parse_args()
+    score = json.load(open(os.path.join(HOME, "scores", f"{o.no:03d}.json"), encoding="utf-8"))
+    work = os.path.join(HOME, "work", f"{o.no:03d}"); os.makedirs(work, exist_ok=True)
+    os.makedirs(os.path.join(HOME, "out"), exist_ok=True)
+    for kind in (["orch", "piano"] if not o.only else [o.only]):
+        out = os.path.join(HOME, "out", f"{o.no:03d}_{kind}.m4a")
+        print(f"{o.no}장 {score['title']} — {'오케스트라' if kind == 'orch' else '피아노'}")
+        secs = make(score, kind, work, out)
+        json.dump(secs, open(os.path.join(work, f"{kind}_sections.json"), "w"), ensure_ascii=False)
+        print("  구역(초):", secs)
+        print("  →", out)
+
+
+if __name__ == "__main__":
+    main()
