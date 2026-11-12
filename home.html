@@ -63,7 +63,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20261112qv" />
+  <link rel="stylesheet" href="css/style.css?v=20261113hv" />
   <link rel="stylesheet" href="css/worship.css?v=20261111m18" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <style>
@@ -122,6 +122,7 @@
         <div class="hp-today">
           <span data-go="worship" class="hp-wbox"><i>오늘의 예배</i><b id="hpGW">예배 안내</b><em id="hpGC" aria-live="off"></em><small id="hpGL"></small></span>
           <span data-go="qt" class="hp-qbox"><i>오늘의 QT</i><b id="hpGQ">오늘의 말씀 묵상</b><span class="hp-qgo" aria-hidden="true">묵상하기 →</span></span>
+          <span data-go="qtvideo" class="hp-qbox" id="hpGV" hidden><i>오늘의 말씀 영상</i><b>오늘의 QT 를 영상으로</b><span class="hp-qgo" aria-hidden="true">영상 보기 →</span></span>
         </div>
         <!-- 목회자·방송실에게만: 아래 예배 판에 '설교하기'(관리자)·'전체 보기'(방송실 담당) 단추가 떠 있을 때 여기에도 같은 단추를 보여 준다 -->
         <div class="hp-staff" id="hpStaff" hidden>
@@ -218,6 +219,7 @@
       e.preventDefault();
       if (go.getAttribute("data-go") === "worship") { openWorship(); return; }
       if (go.getAttribute("data-go") === "qt") { openQt(go); return; }
+      if (go.getAttribute("data-go") === "qtvideo") { var vb = document.getElementById("qtHomeVideo"); if (vb && !vb.hidden) vb.click(); return; }   // 오늘의 말씀 영상 — 아래 「오늘의 말씀」 단추와 같은 영상
       if (go.getAttribute("data-go") === "preach") { var pb = document.querySelector("#home .hw-preach"); if (pb) pb.click(); return; }
       if (go.getAttribute("data-go") === "fs") { var fb = document.querySelector("#home .hw-fsbtn"), hero = document.getElementById("home"); if (fb) { hero.scrollIntoView(); fb.click(); } return; }
       var t = document.querySelector(go.getAttribute("data-go")); if (t) t.scrollIntoView({ behavior: "smooth" });
@@ -587,7 +589,7 @@
   <script src="js/worship.js?v=20261112mr2"></script>
   <script src="js/layout.js?v=20261111m9"></script>
   <script src="js/counsel.js?v=20260906fix"></script>
-  <script src="js/main.js?v=20261112v3"></script>
+  <script src="js/main.js?v=20261113v1"></script>
   <script src="js/forms.js?v=20261111m1"></script>
   <script src="js/upload.js?v=20261025vid1"></script>
   <script src="js/categories.js?v=20260906news2"></script>

@@ -541,12 +541,39 @@ def drop_lock():
         pass
 
 
+def relink(cfg, supa, days=10):
+    """이미 올린 영상(work/<날짜>/site.json)을 그 날짜의 지금 '매일 QT' 글에 다시 잇는다.
+    11/13: 영상을 올린 뒤 QT 글이 새로 만들어져(예전 글은 '새벽기도'로 바뀜) 홈페이지에 영상이 안 보였다.
+    그래서 예약이 돌 때마다 확인한다. 사람이 넣어 둔 다른 주소는 건드리지 않는다."""
+    store = cfg["file_store"].rstrip("/") + "/f/"
+    today = dt.datetime.now(KST).date()
+    for k in range(-2, days):
+        date = (today + dt.timedelta(days=k)).isoformat()
+        sp = os.path.join(HOME, "work", date, "site.json")
+        if not os.path.exists(sp):
+            continue
+        try:
+            url = json.load(open(sp, encoding="utf-8")).get("url") or ""
+            if not url:
+                continue
+            q = urllib.parse.urlencode({"select": "id,media_url", "service": "eq." + cfg["service"], "sermon_date": "eq." + date})
+            for r in supa.req("GET", "/rest/v1/sermons?" + q) or []:
+                cur = (r.get("media_url") or "").strip()
+                if cur == url or (cur and not cur.startswith(store) and "youtu" not in cur):
+                    continue
+                supa.req("PATCH", f"/rest/v1/sermons?id=eq.{r['id']}", {"media_url": url}, "return=minimal")
+                log(f"영상 다시 연결: {date}")
+        except Exception as e:
+            log(f"  (영상 다시 연결 실패 {date}: {str(e)[:200]})")
+
+
 def auto(cfg, o):
     """예약(15분마다)이 부르는 모드. video_jobs 의 job_type=motion, status=queued 를 만든다.
     · 대시보드 '영상 만들기' 요청 — 바로 만든다.
     · 예약 발송 창에서 '제작 승인'한 것(settings.when=night) — 새벽(daily_time~night_end, 기본 01:00~08:00)에 날짜 순서로 모두 만든다.
     승인 없이 매일 내일 것을 만들게 하려면 config.json 에 "auto_daily": true."""
     supa = Supa()
+    relink(cfg, supa)
 
     def in_night():
         now = dt.datetime.now(KST)
@@ -580,6 +607,7 @@ def auto(cfg, o):
             if isinstance(e, KeyboardInterrupt):
                 raise
             log(f"  {date} 실패: {str(e)[:300]}")
+        relink(cfg, supa)
     if not cfg.get("auto_daily"):
         return
     now = dt.datetime.now(KST)

@@ -2241,6 +2241,7 @@ body { background: #fff; letter-spacing: .01em; }
 .hp-today .hp-qbox i { grid-area: lab; font-size: .7rem; letter-spacing: .12em; color: #6a6358; }
 .hp-today .hp-qbox b { grid-area: ttl; font-size: .98rem; font-weight: 500; line-height: 1.4; white-space: normal; overflow: visible; }
 .hp-today .hp-qbox .hp-qgo { grid-area: go; font-size: .78rem; font-weight: 500; padding: 8px 12px; background: var(--ink); color: #fff; white-space: nowrap; letter-spacing: .02em; }
+.hp-today [hidden] { display: none !important; }   /* span[data-go] 의 display:flex 가 hidden 을 덮지 않게 */
 .hp-today span.hp-qbox:hover { background: #FAF8F4; box-shadow: 0 3px 10px rgba(17,17,17,.10); }
 .hp-today span.hp-qbox:hover b { text-decoration: underline; text-underline-offset: 3px; }
 .hp-today span.hp-qbox:hover .hp-qgo { background: #3a3a3a; }

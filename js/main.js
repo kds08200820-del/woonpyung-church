@@ -619,6 +619,7 @@ window.WPCQtText = (function () {
         const url = qtVideoByDate[k];
         if (a && url) {
           a.href = url; a.hidden = false;
+          const hv = document.getElementById("hpGV"); if (hv) hv.hidden = false;   // 첫 화면 정원 칸의 「영상 보기」
           a.addEventListener("click", (e) => { e.preventDefault(); if (!qtOpenVideo(url)) window.open(url, "_blank", "noopener"); });   // 저장소 영상은 이 화면 안에서, 유튜브는 새 창
         }
         const cur = document.querySelector("#qtDetail #qtVideoBtn[data-date]");   // 이미 열려 있는 날짜별 글
