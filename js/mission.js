@@ -66,6 +66,7 @@
 
   /* ───────── 1) 회원 ───────── */
   const VIS = [
+    ["members", "회원 수는 누구나, 명단은 그 회기 회원(로그인)에게"],
     ["count", "회원 수는 누구나, 명단은 관리자·재정 담당만"],
     ["names", "회원 수는 누구나, 이름은 교적에 연결된 성도(로그인)에게"],
     ["admin", "회원 수와 명단 모두 관리자·재정 담당만"],
@@ -77,12 +78,12 @@
     const r = m ? { from: m.from, to: m.to } : guessRange(y);
     let h = `<p class="ms-member-term">${esc(y)}년도 회기 · ${esc(dot(r.from))} ~ ${esc(dot(r.to))}</p>`;
     if (m && m.count != null) h += `<p class="ms-member-count">회원<b>${esc(m.count)}</b>명</p>`;
-    h += `<p class="ms-member-rule">이 회기 안에 선교헌금을 한 번 이상 드린 성도가 회원입니다. 헌금 금액과 내역은 이 화면에 나오지 않습니다.</p>`;
+    h += `<p class="ms-member-rule">이 회기 안에 선교헌금을 한 번 이상 드린 성도가 회원입니다.</p>`;
     if (m && m.me === true) h += `<p class="ms-member-me">${esc(y)}년도 회기 구제선교위원회 회원이십니다.</p>`;
     else if (m && m.me === false && !m.staff) h += `<p class="ms-member-me">이 회기에 드린 선교헌금 기록이 아직 없습니다.</p>`;
 
     if (m && Array.isArray(m.detail)) {
-      h += `<div class="ms-names"><h4>회원 명단 (관리자·재정 담당에게만 보입니다)</h4>
+      h += `<div class="ms-names"><h4>회원 명단 <small class="ms-names-who">(${m.visibility === "members" ? "회원과 관리자·재정 담당에게 보입니다" : m.visibility === "names" ? "교적에 연결된 성도와 관리자·재정 담당에게 보입니다" : "관리자·재정 담당에게만 보입니다"})</small></h4>
         <p class="ms-names-note">점선 테두리는 교적에 연결되지 않아 헌금자 이름으로 센 분입니다.</p>
         ${m.detail.length ? `<ul class="ms-name-list">${m.detail.map((d) => `<li class="${d.linked ? "" : "unlinked"}">${esc(d.name)}</li>`).join("")}</ul>` : `<p class="ms-empty">이 회기에 선교헌금을 드린 분이 아직 없습니다.</p>`}
       </div>`;
@@ -173,7 +174,10 @@
     let go = "";
     if (p.address) go += `<button type="button" class="m-go" data-msmap="${esc(p.address)}" data-name="${esc(p.name)}">지도 보기 →</button>`;
     if (url) go += `${p.address ? " &nbsp; " : ""}<a class="m-go" href="${esc(url)}" target="_blank" rel="noopener">홈페이지 보기 →</a>`;
+    const logo = String(p.logo_url || "").trim();
+    const logoSrc = /^(https:\/\/|images\/)/i.test(logo) ? logo : "";   // 저장소 그림(images/...) 또는 https 주소만
     return `<div class="mission-card ms-partner${p.active === false ? " is-hidden" : ""}">
+      ${logoSrc ? `<img class="ms-logo" src="${esc(logoSrc)}" alt="${esc(p.name)} 로고" loading="lazy">` : ""}
       <h4>${esc(p.name)}${p.active === false ? `<span class="ms-tag-hidden">숨김</span>` : ""}</h4>
       ${p.summary ? `<p class="m-region">${esc(p.summary)}</p>` : ""}
       ${p.person ? `<p class="m-name">${esc(p.person)}</p>` : ""}
@@ -300,6 +304,7 @@
           <label class="nt-f"><span>담당자</span><input type="text" id="mrPerson" maxlength="100" placeholder="예: ○○○ 목사" /></label>
           <label class="nt-f"><span>주소 <em class="ms-form-hint">(적으면 '지도 보기'가 생깁니다)</em></span><input type="text" id="mrAddr" maxlength="200" /></label>
           <label class="nt-f"><span>홈페이지 <em class="ms-form-hint">(https:// 로 시작)</em></span><input type="url" id="mrUrl" maxlength="300" placeholder="https://" /></label>
+          <label class="nt-f"><span>로고 그림 주소 <em class="ms-form-hint">(https:// 또는 images/… · 비우면 로고 없음)</em></span><input type="text" id="mrLogo" maxlength="300" placeholder="https://" /></label>
           <button type="submit" class="btn btn-solid nt-submit"></button>
           <div class="nt-status" hidden></div>
         </form>`);
@@ -316,6 +321,7 @@
     q("#mrPerson").value = p ? (p.person || "") : "";
     q("#mrAddr").value = p ? (p.address || "") : "";
     q("#mrUrl").value = p ? (p.url || "") : "";
+    q("#mrLogo").value = p ? (p.logo_url || "") : "";
     const st = q(".nt-status"); st.hidden = true; st.textContent = "";
     openModal(partnerM); q("#mrName").focus();
   }
@@ -330,6 +336,7 @@
       person: q("#mrPerson").value.trim(),
       address: q("#mrAddr").value.trim(),
       url: safeUrl(q("#mrUrl").value),
+      logo_url: (/^(https:\/\/|images\/)/i.test(q("#mrLogo").value.trim()) ? q("#mrLogo").value.trim() : ""),
     };
     if (!row.name) return;
     const btn = q(".nt-submit"), st = q(".nt-status");

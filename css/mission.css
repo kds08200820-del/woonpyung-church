@@ -44,6 +44,8 @@
 .ms-kind { font-family: var(--font); font-size: 1.1rem; color: var(--accent-soft); margin: 30px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 .ms-kind:first-of-type { margin-top: 0; }
 .ms-partner { background: #fff; }
+.ms-partner .ms-logo { display: block; max-width: 160px; max-height: 44px; width: auto; height: auto; margin: 0 0 14px; }
+.ms-names-who { font-size: .78em; font-weight: 400; color: var(--ink-soft, #73726F); }
 .ms-partner.is-hidden { background: var(--paper-alt); border-style: dashed; }
 .ms-partner .m-go { display: inline-block; margin-top: 14px; font-size: .85rem; font-weight: 600; color: var(--accent-soft); background: none; border: 0; padding: 0; font-family: inherit; cursor: pointer; }
 .ms-partner .m-go:hover { text-decoration: underline; }
