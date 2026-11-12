@@ -1,0 +1,61 @@
+/* style.css — 운평장로교회 매일 QT 모션 영상 틀
+   이야기 장면 = 로컬 AI 만화 풍 그림 + 흰 이름표 · 뜻풀이 장면 = 크림 바탕(남색 선·파랑·황토) */
+
+:root {
+  --paper: #f1ebdf;
+  --navy: #1f2a44;
+  --blue: #7fb0d8;
+  --blue-d: #4f7fae;
+  --ochre: #f0c084;
+  --ochre-d: #c0822a;
+  --red: #c94a3a;
+  --font: 'Pretendard', sans-serif;
+  --serif: 'Gowun Batang', 'Pretendard', serif;
+  --mono: 'D2Coding', 'Pretendard', monospace;
+  --safe: 64px; --safe-top: 240px; --safe-bottom: 480px; --safe-right: 180px;
+}
+
+#stage { background: var(--paper); color: var(--navy); font-family: var(--font); overflow: hidden;
+         --caption-bottom: 500px; --caption-max: 720px; }
+#stage button, #stage input, #stage select, #stage textarea { font: inherit; letter-spacing: inherit; }
+
+/* 그림 장면 */
+.shot { position: absolute; inset: 0; overflow: hidden; background: #111; }
+.shot img { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: cover; display: block; }
+
+/* 크림 바탕 장면 */
+.card { position: absolute; inset: 0; background: var(--paper); }
+.card.blue { background: var(--blue-d); }
+.card h1 { position: absolute; left: 0; top: 420px; width: 1000px; margin: 0; text-align: center; font-size: 180px; font-weight: 850; letter-spacing: -.03em; line-height: 1.05; color: var(--navy); word-break: keep-all; }
+.card h1 b { display: block; font-size: 140px; color: var(--ochre-d); }
+
+/* 이름표 */
+.pill { position: absolute; display: inline-block; max-width: 800px; background: #fff; color: var(--navy); border: 5px solid var(--navy);
+        border-radius: 22px; padding: 14px 30px 16px; font-size: 50px; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; word-break: keep-all;
+        box-shadow: 8px 8px 0 rgba(31, 42, 68, .9); }
+.pill small { font-size: 34px; font-weight: 600; color: #5a6787; margin-left: 10px; }
+.pill.warn { background: var(--red); color: #fff; }
+.pill.kick { left: 0; right: 80px; top: 270px; width: max-content; margin: 0 auto; font-size: 40px; font-weight: 700; box-shadow: 6px 6px 0 rgba(31, 42, 68, .9); }
+.pill.ref { left: 0; right: 80px; top: 700px; width: max-content; margin: 0 auto; font-size: 36px; font-weight: 700; box-shadow: 6px 6px 0 rgba(31, 42, 68, .9); }
+.pill.tag.high { left: 80px; top: 290px; }
+.pill.tag.low { left: 110px; top: 1170px; }
+
+/* 말씀·문장 */
+.verse { position: absolute; left: 70px; top: 420px; width: 860px; margin: 0; text-align: center; font-family: var(--serif); font-size: 74px; font-weight: 700;
+         line-height: 1.38; color: var(--navy); word-break: keep-all; }
+.verse i { display: block; font-style: normal; font-family: var(--font); font-size: 36px; font-weight: 700; letter-spacing: .1em; margin-top: 30px; color: var(--ochre-d); }
+.verse.over { top: 262px; left: 64px; width: 800px; font-size: 52px; background: var(--paper); border: 5px solid var(--navy); border-radius: 26px; padding: 30px 26px;
+              box-shadow: 8px 8px 0 rgba(31, 42, 68, .9); }
+.verse.over i { margin-top: 16px; font-size: 32px; }
+.say { position: absolute; left: 60px; top: 480px; width: 880px; margin: 0; text-align: center; font-size: 84px; font-weight: 850; line-height: 1.24; letter-spacing: -.02em; color: #fff; word-break: keep-all; }
+.say.ink { color: var(--navy); }
+.say.head { top: 262px; font-size: 70px; }
+.title { position: absolute; left: 40px; top: 330px; width: 920px; margin: 0; text-align: center; font-family: var(--serif); font-size: 104px; font-weight: 700; line-height: 1.24; color: var(--navy); word-break: keep-all; }
+.title.sub { top: 860px; font-size: 76px; }
+
+/* 그림 세 칸 */
+.panel { position: absolute; left: 64px; width: 836px; height: 250px; border: 6px solid var(--navy); border-radius: 24px; overflow: hidden; background: #ccc;
+         box-shadow: 10px 10px 0 rgba(31, 42, 68, .9); }
+.panel img { position: absolute; left: 0; top: -360px; width: 836px; height: 1486px; display: block; }
+.panel .pill { left: 16px; bottom: 16px; font-size: 50px; padding: 8px 22px 10px; box-shadow: none; }
+.panel.pn1 { top: 450px; } .panel.pn2 { top: 730px; } .panel.pn3 { top: 1010px; }

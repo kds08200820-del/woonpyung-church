@@ -1,0 +1,65 @@
+{
+  "date": "2026-11-11",
+  "title": "성문에서 정의를 세우라",
+  "scripture": "아모스 5:7-17",
+  "kicker": "매일 QT · 11월 11일",
+  "cues": [
+    { "id": "c01", "say": "오늘 묵상할 말씀은 아모스 오 장입니다.", "text": "오늘 묵상할 말씀은 아모스 5장입니다." },
+    { "id": "c02", "say": "이 말씀의 무대는 성문입니다.", "text": "이 말씀의 무대는 성문입니다.", "gapAfter": 0.3 },
+    { "id": "c03", "say": "고대 이스라엘에서 성문은 단순한 출입구가 아니었습니다.", "text": "고대 이스라엘에서 성문은 단순한 출입구가 아니었습니다." },
+    { "id": "c04", "say": "성읍의 장로들이 앉아 재판을 하던 곳, 오늘로 말하면 법정이었습니다.", "text": "성읍의 장로들이 앉아 재판을 하던 곳, 오늘로 말하면 법정이었습니다." },
+    { "id": "c05", "say": "억울한 사람이 와서 호소하고, 정의가 세워져야 하는 자리였습니다.", "text": "억울한 사람이 와서 호소하고, 정의가 세워져야 하는 자리였습니다.", "gapAfter": 0.3 },
+    { "id": "c06", "say": "그런데 아모스 선지자가 본 성문은 달랐습니다.", "text": "그런데 아모스 선지자가 본 성문은 달랐습니다." },
+    { "id": "c07", "say": "바른말 하는 사람이 미움을 받았고, 재판하는 사람들은 뇌물을 받았습니다.", "text": "바른말 하는 사람이 미움을 받았고, 재판하는 사람들은 뇌물을 받았습니다." },
+    { "id": "c08", "say": "그래서 가난한 사람이 억울한 판결을 받았습니다.", "text": "그래서 가난한 사람이 억울한 판결을 받았습니다.", "gapAfter": 0.3 },
+    { "id": "c09", "say": "하나님께서는 그들을 이렇게 부르십니다. 정의를 쓴 쑥으로 바꾸는 자들아.", "text": "하나님께서는 그들을 이렇게 부르십니다. “정의를 쓴 쑥으로 바꾸는 자들아.”" },
+    { "id": "c10", "say": "쓴 쑥은 광야에 자라는 아주 쓴 풀입니다.", "text": "쓴 쑥은 광야에 자라는 아주 쓴 풀입니다." },
+    { "id": "c11", "say": "사람을 살려야 할 정의가, 사람의 입을 쓰게 만드는 독초가 되었다는 것이죠.", "text": "사람을 살려야 할 정의가, 사람의 입을 쓰게 만드는 독초가 되었다는 것이죠.", "gapAfter": 0.35 },
+    { "id": "c12", "say": "성문이 이렇게 무너진 이야기를 하다가, 아모스는 갑자기 밤하늘을 가리킵니다.", "text": "성문이 이렇게 무너진 이야기를 하다가, 아모스는 갑자기 밤하늘을 가리킵니다." },
+    { "id": "c13", "say": "별자리를 만드시고, 어둠을 아침으로 바꾸시는 분을 찾으라고 합니다.", "text": "별자리를 만드시고, 어둠을 아침으로 바꾸시는 분을 찾으라고 합니다." },
+    { "id": "c14", "say": "별을 지으신 그분이, 이 땅의 성문도 보고 계신다는 말씀입니다.", "text": "별을 지으신 그분이, 이 땅의 성문도 보고 계신다는 말씀입니다.", "gapAfter": 0.3 },
+    { "id": "c15", "say": "그리고 하나님께서는 그 성문의 사람들에게 살길을 열어 두십니다.", "text": "그리고 하나님께서는 그 성문의 사람들에게 살길을 열어 두십니다." },
+    { "id": "c16", "say": "악을 미워하고 선을 사랑하며, 성문에서 정의를 세울지어다.", "text": "“악을 미워하고 선을 사랑하며, 성문에서 정의를 세울지어다.”", "gapAfter": 0.35 },
+    { "id": "c17", "say": "옛 이스라엘의 성문 이야기는 여기까지입니다. 그런데 우리에게도 성문이 있습니다.", "text": "옛 이스라엘의 성문 이야기는 여기까지입니다. 그런데 우리에게도 성문이 있습니다." },
+    { "id": "c18", "say": "일터에서 결정을 내리는 자리, 가정에서 판단해야 하는 자리, 교회에서 의견을 나누는 자리가, 다 우리의 성문입니다.", "text": "일터에서 결정을 내리는 자리, 가정에서 판단해야 하는 자리, 교회에서 의견을 나누는 자리가 다 우리의 성문입니다." },
+    { "id": "c19", "say": "예배당에서 하나님을 찾는 사람은, 성문에서 정의를 세우는 사람이어야 합니다.", "text": "예배당에서 하나님을 찾는 사람은, 성문에서 정의를 세우는 사람이어야 합니다.", "gapAfter": 0.3 },
+    { "id": "c20", "say": "오늘 내게 맡겨진 성문에서, 정의를 세우는 하루가 되기를 기도합니다.", "text": "오늘 내게 맡겨진 성문에서 정의를 세우는 하루가 되기를 기도합니다." }
+  ],
+  "images": {
+    "elders": { "era": "bible", "prompt": "three elderly bearded Israelite town elders in striped robes and head cloths sitting on a stone bench inside an ancient limestone city gate, listening seriously, a poor farmer in a patched tunic standing before them pleading with open hands, bright daylight" },
+    "bribe": { "era": "bible", "prompt": "a sly rich bearded Israelite town elder in a fine dyed robe and head cloth sitting on a stone bench at the city gate, secretly accepting a small leather pouch of silver coins from the hand of a wealthy merchant beside him, in the background a poor barefoot farmer in a patched tunic walking away with his head down, late afternoon shadows" },
+    "wormwood": { "era": "bible", "prompt": "a bitter gray-green wormwood shrub growing out of the cracked dry ground right in front of the dark archway of an ancient limestone city gate, low angle close-up of the plant, gloomy olive-green overcast sky, empty and desolate" },
+    "amos": { "era": "bible", "prompt": "the prophet Amos, a rugged bearded shepherd in a rough brown cloak holding a wooden staff, standing on a hill and pointing up with one arm at a huge starry night sky full of bright stars, the dark limestone city wall and gate below him, deep blue night, seen from a low angle" },
+    "dawn": { "era": "bible", "prompt": "golden sunrise light bursting through the open archway of an ancient limestone city gate, a poor farmer in a patched tunic and an old elder in a striped robe walking side by side into the light, seen from behind, long shadows on the stone road" },
+    "office": { "era": "today", "prompt": "a young Korean office worker in a white shirt standing up at a meeting table and speaking honestly with a calm determined face, three coworkers seated and looking at him, modern office with large windows, morning light" },
+    "home": { "era": "today", "prompt": "a Korean father and mother sitting at a dining table at home talking seriously and kindly with their teenage son, warm evening lamp light, modest apartment living room" },
+    "church": { "era": "today", "prompt": "a Korean family of father, mother and a young daughter walking out through the open wooden doors of a small church into a sunny city street, smiling, seen from the front, bright morning" }
+  },
+  "scenes": [
+    { "type": "title", "big": "아모스", "small": "5장", "title": "성문에서\n정의를 세우라", "titleAt": { "cue": "c02", "phrase": "성문" } },
+    { "type": "shot", "from": "c03", "image": "elders", "labels": [
+      { "text": "성문 = 그 시대의 법정", "cue": "c04", "phrase": "오늘로" },
+      { "text": "정의가 세워져야 하는 자리", "cue": "c05", "phrase": "정의가" } ] },
+    { "type": "shot", "from": "c06", "image": "bribe", "labels": [
+      { "text": "뇌물", "cue": "c07", "phrase": "뇌물", "warn": true },
+      { "text": "억울한 판결", "cue": "c08", "phrase": "억울한", "warn": true } ] },
+    { "type": "verse", "from": "c09", "text": "“정의를 쓴 쑥으로\n바꾸는 자들아”", "ref": "아모스 5:7" },
+    { "type": "shot", "from": "c10", "image": "wormwood", "labels": [
+      { "text": "쓴 쑥 · 광야의 아주 쓴 풀", "cue": "c10", "phrase": "광야" },
+      { "text": "살리는 정의가 독초로", "cue": "c11", "phrase": "독초", "warn": true } ] },
+    { "type": "shot", "from": "c12", "image": "amos", "labels": [
+      { "text": "아모스가 밤하늘을 가리킨다", "cue": "c12", "phrase": "아모스는" },
+      { "text": "어둠을 아침으로 바꾸시는 분", "cue": "c13", "phrase": "어둠을" } ] },
+    { "type": "say", "from": "c14", "text": "별을 지으신 분이\n성문도\n보고 계신다" },
+    { "type": "shot", "from": "c15", "image": "dawn", "labels": [ { "text": "살길을 열어 두신다", "cue": "c15", "phrase": "살길", "until": "c15" } ],
+      "verse": { "text": "“악을 미워하고 선을 사랑하며\n성문에서 정의를 세울지어다”", "ref": "아모스 5:15", "at": { "cue": "c16" } } },
+    { "type": "triple", "from": "c17", "heading": "우리에게도\n성문이 있습니다", "panels": [
+      { "image": "office", "label": "일터", "sub": "결정을 내리는 자리", "cue": "c18", "phrase": "일터" },
+      { "image": "home", "label": "가정", "sub": "판단해야 하는 자리", "cue": "c18", "phrase": "가정" },
+      { "image": "church", "label": "교회", "sub": "의견을 나누는 자리", "cue": "c18", "phrase": "교회" } ] },
+    { "type": "shot", "from": "c19", "image": "church", "labels": [
+      { "text": "성문에서 정의를 세우는 사람", "cue": "c19", "phrase": "성문에서" },
+      { "text": "오늘, 내게 맡겨진 성문에서", "cue": "c20" } ] },
+    { "type": "end", "title": "성문에서\n정의를 세우라", "ref": "아모스 5:7–17 · 운평장로교회 매일 QT" }
+  ]
+}
