@@ -13,7 +13,7 @@ r"""
   python qt_motion.py --date ... --until render      굽기까지만 (올리기·링크 안 함)
   python qt_motion.py --date ... --youtube           유튜브에도 올림(유튜브 연결이 되어 있을 때)
   python qt_motion.py --doctor                       준비 상태 점검
-  python qt_motion.py --auto                         예약용: 대시보드의 제작 요청을 차례로 만들고, 새벽 1시가 지났으면 내일 것을 만든다
+  python qt_motion.py --auto                         예약용: 대시보드 요청은 바로, 예약 발송 창에서 승인한 것은 새벽에 차례로 만든다
 
 단계마다 결과를 C:\qt-video\motion\work\<날짜>\ 에 남기므로, 멈춘 뒤 같은 명령을 다시 돌리면 이어서 한다.
 설정: C:\qt-video\motion\config.json (없으면 기본값). 자세한 것은 README.md.
@@ -535,21 +535,34 @@ def drop_lock():
 
 
 def auto(cfg, o):
-    """예약(15분마다)이 부르는 모드.
-    ① 대시보드 '영상 만들기' 요청(video_jobs: job_type=motion, status=queued)을 오래된 것부터 만든다.
-    ② daily_time(기본 01:00)이 지났고 내일 것이 아직 없으면 만든다 — 원고가 아직 없으면 조용히 다음 번을 기다린다."""
+    """예약(15분마다)이 부르는 모드. video_jobs 의 job_type=motion, status=queued 를 만든다.
+    · 대시보드 '영상 만들기' 요청 — 바로 만든다.
+    · 예약 발송 창에서 '제작 승인'한 것(settings.when=night) — 새벽(daily_time~night_end, 기본 01:00~08:00)에 날짜 순서로 모두 만든다.
+    승인 없이 매일 내일 것을 만들게 하려면 config.json 에 "auto_daily": true."""
     supa = Supa()
+
+    def in_night():
+        now = dt.datetime.now(KST)
+        t = (now.hour, now.minute)
+        return tuple(map(int, str(cfg.get("daily_time", "01:00")).split(":"))) <= t < tuple(map(int, str(cfg.get("night_end", "08:00")).split(":")))
+
+    skip = set()
     while True:
-        rows = supa.req("GET", "/rest/v1/video_jobs?select=id,sermon_date,settings&job_type=eq.motion&status=eq.queued&order=created_at.asc&limit=1")
-        if not rows:
+        rows = supa.req("GET", "/rest/v1/video_jobs?select=id,sermon_date,settings,created_at&job_type=eq.motion&status=eq.queued&order=created_at.asc&limit=100") or []
+        rows = [r for r in rows if r["id"] not in skip]
+        now_rows = [r for r in rows if (r.get("settings") or {}).get("when") != "night"]
+        night_rows = sorted((r for r in rows if (r.get("settings") or {}).get("when") == "night"), key=lambda r: str(r["sermon_date"]))
+        pick = now_rows[0] if now_rows else (night_rows[0] if night_rows and in_night() else None)
+        if not pick:
             break
-        j = rows[0]
+        j = pick
+        skip.add(j["id"])
         got = supa.req("PATCH", f"/rest/v1/video_jobs?id=eq.{j['id']}&status=eq.queued",
                        {"status": "processing", "claimed_by": "church-pc-motion", "progress": "1% · 시작"}, "return=representation")
         if not got:
             continue      # 그사이 취소됨
         date = str(j["sermon_date"])[:10]
-        log(f"요청 받음: {date}")
+        log(f"제작 시작: {date}" + (" (승인 · 새벽 제작)" if j in night_rows else " (요청)"))
         if (j.get("settings") or {}).get("fresh"):
             work = os.path.join(HOME, "work", date)
             if os.path.isdir(work):   # 지우지 않고 이름만 바꿔 둔다
@@ -559,7 +572,9 @@ def auto(cfg, o):
         except BaseException as e:
             if isinstance(e, KeyboardInterrupt):
                 raise
-            log(f"  {date} 요청 실패: {str(e)[:300]}")
+            log(f"  {date} 실패: {str(e)[:300]}")
+    if not cfg.get("auto_daily"):
+        return
     now = dt.datetime.now(KST)
     hh, mm = map(int, str(cfg.get("daily_time", "01:00")).split(":"))
     if (now.hour, now.minute) < (hh, mm):

@@ -8296,6 +8296,13 @@ console.log('[affairs.js] v20261023th1');
       '<span id="kk_hplan" style="font-size:.76rem;color:#c2185b"></span>' +
       '<span style="flex-basis:100%;font-size:.74rem;color:#A7A6A3">확인할 때마다 PC가 방을 열어 아직 하트가 없는 댓글에만 누릅니다(이미 누른 건 그대로). 그때까지 PC와 카카오톡이 켜져 있어야 하고, 확인할 때마다 1분쯤 마우스가 저절로 움직입니다.</span>' +
       '</div>' +
+      '<div id="kk_vbox" style="display:none;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 6px;padding:8px 12px;background:#F7F6F3;border:1px solid #E4E3DF;border-radius:4px;font-size:.82rem;color:#2F2E2B">' +
+      '<label style="display:flex;align-items:center;gap:6px;font-weight:700;cursor:pointer"><input type="checkbox" id="kk_video"> 말씀 영상 제작 승인</label>' +
+      '<span id="kk_vstate" style="color:#73726F">확인 중…</span>' +
+      '<button type="button" class="btn btn-line" id="kk_vnow" style="padding:3px 10px;font-size:.78rem;margin-left:auto">제작만 승인</button>' +
+      '<button type="button" class="btn btn-line" id="kk_vcancel" style="padding:3px 10px;font-size:.78rem;margin-left:auto;display:none">승인 취소</button>' +
+      '<span style="flex-basis:100%;font-size:.74rem;color:#A7A6A3">승인한 날짜의 영상은 교회 PC 가 새벽(1시부터)에 차례로 만들어, 그 날짜가 되면 홈페이지에 엽니다. 한 편에 2~3시간 걸립니다. 승인하지 않은 날은 만들지 않습니다.</span>' +
+      '</div>' +
       '<div id="kk_msg2" style="font-size:.8rem;color:#A7A6A3;min-height:18px;text-align:right;margin-bottom:10px"></div>' +
 
       '<div style="font-size:.8rem;font-weight:700;color:#2F2E2B;margin-bottom:5px;border-top:1px solid #F9F8F5;padding-top:12px">예약 내역</div>' +
@@ -8451,6 +8458,51 @@ console.log('[affairs.js] v20261023th1');
         });
     }
 
+    // ── 말씀 영상 제작 승인 (매일 QT 만) — video_jobs 에 job_type=motion, status=queued, settings.when=night 로 넣는다.
+    //    교회 PC(tools/qt_motion --auto)가 새벽에 승인된 것을 날짜 순서로 만든다.
+    var vBox = m.querySelector('#kk_vbox'), vChk = m.querySelector('#kk_video'), vState = m.querySelector('#kk_vstate'),
+        vNow = m.querySelector('#kk_vnow'), vCancel = m.querySelector('#kk_vcancel');
+    var vJob = null, vOn = !rec.service || rec.service === '매일 QT';
+    function vPaint(kind, text) {      // kind: open(승인 가능) · wait(승인됨) · busy(만드는 중) · has(영상 있음) · off(쓸 수 없음)
+      vState.textContent = text;
+      vChk.disabled = kind !== 'open'; vChk.checked = kind === 'open';
+      vNow.style.display = kind === 'open' ? '' : 'none';
+      vCancel.style.display = kind === 'wait' ? '' : 'none';
+    }
+    function vLoad() {
+      if (!vOn) return;
+      vBox.style.display = 'flex';
+      Promise.all([
+        api('GET', 'video_jobs?select=id,status,progress&job_type=eq.motion&sermon_date=eq.' + date + '&status=in.(queued,processing)&order=created_at.desc&limit=1'),
+        api('GET', 'sermons?select=id,media_url&service=eq.' + encodeURIComponent('매일 QT') + '&sermon_date=eq.' + date + '&limit=1')
+      ]).then(function (r) {
+        vJob = (r[0] || [])[0] || null;
+        var qt = (r[1] || [])[0];
+        if (!qt) vPaint('off', '— 이 날짜의 매일 QT 원고가 저장되어 있지 않습니다.');
+        else if (vJob && vJob.status === 'processing') vPaint('busy', '— 지금 만드는 중입니다 (' + String(vJob.progress || '').slice(0, 40) + ')');
+        else if (vJob) vPaint('wait', '— 승인됨 · 새벽 제작 대기');
+        else if (qt.media_url) vPaint('has', '— 영상이 이미 올라가 있습니다. 다시 만들려면 대시보드 「QT 영상 관리」에서 요청하세요.');
+        else vPaint('open', '— 승인하면 새벽에 만듭니다.');
+      }).catch(function (e) { vPaint('off', '— 영상 상태를 읽지 못했습니다: ' + e.message); });
+    }
+    function vApprove() {
+      return api('POST', 'video_jobs', { sermon_date: date, job_type: 'motion', status: 'queued', progress: '승인됨 · 새벽 제작 대기',
+        settings: { orientation: 'portrait', engine: 'motion', when: 'night' } }, 'return=minimal').then(vLoad);
+    }
+    vNow.onclick = function () {
+      vNow.disabled = true;
+      vApprove().then(function () { note('✓ ' + date + ' 말씀 영상 제작을 승인했습니다.', '#1e8e5a'); })
+        .catch(function (e) { note('승인 실패: ' + e.message, '#A33A2A'); }).then(function () { vNow.disabled = false; });
+    };
+    vCancel.onclick = function () {
+      if (!vJob) return;
+      vCancel.disabled = true;
+      api('PATCH', 'video_jobs?id=eq.' + vJob.id + '&status=eq.queued', { status: 'canceled', progress: '승인 취소' }, 'return=minimal')
+        .then(function () { note(date + ' 말씀 영상 제작 승인을 취소했습니다.'); vLoad(); })
+        .catch(function (e) { note('취소 실패: ' + e.message, '#A33A2A'); }).then(function () { vCancel.disabled = false; });
+    };
+    vLoad();
+
     // ── 예약하기 ──
     var goBtn = m.querySelector('#kk_go');
     goBtn.onclick = function () {
@@ -8476,7 +8528,9 @@ console.log('[affairs.js] v20261023th1');
       var names = picked.map(function (c) { return c.getAttribute('data-room'); });
       if (!confirm(kkWhen(when.toISOString()) + ' 에\n' + names.join(', ') + '\n로 보냅니다.' +
         (hmin ? '\n💗 보낸 뒤 ' + hmin + '분 안에 달린 댓글에 하트를 답니다' +
-          (hevery ? ' (' + hevery + '분마다 확인)' : '') + '.' : '') + '\n예약할까요?')) return;
+          (hevery ? ' (' + hevery + '분마다 확인)' : '') + '.' : '') +
+        (vOn && vChk.checked && !vChk.disabled ? '\n말씀 영상 제작도 승인합니다(새벽 제작).' : '') + '\n예약할까요?')) return;
+      var withVideo = vOn && vChk.checked && !vChk.disabled;
 
       var payload = picked.map(function (c) {
         var row = {
@@ -8494,7 +8548,9 @@ console.log('[affairs.js] v20261023th1');
       api('POST', 'kakao_send_jobs', payload, 'return=minimal')
         .then(function () {
           goBtn.disabled = false;
-          note('✓ ' + payload.length + '건 예약했습니다.', '#1e8e5a');
+          note('✓ ' + payload.length + '건 예약했습니다.' + (withVideo ? ' 말씀 영상 제작을 승인하는 중…' : ''), '#1e8e5a');
+          if (withVideo) vApprove().then(function () { note('✓ ' + payload.length + '건 예약 · 말씀 영상 제작 승인.', '#1e8e5a'); })
+            .catch(function (e) { note('✓ 예약은 됐지만 영상 제작 승인은 실패했습니다: ' + e.message, '#A33A2A'); });
           picked.forEach(function (c) { c.checked = false; });
           loadJobs();
           if (window.__kkCalReload) window.__kkCalReload();
