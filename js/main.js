@@ -576,6 +576,22 @@ window.WPCQtText = (function () {
 
   let entries = []; // [{date, content, title, ref}] (최신 → 과거)
 
+  // 오늘의 말씀 영상(유튜브) — 교회 PC 가 매일 만들어 sermons.media_url 에 넣은 주소.
+  // qt_published 뷰에 media_url 이 아직 없으면(SQL 20261112_1100 실행 전) 요청이 실패하고 단추는 숨은 채로 둔다.
+  (function () {
+    const a = document.getElementById("qtHomeVideo");
+    if (!a || !(window.SUPABASE_URL && window.SUPABASE_ANON_KEY)) return;
+    const u = window.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/qt_published?select=sermon_date,media_url&order=sermon_date.desc&limit=1";
+    fetch(u, { headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + window.SUPABASE_ANON_KEY } })
+      .then((r) => r.ok ? r.json() : null)
+      .then((rows) => {
+        const url = rows && rows[0] && String(rows[0].media_url || "").trim();
+        if (!url || !/^https:\/\/(youtu\.be\/|(www\.)?youtube\.com\/)/.test(url)) return;   // 유튜브 주소만
+        a.href = url; a.hidden = false;
+      })
+      .catch(() => {});
+  })();
+
   // Supabase 'qt_published' 뷰에서 매일 QT 가져오기 → 카카오톡 발송 양식과 동일한 텍스트로 합성
   // (텍스트 조립은 WPCQtText 공용 모듈 사용 — 낭독 sig 일치를 위해 단일화)
   const rowToQtContent = window.WPCQtText.rowToQtContent;
