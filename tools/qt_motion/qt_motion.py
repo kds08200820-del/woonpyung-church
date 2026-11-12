@@ -13,6 +13,7 @@ r"""
   python qt_motion.py --date ... --until render      굽기까지만 (올리기·링크 안 함)
   python qt_motion.py --date ... --youtube           유튜브에도 올림(유튜브 연결이 되어 있을 때)
   python qt_motion.py --doctor                       준비 상태 점검
+  python qt_motion.py --auto                         예약용: 대시보드의 제작 요청을 차례로 만들고, 새벽 1시가 지났으면 내일 것을 만든다
 
 단계마다 결과를 C:\qt-video\motion\work\<날짜>\ 에 남기므로, 멈춘 뒤 같은 명령을 다시 돌리면 이어서 한다.
 설정: C:\qt-video\motion\config.json (없으면 기본값). 자세한 것은 README.md.
@@ -493,22 +494,119 @@ def youtube_meta(cfg, plan, qt):
     return title, desc, when
 
 
+# ─────────────────────────────── 한 번에 하나만 (그래픽카드를 나눠 쓸 수 없다)
+
+LOCK = os.path.join(HOME, "auto.lock")
+
+
+def pid_alive(pid):
+    try:
+        import ctypes
+        h = ctypes.windll.kernel32.OpenProcess(0x1000, False, int(pid))
+        if not h:
+            return False
+        code = ctypes.c_ulong()
+        ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(code))
+        ctypes.windll.kernel32.CloseHandle(h)
+        return code.value == 259
+    except Exception:
+        return False
+
+
+def take_lock():
+    """다른 제작이 돌고 있으면 False. 죽은 프로세스가 남긴 잠금은 치운다."""
+    os.makedirs(HOME, exist_ok=True)
+    try:
+        pid = open(LOCK).read().strip()
+        if pid and pid_alive(pid):
+            return False
+    except OSError:
+        pass
+    open(LOCK, "w").write(str(os.getpid()))
+    return True
+
+
+def drop_lock():
+    try:
+        if open(LOCK).read().strip() == str(os.getpid()):
+            os.remove(LOCK)
+    except OSError:
+        pass
+
+
+def auto(cfg, o):
+    """예약(15분마다)이 부르는 모드.
+    ① 대시보드 '영상 만들기' 요청(video_jobs: job_type=motion, status=queued)을 오래된 것부터 만든다.
+    ② daily_time(기본 01:00)이 지났고 내일 것이 아직 없으면 만든다 — 원고가 아직 없으면 조용히 다음 번을 기다린다."""
+    supa = Supa()
+    while True:
+        rows = supa.req("GET", "/rest/v1/video_jobs?select=id,sermon_date,settings&job_type=eq.motion&status=eq.queued&order=created_at.asc&limit=1")
+        if not rows:
+            break
+        j = rows[0]
+        got = supa.req("PATCH", f"/rest/v1/video_jobs?id=eq.{j['id']}&status=eq.queued",
+                       {"status": "processing", "claimed_by": "church-pc-motion", "progress": "1% · 시작"}, "return=representation")
+        if not got:
+            continue      # 그사이 취소됨
+        date = str(j["sermon_date"])[:10]
+        log(f"요청 받음: {date}")
+        if (j.get("settings") or {}).get("fresh"):
+            work = os.path.join(HOME, "work", date)
+            if os.path.isdir(work):   # 지우지 않고 이름만 바꿔 둔다
+                os.rename(work, work + ".old-" + dt.datetime.now(KST).strftime("%m%d%H%M%S"))
+        try:
+            produce(cfg, o, date, supa, job_id=j["id"])
+        except BaseException as e:
+            if isinstance(e, KeyboardInterrupt):
+                raise
+            log(f"  {date} 요청 실패: {str(e)[:300]}")
+    now = dt.datetime.now(KST)
+    hh, mm = map(int, str(cfg.get("daily_time", "01:00")).split(":"))
+    if (now.hour, now.minute) < (hh, mm):
+        return
+    date = (now.date() + dt.timedelta(days=int(cfg.get("days_ahead", 1)))).isoformat()
+    work = os.path.join(HOME, "work", date)
+    tried = os.path.join(work, f"auto_tried_{now.date().isoformat()}")
+    if os.path.exists(os.path.join(work, "site.json")) or os.path.exists(tried):
+        return
+    try:
+        fetch_qt(supa, cfg, date)
+    except SystemExit:
+        return            # 원고가 아직 없다 — 들어오면 다음 번에 만든다
+    os.makedirs(work, exist_ok=True)
+    open(tried, "w").write("1")       # 실패해도 같은 날 되풀이하지 않는다(다시 하려면 대시보드에서 요청)
+    log(f"정기 제작: {date}")
+    produce(cfg, o, date, supa)
+
+
 def main():
     ap = argparse.ArgumentParser(description="매일 QT 모션 영상 자동 제작")
     ap.add_argument("--date"); ap.add_argument("--plan"); ap.add_argument("--until", choices=["plan", "voice", "images", "render", "site"])
     ap.add_argument("--youtube", action="store_true"); ap.add_argument("--no-youtube", action="store_true"); ap.add_argument("--no-link", action="store_true")
-    ap.add_argument("--doctor", action="store_true"); ap.add_argument("--no-log", action="store_true")
+    ap.add_argument("--doctor", action="store_true"); ap.add_argument("--no-log", action="store_true"); ap.add_argument("--auto", action="store_true")
     o = ap.parse_args()
     cfg = load_cfg()
     if o.doctor:
         return doctor(cfg)
+    if not take_lock():
+        if not o.auto:
+            log("다른 영상 제작이 돌고 있습니다. 끝난 뒤 다시 해 주세요.")
+        return 0 if o.auto else 1
+    try:
+        if o.auto:
+            return auto(cfg, o)
+        return produce(cfg, o, None, Supa())
+    finally:
+        drop_lock()
+
+
+def produce(cfg, o, date, supa, job_id=None):
     # 날짜를 주지 않으면 '내일' 것을 만든다: 13일 새벽 1시에 돌면 14일자 (config.json 의 days_ahead 로 바꿀 수 있다)
-    date = o.date or (dt.datetime.now(KST).date() + dt.timedelta(days=int(cfg.get("days_ahead", 1)))).isoformat()
+    date = date or o.date or (dt.datetime.now(KST).date() + dt.timedelta(days=int(cfg.get("days_ahead", 1)))).isoformat()
     work = os.path.join(HOME, "work", date); os.makedirs(work, exist_ok=True)
     proj = os.path.join(work, "project")
     out_mp4 = os.path.join(HOME, "out", f"qt_{date}.mp4"); os.makedirs(os.path.dirname(out_mp4), exist_ok=True)
-    supa = Supa()
-    job = {"id": None}
+    job = {"id": job_id}
 
     def progress(pct, msg, **extra):
         log(f"{pct}% · {msg}")

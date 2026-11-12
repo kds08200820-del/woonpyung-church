@@ -2100,7 +2100,7 @@ console.log('[affairs.js] v20261023th1');
         rows.forEach(function (r) {
           if (r.status === 'done') done++;
           else if (r.status === 'review') review++;
-          else if (['pending', 'processing', 'regen', 'approved', 'revise'].indexOf(r.status) >= 0) active++;
+          else if (['pending', 'queued', 'processing', 'regen', 'approved', 'revise'].indexOf(r.status) >= 0) active++;
         });
         if (numEl) numEl.textContent = done + '편';
         if (subEl) subEl.innerHTML = (review ? '<span style="color:#6A6966;font-weight:700">🖼 검토 대기 ' + review + '</span> · ' : '') + (active ? '<span style="color:#969592;font-weight:700">🎬 제작중 ' + active + '</span> · ' : '') + '눌러서 관리';
@@ -12779,6 +12779,7 @@ console.log('[affairs.js] v20261023th1');
         done: ['#FAF9F6', '#5A5956', '✓ 완성'],
         review: ['#fff1cc', '#6A6966', '🖼 검토 대기'],
         pending: ['#FCFBF8', '#969592', '⏳ 대기'],
+        queued: ['#FCFBF8', '#969592', '제작 대기'],
         processing: ['#FCFBF8', '#969592', '🎬 제작중' + pct],
         regen: ['#FCFBF8', '#969592', '🔄 재생성중' + pct],
         approved: ['#FCFBF8', '#969592', '🎬 변환중' + pct],
@@ -12800,6 +12801,14 @@ console.log('[affairs.js] v20261023th1');
         '<button class="btn btn-line" id="vm_close" style="padding:4px 12px">닫기</button></div>' +
         '<h4 style="margin:6px 0 6px;font-size:.92rem">홈페이지에 올린 말씀 영상</h4>' +
         '<div id="vm_site"><p class="qt-loading">불러오는 중…</p></div>' +
+        '<h4 style="margin:20px 0 6px;font-size:.92rem">영상 만들기</h4>' +
+        '<div id="vm_make" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">' +
+        '<input type="date" id="vm_date" style="padding:6px 8px;border:1px solid #D9D8D4;font:inherit">' +
+        '<label style="font-size:.82rem;display:flex;align-items:center;gap:4px"><input type="checkbox" id="vm_fresh">처음부터 다시</label>' +
+        '<button class="btn btn-solid" id="vm_req" style="padding:6px 14px;font-size:.84rem">제작 요청</button>' +
+        '<span id="vm_msg" style="font-size:.8rem;color:#73726F"></span></div>' +
+        '<p style="font-size:.74rem;color:#A7A6A3;margin:8px 0 0">그 날짜의 매일 QT 원고가 있어야 합니다. 교회 PC 가 15분 안에 시작하고, 한 편에 2~3시간 걸립니다. 여러 날을 요청하면 차례로 만듭니다. ' +
+        '완성된 영상은 그 날짜가 되어야 홈페이지에 열립니다. 요청하지 않아도 매일 새벽 1시에 다음 날 것을 스스로 만듭니다.</p>' +
         '<h4 style="margin:20px 0 6px;font-size:.92rem">제작 기록</h4>' +
         '<div id="vm_body"><p class="qt-loading">불러오는 중…</p></div></div>';
       document.body.appendChild(m);
@@ -12847,6 +12856,32 @@ console.log('[affairs.js] v20261023th1');
         lab.textContent = '홈페이지에 올린 영상 ' + n + '편';
       }
       loadSite();
+      // 영상 만들기 — video_jobs 에 요청(job_type=motion, status=queued)을 넣으면 교회 PC(tools/qt_motion --auto)가 가져가 만든다.
+      (function () {
+        var dEl = m.querySelector('#vm_date'), btn = m.querySelector('#vm_req'), msg = m.querySelector('#vm_msg'), fresh = m.querySelector('#vm_fresh');
+        if (!dEl || !btn) return;
+        var kst = function (add) { return new Date(Date.now() + 9 * 3600 * 1000 + add * 86400000).toISOString().slice(0, 10); };
+        dEl.value = kst(2); dEl.min = kst(-400);
+        function say(t, bad) { msg.textContent = t; msg.style.color = bad ? '#A33A2A' : '#73726F'; }
+        btn.onclick = function () {
+          var d = dEl.value;
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { say('날짜를 골라 주세요.', true); return; }
+          btn.disabled = true; say('확인 중…');
+          Promise.all([
+            api('GET', 'sermons?select=id,media_url&service=eq.' + encodeURIComponent('매일 QT') + '&sermon_date=eq.' + d + '&limit=1'),
+            api('GET', 'video_jobs?select=id,status&job_type=eq.motion&sermon_date=eq.' + d + '&status=in.(queued,processing)&limit=1')
+          ]).then(function (r) {
+            var qt = (r[0] || [])[0], busy = (r[1] || [])[0];
+            if (!qt) { say(d + ' 날짜의 매일 QT 원고가 없습니다. 원고를 먼저 넣어 주세요.', true); return; }
+            if (busy) { say(d + ' 영상은 이미 ' + (busy.status === 'queued' ? '대기 중' : '만드는 중') + '입니다.', true); return; }
+            if (qt.media_url && !fresh.checked && !confirm(d + ' 영상은 이미 홈페이지에 올라가 있습니다.\n그래도 다시 요청할까요? (만들어 둔 것이 있으면 그대로 다시 올립니다. 새로 만들려면 「처음부터 다시」를 켜세요.)')) { say(''); return; }
+            if (fresh.checked && !confirm(d + ' 영상을 처음부터 다시 만듭니다(계획·그림·녹음 모두 새로, 2~3시간).\n계속할까요?')) { say(''); return; }
+            return api('POST', 'video_jobs', { sermon_date: d, job_type: 'motion', status: 'queued', progress: '교회 PC 를 기다리는 중',
+              settings: { orientation: 'portrait', engine: 'motion', fresh: !!fresh.checked } }, 'return=minimal')
+              .then(function () { say(d + ' 제작을 요청했습니다.'); fresh.checked = false; reload(); });
+          }).catch(function (e) { say('요청 실패: ' + e.message, true); }).then(function () { btn.disabled = false; });
+        };
+      })();
       function reload() {
         api('GET', 'video_jobs?select=id,sermon_date,status,progress,video_url,claimed_by,error,created_at,job_type&order=created_at.desc&limit=60').then(function (rows) {
           rows = rows || [];
@@ -12867,6 +12902,7 @@ console.log('[affairs.js] v20261023th1');
               (canRevise ? '<button class="btn btn-line vm-revise" style="padding:3px 9px;font-size:.76rem">🔧 수정</button> ' : '') +
               (canRetry ? '<button class="btn btn-line vm-open" style="padding:3px 9px;font-size:.76rem">↻ 다시</button> ' : '') +
               (!motion && !canReview && !canRevise && !canRetry && !j.video_url ? '<button class="btn btn-line vm-open" style="padding:3px 9px;font-size:.76rem">열기</button> ' : '') +
+              (motion && j.status === 'queued' ? '<button class="btn btn-line vm-cancel" style="padding:3px 9px;font-size:.76rem">요청 취소</button> ' : '') +
               (canDelete ? '<button class="btn btn-line vm-del" style="padding:3px 9px;font-size:.76rem;color:#A33A2A">삭제</button>' : '') +
               '</td></tr>';
           }).join('');
@@ -12878,6 +12914,13 @@ console.log('[affairs.js] v20261023th1');
           Array.prototype.forEach.call(body.querySelectorAll('.vm-play'), function (b) { b.onclick = function () { var j = rows.filter(function (r) { return String(r.id) === idOf(b).id; })[0]; if (j && j.video_url) window.open(j.video_url, '_blank'); }; });
           Array.prototype.forEach.call(body.querySelectorAll('.vm-open'), function (b) { b.onclick = function () { m.remove(); openStudio(idOf(b).date, null); }; });
           Array.prototype.forEach.call(body.querySelectorAll('.vm-revise'), function (b) { b.onclick = function () { m.remove(); openStudio(idOf(b).date, null); }; });
+          Array.prototype.forEach.call(body.querySelectorAll('.vm-cancel'), function (b) {
+            b.onclick = function () {
+              b.disabled = true;
+              // 아직 대기 중일 때만 취소된다(그사이 교회 PC 가 시작했으면 그대로 둔다)
+              api('PATCH', 'video_jobs?id=eq.' + idOf(b).id + '&status=eq.queued', { status: 'canceled', progress: '요청 취소' }, 'return=minimal').then(reload).catch(function (e) { b.disabled = false; alert('취소 실패: ' + e.message); });
+            };
+          });
           Array.prototype.forEach.call(body.querySelectorAll('.vm-del'), function (b) {
             b.onclick = function () {
               if (!confirm('이 영상 작업 기록을 삭제할까요?\n(이미 게시된 영상 파일은 지워지지 않습니다)')) return;
