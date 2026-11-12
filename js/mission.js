@@ -59,6 +59,7 @@
     admin: false,
     fy: guessFY(),          // 지금 회기
     mem: null,              // rpc mission_committee 답 (없으면 null)
+    rep: null,              // rpc mission_report 답 — 회원·재정 담당만 (없으면 null)
     posts: null,            // null = 표 없음(SQL 실행 전), [] = 글 없음
     partners: null,
     year: null,             // 게시판에서 고른 회기
@@ -92,6 +93,23 @@
         ${m.names.length ? `<ul class="ms-name-list">${m.names.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : `<p class="ms-empty">이 회기 회원이 아직 없습니다.</p>`}
       </div>`;
     }
+    const rp = S.rep;
+    if (rp && Array.isArray(rp.income)) {
+      const won = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
+      const mon = (ym) => `${Number(String(ym).slice(5, 7))}월`;
+      h += `<div class="ms-report"><h4>${esc(rp.year)}년도 회계 보고 <small class="ms-names-who">(회원과 관리자·재정 담당에게 보입니다)</small></h4>
+        <div class="ms-report-sum"><span>수입 <b>${esc(won(rp.income_total))}</b></span><span>지출 <b>${esc(won(rp.spend_total))}</b></span><span>남은 돈 <b>${esc(won(rp.balance))}</b></span></div>
+        <div class="ms-report-cols">
+          <table class="ms-report-t"><caption>수입 · 선교헌금</caption><thead><tr><th>달</th><th>금액</th></tr></thead><tbody>
+            ${rp.income.length ? rp.income.map((x) => `<tr><td>${esc(mon(x.ym))}</td><td>${esc(won(x.amount))}</td></tr>`).join("") : `<tr><td colspan="2">아직 없습니다.</td></tr>`}
+          </tbody><tfoot><tr><th>합계</th><td>${esc(won(rp.income_total))}</td></tr></tfoot></table>
+          <table class="ms-report-t"><caption>지출 · 받는 곳</caption><thead><tr><th>받는 곳</th><th>금액</th></tr></thead><tbody>
+            ${(rp.spend || []).length ? rp.spend.map((x) => `<tr><td>${esc(x.label)}</td><td>${esc(won(x.amount))}</td></tr>`).join("") : `<tr><td colspan="2">아직 없습니다.</td></tr>`}
+          </tbody><tfoot><tr><th>합계</th><td>${esc(won(rp.spend_total))}</td></tr></tfoot></table>
+        </div>
+        <p class="ms-names-note">수입은 이 회기 선교헌금의 달별 합계이고, 누가 얼마를 드렸는지는 나오지 않습니다. 지출은 재정 장부의 구제선교위원회·선교/구제비 지출을 받는 곳별로 합한 것이며, 후원처가 아닌 개인 구제는 이름 없이 한 줄로 묶었습니다.</p>
+      </div>`;
+    }
     if (m && S.admin) {
       h += `<div class="ms-vis"><label for="msVis">회원 공개 범위</label>
         <select id="msVis">${VIS.map((v) => `<option value="${v[0]}"${m.visibility === v[0] ? " selected" : ""}>${esc(v[1])}</option>`).join("")}</select>
@@ -109,6 +127,8 @@
     if (!ready()) { S.mem = null; return; }
     try { const r = await api("POST", "rpc/mission_committee", {}); S.mem = (r && typeof r === "object" && r.year) ? r : null; if (S.mem) S.fy = S.mem.year; }
     catch (e) { S.mem = null; }   // SQL 실행 전 → 기준 글만 보인다
+    try { const r = localSession() ? await api("POST", "rpc/mission_report", {}) : null; S.rep = (r && typeof r === "object" && r.year) ? r : null; }
+    catch (e) { S.rep = null; }   // 회원이 아니거나 SQL 실행 전 → 회계 보고 칸 없음
   }
 
   /* ───────── 2) 연간 사역 게시판 ───────── */
