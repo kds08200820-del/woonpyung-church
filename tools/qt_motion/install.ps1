@@ -39,6 +39,7 @@ $app = Join-Path $home2 'app'
 New-Item -ItemType Directory -Force (Join-Path $app 'qt_motion') | Out-Null
 robocopy $here (Join-Path $app 'qt_motion') /MIR /XD __pycache__ /NFL /NDL /NJH /NJS /NP | Out-Null
 Copy-Item (Join-Path (Split-Path -Parent $here) 'ai_worker.py') (Join-Path $app 'ai_worker.py') -Force
+Copy-Item (Join-Path (Split-Path -Parent $here) 'claude_auth.py') (Join-Path $app 'claude_auth.py') -Force
 
 Write-Host ''
 Write-Host '영상 도구 설치를 마쳤습니다. 이어서 점검.bat 을 눌러 주세요.'
