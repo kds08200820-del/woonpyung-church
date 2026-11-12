@@ -19,7 +19,7 @@ STATUS = os.path.join(hymn_mr.HOME, "status.json")
 
 
 def post(path, token, data=b"", headers=None):
-    h = {"Authorization": "Bearer " + token}
+    h = {"Authorization": "Bearer " + token, "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) woonpyung-hymn-mr/1.0"}   # 기본 파이썬 UA 는 Cloudflare 가 막는다(1010)
     h.update(headers or {})
     req = urllib.request.Request(STORE + path, data=data, method="POST", headers=h)
     try:
