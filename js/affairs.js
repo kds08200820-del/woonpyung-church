@@ -9045,7 +9045,11 @@ console.log('[affairs.js] v20261023th1');
     function absUrl(u) { try { return new URL(u, document.baseURI || location.href).href; } catch (e) { return u; } }
     function songHtml(s) {
       var pad = ('00' + s.n).slice(-3), src = '', t;
-      if (s.kind === 'h') { t = '<b>' + s.n + '장</b> ' + esc(s.title || ''); if (s.n >= 1 && s.n <= 645) src = 'modu/data/hymn/' + pad + '.webp'; }
+      if (s.kind === 'h') {
+        t = '<b>' + s.n + '장</b> ' + esc(s.title || ''); if (s.n >= 1 && s.n <= 645) src = 'modu/data/hymn/' + pad + '.webp';
+        var mrId = (window.HYMN_MR || {})[String(s.n)];   // 새찬송가 반주(MR) 유튜브 — js/hymn-mr.js (2026-11-12)
+        if (mrId) t += ' <button type="button" class="mr-btn" data-mr="' + esc(mrId) + '" data-no="' + s.n + '" title="이 장의 반주(MR)를 틉니다">MR</button>';
+      }
       else if (s.kind === 'c') { t = '<b>' + s.n + '번</b> ' + esc(s.title || '') + ' <small>모두의 찬양</small>'; if (s.n) src = 'modu/data/ccm/' + pad + '.webp'; }
       else t = esc(s.title || '');
       return '<div class="it-song-t">' + t + '</div>' + (src ? '<div class="it-score"><img src="' + esc(absUrl(src)) + '" alt="' + (s.kind === 'h' ? '새찬송가 ' + s.n + '장' : '모두의 찬양 ' + s.n + '번') + ' 악보"></div>' : '<div class="it-d">악보가 없는 곡입니다.</div>');
@@ -9207,6 +9211,9 @@ console.log('[affairs.js] v20261023th1');
       '.toc-body .toc-l{color:#51504D}body.dark .toc-body .toc-l{color:#B6B5B2}',
       /* 찬송·찬양 악보 — 페이지 모드에서는 화면 높이에 맞춤 */
       '.pg-item .it-k{font-size:.55em;font-weight:600;color:#92918E;margin-left:10px}',
+      '.mr-btn{margin-left:10px;padding:3px 12px;border:1px solid #111;background:#fff;color:#111;font:600 .78em "Noto Sans KR",sans-serif;cursor:pointer;vertical-align:middle}.mr-btn.on{background:#111;color:#fff}' +
+      '.mr-box{position:fixed;right:12px;bottom:56px;z-index:9999;width:240px;max-width:60vw;background:#111;box-shadow:0 8px 24px rgba(0,0,0,.35)}.mr-box .mr-bar{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;color:#fff;font:13px "Noto Sans KR",sans-serif}' +
+      '.mr-box .mr-bar button{border:1px solid #777;background:transparent;color:#fff;font:inherit;padding:2px 8px;cursor:pointer}.mr-box iframe{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}@media print{.mr-btn,.mr-box{display:none}}' +
       '.pg-song .it-song-t{font-family:"Noto Sans KR",sans-serif;font-size:.88em;margin:0 0 10px}.pg-song .it-song-t b{color:#51504D;margin-right:4px}.pg-song .it-song-t small{font-size:.72em;color:#8A8986}',
       '.it-score{text-align:center}.it-score img{width:100%;max-width:820px;height:auto;background:#fff;border-radius:4px;box-shadow:0 1px 6px rgba(0,0,0,.08)}',
       'body.paged .pg-song{display:flex;flex-direction:column}body.paged .pg-song .it-score{flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start}body.paged .pg-song .it-score img{width:auto;max-width:100%;max-height:100%;object-fit:contain}',
@@ -9405,6 +9412,17 @@ console.log('[affairs.js] v20261023th1');
       'var tocBtn=document.getElementById("tocbtn");if(tocBtn)tocBtn.onclick=function(){goEl(document.getElementById("toc"));};' +
       /* 창 크기/회전 시 재분할 */
       'window.addEventListener("resize",function(){clearTimeout(reflowTimer);reflowTimer=setTimeout(reflow,150);});' +
+      /* 새찬송가 MR — 악보 제목 옆 [MR] 을 누르면 오른쪽 아래 작은 유튜브 창에서 반주를 튼다 (2026-11-12) */
+      'var mrBox=null,mrBtn=null;' +
+      'function mrStop(){if(mrBox){mrBox.remove();mrBox=null;}if(mrBtn){mrBtn.textContent="MR";mrBtn.classList.remove("on");mrBtn=null;}}' +
+      'document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("[data-mr]");if(!t)return;e.preventDefault();e.stopPropagation();' +
+        'var same=mrBtn===t;mrStop();if(same)return;' +
+        'mrBox=document.createElement("div");mrBox.className="mr-box";' +
+        'var bar=document.createElement("div");bar.className="mr-bar";var lb=document.createElement("span");lb.textContent=t.getAttribute("data-no")+"장 MR";' +
+        'var x=document.createElement("button");x.type="button";x.textContent="닫기";x.onclick=mrStop;bar.appendChild(lb);bar.appendChild(x);' +
+        'var f=document.createElement("iframe");f.src="https://www.youtube-nocookie.com/embed/"+encodeURIComponent(t.getAttribute("data-mr"))+"?autoplay=1&playsinline=1&rel=0";' +
+        'f.allow="autoplay; encrypted-media; picture-in-picture";f.title="MR";mrBox.appendChild(bar);mrBox.appendChild(f);document.body.appendChild(mrBox);' +
+        'mrBtn=t;t.textContent="MR 끄기";t.classList.add("on");},true);' +
       /* 인쇄 */
       'document.getElementById("print").onclick=function(){window.print()};' +
       '})();';
