@@ -111,6 +111,7 @@ WORKER = _env("AI_WORKER_NAME", "church-pc")
 
 MODEL_COUNSEL = _env("AI_MODEL_COUNSEL", "haiku")   # 교인 질문 — 빠른 응답이 중요
 MODEL_ADMIN = _env("AI_MODEL_ADMIN", "sonnet")      # 기도문·검수 — 문장 품질이 중요
+MODEL_STYLE = _env("AI_MODEL_STYLE", "opus")        # 주중 설교 변환 — 목사님 말투를 살려야 한다
 
 # 큐 확인 간격 (2026-10-18 Supabase 사용량 절감)
 #  예전에는 밤낮없이 1.5초마다 확인해 하루 4만6천 번 — 홈페이지 전체 API 요청의 69% 였다.
@@ -138,6 +139,7 @@ TIMEOUT = {             # 종류별 최대 생성 시간(초)
     "headline": 180,
     "review": 300,
     "sermon_pdf": 240,
+    "sermon_style": 600,
 }
 
 # ── 설교 PDF → Google Drive (kind = sermon_pdf) ───────────────
@@ -386,6 +388,50 @@ SYSTEM = {
     "headline": HEADLINE_SYSTEM,
     "review":   REVIEW_SYSTEM,
 }
+
+# ── 주중 설교 변환 (2026-11-12) — 받아 둔 설교문을 목사님 새벽설교 방식으로 다시 쓴다 ──
+#  기준 글: tools/sermon_style_prompt.md (이 파일 옆). 설교 매니저 캘린더의 '주중 설교 일괄 변환' 과
+#  tools/sermon_style.py 가 같은 기준을 쓴다.
+STYLE_PROMPT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sermon_style_prompt.md")
+STYLE_BAN = ["사랑하는 성도 여러분", "축복합니다", "축원합니다", "할렐루야"]
+
+
+def style_system():
+    with open(STYLE_PROMPT_FILE, encoding="utf-8") as f:
+        return f.read()
+
+
+def style_check(text):
+    """목사님 방식에 맞는지 기계로 볼 수 있는 것만 본다. 문제 목록(없으면 빈 목록)."""
+    errs = []
+    n = len(text)
+    if not 1400 <= n <= 2500:
+        errs.append(f"분량 {n}자 (1,700~2,100자로)")
+    for b in STYLE_BAN:
+        if b in text:
+            errs.append(f"쓰지 않는 말 '{b}'")
+    if re.search(r"^\s*(#|\*|-\s|\d+\.\s)", text, re.M) or "**" in text:
+        errs.append("소제목·목록·굵은 글씨 기호")
+    if not text.rstrip().endswith("기도합니다."):
+        errs.append("맺음이 '…기도합니다.' 가 아님")
+    if "우리는 어떨까요" not in text:
+        errs.append("'우리는 어떨까요?' 적용 전환이 없음")
+    return errs
+
+
+def style_convert(material, model=None, timeout=600):
+    """material = 제목·본문·성경 본문·원문을 담은 글. 기준에 맞을 때까지 세 번까지 다시 쓴다."""
+    system = style_system()
+    base = material + "\n[지금 할 일]\n위 원문을 목사님 방식으로 다시 쓴 설교 글만 출력하세요.\n"
+    fb, errs = "", []
+    for _ in range(3):
+        text = run_claude(system, base + fb, model or MODEL_STYLE, timeout).strip()
+        errs = style_check(text)
+        if not errs:
+            return text
+        print("   · 다시 씀: " + "; ".join(errs))
+        fb = "\n[앞서 쓴 글의 문제 — 고쳐서 처음부터 다시 쓸 것]\n- " + "\n- ".join(errs) + "\n"
+    raise RuntimeError("세 번 써도 기준에 맞지 않습니다: " + "; ".join(errs))
 
 
 # ── 위기 신호(하드 세이프티 넷) — Claude 를 부르기 전에 먼저 걸러낸다 ──
@@ -717,7 +763,8 @@ def _run_claude_once(args, prompt, workdir, timeout, env):
 # ── 작업 처리 ────────────────────────────────────────────────
 
 LABEL = {"counsel": "말씀지기", "prayer": "마침 기도문",
-         "headline": "표지 헤드라인", "review": "주보 검수", "sermon_pdf": "설교 PDF"}
+         "headline": "표지 헤드라인", "review": "주보 검수", "sermon_pdf": "설교 PDF",
+         "sermon_style": "주중 설교 변환"}
 
 
 def process(job):
@@ -725,6 +772,11 @@ def process(job):
     payload = job.get("payload") or {}
     if kind == "sermon_pdf":                      # Claude 를 부르지 않는 작업 — Edge 로 PDF 를 찍어 Drive 에
         return process_sermon_pdf(payload)
+    if kind == "sermon_style":                    # 받아 둔 설교문 → 목사님 새벽설교 방식
+        started = time.time()
+        text = style_convert(_clip(payload.get("content"), 16000), timeout=TIMEOUT["sermon_style"])
+        print(f"   · 주중 설교 변환 완료 ({time.time() - started:.1f}초, {len(text)}자)")
+        return text
     if kind not in SYSTEM:
         raise RuntimeError(f"알 수 없는 작업 종류: {kind}")
 
