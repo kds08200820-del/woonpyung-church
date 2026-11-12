@@ -997,7 +997,7 @@
     if (!no || mrLoading) return;
     mrLoading = true;
     var sc = document.createElement('script');
-    sc.src = 'js/hymn-mr.js?v=20261112';
+    sc.src = 'js/hymn-mr.js?v=20261112b';
     sc.onload = function () { var cs = slides[idx]; mrSync(cs); };
     document.head.appendChild(sc);
   }

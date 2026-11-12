@@ -9213,7 +9213,8 @@ console.log('[affairs.js] v20261023th1');
       '.pg-item .it-k{font-size:.55em;font-weight:600;color:#92918E;margin-left:10px}',
       '.mr-btn{margin-left:10px;padding:3px 12px;border:1px solid #111;background:#fff;color:#111;font:600 .78em "Noto Sans KR",sans-serif;cursor:pointer;vertical-align:middle}.mr-btn.on{background:#111;color:#fff}' +
       '.mr-box{position:fixed;right:12px;bottom:56px;z-index:9999;width:240px;max-width:60vw;background:#111;box-shadow:0 8px 24px rgba(0,0,0,.35)}.mr-box .mr-bar{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;color:#fff;font:13px "Noto Sans KR",sans-serif}' +
-      '.mr-box .mr-bar button{border:1px solid #777;background:transparent;color:#fff;font:inherit;padding:2px 8px;cursor:pointer}.mr-box iframe{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}@media print{.mr-btn,.mr-box{display:none}}' +
+      '.mr-box.big{right:auto;bottom:auto;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,150vh);max-width:none;box-shadow:0 12px 40px rgba(0,0,0,.5)}' +
+      '.mr-box .mr-bar button{border:1px solid #777;background:transparent;color:#fff;font:inherit;padding:2px 8px;cursor:pointer;margin-left:6px}.mr-box iframe{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}@media print{.mr-btn,.mr-box{display:none}}' +
       '.pg-song .it-song-t{font-family:"Noto Sans KR",sans-serif;font-size:.88em;margin:0 0 10px}.pg-song .it-song-t b{color:#51504D;margin-right:4px}.pg-song .it-song-t small{font-size:.72em;color:#8A8986}',
       '.it-score{text-align:center}.it-score img{width:100%;max-width:820px;height:auto;background:#fff;border-radius:4px;box-shadow:0 1px 6px rgba(0,0,0,.08)}',
       'body.paged .pg-song{display:flex;flex-direction:column}body.paged .pg-song .it-score{flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start}body.paged .pg-song .it-score img{width:auto;max-width:100%;max-height:100%;object-fit:contain}',
@@ -9419,9 +9420,11 @@ console.log('[affairs.js] v20261023th1');
         'var same=mrBtn===t;mrStop();if(same)return;' +
         'mrBox=document.createElement("div");mrBox.className="mr-box";' +
         'var bar=document.createElement("div");bar.className="mr-bar";var lb=document.createElement("span");lb.textContent=t.getAttribute("data-no")+"장 MR";' +
-        'var x=document.createElement("button");x.type="button";x.textContent="닫기";x.onclick=mrStop;bar.appendChild(lb);bar.appendChild(x);' +
+        'var x=document.createElement("button");x.type="button";x.textContent="닫기";x.onclick=mrStop;' +
+        'var bg=document.createElement("button");bg.type="button";bg.textContent="크게";bg.onclick=function(){var on=!mrBox.classList.contains("big");mrBox.classList.toggle("big",on);bg.textContent=on?"작게":"크게";};' +
+        'var rt=document.createElement("span");rt.appendChild(bg);rt.appendChild(x);bar.appendChild(lb);bar.appendChild(rt);' +
         'var f=document.createElement("iframe");f.src="https://www.youtube-nocookie.com/embed/"+encodeURIComponent(t.getAttribute("data-mr"))+"?autoplay=1&playsinline=1&rel=0";' +
-        'f.allow="autoplay; encrypted-media; picture-in-picture";f.title="MR";mrBox.appendChild(bar);mrBox.appendChild(f);document.body.appendChild(mrBox);' +
+        'f.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";f.allowFullscreen=true;f.title="MR";mrBox.appendChild(bar);mrBox.appendChild(f);document.body.appendChild(mrBox);' +
         'mrBtn=t;t.textContent="MR 끄기";t.classList.add("on");},true);' +
       /* 인쇄 */
       'document.getElementById("print").onclick=function(){window.print()};' +

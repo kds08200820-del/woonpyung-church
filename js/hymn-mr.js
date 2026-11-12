@@ -18,13 +18,22 @@ window.HymnMR = (function () {
     var bar = document.createElement('div');
     bar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:5px 8px;color:#fff';
     var t = document.createElement('span'); t.textContent = (+no) + '장 MR';
-    var x = document.createElement('button'); x.type = 'button'; x.textContent = '닫기';
-    x.style.cssText = 'border:1px solid #777;background:transparent;color:#fff;font:inherit;padding:2px 8px;cursor:pointer';
+    var bs = 'border:1px solid #777;background:transparent;color:#fff;font:inherit;padding:2px 8px;cursor:pointer;margin-left:6px';
+    var big = document.createElement('button'); big.type = 'button'; big.textContent = '크게'; big.style.cssText = bs;
+    var x = document.createElement('button'); x.type = 'button'; x.textContent = '닫기'; x.style.cssText = bs;
     x.onclick = stop;
-    bar.appendChild(t); bar.appendChild(x);
+    var small = box.style.cssText;
+    big.onclick = function () {      /* 크게: 화면 가운데 넓게 · 작게: 오른쪽 아래 구석 */
+      var on = big.textContent === '크게';
+      if (on) box.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483000;width:min(92vw,150vh);background:#111;border:1px solid #111;box-shadow:0 12px 40px rgba(0,0,0,.5);font:13px/1.2 sans-serif';
+      else box.style.cssText = small;
+      big.textContent = on ? '작게' : '크게';
+    };
+    var right = document.createElement('span'); right.appendChild(big); right.appendChild(x);
+    bar.appendChild(t); bar.appendChild(right);
     var f = document.createElement('iframe');
     f.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(v) + '?autoplay=1&playsinline=1&rel=0';
-    f.allow = 'autoplay; encrypted-media; picture-in-picture'; f.title = '새찬송가 ' + (+no) + '장 MR';
+    f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen'; f.allowFullscreen = true; f.title = '새찬송가 ' + (+no) + '장 MR';
     f.style.cssText = 'display:block;width:100%;aspect-ratio:16/9;border:0;background:#000';
     box.appendChild(bar); box.appendChild(f); document.body.appendChild(box);
     cur = +no; btn = b || null; label(btn, true);
