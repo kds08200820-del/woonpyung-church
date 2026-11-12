@@ -3666,6 +3666,241 @@ console.log('[affairs.js] v20261023th1');
       }).join('');
     }
 
+    // ── 주중 설교 일괄 변환 (2026-11-12) ─────────────────────────────
+    //  캘린더에 올려 둔 주중 설교문(매일 QT 칸)을 목사님 새벽설교 방식으로 다시 쓰고,
+    //  같은 글로 '새벽기도' 설교와 '매일 QT' 를 둔다. 글은 교회 PC 의 AI 워커가 쓴다
+    //  (ai_jobs kind=sermon_style, 기준: tools/sermon_style_prompt.md). 주일은 건드리지 않는다.
+    var STYLE_BAN = ['사랑하는 성도 여러분', '축복합니다', '축원합니다', '할렐루야'];
+    function stylePlain(h) {
+      var d = document.createElement('div');
+      d.innerHTML = String(h || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|h[1-6]|li)>/gi, '\n');
+      return (d.textContent || '').replace(/ /g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+    function styleIsMine(t) {      // 이미 목사님 방식으로 쓴 글인가
+      var v = (t.match(/\d+절(을|에서|은|부터|과|에는|의|도)/g) || []).length;
+      return v >= 3 && /기도합니다\.$/.test(t.trim()) && !STYLE_BAN.some(function (b) { return t.indexOf(b) >= 0; });
+    }
+    function styleCheck(t) {
+      var e = [];
+      if (t.length < 1400 || t.length > 2500) e.push('분량 ' + t.length + '자');
+      STYLE_BAN.forEach(function (b) { if (t.indexOf(b) >= 0) e.push("쓰지 않는 말 '" + b + "'"); });
+      if (!/기도합니다\.$/.test(t.trim())) e.push('맺음이 다름');
+      return e;
+    }
+    function styleHtml(t) {        // 편집기와 같은 모양: 한 줄 = <p>, 빈 줄 = <p><br></p>
+      return t.trim().split('\n').map(function (l) { l = l.trim(); return l ? '<p>' + esc(l) + '</p>' : '<p><br></p>'; }).join('').replace(/(<p><br><\/p>){2,}/g, '<p><br></p>');
+    }
+    function openStyleBatch(y, m) {
+      var QT = '매일 QT', DAWN = '새벽기도', WD = ['일', '월', '화', '수', '목', '금', '토'];
+      var ym = y + '-' + pad2(m + 1), byDate = {}, todayStr = today();
+      smRows.forEach(function (r) {
+        var d = fmtD(r.sermon_date);
+        if (!d || d.slice(0, 7) !== ym || (r.service !== QT && r.service !== DAWN)) return;
+        (byDate[d] = byDate[d] || {})[r.service] = r;
+      });
+      function hymnOf(row) {       // 새벽기도 예배 순서의 찬송 칸에 이미 곡이 있는가
+        try {
+          var wo = row && row.worship_order; if (typeof wo === 'string') wo = JSON.parse(wo || '[]');
+          var h = (wo || []).filter(function (x) { return String(x.label || '').replace(/\s/g, '') === '찬송'; })[0];
+          return h && (String(h.detail || '').trim() || (h.items || []).length) ? (h.detail || '있음') : '';
+        } catch (e) { return ''; }
+      }
+      var items = Object.keys(byDate).sort().filter(function (d) { return new Date(d + 'T00:00:00').getDay() !== 0; }).map(function (d) {
+        var pair = byDate[d], src = pair[QT] || pair[DAWN], text = stylePlain(src.content);
+        var st = text.length < 300 ? 'short' : styleIsMine(text) ? 'mine' : 'todo';
+        return { d: d, pair: pair, src: src, text: text, st: st, hymn: hymnOf(pair[DAWN]) };
+      });
+      var prev = document.getElementById('ss_ov'); if (prev) prev.remove();
+      var ov = document.createElement('div');
+      ov.id = 'ss_ov';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(18,13,10,.72);z-index:99990;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 14px';
+      var LABEL = { todo: '받아 둔 글', mine: '목사님 방식', short: '글이 너무 짧음' };
+      var opt = function (id, label, sub) {
+        return '<label style="display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:.84rem"><input type="checkbox" id="' + id + '" checked style="margin-top:3px">' +
+          '<span><b>' + label + '</b><span style="color:#73726F"> — ' + sub + '</span></span></label>';
+      };
+      ov.innerHTML =
+        '<div style="background:#fff;border-radius:2px;max-width:800px;width:100%;padding:22px 24px;box-shadow:0 30px 80px rgba(0,0,0,.5)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+        '<h3 style="margin:0;color:var(--accent,#111111)">주중 설교 일괄 변환 <span style="font-size:.8rem;font-weight:400;color:#A7A6A3">' + y + '년 ' + (m + 1) + '월</span></h3>' +
+        '<button class="btn btn-line" id="ss_close" style="padding:4px 12px">닫기</button></div>' +
+        '<p style="margin:0 0 8px;font-size:.8rem;color:#73726F;line-height:1.6">고른 날짜마다 아래 일을 차례로 합니다. 이미 되어 있는 일은 건너뜁니다. 주일 설교는 건드리지 않습니다. 교회 PC 의 AI 워커가 켜져 있어야 합니다.</p>' +
+        '<div style="padding:8px 12px;background:#F7F6F3;border:1px solid #E4E3DF;margin-bottom:12px">' +
+        opt('ss_o_style', '설교문 변환', '목사님 새벽설교 방식으로 다시 쓰고, 새벽기도 설교와 매일 QT 를 같은 글로 둡니다. 원래 글은 파일로 내려받습니다.') +
+        opt('ss_o_hymn', '새찬송가 선곡', '설교 내용에 맞는 찬송 한 곡을 골라 새벽기도 예배 순서의 찬송 칸에 넣습니다.') +
+        opt('ss_o_kakao', '카카오톡 예약 발송', '그 날짜 오전 6시에 아래 채널로 보냅니다(댓글 하트는 예약 창에서 쓰던 설정 그대로).') +
+        '<div id="ss_ch" style="margin:0 0 4px 24px;font-size:.82rem;color:#A7A6A3">채널 불러오는 중…</div>' +
+        opt('ss_o_video', '말씀 영상 제작 승인', '교회 PC 가 새벽에 차례로 만들어 그 날짜에 홈페이지에 엽니다.') +
+        '</div>' +
+        (items.length ? '<div style="overflow:auto"><table class="fin-table" style="width:100%;min-width:560px"><thead><tr><th style="width:34px"><input type="checkbox" id="ss_all" checked></th><th>일자</th><th>제목</th><th>지금 상태</th><th>진행</th></tr></thead><tbody>' +
+          items.map(function (it, i) {
+            var on = it.st !== 'short' && it.d >= todayStr;
+            return '<tr data-i="' + i + '"><td><input type="checkbox" class="ss_chk"' + (on ? ' checked' : '') + (it.st === 'short' ? ' disabled' : '') + '></td>' +
+              '<td style="white-space:nowrap;font-weight:600">' + esc(it.d.slice(5)) + ' (' + WD[new Date(it.d + 'T00:00:00').getDay()] + ')</td>' +
+              '<td style="white-space:normal">' + esc(it.src.title || '') + '<div style="font-size:.72rem;color:#A7A6A3">' + esc(it.src.scripture || '') + '</div></td>' +
+              '<td style="font-size:.76rem;white-space:normal;color:#73726F">' + LABEL[it.st] + (it.pair[DAWN] ? '' : ' · 새벽기도 글 없음') + (it.hymn ? ' · 찬송 ' + esc(String(it.hymn).slice(0, 14)) : '') + '</td>' +
+              '<td class="ss_st" style="font-size:.78rem;white-space:normal;color:#A7A6A3"></td></tr>';
+          }).join('') + '</tbody></table></div>'
+          : '<p style="color:#A7A6A3;font-size:.9rem;padding:10px 0">이 달에는 주중 설교문(매일 QT · 새벽기도)이 없습니다.</p>') +
+        '<div style="display:flex;gap:10px;align-items:center;margin-top:14px">' +
+        '<button class="btn btn-solid" id="ss_go" style="padding:8px 20px;font-weight:700"' + (items.length ? '' : ' disabled') + '>시작</button>' +
+        '<button class="btn btn-line" id="ss_stop" style="padding:8px 14px;display:none">멈춤</button>' +
+        '<span id="ss_msg" style="font-size:.82rem;color:#73726F"></span></div></div>';
+      document.body.appendChild(ov);
+      var running = false, stop = false, changed = false, CH = [];
+      var goBtn = ov.querySelector('#ss_go'), stopBtn = ov.querySelector('#ss_stop'), msg = ov.querySelector('#ss_msg');
+      function q(id) { return ov.querySelector('#' + id); }
+      function say(t, bad) { msg.textContent = t; msg.style.color = bad ? '#A33A2A' : '#73726F'; }
+      function close() {
+        if (running && !confirm('진행 중입니다. 닫으면 지금 하는 날짜까지만 하고 멈춥니다. 닫을까요?')) return;
+        stop = true; ov.remove(); if (changed) { loadList(); if (window.__kkCalReload) window.__kkCalReload(); }
+      }
+      q('ss_close').onclick = close;
+      var all = q('ss_all');
+      if (all) all.onchange = function () { Array.prototype.forEach.call(ov.querySelectorAll('.ss_chk'), function (c) { if (!c.disabled) c.checked = all.checked; }); };
+      stopBtn.onclick = function () { stop = true; say('지금 하는 날짜를 마치면 멈춥니다…'); };
+      api('GET', 'kakao_channels?select=id,room_name,label,active,sort&order=sort.asc,id.asc').then(function (rows) {
+        CH = (rows || []).filter(function (c) { return c.active; });
+        q('ss_ch').innerHTML = CH.length ? CH.map(function (c) {
+          return '<label style="margin-right:14px;color:#2F2E2B"><input type="checkbox" class="ss_room" value="' + c.id + '" data-room="' + esc(c.room_name) + '"' + (CH.length === 1 ? ' checked' : '') + '> ' + esc(c.label || c.room_name) + '</label>';
+        }).join('') : '<span style="color:#A33A2A">쓸 수 있는 채널이 없습니다. 예약 발송 창에서 채널을 먼저 등록해 주세요.</span>';
+      }).catch(function (e) { q('ss_ch').innerHTML = '<span style="color:#A33A2A">채널을 읽지 못했습니다: ' + esc(e.message) + '</span>'; });
+
+      function setSt(i, t, color) { var td = ov.querySelector('tr[data-i="' + i + '"] .ss_st'); if (td) { td.textContent = t; td.style.color = color || '#2F2E2B'; } }
+      function one(arr) { return (arr || [])[0] || null; }
+
+      // ① 설교문 변환 — 새벽기도 글이 없으면 만든다
+      function stepStyle(it, i, log) {
+        var need = it.st === 'todo';
+        var p = Promise.resolve(null);
+        if (need) {
+          setSt(i, '설교문 쓰는 중…');
+          var prompt = '제목: ' + (it.src.title || '') + '\n본문: ' + (it.src.scripture || '') + '\n\n[성경 본문 — 개역개정]\n' + stylePlain(it.src.bible_text) + '\n\n[받아 둔 설교문(원문)]\n' + it.text + '\n';
+          p = aiJob('sermon_style', prompt).then(function (text) {
+            text = String(text || '').trim();
+            var errs = styleCheck(text);
+            if (errs.length) throw new Error('기준에 맞지 않는 글이 왔습니다(' + errs.join(', ') + ')');
+            return styleHtml(text);
+          });
+        }
+        return p.then(function (body) {
+          var content = body || it.src.content, jobs = [];
+          [QT, DAWN].forEach(function (svc) {
+            if (it.pair[svc]) { if (body) jobs.push(api('PATCH', 'sermons?id=eq.' + it.pair[svc].id, { content: body }, 'return=minimal').then(function () { it.pair[svc].content = body; })); }
+            else jobs.push(api('POST', 'sermons', { sermon_date: it.d, service: svc, title: it.src.title, scripture: it.src.scripture, preacher: it.src.preacher || null,
+              content: content, bible_text: it.src.bible_text || null, qt_bible_text: it.src.qt_bible_text || null, status: it.src.status || '작성중' }, 'return=representation')
+              .then(function (rows) { it.pair[svc] = one(rows) || { sermon_date: it.d, service: svc, title: it.src.title, scripture: it.src.scripture, content: content }; }));
+          });
+          if (!jobs.length) return;
+          return Promise.all(jobs).then(function () { changed = true; it.st = 'mine'; it.text = stylePlain(content); log.push(body ? '변환' : '새벽기도 글 만듦'); });
+        });
+      }
+      // ② 새찬송가 선곡 — 새벽기도 예배 순서의 찬송 칸
+      function stepHymn(it, i, log) {
+        var row = it.pair[DAWN];
+        if (!row || !row.id || it.hymn) return Promise.resolve();
+        var H = window.HYMNS || [];
+        if (!H.length) return Promise.reject(new Error('찬송가 목록을 읽지 못했습니다'));
+        setSt(i, '찬송 고르는 중…');
+        var list = H.map(function (h) { return h.no + ' ' + h.title; }).join('\n');
+        return aiJob('sermon_hymn', '제목: ' + (it.src.title || '') + '\n본문: ' + (it.src.scripture || '') + '\n\n[설교]\n' + it.text.slice(0, 2600) + '\n\n[새찬송가 목록 — 번호 제목]\n' + list + '\n').then(function (ans) {
+          var n = Number((String(ans || '').match(/\d{1,3}/) || [])[0]), title = hymnTitle(n);
+          if (!n || !title) throw new Error('찬송 번호를 받지 못했습니다');
+          var wo = []; try { wo = typeof row.worship_order === 'string' ? JSON.parse(row.worship_order || '[]') : (row.worship_order || []); } catch (e) { wo = []; }
+          if (!wo.length) wo = ['찬송', '성경봉독', '말씀(설교)'].map(function (l) { return { label: l, detail: '', url: '', body: '', fixed: false, noexport: false }; });
+          var h = wo.filter(function (x) { return String(x.label || '').replace(/\s/g, '') === '찬송'; })[0];
+          if (!h) { h = { label: '찬송', detail: '', url: '', body: '', fixed: false, noexport: false }; wo.unshift(h); }
+          h.detail = n + '장 ' + title; h.items = [{ b: 'h', n: n }];
+          var val = JSON.stringify(wo);
+          return api('PATCH', 'sermons?id=eq.' + row.id, { worship_order: val }, 'return=minimal').then(function () { row.worship_order = val; it.hymn = h.detail; changed = true; log.push('찬송 ' + n + '장'); });
+        });
+      }
+      // ③ 카카오톡 예약 발송 — 그 날짜 06:00, 이미 예약·발송된 채널은 건너뜀
+      function stepKakao(it, i, log, rooms) {
+        var when = new Date(it.d + 'T06:00:00');
+        if (!rooms.length || isNaN(when) || when.getTime() <= Date.now()) return Promise.resolve();
+        setSt(i, '예약 발송 넣는 중…');
+        return api('GET', 'kakao_send_jobs?select=channel_id,status&sermon_date=eq.' + it.d + '&status=in.(pending,processing,sent)').then(function (have) {
+          var done = {}; (have || []).forEach(function (j) { done[j.channel_id] = 1; });
+          var todo = rooms.filter(function (r) { return !done[r.id]; });
+          if (!todo.length) return;
+          var hp = null; try { hp = JSON.parse(localStorage.getItem('kk_heart_pref') || 'null'); } catch (e) { }
+          var hmin = hp && hp.on ? parseInt(hp.min, 10) || 0 : 0, hev = hmin ? parseInt(hp.every, 10) || 0 : 0;
+          if (hev >= hmin) hev = 0;
+          var rec = Object.assign({}, it.pair[QT] || it.src, { sermon_date: it.d });
+          var text = (kakaoQtText(rec) || '').trim();
+          if (!text) throw new Error('보낼 글을 만들지 못했습니다');
+          return api('POST', 'kakao_send_jobs', todo.map(function (r) {
+            var row = { sermon_date: it.d, channel_id: r.id, room_name: r.room, message: text, scheduled_at: when.toISOString() };
+            if (hmin) { row.heart_minutes = hmin; row.heart_status = 'pending'; }
+            if (hev) row.heart_every = hev;
+            return row;
+          }), 'return=minimal').then(function () { changed = true; log.push('예약 06:00'); });
+        });
+      }
+      // ④ 말씀 영상 제작 승인 — 이미 승인·제작 중이거나 영상이 있으면 건너뜀
+      function stepVideo(it, i, log) {
+        if (it.d < todayStr) return Promise.resolve();
+        return Promise.all([
+          api('GET', 'video_jobs?select=id&job_type=eq.motion&sermon_date=eq.' + it.d + '&status=in.(queued,processing)&limit=1'),
+          api('GET', 'sermons?select=media_url&service=eq.' + encodeURIComponent(QT) + '&sermon_date=eq.' + it.d + '&limit=1')
+        ]).then(function (r) {
+          if (one(r[0]) || (one(r[1]) || {}).media_url) return;
+          return api('POST', 'video_jobs', { sermon_date: it.d, job_type: 'motion', status: 'queued', progress: '승인됨 · 새벽 제작 대기',
+            settings: { orientation: 'portrait', engine: 'motion', when: 'night' } }, 'return=minimal').then(function () { log.push('영상 승인'); });
+        });
+      }
+
+      goBtn.onclick = function () {
+        var picked = [];
+        Array.prototype.forEach.call(ov.querySelectorAll('.ss_chk'), function (c) { if (c.checked) picked.push(Number(c.closest('tr').getAttribute('data-i'))); });
+        if (!picked.length) { say('날짜를 골라 주세요.', true); return; }
+        var O = { style: q('ss_o_style').checked, hymn: q('ss_o_hymn').checked, kakao: q('ss_o_kakao').checked, video: q('ss_o_video').checked };
+        var rooms = []; Array.prototype.forEach.call(ov.querySelectorAll('.ss_room'), function (c) { if (c.checked) rooms.push({ id: Number(c.value), room: c.getAttribute('data-room') }); });
+        if (O.kakao && !rooms.length) { say('카카오톡으로 보낼 채널을 골라 주세요(또는 예약 발송을 끄세요).', true); return; }
+        if (!O.style && !O.hymn && !O.kakao && !O.video) { say('할 일을 하나 이상 켜 주세요.', true); return; }
+        var nStyle = O.style ? picked.filter(function (i) { return items[i].st === 'todo'; }).length : 0;
+        if (!confirm(picked.length + '일치를 처리합니다.' + (nStyle ? '\n· 설교문 ' + nStyle + '편을 목사님 방식으로 바꿉니다(원래 글은 파일로 내려받음).' : '') +
+          (O.hymn ? '\n· 찬송이 없는 날에 새찬송가를 골라 넣습니다.' : '') +
+          (O.kakao ? '\n· 그 날짜 오전 6시에 ' + rooms.map(function (r) { return r.room; }).join(', ') + ' 로 카카오톡 예약 발송을 넣습니다.' : '') +
+          (O.video ? '\n· 말씀 영상 제작을 승인합니다(새벽 제작).' : '') + '\n시작할까요?')) return;
+        if (nStyle) {
+          try {      // 원래 글 보관
+            var keep = [];
+            picked.forEach(function (i) { if (items[i].st !== 'todo') return; [QT, DAWN].forEach(function (svc) { var r = items[i].pair[svc]; if (r) keep.push({ id: r.id, sermon_date: items[i].d, service: svc, title: r.title, scripture: r.scripture, content: r.content }); }); });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([JSON.stringify({ made: new Date().toISOString(), rows: keep }, null, 1)], { type: 'application/json' }));
+            a.download = '설교원문_' + ym + '_' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '') + '.json';
+            document.body.appendChild(a); a.click(); a.remove();
+          } catch (e) { if (!confirm('원래 글 파일을 내려받지 못했습니다(' + e.message + ').\n그래도 계속할까요?')) return; }
+        }
+        running = true; stop = false; goBtn.disabled = true; stopBtn.style.display = '';
+        Array.prototype.forEach.call(ov.querySelectorAll('input[type=checkbox]'), function (c) { c.disabled = true; });
+        var ok = 0, fail = 0, n = 0;
+        (function next() {
+          if (stop || n >= picked.length) {
+            running = false; stopBtn.style.display = 'none';
+            say('끝 — ' + ok + '일 처리' + (fail ? ', ' + fail + '일은 일부 실패' : '') + (n < picked.length ? ', 남은 ' + (picked.length - n) + '일은 하지 않았습니다' : '') + '.', !!fail);
+            return;
+          }
+          var i = picked[n++], it = items[i], log = [], errs = [];
+          say(n + ' / ' + picked.length + ' — ' + it.d.slice(5));
+          var guard = function (name, fn) { return function () { return Promise.resolve().then(fn).catch(function (e) { errs.push(name + ' 실패: ' + (e.message || e)); if (name === '변환') throw e; }); }; };
+          Promise.resolve()
+            .then(guard('변환', function () { return O.style ? stepStyle(it, i, log) : null; }))
+            .then(guard('찬송', function () { return O.hymn ? stepHymn(it, i, log) : null; }))
+            .then(guard('예약', function () { return O.kakao && it.st === 'mine' ? stepKakao(it, i, log, rooms) : null; }))
+            .then(guard('영상', function () { return O.video && it.st === 'mine' ? stepVideo(it, i, log) : null; }))
+            .catch(function () { })      // 변환이 실패하면 그 날짜의 나머지는 하지 않는다
+            .then(function () {
+              if (errs.length) { fail++; setSt(i, (log.length ? log.join(' · ') + ' / ' : '') + errs.join(' / '), '#A33A2A'); }
+              else { ok++; setSt(i, log.length ? log.join(' · ') : '이미 다 되어 있음', log.length ? '#1e8e5a' : '#A7A6A3'); }
+            })
+            .then(next);
+        })();
+      };
+    }
+
     function loadList() {
       loadKk();
       api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) { smRows = rows || []; renderView(); }).catch(function (e) {
@@ -3907,7 +4142,9 @@ console.log('[affairs.js] v20261023th1');
       var html = '<section class="fin-card sm-calendar" aria-label="' + y + '년 ' + (m + 1) + '월 설교 일정">' +
         '<div class="cal-toolbar"><div class="cal-heading"><span class="cal-eyebrow">' + (worshipMode ? '예배 일정' : '설교 캘린더') + '</span>' +
         '<div class="cal-month-nav"><h3>' + y + '년 <strong>' + (m + 1) + '월</strong></h3><div class="cal-nav-buttons">' +
-        '<button type="button" class="btn btn-line" id="cal_prev" aria-label="이전 달">‹</button><button type="button" class="btn btn-line" id="cal_today">오늘</button><button type="button" class="btn btn-line" id="cal_next" aria-label="다음 달">›</button></div></div></div>' +
+        '<button type="button" class="btn btn-line" id="cal_prev" aria-label="이전 달">‹</button><button type="button" class="btn btn-line" id="cal_today">오늘</button><button type="button" class="btn btn-line" id="cal_next" aria-label="다음 달">›</button>' +
+        (worshipMode ? '' : '<button type="button" class="btn btn-line" id="cal_style" style="margin-left:10px" title="이 달 주중에 올려 둔 설교문을 목사님 새벽설교 방식으로 바꾸고, 새벽기도 설교와 매일 QT 를 같은 글로 둡니다">주중 설교 일괄 변환</button>') +
+        '</div></div></div>' +
         '<p class="cal-help">날짜를 누르면 ' + (worshipMode ? '예배 순서를' : '설교를') + ' 준비할 수 있어요.</p></div>' +
         '<div class="cal-legend" aria-label="예배 종류">' + legend + '</div><div class="cal-grid">' +
         wd.map(function (w, i) { return '<div class="cal-wd" data-dow="' + i + '">' + w + '</div>'; }).join('');
@@ -3942,6 +4179,8 @@ console.log('[affairs.js] v20261023th1');
       panel.querySelector('#cal_prev').onclick = function () { var nm = m - 1, ny = y; if (nm < 0) { nm = 11; ny--; } calYM = { y: ny, m: nm }; renderCalendar(); };
       panel.querySelector('#cal_next').onclick = function () { var nm = m + 1, ny = y; if (nm > 11) { nm = 0; ny++; } calYM = { y: ny, m: nm }; renderCalendar(); };
       panel.querySelector('#cal_today').onclick = function () { var t = new Date(); calYM = { y: t.getFullYear(), m: t.getMonth() }; renderCalendar(); };
+      var styleBtn = panel.querySelector('#cal_style');
+      if (styleBtn) styleBtn.onclick = function () { openStyleBatch(y, m); };
       Array.prototype.forEach.call(calBox.querySelectorAll('.cal-day'), function (cell) {
         cell.onclick = function () {
           var ds = cell.dataset.date;
