@@ -4,10 +4,10 @@ import sys, json, subprocess, numpy as np
 sys.path.insert(0, sys.argv[3] if len(sys.argv) > 3 else __import__("os").path.dirname(__import__("os").path.abspath(__file__)))
 import hymn_mr as h
 no, kind = sys.argv[1], sys.argv[2]
-s = json.load(open(rf"C:\hymn-mr\scores\{no}.json", encoding="utf-8"))
+s = json.load(open(rf"C:\hymn-mr\scores\{int(no):03d}.json", encoding="utf-8"))
 notes, ranges, bpb = h.build(s); tm = h.time_map(s, ranges, bpb)
 SR = 22050
-raw = subprocess.run(["ffmpeg", "-v", "error", "-i", rf"C:\hymn-mr\out\{no}_{kind}.m4a", "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"], capture_output=True).stdout
+raw = subprocess.run(["ffmpeg", "-v", "error", "-i", rf"C:\hymn-mr\out\{int(no):03d}_{kind}.m4a", "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"], capture_output=True).stdout
 x = np.frombuffer(raw, np.float32)
 # 처음 빈 곳을 잘랐으므로 첫 소리 시각으로 맞춘다
 amp = np.abs(x); first = np.argmax(amp > amp.max() * 0.02) / SR

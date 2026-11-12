@@ -30,12 +30,14 @@ def midi_no(p):
     return 12 * (int(m.group(3)) + 1) + n
 
 
-def parse_voice(txt):
+def parse_voice(txt, keep_fermata=False):
     out = []
     for tok in txt.split():
+        ferm = "^" in tok
+        tok = tok.replace("^", "")
         tie = tok.endswith("~")
         p, d = tok.rstrip("~").split("/")
-        out.append((None if p == "r" else midi_no(p), float(d), tie))
+        out.append((None if p == "r" else midi_no(p), float(d), tie, ferm) if keep_fermata else (None if p == "r" else midi_no(p), float(d), tie))
     return out
 
 
@@ -50,6 +52,7 @@ def build(score):
     if score.get("amen"):
         secs.append(("amen", score["amen"]))
     notes, ranges, t = [], {}, 0.0
+    fermatas = []
     for name, mlist in secs:
         start = t
         for v in "SATB":
@@ -70,8 +73,15 @@ def build(score):
                     tv += d
             if hold and hold[0] is not None:
                 notes.append((name, hold[1], hold[2], v, hold[0]))
+        tf = start
+        for m in mlist:                       # 늘임표(페르마타): 소프라노 음에 ^
+            for p, d, tie, ferm in parse_voice(m["S"], True):
+                if ferm:
+                    fermatas.append((tf, d))
+                tf += d
         t = start + sum(sum(d for _, d, _ in parse_voice(m["S"])) for m in mlist)
         ranges[name] = (start, t)
+    build.fermatas = fermatas
     return notes, ranges, beats_per_bar
 
 
@@ -85,6 +95,9 @@ def time_map(score, ranges, bpb):
     rate = np.ones_like(grid)
     k = (grid >= rit_from) & (grid < ranges[last][1])
     rate[k] = 1 + 0.22 * ((grid[k] - rit_from) / (4 * bpb)) ** 1.5      # 22% 까지 느려짐
+    for f0, fd in getattr(build, "fermatas", []):     # 늘임표 음은 1.8배 길게
+        k = (grid >= f0) & (grid < f0 + fd)
+        rate[k] *= 1.8
     if "amen" in ranges:
         a0, a1 = ranges["amen"]
         k = grid >= a0

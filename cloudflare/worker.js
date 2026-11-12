@@ -32,6 +32,15 @@
  *         BOOK_AUDIO_SECRET  = (충분히 긴 무작위 문자열)
  *    미설정 시 오디오북 재생만 막히고 나머지 기능은 정상 동작한다.
  *
+ *  - POST   /hymn-mr-audio       새찬송가 반주(MR) 올리기 (관리자·무인 워커, x-hymn-name: 305_orch.m4a)
+ *  - POST   /hymn-mr-list        새찬송가 반주 목록      (관리자)
+ *  - POST   /hymn-mr-url         반주 재생 열쇠 발급      (로그인한 성도, body {no:305})
+ *  - GET    /hymn-mr/<이름>       반주 재생               (열쇠 서명 확인 · Range 지원)
+ *  - GET    /hymn-mr-have        반주가 준비된 장 번호 목록(공개, 번호만)
+ *    새찬송가 악보·편곡은 한국찬송가공회 저작물이라 반주를 공개하지 않는다(2026-11-13 담임목사: 로그인한 성도만).
+ *    오디오북과 같은 방법 — 공개 경로(/f/)로 내보내지 않고, 6시간짜리 서명 주소로만 들려준다.
+ *    서명 비밀키는 오디오북의 BOOK_AUDIO_SECRET 을 함께 쓴다(서명 문자열에 "hymn:" 을 붙여 구분).
+ *
  *  ▼ 대시보드 설정(코드에 비밀키 안 넣음)
  *    1) R2 버킷 생성 (예: church-uploads)
  *    2) 이 Worker 생성 후 이 코드 붙여넣기
@@ -73,7 +82,7 @@ function corsHeaders(req) {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
     // x-worker-key 는 일부러 뺀다 — 브라우저에서 쓰라고 만든 키가 아니다.
-    "Access-Control-Allow-Headers": "authorization, content-type, x-filename, x-folder, x-qt-name, x-bible-name, x-book-name",
+    "Access-Control-Allow-Headers": "authorization, content-type, x-filename, x-folder, x-qt-name, x-bible-name, x-book-name, x-hymn-name",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
@@ -179,11 +188,14 @@ const AUDIO_ROUTES = {
   "/bible-audio-delete": { prefix: "bible/", del: true, nameHeader: "x-bible-name" },
   "/book-audio-list": { prefix: "audiobook/", del: false },
   "/book-audio-delete": { prefix: "audiobook/", del: true, nameHeader: "x-book-name" },
+  "/hymn-mr-list": { prefix: "hymnmr/", del: false },
 };
 
 // 오디오북 저장 위치. 공개 /f/ 로 나가지 않는 유일한 폴더다.
 const BOOK_PREFIX = "audiobook/";
 const BOOK_TICKET_SEC = 6 * 60 * 60; // 재생 열쇠 유효 시간(6시간)
+// 새찬송가 반주(MR). 로그인한 성도만 — 공개 /f/ 로 나가지 않는다.
+const HYMN_PREFIX = "hymnmr/";
 
 // 음원 업로드 대상. 교회PC의 무인 스크립트가 '이름을 지정해' 올린다.
 //   · /upload 는 키를 <folder>/<owner>/<시각>-<난수> 로 만들기 때문에 쓸 수 없다.
@@ -193,6 +205,7 @@ const AUDIO_UPLOAD_ROUTES = {
   "/qt-audio": { prefix: "tts/", nameHeader: "x-qt-name" },
   "/bible-audio": { prefix: "bible/", nameHeader: "x-bible-name" },
   "/book-audio": { prefix: BOOK_PREFIX, nameHeader: "x-book-name" },
+  "/hymn-mr-audio": { prefix: HYMN_PREFIX, nameHeader: "x-hymn-name" },
 };
 
 // R2 목록은 한 번에 1000개까지만 온다. 성경은 1189장이라 반드시 이어받아야 한다.
@@ -234,8 +247,9 @@ export default {
     // ----- 오디오북 재생 (열쇠 서명 확인 · Range 지원) -----
     // 로그인 헤더를 붙일 수 없는 <audio> 태그가 부르는 자리라, 로그인 대신
     // 아래 /book-audio-url 이 발급한 짧은 서명으로 확인한다.
-    if (req.method === "GET" && url.pathname.startsWith("/book-audio/")) {
-      const name = decodeURIComponent(url.pathname.slice("/book-audio/".length));
+    const isHymnGet = req.method === "GET" && url.pathname.startsWith("/hymn-mr/");
+    if (req.method === "GET" && (url.pathname.startsWith("/book-audio/") || isHymnGet)) {
+      const name = decodeURIComponent(url.pathname.slice((isHymnGet ? "/hymn-mr/" : "/book-audio/").length));
       const exp = parseInt(url.searchParams.get("e") || "0", 10);
       const sig = url.searchParams.get("s") || "";
       if (!name || name.includes("/") || name.includes("..")) {
@@ -244,11 +258,11 @@ export default {
       if (!exp || exp * 1000 < Date.now()) {
         return json({ error: "재생 시간이 만료되었습니다. 새로고침 후 다시 들어 주세요." }, 401, req);
       }
-      const want = await bookSign(name, exp, env);
+      const want = await bookSign((isHymnGet ? "hymn:" : "") + name, exp, env);
       if (!want || !sameSig(want, sig)) {
         return json({ error: "재생 권한을 확인할 수 없습니다." }, 403, req);
       }
-      const obj = await env.BUCKET.get(BOOK_PREFIX + name, { range: req.headers, onlyIf: req.headers });
+      const obj = await env.BUCKET.get((isHymnGet ? HYMN_PREFIX : BOOK_PREFIX) + name, { range: req.headers, onlyIf: req.headers });
       if (!obj) return new Response("Not found", { status: 404, headers: corsHeaders(req) });
       const h = new Headers(corsHeaders(req));
       obj.writeHttpMetadata(h);
@@ -272,6 +286,16 @@ export default {
       return new Response(obj.body, { status, headers: h });
     }
 
+    // ----- 새찬송가 반주가 준비된 장 번호 목록 (공개 — 번호만, 소리는 없음) -----
+    if (req.method === "GET" && url.pathname === "/hymn-mr-have") {
+      const nos = [...new Set((await listAll(env.BUCKET, HYMN_PREFIX))
+        .map((f) => parseInt(f.name, 10)).filter((n) => n >= 1 && n <= 645))].sort((x, y) => x - y);
+      const h = new Headers(corsHeaders(req));
+      h.set("Content-Type", "application/json; charset=utf-8");
+      h.set("Cache-Control", "public, max-age=600");
+      return new Response(JSON.stringify({ nos }), { status: 200, headers: h });
+    }
+
     // ----- 파일 보기/다운로드 (공개, Range 지원) -----
     //   Range 를 못 받으면 QT 낭독·오디오북 미리듣기 등에서 '이어 듣기'로 저장해 둔
     //   지점으로 이동(seek)이 안 된다(브라우저가 seekable을 [0,0]으로 봄) — /book-audio/ 와 동일한 처리.
@@ -280,6 +304,9 @@ export default {
       // 오디오북은 판매 중인 책이라 공개 경로로 내보내지 않는다.
       if (key.startsWith(BOOK_PREFIX)) {
         return json({ error: "오디오북은 정회원 로그인 후 들을 수 있습니다." }, 403, req);
+      }
+      if (key.startsWith(HYMN_PREFIX)) {
+        return json({ error: "찬송가 반주는 로그인한 성도만 들을 수 있습니다." }, 403, req);
       }
       const obj = await env.BUCKET.get(key, { range: req.headers, onlyIf: req.headers });
       if (!obj) return new Response("Not found", { status: 404, headers: corsHeaders(req) });
@@ -337,6 +364,26 @@ export default {
       const files = {};
       for (const n of names) if (have.has(n)) files[n] = await bookSign(n, exp, env);
       return json({ ok: true, exp, base: `${url.origin}/book-audio/`, files }, 200, req);
+    }
+
+    // ----- 새찬송가 반주 재생 열쇠 (로그인한 성도) -----
+    // body {no: 305} → 그 장의 오케스트라·피아노 반주 중 올라와 있는 것에 서명을 준다.
+    if (req.method === "POST" && url.pathname === "/hymn-mr-url") {
+      if (!user) return json({ error: "로그인한 성도만 들을 수 있습니다." }, 401, req);
+      if (!env.BOOK_AUDIO_SECRET || env.BOOK_AUDIO_SECRET.length < 24) {
+        return json({ error: "반주 설정이 아직 끝나지 않았습니다(관리자 문의)." }, 503, req);
+      }
+      let no = 0;
+      try { no = parseInt((await req.json()).no, 10) || 0; } catch (e) {}
+      if (!(no >= 1 && no <= 645)) return json({ error: "장 번호가 올바르지 않습니다." }, 400, req);
+      const pad = String(no).padStart(3, "0");
+      const exp = Math.floor(Date.now() / 1000) + BOOK_TICKET_SEC;
+      const files = {};
+      for (const kind of ["orch", "piano"]) {
+        const n = `${pad}_${kind}.m4a`;
+        if (await env.BUCKET.head(HYMN_PREFIX + n)) files[kind] = `${url.origin}/hymn-mr/${n}?e=${exp}&s=${await bookSign("hymn:" + n, exp, env)}`;
+      }
+      return json({ ok: true, no, exp, files }, 200, req);
     }
 
     // ----- 임시 비밀번호 발급 (담임목사=최고 관리자 전용) -----

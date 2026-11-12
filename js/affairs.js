@@ -9073,7 +9073,8 @@ console.log('[affairs.js] v20261023th1');
       var pad = ('00' + s.n).slice(-3), src = '', t;
       if (s.kind === 'h') {
         t = '<b>' + s.n + '장</b> ' + esc(s.title || ''); if (s.n >= 1 && s.n <= 645) src = 'modu/data/hymn/' + pad + '.webp';
-        // 2026-11-13: 유튜브 MR 연동은 뺐다 — 중간 간주가 있어 예배에 못 쓴다(담임목사). 새 MR 은 docs/찬송가-MR-제작-설계.md
+        // 2026-11-13: 새찬송가 반주 — 악보로 만든 반주(js/hymn-mr.js, 로그인한 성도만). 유튜브 MR 은 간주 때문에 뺐다.
+        if (window.HymnMR && window.HymnMR.has(s.n)) t += ' <button type="button" class="mr-btn" data-mr="' + s.n + '" title="이 장의 반주를 틉니다">반주</button>';
       }
       else if (s.kind === 'c') { t = '<b>' + s.n + '번</b> ' + esc(s.title || '') + ' <small>모두의 찬양</small>'; if (s.n) src = 'modu/data/ccm/' + pad + '.webp'; }
       else t = esc(s.title || '');
@@ -9438,19 +9439,10 @@ console.log('[affairs.js] v20261023th1');
       'var tocBtn=document.getElementById("tocbtn");if(tocBtn)tocBtn.onclick=function(){goEl(document.getElementById("toc"));};' +
       /* 창 크기/회전 시 재분할 */
       'window.addEventListener("resize",function(){clearTimeout(reflowTimer);reflowTimer=setTimeout(reflow,150);});' +
-      /* 새찬송가 MR — 악보 제목 옆 [MR] 을 누르면 오른쪽 아래 작은 유튜브 창에서 반주를 튼다 (2026-11-12) */
-      'var mrBox=null,mrBtn=null;' +
-      'function mrStop(){if(mrBox){mrBox.remove();mrBox=null;}if(mrBtn){mrBtn.textContent="MR";mrBtn.classList.remove("on");mrBtn=null;}}' +
+      /* 새찬송가 반주 — 악보 제목 옆 [반주] 를 누르면 오른쪽 아래 재생 창(이 창 안). 재생기는 이 창을 연 관리 화면의 HymnMR (2026-11-13) */
       'document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("[data-mr]");if(!t)return;e.preventDefault();e.stopPropagation();' +
-        'var same=mrBtn===t;mrStop();if(same)return;' +
-        'mrBox=document.createElement("div");mrBox.className="mr-box";' +
-        'var bar=document.createElement("div");bar.className="mr-bar";var lb=document.createElement("span");lb.textContent=t.getAttribute("data-no")+"장 MR";' +
-        'var x=document.createElement("button");x.type="button";x.textContent="닫기";x.onclick=mrStop;' +
-        'var bg=document.createElement("button");bg.type="button";bg.textContent="크게";bg.onclick=function(){var on=!mrBox.classList.contains("big");mrBox.classList.toggle("big",on);bg.textContent=on?"작게":"크게";};' +
-        'var rt=document.createElement("span");rt.appendChild(bg);rt.appendChild(x);bar.appendChild(lb);bar.appendChild(rt);' +
-        'var f=document.createElement("iframe");f.src="https://www.youtube-nocookie.com/embed/"+encodeURIComponent(t.getAttribute("data-mr"))+"?autoplay=1&playsinline=1&rel=0";' +
-        'f.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";f.allowFullscreen=true;f.title="MR";mrBox.appendChild(bar);mrBox.appendChild(f);document.body.appendChild(mrBox);' +
-        'mrBtn=t;t.textContent="MR 끄기";t.classList.add("on");},true);' +
+        'var H=null;try{H=window.opener&&window.opener.HymnMR;}catch(x){}if(!H){alert("관리 화면이 닫혀 반주를 틀 수 없습니다.");return;}' +
+        'var no=+t.getAttribute("data-mr");if(H.playing()===no){H.stop();return;}H.play(no,t,{doc:document,bottom:56});},true);' +
       /* 인쇄 */
       'document.getElementById("print").onclick=function(){window.print()};' +
       '})();';
