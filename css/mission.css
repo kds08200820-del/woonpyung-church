@@ -46,15 +46,38 @@
 .ms-partner { background: #fff; }
 .ms-partner .ms-logo { display: block; max-width: 160px; max-height: 44px; width: auto; height: auto; margin: 0 0 14px; }
 .ms-report { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line); }
-.ms-report h4 { margin: 0 0 12px; }
-.ms-report-sum { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-bottom: 14px; font-size: .92rem; color: var(--ink-soft, #73726F); }
-.ms-report-sum b { color: var(--ink, #111); margin-left: 6px; font-size: 1.05rem; }
-.ms-report-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
-.ms-report-t { width: 100%; border-collapse: collapse; font-size: .88rem; }
-.ms-report-t caption { text-align: left; font-weight: 600; padding: 0 0 6px; }
-.ms-report-t th, .ms-report-t td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; }
-.ms-report-t td:last-child, .ms-report-t th:last-child { text-align: right; white-space: nowrap; }
+.ms-report h4 { margin: 0 0 6px; }
+.ms-report h5 { margin: 22px 0 8px; font-size: .95rem; }
+.ms-report h5 small { font-weight: 400; color: var(--ink-soft, #73726F); }
+.ms-report-meta { margin: 0 0 6px; font-size: .86rem; color: var(--ink-soft, #73726F); }
+.ms-report-intro { margin: 0 0 4px; font-size: .9rem; }
+.ms-report-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.ms-tscroll { overflow-x: auto; }
+.ms-report-t { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.ms-report-t th, .ms-report-t td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.ms-report-t th:first-child, .ms-report-t td:first-child { text-align: left; }
+.ms-report-t thead th { font-weight: 600; color: var(--ink-soft, #73726F); }
 .ms-report-t tfoot th, .ms-report-t tfoot td { font-weight: 700; border-bottom: 0; }
+.ms-report-t td.neg { color: #A33A2A; }
+.ms-report-sum-t { max-width: 420px; }
+.ms-report-sum-t tr:last-child th, .ms-report-sum-t tr:last-child td { font-weight: 700; }
+.ms-chart { margin: 4px 0 10px; }
+.ms-chart figcaption { font-size: .84rem; font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 10px; }
+.ms-chart svg { width: 100%; height: auto; display: block; }
+.ms-ch-grid { stroke: #E4E3DF; stroke-width: 1; }
+.ms-ch-ax { font-size: 10px; fill: #898885; }
+rect.ms-ch-in, i.ms-ch-in { fill: #1f2a44; background: #1f2a44; }
+rect.ms-ch-out, i.ms-ch-out { fill: #B9B7B2; background: #B9B7B2; }
+.ms-key { font-weight: 400; color: var(--ink-soft, #73726F); }
+.ms-key i { display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 10px; vertical-align: -1px; }
+.ms-hbars { display: grid; gap: 5px; }
+.ms-hbar { display: grid; grid-template-columns: minmax(90px, 9em) 1fr auto; gap: 8px; align-items: center; font-size: .8rem; }
+.ms-hbar-l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-hbar-t { background: #F3F2EF; height: 12px; }
+.ms-hbar-t i { display: block; height: 100%; }
+.ms-hbar-v { white-space: nowrap; color: var(--ink-soft, #73726F); }
+.ms-report-daily { margin-top: 18px; }
+.ms-report-daily summary { cursor: pointer; font-weight: 600; font-size: .9rem; padding: 6px 0; }
 .ms-names-who { font-size: .78em; font-weight: 400; color: var(--ink-soft, #73726F); }
 .ms-partner.is-hidden { background: var(--paper-alt); border-style: dashed; }
 .ms-partner .m-go { display: inline-block; margin-top: 14px; font-size: .85rem; font-weight: 600; color: var(--accent-soft); background: none; border: 0; padding: 0; font-family: inherit; cursor: pointer; }

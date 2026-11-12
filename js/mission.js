@@ -72,6 +72,58 @@
     ["names", "회원 수는 누구나, 이름은 교적에 연결된 성도(로그인)에게"],
     ["admin", "회원 수와 명단 모두 관리자·재정 담당만"],
   ];
+  /* 회계 보고 — 위원회 회계가 만든 보고서(app_settings mission_report_<회기>, rpc mission_report) */
+  function won(n) { return Number(n || 0).toLocaleString("ko-KR"); }
+  function wonCell(n) { return n ? won(n) : "-"; }
+  function barsMonthly(rows) {      // 달마다 수입·지출 막대 두 개
+    const W = 640, H = 220, L = 56, B = 28, T = 12, R = 8;
+    const max = Math.max(1, ...rows.map((r) => Math.max(r.income, r.spend)));
+    const step = Math.pow(10, Math.floor(Math.log10(max))) / 2, top = Math.ceil(max / step) * step;
+    const cw = (W - L - R) / rows.length, bw = Math.min(16, cw * 0.36);
+    const y = (v) => T + (H - T - B) * (1 - v / top);
+    let g = "";
+    for (let v = 0; v <= top + 1; v += step) { const yy = y(v);
+      g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="ms-ch-grid"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end" class="ms-ch-ax">${esc(won(Math.round(v / 10000)))}만</text>`; }
+    rows.forEach((r, i) => { const x = L + cw * i + cw / 2;
+      g += `<rect x="${x - bw - 1}" y="${y(r.income)}" width="${bw}" height="${y(0) - y(r.income)}" class="ms-ch-in"><title>${esc(r.ym)} 수입 ${esc(won(r.income))}원</title></rect>`;
+      g += `<rect x="${x + 1}" y="${y(r.spend)}" width="${bw}" height="${y(0) - y(r.spend)}" class="ms-ch-out"><title>${esc(r.ym)} 지출 ${esc(won(r.spend))}원</title></rect>`;
+      g += `<text x="${x}" y="${H - 8}" text-anchor="middle" class="ms-ch-ax">${esc(String(r.ym).slice(2).replace("-", "."))}</text>`; });
+    return `<figure class="ms-chart"><figcaption>월별 수입·지출 <span class="ms-key"><i class="ms-ch-in"></i>수입 <i class="ms-ch-out"></i>지출</span></figcaption>
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="월별 수입과 지출 막대 그래프">${g}</svg></figure>`;
+  }
+  function barsItems(list, key, cls, title) {      // 항목별 가로 막대(큰 것부터)
+    const rows = list.filter((x) => x[key] > 0).sort((a, b) => b[key] - a[key]);
+    if (!rows.length) return "";
+    const max = rows[0][key];
+    return `<figure class="ms-chart"><figcaption>${esc(title)}</figcaption><div class="ms-hbars">${rows.map((x) =>
+      `<div class="ms-hbar"><span class="ms-hbar-l">${esc(x.label)}</span><span class="ms-hbar-t"><i class="${cls}" style="width:${Math.max(1, Math.round(x[key] / max * 100))}%"></i></span><span class="ms-hbar-v">${esc(won(x[key]))}</span></div>`).join("")}</div></figure>`;
+  }
+  function reportHtml(d) {
+    const p = d.period || {};
+    const sum = (d.summary || []).map((x) => `<tr><th>${esc(x.label)}</th><td>${esc(won(x.amount))}</td></tr>`).join("");
+    const mon = (d.monthly || []).map((x) => `<tr><td>${esc(x.ym)}</td><td>${esc(wonCell(x.income))}</td><td>${esc(wonCell(x.spend))}</td><td class="${x.net < 0 ? "neg" : ""}">${esc(won(x.net))}</td><td>${esc(won(x.balance))}</td></tr>`).join("");
+    const it = (d.items || []);
+    const itRows = it.map((x) => `<tr><td>${esc(x.label)}</td><td>${esc(wonCell(x.income))}</td><td>${esc(wonCell(x.spend))}</td><td>${esc(x.n)}</td></tr>`).join("");
+    const itIn = it.reduce((a, x) => a + x.income, 0), itOut = it.reduce((a, x) => a + x.spend, 0), itN = it.reduce((a, x) => a + x.n, 0);
+    const day = (d.daily || []).map((x) => `<tr><td>${esc(x.date)}</td><td>${esc(wonCell(x.income))}</td><td>${esc(wonCell(x.spend))}</td><td class="${x.net < 0 ? "neg" : ""}">${esc(won(x.net))}</td><td>${esc(won(x.balance))}</td></tr>`).join("");
+    return `<div class="ms-report">
+      <h4>${esc(d.title || "회계 보고서")} <small class="ms-names-who">(회원과 관리자·재정 담당에게 보입니다)</small></h4>
+      <p class="ms-report-meta">${esc(String(d.officers || "").replace(/\s*\n\s*/g, " · "))}${p.from ? ` · 보고 기간 ${esc(dot(p.from))} ~ ${esc(dot(p.to))}` : ""}</p>
+      ${d.intro ? `<p class="ms-report-intro">${esc(d.intro)}</p>` : ""}
+      <h5>수입 지출 총괄 <small>(단위: 원)</small></h5>
+      <table class="ms-report-t ms-report-sum-t"><tbody>${sum}</tbody></table>
+      <h5>월별 수입 지출</h5>
+      ${barsMonthly(d.monthly || [])}
+      <div class="ms-tscroll"><table class="ms-report-t"><thead><tr><th>월</th><th>수입</th><th>지출</th><th>수지</th><th>잔액</th></tr></thead><tbody>${mon}</tbody></table></div>
+      <h5>항목별 수입 지출</h5>
+      <div class="ms-report-cols">${barsItems(it, "income", "ms-ch-in", "항목별 수입")}${barsItems(it, "spend", "ms-ch-out", "항목별 지출")}</div>
+      <div class="ms-tscroll"><table class="ms-report-t"><thead><tr><th>항목</th><th>수입</th><th>지출</th><th>건수</th></tr></thead><tbody>${itRows}</tbody>
+        <tfoot><tr><th>합계</th><td>${esc(won(itIn))}</td><td>${esc(won(itOut))}</td><td>${esc(itN)}</td></tr></tfoot></table></div>
+      <details class="ms-report-daily"><summary>날짜별 수입 지출 (${esc((d.daily || []).length)}일) 펼쳐 보기</summary>
+        <div class="ms-tscroll"><table class="ms-report-t"><thead><tr><th>날짜</th><th>수입</th><th>지출</th><th>수지</th><th>잔액</th></tr></thead><tbody>${day}</tbody></table></div>
+      </details>
+    </div>`;
+  }
   function renderMember() {
     if (!boxMember) return;
     const m = S.mem;
@@ -94,22 +146,7 @@
       </div>`;
     }
     const rp = S.rep;
-    if (rp && Array.isArray(rp.income)) {
-      const won = (n) => `${Number(n || 0).toLocaleString("ko-KR")}원`;
-      const mon = (ym) => `${Number(String(ym).slice(5, 7))}월`;
-      h += `<div class="ms-report"><h4>${esc(rp.year)}년도 회계 보고 <small class="ms-names-who">(회원과 관리자·재정 담당에게 보입니다)</small></h4>
-        <div class="ms-report-sum"><span>수입 <b>${esc(won(rp.income_total))}</b></span><span>지출 <b>${esc(won(rp.spend_total))}</b></span><span>남은 돈 <b>${esc(won(rp.balance))}</b></span></div>
-        <div class="ms-report-cols">
-          <table class="ms-report-t"><caption>수입 · 선교헌금</caption><thead><tr><th>달</th><th>금액</th></tr></thead><tbody>
-            ${rp.income.length ? rp.income.map((x) => `<tr><td>${esc(mon(x.ym))}</td><td>${esc(won(x.amount))}</td></tr>`).join("") : `<tr><td colspan="2">아직 없습니다.</td></tr>`}
-          </tbody><tfoot><tr><th>합계</th><td>${esc(won(rp.income_total))}</td></tr></tfoot></table>
-          <table class="ms-report-t"><caption>지출 · 받는 곳</caption><thead><tr><th>받는 곳</th><th>금액</th></tr></thead><tbody>
-            ${(rp.spend || []).length ? rp.spend.map((x) => `<tr><td>${esc(x.label)}</td><td>${esc(won(x.amount))}</td></tr>`).join("") : `<tr><td colspan="2">아직 없습니다.</td></tr>`}
-          </tbody><tfoot><tr><th>합계</th><td>${esc(won(rp.spend_total))}</td></tr></tfoot></table>
-        </div>
-        <p class="ms-names-note">수입은 이 회기 선교헌금의 달별 합계이고, 누가 얼마를 드렸는지는 나오지 않습니다. 지출은 재정 장부의 구제선교위원회·선교/구제비 지출을 받는 곳별로 합한 것이며, 후원처가 아닌 개인 구제는 이름 없이 한 줄로 묶었습니다.</p>
-      </div>`;
-    }
+    if (rp && rp.doc && Array.isArray(rp.doc.summary)) h += reportHtml(rp.doc);
     if (m && S.admin) {
       h += `<div class="ms-vis"><label for="msVis">회원 공개 범위</label>
         <select id="msVis">${VIS.map((v) => `<option value="${v[0]}"${m.visibility === v[0] ? " selected" : ""}>${esc(v[1])}</option>`).join("")}</select>
