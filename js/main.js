@@ -619,7 +619,7 @@ window.WPCQtText = (function () {
         const url = qtVideoByDate[k];
         if (a && url) {
           a.href = url; a.hidden = false;
-          a.addEventListener("click", (e) => { if (qtOpenVideo(url)) e.preventDefault(); });
+          a.addEventListener("click", (e) => { e.preventDefault(); if (!qtOpenVideo(url)) window.open(url, "_blank", "noopener"); });   // 저장소 영상은 이 화면 안에서, 유튜브는 새 창
         }
         const cur = document.querySelector("#qtDetail #qtVideoBtn[data-date]");   // 이미 열려 있는 날짜별 글
         if (cur && qtVideoByDate[cur.dataset.date]) { cur.href = qtVideoByDate[cur.dataset.date]; cur.hidden = false; }
@@ -859,7 +859,7 @@ window.WPCQtText = (function () {
       </div>
       <div class="qt-d-controls">
         <button type="button" class="qt-d-listen" id="qtTtsBtn" style="border:0;font:inherit;cursor:pointer">오늘의 말씀 듣기</button>
-        <a class="qt-d-listen" id="qtVideoBtn" data-date="${escQt(date)}" href="${escQt(qtVideoByDate[date] || "#")}" target="_blank" rel="noopener" ${qtVideoByDate[date] ? "" : "hidden"} style="margin-left:8px;text-decoration:none">말씀 영상</a>
+        <a class="qt-d-listen" id="qtVideoBtn" data-date="${escQt(date)}" href="${escQt(qtVideoByDate[date] || "#")}" ${qtVideoByDate[date] ? "" : "hidden"} style="margin-left:8px;text-decoration:none">말씀 영상</a>
       </div>
       ${secHtml || `<div class="qt-d-sec"><p>${escQt(e.content)}</p></div>`}
       <div id="qtAmenBox"></div>`;
@@ -867,7 +867,10 @@ window.WPCQtText = (function () {
     const vBtn = detailEl.querySelector("#qtVideoBtn");
     if (vBtn) vBtn.addEventListener("click", (ev) => {
       const href = vBtn.getAttribute("href");
-      if (qtOpenVideo && qtOpenVideo(href)) { ev.preventDefault(); if (window.WPCTts) window.WPCTts.stop(); }
+      ev.preventDefault();
+      if (!href || href === "#") return;
+      if (window.WPCTts) window.WPCTts.stop();
+      if (!(qtOpenVideo && qtOpenVideo(href))) window.open(href, "_blank", "noopener");
     });
     (function wireTts() {
       const btn = detailEl.querySelector("#qtTtsBtn");

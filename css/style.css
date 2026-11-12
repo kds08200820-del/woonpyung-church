@@ -1779,6 +1779,8 @@ a.auth-name:hover { background: rgba(255,255,255,.18); border-color: rgba(255,25
 
 /* ===== 말씀 듣기 (QT 하단) ===== */
 .qt-listen-wrap { text-align: center; margin-top: 26px; }
+/* hidden 이 display:inline-flex 에 덮이지 않게 — 영상이 없는 날 「오늘의 말씀 영상」 단추가 보이던 것 (2026-11-12) */
+.qt-listen-btn[hidden], .qt-d-listen[hidden] { display: none !important; }
 .qt-listen-btn {
   display: inline-flex; align-items: center; gap: 8px;
   font-family: inherit; font-size: 1rem; font-weight: 600;
