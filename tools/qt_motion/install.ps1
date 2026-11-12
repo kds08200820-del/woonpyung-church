@@ -1,4 +1,4 @@
-# 매일 QT 모션 영상 — 영상 도구를 C:\qt-video\motion 에 받는다 (한 번만).
+﻿# 매일 QT 모션 영상 — 영상 도구를 C:\qt-video\motion 에 받는다 (한 번만).
 #   github.com/kstost/script-to-motion (MIT) 의 정해 둔 판을 받아, Windows 에서 돌도록 두 줄을 고친다.
 $ErrorActionPreference = 'Stop'
 $home2 = 'C:\qt-video\motion'
@@ -31,6 +31,14 @@ npm install --ignore-scripts --no-audit --no-fund
 node setup_browser.mjs
 Pop-Location
 python -m pip install --quiet pillow
+
+# 제작 스크립트를 C:\qt-video\motion\app 에 복사한다 — 매일 예약은 이 사본으로 돈다
+# (저장소 폴더는 OneDrive 안에 있어 파일이 사라지거나 잠길 수 있다). 스크립트를 고친 뒤에는 설치.bat 을 다시 누른다.
+$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+$app = Join-Path $home2 'app'
+New-Item -ItemType Directory -Force (Join-Path $app 'qt_motion') | Out-Null
+robocopy $here (Join-Path $app 'qt_motion') /MIR /XD __pycache__ /NFL /NDL /NJH /NJS /NP | Out-Null
+Copy-Item (Join-Path (Split-Path -Parent $here) 'ai_worker.py') (Join-Path $app 'ai_worker.py') -Force
 
 Write-Host ''
 Write-Host '영상 도구 설치를 마쳤습니다. 이어서 점검.bat 을 눌러 주세요.'

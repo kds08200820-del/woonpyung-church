@@ -1,4 +1,4 @@
-# 매일 QT 모션 영상 — Windows 작업 스케줄러에 '매일 01:00' 으로 등록한다.
+﻿# 매일 QT 모션 영상 — Windows 작업 스케줄러에 '매일 01:00' 으로 등록한다.
 #   등록:  powershell -ExecutionPolicy Bypass -File register_task.ps1
 #   해제:  powershell -ExecutionPolicy Bypass -File register_task.ps1 -Remove
 param([switch]$Remove, [string]$At = '01:00')
@@ -9,6 +9,9 @@ if ($Remove) {
   exit 0
 }
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
+# 설치.bat 이 만들어 둔 사본(C:\qt-video\motion\app)이 있으면 그것으로 돈다 — OneDrive 안의 저장소 폴더에 기대지 않게
+$appCopy = 'C:\qt-video\motion\app\qt_motion'
+if (Test-Path (Join-Path $appCopy 'qt_motion.py')) { $here = $appCopy }
 $logDir = 'C:\qt-video\motion\logs'
 New-Item -ItemType Directory -Force $logDir | Out-Null
 # 창 없이 돌리고, 날짜별 기록 파일을 남긴다

@@ -361,15 +361,37 @@ def make_voice(cfg, proj):
 
 # ─────────────────────────────── 5. 그림 (로컬 AI: ComfyUI · Flux)
 
+def comfy_up(comfy):
+    try:
+        urllib.request.urlopen(comfy + "/queue", timeout=10)
+        return True
+    except Exception:
+        return False
+
+
+def ensure_comfy(cfg):
+    """그림 서버가 꺼져 있으면 스스로 켠다(밤에 사람 없이 돌 때). 5분 안에 안 뜨면 멈춘다."""
+    comfy = cfg["comfy"]
+    if comfy_up(comfy):
+        return
+    bat = cfg.get("comfy_start_bat") or r"C:\ComfyUI\run_comfyui.bat"
+    if not os.path.exists(bat):
+        raise RuntimeError("그림 서버(ComfyUI)가 꺼져 있고 켜는 파일도 없습니다: " + bat)
+    log("  그림 서버(ComfyUI)를 켭니다…")
+    subprocess.Popen(["cmd", "/c", "start", "", "/min", bat], cwd=os.path.dirname(bat), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    for _ in range(60):
+        time.sleep(5)
+        if comfy_up(comfy):
+            return
+    raise RuntimeError("그림 서버(ComfyUI)를 켰지만 5분 안에 응답하지 않습니다. " + bat + " 를 직접 켜 보세요.")
+
+
 def make_images(cfg, plan, proj, work):
     from PIL import Image, ImageFilter
     raw = os.path.join(work, "images"); os.makedirs(raw, exist_ok=True)
     dst = os.path.join(proj, "assets", "user"); os.makedirs(dst, exist_ok=True)
     comfy = cfg["comfy"]
-    try:
-        urllib.request.urlopen(comfy + "/queue", timeout=10)
-    except Exception:
-        raise RuntimeError(r"그림 서버(ComfyUI)가 꺼져 있습니다. C:\ComfyUI\run_comfyui.bat 을 켠 뒤 다시 돌려 주세요.")
+    ensure_comfy(cfg)
     base = json.load(open(cfg["comfy_workflow"], encoding="utf-8"))
     assets = []
     for n, (name, im) in enumerate(plan["images"].items(), 1):
@@ -480,7 +502,8 @@ def main():
     cfg = load_cfg()
     if o.doctor:
         return doctor(cfg)
-    date = o.date or (dt.datetime.now(KST).date() + dt.timedelta(days=1)).isoformat()
+    # 날짜를 주지 않으면 '내일' 것을 만든다: 13일 새벽 1시에 돌면 14일자 (config.json 의 days_ahead 로 바꿀 수 있다)
+    date = o.date or (dt.datetime.now(KST).date() + dt.timedelta(days=int(cfg.get("days_ahead", 1)))).isoformat()
     work = os.path.join(HOME, "work", date); os.makedirs(work, exist_ok=True)
     proj = os.path.join(work, "project")
     out_mp4 = os.path.join(HOME, "out", f"qt_{date}.mp4"); os.makedirs(os.path.dirname(out_mp4), exist_ok=True)
@@ -596,7 +619,7 @@ def doctor(cfg):
         urllib.request.urlopen(cfg["comfy"] + "/queue", timeout=5); good = True
     except Exception:
         good = False
-    line(good, "그림 서버(ComfyUI)", r"C:\ComfyUI\run_comfyui.bat 실행")
+    line(good or os.path.exists(cfg.get("comfy_start_bat") or r"C:\ComfyUI\run_comfyui.bat"), "그림 서버(ComfyUI)" + ("" if good else " — 지금은 꺼져 있음(만들 때 스스로 켠다)"), r"C:\ComfyUI\run_comfyui.bat 이 있어야 함")
     line(os.path.exists(os.path.join(r"C:\ComfyUI\models\diffusion_models", cfg["image_model"])), "그림 모델 " + cfg["image_model"])
     try:
         sys.path.insert(0, os.path.dirname(HERE)); import ai_worker; ai_worker.find_claude(); good = True
