@@ -141,6 +141,7 @@ var HYMN = (function(){
     }, { passive:true });
   }
   function showIndex(){
+    if(window.HymnMR) window.HymnMR.stop();
     cur = 0; $('hyPop').hidden = true;
     $('hyTitle').textContent = B.name;
     $('hymnModal').classList.remove('hy-viewing'); $('hymnModal').classList.remove('hy-dive');
@@ -181,6 +182,7 @@ var HYMN = (function(){
     img.src = src(no);
     img.alt = B.name + ' ' + no + B.unit + ' ' + title(no);
     $('hyPrev').disabled = no <= 1; $('hyNext').disabled = no >= MAX;
+    if($('hyMr')){ if(window.HymnMR) window.HymnMR.sync(B.hash === 'hymn' ? no : 0, $('hyMr')); else $('hyMr').hidden = true; }   /* 새찬송가만 MR 이 있다 (2026-11-12) */
     try{ localStorage.setItem('modu.' + B.hash + '.last', String(no)); }catch(e){}
     try{ if(/^#(hymn|ccm|joy|wr)=/.test(location.hash) || location.hash === '') history.replaceState(null, '', location.pathname + location.search + '#' + B.hash + '=' + no); }catch(e){}
   }
@@ -194,6 +196,7 @@ var HYMN = (function(){
     if(no) show(no); else showIndex();
   }
   function close(){
+    if(window.HymnMR) window.HymnMR.stop();
     var m = $('hymnModal'); if(!m || m.hidden) return;
     m.hidden = true; document.body.classList.remove('modal-open'); document.body.classList.remove('hy-open');
     try{ if(/^#(hymn|ccm|joy|wr)=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); }catch(e){}
@@ -265,6 +268,7 @@ var HYMN = (function(){
     POPREF = pop;
     function openPop(){ if(cur) pop.open(buildIndex(), cur); }
     $('hyCur').onclick = openPop; $('hyListBtn').onclick = openPop;
+    if($('hyMr')) $('hyMr').onclick = function(){ if(window.HymnMR && cur) window.HymnMR.toggle(cur, $('hyMr')); };
     $('hyLock').onclick = function(){ setLock(!locked); toast(locked ? '크기를 고정했습니다 — 손가락으로 벌려도 바뀌지 않습니다' : '고정을 풀었습니다 — 두 손가락으로 크기를 바꿀 수 있습니다'); };
     pinch($('hyBody'));
     /* 웹: Ctrl + 마우스 휠(노트북 터치패드 벌리기도 같은 신호)로 악보만 확대·축소 — 가리키는 곳이 제자리에 (2026-09-27) */
