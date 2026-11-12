@@ -6552,10 +6552,36 @@ console.log('[affairs.js] v20261023th1');
       // ── 🎬 영상 제작 스튜디오 (전역 모듈 window.VideoStudio — 파일 하단 정의) ──
       (function () {
         var vbtn = ov.querySelector('#se_video'); if (!vbtn) return;
+        // 2026-11-12: 매일 QT 는 누르면 곧바로 교회 PC 의 말씀 영상(모션) 제작을 요청한다 — 새벽 승인을 기다리지 않는다.
+        //   (video_jobs job_type=motion, status=queued, settings.when 없음 → tools/qt_motion --auto 가 다음 확인 때 바로 시작)
+        //   매일 QT 가 아닌 설교는 예전 영상 스튜디오를 연다.
         vbtn.onclick = function () {
+          var m2 = ov.querySelector('#se_msg');
+          var say = function (t, bad) { m2.style.color = bad ? '#A33A2A' : '#898885'; m2.textContent = t; };
           var date = ov.querySelector('#se_date').value;
-          if (!date) { var m2 = ov.querySelector('#se_msg'); m2.style.color = '#A33A2A'; m2.textContent = '영상 제작에는 일자가 필요합니다.'; return; }
-          if (window.VideoStudio) window.VideoStudio.open(date, save);
+          if (!date) { say('영상 제작에는 일자가 필요합니다.', true); return; }
+          var svc = (ov.querySelector('#se_service') || {}).value;
+          if (svc !== '매일 QT') { if (window.VideoStudio) window.VideoStudio.open(date, save); return; }
+          if (!confirm(date + ' 매일 QT 말씀 영상을 지금 만듭니다.\n저장한 뒤 교회 PC 가 곧 시작하고, 2~3시간 걸립니다.\n다른 영상을 만드는 중이면 그 뒤에 이어서 만듭니다.')) return;
+          vbtn.disabled = true; say('저장하고 영상 제작을 요청하는 중…');
+          save(function () {
+            api('GET', 'video_jobs?select=id,status,settings&job_type=eq.motion&sermon_date=eq.' + date + '&status=in.(queued,processing)&order=created_at.desc&limit=1')
+              .then(function (rows) {
+                var j = (rows || [])[0];
+                if (j && j.status === 'processing') return '이미 만드는 중입니다. 진행은 대시보드 「QT 영상 관리」에서 볼 수 있습니다.';
+                if (j) {    // 새벽 제작으로 승인해 둔 것 → 지금 바로 만들도록 바꾼다
+                  var st = Object.assign({}, j.settings || {}); delete st.when;
+                  return api('PATCH', 'video_jobs?id=eq.' + j.id + '&status=eq.queued', { settings: st, progress: '교회 PC 를 기다리는 중(바로 제작)' }, 'return=minimal')
+                    .then(function () { return '새벽 대기 중이던 요청을 지금 바로 만들도록 바꿨습니다. 교회 PC 가 15분 안에 시작합니다.'; });
+                }
+                return api('POST', 'video_jobs', { sermon_date: date, job_type: 'motion', status: 'queued', progress: '교회 PC 를 기다리는 중(바로 제작)',
+                  settings: { orientation: 'portrait', engine: 'motion' } }, 'return=minimal')
+                  .then(function () { return '영상 제작을 요청했습니다. 교회 PC 가 15분 안에 시작하고, 진행은 대시보드 「QT 영상 관리」에서 볼 수 있습니다.'; });
+              })
+              .then(function (t) { say('✓ ' + t); })
+              .catch(function (e) { say('영상 제작 요청 실패: ' + e.message, true); })
+              .then(function () { vbtn.disabled = false; });
+          }, function () { vbtn.disabled = false; say('저장하지 못해 영상 제작을 요청하지 않았습니다.', true); });
         };
       })();
       // ── 📦 주일 자료 일괄 생성 ──────────────────────────────────
