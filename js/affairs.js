@@ -9073,8 +9073,7 @@ console.log('[affairs.js] v20261023th1');
       var pad = ('00' + s.n).slice(-3), src = '', t;
       if (s.kind === 'h') {
         t = '<b>' + s.n + '장</b> ' + esc(s.title || ''); if (s.n >= 1 && s.n <= 645) src = 'modu/data/hymn/' + pad + '.webp';
-        var mrId = (window.HYMN_MR || {})[String(s.n)];   // 새찬송가 반주(MR) 유튜브 — js/hymn-mr.js (2026-11-12)
-        if (mrId) t += ' <button type="button" class="mr-btn" data-mr="' + esc(mrId) + '" data-no="' + s.n + '" title="이 장의 반주(MR)를 틉니다">MR</button>';
+        // 2026-11-13: 유튜브 MR 연동은 뺐다 — 중간 간주가 있어 예배에 못 쓴다(담임목사). 새 MR 은 docs/찬송가-MR-제작-설계.md
       }
       else if (s.kind === 'c') { t = '<b>' + s.n + '번</b> ' + esc(s.title || '') + ' <small>모두의 찬양</small>'; if (s.n) src = 'modu/data/ccm/' + pad + '.webp'; }
       else t = esc(s.title || '');

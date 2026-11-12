@@ -985,22 +985,8 @@
       (sm.points || []).map(function (p, i) { return '<div class="ws-sum-p"><div class="ws-sum-lead"><span class="ws-sum-n">' + (i + 1) + '</span>' + esc(p.lead || '') + '</div><p>' + esc(p.text || '') + '</p></div>'; }).join('') +
       (sm.apply ? '<div class="ws-sum-apply"><div class="ws-sum-lead">삶에 적용</div><p>' + esc(sm.apply) + '</p></div>' : '') + '</div>';
   }
-  /* 새찬송가 MR(js/hymn-mr.js) — 찬송 악보에서만 단추가 보이고, 다른 순서로 넘어가면 끈다. 자료는 처음 찬송을 볼 때 한 번 받는다. */
-  var mrLoading = false;
-  function mrSync(s) {
-    var no = s && s.type === 'hymn' ? +s.no : 0, b = $('wsMr');
-    if (window.HymnMR) {
-      window.HymnMR.sync(no, b);
-      if (b) b.onclick = function () { window.HymnMR.toggle(no, b, { bottom: 84 }); };
-      return;
-    }
-    if (!no || mrLoading) return;
-    mrLoading = true;
-    var sc = document.createElement('script');
-    sc.src = 'js/hymn-mr.js?v=20261112b';
-    sc.onload = function () { var cs = slides[idx]; mrSync(cs); };
-    document.head.appendChild(sc);
-  }
+  /* 2026-11-13: 유튜브 MR 연동은 뺐다 — 중간 간주가 있어 예배에 못 쓴다(담임목사). */
+  function mrSync() {}
   function render() {
     if (editing) { renderEditor(); return; }
     var s = slides[idx]; if (!s) { setBody('<div class="ws-none">순서가 비어 있습니다.</div>'); return; }
@@ -1016,7 +1002,7 @@
     } else if (s.type === 'joy') {
       h = head + '<div class="ws-item-t"><b>' + s.no + '번</b> ' + esc(s.title || '') + ' <span style="font-size:.78em;color:#9B9A97">모두의 찬양</span></div><div class="ws-img" id="wsImgBox"><img id="wsImg" src="' + JOY_IMG + ('00' + s.no).slice(-3) + '.webp" alt="모두의 찬양 ' + s.no + '번"></div><div class="ws-tip">두 손가락으로 벌리면 커집니다</div>';
     } else if (s.type === 'hymn') {
-      h = head + '<div class="ws-item-t"><b>' + s.no + '장</b> ' + esc(s.title || '') + ' <button type="button" id="wsMr" hidden aria-pressed="false" title="이 장의 반주(MR)를 틉니다" style="margin-left:8px;padding:3px 12px;border:1px solid #111;background:#fff;color:#111;font:inherit;font-size:.78em;cursor:pointer;vertical-align:middle">MR</button></div><div class="ws-img" id="wsImgBox"><img id="wsImg" src="' + HYMN_IMG + ('00' + s.no).slice(-3) + '.webp" alt="새찬송가 ' + s.no + '장"></div><div class="ws-tip">두 손가락으로 벌리면 커집니다</div>';
+      h = head + '<div class="ws-item-t"><b>' + s.no + '장</b> ' + esc(s.title || '') + '</div><div class="ws-img" id="wsImgBox"><img id="wsImg" src="' + HYMN_IMG + ('00' + s.no).slice(-3) + '.webp" alt="새찬송가 ' + s.no + '장"></div><div class="ws-tip">두 손가락으로 벌리면 커집니다</div>';
     } else if (s.type === 'gyodok') {
       var g = (window.GYODOK || []).filter(function (x) { return x.no === s.no; })[0];
       h = head + '<div class="ws-item-t"><b>교독문 ' + s.no + '번</b> ' + esc(s.sub || (g ? g.title : '')) + '</div>' + (g ? gyodokHtml(g) : '<div class="ws-none">교독문 ' + s.no + '번 자료가 없습니다</div>');
@@ -1236,7 +1222,7 @@
     if (document.fullscreenElement || document.webkitFullscreenElement) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (e) {} }
     wsFullSync();
   }
-  function closeViewer() { if (!overlay) return; if (window.HymnMR) window.HymnMR.stop(); wsFullOff(); overlay.hidden = true; document.body.classList.remove('ws-open'); setTimeout(heroRefresh, 0); }
+  function closeViewer() { if (!overlay) return; wsFullOff(); overlay.hidden = true; document.body.classList.remove('ws-open'); setTimeout(heroRefresh, 0); }
 
   window.WPCWorship = { open: openGate, close: closeViewer, services: services, wedInfo: wedInfo, bulletins: bulletins, today: todayStr };
   heroSlide();
