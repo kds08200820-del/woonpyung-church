@@ -2106,6 +2106,12 @@ console.log('[affairs.js] v20261023th1');
         if (subEl) subEl.innerHTML = (review ? '<span style="color:#6A6966;font-weight:700">🖼 검토 대기 ' + review + '</span> · ' : '') + (active ? '<span style="color:#969592;font-weight:700">🎬 제작중 ' + active + '</span> · ' : '') + '눌러서 관리';
         if (review) note('video', '검토를 기다리는 QT 영상이 <b>' + review + '편</b> 있습니다.', '영상 관리', function () { if (window.VideoStudio) window.VideoStudio.openManager(); }, 'videoMgrCard');
       }).catch(function () { if (subEl) subEl.textContent = '영상 관리 (video_jobs.sql 실행 필요)'; });
+      // 홈페이지에 올라가 있는 말씀 영상(매일 QT 글의 영상 주소) 편수
+      api('GET', 'sermons?select=id&service=eq.' + encodeURIComponent('매일 QT') + '&media_url=not.is.null&limit=500').then(function (rows) {
+        var n = (rows || []).length, lab = card.querySelector('.vm-site-n');
+        if (!lab) { lab = document.createElement('div'); lab.className = 'vm-site-n'; lab.style.cssText = 'font-size:.74rem;color:#73726F;margin-top:4px'; card.appendChild(lab); }
+        lab.textContent = '홈페이지에 올린 영상 ' + n + '편';
+      }).catch(function () {});
     }
 
     // ── 성경읽기 현황(구속사 365): 참여 성도 수 + 개인별 진도 ──
@@ -12792,29 +12798,75 @@ console.log('[affairs.js] v20261023th1');
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
         '<h3 style="margin:0;color:var(--accent,#111111)">🎬 QT 영상 관리</h3>' +
         '<button class="btn btn-line" id="vm_close" style="padding:4px 12px">닫기</button></div>' +
+        '<h4 style="margin:6px 0 6px;font-size:.92rem">홈페이지에 올린 말씀 영상</h4>' +
+        '<div id="vm_site"><p class="qt-loading">불러오는 중…</p></div>' +
+        '<h4 style="margin:20px 0 6px;font-size:.92rem">제작 기록</h4>' +
         '<div id="vm_body"><p class="qt-loading">불러오는 중…</p></div></div>';
       document.body.appendChild(m);
       m.querySelector('#vm_close').onclick = function () { m.remove(); };
       m.addEventListener('click', function (e) { if (e.target === m) m.remove(); });
+      // 홈페이지에 올린 말씀 영상 — 매일 QT 글의 영상 주소(media_url). 내리기는 주소 칸만 비운다(영상 파일은 저장소에 남는다).
+      function loadSite() {
+        var box = m.querySelector('#vm_site'); if (!box) return;
+        api('GET', 'sermons?select=id,sermon_date,title,scripture,media_url&service=eq.' + encodeURIComponent('매일 QT') + '&media_url=not.is.null&order=sermon_date.desc&limit=60').then(function (rows) {
+          rows = (rows || []).filter(function (r) { return String(r.media_url || '').trim(); });
+          if (!rows.length) { box.innerHTML = '<p style="color:#A7A6A3;font-size:.9rem;padding:6px 0">홈페이지에 올라가 있는 영상이 없습니다.</p>'; loadVideoMgrCount(); return; }
+          var today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+          box.innerHTML =
+            '<div style="overflow:auto"><table class="fin-table" style="min-width:520px;width:100%"><thead><tr>' +
+            '<th>일자</th><th>제목</th><th>상태</th><th style="text-align:right">관리</th></tr></thead><tbody>' +
+            rows.map(function (r, i) {
+              var d = String(r.sermon_date || '').slice(0, 10), open = d <= today;
+              var tube = /youtu\.?be/.test(r.media_url);
+              return '<tr data-i="' + i + '">' +
+                '<td style="white-space:nowrap;font-weight:600">' + esc(d) + '</td>' +
+                '<td style="white-space:normal">' + esc(r.title || '') + (r.scripture ? '<div style="font-size:.72rem;color:#A7A6A3">' + esc(r.scripture) + '</div>' : '') + '</td>' +
+                '<td style="white-space:nowrap;font-size:.8rem">' + (open ? '공개 중' : '그날 공개') + (tube ? '<div style="font-size:.68rem;color:#A7A6A3">유튜브</div>' : '') + '</td>' +
+                '<td style="text-align:right;white-space:nowrap">' +
+                '<button class="btn btn-line vs-play" style="padding:3px 9px;font-size:.76rem">재생</button> ' +
+                '<button class="btn btn-line vs-off" style="padding:3px 9px;font-size:.76rem;color:#A33A2A">내리기</button>' +
+                '</td></tr>';
+            }).join('') + '</tbody></table></div>' +
+            '<p style="font-size:.74rem;color:#A7A6A3;margin-top:8px">최근 60편. 「내리기」는 홈페이지에서만 보이지 않게 합니다(영상 파일은 지우지 않습니다). 날짜가 아직 오지 않은 영상은 그날 QT 글과 함께 열립니다.</p>';
+          loadVideoMgrCount();
+          function rowOf(el) { return rows[Number(el.closest('tr').getAttribute('data-i'))]; }
+          Array.prototype.forEach.call(box.querySelectorAll('.vs-play'), function (b) { b.onclick = function () { window.open(rowOf(b).media_url, '_blank'); }; });
+          Array.prototype.forEach.call(box.querySelectorAll('.vs-off'), function (b) {
+            b.onclick = function () {
+              var r = rowOf(b);
+              if (!confirm(String(r.sermon_date).slice(0, 10) + ' 말씀 영상을 홈페이지에서 내릴까요?\n(영상 파일은 지워지지 않습니다. 다시 올리려면 영상을 새로 올려야 합니다.)')) return;
+              b.disabled = true;
+              api('PATCH', 'sermons?id=eq.' + r.id, { media_url: null }, 'return=minimal').then(function () { loadSite(); }).catch(function (e) { b.disabled = false; alert('내리기 실패: ' + e.message); });
+            };
+          });
+        }).catch(function (e) { box.innerHTML = '<p style="color:#A33A2A">불러오기 실패: ' + esc(e.message) + '</p>'; });
+      }
+      function loadVideoMgrCount() {   // 대시보드 카드의 편수 글자를 맞춘다
+        var lab = document.querySelector('#videoMgrCard .vm-site-n'); if (!lab) return;
+        var n = m.querySelectorAll('#vm_site tbody tr').length;
+        lab.textContent = '홈페이지에 올린 영상 ' + n + '편';
+      }
+      loadSite();
       function reload() {
-        api('GET', 'video_jobs?select=id,sermon_date,status,progress,video_url,claimed_by,error,created_at&order=created_at.desc&limit=60').then(function (rows) {
+        api('GET', 'video_jobs?select=id,sermon_date,status,progress,video_url,claimed_by,error,created_at,job_type&order=created_at.desc&limit=60').then(function (rows) {
           rows = rows || [];
           var body = m.querySelector('#vm_body'); if (!body) return;
           if (!rows.length) { body.innerHTML = '<p style="color:#A7A6A3;font-size:.9rem;padding:10px 0">아직 제작한 영상이 없습니다. 설교관리에서 매일 QT를 열고 🎬 영상 제작을 눌러보세요.</p>'; return; }
           var rowsHtml = rows.map(function (j) {
-            var canRevise = j.status === 'done';
-            var canRetry = j.status === 'error' || j.status === 'canceled';
-            var canReview = j.status === 'review';
+            var motion = j.job_type === 'motion';
+            var canRevise = !motion && j.status === 'done';
+            var canRetry = !motion && (j.status === 'error' || j.status === 'canceled');
+            var canReview = !motion && j.status === 'review';
             var canDelete = ['done', 'error', 'canceled'].indexOf(j.status) >= 0;
             return '<tr data-id="' + j.id + '" data-date="' + esc(j.sermon_date) + '">' +
-              '<td style="white-space:nowrap;font-weight:600">' + esc(j.sermon_date) + '</td>' +
-              '<td>' + statusBadge(j) + (j.claimed_by ? '<div style="font-size:.68rem;color:#A7A6A3;margin-top:2px">' + esc(j.claimed_by) + '</div>' : '') + (j.status === 'error' && j.error ? '<div style="font-size:.68rem;color:#A33A2A;margin-top:2px;max-width:200px;white-space:normal">' + esc(String(j.error).slice(0, 120)) + '</div>' : '') + '</td>' +
+              '<td style="white-space:nowrap;font-weight:600">' + esc(j.sermon_date) + (motion ? '<div style="font-size:.68rem;font-weight:400;color:#A7A6A3">모션 영상</div>' : '') + '</td>' +
+              '<td>' + statusBadge(j) + (motion && j.progress && j.status !== 'done' ? '<div style="font-size:.7rem;color:#73726F;margin-top:2px">' + esc(String(j.progress).slice(0, 60)) + '</div>' : '') + (j.claimed_by ? '<div style="font-size:.68rem;color:#A7A6A3;margin-top:2px">' + esc(j.claimed_by) + '</div>' : '') + (j.status === 'error' && j.error ? '<div style="font-size:.68rem;color:#A33A2A;margin-top:2px;max-width:200px;white-space:normal">' + esc(String(j.error).slice(0, 120)) + '</div>' : '') + '</td>' +
               '<td style="text-align:right;white-space:nowrap">' +
               (j.video_url ? '<button class="btn btn-line vm-play" style="padding:3px 9px;font-size:.76rem">▶ 재생</button> ' : '') +
               (canReview ? '<button class="btn btn-solid vm-open" style="padding:3px 9px;font-size:.76rem;background:#6A6966;border-color:#6A6966">🖼 검토</button> ' : '') +
               (canRevise ? '<button class="btn btn-line vm-revise" style="padding:3px 9px;font-size:.76rem">🔧 수정</button> ' : '') +
               (canRetry ? '<button class="btn btn-line vm-open" style="padding:3px 9px;font-size:.76rem">↻ 다시</button> ' : '') +
-              (!canReview && !canRevise && !canRetry && !j.video_url ? '<button class="btn btn-line vm-open" style="padding:3px 9px;font-size:.76rem">열기</button> ' : '') +
+              (!motion && !canReview && !canRevise && !canRetry && !j.video_url ? '<button class="btn btn-line vm-open" style="padding:3px 9px;font-size:.76rem">열기</button> ' : '') +
               (canDelete ? '<button class="btn btn-line vm-del" style="padding:3px 9px;font-size:.76rem;color:#A33A2A">삭제</button>' : '') +
               '</td></tr>';
           }).join('');
