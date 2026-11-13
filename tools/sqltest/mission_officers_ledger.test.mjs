@@ -80,7 +80,7 @@ for (let run = 1; run <= 2; run++) {
   ok(T + '2027 회계는 2026 권한 없음', await can(MEM, '회계', 2026) === false && await can(MEM, '회계', 2027) === true);
   ok(T + '관리자는 모든 권한', await can(ADM, '서기', 2030) === true && await can(ADM, '회계', 2026) === true);
   ok(T + '교적 미연결 계정은 권한 없음(빈 키끼리 맞지 않음)', await can(OUT, '위원장', 2026) === false);
-  ok(T + '비로그인은 mission_can 못 부름', !!(await fails('anon', '', `select public.mission_can('서기', 2026)`)));
+  ok(T + '비로그인은 mission_can 이 늘 false', (await one('anon', '', `select public.mission_can('서기', 2026) r`)) === false);
 
   // ── 화면 첫 읽기 ──
   const hm = await one('anon', '', `select public.mission_home() r`);
@@ -148,7 +148,7 @@ for (let run = 1; run <= 2; run++) {
   ok(T + '서기는 규칙 못 씀', !!(await fails('authenticated', SEC, `insert into public.mission_ledger_rules (keyword, category) values ('테스트', '테스트')`)));
   if (run === 1) await runs('authenticated', TRE, `insert into public.mission_ledger_rules (keyword, category) values ('테스트교회', '정기이체 · 테스트교회')`);
   ok(T + '회계는 규칙을 봄', (await runs('authenticated', TRE, `select * from public.mission_ledger_rules`)).length === 1);
-  ok(T + '성도는 규칙 0줄', (await runs('authenticated', MEM, `select * from public.mission_ledger_rules`)).length === 0);
+  ok(T + '회계가 아닌 사람은 규칙 0줄', (await runs('authenticated', SEC, `select * from public.mission_ledger_rules`)).length === 0);
 
   // ── 회원 집계는 그대로(회기만 바꿔 부름) ──
   ok(T + '2026 회원 1명 · 2027 회원 1명', (await one('anon', '', `select public.mission_committee(2026) r`)).count === 1 && (await one('anon', '', `select public.mission_committee(2027) r`)).count === 1);

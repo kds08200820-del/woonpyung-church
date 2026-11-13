@@ -75,8 +75,9 @@ language sql stable security definer set search_path = public as $$
          and o.active and o.fy_year = p_year and o.role = p_role)
   )
 $$;
-revoke all on function public.mission_can(text, int) from public, anon;
-grant execute on function public.mission_can(text, int) to authenticated;
+-- 누구나 읽는 표(활동·동향 글, 일정)의 정책이 이 함수를 부르므로 비로그인에게도 실행을 연다(로그인하지 않았으면 늘 false).
+revoke all on function public.mission_can(text, int) from public;
+grant execute on function public.mission_can(text, int) to anon, authenticated;
 
 -- ── 3) 활동·동향 글 — 서기도 쓴다 ───────────────────────────
 alter table public.mission_posts add column if not exists kind text not null default '활동';
