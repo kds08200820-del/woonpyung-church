@@ -410,6 +410,18 @@ def main():
         for no in nos:
             if not o.redo and st.get(str(no), {}).get("state") in ("완료", "확인 필요", "악보 없음"):
                 continue
+            if not o.nos and up_ok[0]:            # 목사님 판단은 장마다 확인(한 번 돌면 며칠 가므로)
+                try:
+                    judged(log)
+                except RuntimeError as e:
+                    if "사용 한도" in str(e):
+                        log(f"Claude 사용 한도 — 멈춥니다 ({e})"); return
+                    log(f"판단 반영 실패: {e}")
+                except Exception as e:
+                    log(f"판단 반영 실패: {e}")
+                st = load_status()
+                if st.get(str(no), {}).get("state") in ("완료", "확인 필요", "악보 없음"):
+                    continue
             if not o.nos and resting():
                 log("새벽(00:30~07:30)에는 쉽니다 — 말씀 영상 제작·QT 계획에 PC 와 Claude 를 비워 둔다. 다음 예약 때 이어서."); return
             if not o.nos:
