@@ -293,7 +293,21 @@ def vlq(n):
 def write_midi(path, evs):
     """evs: [(초, 'on'|'off', note, vel)]"""
     tpq = 960                      # 120bpm → 1초 = 1920틱
-    evs = sorted(evs, key=lambda e: (e[0], {"off": 0, "cc": 1}.get(e[1], 2)))
+    # 같은 음이 겹치면(앞 음의 끝이 다음 같은 음의 시작보다 늦으면) 앞 음을 다음 음 직전에 끝낸다 — 안 그러면 끝나지 않는 음이 생겨
+    # sfizz 가 소리가 다 사라지기를 끝없이 기다린다(2026-11-13 2장에서 멈춤)
+    by = {}
+    for e in evs:
+        if e[1] in ("on", "off"): by.setdefault(e[2], []).append(e)
+    fixed = [e for e in evs if e[1] not in ("on", "off")]
+    for n, lst in by.items():
+        lst.sort(key=lambda e: (e[0], 0 if e[1] == "on" else 1))
+        ons = [e for e in lst if e[1] == "on"]; offs = sorted(e[0] for e in lst if e[1] == "off")
+        for i, on in enumerate(ons):           # i 번째 시작은 i 번째 끝과 짝 — 다음 시작보다 늦게 끝나면 그 직전에 끝낸다
+            end = offs[i] if i < len(offs) else on[0] + 1.0
+            if i + 1 < len(ons) and end > ons[i + 1][0] - 0.005:
+                end = max(on[0] + 0.01, ons[i + 1][0] - 0.01)
+            fixed += [on, (end, "off", n, 0)]
+    evs = sorted(fixed, key=lambda e: (e[0], {"off": 0, "cc": 1}.get(e[1], 2)))
     trk, last = bytearray(), 0
     trk += b"\x00\xFF\x51\x03" + (500000).to_bytes(3, "big")
     for s, kind, n, v in evs:
@@ -309,8 +323,8 @@ def write_midi(path, evs):
 
 
 def render(sfz, mid, wav):
-    subprocess.run([SFIZZ, "--sfz", os.path.join(VS, sfz), "--midi", mid, "--wav", wav, "-s", str(SR), "-q", "3", "-p", "128"],
-                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run([SFIZZ, "--sfz", os.path.join(VS, sfz), "--midi", mid, "--wav", wav, "-s", str(SR), "-q", "3", "-p", "128", "--use-eot"],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
     raw = subprocess.run(["ffmpeg", "-v", "error", "-i", wav, "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"],
                          check=True, capture_output=True).stdout
     return np.frombuffer(raw, dtype=np.float32).reshape(-1, 2).copy()

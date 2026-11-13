@@ -19,7 +19,7 @@ end = max(r[1] for r in ranges.values())
 for b in np.arange(0, end, 1.0):
     want = {p % 12 for _, st, d, v, p in notes if st <= b + 0.05 < st + d}
     if not want: continue
-    t = tm(b + 0.3) + off
+    t = tm(b + (0.5 if kind == "piano" else 0.3)) + off   # 피아노는 페달 바꿈 뒤(앞 화음 울림이 걷힌 뒤)에 듣는다
     i = int(t * SR)
     seg = x[i:i + N]
     if len(seg) < N: break
