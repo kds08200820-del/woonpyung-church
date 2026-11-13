@@ -166,6 +166,18 @@ def lyric_probs(score):
         return [f"가사 검사 실패: {e}"]
 
 
+def sections_of(no):
+    """work/NNN/{orch,piano}_sections.json → {"orch": {"intro":[0,9.4], "v1":[…], …, "amen":[…]}, "piano": …} (가사 시간표와 같은 시간축)"""
+    out = {}
+    for kind in ("orch", "piano"):
+        f = os.path.join(HOME, "work", f"{no:03d}", f"{kind}_sections.json")
+        try:
+            out[kind] = {k: v for k, v in json.load(open(f, encoding="utf-8")).items() if not k.startswith("_")}
+        except Exception:
+            pass
+    return out
+
+
 def write_lyrics(no, score, trims):
     """노래방 가사 시간표(out/NNN_lyrics.json). 가사가 맞지 않으면 만들지 않는다 → 반주만 나온다."""
     f = os.path.join(HOME, "out", f"{no:03d}_lyrics.json")
@@ -175,6 +187,7 @@ def write_lyrics(no, score, trims):
         return lp
     t = hymn_mr.lyrics_timing(score)
     t.update(no=no, title=score.get("title"), shift=trims)
+    t["sections"] = sections_of(no)            # 절 고르기(1절만 등)에 쓰는 구간 — 2026-11-13
     json.dump(t, open(f, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     return []
 
