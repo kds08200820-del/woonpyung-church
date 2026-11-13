@@ -134,6 +134,154 @@ def in_sec(spec, name):
     return spec == "all" or name in spec.split()
 
 
+# ───────────────────────── 2b. 오케스트라 편곡 (2026-11-13 목사님 참고 음원 「만복의 근원」 분석으로)
+#  참고 음원: 화성 76%·타악 7%, 150~500Hz 두꺼운 지속 화음(현악 여러 겹+호른+오르간), 20~100Hz 깊은 저음이 끊이지 않음,
+#  조용한 절과 큰 절이 번갈아 나오고 큰 절에만 큰북·팀파니·심벌, 2.5kHz 위가 적은 따뜻한 소리, 넓은 좌우, 긴 울림.
+#  그래서: 음을 끊지 않고 겹쳐 잇고(레가토), 성부를 옥타브로 겹쳐 가운데를 두껍게, 오르간 페달로 바닥을 깔고, 절마다 쌓아 올린다.
+import random as _rnd
+
+_RANGE = {}
+
+
+def sfz_range(sfz):
+    if sfz not in _RANGE:
+        txt = open(os.path.join(VS, sfz), encoding="utf-8", errors="ignore").read()
+        lo = [int(x) for x in re.findall(r"lokey=(\d+)", txt)]; hi = [int(x) for x in re.findall(r"hikey=(\d+)", txt)]
+        _RANGE[sfz] = (min(lo) if lo else 0, max(hi) if hi else 127)
+    return _RANGE[sfz]
+
+
+def fold(p, sfz):
+    lo, hi = sfz_range(sfz)
+    while p < lo: p += 12
+    while p > hi: p -= 12
+    return p
+
+
+def stages(score):
+    n = int(score.get("verses", 1))
+    st = {"intro": "intro", "amen": "full"}
+    for i in range(1, n + 1):
+        if i == n: st[f"v{i}"] = "full"
+        elif i == 1: st[f"v{i}"] = "soft" if n >= 3 else "mid"
+        elif i == n - 1: st[f"v{i}"] = "build"
+        else: st[f"v{i}"] = "mid"
+    return st
+
+
+STAGE_VEL = {"soft": 0.60, "intro": 0.68, "mid": 0.70, "build": 0.78, "full": 0.92}
+#   이름, sfz, 성부, 옮김, 쓰는 단계, 세기 배율, 소리 크기, 좌우
+LAYERS = [
+    ("violin1", "ViolinEnsSusVib.sfz", "S", 0, "soft intro mid build full", 1.00, 1.00, -0.40),
+    ("violin1_8va", "ViolinEnsSusVib.sfz", "S", 12, "intro mid build full", 0.82, 0.70, -0.30),
+    ("violin2", "ViolinEnsSusVib.sfz", "A", 12, "intro mid build full", 0.85, 0.55, -0.20),
+    ("violin2_lo", "ViolinEnsSusVib.sfz", "A", 0, "soft intro mid build full", 0.90, 0.70, -0.15),
+    ("viola", "ViolaEnsSusVib.sfz", "T", 0, "soft intro mid build full", 0.90, 0.80, 0.15),
+    ("viola_mel", "ViolaEnsSusVib.sfz", "S", -12, "intro mid build full", 0.80, 0.45, 0.05),
+    ("cello", "CelloEnsSusVib.sfz", "B", 0, "soft intro mid build full", 0.95, 0.65, 0.35),
+    ("cello_t", "CelloEnsSusVib.sfz", "T", 0, "build full", 0.80, 0.30, 0.30),
+    ("bass", "ContrabassSusVB.sfz", "B", -12, "soft intro mid build full", 0.90, 0.55, 0.45),
+    ("horn_a", "FHornSus.sfz", "A", 0, "intro mid build full", 0.80, 0.45, 0.20),
+    ("horn_t", "FHornSus.sfz", "T", 0, "intro mid build full", 0.80, 0.40, 0.30),
+    ("clarinet", "ClarinetSus.sfz", "A", 0, "mid build", 0.75, 0.35, -0.05),
+    ("flute", "FluteSusVib.sfz", "S", 12, "intro mid build full", 0.78, 0.45, -0.25),
+    ("oboe", "OboeSusVib.sfz", "S", 0, "mid build", 0.72, 0.35, -0.10),
+    ("trumpet", "TrumpetSus.sfz", "S", 0, "full", 0.80, 0.50, 0.05),
+    ("trombone", "TromboneSus.sfz", "T", 0, "full", 0.80, 0.40, 0.25),
+    ("tuba", "TubaSus.sfz", "B", -12, "full", 0.85, 0.35, 0.40),
+    ("organ_q", "OrganQuiet.sfz", "SAT", 0, "soft intro mid build", 0.70, 0.30, 0.0),
+    ("organ_l", "OrganLoud.sfz", "SAT", 0, "full", 0.75, 0.30, 0.0),
+    ("pedal", "OrganLoudPedal.sfz", "B", -12, "soft intro mid build full", 0.85, 0.55, 0.0),
+]
+
+
+def orch_parts(score, notes, ranges, tm, bpb):
+    """[(이름, sfz, 사건들, 소리 크기, 좌우)]  사건 = (초, on/off, 음, 세기)"""
+    rnd = _rnd.Random(score.get("no", 0))
+    stg = stages(score)
+    pick = float(score.get("pickup", 0) or 0)
+    final_end = max(s + d for _, s, d, _, _ in notes)
+    parts = []
+    for name, sfz, voices, shift, use, vmul, gain, pan in LAYERS:
+        if not os.path.exists(os.path.join(VS, sfz)):
+            continue
+        evs = []
+        for sec, s, d, v, p in notes:
+            st = stg.get(sec, "mid")
+            if v not in voices or st not in use.split():
+                continue
+            q = fold(p + shift, sfz)
+            t0, t1 = tm(s), tm(s + d)
+            if abs(s + d - final_end) < 1e-6:
+                t1 = t0 + (t1 - t0) * 1.8                     # 마지막 음은 길게
+            start = ranges[sec][0] + (pick if sec.startswith("v") else 0)
+            bar_pos = int(((s - start) // bpb) % 4) if s >= start else 0
+            swell = (0.94, 1.0, 1.07, 0.98)[bar_pos]         # 네 마디 안에서 부풀었다 가라앉기
+            vel = 127 * STAGE_VEL[st] * vmul * swell * (1.04 if v == "S" else 0.95) + rnd.uniform(-4, 4)
+            jit = rnd.uniform(-0.012, 0.012)
+            evs.append((max(0.0, t0 + jit), "on", q, int(max(18, min(127, vel)))))
+            evs.append((t1 + 0.10, "off", q, 0))             # 다음 음과 겹쳐 끊김 없이(레가토)
+        if evs:
+            parts.append((name, sfz, evs, gain, pan))
+    # 팀파니: 큰 단계(전주·마지막 절·아멘)의 네 마디마다 첫 박(그때의 베이스 음), 쌓는 절 끝에는 굴림
+    timp, roll = [], []
+    bass_at = {}
+    for sec, s, d, v, p in notes:
+        if v == "B":
+            bass_at[(sec, round(s, 3))] = p
+    for sec, (a, b) in ranges.items():
+        st = stg.get(sec)
+        if st in ("full", "intro"):
+            k = a + (pick if sec.startswith("v") else 0)
+            while k < b - 0.5:
+                p = bass_at.get((sec, round(k, 3)))
+                if p is not None:
+                    q = fold(p, "Timpani.sfz")
+                    timp += [(tm(k), "on", q, 105 if st == "full" else 85), (tm(k) + 2.0, "off", q, 0)]
+                k += 4 * bpb
+        if st == "build":
+            roll += [(tm(b - bpb), "on", 43, 70), (tm(b) + 0.3, "off", 43, 0)]
+    if timp: parts.append(("timpani", "Timpani.sfz", timp, 0.55, 0.0))
+    if roll: parts.append(("timp_roll", "TimpaniRolls.sfz", roll, 0.45, 0.0))
+    return parts
+
+
+def wav_at(path, gain=1.0):
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"], check=True, capture_output=True).stdout
+    return np.frombuffer(raw, dtype=np.float32).reshape(-1, 2) * gain
+
+
+def add_at(mix, a, t):
+    i = max(0, int(t * SR))
+    if t < 0:
+        a = a[int(-t * SR):]
+    n = max(len(mix), i + len(a))
+    if len(mix) < n: mix = np.pad(mix, ((0, n - len(mix)), (0, 0)))
+    mix[i:i + len(a)] += a
+    return mix
+
+
+def orch_fx(mix, score, ranges, tm, bpb):
+    """심벌·큰북: 큰 절로 들어갈 때 심벌이 부풀어 오르고, 큰 절 첫 박에 심벌과 큰북."""
+    stg = stages(score)
+    perc = os.path.join(VS, "VSCO 1 Percussion", "varMetal", "Cymbals")
+    roll = os.path.join(perc, "susp", "susp_hit_softmall_roll2_cresc.wav")
+    crash = os.path.join(perc, "clash", "crash_hit_ff_loose.wav")
+    bd = os.path.join(VS, "Percussion", "BDrumNewhit_v6_rr1_Sum.wav")
+    pick = float(score.get("pickup", 0) or 0)
+    for sec, (a, b) in ranges.items():
+        if stg.get(sec) != "full" or sec == "amen":
+            continue
+        t = tm(a + pick)
+        if os.path.exists(roll):
+            r = wav_at(roll, 0.30); mix = add_at(mix, r, t - len(r) / SR)
+        if os.path.exists(crash): mix = add_at(mix, wav_at(crash, 0.35), t)
+        if os.path.exists(bd): mix = add_at(mix, wav_at(bd, 0.6), t)
+    if "amen" in ranges and os.path.exists(crash):              # 마지막 화음
+        mix = add_at(mix, wav_at(crash, 0.25), tm(ranges["amen"][1] - 3))
+    return mix
+
+
 # ───────────────────────── 3. MIDI 쓰기 (박자 120 고정, 시간은 초로 넣는다)
 
 def vlq(n):
@@ -211,6 +359,18 @@ def make(score, kind, work, out):
     plan, lv = (ORCH, LV) if kind == "orch" else (PIANO, PIANO_LV)
     final_end = max(s + d for _, s, d, _, _ in notes)
     mix = None
+    if kind == "orch":                 # 새 편곡(참고 음원 분석) — 옛 ORCH 목록은 쓰지 않는다
+        plan = []
+        for name, sfz, evs, gain, pan in orch_parts(score, notes, ranges, tm, bpb):
+            mid = os.path.join(work, f"orch_{name}.mid"); wav = os.path.join(work, f"orch_{name}.wav")
+            write_midi(mid, evs)
+            a = render(sfz, mid, wav)
+            pan *= 0.6                     # 참고 음원 좌우 넓이(0.5)에 맞춰 덜 벌린다
+            l, r = np.cos((pan + 1) * np.pi / 4), np.sin((pan + 1) * np.pi / 4)
+            a = a * gain; a[:, 0] *= l * 1.414; a[:, 1] *= r * 1.414
+            mix = a if mix is None else add_at(mix, a, 0)
+            print(f"  {name}: {len(a) / SR:.1f}초")
+        mix = orch_fx(mix, score, ranges, tm, bpb)
     for name, sfz, voices, shift, spec, vmul, gain, pan in plan:
         evs = []
         for sec, s, d, v, p in notes:
@@ -243,7 +403,7 @@ def make(score, kind, work, out):
             n = max(len(mix), len(a))
             mix = np.pad(mix, ((0, n - len(mix)), (0, 0))) + np.pad(a, ((0, n - len(a)), (0, 0)))
         print(f"  {name}: {len(a) / SR:.1f}초")
-    if kind == "orch":                  # 팀파니: 마지막 절 시작·끝 마디, 아멘에서 굴림
+    if False:                           # (옛 팀파니 — 새 편곡 orch_parts 가 맡는다)
         tev = []
         v4 = ranges[f"v{score['verses']}"]
         for b, n_, vel in [(v4[0] + score["pickup"], 43, 100), (v4[1] - 4 * bpb + score["pickup"], 43, 95)]:
@@ -257,9 +417,9 @@ def make(score, kind, work, out):
             write_midi(os.path.join(work, "roll.mid"), [(tm(a1 - 3), "on", 43, 70), (tm(a1) + 2.5, "off", 43, 0)])
             a = render("TimpaniRolls.sfz", os.path.join(work, "roll.mid"), os.path.join(work, "roll.wav")) * 0.45
             n = max(len(mix), len(a)); mix = np.pad(mix, ((0, n - len(mix)), (0, 0))) + np.pad(a, ((0, n - len(a)), (0, 0)))
-    wet = 0.34 if kind == "orch" else 0.22
+    wet = 0.40 if kind == "orch" else 0.22
     print("  울림 입히는 중")
-    ir = hall_ir(2.8 if kind == "orch" else 1.8)
+    ir = hall_ir(3.3 if kind == "orch" else 1.8)
     rev = convolve(mix, ir)
     dry = np.pad(mix, ((0, len(rev) - len(mix)), (0, 0)))
     y = dry * (1 - wet) + rev * wet * 0.9
@@ -272,7 +432,8 @@ def make(score, kind, work, out):
     raw = os.path.join(work, f"{kind}_mix.f32")
     y.astype(np.float32).tofile(raw)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "2", "-i", raw,
-                    "-af", "loudnorm=I=-16:TP=-1.5:LRA=14,afade=t=in:d=0.01,areverse,afade=t=in:d=1.5,areverse",
+                    "-af", ("highpass=f=22,bass=g=6:f=45:w=0.7,equalizer=f=170:t=q:w=1:g=-1.5,equalizer=f=480:t=q:w=1:g=-2,equalizer=f=1600:t=q:w=0.9:g=5,treble=g=-3:f=7000," if kind == "orch" else "") +   # 참고 음원처럼 바닥은 두껍게, 위는 부드럽게
+                    "loudnorm=I=-16:TP=-1.5:LRA=14,afade=t=in:d=0.01,areverse,afade=t=in:d=1.5,areverse",
                     "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out], check=True)
     secs = {k: (round(tm(v[0]), 2), round(tm(v[1]), 2)) for k, v in ranges.items()}
     secs["_trim"] = round(cut / SR, 3)          # 파일 앞에서 잘라 낸 빈 시간 — 가사 시간에서 뺀다
