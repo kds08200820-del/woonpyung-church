@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261111m19" />
-  <link rel="stylesheet" href="css/mission.css?v=20261112m4" />
+  <link rel="stylesheet" href="css/mission.css?v=20261113y1" />
 </head>
 <body>
 
@@ -35,52 +35,67 @@
     <p>어려운 이웃을 돌보고, 작은 교회와 선교 현장을 기도와 물질로 섬깁니다.</p>
   </section>
 
-  <!-- ===== 회원 ===== -->
-  <section id="member" class="block">
-    <div class="container">
-      <div class="block-head">
-        <span class="eyebrow2">MEMBERS</span>
-        <h2>구제선교위원회 회원</h2>
-        <p>회기 연도 안에 선교헌금을 한 번 이상 드린 성도는 그 회기의 구제선교위원회 회원입니다.</p>
-      </div>
-      <div class="ms-member" id="msMember">
-        <p class="ms-member-rule">회기는 매년 12월 1일에 시작해 이듬해 11월 30일에 끝납니다.</p>
-      </div>
-    </div>
-  </section>
+  <!-- ===== 회기별 화면: 왼쪽 메뉴에서 회기를 고르면 오른쪽이 그 회기로 바뀐다(틀은 모든 회기가 같다) — js/mission.js ===== -->
+  <div class="container ms-shell">
+    <aside class="ms-side" id="msSide" aria-label="회기 메뉴"></aside>
+    <div class="ms-main">
 
-  <!-- ===== 연간 사역 게시판 ===== -->
-  <section id="ministry" class="block block-alt">
-    <div class="container">
-      <div class="block-head">
-        <span class="eyebrow2">ANNUAL MINISTRY</span>
-        <h2>연간 사역</h2>
-        <p>구제선교위원회가 한 해 동안 섬긴 일을 회기별로 알립니다.</p>
-      </div>
-      <div id="msBoard"><p class="ms-empty">불러오는 중…</p></div>
-    </div>
-  </section>
-
-  <!-- ===== 후원하는 교회와 기관 ===== -->
-  <section id="partners" class="block">
-    <div class="container">
-      <div class="block-head">
-        <span class="eyebrow2">PARTNERS</span>
-        <h2>후원하는 교회와 기관</h2>
-        <p>구제선교위원회가 기도와 물질로 후원하는 곳입니다.</p>
-      </div>
-      <!-- 아래 네 곳은 자료를 못 읽을 때 보이는 기본 목록이다. 읽히면 js/mission.js 가 바꿔 그린다. -->
-      <div id="msPartners">
-        <h3 class="ms-kind">교회</h3>
-        <div class="mission-grid">
-          <div class="mission-card ms-partner"><h4>삽시벧엘교회</h4><p class="m-region">충청도 섬마을 작은 교회</p><p class="m-name">김제현 목사</p><button type="button" class="m-go" data-msmap="충남 보령시 오천면 삽시도3길 97" data-name="삽시벧엘교회">지도 보기 →</button></div>
-          <div class="mission-card ms-partner"><h4>용연교회</h4><p class="m-region">전북 산간 지역 작은 교회</p><p class="m-name">차재용 목사</p><button type="button" class="m-go" data-msmap="동상주천로 181-2" data-name="용연교회">지도 보기 →</button></div>
-          <div class="mission-card ms-partner"><h4>청전교회</h4><p class="m-region">제천 작은 교회</p><p class="m-name">고노엘 목사</p><button type="button" class="m-go" data-msmap="충북 제천시 고암로10길 10" data-name="청전교회">지도 보기 →</button></div>
-          <div class="mission-card ms-partner"><h4>아름다운숲교회</h4><p class="m-region">동탄 도심 속 개척 교회</p><p class="m-name">장정훈 목사</p><a class="m-go" href="https://bfch.or.kr/556" target="_blank" rel="noopener">홈페이지 보기 →</a></div>
+      <section id="member" class="ms-sec">
+        <div class="block-head">
+          <span class="eyebrow2">MEMBERS</span>
+          <h2><span class="ms-y"></span> 구제선교위원회 회원</h2>
+          <p>회기 연도 안에 선교헌금을 한 번 이상 드린 성도는 그 회기의 구제선교위원회 회원입니다.</p>
         </div>
-      </div>
+        <div class="ms-member" id="msMember">
+          <p class="ms-member-rule">회기는 매년 12월 1일에 시작해 이듬해 11월 30일에 끝납니다.</p>
+        </div>
+      </section>
+
+      <section id="officers" class="ms-sec" hidden>
+        <div class="block-head">
+          <span class="eyebrow2">OFFICERS</span>
+          <h2><span class="ms-y"></span> 임원</h2>
+        </div>
+        <div id="msOfficers"></div>
+      </section>
+
+      <section id="schedule" class="ms-sec" hidden>
+        <div class="block-head">
+          <span class="eyebrow2">SCHEDULE</span>
+          <h2><span class="ms-y"></span> 일정</h2>
+        </div>
+        <div id="msEvents"></div>
+      </section>
+
+      <section id="ministry" class="ms-sec">
+        <div class="block-head">
+          <span class="eyebrow2">ANNUAL MINISTRY</span>
+          <h2><span class="ms-y"></span> 활동과 동향</h2>
+          <p>구제선교위원회가 한 해 동안 섬긴 일과 후원하는 곳의 소식을 회기별로 알립니다.</p>
+        </div>
+        <div id="msBoard"><p class="ms-empty">불러오는 중…</p></div>
+      </section>
+
+      <section id="partners" class="ms-sec">
+        <div class="block-head">
+          <span class="eyebrow2">PARTNERS</span>
+          <h2>후원하는 교회와 기관</h2>
+          <p>구제선교위원회가 기도와 물질로 후원하는 곳입니다.</p>
+        </div>
+        <!-- 아래 네 곳은 자료를 못 읽을 때 보이는 기본 목록이다. 읽히면 js/mission.js 가 바꿔 그린다. -->
+        <div id="msPartners">
+          <h3 class="ms-kind">교회</h3>
+          <div class="mission-grid">
+            <div class="mission-card ms-partner"><h4>삽시벧엘교회</h4><p class="m-region">충청도 섬마을 작은 교회</p><p class="m-name">김제현 목사</p><button type="button" class="m-go" data-msmap="충남 보령시 오천면 삽시도3길 97" data-name="삽시벧엘교회">지도 보기 →</button></div>
+            <div class="mission-card ms-partner"><h4>용연교회</h4><p class="m-region">전북 산간 지역 작은 교회</p><p class="m-name">차재용 목사</p><button type="button" class="m-go" data-msmap="동상주천로 181-2" data-name="용연교회">지도 보기 →</button></div>
+            <div class="mission-card ms-partner"><h4>청전교회</h4><p class="m-region">제천 작은 교회</p><p class="m-name">고노엘 목사</p><button type="button" class="m-go" data-msmap="충북 제천시 고암로10길 10" data-name="청전교회">지도 보기 →</button></div>
+            <div class="mission-card ms-partner"><h4>아름다운숲교회</h4><p class="m-region">동탄 도심 속 개척 교회</p><p class="m-name">장정훈 목사</p><a class="m-go" href="https://bfch.or.kr/556" target="_blank" rel="noopener">홈페이지 보기 →</a></div>
+          </div>
+        </div>
+      </section>
+
     </div>
-  </section>
+  </div>
 
   <!-- ===== 이동 유도 ===== -->
   <section class="block block-alt">
@@ -113,6 +128,7 @@
   <script src="js/layout.js?v=20261111m9"></script>
   <script src="js/counsel.js?v=20260906fix"></script>
   <script src="js/main.js?v=20261111m2"></script>
-  <script src="js/mission.js?v=20261112ms5"></script>
+  <script src="js/mission-ledger.js?v=20261113y1"></script>
+  <script src="js/mission.js?v=20261113y1"></script>
 </body>
 </html>

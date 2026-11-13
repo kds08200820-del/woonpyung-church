@@ -93,3 +93,89 @@ rect.ms-ch-out, i.ms-ch-out { fill: #B9B7B2; background: #B9B7B2; }
   .ms-member { padding: 24px 20px; }
   .ms-form-row { grid-template-columns: 1fr; }
 }
+
+/* ── 회기별 화면: 왼쪽 메뉴 + 오른쪽 내용 (2026-11-13) ── */
+.ms-shell { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 56px; padding-top: 64px; padding-bottom: 84px; align-items: start; }
+.ms-side { position: sticky; top: 96px; }
+.ms-side-h { font-size: .74rem; letter-spacing: .18em; color: var(--muted); margin: 0 0 10px; }
+.ms-side-years, .ms-side-links { list-style: none; margin: 0 0 30px; padding: 0; border-top: 1px solid var(--line); }
+.ms-side-years li, .ms-side-links li { border-bottom: 1px solid var(--line); }
+.ms-side-years button { display: flex; justify-content: space-between; align-items: baseline; width: 100%; padding: 12px 10px; border: 0; background: none; font-family: inherit; font-size: .98rem; color: var(--ink-soft); cursor: pointer; text-align: left; }
+.ms-side-years button:hover { background: var(--paper-alt); }
+.ms-side-years button.on { background: var(--accent); color: #fff; font-weight: 600; }
+.ms-side-years small { font-size: .72rem; opacity: .75; }
+.ms-side-links a { display: block; padding: 9px 10px; font-size: .9rem; color: var(--ink-soft); }
+.ms-side-links a:hover { color: var(--ink); background: var(--paper-alt); }
+.ms-sec { padding: 0 0 72px; scroll-margin-top: 90px; }
+.ms-sec[hidden] { display: none !important; }
+.ms-sec:last-child { padding-bottom: 0; }
+.ms-main .mission-grid { grid-template-columns: repeat(3, 1fr); }
+.ms-report { scroll-margin-top: 90px; }
+
+/* 임원 */
+.ms-officers { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.ms-officers li { display: grid; grid-template-columns: 6.5em 8em 1fr auto; gap: 12px; align-items: baseline; padding: 13px 4px; border-bottom: 1px solid var(--line); }
+.ms-off-role { font-size: .86rem; color: var(--muted); }
+.ms-off-name { font-weight: 600; }
+.ms-off-does { font-size: .86rem; color: var(--ink-soft); font-weight: 300; }
+.ms-off-form { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.ms-off-find { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.ms-found { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.ms-found button { border: 1px solid var(--line); background: #fff; padding: 7px 12px; font-family: inherit; font-size: .9rem; cursor: pointer; border-radius: 2px; }
+.ms-found button:hover { border-color: var(--accent); }
+.ms-found small { color: var(--muted); margin-left: 4px; }
+
+/* 일정 */
+.ms-events { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.ms-events li { display: grid; grid-template-columns: 9.5em 1fr auto; gap: 14px; align-items: baseline; padding: 13px 4px; border-bottom: 1px solid var(--line); }
+.ms-events li.is-hidden { background: var(--paper-alt); }
+.ms-ev-date { font-size: .88rem; color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ms-ev-body b { font-weight: 600; }
+.ms-ev-place, .ms-ev-note { display: block; font-size: .86rem; color: var(--ink-soft); font-weight: 300; margin-top: 2px; }
+.ms-ev-tools { white-space: nowrap; }
+.ms-post-kind { display: inline-block; font-size: .72rem; font-weight: 400; color: var(--ink-soft); border: 1px solid var(--line); padding: 1px 7px; margin-right: 9px; border-radius: 2px; vertical-align: 2px; }
+
+/* 회계 장부 */
+.ms-btn-s { padding: 8px 16px; font-size: .86rem; }
+.ms-book-bar { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; font-size: .95rem; font-weight: 600; }
+.modal-box.ms-modal-wide { max-width: 1040px; width: 96vw; max-height: 92vh; overflow-y: auto; }
+.ms-book-top { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin: 14px 0 10px; }
+.ms-book-open { display: flex; align-items: center; gap: 8px; font-size: .88rem; color: var(--ink-soft); }
+.ms-book-open input { width: 9.5em; text-align: right; }
+.ms-book-file { cursor: pointer; }
+.ms-book-add { display: grid; grid-template-columns: 9.5em 5em minmax(8em, 1.1fr) minmax(7em, 1fr) minmax(7em, 1fr) 7.5em auto auto; gap: 6px; align-items: center; margin: 16px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.ms-book-add input, .ms-book-add select, .ms-book-open input, .ms-pcat { font-family: inherit; font-size: .88rem; color: var(--ink); padding: 8px 9px; border: 1px solid var(--line); border-radius: 2px; background: #fff; min-width: 0; }
+.ms-book-add #mbAmt { text-align: right; }
+.ms-book-sum { font-size: .86rem; color: var(--ink-soft); margin: 8px 0; }
+.ms-book-scroll { max-height: 46vh; overflow: auto; border: 1px solid var(--line); }
+.ms-book-t { font-size: .82rem; }
+.ms-book-t thead th { position: sticky; top: 0; background: #fff; }
+.ms-book-t th, .ms-book-t td { text-align: left; }
+.ms-book-t td:nth-child(n+5), .ms-book-t th:nth-child(n+5) { text-align: right; }
+.ms-book-t td:nth-child(3), .ms-book-t td:nth-child(4) { white-space: normal; min-width: 7em; }
+.ms-book-t tr.is-out td { color: var(--muted); text-decoration: line-through; }
+.ms-book-t tr.is-out td:last-child, .ms-book-t tr.is-out td small { text-decoration: none; }
+.ms-preview { margin: 14px 0; padding: 16px; border: 1px solid var(--accent); }
+.ms-preview h4 { margin: 0 0 4px; }
+.ms-pcat { width: 13em; padding: 5px 7px; font-size: .82rem; }
+.ms-pcat.is-none { border-color: #A33A2A; }
+.ms-pcat + small { margin-left: 6px; color: var(--muted); }
+.ms-preview-btns { display: flex; gap: 14px; align-items: center; margin-top: 12px; }
+#mbAddCancel[hidden] { display: none !important; }
+
+@media (max-width: 900px) {
+  .ms-shell { grid-template-columns: 1fr; gap: 28px; padding-top: 36px; }
+  .ms-side { position: static; }
+  .ms-side-years, .ms-side-links { display: flex; flex-wrap: wrap; gap: 6px; border-top: 0; margin-bottom: 16px; }
+  .ms-side-years li, .ms-side-links li { border: 1px solid var(--line); }
+  .ms-side-years button { padding: 8px 14px; gap: 8px; }
+  .ms-side-links a { padding: 7px 12px; }
+  .ms-main .mission-grid { grid-template-columns: repeat(2, 1fr); }
+  .ms-book-add { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .ms-main .mission-grid { grid-template-columns: 1fr; }
+  .ms-officers li { grid-template-columns: 5.5em 1fr; }
+  .ms-off-does { grid-column: 1 / -1; }
+  .ms-events li { grid-template-columns: 1fr; gap: 2px; }
+}
