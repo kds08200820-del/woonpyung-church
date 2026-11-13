@@ -19,6 +19,7 @@ SRC = os.environ.get("HYMN_SRC", os.path.join(os.path.expanduser("~"), "OneDrive
 AUDIVERIS = os.path.join(HOME, "audiveris", "Audiveris", "Audiveris.exe")
 STATUS = os.path.join(HOME, "status.json")
 MODEL = os.environ.get("HYMN_MODEL", "opus")
+ENGINE = "organ3"          # 소리 판: 2026-11-13 오르간 주도 편곡(arrange.py). 바뀌면 이미 만든 장도 다시 굽는다
 
 
 def log(msg):
@@ -244,6 +245,7 @@ def do_one(no, st):
                match={k: v[0] for k, v in res.items()}, off_beats={k: v[1] for k, v in res.items()},
                seconds=secs["amen"][1] if "amen" in secs else max(v[1] for k2, v in secs.items() if not k2.startswith("_")))
     rec["agree"] = agr
+    rec["engine"] = ENGINE
     lp = write_lyrics(no, score, trims)
     rec["lyrics"] = not lp
     if lp: rec["lyrics_problems"] = lp[:4]
@@ -288,6 +290,20 @@ def main():
             log(f"올리기 확인 실패: {e}")
         st = load_status()
         nos = o.nos or list(range(1, 646))
+        if not o.nos:                          # 소리 판이 바뀐 장: 악보 자료는 그대로 두고 다시 굽고 올린다(장당 1분)
+            for no in sorted(int(k) for k, v in st.items() if v.get("state") in ("완료", "확인 필요") and v.get("engine") != ENGINE
+                             and os.path.exists(os.path.join(HOME, "scores", f"{int(k):03d}.json"))):
+                now = dt.datetime.now().time()
+                if dt.time(0, 30) <= now < dt.time(7, 30):
+                    log("새벽에는 쉽니다(다시 굽기)."); return
+                try:
+                    do_one(no, st)
+                    if st.get(str(no), {}).get("state") == "완료" and up_ok[0]:
+                        import upload
+                        upload.run([no], log=log)
+                except Exception as e:
+                    log(f"{no}장 다시 굽기 실패: {e}")
+                st = load_status()
         for no in nos:
             if not o.redo and st.get(str(no), {}).get("state") in ("완료", "확인 필요", "악보 없음"):
                 continue

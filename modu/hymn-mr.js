@@ -139,6 +139,11 @@
         audio.setAttribute('controlslist', 'nodownload'); audio.oncontextmenu = function () { return false; };
         audio.style.cssText = 'display:block;width:100%;height:40px';
         msg.replaceWith(audio);
+        // 음원 출처(이용 조건: CC BY-SA·CC BY 는 출처를 밝혀야 한다)
+        var cr = doc.createElement('div');
+        cr.style.cssText = 'padding:3px 10px 7px;font-size:10px;line-height:1.4;color:#8a8a8a';
+        cr.textContent = '오르간 Lars Palo · Piteå MHS (CC BY-SA) · 오케스트라 Virtual Playing Orchestra · 피아노 Salamander Grand Piano (CC BY) · 울림 OpenAIR, University of York (CC BY)';
+        audio.after(cr);
         audio.addEventListener('play', function () { if (!raf && rows.length) raf = requestAnimationFrame(tick); });
         audio.addEventListener('seeked', function () { shown = -2; draw(); });
         audio.addEventListener('timeupdate', function () { draw(); });   // 화면이 뒤에 있어 그리기 틀이 멈춰도 1초에 4번은 맞춘다
