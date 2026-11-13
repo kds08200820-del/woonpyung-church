@@ -1308,6 +1308,7 @@ console.log('[affairs.js] v20261023th1');
         kpi({ id: 'ttsLogCard', label: 'AI 음성 생성', numId: 'ttsLogNum', sub: 'QT 낭독 저장본 · 눌러서 열람·재생' }) +
         kpi({ id: 'bibleAudioCard', label: '성경 음원 관리', numId: 'bibleAudioNum', sub: '나의 성경읽기 낭독 · 눌러서 관리' }) +
         kpi({ id: 'bookAudioCard', label: '오디오북 음원 관리', numId: 'bookAudioNum', subId: 'bookAudioSub', sub: '레위기에서 만난 예수 그리스도 · 눌러서 관리' }) +
+        kpi({ id: 'hymnMrCard', label: '새찬송가 반주', numId: 'hymnMrNum', subId: 'hymnMrSub', sub: '악보로 만든 반주 · 눌러서 듣기' }) +
         kpi({ id: 'wpJobsCard', label: '주일 자료 생성', numId: 'wpJobsNum', subId: 'wpJobsSub', sub: '눌러서 생성 내역 보기' }) +
         kpi({ id: 'appLicCard', label: '설교자의 성경 설치', numId: 'appLicNum', subId: 'appLicSub', sub: '인증 코드·설치된 PC · 눌러서 관리' }) +
         kpi({ id: 'tempPwCard', label: '임시 비밀번호', num: '발급', sub: '비밀번호 잊은 이메일 회원 · 담임목사 전용' }) +
@@ -1358,6 +1359,7 @@ console.log('[affairs.js] v20261023th1');
       loadVideoMgr(panel);
       loadBibleAudio(panel);
       loadBookAudio(panel);
+      loadHymnMr(panel);
       loadBookProgress(panel);
       loadWorshipJobs(panel);
       loadAppForms(panel);
@@ -1985,6 +1987,67 @@ console.log('[affairs.js] v20261023th1');
       return fetch(R2 + ep, opt).then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (j) { j._http = r.status; return j; });
       });
+    }
+
+    // ── 새찬송가 반주 카드(2026-11-13 담임목사: "1장부터 만들고 만든 것은 즉시 들을 수 있도록 따로 관리") ──
+    //   교회 PC 가 한 장씩 만들어 올리는 대로 이 목록에 나온다(저장소 /hymn-mr-have — 번호만, 소리는 로그인 열쇠로).
+    function hymnMrList() {
+      var R2 = (window.R2_UPLOAD_URL || 'https://church-files.kds08200820.workers.dev').replace(/\/$/, '');
+      return fetch(R2 + '/hymn-mr-have?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : { nos: [] }; })
+        .then(function (j) { return (j.nos || []).map(Number).filter(function (n) { return n >= 1 && n <= 645; }).sort(function (a, b) { return a - b; }); });
+    }
+    function loadHymnMr(panel) {
+      var numEl = panel.querySelector('#hymnMrNum'), subEl = panel.querySelector('#hymnMrSub'), card = panel.querySelector('#hymnMrCard');
+      if (!numEl || !card) return;
+      hymnMrList().then(function (nos) {
+        numEl.textContent = nos.length + '장';
+        var run = 0; while (nos.indexOf(run + 1) >= 0) run++;          // 1장부터 이어서 몇 장까지 됐는지
+        if (subEl) subEl.textContent = nos.length ? (run ? '1~' + run + '장 완료' : '645장 중') + ' · 눌러서 듣기' : '아직 올라온 반주가 없습니다';
+        card.onclick = function () { hymnMrModal(panel); };
+      }).catch(function () { numEl.textContent = '–'; card.onclick = function () { hymnMrModal(panel); }; });
+    }
+    function hymnMrModal(panel) {
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(23,17,12,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+      ov.innerHTML = '<div style="background:#fff;border-radius:2px;max-width:760px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px">' +
+        '<h3 style="margin:0;color:var(--accent,#111111)">새찬송가 반주 <span id="hm_cnt" style="font-size:.86rem;color:#A7A6A3;font-weight:600"></span></h3>' +
+        '<span><button class="btn btn-line" id="hm_reload" style="padding:3px 11px">새로 고침</button> <button class="btn btn-line" id="hm_close" style="padding:3px 11px">닫기</button></span></div>' +
+        '<p style="margin:0 0 8px;font-size:.76rem;color:#A7A6A3">교회 PC 가 악보로 1장부터 차례로 만들어 올립니다(오르간·오케스트라 / 그랜드피아노, 전주 4마디 + 전곡 + 아멘, 노래방 가사). 올라온 장은 바로 여기와 모두의 찬송·오늘의 예배·발표자 모드에서 들을 수 있습니다. 로그인한 성도만 들을 수 있습니다.</p>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input id="hm_q" type="search" placeholder="장 번호나 제목" style="flex:1;padding:7px 10px;border:1px solid #D9D8D4;font:inherit">' +
+        '<label style="font-size:.8rem;color:#73726F;white-space:nowrap"><input type="checkbox" id="hm_new"> 최근 올라온 순</label></div>' +
+        '<div id="hm_body" style="max-height:62vh;overflow:auto"></div></div>';
+      document.body.appendChild(ov);
+      var close = pushBackClose(function () { if (window.HymnMR) window.HymnMR.stop(); ov.remove(); });
+      ov.querySelector('#hm_close').onclick = close;
+      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+      var nos = [], body = ov.querySelector('#hm_body');
+      function draw() {
+        var q = (ov.querySelector('#hm_q').value || '').trim(), list = nos.slice();
+        if (ov.querySelector('#hm_new').checked) list.reverse();
+        if (q) list = list.filter(function (n) { return String(n).indexOf(q) === 0 || hymnTitle(n).indexOf(q) >= 0; });
+        ov.querySelector('#hm_cnt').textContent = nos.length + '장 / 645장';
+        body.innerHTML = list.length ? list.map(function (n) {
+          return '<div style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #EFEEEB">' +
+            '<b style="min-width:3.2em">' + n + '장</b><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(hymnTitle(n)) + '</span>' +
+            '<button type="button" class="btn btn-line" data-hm="' + n + '" style="padding:3px 12px">반주 듣기</button></div>';
+        }).join('') : '<div style="padding:16px 2px;color:#A7A6A3;font-size:.86rem">' + (nos.length ? '찾는 장이 없습니다.' : '아직 올라온 반주가 없습니다.') + '</div>';
+      }
+      body.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-hm]'); if (!b || !window.HymnMR) return;
+        var n = +b.getAttribute('data-hm');
+        if (window.HymnMR.playing() === n) { window.HymnMR.stop(); return; }
+        window.HymnMR.play(n, b, { bottom: 16 });
+      });
+      ov.querySelector('#hm_q').oninput = draw;
+      ov.querySelector('#hm_new').onchange = draw;
+      function load() {
+        body.innerHTML = '<div style="padding:16px 2px;color:#A7A6A3;font-size:.86rem">불러오는 중…</div>';
+        hymnMrList().then(function (x) { nos = x; draw(); if (panel) loadHymnMr(panel); })
+          .catch(function () { body.innerHTML = '<div style="padding:16px 2px;color:#A33A2A">목록을 불러오지 못했습니다.</div>'; });
+      }
+      ov.querySelector('#hm_reload').onclick = load;
+      load();
     }
 
     function loadBookAudio(panel) {
