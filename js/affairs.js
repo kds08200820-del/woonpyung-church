@@ -2007,38 +2007,102 @@ console.log('[affairs.js] v20261023th1');
       }).catch(function () { numEl.textContent = '–'; card.onclick = function () { hymnMrModal(panel); }; });
     }
     function hymnMrModal(panel) {
+      var R2 = (window.R2_UPLOAD_URL || 'https://church-files.kds08200820.workers.dev').replace(/\/$/, '');
+      var KIND = { orch: '오케스트라', piano: '피아노' };
       var ov = document.createElement('div');
       ov.style.cssText = 'position:fixed;inset:0;background:rgba(23,17,12,.5);z-index:9700;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
-      ov.innerHTML = '<div style="background:#fff;border-radius:2px;max-width:760px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+      ov.innerHTML = '<div style="background:#fff;border-radius:2px;max-width:820px;width:100%;padding:20px 22px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px">' +
         '<h3 style="margin:0;color:var(--accent,#111111)">새찬송가 반주 <span id="hm_cnt" style="font-size:.86rem;color:#A7A6A3;font-weight:600"></span></h3>' +
         '<span><button class="btn btn-line" id="hm_reload" style="padding:3px 11px">새로 고침</button> <button class="btn btn-line" id="hm_close" style="padding:3px 11px">닫기</button></span></div>' +
-        '<p style="margin:0 0 8px;font-size:.76rem;color:#A7A6A3">교회 PC 가 악보로 1장부터 차례로 만들어 올립니다(오르간·오케스트라 / 그랜드피아노, 전주 4마디 + 전곡 + 아멘, 노래방 가사). 올라온 장은 바로 여기와 모두의 찬송·오늘의 예배·발표자 모드에서 들을 수 있습니다. 로그인한 성도만 들을 수 있습니다.</p>' +
-        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px"><input id="hm_q" type="search" placeholder="장 번호나 제목" style="flex:1;padding:7px 10px;border:1px solid #D9D8D4;font:inherit">' +
+        '<p style="margin:0 0 8px;font-size:.76rem;color:#A7A6A3">교회 PC 가 악보로 1장부터 차례로 만들어 올립니다(오르간·오케스트라 / 그랜드피아노, 전주 4마디 + 전곡 + 아멘, 노래방 가사). 올라온 장은 바로 여기와 모두의 찬송·오늘의 예배·발표자 모드에서 들을 수 있습니다. 로그인한 성도만 들을 수 있습니다. 받은 파일은 교회 예배에만 써 주세요(새찬송가 악보·편곡은 한국찬송가공회 저작물).</p>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px"><input id="hm_q" type="search" placeholder="장 번호나 제목" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid #D9D8D4;font:inherit">' +
         '<label style="font-size:.8rem;color:#73726F;white-space:nowrap"><input type="checkbox" id="hm_new"> 최근 올라온 순</label></div>' +
-        '<div id="hm_body" style="max-height:62vh;overflow:auto"></div></div>';
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;padding:8px 10px;background:#F6F5F2;font-size:.82rem">' +
+        '<span>받을 판</span><select id="hm_kind" style="padding:4px 6px;font:inherit"><option value="orch">오케스트라</option><option value="piano">피아노</option><option value="both">둘 다</option></select>' +
+        '<span style="margin-left:6px">일괄 범위</span><input id="hm_from" type="number" min="1" max="645" placeholder="부터" style="width:70px;padding:4px 6px;font:inherit"> ~ <input id="hm_to" type="number" min="1" max="645" placeholder="까지" style="width:70px;padding:4px 6px;font:inherit">' +
+        '<button class="btn" id="hm_zip" style="padding:4px 12px">일괄 받기(zip)</button><span id="hm_zmsg" style="color:#73726F"></span></div>' +
+        '<div id="hm_body" style="max-height:58vh;overflow:auto"></div></div>';
       document.body.appendChild(ov);
+      var busy = false;
       var close = pushBackClose(function () { if (window.HymnMR) window.HymnMR.stop(); ov.remove(); });
-      ov.querySelector('#hm_close').onclick = close;
-      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
-      var nos = [], body = ov.querySelector('#hm_body');
+      ov.querySelector('#hm_close').onclick = function () { if (busy && !confirm('일괄 받기가 진행 중입니다. 닫을까요?')) return; close(); };
+      ov.addEventListener('click', function (e) { if (e.target === ov && !busy) close(); });
+      var nos = [], shown = [], body = ov.querySelector('#hm_body');
       function draw() {
         var q = (ov.querySelector('#hm_q').value || '').trim(), list = nos.slice();
         if (ov.querySelector('#hm_new').checked) list.reverse();
         if (q) list = list.filter(function (n) { return String(n).indexOf(q) === 0 || hymnTitle(n).indexOf(q) >= 0; });
+        shown = list;
         ov.querySelector('#hm_cnt').textContent = nos.length + '장 / 645장';
         body.innerHTML = list.length ? list.map(function (n) {
-          return '<div style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #EFEEEB">' +
+          return '<div style="display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid #EFEEEB">' +
             '<b style="min-width:3.2em">' + n + '장</b><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(hymnTitle(n)) + '</span>' +
-            '<button type="button" class="btn btn-line" data-hm="' + n + '" style="padding:3px 12px">반주 듣기</button></div>';
+            '<button type="button" class="btn btn-line" data-hm="' + n + '" data-idle="반주 듣기" style="padding:3px 12px">반주 듣기</button>' +
+            '<button type="button" class="btn btn-line" data-dl="' + n + '" style="padding:3px 12px">받기</button></div>';
         }).join('') : '<div style="padding:16px 2px;color:#A7A6A3;font-size:.86rem">' + (nos.length ? '찾는 장이 없습니다.' : '아직 올라온 반주가 없습니다.') + '</div>';
       }
+      // 재생 주소(로그인 열쇠) — 받기도 같은 주소로
+      function urls(n) {
+        var s = sess();
+        if (!s || !s.token) return Promise.reject(new Error('로그인이 필요합니다.'));
+        return fetch(R2 + '/hymn-mr-url', { method: 'POST', headers: { Authorization: 'Bearer ' + s.token, 'Content-Type': 'application/json' }, body: JSON.stringify({ no: n }) })
+          .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ('열쇠 발급 실패 ' + r.status)); return j.files || {}; }); });
+      }
+      function fname(n, k) { return '새찬송가_' + String(n).padStart(3, '0') + '장_' + (hymnTitle(n) || '').replace(/[\\/:*?"<>|]/g, '') + '_' + KIND[k] + '.m4a'; }
+      function kinds() { var v = ov.querySelector('#hm_kind').value; return v === 'both' ? ['orch', 'piano'] : [v]; }
+      function save(blob, name) {
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+      }
+      function getBlob(u) { return fetch(u).then(function (r) { if (!r.ok) throw new Error('파일 받기 실패 ' + r.status); return r.blob(); }); }
       body.addEventListener('click', function (e) {
+        var d = e.target.closest('[data-dl]');
+        if (d) {
+          var n = +d.getAttribute('data-dl'), ks = kinds(); d.disabled = true; d.textContent = '받는 중…';
+          urls(n).then(function (f) {
+            return ks.reduce(function (p, k) { return p.then(function () { if (!f[k]) return; return getBlob(f[k]).then(function (b) { save(b, fname(n, k)); }); }); }, Promise.resolve());
+          }).then(function () { d.textContent = '받기'; }).catch(function (err) { alert(err.message); d.textContent = '받기'; })
+            .then(function () { d.disabled = false; });
+          return;
+        }
         var b = e.target.closest('[data-hm]'); if (!b || !window.HymnMR) return;
-        var n = +b.getAttribute('data-hm');
-        if (window.HymnMR.playing() === n) { window.HymnMR.stop(); return; }
-        window.HymnMR.play(n, b, { bottom: 16 });
+        var m = +b.getAttribute('data-hm');
+        if (window.HymnMR.playing() === m) { window.HymnMR.stop(); return; }
+        window.HymnMR.play(m, b, { bottom: 16 });
       });
+      // 일괄 받기: 지금 보이는 목록(찾기·범위)을 zip 하나로. 브라우저 메모리를 생각해 한 번에 100개까지
+      ov.querySelector('#hm_zip').onclick = function () {
+        if (busy) return;
+        var f = +ov.querySelector('#hm_from').value || 0, t = +ov.querySelector('#hm_to').value || 0;
+        var list = shown.filter(function (n) { return (!f || n >= f) && (!t || n <= t); }).sort(function (a, b) { return a - b; });
+        var ks = kinds(), total = list.length * ks.length, msg = ov.querySelector('#hm_zmsg');
+        if (!list.length) { msg.textContent = '받을 장이 없습니다.'; return; }
+        if (total > 100) { msg.textContent = '한 번에 100개까지 받을 수 있습니다(지금 ' + total + '개). 범위를 줄여 주세요.'; return; }
+        busy = true; var files = [], done = 0;
+        msg.textContent = '0 / ' + total + ' 받는 중…';
+        list.reduce(function (p, n) {
+          return p.then(function () {
+            return urls(n).then(function (fu) {
+              return ks.reduce(function (q, k) {
+                return q.then(function () {
+                  if (!fu[k]) return;
+                  return getBlob(fu[k]).then(function (b) { return b.arrayBuffer(); }).then(function (ab) {
+                    files.push({ name: fname(n, k), data: new Uint8Array(ab) }); done++; msg.textContent = done + ' / ' + total + ' 받는 중…';
+                  });
+                });
+              }, Promise.resolve());
+            });
+          });
+        }, Promise.resolve()).then(function () {
+          msg.textContent = '압축 파일 만드는 중…';
+          var name = '새찬송가_반주_' + list[0] + '-' + list[list.length - 1] + '장_' + (ks.length > 1 ? '오케스트라_피아노' : KIND[ks[0]]) + '.zip';
+          save(storeZip(files), name);
+          msg.textContent = files.length + '개를 받았습니다.';
+        }).catch(function (err) { msg.textContent = '실패: ' + err.message; })
+          .then(function () { busy = false; });
+      };
       ov.querySelector('#hm_q').oninput = draw;
       ov.querySelector('#hm_new').onchange = draw;
       function load() {
@@ -2048,6 +2112,31 @@ console.log('[affairs.js] v20261023th1');
       }
       ov.querySelector('#hm_reload').onclick = load;
       load();
+    }
+    // 압축하지 않는(저장만 하는) zip — m4a 는 이미 압축된 소리라 그대로 담는다. 파일 이름은 UTF-8.
+    function storeZip(files) {
+      var T = storeZip.T || (storeZip.T = (function () { var t = new Uint32Array(256); for (var i = 0; i < 256; i++) { var c = i; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[i] = c >>> 0; } return t; })());
+      function crc(d) { var c = 0xFFFFFFFF; for (var i = 0; i < d.length; i++) c = T[(c ^ d[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+      var enc = new TextEncoder(), parts = [], central = [], off = 0;
+      var now = new Date(), dt = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)), dd = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate());
+      files.forEach(function (f) {
+        var nm = enc.encode(f.name), c = crc(f.data), sz = f.data.length;
+        var h = new DataView(new ArrayBuffer(30));
+        h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+        h.setUint16(10, dt, true); h.setUint16(12, dd, true); h.setUint32(14, c, true); h.setUint32(18, sz, true); h.setUint32(22, sz, true);
+        h.setUint16(26, nm.length, true); h.setUint16(28, 0, true);
+        parts.push(h.buffer, nm, f.data);
+        var ch = new DataView(new ArrayBuffer(46));
+        ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+        ch.setUint16(12, dt, true); ch.setUint16(14, dd, true); ch.setUint32(16, c, true); ch.setUint32(20, sz, true); ch.setUint32(24, sz, true);
+        ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+        central.push(ch.buffer, nm);
+        off += 30 + nm.length + sz;
+      });
+      var csz = central.reduce(function (a, b) { return a + (b.byteLength || b.length); }, 0);
+      var e = new DataView(new ArrayBuffer(22));
+      e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csz, true); e.setUint32(16, off, true);
+      return new Blob(parts.concat(central, [e.buffer]), { type: 'application/zip' });
     }
 
     function loadBookAudio(panel) {
@@ -9505,7 +9594,7 @@ console.log('[affairs.js] v20261023th1');
       /* 새찬송가 반주 — 악보 제목 옆 [반주] 를 누르면 오른쪽 아래 재생 창(이 창 안). 재생기는 이 창을 연 관리 화면의 HymnMR (2026-11-13) */
       'document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("[data-mr]");if(!t)return;e.preventDefault();e.stopPropagation();' +
         'var H=null;try{H=window.opener&&window.opener.HymnMR;}catch(x){}if(!H){alert("관리 화면이 닫혀 반주를 틀 수 없습니다.");return;}' +
-        'var no=+t.getAttribute("data-mr");if(H.playing()===no){H.stop();return;}H.play(no,t,{doc:document,bottom:56});},true);' +
+        'var no=+t.getAttribute("data-mr");if(H.playing()===no){H.stop();return;}H.play(no,t,{doc:document,bottom:56,big:true});},true);' +
       /* 인쇄 */
       'document.getElementById("print").onclick=function(){window.print()};' +
       '})();';

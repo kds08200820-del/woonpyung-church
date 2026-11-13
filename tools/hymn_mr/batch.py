@@ -293,13 +293,23 @@ def main():
         st = load_status()
         nos = o.nos or list(range(1, 646))
         if not o.nos:                          # 소리 판이 바뀐 장: 악보 자료는 그대로 두고 다시 굽고 올린다(장당 1분)
-            for no in sorted(int(k) for k, v in st.items() if v.get("state") in ("완료", "확인 필요") and v.get("engine") != ENGINE
+            for no in sorted(int(k) for k, v in st.items() if v.get("state") in ("완료", "확인 필요")
+                             and (v.get("engine") != ENGINE or (not v.get("lyrics") and not v.get("lyrics_tried")))
                              and os.path.exists(os.path.join(HOME, "scores", f"{int(k):03d}.json"))):
                 now = dt.datetime.now().time()
                 if dt.time(0, 30) <= now < dt.time(7, 30):
                     log("새벽에는 쉽니다(다시 굽기)."); return
                 try:
-                    do_one(no, st)
+                    sc = json.load(open(os.path.join(HOME, "scores", f"{no:03d}.json"), encoding="utf-8"))
+                    if not sc.get("lyrics"):          # 가사 없이 만든 장: 가사부터 붙인다(lyrics.add 가 다시 굽기까지 한다)
+                        import lyrics
+                        lyrics.add(no, log=log)
+                        st2 = load_status(); st2.setdefault(str(no), {})["lyrics_tried"] = True; save_status(st2)
+                    else:
+                        do_one(no, st)
+                    st = load_status()
+                    if not st.get(str(no), {}).get("lyrics"):      # 가사가 끝내 안 맞으면 매번 되풀이하지 않게
+                        st.setdefault(str(no), {})["lyrics_tried"] = True; save_status(st)
                     if st.get(str(no), {}).get("state") == "완료" and up_ok[0]:
                         import upload
                         upload.run([no], log=log)

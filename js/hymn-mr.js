@@ -3,7 +3,7 @@
    로그인한 성도가 누르면 저장소 워커가 6시간짜리 재생 주소를 준다(/hymn-mr-url). 공개 주소는 없다.
 
    HymnMR.has(장)            반주가 있는 장인지 (목록은 처음 한 번 /hymn-mr-have 에서 받는다)
-   HymnMR.play(장, 단추, opt)  화면 구석에 재생 창 — opt.bottom(아래 여백), opt.doc(다른 창의 문서)
+   HymnMR.play(장, 단추, opt)  화면 구석에 재생 창 — opt.bottom(아래 여백), opt.doc(다른 창의 문서), opt.big(가사를 처음부터 크게 — 예배 화면)
    HymnMR.toggle / stop / sync(장, 단추)  — 보는 장이 바뀌면 sync: 다른 장은 끄고, 단추는 반주가 있는 장에서만 보인다
    노래방 가사(2026-11-13 담임목사): 반주와 같은 시간표(NNN_lyrics.json)로 지금 줄을 음절마다 밝히고, 다음 줄을 아래에 보인다. 「크게」는 화면 가운데 큰 글씨. */
 (function () {
@@ -33,7 +33,7 @@
       return s.access_token;
     } catch (e) { return null; }
   }
-  function label(b, on) { if (!b) return; b.textContent = on ? '반주 끄기' : '반주'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  function label(b, on) { if (!b) return; b.textContent = on ? '반주 끄기' : (b.getAttribute('data-idle') || '반주'); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
   function stop() {
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     if (audio) { try { audio.pause(); } catch (e) {} audio = null; }
@@ -106,6 +106,7 @@
       if (d.amen && d.amen.length) rows.push({ lab: '아멘', syl: d.amen, t0: d.amen[0][0], t1: d.amen[d.amen.length - 1][1] });
       if (!rows.length) return;
       ly.hidden = false; bigBtn.hidden = false;
+      if (opt.big && !big) bigBtn.onclick();       // 예배 화면(오늘의 예배·설교 발표)에서는 가사를 처음부터 크게
       tick();
     }
     function tick() {

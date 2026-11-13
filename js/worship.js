@@ -992,13 +992,13 @@
     var no = s && s.type === 'hymn' ? +s.no : 0, b = $('wsMr');
     if (window.HymnMR) {
       window.HymnMR.sync(no, b);
-      if (b) b.onclick = function () { window.HymnMR.toggle(no, b, { bottom: 84 }); };
+      if (b) b.onclick = function () { window.HymnMR.toggle(no, b, { bottom: 84, big: true }); };   // 예배 중: 노래방 가사를 크게
       return;
     }
     if (!no || mrLoading) return;
     mrLoading = true;
     var sc = document.createElement('script');
-    sc.src = 'js/hymn-mr.js?v=20261113m';
+    sc.src = 'js/hymn-mr.js?v=20261113n';
     sc.onload = function () { var cs = slides[idx]; mrSync(cs); };
     document.head.appendChild(sc);
   }
