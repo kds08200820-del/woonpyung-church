@@ -61,6 +61,13 @@ def run(nos=None, log=print):
             if code != 200:
                 raise RuntimeError(f"{no}장 {kind} 올리기 실패({code}): {j}")
             sizes[kind] = len(data)
+        lf = os.path.join(hymn_mr.HOME, "out", f"{no:03d}_lyrics.json")     # 노래방 가사(있을 때만)
+        if os.path.exists(lf):
+            code, j = post("/hymn-mr-audio", supa.token, open(lf, "rb").read(), {"x-hymn-name": f"{no:03d}_lyrics.json", "Content-Type": "application/json"})
+            if code == 200:
+                sizes["lyrics"] = os.path.getsize(lf)
+            else:
+                print(f"{no}장 가사 올리기 실패({code}): {j}")
         rec["uploaded"] = sizes
         json.dump(st, open(STATUS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
         n += 1

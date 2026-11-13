@@ -266,7 +266,8 @@ def make(score, kind, work, out):
     # 끝 소리가 사라질 때까지 자르고, 처음의 빈 곳은 0.3초만 남긴다
     amp = np.abs(y).max(axis=1)
     nz = np.nonzero(amp > amp.max() * 0.001)[0]
-    y = y[max(0, nz[0] - int(0.3 * SR)): nz[-1] + int(0.2 * SR)]
+    cut = max(0, nz[0] - int(0.3 * SR))
+    y = y[cut: nz[-1] + int(0.2 * SR)]
     y = y / (np.abs(y).max() + 1e-9) * 0.9
     raw = os.path.join(work, f"{kind}_mix.f32")
     y.astype(np.float32).tofile(raw)
@@ -274,6 +275,7 @@ def make(score, kind, work, out):
                     "-af", "loudnorm=I=-16:TP=-1.5:LRA=14,afade=t=in:d=0.01,areverse,afade=t=in:d=1.5,areverse",
                     "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out], check=True)
     secs = {k: (round(tm(v[0]), 2), round(tm(v[1]), 2)) for k, v in ranges.items()}
+    secs["_trim"] = round(cut / SR, 3)          # 파일 앞에서 잘라 낸 빈 시간 — 가사 시간에서 뺀다
     return secs
 
 
@@ -296,3 +298,79 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ───────────────────────── 6. 노래방 가사 — 반주와 같은 시간표로
+
+def melody_onsets(score):
+    """구역별 소프라노 음(붙임줄로 이어진 음은 하나) [(구역, 시작박, 길이박)]"""
+    notes, ranges, bpb = build(score)
+    out = {}
+    for sec, s, d, v, p in notes:
+        if v == "S":
+            out.setdefault(sec, []).append((s, d))
+    for k in out:
+        out[k].sort()
+    return out, ranges, bpb
+
+
+def split_lyrics(txt):
+    """"나 같-은-_ 죄-인 / 살-리-신" → 줄 목록, 각 줄은 [(음절, 뒤에 띄어쓰기?)].
+    띄어쓰기 = 낱말 사이, "-" = 한 낱말 안의 음절 사이, "_" = 앞 음절을 끄는 음."""
+    lines = []
+    for ln in str(txt or "").split("/"):
+        row = []
+        for w in ln.split():
+            parts = [p for p in w.split("-") if p]
+            for i, p in enumerate(parts):
+                row.append((p, i == len(parts) - 1))
+        if row:
+            lines.append(row)
+    return lines
+
+
+def check_lyrics(score):
+    """절마다 음절 수(+ '_')가 멜로디 음 수와 같은지. 문제 목록을 돌려준다."""
+    ly = score.get("lyrics") or {}
+    if not ly:
+        return ["가사가 없습니다"]
+    on, _, _ = melody_onsets(score)
+    need = len(on.get("v1", []))
+    probs = []
+    for i in range(1, int(score.get("verses", 1)) + 1):
+        n = sum(len(l) for l in split_lyrics(ly.get(str(i))))
+        if n != need:
+            probs.append(f"{i}절 가사 음절 {n}개 ≠ 멜로디 음 {need}개")
+    return probs
+
+
+def lyrics_timing(score):
+    """화면용 시간표: {"intro":[0,끝], "verses":[{"n":1,"lines":[[[시작초,끝초,"나"],…],…]}], "amen":[…] }"""
+    on, ranges, bpb = melody_onsets(score)
+    tm = time_map(score, ranges, bpb)
+    ly = score.get("lyrics") or {}
+    out = {"intro": [0.0, round(tm(ranges["intro"][1]), 2)], "verses": []}
+    for i in range(1, int(score.get("verses", 1)) + 1):
+        notes = on.get(f"v{i}", [])
+        lines, k = [], 0
+        for ln in split_lyrics(ly.get(str(i))):
+            row = []
+            for syl, sp in ln:
+                if k >= len(notes):
+                    break
+                s, d = notes[k]; k += 1
+                t0, t1 = round(tm(s), 2), round(tm(s + d), 2)
+                if syl == "_" and row:
+                    row[-1][1] = t1                      # 앞 음절을 길게
+                    if sp: row[-1][3] = 1
+                elif syl != "_":
+                    row.append([t0, t1, syl, 1 if sp else 0])   # [시작초, 끝초, 음절, 뒤에 띄어쓰기]
+            if row:
+                lines.append(row)
+        out["verses"].append({"n": i, "lines": lines})
+    if "amen" in ranges:
+        a = on.get("amen", [])
+        if len(a) >= 2:
+            out["amen"] = [[round(tm(a[0][0]), 2), round(tm(a[0][0] + a[0][1]), 2), "아", 0],
+                           [round(tm(a[1][0]), 2), round(tm(a[-1][0] + a[-1][1]), 2), "멘", 0]]
+    return out

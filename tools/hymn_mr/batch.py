@@ -94,7 +94,8 @@ PROMPT = """당신은 4성부 찬송가 악보를 정확히 옮겨 적는 일을
 [자료 형식]
 {{"no": {no}, "title": "제목(그림 위 큰 글씨)", "key": "G" 같은 조 이름, "time": [박자 위, 아래], "tempo_word": "보통으로" 같은 빠르기말(없으면 ""),
  "bpm": 4분음표 기준 빠르기, "pickup": 못갖춘마디 첫 마디의 박 수(4분음표=1, 없으면 0), "verses": 절 수(가사 줄 번호 1. 2. 3. … 의 개수),
- "intro_from": 전주로 쓸 마지막 4마디의 첫 마디 번호, "measures": [...], "amen": [...] 또는 [] }}
+ "intro_from": 전주로 쓸 마지막 4마디의 첫 마디 번호, "measures": [...], "amen": [...] 또는 [],
+ "lyrics": {{"1": "1절 가사", "2": "2절 가사", …}} }}
 - measures 의 마디: {{"n": 번호, "S": "...", "A": "...", "T": "...", "B": "..."}}. 못갖춘마디로 시작하면 그 첫 조각이 n=0, 아니면 첫 마디가 n=1.
 - S=소프라노(높은음자리 위 성부), A=알토(높은음자리 아래), T=테너(낮은음자리 위), B=베이스(낮은음자리 아래). 두 성부가 같은 음을 함께 부르면(기둥이 위아래로 붙은 음표 하나) 두 성부에 모두 적습니다.
 - 음 적는 법: "G4/2 B4/.5 G4/.5" = 음이름+옥타브(가온다=C4) / 박 수(4분음표=1, 점4분=1.5, 8분=.5, 점2분=3, 셋잇단 8분=.3333). 올림 #, 내림 b. 조표·임시표를 반영한 실제 음을 적습니다(조표에 F# 이면 F 는 F#). 쉼표는 r/박수.
@@ -104,6 +105,12 @@ PROMPT = """당신은 4성부 찬송가 악보를 정확히 옮겨 적는 일을
 - 아멘: 마지막 절이 끝난 뒤 따로 붙은 "아멘" 마디들은 measures 에 넣지 말고 "amen" 에 같은 형식으로 넣습니다(n 은 빼도 됩니다). 없으면 [].
 - 페르마타(늘임표 𝄐)가 있는 박은 네 성부 모두 그 음 끝에 ^ 를 붙입니다(예: "C5/1^"). 박 수는 바꾸지 않습니다.
 - bpm 기준: 아주 느리게 56, 느리게 63, 조금 느리게 69, 보통으로 76, 조금 빠르게 88, 빠르게 100, 힘차게·씩씩하게 92, 경쾌하게 100. 6/8·9/8 같은 겹박자는 점4분음표 하나를 한 박으로 느끼는 빠르기에 맞춰 4분음표 기준으로 바꿔 적습니다(점4분 = 4분 × 1.5).
+- lyrics(노래방 가사): 절마다 한 줄 문자열. **소프라노(멜로디) 음 하나에 음절 하나**. 낱말 사이는 띄어쓰기, 한 낱말 안의 음절 사이는 "-" 로 나눕니다(예: "나 같-은-_ 죄-인 살-리-신").
+  · 한 음절을 두 음 이상 끌면(이음줄로 묶인 8분음표 등) 뒤의 음마다 "_" 를 그 낱말 안에 "-" 로 붙여 적습니다(예: "같-은-_"). 붙임줄(~)로 이어진 음은 한 음이라 "_" 를 쓰지 않습니다. 쉼표는 세지 않습니다.
+  · 그래서 절마다 음절+"_" 의 개수(띄어쓰기와 "-" 로 나뉜 조각 수) = 그 절의 소프라노 음 개수(붙임줄로 이은 것은 하나, 쉼표 빼고)여야 합니다. 아멘은 적지 않습니다.
+  · 악보의 가사 줄이 바뀌는 곳이나 뜻이 끊기는 곳에 " / " 를 넣어 화면의 한 줄을 나눕니다(한 줄에 6~12음절 정도).
+  · 후렴이 한 번만 인쇄돼 있으면 절마다 후렴 가사를 이어 붙여 적습니다(반주는 절마다 후렴까지 연주합니다).
+  · 가사는 그림에 인쇄된 그대로(맞춤법을 고치지 말고) 적습니다.
 - intro_from: 마지막 4마디(끝 마디가 짧으면 그것까지 포함해 4마디가 되게)의 첫 번째 마디 번호.
 
 [초안 — 인식 프로그램 결과]
@@ -146,6 +153,26 @@ def claude_fix(no, workdir, draft, problems, prev=None, prev_problems=None):
     raise RuntimeError(f"Claude 호출 실패: {last}")
 
 
+def lyric_probs(score):
+    try:
+        return hymn_mr.check_lyrics(score) if not omr2json.check(score) else []
+    except Exception as e:
+        return [f"가사 검사 실패: {e}"]
+
+
+def write_lyrics(no, score, trims):
+    """노래방 가사 시간표(out/NNN_lyrics.json). 가사가 맞지 않으면 만들지 않는다 → 반주만 나온다."""
+    f = os.path.join(HOME, "out", f"{no:03d}_lyrics.json")
+    lp = lyric_probs(score) if score.get("lyrics") else ["가사가 없습니다"]
+    if lp:
+        if os.path.exists(f): os.remove(f)
+        return lp
+    t = hymn_mr.lyrics_timing(score)
+    t.update(no=no, title=score.get("title"), shift=trims)
+    json.dump(t, open(f, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    return []
+
+
 def check_audio(no, kind):
     p = subprocess.run([sys.executable, os.path.join(HERE, "check_audio.py"), str(no), kind, HERE],
                        capture_output=True, text=True, encoding="utf-8",
@@ -180,12 +207,12 @@ def do_one(no, st):
         try:
             files, nsys = crops(img, cdir)
             fixed = claude_fix(no, cdir, draft, probs)
-            p2 = omr2json.check(fixed)
+            p2, l2 = omr2json.check(fixed), lyric_probs(fixed)
             tries = 1
-            if p2:
-                fixed2 = claude_fix(no, cdir, draft, probs, fixed, p2); tries = 2
-                p3 = omr2json.check(fixed2)
-                if len(p3) <= len(p2): fixed, p2 = fixed2, p3
+            if p2 or l2:
+                fixed2 = claude_fix(no, cdir, draft, probs, fixed, p2 + l2); tries = 2
+                p3, l3 = omr2json.check(fixed2), lyric_probs(fixed2)
+                if (len(p3), len(l3)) <= (len(p2), len(l2)): fixed, p2, l2 = fixed2, p3, l3
         finally:
             shutil.rmtree(cdir, ignore_errors=True)
         fixed["no"] = no
@@ -199,10 +226,11 @@ def do_one(no, st):
         json.dump(fixed, open(score_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     score = json.load(open(score_path, encoding="utf-8"))
     # 3. 소리
-    res = {}
+    res, trims = {}, {}
     for kind in ("orch", "piano"):
         out = os.path.join(HOME, "out", f"{no:03d}_{kind}.m4a")
         secs = hymn_mr.make(score, kind, work, out)
+        trims[kind] = secs.get("_trim", 0)
         json.dump(secs, open(os.path.join(work, f"{kind}_sections.json"), "w"), ensure_ascii=False)
         res[kind] = check_audio(no, kind)
     for f in glob.glob(os.path.join(work, "*.wav")) + glob.glob(os.path.join(work, "*.f32")):
@@ -212,8 +240,11 @@ def do_one(no, st):
     ok = res["piano"][0] >= 65 and res["piano"][1] <= 3 and agr_ok
     rec.update(state="완료" if ok else "확인 필요", title=score.get("title"), verses=score.get("verses"), bpm=score.get("bpm"),
                match={k: v[0] for k, v in res.items()}, off_beats={k: v[1] for k, v in res.items()},
-               seconds=secs["amen"][1] if "amen" in secs else max(v[1] for v in secs.values()))
+               seconds=secs["amen"][1] if "amen" in secs else max(v[1] for k2, v in secs.items() if not k2.startswith("_")))
     rec["agree"] = agr
+    lp = write_lyrics(no, score, trims)
+    rec["lyrics"] = not lp
+    if lp: rec["lyrics_problems"] = lp[:4]
     if not ok:
         rec["problems"] = [f"소리 대조: 피아노 화음 일치 {res['piano'][0]}%, 어긋난 박 {res['piano'][1]}개"] +             ([] if agr_ok else [f"인식 초안과 음 순서 일치율이 낮음 {agr} — 사람이 악보와 대조 필요"])
     save_status(st)
@@ -284,6 +315,20 @@ def main():
             except Exception as e:
                 st[str(no)] = {"state": "오류", "error": (str(e) or repr(e))[:300]}; save_status(st)
                 log(f"{no}장 오류: {traceback.format_exc()[-600:]}")
+        if not o.nos:                          # 다 돈 뒤: 가사 없이 끝난 장에 노래방 가사 더하기
+            import lyrics
+            st = load_status()
+            for no in sorted(int(k) for k, v in st.items() if v.get("state") == "완료" and not v.get("lyrics") and not v.get("lyrics_tried")):
+                now = dt.datetime.now().time()
+                if dt.time(0, 30) <= now < dt.time(7, 30):
+                    return
+                try:
+                    lyrics.add(no, log=log)
+                except RuntimeError as e:
+                    if "사용 한도" in str(e):
+                        log(f"Claude 사용 한도 — 가사 더하기 멈춤 ({e})"); return
+                    log(f"{no}장 가사 오류: {e}")
+                st = load_status(); st.setdefault(str(no), {})["lyrics_tried"] = True; save_status(st)
     finally:
         try: os.remove(lock)
         except OSError: pass

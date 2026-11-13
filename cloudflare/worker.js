@@ -34,7 +34,7 @@
  *
  *  - POST   /hymn-mr-audio       새찬송가 반주(MR) 올리기 (관리자·무인 워커, x-hymn-name: 305_orch.m4a)
  *  - POST   /hymn-mr-list        새찬송가 반주 목록      (관리자)
- *  - POST   /hymn-mr-url         반주 재생 열쇠 발급      (로그인한 성도, body {no:305})
+ *  - POST   /hymn-mr-url         반주 재생 열쇠 발급      (로그인한 성도, body {no:305}) — 노래방 가사(NNN_lyrics.json)도 같은 열쇠로
  *  - GET    /hymn-mr/<이름>       반주 재생               (열쇠 서명 확인 · Range 지원)
  *  - GET    /hymn-mr-have        반주가 준비된 장 번호 목록(공개, 번호만)
  *    새찬송가 악보·편곡은 한국찬송가공회 저작물이라 반주를 공개하지 않는다(2026-11-13 담임목사: 로그인한 성도만).
@@ -379,8 +379,8 @@ export default {
       const pad = String(no).padStart(3, "0");
       const exp = Math.floor(Date.now() / 1000) + BOOK_TICKET_SEC;
       const files = {};
-      for (const kind of ["orch", "piano"]) {
-        const n = `${pad}_${kind}.m4a`;
+      for (const kind of ["orch", "piano", "lyrics"]) {
+        const n = kind === "lyrics" ? `${pad}_lyrics.json` : `${pad}_${kind}.m4a`;
         if (await env.BUCKET.head(HYMN_PREFIX + n)) files[kind] = `${url.origin}/hymn-mr/${n}?e=${exp}&s=${await bookSign("hymn:" + n, exp, env)}`;
       }
       return json({ ok: true, no, exp, files }, 200, req);
@@ -479,7 +479,8 @@ export default {
       if (!name || name.includes("/") || name.includes("..") || name.length > 200) {
         return json({ error: "파일 이름이 올바르지 않습니다." }, 400, req);
       }
-      if (!/\.(wav|mp3|m4a|ogg)$/i.test(name)) {
+      const hymnLyrics = audioUp.prefix === HYMN_PREFIX && /^\d{3}_lyrics\.json$/.test(name);   // 반주의 노래방 가사 시간표
+      if (!hymnLyrics && !/\.(wav|mp3|m4a|ogg)$/i.test(name)) {
         return json({ error: "음성 파일(wav·mp3·m4a·ogg)만 올릴 수 있습니다." }, 400, req);
       }
       const upLen = parseInt(req.headers.get("Content-Length") || "0", 10);

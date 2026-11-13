@@ -4,11 +4,12 @@
 
    HymnMR.has(장)            반주가 있는 장인지 (목록은 처음 한 번 /hymn-mr-have 에서 받는다)
    HymnMR.play(장, 단추, opt)  화면 구석에 재생 창 — opt.bottom(아래 여백), opt.doc(다른 창의 문서)
-   HymnMR.toggle / stop / sync(장, 단추)  — 보는 장이 바뀌면 sync: 다른 장은 끄고, 단추는 반주가 있는 장에서만 보인다 */
+   HymnMR.toggle / stop / sync(장, 단추)  — 보는 장이 바뀌면 sync: 다른 장은 끄고, 단추는 반주가 있는 장에서만 보인다
+   노래방 가사(2026-11-13 담임목사): 반주와 같은 시간표(NNN_lyrics.json)로 지금 줄을 음절마다 밝히고, 다음 줄을 아래에 보인다. 「크게」는 화면 가운데 큰 글씨. */
 (function () {
   var STORE = (window.R2_UPLOAD_URL || 'https://church-files.kds08200820.workers.dev').replace(/\/$/, '');
   var have = null, loading = null, waiters = [];
-  var box = null, cur = 0, btn = null, audio = null;
+  var box = null, cur = 0, btn = null, audio = null, raf = 0;
   var KIND_KEY = 'hymnMrKind';
 
   function load() {
@@ -34,6 +35,7 @@
   }
   function label(b, on) { if (!b) return; b.textContent = on ? '반주 끄기' : '반주'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
   function stop() {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
     if (audio) { try { audio.pause(); } catch (e) {} audio = null; }
     if (box) { box.remove(); box = null; }
     cur = 0; label(btn, false); btn = null;
@@ -59,13 +61,72 @@
       x.onclick = function () { choose(k[0], true); };
       kinds[k[0]] = x; right.appendChild(x);
     });
+    var bigBtn = doc.createElement('button'); bigBtn.type = 'button'; bigBtn.textContent = '크게'; bigBtn.style.cssText = bs; bigBtn.hidden = true;
     var close = doc.createElement('button'); close.type = 'button'; close.textContent = '닫기'; close.style.cssText = bs; close.onclick = stop;
-    right.appendChild(close);
+    right.appendChild(bigBtn); right.appendChild(close);
     bar.appendChild(t); bar.appendChild(right);
     var msg = doc.createElement('div'); msg.style.cssText = 'padding:2px 10px 9px;color:#ccc'; msg.textContent = '반주를 불러오는 중…';
-    box.appendChild(bar); box.appendChild(msg);
+    // 노래방 가사 자리
+    var ly = doc.createElement('div'); ly.hidden = true;
+    ly.style.cssText = 'padding:4px 12px 10px;text-align:center';
+    var lyLab = doc.createElement('div'), lyNow = doc.createElement('div'), lyNext = doc.createElement('div');
+    ly.appendChild(lyLab); ly.appendChild(lyNow); ly.appendChild(lyNext);
+    box.appendChild(bar); box.appendChild(ly); box.appendChild(msg);
     doc.body.appendChild(box);
-    var myBox = box, files = {};
+    var myBox = box, files = {}, LY = null, rows = [], shown = -2, big = false, smallCss = box.style.cssText;
+    function lyStyle() {
+      lyLab.style.cssText = 'font-size:' + (big ? '15px' : '11px') + ';color:#9a9a9a;letter-spacing:.08em;min-height:1.3em';
+      lyNow.style.cssText = 'font-size:' + (big ? 'clamp(26px,4.2vw,52px)' : '18px') + ';line-height:1.35;font-weight:600;min-height:1.35em;word-break:keep-all';
+      lyNext.style.cssText = 'font-size:' + (big ? 'clamp(17px,2.4vw,30px)' : '13px') + ';line-height:1.4;color:#7d7d7d;min-height:1.4em;margin-top:' + (big ? '10px' : '3px') + ';word-break:keep-all';
+    }
+    lyStyle();
+    bigBtn.onclick = function () {
+      big = !big; bigBtn.textContent = big ? '작게' : '크게';
+      box.style.cssText = big
+        ? 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2147483000;width:min(94vw,1100px);background:#111;color:#fff;box-shadow:0 12px 40px rgba(0,0,0,.5);font:15px/1.4 "Noto Sans KR",sans-serif'
+        : smallCss;
+      ly.style.padding = big ? '18px 24px 26px' : '4px 12px 10px';
+      lyStyle(); shown = -2;
+    };
+    function lineHtml(row, t) {
+      return row.syl.map(function (w) {
+        var c = t >= w[1] ? '#fff' : '#777', u = '';
+        if (t >= w[0] && t < w[1]) {         // 지금 부르는 음절: 앞에서부터 차오른다
+          var pc = Math.max(0, Math.min(100, Math.round((t - w[0]) / (w[1] - w[0]) * 100)));
+          return '<span style="background:linear-gradient(90deg,#fff ' + pc + '%,#777 ' + pc + '%);-webkit-background-clip:text;background-clip:text;color:transparent">' + esc(w[2]) + '</span>' + (w[3] ? ' ' : '');
+        }
+        return '<span style="color:' + c + u + '">' + esc(w[2]) + '</span>' + (w[3] ? ' ' : '');
+      }).join('');
+    }
+    function esc(x) { return String(x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function plain(row) { return row ? esc(row.syl.map(function (w) { return w[2] + (w[3] ? ' ' : ''); }).join('')) : ''; }
+    function setupLyrics(d) {
+      LY = d; rows = [];
+      (d.verses || []).forEach(function (v) { (v.lines || []).forEach(function (ln) { if (ln.length) rows.push({ lab: v.n + '절', syl: ln, t0: ln[0][0], t1: ln[ln.length - 1][1] }); }); });
+      if (d.amen && d.amen.length) rows.push({ lab: '아멘', syl: d.amen, t0: d.amen[0][0], t1: d.amen[d.amen.length - 1][1] });
+      if (!rows.length) return;
+      ly.hidden = false; bigBtn.hidden = false;
+      tick();
+    }
+    function tick() {
+      raf = 0;
+      if (!draw()) return;
+      if (!audio.paused) raf = requestAnimationFrame(tick);
+    }
+    function draw() {
+      if (myBox !== box || !audio || !rows.length) return false;
+      var t = audio.currentTime + ((LY.shift || {})[kind] || 0) + 0.05;
+      var i = -1;
+      for (var k = 0; k < rows.length; k++) { if (rows[k].t0 <= t + 0.25) i = k; else break; }   // 줄은 0.25초 먼저 보인다
+      if (i < 0) {
+        if (shown !== -1) { lyLab.textContent = '전주'; lyNow.innerHTML = ''; lyNext.innerHTML = plain(rows[0]); shown = -1; }
+      } else {
+        lyLab.textContent = rows[i].lab;
+        lyNow.innerHTML = lineHtml(rows[i], t);
+        if (shown !== i) { lyNext.innerHTML = plain(rows[i + 1]); shown = i; }
+      }
+      return true;
+    }
 
     function choose(k, user) {
       if (!files[k]) return;
@@ -78,6 +139,9 @@
         audio.setAttribute('controlslist', 'nodownload'); audio.oncontextmenu = function () { return false; };
         audio.style.cssText = 'display:block;width:100%;height:40px';
         msg.replaceWith(audio);
+        audio.addEventListener('play', function () { if (!raf && rows.length) raf = requestAnimationFrame(tick); });
+        audio.addEventListener('seeked', function () { shown = -2; draw(); });
+        audio.addEventListener('timeupdate', function () { draw(); });   // 화면이 뒤에 있어 그리기 틀이 멈춰도 1초에 4번은 맞춘다
         audio.onerror = function () { if (myBox === box) { var m = doc.createElement('div'); m.style.cssText = 'padding:2px 10px 9px;color:#f2b8b0'; m.textContent = '반주를 틀지 못했습니다. 새로고침 후 다시 눌러 주세요.'; box.appendChild(m); } };
         was = true;
       }
@@ -97,6 +161,8 @@
         if (!files.orch && !files.piano) { msg.textContent = j.error || '이 장의 반주는 아직 준비 중입니다.'; return; }
         Object.keys(kinds).forEach(function (k) { kinds[k].hidden = !files[k]; });
         choose(files[kind] ? kind : (files.orch ? 'orch' : 'piano'), false);
+        if (files.lyrics) fetch(files.lyrics).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { if (d && myBox === box) setupLyrics(d); }).catch(function () {});
       })
       .catch(function () { if (myBox === box) msg.textContent = '반주를 불러오지 못했습니다. 잠시 뒤 다시 눌러 주세요.'; });
     return true;
