@@ -61,6 +61,17 @@
       x.onclick = function () { choose(k[0], true); };
       kinds[k[0]] = x; right.appendChild(x);
     });
+    // 빠르기: 기본 1.25배(2026-11-13 목사님). 고른 값은 이 기기에 기억한다. 음높이는 그대로(브라우저 기본)
+    var RATE_KEY = 'hymnmr_rate', rate = 1.25;
+    try { var sr = parseFloat(localStorage.getItem(RATE_KEY)); if (sr >= 0.5 && sr <= 2) rate = sr; } catch (e) {}
+    var rateSel = doc.createElement('select'); rateSel.title = '빠르기';
+    rateSel.style.cssText = bs + ';padding-right:4px';
+    [1, 1.1, 1.25, 1.4, 1.5].forEach(function (v) { var o = doc.createElement('option'); o.value = v; o.textContent = v + '배'; o.style.color = '#111'; rateSel.appendChild(o); });
+    rateSel.value = rate;
+    if (rateSel.value === '') { var o2 = doc.createElement('option'); o2.value = rate; o2.textContent = rate + '배'; o2.style.color = '#111'; rateSel.appendChild(o2); rateSel.value = rate; }
+    function applyRate() { if (audio) { audio.defaultPlaybackRate = rate; audio.playbackRate = rate; } }
+    rateSel.onchange = function () { rate = parseFloat(rateSel.value) || 1.25; try { localStorage.setItem(RATE_KEY, rate); } catch (e) {} applyRate(); };
+    right.appendChild(rateSel);
     var bigBtn = doc.createElement('button'); bigBtn.type = 'button'; bigBtn.textContent = '크게'; bigBtn.style.cssText = bs; bigBtn.hidden = true;
     var close = doc.createElement('button'); close.type = 'button'; close.textContent = '닫기'; close.style.cssText = bs; close.onclick = stop;
     right.appendChild(bigBtn); right.appendChild(close);
@@ -145,13 +156,14 @@
         cr.style.cssText = 'padding:3px 10px 7px;font-size:10px;line-height:1.4;color:#8a8a8a';
         cr.textContent = '오르간 Lars Palo · Piteå MHS (CC BY-SA) · 오케스트라 Virtual Playing Orchestra · 피아노 Salamander Grand Piano (CC BY) · 울림 OpenAIR, University of York (CC BY)';
         audio.after(cr);
+        audio.addEventListener('loadedmetadata', applyRate);
         audio.addEventListener('play', function () { if (!raf && rows.length) raf = requestAnimationFrame(tick); });
         audio.addEventListener('seeked', function () { shown = -2; draw(); });
         audio.addEventListener('timeupdate', function () { draw(); });   // 화면이 뒤에 있어 그리기 틀이 멈춰도 1초에 4번은 맞춘다
         audio.onerror = function () { if (myBox === box) { var m = doc.createElement('div'); m.style.cssText = 'padding:2px 10px 9px;color:#f2b8b0'; m.textContent = '반주를 틀지 못했습니다. 새로고침 후 다시 눌러 주세요.'; box.appendChild(m); } };
         was = true;
       }
-      audio.src = files[k];
+      audio.src = files[k]; applyRate();
       if (at) { audio.addEventListener('loadedmetadata', function f() { audio.removeEventListener('loadedmetadata', f); audio.currentTime = at; }); }
       if (was) { var p = audio.play(); if (p && p.catch) p.catch(function () {}); }
     }
