@@ -19,7 +19,7 @@ SRC = os.environ.get("HYMN_SRC", os.path.join(os.path.expanduser("~"), "OneDrive
 AUDIVERIS = os.path.join(HOME, "audiveris", "Audiveris", "Audiveris.exe")
 STATUS = os.path.join(HOME, "status.json")
 MODEL = os.environ.get("HYMN_MODEL", "opus")
-ENGINE = "organ3"          # 소리 판: 2026-11-13 오르간 주도 편곡(arrange.py). 바뀌면 이미 만든 장도 다시 굽는다
+ENGINE = "organ4"          # 소리 판: 2026-11-13 오르간 주도 편곡(arrange.py). 바뀌면 이미 만든 장도 다시 굽는다
 
 
 def log(msg):

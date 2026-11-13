@@ -101,7 +101,7 @@ def time_map(score, ranges, bpb):
     if "amen" in ranges:
         a0, a1 = ranges["amen"]
         k = grid >= a0
-        rate[k] = 1.30
+        rate[k] = 1.12                       # 아멘은 조금만 느리게(지나치게 늘이지 않는다)
     sec = np.concatenate([[0], np.cumsum(rate[:-1] * 0.01 * spb)])
     return lambda b: float(np.interp(b, grid, sec))
 
@@ -128,7 +128,7 @@ ORCH = [
 ]
 PIANO_SFZ = os.environ.get("HYMN_PIANO", r"C:\hymn-mr\piano\SalamanderGrandPianoV3_44.1khz16bit\SalamanderGrandPianoV3.sfz")
 PIANO = [("piano", PIANO_SFZ if os.path.exists(PIANO_SFZ) else "UprightPiano.sfz", "SATB", 0, "all", 1.0, 1.0, 0.0)]
-PIANO_LV = {"intro": 0.55, "v1": 0.55, "v2": 0.62, "v3": 0.66, "v4": 0.78, "amen": 0.80}
+PIANO_LV = {"intro": 0.72, "v1": 0.72, "v2": 0.75, "v3": 0.77, "v4": 0.80, "amen": 0.72}   # 2026-11-13 "눌린 듯" → 조금 더 세게(밝은 층)   # 2026-11-13 좁힘(강약 변동), 아멘은 여리게
 
 
 def in_sec(spec, name):
@@ -276,8 +276,7 @@ def orch_fx(mix, score, ranges, tm, bpb):
         t = tm(a + pick)
         if os.path.exists(roll):          # 마지막 절로 이끄는 부드러운 심벌 굴림만(갑작스러운 심벌 치기·큰북은 뺐다 — 2026-11-13)
             r = wav_at(roll, 0.16); mix = add_at(mix, r, t - len(r) / SR)
-    if "amen" in ranges and os.path.exists(crash):              # 마지막 화음
-        mix = add_at(mix, wav_at(crash, 0.25), tm(ranges["amen"][1] - 3))
+    # (아멘의 심벌은 뺐다 — 2026-11-13 목사님 "아멘이 끝에서 과하게 나와 놀란다")
     return mix
 
 
@@ -294,12 +293,14 @@ def vlq(n):
 def write_midi(path, evs):
     """evs: [(초, 'on'|'off', note, vel)]"""
     tpq = 960                      # 120bpm → 1초 = 1920틱
-    evs = sorted(evs, key=lambda e: (e[0], 0 if e[1] == "off" else 1))
+    evs = sorted(evs, key=lambda e: (e[0], {"off": 0, "cc": 1}.get(e[1], 2)))
     trk, last = bytearray(), 0
     trk += b"\x00\xFF\x51\x03" + (500000).to_bytes(3, "big")
     for s, kind, n, v in evs:
         tick = int(round(s * 1920))
         trk += vlq(max(0, tick - last)); last = tick
+        if kind == "cc":
+            trk += bytes([0xB0, n, v]); continue
         trk += bytes([0x90 if kind == "on" else 0x80, n, v if kind == "on" else 0])
     trk += vlq(1920 * 6) + b"\xFF\x2F\x00"            # 끝난 뒤 6초 울림
     with open(path, "wb") as f:
@@ -344,8 +345,7 @@ _IRC = {}
 
 def real_ir(kind):
     """OpenAIR 실제 성당 울림(University of York). 오케스트라=York Minster, 피아노=St Andrew's. 없으면 None."""
-    path = os.environ.get("HYMN_IR" if kind == "orch" else "HYMN_IR_PIANO",
-                          r"C:\hymn-mr\ir\york_minster_ortf.wav" if kind == "orch" else r"C:\hymn-mr\ir\st_andrews_ortf.wav")
+    path = os.environ.get("HYMN_IR" if kind == "orch" else "HYMN_IR_PIANO", r"C:\hymn-mr\ir\york_minster_ortf.wav")   # 피아노도 큰 성당(2026-11-13)
     if not os.path.exists(path):
         return None
     if path not in _IRC:
@@ -400,7 +400,7 @@ def make(score, kind, work, out):
             if abs(s + d - final_end) < 1e-6:
                 t1 = t0 + (t1 - t0) * 1.6                   # 마지막 음은 길게
             legato = 0.03 if kind == "orch" else 0.08
-            vel = int(max(20, min(127, 127 * lv[sec] * vmul * (1.04 if v == "S" else 0.94))))
+            vel = int(max(20, min(127, 127 * lv.get(sec, 0.74) * vmul * (1.04 if v == "S" else 0.94))))
             if kind == "piano" and v in "AT":
                 vel = int(vel * 0.88)
             evs.append((t0, "on", p + shift, vel))
@@ -411,6 +411,13 @@ def make(score, kind, work, out):
                     evs.append((tm(s), "on", p - 12, 90)); evs.append((tm(s + d) - 0.03, "off", p - 12, 0))
         if not evs:
             continue
+        if kind == "piano":                # 교회 반주자처럼: 새 화음이 울린 직후 페달을 떼었다 다시 밟는다(앞 화음은 끊고 울림은 잇는다)
+            onsets = sorted({round(e[0], 3) for e in evs if e[1] == "on"})
+            for k, t in enumerate(onsets):
+                if k and t - onsets[k - 1] < 0.12:
+                    continue
+                evs += [(t + 0.02, "cc", 64, 0), (t + 0.10, "cc", 64, 127)]
+            evs.append((max(e[0] for e in evs) + 3.0, "cc", 64, 0))
         mid = os.path.join(work, f"{kind}_{name}.mid"); wav = os.path.join(work, f"{kind}_{name}.wav")
         write_midi(mid, evs)
         a = render(sfz, mid, wav)
@@ -437,14 +444,17 @@ def make(score, kind, work, out):
             write_midi(os.path.join(work, "roll.mid"), [(tm(a1 - 3), "on", 43, 70), (tm(a1) + 2.5, "off", 43, 0)])
             a = render("TimpaniRolls.sfz", os.path.join(work, "roll.mid"), os.path.join(work, "roll.wav")) * 0.45
             n = max(len(mix), len(a)); mix = np.pad(mix, ((0, n - len(mix)), (0, 0))) + np.pad(a, ((0, n - len(a)), (0, 0)))
-    wet = 0.30 if kind == "orch" else 0.20
+    wet = 0.30 if kind == "orch" else 0.27
     print("  울림 입히는 중")
     ir = real_ir(kind) if real_ir(kind) is not None else hall_ir(3.3 if kind == "orch" else 1.8)
     import scipy.signal as _sg            # 울림에는 낮은 소리를 덜 보낸다(큰 성당의 웅웅거림을 막는다)
-    send = _sg.sosfilt(_sg.butter(2, 220 if kind == "orch" else 120, "highpass", fs=SR, output="sos"), mix, axis=0)
+    send = _sg.sosfilt(_sg.butter(2, 160 if kind == "orch" else 120, "highpass", fs=SR, output="sos"), mix, axis=0)
     rev = convolve(send, ir)
     dry = np.pad(mix, ((0, len(rev) - len(mix)), (0, 0)))
     y = dry * (1 - wet) + rev * wet * 0.9
+    if kind == "piano":                   # 좌우로 퍼지게(가운데·옆 나누어 옆을 키운다)
+        m_, s_ = (y[:, 0] + y[:, 1]) / 2, (y[:, 0] - y[:, 1]) / 2
+        y = np.stack([m_ + 1.5 * s_, m_ - 1.5 * s_], axis=1)
     # 끝 소리가 사라질 때까지 자르고, 처음의 빈 곳은 0.3초만 남긴다
     amp = np.abs(y).max(axis=1)
     nz = np.nonzero(amp > amp.max() * 0.001)[0]
@@ -454,8 +464,11 @@ def make(score, kind, work, out):
     raw = os.path.join(work, f"{kind}_mix.f32")
     y.astype(np.float32).tofile(raw)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "2", "-i", raw,
-                    "-af", ("highpass=f=20,equalizer=f=140:t=q:w=1:g=-4,equalizer=f=2100:t=q:w=1.2:g=5,equalizer=f=4500:t=q:w=1:g=2," if kind == "orch" else "") +   # 참고 음원처럼 바닥은 두껍게, 위는 부드럽게
-                    "loudnorm=I=-16:TP=-1.5:LRA=14,afade=t=in:d=0.01,areverse,afade=t=in:d=1.5,areverse",
+                    "-af", ("highpass=f=24,bass=g=1.5:f=80:w=0.8,equalizer=f=2100:t=q:w=1.2:g=5,equalizer=f=4500:t=q:w=1:g=2," if kind == "orch" else
+                     "highpass=f=30,equalizer=f=300:t=q:w=1:g=-3,equalizer=f=2500:t=q:w=1:g=6,treble=g=5:f=7000,") +   # 참고 음원처럼 바닥은 두껍게, 위는 부드럽게
+                    # 느리고 부드러운 크기 고르기(갑자기 커지거나 작아지지 않게) → 마지막 크기 맞춤
+                    "acompressor=threshold=0.1:ratio=2.5:attack=400:release=3000:knee=6:makeup=1.6,"
+                    "loudnorm=I=-16:TP=-1.5:LRA=7,afade=t=in:d=0.01,areverse,afade=t=in:d=2.5,areverse",
                     "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out], check=True)
     secs = {k: (round(tm(v[0]), 2), round(tm(v[1]), 2)) for k, v in ranges.items()}
     secs["_trim"] = round(cut / SR, 3)          # 파일 앞에서 잘라 낸 빈 시간 — 가사 시간에서 뺀다

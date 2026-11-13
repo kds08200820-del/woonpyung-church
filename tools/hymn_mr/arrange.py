@@ -40,7 +40,7 @@ REG = {
               "Stop034_TR_HARM_8.sfz", "Stop035_CLAIRON_4.sfz"], ["Stop001_SUBBAS_16.sfz", "Stop002_OKTAVA_8.sfz", "Stop004_OKTAVA_4.sfz", "Stop005_BASUN_16.sfz"]),
 }
 # 스톱마다 소리 크기(실제 오르간처럼 혀관·혼합관은 크고, 플루트·현 스톱은 작다)
-STOP_GAIN = {"Stop001_SUBBAS_16.sfz": 0.40, "Stop002_OKTAVA_8.sfz": 0.75, "Stop009_PRINCIPAL_8.sfz": 0.85, "Stop019_PRINCIPAL_4.sfz": 0.6,
+STOP_GAIN = {"Stop001_SUBBAS_16.sfz": 0.50, "Stop002_OKTAVA_8.sfz": 0.90, "Stop009_PRINCIPAL_8.sfz": 0.85, "Stop019_PRINCIPAL_4.sfz": 0.6,
              "Stop021_WALDFLJT_2.sfz": 0.45, "Stop030_FL_OCT_4.sfz": 0.6, "Stop027_FL_HARM_8.sfz": 0.75, "Stop028_GAMBA_8.sfz": 0.85,
              "Stop013_MIXTUR_IV.sfz": 0.55, "Stop015_TRUMPET_8.sfz": 0.55, "Stop034_TR_HARM_8.sfz": 0.45, "Stop035_CLAIRON_4.sfz": 0.35,
              "Stop012_OKTAVA_2.sfz": 0.55, "Stop011_OKTAVA_4.sfz": 0.8, "Stop033_OBOE_8.sfz": 0.55, "Stop005_BASUN_16.sfz": 0.35,
@@ -48,26 +48,40 @@ STOP_GAIN = {"Stop001_SUBBAS_16.sfz": 0.40, "Stop002_OKTAVA_8.sfz": 0.75, "Stop0
 
 # 오케스트라 — 절마다 맡는 악기를 바꾼다(찬송 반주 관례). (이름, sfz, 성부, 옮김, 단계, 세기, 크기, 좌우)
 ORCH = [
-    ("violins", "Strings/1st-violin-SEC-sustain.sfz", "S", 0, "soft build full", 0.62, 0.55, -0.35),
-    ("violins_hi", "Strings/1st-violin-SEC-sustain.sfz", "S", 12, "full", 0.66, 0.40, -0.30),
-    ("violins2", "Strings/2nd-violin-SEC-sustain.sfz", "A", 0, "soft build full", 0.58, 0.45, -0.15),
-    ("violas", "Strings/viola-SEC-sustain.sfz", "T", 0, "soft build full", 0.58, 0.45, 0.15),
-    ("celli", "Strings/cello-SEC-sustain.sfz", "B", 0, "soft mid build full", 0.60, 0.50, 0.30),
-    ("basses", "Strings/bass-SEC-sustain.sfz", "B", -12, "build full", 0.60, 0.40, 0.40),
+    ("violins", "Strings/1st-violin-SEC-sustain.sfz", "S", 0, "intro soft mid build full amen", 0.66, 0.75, -0.35),   # 2026-11-13 "바이올린 더" → 모든 절, 더 크게
+    ("violins_mel2", "Strings/2nd-violin-SEC-sustain.sfz", "S", 0, "mid build full amen", 0.62, 0.50, -0.20),
+    ("violins_hi", "Strings/1st-violin-SEC-sustain.sfz", "S", 12, "build full amen", 0.64, 0.50, -0.30),
+    ("violins2", "Strings/2nd-violin-SEC-sustain.sfz", "A", 0, "soft mid build full amen", 0.60, 0.55, -0.15),
+    ("violas", "Strings/viola-SEC-sustain.sfz", "T", 0, "soft build full amen", 0.58, 0.45, 0.15),
+    ("celli", "Strings/cello-SEC-sustain.sfz", "B", 0, "soft mid build full amen", 0.62, 0.60, 0.30),
+    ("basses", "Strings/bass-SEC-sustain.sfz", "B", -12, "soft mid build full amen", 0.62, 0.62, 0.35),   # 2026-11-13 "베이스가 부족" → 모든 절
     ("oboe", "Woodwinds/oboe-SOLO-sustain.sfz", "S", 0, "mid", 0.62, 0.45, -0.10),
     ("clarinet", "Woodwinds/clarinet-SOLO-sustain.sfz", "A", 0, "mid", 0.58, 0.40, 0.05),
     ("bassoon", "Woodwinds/bassoon-SOLO-sustain.sfz", "T", 0, "mid", 0.58, 0.40, 0.20),
-    ("horns", "Brass/french-horn-SEC-sustain.sfz", "T", 0, "build full", 0.62, 0.45, 0.25),
-    ("horns_a", "Brass/french-horn-SEC-sustain.sfz", "A", -12, "full", 0.60, 0.35, 0.20),
-    ("trombones", "Brass/trombone-SEC-sustain.sfz", "B", 12, "full", 0.62, 0.35, 0.30),
+    ("horns", "Brass/french-horn-SEC-sustain.sfz", "T", 0, "build full amen", 0.62, 0.45, 0.25),
+    ("horns_a", "Brass/french-horn-SEC-sustain.sfz", "A", -12, "full amen", 0.60, 0.35, 0.20),
+    ("trombones", "Brass/trombone-SEC-sustain.sfz", "B", 12, "full amen", 0.62, 0.35, 0.30),
 ]
-STAGE_VEL = {"intro": 0.72, "soft": 0.55, "mid": 0.66, "build": 0.78, "full": 0.92}
+STAGE_VEL = {"intro": 0.70, "soft": 0.66, "mid": 0.70, "build": 0.74, "full": 0.80, "amen": 0.72}   # 2026-11-13 목사님 "강약 변동이 심하다" → 좁힘
+REG["amen"] = None   # 아래에서 full 과 같게
 ORGAN_GAIN = {"intro": 0.95, "soft": 0.85, "mid": 1.0, "build": 1.05, "full": 1.1}
+
+
+REG["amen"] = REG["full"]
+
+
+def stage_norm(st, pedal=False):
+    """그 단계 스톱들의 합 크기를 가장 여린 단계에 가깝게 맞추는 배율(진폭). 차이의 20%만 남긴다."""
+    def power(stg):
+        stops = REG[stg][1 if pedal else 0]
+        return sum(STOP_GAIN.get(s, 1.0) ** 2 for s in stops)
+    ref = min(power(k) for k in REG)
+    return min(1.0, (ref / power(st)) ** (0.5 * 0.8))
 
 
 def stages(score):
     n = int(score.get("verses", 1))
-    st = {"intro": "intro", "amen": "full"}
+    st = {"intro": "intro", "amen": "amen"}
     for i in range(1, n + 1):
         if i == n: st[f"v{i}"] = "full"
         elif i == 1: st[f"v{i}"] = "soft" if n >= 3 else "mid"
@@ -214,6 +228,7 @@ def build_parts(score, notes, ranges, tm, bpb):
                 ev = organ[stop]
                 organ[stop] = [e for e in ev if not (abs(e[0] - t0) < 1e-3 and e[2] == p)]
                 organ[stop] += [(t0, t0 + 0.09, p, "intro"), (t0 + 0.09, t0 + 0.18, p + 2, "intro"), (t0 + 0.18, t1, p, "intro")]
+    st_of = {}
     for stop, evs in organ.items():
         lst = []
         evs.sort()
@@ -223,9 +238,12 @@ def build_parts(score, notes, ranges, tm, bpb):
             if p in last_end and abs(last_end[p][0] - t0) < 0.02:
                 idx = last_end[p][1]
                 lst[idx] = (max(lst[idx][0], t0 - 0.07), "off", p, 0)
-            lst.append((t0, "on", p, 100))
+            lst.append((t0, "on", p, 100)); st_of[(round(t0, 3), p)] = st
             lst.append((t1, "off", p, 0)); last_end[p] = (t1, len(lst) - 1)
         g = STOP_GAIN.get(stop, 1.0) * 0.55
+        ped = stop in sum([v[1] for v in REG.values()], [])
+        lst = [(t, k, p, int(min(127, 127 * (stage_norm(st_of[(round(t, 3), p)], ped) ** 0.5))) if k == "on" else v)
+               for (t, k, p, v) in lst] if st_of else lst
         parts.append(("org_" + stop.split("_")[0], O(stop), lst, g, 0.0))
     # 2) 오케스트라
     for name, sfz, voices, shift, use, vmul, gain, pan in ORCH:
@@ -237,8 +255,9 @@ def build_parts(score, notes, ranges, tm, bpb):
             t0, t1 = timing(sec, s, d, "orch")
             a, b = ranges[sec]; frac = (s - a) / max(1e-6, b - a)
             ramp = 1.0
-            if st == "build" and frac > 0.7: ramp = 1.0 + 0.25 * (frac - 0.7) / 0.3          # 다음 절로 점점 세게
-            if st == "full" and sec.startswith("v") and frac < 0.3: ramp = 0.85 + 0.15 * frac / 0.3   # 들어오며 커진다
+            if st == "build" and frac > 0.7: ramp = 1.0 + 0.08 * (frac - 0.7) / 0.3          # 다음 절로 조금씩
+            if st == "full" and sec.startswith("v") and frac < 0.3: ramp = 0.95 + 0.05 * frac / 0.3
+            if st == "amen": ramp = 1.0 - 0.15 * frac                                         # 아멘은 잦아들며
             vel = 127 * STAGE_VEL[st] * vmul * ramp * (1.0 if v == "S" else 0.92) + rnd.uniform(-5, 5)
             j = rnd.uniform(-0.015, 0.015)
             lst += [(max(0, t0 + j), "on", p + shift, int(max(20, min(120, vel)))), (t1 + 0.06, "off", p + shift, 0)]
@@ -272,10 +291,10 @@ def build_parts(score, notes, ranges, tm, bpb):
                 while p > 50: p -= 12
                 while p < 38: p += 12
                 first = s == lines.get(sec + "_start", [s])[0]
-                lst += [(tm(s), "on", p, 78 if first else 92), (tm(s) + 1.5, "off", p, 0)]
+                lst += [(tm(s), "on", p, 62 if first else 70), (tm(s) + 1.5, "off", p, 0)]
         if st == "build":
             b = ranges[sec][1]
-            roll += [(tm(b - bpb), "on", 43, 64), (tm(b) + 0.2, "off", 43, 0)]
-    if lst: parts.append(("timpani", V("Percussion/timpani-hit.sfz"), lst, 0.55, 0.0))
-    if roll: parts.append(("timp_roll", V("Percussion/timpani-roll.sfz"), roll, 0.45, 0.0))
+            roll += [(tm(b - bpb), "on", 43, 52), (tm(b) + 0.2, "off", 43, 0)]
+    if lst: parts.append(("timpani", V("Percussion/timpani-hit.sfz"), lst, 0.38, 0.0))
+    if roll: parts.append(("timp_roll", V("Percussion/timpani-roll.sfz"), roll, 0.30, 0.0))
     return parts

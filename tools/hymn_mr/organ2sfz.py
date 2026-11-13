@@ -93,7 +93,7 @@ def main():
             continue
         fn = f"{sk}_{safe(name)}.sfz"
         lines = [f"// {name} — Piteå MHS (Lars Palo, CC BY-SA 2.5) / organ2sfz.py", "<control>", "default_path=samples/",
-                 "<global>", "ampeg_attack=0.004", "ampeg_release=0.06", "amp_veltrack=0", "volume=0"]
+                 "<global>", "ampeg_attack=0.004", "ampeg_release=0.06", "amp_veltrack=100", "volume=0"]   # 세기로 절마다 스톱 합 크기를 고르게(arrange.py)
         for key, wav, tune, loop, rel in regions:
             t = f" tune={int(round(tune))}" if abs(tune) >= 0.5 else ""
             if loop and loop[1] > loop[0]:
