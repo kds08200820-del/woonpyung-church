@@ -110,7 +110,8 @@
   async function pickYear(y) {
     if (y === S.year) return;
     S.year = y; S.kind = "all";
-    try { history.replaceState(null, "", location.pathname + (y === S.fy ? "" : "?y=" + y) + location.hash); } catch (e) { }
+    picked = true;
+    try { const u = new URL(location.href); if (y === S.fy) u.searchParams.delete("y"); else u.searchParams.set("y", y); history.replaceState(null, "", u.pathname + u.search + u.hash); } catch (e) { }
     renderSide();
     await loadYear();
     renderAll();
@@ -833,10 +834,12 @@
     S.admin = !!r[0];
     if (S.home && !S.home.my) S.home.my = { admin: S.admin, finance: false, roles: [] };
     const ys = years();
-    if (S.year == null || ys.indexOf(S.year) < 0) S.year = ys.indexOf(S.fy) >= 0 ? S.fy : ys[0];
+    // 주소(?y=)나 왼쪽 메뉴로 고른 적이 없으면 지금 회기를 보인다 — 새 회기가 시작되면 저절로 그 회기가 먼저 나온다
+    if (!picked || S.year == null || ys.indexOf(S.year) < 0) S.year = ys.indexOf(S.fy) >= 0 ? S.fy : ys[0];
     await loadYear();
     renderAll();
   }
+  let picked = S.year != null;
   if (S.year == null) S.year = Math.max(S.fy, FIRST_YEAR);
   renderSide(); renderMember();
   refresh();
