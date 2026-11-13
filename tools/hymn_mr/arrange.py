@@ -258,7 +258,7 @@ def build_parts(score, notes, ranges, tm, bpb):
             if st == "build" and frac > 0.7: ramp = 1.0 + 0.08 * (frac - 0.7) / 0.3          # 다음 절로 조금씩
             if st == "full" and sec.startswith("v") and frac < 0.3: ramp = 0.95 + 0.05 * frac / 0.3
             if st == "amen": ramp = 1.0 - 0.15 * frac                                         # 아멘은 잦아들며
-            vel = 127 * STAGE_VEL[st] * vmul * ramp * (1.0 if v == "S" else 0.92) + rnd.uniform(-5, 5)
+            vel = 127 * STAGE_VEL[st] * vmul * ramp * (1.0 if v == "S" else 0.92) + rnd.uniform(-2, 2)   # 2026-11-13 저녁 "강약이 심하다" → 음마다 흔들림 ±5→±2
             j = rnd.uniform(-0.015, 0.015)
             lst += [(max(0, t0 + j), "on", p + shift, int(max(20, min(120, vel)))), (t1 + 0.06, "off", p + shift, 0)]
         if lst:
@@ -291,7 +291,7 @@ def build_parts(score, notes, ranges, tm, bpb):
                 while p > 50: p -= 12
                 while p < 38: p += 12
                 first = s == lines.get(sec + "_start", [s])[0]
-                lst += [(tm(s), "on", p, 62 if first else 70), (tm(s) + 1.5, "off", p, 0)]
+                lst += [(tm(s), "on", p, 50 if first else 56), (tm(s) + 1.5, "off", p, 0)]   # 줄 첫 박 팀파니를 여리게(툭 튀지 않게)
         if st == "build":
             b = ranges[sec][1]
             roll += [(tm(b - bpb), "on", 43, 52), (tm(b) + 0.2, "off", 43, 0)]

@@ -373,6 +373,41 @@ def real_ir(kind):
     return _IRC[path]
 
 
+def _movavg(a, n):
+    n = max(1, int(n))
+    k = np.ones(n) / n
+    return np.convolve(np.pad(a, (n // 2, n - 1 - n // 2), mode="edge"), k, mode="valid")
+
+
+def level(y, kind):
+    """강약 고르기 — 2026-11-13 저녁 목사님 "음의 강약이 심하다, 일관된 음이 이어지게".
+    소리 크기를 짧은 창으로 재서 가운데 크기 쪽으로 천천히 당긴다(앞뒤를 다 보고 정하므로 늦게 따라가지 않는다).
+    피아노는 화음을 칠 때 크고 이어 잦아드는 폭이 커서 더 짧은 창·더 세게. 아주 작은 곳(쉼·끝 울림)은 키우지 않는다."""
+    hop = int(0.02 * SR)
+    m = (y[:, 0] ** 2 + y[:, 1] ** 2) / 2
+    n = len(m) // hop
+    if n < 50:
+        return y
+    pw = m[: n * hop].reshape(n, hop).mean(axis=1)
+    win, strength, smooth, lim = (0.5, 0.75, 0.35, 7.0) if kind == "piano" else (1.2, 0.6, 0.8, 5.0)
+    L = 10 * np.log10(_movavg(pw, win / 0.02) + 1e-12)
+    top = np.percentile(L, 99)
+    body = L[L > top - 25]
+    target = np.median(body)
+    g = np.clip((target - L) * strength, -lim, lim)
+    quiet = L < target - 18                       # 쉼·끝 울림: 키우지 않는다(줄이기만)
+    g[quiet] = np.minimum(g[quiet], 0)
+    edge = int(1.0 / 0.02)                       # 끝 1초에서 고르기를 서서히 풀어 끝 울림이 자연스레 사라지게
+    last = np.nonzero(~quiet)[0]
+    if len(last):
+        e = last[-1]
+        g[e:] = np.minimum(g[e:], 0) * 0
+        g[max(0, e - edge): e] *= np.linspace(1, 0, e - max(0, e - edge))
+    g = _movavg(g, smooth / 0.02)
+    gs = np.interp(np.arange(len(y)), (np.arange(n) + 0.5) * hop, 10 ** (g / 20))
+    return y * gs[:, None]
+
+
 def convolve(x, ir):
     n = len(x) + len(ir)
     nf = 1 << (n - 1).bit_length()
@@ -474,6 +509,7 @@ def make(score, kind, work, out):
     nz = np.nonzero(amp > amp.max() * 0.001)[0]
     cut = max(0, nz[0] - int(0.3 * SR))
     y = y[cut: nz[-1] + int(0.2 * SR)]
+    y = level(y, kind)
     y = y / (np.abs(y).max() + 1e-9) * 0.9
     raw = os.path.join(work, f"{kind}_mix.f32")
     y.astype(np.float32).tofile(raw)
@@ -481,7 +517,8 @@ def make(score, kind, work, out):
                     "-af", ("highpass=f=24,bass=g=1.5:f=80:w=0.8,equalizer=f=2100:t=q:w=1.2:g=5,equalizer=f=4500:t=q:w=1:g=2," if kind == "orch" else
                      "highpass=f=30,equalizer=f=300:t=q:w=1:g=-3,equalizer=f=2500:t=q:w=1:g=6,treble=g=5:f=7000,") +   # 참고 음원처럼 바닥은 두껍게, 위는 부드럽게
                     # 느리고 부드러운 크기 고르기(갑자기 커지거나 작아지지 않게) → 마지막 크기 맞춤
-                    "acompressor=threshold=0.1:ratio=2.5:attack=400:release=3000:knee=6:makeup=1.6,"
+                    ("acompressor=threshold=0.1:ratio=2.5:attack=400:release=3000:knee=6:makeup=1.6," if kind == "orch" else
+                     "acompressor=threshold=0.08:ratio=2.5:attack=60:release=600:knee=6:makeup=1.6,") +   # 피아노: 치는 순간을 조금 더 빨리 눌러 고르게
                     "loudnorm=I=-16:TP=-1.5:LRA=7,afade=t=in:d=0.01,areverse,afade=t=in:d=2.5,areverse",
                     "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out], check=True)
     secs = {k: (round(tm(v[0]), 2), round(tm(v[1]), 2)) for k, v in ranges.items()}

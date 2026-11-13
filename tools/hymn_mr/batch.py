@@ -19,7 +19,7 @@ SRC = os.environ.get("HYMN_SRC", os.path.join(os.path.expanduser("~"), "OneDrive
 AUDIVERIS = os.path.join(HOME, "audiveris", "Audiveris", "Audiveris.exe")
 STATUS = os.path.join(HOME, "status.json")
 MODEL = os.environ.get("HYMN_MODEL", "opus")
-ENGINE = "organ4"          # 소리 판: 2026-11-13 오르간 주도 편곡(arrange.py). 바뀌면 이미 만든 장도 다시 굽는다
+ENGINE = "organ5"          # 소리 판: 2026-11-13 오르간 주도 편곡(arrange.py) + 저녁 강약 고르기(hymn_mr.level). 바뀌면 이미 만든 장도 다시 굽는다
 
 
 def resting():
@@ -205,7 +205,10 @@ def do_one(no, st):
     if not img:
         st[str(no)] = {"state": "악보 없음"}; return
     work = os.path.join(HOME, "work", f"{no:03d}"); os.makedirs(work, exist_ok=True)
+    prev = st.get(str(no)) or {}
     rec = {"state": "진행", "at": dt.datetime.now().isoformat(timespec="seconds")}
+    for k in ("approved", "fix_done", "fixed_note"):      # 소리 판만 바꿔 다시 구울 때 목사님 판단을 잃지 않게
+        if prev.get(k): rec[k] = prev[k]
     st[str(no)] = rec; save_status(st)
     score_path = os.path.join(HOME, "scores", f"{no:03d}.json")
     if not os.path.exists(score_path):
@@ -261,6 +264,8 @@ def do_one(no, st):
     thr = max(3, 0.06 * beats)
     # 두 판은 같은 악보 자료로 만든다 — 어느 한 판이라도 악보와 잘 맞으면 자료는 맞다(피아노는 페달 울림이 겹쳐 재기 어렵다)
     ok = any(res[k][0] >= 80 and res[k][1] <= thr for k in ("orch", "piano")) and agr_ok
+    if rec.get("approved"):                       # 목사님이 승인한 장(음은 그대로, 소리만 다시 구움)은 승인 그대로
+        ok = True
     rec.update(state="완료" if ok else "확인 필요", title=score.get("title"), verses=score.get("verses"), bpm=score.get("bpm"),
                match={k: v[0] for k, v in res.items()}, off_beats={k: v[1] for k, v in res.items()},
                seconds=secs["amen"][1] if "amen" in secs else max(v[1] for k2, v in secs.items() if not k2.startswith("_")))
