@@ -126,7 +126,8 @@ ORCH = [
     ("organ_q", "OrganQuiet.sfz", "SATB", 0, "intro v1 v2 v3", 0.7, 0.35, 0.0),
     ("organ_l", "OrganLoud.sfz", "SATB", 0, "v4 amen", 0.8, 0.40, 0.0),
 ]
-PIANO = [("piano", "UprightPiano.sfz", "SATB", 0, "all", 1.0, 1.0, 0.0)]
+PIANO_SFZ = os.environ.get("HYMN_PIANO", r"C:\hymn-mr\piano\SalamanderGrandPianoV3_44.1khz16bit\SalamanderGrandPianoV3.sfz")
+PIANO = [("piano", PIANO_SFZ if os.path.exists(PIANO_SFZ) else "UprightPiano.sfz", "SATB", 0, "all", 1.0, 1.0, 0.0)]
 PIANO_LV = {"intro": 0.55, "v1": 0.55, "v2": 0.62, "v3": 0.66, "v4": 0.78, "amen": 0.80}
 
 
@@ -340,6 +341,26 @@ def hall_ir(seconds=2.6, seed=7):
     return ir / np.sqrt((ir ** 2).sum(axis=0, keepdims=True))
 
 
+_IRC = {}
+
+
+def real_ir(kind):
+    """OpenAIR 실제 성당 울림(University of York). 오케스트라=York Minster, 피아노=St Andrew's. 없으면 None."""
+    path = os.environ.get("HYMN_IR" if kind == "orch" else "HYMN_IR_PIANO",
+                          r"C:\hymn-mr\ir\york_minster_ortf.wav" if kind == "orch" else r"C:\hymn-mr\ir\st_andrews_ortf.wav")
+    if not os.path.exists(path):
+        return None
+    if path not in _IRC:
+        raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"], check=True, capture_output=True).stdout
+        a = np.frombuffer(raw, dtype=np.float32).reshape(-1, 2).astype(np.float64)
+        k = int(np.argmax(np.abs(a).max(axis=1)))
+        a = a[max(0, k - 48):]                            # 직접음 앞의 빈 곳을 잘라 소리가 늦지 않게
+        a[: int(0.012 * SR)] = 0                          # 직접음은 원래 소리가 맡는다 — 울림만
+        a /= np.sqrt((a ** 2).sum(axis=0, keepdims=True)) + 1e-12
+        _IRC[path] = a
+    return _IRC[path]
+
+
 def convolve(x, ir):
     n = len(x) + len(ir)
     nf = 1 << (n - 1).bit_length()
@@ -361,11 +382,12 @@ def make(score, kind, work, out):
     mix = None
     if kind == "orch":                 # 새 편곡(참고 음원 분석) — 옛 ORCH 목록은 쓰지 않는다
         plan = []
-        for name, sfz, evs, gain, pan in orch_parts(score, notes, ranges, tm, bpb):
+        import arrange                    # 2026-11-13 오르간이 이끄는 편곡(실제 파이프오르간·VPO·성당 울림)
+        for name, sfz, evs, gain, pan in arrange.build_parts(score, notes, ranges, tm, bpb):
             mid = os.path.join(work, f"orch_{name}.mid"); wav = os.path.join(work, f"orch_{name}.wav")
             write_midi(mid, evs)
             a = render(sfz, mid, wav)
-            pan *= 0.6                     # 참고 음원 좌우 넓이(0.5)에 맞춰 덜 벌린다
+            pan *= 0.8
             l, r = np.cos((pan + 1) * np.pi / 4), np.sin((pan + 1) * np.pi / 4)
             a = a * gain; a[:, 0] *= l * 1.414; a[:, 1] *= r * 1.414
             mix = a if mix is None else add_at(mix, a, 0)
@@ -417,10 +439,12 @@ def make(score, kind, work, out):
             write_midi(os.path.join(work, "roll.mid"), [(tm(a1 - 3), "on", 43, 70), (tm(a1) + 2.5, "off", 43, 0)])
             a = render("TimpaniRolls.sfz", os.path.join(work, "roll.mid"), os.path.join(work, "roll.wav")) * 0.45
             n = max(len(mix), len(a)); mix = np.pad(mix, ((0, n - len(mix)), (0, 0))) + np.pad(a, ((0, n - len(a)), (0, 0)))
-    wet = 0.40 if kind == "orch" else 0.22
+    wet = 0.30 if kind == "orch" else 0.20
     print("  울림 입히는 중")
-    ir = hall_ir(3.3 if kind == "orch" else 1.8)
-    rev = convolve(mix, ir)
+    ir = real_ir(kind) if real_ir(kind) is not None else hall_ir(3.3 if kind == "orch" else 1.8)
+    import scipy.signal as _sg            # 울림에는 낮은 소리를 덜 보낸다(큰 성당의 웅웅거림을 막는다)
+    send = _sg.sosfilt(_sg.butter(2, 220 if kind == "orch" else 120, "highpass", fs=SR, output="sos"), mix, axis=0)
+    rev = convolve(send, ir)
     dry = np.pad(mix, ((0, len(rev) - len(mix)), (0, 0)))
     y = dry * (1 - wet) + rev * wet * 0.9
     # 끝 소리가 사라질 때까지 자르고, 처음의 빈 곳은 0.3초만 남긴다
@@ -432,7 +456,7 @@ def make(score, kind, work, out):
     raw = os.path.join(work, f"{kind}_mix.f32")
     y.astype(np.float32).tofile(raw)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "2", "-i", raw,
-                    "-af", ("highpass=f=22,bass=g=6:f=45:w=0.7,equalizer=f=170:t=q:w=1:g=-1.5,equalizer=f=480:t=q:w=1:g=-2,equalizer=f=1600:t=q:w=0.9:g=5,treble=g=-3:f=7000," if kind == "orch" else "") +   # 참고 음원처럼 바닥은 두껍게, 위는 부드럽게
+                    "-af", ("highpass=f=20,equalizer=f=140:t=q:w=1:g=-4,equalizer=f=2100:t=q:w=1.2:g=5,equalizer=f=4500:t=q:w=1:g=2," if kind == "orch" else "") +   # 참고 음원처럼 바닥은 두껍게, 위는 부드럽게
                     "loudnorm=I=-16:TP=-1.5:LRA=14,afade=t=in:d=0.01,areverse,afade=t=in:d=1.5,areverse",
                     "-c:a", "aac", "-b:a", "192k", "-ar", "44100", out], check=True)
     secs = {k: (round(tm(v[0]), 2), round(tm(v[1]), 2)) for k, v in ranges.items()}
