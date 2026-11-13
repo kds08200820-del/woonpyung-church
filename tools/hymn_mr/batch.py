@@ -240,7 +240,9 @@ def do_one(no, st):
     agr_ok = agr is None or (agr["S"] >= 0.8 and min(agr.values()) >= 0.6)
     beats = max(1, round((secs.get("amen", secs.get("v1"))[1]) / 60 * float(score.get("bpm", 76))))   # 대략의 박 수
     # 박마다 대조: 전체 일치가 높고 어긋난 박이 적으면 통과(어긋난 박은 화음이 바뀌는 곳의 측정 한계가 많다 — 같은 곳이 절마다 되풀이)
-    ok = res["piano"][0] >= 80 and res["piano"][1] <= max(3, 0.06 * beats) and agr_ok
+    thr = max(3, 0.06 * beats)
+    # 두 판은 같은 악보 자료로 만든다 — 어느 한 판이라도 악보와 잘 맞으면 자료는 맞다(피아노는 페달 울림이 겹쳐 재기 어렵다)
+    ok = any(res[k][0] >= 80 and res[k][1] <= thr for k in ("orch", "piano")) and agr_ok
     rec.update(state="완료" if ok else "확인 필요", title=score.get("title"), verses=score.get("verses"), bpm=score.get("bpm"),
                match={k: v[0] for k, v in res.items()}, off_beats={k: v[1] for k, v in res.items()},
                seconds=secs["amen"][1] if "amen" in secs else max(v[1] for k2, v in secs.items() if not k2.startswith("_")))
@@ -250,7 +252,7 @@ def do_one(no, st):
     rec["lyrics"] = not lp
     if lp: rec["lyrics_problems"] = lp[:4]
     if not ok:
-        rec["problems"] = [f"소리 대조: 피아노 화음 일치 {res['piano'][0]}%, 어긋난 박 {res['piano'][1]}개"] +             ([] if agr_ok else [f"인식 초안과 음 순서 일치율이 낮음 {agr} — 사람이 악보와 대조 필요"])
+        rec["problems"] = [f"소리 대조: 오케스트라 {res['orch'][0]}%·어긋난 박 {res['orch'][1]}, 피아노 {res['piano'][0]}%·{res['piano'][1]}"] +             ([] if agr_ok else [f"인식 초안과 음 순서 일치율이 낮음 {agr} — 사람이 악보와 대조 필요"])
     save_status(st)
     log(f"{no}장 {score.get('title')}: {rec['state']} (일치 {rec['match']})")
 
