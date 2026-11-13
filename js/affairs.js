@@ -2022,6 +2022,7 @@ console.log('[affairs.js] v20261023th1');
         '<span>받을 판</span><select id="hm_kind" style="padding:4px 6px;font:inherit"><option value="orch">오케스트라</option><option value="piano">피아노</option><option value="both">둘 다</option></select>' +
         '<span style="margin-left:6px">일괄 범위</span><input id="hm_from" type="number" min="1" max="645" placeholder="부터" style="width:70px;padding:4px 6px;font:inherit"> ~ <input id="hm_to" type="number" min="1" max="645" placeholder="까지" style="width:70px;padding:4px 6px;font:inherit">' +
         '<button class="btn" id="hm_zip" style="padding:4px 12px">일괄 받기(zip)</button><span id="hm_zmsg" style="color:#73726F"></span></div>' +
+        '<div id="hm_rev"></div>' +
         '<div id="hm_body" style="max-height:58vh;overflow:auto"></div></div>';
       document.body.appendChild(ov);
       var busy = false;
@@ -2110,8 +2111,85 @@ console.log('[affairs.js] v20261023th1');
         hymnMrList().then(function (x) { nos = x; draw(); if (panel) loadHymnMr(panel); })
           .catch(function () { body.innerHTML = '<div style="padding:16px 2px;color:#A33A2A">목록을 불러오지 못했습니다.</div>'; });
       }
-      ov.querySelector('#hm_reload').onclick = load;
+      ov.querySelector('#hm_reload').onclick = function () { load(); loadRev(); };
       load();
+      // ── 확인 필요(검토용) — 2026-11-13 담임목사: "확인이 필요한 장을 들을 수 있도록. 승인하거나 수정하거나 판단할 수 있도록"
+      //   교회 PC 가 자동 대조에서 걸린 장을 검토용으로 올린다(성도에게는 안 보임). 승인하면 바로 성도 목록에 나오고,
+      //   「고쳐 주세요」에 남긴 말은 교회 PC 가 다음 차례(한 시간 안)에 읽어 악보를 다시 보고 고쳐 굽는다.
+      var rev = ov.querySelector('#hm_rev'), revOpen = {};
+      function revPost(path, data) {
+        var s = sess();
+        if (!s || !s.token) return Promise.reject(new Error('로그인이 필요합니다.'));
+        return fetch(R2 + path, { method: 'POST', headers: { Authorization: 'Bearer ' + s.token, 'Content-Type': 'application/json' }, body: JSON.stringify(data || {}) })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._s = r.status; if (!r.ok && r.status !== 403 && r.status !== 404) throw new Error(j.error || ('실패 ' + r.status)); return j; }); });
+      }
+      function vText(it) {
+        var v = it.verdict, info = it.info || {};
+        if (!v) return '<span style="color:#A33A2A">판단 기다림</span>';
+        if (v.verdict === 'fix') return (info.at && info.at > v.at.slice(0, 19)) ? '<span style="color:#2F6B3A">고친 판이 올라왔습니다 — 다시 들어 보세요</span>' : '<span style="color:#8A6D1F">수정 요청함 — 교회 PC 가 고치는 중</span>';
+        if (v.verdict === 'hold') return '<span style="color:#73726F">보류</span>';
+        return '승인함';
+      }
+      function why(info) {
+        if (!info) return '';
+        var m = info.match || {}, o = info.off_beats || {}, a = info.agree, out = [];
+        if (m.orch != null) out.push('화음 일치 오케스트라 ' + m.orch + '%(어긋난 박 ' + o.orch + ')·피아노 ' + m.piano + '%(' + o.piano + ')');
+        if (a) {
+          var low = Object.keys(a).filter(function (k) { return a[k] < 0.8; }).map(function (k) { return ({ S: '소프라노', A: '알토', T: '테너', B: '베이스' })[k] + ' ' + Math.round(a[k] * 100) + '%'; });
+          if (low.length) out.push('악보 읽기가 의심스러운 성부: ' + low.join(', '));
+        }
+        if (info.fixed_note) out.push('지난 수정 요청: ' + info.fixed_note);
+        return out.join(' · ');
+      }
+      function drawRev(items) {
+        var wait = items.filter(function (it) { return it.has && (it.has.orch || it.has.piano); });
+        var okd = items.filter(function (it) { return it.verdict && it.verdict.verdict === 'ok' && !(it.has && (it.has.orch || it.has.piano)); }).map(function (it) { return it.no; });
+        if (!wait.length && !okd.length) { rev.innerHTML = ''; return; }
+        rev.innerHTML = '<div style="margin:0 0 12px;padding:10px 12px;border:1px solid #E4C9A8;background:#FFFBF5">' +
+          '<div style="font-weight:700;margin-bottom:2px">확인 필요 ' + wait.length + '장 <span style="font-weight:400;font-size:.76rem;color:#73726F">— 자동 대조에서 걸린 장입니다. 성도에게는 아직 보이지 않습니다. 들어 보시고 판단해 주세요.</span></div>' +
+          '<div style="font-size:.74rem;color:#73726F;margin-bottom:6px">승인: 바로 성도 목록에 올라갑니다 · 고쳐 주세요: 틀린 곳을 적어 주시면(예: "2절 끝 베이스 음이 틀림", "후렴 박자가 빠름") 교회 PC 가 악보를 다시 보고 고쳐 굽습니다 · 보류: 그대로 둡니다</div>' +
+          wait.map(function (it) {
+            var n = it.no, info = it.info || {}, t = info.title || hymnTitle(n) || '';
+            return '<div style="padding:8px 2px;border-top:1px solid #F0E4D4">' +
+              '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px">' +
+              '<b style="min-width:3.2em">' + n + '장</b><span style="flex:1;min-width:120px">' + esc(t) + ' <span style="font-size:.76rem">' + vText(it) + '</span></span>' +
+              '<button type="button" class="btn btn-line" data-rplay="' + n + '" data-idle="들어 보기" style="padding:3px 10px">들어 보기</button>' +
+              '<button type="button" class="btn" data-rok="' + n + '" style="padding:3px 10px">승인</button>' +
+              '<button type="button" class="btn btn-line" data-rfix="' + n + '" style="padding:3px 10px">고쳐 주세요</button>' +
+              '<button type="button" class="btn btn-line" data-rhold="' + n + '" style="padding:3px 10px">보류</button></div>' +
+              '<div style="font-size:.74rem;color:#8A8986;margin-top:3px">' + esc(why(info)) + '</div>' +
+              '<div data-rbox="' + n + '"' + (revOpen[n] ? '' : ' hidden') + ' style="margin-top:6px"><textarea data-rnote="' + n + '" rows="2" placeholder="틀린 곳(절·마디·성부·박자) — 비워 두면 악보와 한 음씩 다시 대조합니다" style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #D9D8D4;font:inherit;font-size:.84rem">' + esc((it.verdict && it.verdict.verdict === 'fix' && it.verdict.note) || '') + '</textarea>' +
+              '<button type="button" class="btn" data-rsend="' + n + '" style="padding:3px 12px;margin-top:4px">수정 요청 보내기</button></div></div>';
+          }).join('') +
+          (okd.length ? '<div style="font-size:.76rem;color:#73726F;padding-top:6px;border-top:1px solid #F0E4D4">승인한 장: ' + okd.join(', ') + '</div>' : '') + '</div>';
+      }
+      function loadRev() {
+        revPost('/hymn-mr-review').then(function (j) { if (j._s === 403 || j._s === 404) { rev.innerHTML = ''; return; } drawRev(j.items || []); })
+          .catch(function (e) { rev.innerHTML = '<div style="margin:0 0 10px;font-size:.8rem;color:#A33A2A">확인 필요 목록을 불러오지 못했습니다: ' + esc(e.message) + '</div>'; });
+      }
+      function judge(n, verdict, note, b) {
+        if (b) b.disabled = true;
+        return revPost('/hymn-mr-judge', { no: n, verdict: verdict, note: note || '' }).then(function () {
+          if (window.HymnMR && window.HymnMR.playing() === n) window.HymnMR.stop();
+          delete revOpen[n]; loadRev(); if (verdict === 'ok') load();
+        }).catch(function (e) { alert(e.message); if (b) b.disabled = false; });
+      }
+      rev.addEventListener('click', function (e) {
+        var b;
+        if ((b = e.target.closest('[data-rplay]'))) {
+          var n = +b.getAttribute('data-rplay'); if (!window.HymnMR) return;
+          if (window.HymnMR.playing() === n) { window.HymnMR.stop(); return; }
+          window.HymnMR.play(n, b, { bottom: 16, review: true }); return;
+        }
+        if ((b = e.target.closest('[data-rok]'))) { var n2 = +b.getAttribute('data-rok'); if (confirm(n2 + '장 반주를 승인할까요? 바로 성도 목록에 올라갑니다.')) judge(n2, 'ok', '', b); return; }
+        if ((b = e.target.closest('[data-rhold]'))) { judge(+b.getAttribute('data-rhold'), 'hold', '', b); return; }
+        if ((b = e.target.closest('[data-rfix]'))) {
+          var n3 = b.getAttribute('data-rfix'), box = rev.querySelector('[data-rbox="' + n3 + '"]');
+          box.hidden = !box.hidden; revOpen[n3] = !box.hidden; if (!box.hidden) box.querySelector('textarea').focus(); return;
+        }
+        if ((b = e.target.closest('[data-rsend]'))) { var n4 = +b.getAttribute('data-rsend'); judge(n4, 'fix', rev.querySelector('[data-rnote="' + n4 + '"]').value.trim(), b); }
+      });
+      loadRev();
     }
     // 압축하지 않는(저장만 하는) zip — m4a 는 이미 압축된 소리라 그대로 담는다. 파일 이름은 UTF-8.
     function storeZip(files) {

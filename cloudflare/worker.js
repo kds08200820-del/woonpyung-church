@@ -37,6 +37,8 @@
  *  - POST   /hymn-mr-url         반주 재생 열쇠 발급      (로그인한 성도, body {no:305}) — 노래방 가사(NNN_lyrics.json)도 같은 열쇠로
  *  - GET    /hymn-mr/<이름>       반주 재생               (열쇠 서명 확인 · Range 지원)
  *  - GET    /hymn-mr-have        반주가 준비된 장 번호 목록(공개, 번호만)
+ *  - POST   /hymn-mr-review      '확인 필요' 반주 검토 목록 + 판단 (관리자) — 교회 PC 가 review_NNN_* 로 올린 것
+ *  - POST   /hymn-mr-judge       검토 판단 {no, verdict: ok|fix|hold, note} (관리자) — ok 면 정식 자리(NNN_*)로 옮긴다
  *    새찬송가 악보·편곡은 한국찬송가공회 저작물이라 반주를 공개하지 않는다(2026-11-13 담임목사: 로그인한 성도만).
  *    오디오북과 같은 방법 — 공개 경로(/f/)로 내보내지 않고, 6시간짜리 서명 주소로만 들려준다.
  *    서명 비밀키는 오디오북의 BOOK_AUDIO_SECRET 을 함께 쓴다(서명 문자열에 "hymn:" 을 붙여 구분).
@@ -373,10 +375,12 @@ export default {
       if (!env.BOOK_AUDIO_SECRET || env.BOOK_AUDIO_SECRET.length < 24) {
         return json({ error: "반주 설정이 아직 끝나지 않았습니다(관리자 문의)." }, 503, req);
       }
-      let no = 0;
-      try { no = parseInt((await req.json()).no, 10) || 0; } catch (e) {}
+      let no = 0, review = false;
+      try { const b = await req.json(); no = parseInt(b.no, 10) || 0; review = !!b.review; } catch (e) {}
       if (!(no >= 1 && no <= 645)) return json({ error: "장 번호가 올바르지 않습니다." }, 400, req);
-      const pad = String(no).padStart(3, "0");
+      // 검토용(확인 필요) 반주는 관리자만
+      if (review && !(await isAdmin(user, token, env))) return json({ error: "관리자만 들을 수 있습니다." }, 403, req);
+      const pad = (review ? "review_" : "") + String(no).padStart(3, "0");
       const exp = Math.floor(Date.now() / 1000) + BOOK_TICKET_SEC;
       const files = {};
       for (const kind of ["orch", "piano", "lyrics"]) {
@@ -384,6 +388,55 @@ export default {
         if (await env.BUCKET.head(HYMN_PREFIX + n)) files[kind] = `${url.origin}/hymn-mr/${n}?e=${exp}&s=${await bookSign("hymn:" + n, exp, env)}`;
       }
       return json({ ok: true, no, exp, files }, 200, req);
+    }
+
+    // ----- 새찬송가 반주 검토(확인 필요 장) — 관리자 -----
+    // 교회 PC 가 자동 대조에서 걸린 장을 review_NNN_{orch,piano}.m4a·_lyrics.json·_info.json 으로 올린다(공개 목록에는 안 나옴).
+    // 판단은 hymnmr/_verdicts.json 에 둔다. 교회 PC 도 같은 관리자 로그인으로 판단을 읽어 간다.
+    if (req.method === "POST" && (url.pathname === "/hymn-mr-review" || url.pathname === "/hymn-mr-judge")) {
+      if (!user || !(await isAdmin(user, token, env))) return json({ error: "관리자만 사용할 수 있습니다." }, 403, req);
+      const VK = HYMN_PREFIX + "_verdicts.json";
+      const vobj = await env.BUCKET.get(VK);
+      let verdicts = {};
+      if (vobj) { try { verdicts = JSON.parse(await vobj.text()) || {}; } catch (e) { verdicts = {}; } }
+      if (url.pathname === "/hymn-mr-review") {
+        const names = (await listAll(env.BUCKET, HYMN_PREFIX)).map((f) => f.name).filter((n) => n.startsWith("review_"));
+        const byNo = {};
+        for (const n of names) {
+          const m = /^review_(\d{3})_(orch|piano|lyrics|info)\./.exec(n);
+          if (m) (byNo[+m[1]] = byNo[+m[1]] || {})[m[2]] = true;
+        }
+        const items = [];
+        for (const no of Object.keys(byNo).map(Number).sort((a, b) => a - b)) {
+          let info = null;
+          if (byNo[no].info) {
+            const o = await env.BUCKET.get(HYMN_PREFIX + "review_" + String(no).padStart(3, "0") + "_info.json");
+            if (o) { try { info = JSON.parse(await o.text()); } catch (e) {} }
+          }
+          items.push({ no, has: byNo[no], info, verdict: verdicts[no] || null });
+        }
+        for (const k of Object.keys(verdicts)) if (!byNo[+k]) items.push({ no: +k, has: {}, info: null, verdict: verdicts[k] });   // 승인되어 옮겨진 장
+        return json({ ok: true, items }, 200, req);
+      }
+      let b = {};
+      try { b = await req.json(); } catch (e) {}
+      const no = parseInt(b.no, 10) || 0, verdict = String(b.verdict || "");
+      if (!(no >= 1 && no <= 645) || !["ok", "fix", "hold"].includes(verdict)) return json({ error: "장 번호나 판단이 올바르지 않습니다." }, 400, req);
+      const pad = String(no).padStart(3, "0");
+      if (verdict === "ok") {                          // 정식 자리로 옮긴다(복사 후 검토용 지움)
+        const moved = [];
+        for (const k of ["orch.m4a", "piano.m4a", "lyrics.json"]) {
+          const o = await env.BUCKET.get(HYMN_PREFIX + "review_" + pad + "_" + k);
+          if (!o) continue;
+          await env.BUCKET.put(HYMN_PREFIX + pad + "_" + k, await o.arrayBuffer(), { httpMetadata: o.httpMetadata });   // 한 장 5MB 안팎 — 통째로 옮긴다
+          moved.push(k);
+        }
+        if (!moved.some((k) => k.endsWith(".m4a"))) return json({ error: "검토용 반주 파일이 없습니다." }, 404, req);
+        for (const k of ["orch.m4a", "piano.m4a", "lyrics.json", "info.json"]) await env.BUCKET.delete(HYMN_PREFIX + "review_" + pad + "_" + k);
+      }
+      verdicts[no] = { verdict, note: String(b.note || "").slice(0, 1000), at: new Date().toISOString(), by: user.email || user.id };
+      await env.BUCKET.put(VK, JSON.stringify(verdicts), { httpMetadata: { contentType: "application/json" } });
+      return json({ ok: true, no, verdict: verdicts[no] }, 200, req);
     }
 
     // ----- 임시 비밀번호 발급 (담임목사=최고 관리자 전용) -----
@@ -479,7 +532,7 @@ export default {
       if (!name || name.includes("/") || name.includes("..") || name.length > 200) {
         return json({ error: "파일 이름이 올바르지 않습니다." }, 400, req);
       }
-      const hymnLyrics = audioUp.prefix === HYMN_PREFIX && /^\d{3}_lyrics\.json$/.test(name);   // 반주의 노래방 가사 시간표
+      const hymnLyrics = audioUp.prefix === HYMN_PREFIX && /^(review_)?\d{3}_(lyrics|info)\.json$/.test(name);   // 반주의 노래방 가사 시간표
       if (!hymnLyrics && !/\.(wav|mp3|m4a|ogg)$/i.test(name)) {
         return json({ error: "음성 파일(wav·mp3·m4a·ogg)만 올릴 수 있습니다." }, 400, req);
       }

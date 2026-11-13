@@ -52,7 +52,7 @@
       'background:#111;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.35);font:13px/1.4 "Noto Sans KR",sans-serif';
     var bs = 'border:1px solid #777;background:transparent;color:#fff;font:inherit;padding:3px 9px;cursor:pointer;margin-left:6px';
     var bar = doc.createElement('div'); bar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:7px 9px 5px';
-    var t = doc.createElement('span'); t.textContent = no + '장 반주';
+    var t = doc.createElement('span'); t.textContent = no + '장 반주' + (opt.review ? ' (검토용)' : '');
     var right = doc.createElement('span');
     var kinds = {}, kind = 'orch';
     try { kind = localStorage.getItem(KIND_KEY) || 'orch'; } catch (e) {}
@@ -170,7 +170,7 @@
 
     var tk = token();
     if (!tk) { msg.textContent = '찬송가 반주는 로그인한 성도만 들을 수 있습니다. 로그인한 뒤 다시 눌러 주세요.'; return true; }
-    fetch(STORE + '/hymn-mr-url', { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify({ no: no }) })
+    fetch(STORE + '/hymn-mr-url', { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify(opt.review ? { no: no, review: true } : { no: no }) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._s = r.status; return j; }); })
       .then(function (j) {
         if (myBox !== box) return;                       // 그사이 닫거나 다른 장을 눌렀다

@@ -22,6 +22,11 @@ MODEL = os.environ.get("HYMN_MODEL", "opus")
 ENGINE = "organ4"          # 소리 판: 2026-11-13 오르간 주도 편곡(arrange.py). 바뀌면 이미 만든 장도 다시 굽는다
 
 
+def resting():
+    """새벽 쉼(00:30~07:30). 2026-11-13 목사님 "쉬는 것은 멈춰 주세요" → 기본은 쉬지 않는다. HYMN_NIGHT_REST=1 이면 다시 쉰다."""
+    return os.environ.get("HYMN_NIGHT_REST") == "1" and dt.time(0, 30) <= dt.datetime.now().time() < dt.time(7, 30)
+
+
 def log(msg):
     line = f"[{dt.datetime.now():%m-%d %H:%M:%S}] {msg}"
     print(line, flush=True)
@@ -257,6 +262,62 @@ def do_one(no, st):
     log(f"{no}장 {score.get('title')}: {rec['state']} (일치 {rec['match']})")
 
 
+def judged(log=log):
+    """대시보드에서 목사님이 내린 판단을 가져와 반영한다.
+    승인(ok): 저장소 워커가 이미 검토용 파일을 정식 자리로 옮겼다 → 여기서는 상태만 '완료'로.
+    수정 요청(fix): 남긴 말을 Claude 에게 주어 악보 그림을 다시 보고 자료를 고친 뒤 다시 굽는다.
+                    맞으면 정식으로 올리고, 아직 걸리면 고친 판을 검토용으로 다시 올린다(목사님이 또 듣고 판단)."""
+    import upload
+    items = upload.review_list()
+    st = load_status()
+    for it in items:
+        no, v = int(it["no"]), it.get("verdict") or {}
+        rec = st.get(str(no))
+        if not rec or not v.get("at"):
+            continue
+        if v.get("verdict") == "ok" and rec.get("state") != "완료":
+            rec.update(state="완료", approved=v["at"], uploaded=rec.get("uploaded") or {"approved": True})
+            rec.pop("problems", None); save_status(st); log(f"{no}장 목사님 승인 → 완료")
+        elif v.get("verdict") == "fix" and rec.get("fix_done") != v["at"]:
+            note = (v.get("note") or "").strip()
+            log(f"{no}장 목사님 수정 요청: {note[:80]}")
+            score_path = os.path.join(HOME, "scores", f"{no:03d}.json")
+            if not os.path.exists(score_path) or not src_image(no):
+                rec["fix_done"] = v["at"]; save_status(st); continue
+            score = json.load(open(score_path, encoding="utf-8"))
+            cdir = tempfile.mkdtemp(prefix=f"hymn{no}_fix_")
+            try:
+                crops(src_image(no), cdir)
+                probs = [f"[담임목사님이 반주를 듣고 남긴 말 — 이것을 가장 먼저 고치세요] {note or '(말 없음: 악보 그림과 한 음씩 다시 대조)'}"] + (rec.get("problems") or [])
+                fixed = claude_fix(no, cdir, score, probs)
+                p2 = omr2json.check(fixed)
+                if p2:
+                    fixed2 = claude_fix(no, cdir, score, probs, fixed, p2)
+                    if len(omr2json.check(fixed2)) <= len(p2): fixed = fixed2
+            finally:
+                shutil.rmtree(cdir, ignore_errors=True)
+            if omr2json.check(fixed):
+                log(f"{no}장 고친 자료가 아직 맞지 않아 그대로 둡니다: {omr2json.check(fixed)[:2]}")
+                rec["fix_done"] = v["at"]; save_status(st); continue
+            shutil.copy(score_path, score_path + f".bak{dt.datetime.now():%m%d%H%M}")
+            fixed["no"] = no
+            fixed["checked"] = f"{dt.date.today()} 목사님 수정 요청 반영: Claude({MODEL})"
+            mxl = os.path.join(HOME, "omr", f"{no:03d}.mxl")
+            try:
+                fixed["agree"] = omr2json.agreement(omr2json.convert(mxl), fixed) if os.path.exists(mxl) else None
+            except Exception:
+                fixed["agree"] = None
+            json.dump(fixed, open(score_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+            do_one(no, st)
+            st = load_status(); rec = st[str(no)]
+            rec["fix_done"] = v["at"]; rec["fixed_note"] = note[:200]; save_status(st)
+            if rec.get("state") == "완료":
+                upload.run([no], log=log)
+            else:
+                upload.review([no], log=log)
+            st = load_status()
+
+
 def upload_ready_cache():
     try:
         import upload
@@ -290,14 +351,28 @@ def main():
                 up_ok[0] = False
         except Exception as e:
             log(f"올리기 확인 실패: {e}")
+        if not o.nos and up_ok[0]:
+            try:
+                judged(log)                    # 목사님 판단(승인·수정 요청)부터
+            except RuntimeError as e:
+                if "사용 한도" in str(e):
+                    log(f"Claude 사용 한도 — 멈춥니다 ({e})"); return
+                log(f"판단 반영 실패: {e}")
+            except Exception as e:
+                log(f"판단 반영 실패: {e}")
+            try:                               # 전에 걸린 장도 들어 볼 수 있게(검토용으로 아직 안 올린 것)
+                import upload
+                left = sorted(int(k) for k, v in load_status().items() if v.get("state") == "확인 필요" and not v.get("review_uploaded"))
+                if left: upload.review(left, log=log)
+            except Exception as e:
+                log(f"검토용 올리기 실패(다음에 다시): {e}")
         st = load_status()
         nos = o.nos or list(range(1, 646))
         if not o.nos:                          # 소리 판이 바뀐 장: 악보 자료는 그대로 두고 다시 굽고 올린다(장당 1분)
             for no in sorted(int(k) for k, v in st.items() if v.get("state") in ("완료", "확인 필요")
                              and (v.get("engine") != ENGINE or (not v.get("lyrics") and not v.get("lyrics_tried")))
                              and os.path.exists(os.path.join(HOME, "scores", f"{int(k):03d}.json"))):
-                now = dt.datetime.now().time()
-                if dt.time(0, 30) <= now < dt.time(7, 30):
+                if resting():
                     log("새벽에는 쉽니다(다시 굽기)."); return
                 try:
                     sc = json.load(open(os.path.join(HOME, "scores", f"{no:03d}.json"), encoding="utf-8"))
@@ -313,14 +388,16 @@ def main():
                     if st.get(str(no), {}).get("state") == "완료" and up_ok[0]:
                         import upload
                         upload.run([no], log=log)
+                    elif st.get(str(no), {}).get("state") == "확인 필요" and up_ok[0]:
+                        import upload
+                        upload.review([no], log=log)
                 except Exception as e:
                     log(f"{no}장 다시 굽기 실패: {e}")
                 st = load_status()
         for no in nos:
             if not o.redo and st.get(str(no), {}).get("state") in ("완료", "확인 필요", "악보 없음"):
                 continue
-            now = dt.datetime.now().time()
-            if not o.nos and (now >= dt.time(0, 30) and now < dt.time(7, 30)):
+            if not o.nos and resting():
                 log("새벽(00:30~07:30)에는 쉽니다 — 말씀 영상 제작·QT 계획에 PC 와 Claude 를 비워 둔다. 다음 예약 때 이어서."); return
             if not o.nos:
                 time.sleep(int(os.environ.get("HYMN_PAUSE", "45")))   # Claude 사용량을 천천히
@@ -329,6 +406,12 @@ def main():
                     if os.path.exists(f) and no != 305: os.remove(f)
             try:
                 do_one(no, st)
+                if st.get(str(no), {}).get("state") == "확인 필요" and up_ok[0]:
+                    try:
+                        import upload
+                        upload.review([no], log=log)
+                    except Exception as e:
+                        log(f"{no}장 검토용 올리기 실패(다음에 다시): {e}")
                 if st.get(str(no), {}).get("state") == "완료" and up_ok[0]:
                     try:
                         import upload
@@ -349,8 +432,7 @@ def main():
             import lyrics
             st = load_status()
             for no in sorted(int(k) for k, v in st.items() if v.get("state") == "완료" and not v.get("lyrics") and not v.get("lyrics_tried")):
-                now = dt.datetime.now().time()
-                if dt.time(0, 30) <= now < dt.time(7, 30):
+                if resting():
                     return
                 try:
                     lyrics.add(no, log=log)

@@ -75,5 +75,56 @@ def run(nos=None, log=print):
     return n
 
 
+def _put(supa, name, data, ct):
+    code, j = post("/hymn-mr-audio", supa.token, data, {"x-hymn-name": name, "Content-Type": ct})
+    if code == 401:
+        supa.login(); code, j = post("/hymn-mr-audio", supa.token, data, {"x-hymn-name": name, "Content-Type": ct})
+    if code != 200:
+        raise RuntimeError(f"{name} 올리기 실패({code}): {j}")
+
+
+def review(nos, log=print):
+    """'확인 필요' 장을 검토용 이름(review_NNN_*)으로 올린다 — 공개 목록(/hymn-mr-have)에는 나오지 않고,
+    관리자 대시보드에서만 들어 보고 승인·수정 요청한다(2026-11-13 담임목사)."""
+    st = json.load(open(STATUS, encoding="utf-8"))
+    supa = Supa(); supa.login()
+    n = 0
+    for no in nos:
+        rec = st.get(str(no)) or {}
+        if rec.get("state") != "확인 필요":
+            continue
+        pad = f"{no:03d}"
+        got = {}
+        for kind in ("orch", "piano"):
+            f = os.path.join(hymn_mr.HOME, "out", f"{pad}_{kind}.m4a")
+            if os.path.exists(f):
+                _put(supa, f"review_{pad}_{kind}.m4a", open(f, "rb").read(), "audio/mp4"); got[kind] = os.path.getsize(f)
+        if not got:
+            continue                                   # 소리를 못 만든 장(악보 자료부터 걸린 장)은 들을 것이 없다
+        lf = os.path.join(hymn_mr.HOME, "out", f"{pad}_lyrics.json")
+        if os.path.exists(lf):
+            _put(supa, f"review_{pad}_lyrics.json", open(lf, "rb").read(), "application/json")
+        import datetime as _dt
+        info = {"no": no, "title": rec.get("title"), "problems": rec.get("problems") or [], "match": rec.get("match"),
+                "off_beats": rec.get("off_beats"), "agree": rec.get("agree"), "seconds": rec.get("seconds"),
+                "fixed_note": rec.get("fixed_note"), "at": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")}   # 저장소 판단 시각(UTC)과 견준다
+        _put(supa, f"review_{pad}_info.json", json.dumps(info, ensure_ascii=False).encode("utf-8"), "application/json")
+        st = json.load(open(STATUS, encoding="utf-8"))
+        st[str(no)]["review_uploaded"] = info["at"]
+        json.dump(st, open(STATUS, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        n += 1
+        log(f"{no}장 검토용으로 올림 {got}")
+    return n
+
+
+def review_list():
+    """저장소에서 검토 목록과 목사님 판단(verdict)을 받는다."""
+    supa = Supa(); supa.login()
+    code, j = post("/hymn-mr-review", supa.token, b"{}", {"Content-Type": "application/json"})
+    if code != 200:
+        raise RuntimeError(f"검토 목록 받기 실패({code}): {j}")
+    return j.get("items") or []
+
+
 if __name__ == "__main__":
     run([int(a) for a in sys.argv[1:]] or None)
