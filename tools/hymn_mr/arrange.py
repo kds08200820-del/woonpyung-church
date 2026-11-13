@@ -34,6 +34,8 @@ REG = {
     "mid": (["Stop009_PRINCIPAL_8.sfz", "Stop011_OKTAVA_4.sfz", "Stop019_PRINCIPAL_4.sfz", "Stop021_WALDFLJT_2.sfz"], ["Stop001_SUBBAS_16.sfz", "Stop002_OKTAVA_8.sfz"]),
     "build": (["Stop009_PRINCIPAL_8.sfz", "Stop011_OKTAVA_4.sfz", "Stop012_OKTAVA_2.sfz", "Stop013_MIXTUR_IV.sfz", "Stop033_OBOE_8.sfz"],
               ["Stop001_SUBBAS_16.sfz", "Stop002_OKTAVA_8.sfz", "Stop004_OKTAVA_4.sfz"]),
+    "full_a": (["Stop009_PRINCIPAL_8.sfz", "Stop011_OKTAVA_4.sfz", "Stop012_OKTAVA_2.sfz", "Stop013_MIXTUR_IV.sfz"],
+               ["Stop001_SUBBAS_16.sfz", "Stop002_OKTAVA_8.sfz", "Stop004_OKTAVA_4.sfz"]),
     "full": (["Stop009_PRINCIPAL_8.sfz", "Stop011_OKTAVA_4.sfz", "Stop012_OKTAVA_2.sfz", "Stop013_MIXTUR_IV.sfz", "Stop015_TRUMPET_8.sfz",
               "Stop034_TR_HARM_8.sfz", "Stop035_CLAIRON_4.sfz"], ["Stop001_SUBBAS_16.sfz", "Stop002_OKTAVA_8.sfz", "Stop004_OKTAVA_4.sfz", "Stop005_BASUN_16.sfz"]),
 }
@@ -189,8 +191,14 @@ def build_parts(score, notes, ranges, tm, bpb):
     parts = []
     # 1) 오르간 — 단계마다 스톱을 바꾼다
     organ = {}
+    def reg_of(sec, s, st):
+        # 2026-11-13 목사님 "2분 5초에 갑자기 커진다": 마지막 절 첫 절반은 full_a, 뒤 절반에 혀관·16' 혀관을 더한다
+        if st == "full" and sec.startswith("v"):
+            a, b = ranges[sec]
+            if s < (a + b) / 2: return "full_a"
+        return st
     for sec, s, d, v, p in orn:
-        st = stg.get(sec, "mid")
+        st = reg_of(sec, s, stg.get(sec, "mid"))
         man, ped = REG[st]
         stops = ped if v == "B" else man
         t0, t1 = timing(sec, s, d, "organ")
@@ -227,7 +235,11 @@ def build_parts(score, notes, ranges, tm, bpb):
             if v not in voices or st not in use.split():
                 continue
             t0, t1 = timing(sec, s, d, "orch")
-            vel = 127 * STAGE_VEL[st] * vmul * (1.0 if v == "S" else 0.92) + rnd.uniform(-5, 5)
+            a, b = ranges[sec]; frac = (s - a) / max(1e-6, b - a)
+            ramp = 1.0
+            if st == "build" and frac > 0.7: ramp = 1.0 + 0.25 * (frac - 0.7) / 0.3          # 다음 절로 점점 세게
+            if st == "full" and sec.startswith("v") and frac < 0.3: ramp = 0.85 + 0.15 * frac / 0.3   # 들어오며 커진다
+            vel = 127 * STAGE_VEL[st] * vmul * ramp * (1.0 if v == "S" else 0.92) + rnd.uniform(-5, 5)
             j = rnd.uniform(-0.015, 0.015)
             lst += [(max(0, t0 + j), "on", p + shift, int(max(20, min(120, vel)))), (t1 + 0.06, "off", p + shift, 0)]
         if lst:
@@ -243,7 +255,9 @@ def build_parts(score, notes, ranges, tm, bpb):
     for sec, s, d, p, grace in desc:
         t0, t1 = tm(s), tm(s + d)
         if abs(s + d - final_end) < 1e-6: t1 = t0 + (t1 - t0) * 2.0
-        lst += [(t0, "on", p, 78 if grace else 92), (t1 - (0.02 if grace else 0.08), "off", p, 0)]
+        a, b = ranges[sec]; frac = (s - a) / max(1e-6, b - a)
+        v = (78 if grace else 92) * (0.7 + 0.3 * min(1.0, frac / 0.3) if sec.startswith("v") else 1.0)   # 데스캔트는 첫 줄에서 여리게 들어와 커진다
+        lst += [(t0, "on", p, int(v)), (t1 - (0.02 if grace else 0.08), "off", p, 0)]
     if lst:
         parts.append(("trumpet_descant", V("Brass/trumpet-SEC-sustain.sfz"), lst, 0.45, 0.05))
     # 5) 팀파니 — 마지막 절·아멘의 줄 첫 박(그때 베이스 음), 쌓는 절 끝 굴림
@@ -257,7 +271,8 @@ def build_parts(score, notes, ranges, tm, bpb):
                 if p is None: continue
                 while p > 50: p -= 12
                 while p < 38: p += 12
-                lst += [(tm(s), "on", p, 96), (tm(s) + 1.5, "off", p, 0)]
+                first = s == lines.get(sec + "_start", [s])[0]
+                lst += [(tm(s), "on", p, 78 if first else 92), (tm(s) + 1.5, "off", p, 0)]
         if st == "build":
             b = ranges[sec][1]
             roll += [(tm(b - bpb), "on", 43, 64), (tm(b) + 0.2, "off", 43, 0)]

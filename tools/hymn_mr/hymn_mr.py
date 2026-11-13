@@ -274,10 +274,8 @@ def orch_fx(mix, score, ranges, tm, bpb):
         if stg.get(sec) != "full" or sec == "amen":
             continue
         t = tm(a + pick)
-        if os.path.exists(roll):
-            r = wav_at(roll, 0.30); mix = add_at(mix, r, t - len(r) / SR)
-        if os.path.exists(crash): mix = add_at(mix, wav_at(crash, 0.35), t)
-        if os.path.exists(bd): mix = add_at(mix, wav_at(bd, 0.6), t)
+        if os.path.exists(roll):          # 마지막 절로 이끄는 부드러운 심벌 굴림만(갑작스러운 심벌 치기·큰북은 뺐다 — 2026-11-13)
+            r = wav_at(roll, 0.16); mix = add_at(mix, r, t - len(r) / SR)
     if "amen" in ranges and os.path.exists(crash):              # 마지막 화음
         mix = add_at(mix, wav_at(crash, 0.25), tm(ranges["amen"][1] - 3))
     return mix
