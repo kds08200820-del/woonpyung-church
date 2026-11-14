@@ -106,7 +106,7 @@
     links.push(["partners", "후원하는 곳"], ["bylaws", "회칙"]);
     boxSide.innerHTML = `<nav class="ms-side-in" aria-label="회기와 차례">
       <p class="ms-side-h">회기</p>
-      <ul class="ms-side-years">${years().map((y) => `<li><button type="button" class="${y === S.year ? "on" : ""}" data-y="${y}">${y}년도${y === S.fy ? ` <small>지금</small>` : y > S.fy ? ` <small>준비</small>` : ""}</button></li>`).join("")}</ul>
+      <ul class="ms-side-years">${years().map((y) => `<li><button type="button" class="${y === S.year ? "on" : ""}" data-y="${y}">${y}년도${y === S.fy ? ` <small>지금</small>` : y > S.fy ? ` <small>준비</small>` : isClosed(y) ? ` <small>마감</small>` : ""}</button></li>`).join("")}</ul>
       <p class="ms-side-h">${esc(S.year)}년도</p>
       <ul class="ms-side-links">${links.map((l) => `<li><a href="#${l[0]}">${l[1]}</a></li>`).join("")}</ul>
       ${sideAdmin()}
@@ -130,6 +130,9 @@
 
   /* ───────── 임원 관리 (2026-11-14) — 왼쪽 메뉴 아래, 회기 차례와 따로. 그 회기(또는 지금 회기) 임원 · 관리자 · 재정 담당에게만 ─────────
      권한 있는 단추만 보인다. 장부 · 회비 · 명부 · 일정은 고른 회기(위 회기 단추)에 대해 열린다. */
+  // 회기 마감 기록(20261114_2200 실행 뒤에만 서버가 closed 를 준다 — 없으면 마감 단추를 그리지 않는다)
+  const termReady = () => !!(S.home && Array.isArray(S.home.closed));
+  const isClosed = (y) => termReady() && S.home.closed.indexOf(y) >= 0;
   function sideAdmin() {
     if (!isStaff()) return "";
     const MJ = window.MissionJoin, mjOk = !!(MJ && MJ.state && MJ.state.ok);
@@ -140,6 +143,11 @@
     if (mjOk) items.push(["roster", "정회원 · 가입 승인 · 실행위원"]);
     if (secr) items.push(["event", "일정 넣기"], ["post", "활동 · 동향 글 쓰기"]);
     if (S.admin) items.push(["off", "임원 정하기"]);
+    if (S.admin && termReady()) {
+      if (S.year <= S.fy && !isClosed(S.year)) items.push(["close", `${S.year}년도 회기 마감`]);
+      const last = S.home.closed.length ? Math.max(...S.home.closed) : null;
+      if (last !== null && S.year === last) items.push(["reopen", `${last}년도 마감 취소`]);
+    }
     if (!items.length) return "";
     const mine = (S.home.my.roles || []).filter((r) => r.year === S.year).map((r) => r.role);
     const who = S.admin ? "관리자" : (S.home.my.finance ? "재정 담당" : mine.join(" · "));
@@ -153,6 +161,18 @@
     else if (k === "event") openEvent(null);
     else if (k === "post") openPost(null);
     else if (k === "off") openOfficers();
+    else if (k === "close") closeTerm(S.year);
+    else if (k === "reopen") reopenTerm(S.year);
+  }
+  async function closeTerm(y) {
+    if (!confirm(`${y}년도 회기를 마감할까요?\n\n마감하면 ${y + 1}년도가 '지금' 회기가 되고, ${y + 2}년도가 '준비' 회기로 새로 생깁니다.\n${y}년도 자료는 그대로 남고 왼쪽 회기 단추로 언제든 볼 수 있습니다.`)) return;
+    try { await api("POST", "rpc/mission_term_close", { p_year: y }); picked = false; await refresh(); alert(`${y}년도 회기를 마감했습니다. 이제 ${y + 1}년도가 지금 회기입니다.`); }
+    catch (e) { alert("마감하지 못했습니다: " + e.message); }
+  }
+  async function reopenTerm(y) {
+    if (!confirm(`${y}년도 회기 마감을 취소할까요? ${y}년도가 다시 '지금' 회기가 됩니다.`)) return;
+    try { await api("POST", "rpc/mission_term_reopen", { p_year: y }); picked = false; await refresh(); }
+    catch (e) { alert("취소하지 못했습니다: " + e.message); }
   }
 
   /* ───────── 1) 회원 ───────── */
