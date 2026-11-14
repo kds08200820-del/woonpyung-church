@@ -7,7 +7,7 @@
 --          개인이 대시보드에서 확인할 수 있도록 교적과 함께 DB 연동."
 --  회칙 개정안(2026-11-15 총회): 일반회원 = 선교헌금을 낸 모든 성도, 정회원 = 홈페이지로 가입,
 --          정회원은 탈퇴하지 않는 한 다음 회기에 자동 연장(명부의 상태가 회기와 상관없이 이어진다),
---          정회원 회비 연 10만 원(월 1만 원), 임원회비 월 2만 원, 실행위원 5인(정회원 중 추천, 따로 내는 회비 없음),
+--          정회원 회비 연 10만 원(월 1만 원), 임원회비 월 2만 원, 실행위원 5인(정회원 중 추천, 임원회비 없음),
 --          총회 의결권 = 그 회기 회비를 총회 전까지 낸 정회원(화면이 회비 칸으로 '완납'을 보여 준다).
 --
 --  들어 있는 것 (모두 비파괴: CREATE TABLE · CREATE FUNCTION 뿐):
@@ -20,7 +20,10 @@
 --        mission_join_apply(이름, 한마디) / mission_join_cancel() : 가입 신청 · 신청 취소(탈퇴)
 --        mission_roster(회기)          : 정회원 명부와 회비 칸 — 그 회기 임원 · 관리자 · 재정 담당
 --        mission_member_set(…)         : 승인 · 반려 · 탈퇴 · 실행위원 · 메모 — 그 회기 임원 · 관리자 · 재정 담당
---        mission_member_add(이름)      : 홈페이지를 안 쓰는 분을 임원이 대신 올림(교적에서 같은 이름 한 분이면 연결)
+--        mission_gyojeok_find(이름)    : 교적에서 이름으로 찾기(이름 · 출생 연도 · 직분 · 명부 상태만) — 그 회기 임원 · 관리자 · 재정 담당
+--        mission_member_add(이름, 교적 번호, 실행위원) : 홈페이지를 안 쓰는 분을 임원이 대신 올림. 교적에서 고르면 그 교적과 연결,
+--                                        이름만이면 교적에서 같은 이름 한 분일 때 연결. 실행위원으로 바로 세울 수 있다.
+--        실행위원 정하기 · 풀기: 그 회기 위원장 · 부위원장 · 서기 · 관리자 · 재정 담당 (5인까지)
 --        mission_member_link(id)       : 교적 연결 다시 시도(같은 이름 한 분일 때만)
 --        mission_dues_set(…)           : 회비 칸 체크 · 해제 — 그 회기 회계 · 관리자 · 재정 담당
 --        mission_join_set_due_day(일)  : 본인이 회비 납부일(매달 며칠)을 정한다
@@ -35,7 +38,8 @@
 --  ── 되돌리는 방법 (사람이 직접) ──
 --    · 먼저 화면에서 부르는 곳을 되돌린다(js/mission.js · js/dashboard.js 는 함수가 없으면 그 칸을 숨긴다).
 --    · 함수: drop function if exists public.mission_join_me(int), public.mission_join_apply(text, text), public.mission_join_cancel(),
---            public.mission_roster(int), public.mission_member_set(bigint, text, boolean, text), public.mission_member_add(text),
+--            public.mission_roster(int), public.mission_member_set(bigint, text, boolean, text), public.mission_member_add(text, bigint, boolean),
+--            public.mission_gyojeok_find(text), public.mission_exec_can(int),
 --            public.mission_member_link(bigint), public.mission_dues_set(bigint, int, text, boolean, bigint, date, text),
 --            public.mission_staff(int), public.mission_dues_rate(bigint, int), public.mission_dues_cells(bigint, int),
 --            public.mission_gyojeok_key(text), public.mission_pay_set(text, text, text, text), public.mission_pay_info(),
@@ -122,6 +126,16 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.mission_staff(int) from public, anon;
 grant execute on function public.mission_staff(int) to authenticated;
+
+-- 실행위원을 정하고 푸는 사람: 그 회기 위원장 · 부위원장 · 서기 · 관리자 · 재정 담당
+create or replace function public.mission_exec_can(p_year int)
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null and (public.is_finance() or public.mission_can('위원장', p_year)
+         or public.mission_can('부위원장', p_year) or public.mission_can('서기', p_year))
+$$;
+revoke all on function public.mission_exec_can(int) from public, anon;
+grant execute on function public.mission_exec_can(int) to authenticated;
 
 -- 한 달 회비: 그 회기 임원이면 2만 원(회칙 제12조 3호), 아니면 1만 원
 create or replace function public.mission_dues_rate(p_member_id bigint, p_year int)
@@ -238,6 +252,7 @@ begin
   return jsonb_build_object(
     'year', v_fy,
     'can_dues', public.mission_can_book(v_fy),
+    'can_exec', public.mission_exec_can(v_fy),
     'pay', public.mission_pay_info(),
     'members', coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -262,6 +277,12 @@ begin
   select f.fy into v_fy from public.mission_fy(null) f;
   if not public.mission_staff(v_fy) then raise exception '권한이 없습니다'; end if;
   if p_status is not null and p_status not in ('신청', '정회원', '반려', '탈퇴') then raise exception '상태 값이 틀렸습니다'; end if;
+  if p_exec is not null then
+    if not public.mission_exec_can(v_fy) then raise exception '실행위원은 위원장 · 서기가 정합니다'; end if;
+    if p_exec and (select count(*) from public.mission_regular_members where exec_member and status = '정회원' and id <> p_id) >= 5 then
+      raise exception '실행위원은 5인입니다. 먼저 한 분을 풀어 주세요';
+    end if;
+  end if;
   update public.mission_regular_members
      set status      = coalesce(p_status, status),
          approved_at = case when p_status = '정회원' and status <> '정회원' then now() when p_status is not null and p_status <> '정회원' then null else approved_at end,
@@ -284,27 +305,71 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.mission_gyojeok_key(text) from public, anon, authenticated;
 
--- 홈페이지를 쓰지 않는 분을 임원이 대신 올린다 — 바로 정회원
-create or replace function public.mission_member_add(p_name text)
+-- 교적에서 이름으로 찾기 — 교적 키 · 생년월일 · 연락처는 내보내지 않는다(출생 연도 · 직분 · 명부 상태만)
+create or replace function public.mission_gyojeok_find(p_name text)
 returns jsonb
-language plpgsql security definer set search_path = public as $$
-declare v_fy int;  v_name text := left(btrim(coalesce(p_name, '')), 50);  v_key text;  v_uid uuid;  v_id bigint;
+language plpgsql stable security definer set search_path = public as $$
+declare v_fy int;  v_q text := btrim(coalesce(p_name, ''));
 begin
   select f.fy into v_fy from public.mission_fy(null) f;
   if not public.mission_staff(v_fy) then raise exception '권한이 없습니다'; end if;
-  if v_name = '' then raise exception '이름을 적어 주세요'; end if;
-  v_key := public.mission_gyojeok_key(v_name);
-  if v_key <> '' then
-    if exists (select 1 from public.mission_regular_members where member_key = v_key) then raise exception '이미 명부에 있는 분입니다'; end if;
-    select l.user_id into v_uid from public.member_links l where l.member_key = v_key
-      and not exists (select 1 from public.mission_regular_members r where r.user_id = l.user_id) limit 1;
-  end if;
-  insert into public.mission_regular_members (user_id, member_key, name, status, src, approved_at, approved_by)
-  values (v_uid, v_key, v_name, '정회원', 'staff', now(), auth.uid()) returning id into v_id;
-  return jsonb_build_object('id', v_id, 'linked', v_key <> '');
+  if char_length(v_q) < 1 then return '[]'::jsonb; end if;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object('id', g.id, 'name', g.name, 'born', extract(year from g.birth)::int, 'role', coalesce(g.role, ''),
+                                        'status', (select r.status from public.mission_regular_members r where r.member_key = g.member_key limit 1),
+                                        'exec', coalesce((select r.exec_member from public.mission_regular_members r where r.member_key = g.member_key limit 1), false))
+             order by g.name, g.birth)
+      from (select * from public.gyojeok g0
+             where coalesce(g0.member_key, '') <> '' and g0.name ilike '%' || replace(replace(v_q, '%', ''), '_', '') || '%'
+             order by g0.name, g0.birth limit 12) g), '[]'::jsonb);
 end $$;
-revoke all on function public.mission_member_add(text) from public, anon;
-grant execute on function public.mission_member_add(text) to authenticated;
+revoke all on function public.mission_gyojeok_find(text) from public, anon;
+grant execute on function public.mission_gyojeok_find(text) to authenticated;
+
+-- 홈페이지를 쓰지 않는 분을 임원이 대신 올린다 — 바로 정회원.
+--   p_gyojeok_id 를 주면 그 교적과 연결(이미 명부에 있으면 정회원으로 되돌리고), 없으면 이름으로 교적에서 한 분일 때 연결.
+--   p_exec = true 면 실행위원으로도 세운다(위원장 · 부위원장 · 서기 · 관리자 · 재정 담당만, 5인까지).
+create or replace function public.mission_member_add(p_name text, p_gyojeok_id bigint default null, p_exec boolean default false)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare v_fy int;  v_name text := left(btrim(coalesce(p_name, '')), 50);  v_key text := '';  v_uid uuid;  v_id bigint;  v_old public.mission_regular_members%rowtype;
+begin
+  select f.fy into v_fy from public.mission_fy(null) f;
+  if not public.mission_staff(v_fy) then raise exception '권한이 없습니다'; end if;
+  if coalesce(p_exec, false) then
+    if not public.mission_exec_can(v_fy) then raise exception '실행위원은 위원장 · 서기가 정합니다'; end if;
+  end if;
+  if p_gyojeok_id is not null then
+    select coalesce(g.member_key, ''), g.name into v_key, v_name from public.gyojeok g where g.id = p_gyojeok_id;
+    if coalesce(v_key, '') = '' then raise exception '교적에서 그분을 찾지 못했습니다'; end if;
+  else
+    if v_name = '' then raise exception '이름을 적어 주세요'; end if;
+    v_key := public.mission_gyojeok_key(v_name);
+  end if;
+
+  if v_key <> '' then
+    select * into v_old from public.mission_regular_members where member_key = v_key order by id limit 1;
+  end if;
+  if v_old.id is not null then
+    if v_old.status = '정회원' and not coalesce(p_exec, false) then raise exception '이미 정회원입니다'; end if;
+    v_id := v_old.id;
+    update public.mission_regular_members
+       set status = '정회원', approved_at = case when status = '정회원' then approved_at else now() end,
+           approved_by = case when status = '정회원' then approved_by else auth.uid() end, updated_at = now()
+     where id = v_id;
+  else
+    if v_key <> '' then
+      select l.user_id into v_uid from public.member_links l where l.member_key = v_key
+        and not exists (select 1 from public.mission_regular_members r where r.user_id = l.user_id) limit 1;
+    end if;
+    insert into public.mission_regular_members (user_id, member_key, name, status, src, approved_at, approved_by)
+    values (v_uid, v_key, v_name, '정회원', 'staff', now(), auth.uid()) returning id into v_id;
+  end if;
+  if coalesce(p_exec, false) then perform public.mission_member_set(v_id, null, true, null); end if;
+  return jsonb_build_object('id', v_id, 'linked', v_key <> '', 'existed', v_old.id is not null);
+end $$;
+revoke all on function public.mission_member_add(text, bigint, boolean) from public, anon;
+grant execute on function public.mission_member_add(text, bigint, boolean) to authenticated;
 
 create or replace function public.mission_member_link(p_id bigint)
 returns jsonb
@@ -418,5 +483,5 @@ grant execute on function public.mission_dues_push_feed() to anon, authenticated
 --   select table_name from information_schema.tables where table_name in ('mission_regular_members', 'mission_dues', 'mission_pay_account');   -- 3개
 --   select count(*) from pg_proc where proname in ('mission_join_me','mission_join_apply','mission_join_cancel','mission_roster',
 --     'mission_member_set','mission_member_add','mission_member_link','mission_dues_set','mission_staff','mission_dues_rate',
---     'mission_dues_cells','mission_gyojeok_key','mission_pay_info','mission_pay_set','mission_join_set_due_day','mission_dues_push_feed');   -- 16
+--     'mission_dues_cells','mission_gyojeok_key','mission_pay_info','mission_pay_set','mission_join_set_due_day','mission_dues_push_feed','mission_exec_can','mission_gyojeok_find');   -- 18
 --   select count(*) from public.mission_regular_members;   -- 처음에는 0
