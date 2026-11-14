@@ -241,14 +241,11 @@ rect.ms-ch-out, i.ms-ch-out { fill: #B9B7B2; background: #B9B7B2; }
 .mj-payset input { width: 100%; }
 @media (max-width: 640px) { .mj-payset-row { grid-template-columns: 1fr; } }
 
-/* ── 임원 업무 (2026-11-14) ── */
-.ms-desk { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
-.ms-desk-card { border: 1px solid var(--line); border-radius: 2px; padding: 16px 18px; background: #fff; }
-.ms-desk-card h3 { font-size: 1rem; margin: 0 0 6px; }
-.ms-desk-card p { font-size: .86rem; color: var(--muted); line-height: 1.7; margin: 0 0 12px; }
-.ms-desk-btns { display: flex; flex-wrap: wrap; gap: 8px; }
-.ms-desk-no { display: inline-flex; flex-direction: column; padding: 6px 12px; border: 1px dashed var(--line); border-radius: 2px; font-size: .84rem; color: var(--muted); }
-.ms-desk-no small { font-size: .72rem; }
-@media (max-width: 720px) { .ms-desk { grid-template-columns: 1fr; } }
+/* ── 임원 관리: 왼쪽 메뉴 아래 따로 (2026-11-14) ── */
+.ms-side-adm-h { margin-top: 6px; padding-top: 18px; border-top: 2px solid var(--accent); }
+.ms-side-adm-h small { letter-spacing: 0; margin-left: 6px; color: var(--accent); }
+.ms-side-adm button { display: block; width: 100%; padding: 9px 10px; border: 0; background: none; font-family: inherit; font-size: .9rem; color: var(--ink); cursor: pointer; text-align: left; }
+.ms-side-adm button:hover { background: var(--paper-alt); }
+@media (max-width: 900px) { .ms-side-adm button { padding: 7px 12px; } }
 .ms-report-more { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
 .ms-report-more > summary { cursor: pointer; font-size: .9rem; color: var(--accent); padding: 4px 0; }

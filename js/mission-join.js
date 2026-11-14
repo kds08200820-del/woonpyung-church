@@ -40,7 +40,7 @@
   function sideRefresh() {
     const CM = window.ChurchMission;
     if (CM && CM.renderSide) CM.renderSide();
-    if (CM && CM.renderDesk) CM.renderDesk();      // 임원 업무 칸의 '회원 관리' 단추는 이 파일이 준비된 뒤 켜진다
+    // 왼쪽 '임원 관리'의 정회원 · 회비 단추는 이 파일이 준비된 뒤(renderSide) 켜진다
   }
 
   const J = { me: null, roster: null, ok: false, busy: false };

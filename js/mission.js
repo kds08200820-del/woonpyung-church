@@ -91,14 +91,13 @@
   function hasRole(role) { return !!(S.home && S.home.my && (S.home.my.roles || []).some((r) => r.year === S.year && r.role === role)); }
   const canSec = () => S.admin || hasRole("서기");                                       // 일정·활동·동향
   // 그 회기 임원(직책 상관없이) · 관리자 · 재정 담당 — '임원 업무' 칸을 본다
-  const isStaff = () => !!S.home && (S.admin || !!(S.home.my && S.home.my.finance) || !!(S.home.my && (S.home.my.roles || []).some((r) => r.year === S.year)));
+  const isStaff = () => !!S.home && (S.admin || !!(S.home.my && S.home.my.finance) || !!(S.home.my && (S.home.my.roles || []).some((r) => r.year === S.year || r.year === S.fy)));
   const canBook = () => !!S.home && (S.admin || !!(S.home.my && S.home.my.finance) || hasRole("회계"));   // 회계 장부
 
   /* ───────── 왼쪽 메뉴 ───────── */
   function renderSide() {
     if (!boxSide) return;
     const links = [];
-    if (isStaff()) links.push(["desk", "임원 업무"]);
     const sj = $("join"); if (sj && !sj.hidden) links.push(["join", "정회원"]);
     links.push(["member", "회원"]);
     if (S.home) links.push(["officers", "임원"], ["schedule", "일정"]);
@@ -110,8 +109,10 @@
       <ul class="ms-side-years">${years().map((y) => `<li><button type="button" class="${y === S.year ? "on" : ""}" data-y="${y}">${y}년도${y === S.fy ? ` <small>지금</small>` : y > S.fy ? ` <small>준비</small>` : ""}</button></li>`).join("")}</ul>
       <p class="ms-side-h">${esc(S.year)}년도</p>
       <ul class="ms-side-links">${links.map((l) => `<li><a href="#${l[0]}">${l[1]}</a></li>`).join("")}</ul>
+      ${sideAdmin()}
     </nav>`;
     boxSide.querySelectorAll("[data-y]").forEach((b) => b.addEventListener("click", () => pickYear(Number(b.dataset.y))));
+    boxSide.querySelectorAll("[data-adm]").forEach((b) => b.addEventListener("click", () => sideAct(b.dataset.adm)));
     document.querySelectorAll(".ms-y").forEach((el) => { el.textContent = S.year + "년도"; });
     const so = $("officers"), se = $("schedule");
     if (so) so.hidden = !S.home; if (se) se.hidden = !S.home;
@@ -127,39 +128,31 @@
   }
 
 
-  /* ───────── 0) 임원 업무 (2026-11-14) — 회계 관리 · 회원 관리 · 일정 관리를 한곳에 ───────── */
-  function renderDesk() {
-    const sec = $("desk"), box = $("msDesk");
-    if (!sec || !box) return;
-    if (!isStaff()) { sec.hidden = true; box.innerHTML = ""; return; }
-    sec.hidden = false;
-    const mine = (S.home.my.roles || []).filter((r) => r.year === S.year).map((r) => r.role);
-    const who = S.admin ? "관리자" : (S.home.my.finance ? "재정 담당" : "");
+  /* ───────── 임원 관리 (2026-11-14) — 왼쪽 메뉴 아래, 회기 차례와 따로. 그 회기(또는 지금 회기) 임원 · 관리자 · 재정 담당에게만 ─────────
+     권한 있는 단추만 보인다. 장부 · 회비 · 명부 · 일정은 고른 회기(위 회기 단추)에 대해 열린다. */
+  function sideAdmin() {
+    if (!isStaff()) return "";
     const MJ = window.MissionJoin, mjOk = !!(MJ && MJ.state && MJ.state.ok);
-    const btn = (id, label, ok, why) => ok ? `<button type="button" class="btn btn-line ms-btn-s" id="${id}">${label}</button>`
-      : `<span class="ms-desk-no" title="${esc(why)}">${label}<small>${esc(why)}</small></span>`;
     const book = canBook(), secr = canSec();
-    box.innerHTML = `<p class="ms-member-me">${esc(S.year)}년도 회기 ${esc([...mine, who].filter(Boolean).join(" · ") || "임원")}(으)로 들어오셨습니다.</p>
-      <div class="ms-desk">
-        <div class="ms-desk-card"><h3>회계 관리</h3>
-          <p>통장 엑셀을 올려 장부를 만들고, 정회원 회비 납부를 체크하고, 회비 받는 계좌를 정합니다.</p>
-          <div class="ms-desk-btns">${btn("dkBook", "회계 장부 · 엑셀 올리기", book, "회계가 합니다")}${btn("dkDues", "회비 체크 · 회비 계좌", book && mjOk, "회계가 합니다")}</div></div>
-        <div class="ms-desk-card"><h3>회원 관리</h3>
-          <p>정회원 가입 신청을 승인하거나 반려하고, 교적에서 찾아 정회원으로 올립니다. 실행위원은 위원장 · 서기가 세웁니다.</p>
-          <div class="ms-desk-btns">${btn("dkRoster", "정회원 명부 · 가입 승인 · 실행위원", mjOk, "준비 중")}<a class="btn btn-line ms-btn-s" href="#member">일반회원(선교헌금) 보기</a></div></div>
-        <div class="ms-desk-card"><h3>일정 관리</h3>
-          <p>구제선교위원회의 회기 전체 일정을 넣고 고칩니다. 활동과 동향 글도 여기서 씁니다.</p>
-          <div class="ms-desk-btns">${btn("dkEvent", "일정 넣기", secr, "서기가 합니다")}${btn("dkPost", "활동 · 동향 글 쓰기", secr, "서기가 합니다")}<a class="btn btn-line ms-btn-s" href="#schedule">전체 일정 보기</a></div></div>
-        ${S.admin ? `<div class="ms-desk-card"><h3>임원 정하기</h3><p>회기마다 위원장 · 서기 · 회계를 교적에서 골라 넣으면 그 직책의 권한이 저절로 생깁니다.</p>
-          <div class="ms-desk-btns"><button type="button" class="btn btn-line ms-btn-s" id="dkOff">임원 정하기</button></div></div>` : ""}
-      </div>`;
-    const on = (id, fn) => { const b = $(id); if (b) b.addEventListener("click", fn); };
-    on("dkBook", openBook);
-    on("dkDues", () => MJ.openRoster());
-    on("dkRoster", () => MJ.openRoster());
-    on("dkEvent", () => openEvent(null));
-    on("dkPost", () => openPost(null));
-    on("dkOff", openOfficers);
+    const items = [];
+    if (book) items.push(["book", "회계 장부 · 엑셀"]);
+    if (book && mjOk) items.push(["dues", "회비 체크 · 회비 계좌"]);
+    if (mjOk) items.push(["roster", "정회원 · 가입 승인 · 실행위원"]);
+    if (secr) items.push(["event", "일정 넣기"], ["post", "활동 · 동향 글 쓰기"]);
+    if (S.admin) items.push(["off", "임원 정하기"]);
+    if (!items.length) return "";
+    const mine = (S.home.my.roles || []).filter((r) => r.year === S.year).map((r) => r.role);
+    const who = S.admin ? "관리자" : (S.home.my.finance ? "재정 담당" : mine.join(" · "));
+    return `<p class="ms-side-h ms-side-adm-h">임원 관리${who ? ` <small>${esc(who)}</small>` : ""}</p>
+      <ul class="ms-side-links ms-side-adm">${items.map((x) => `<li><button type="button" data-adm="${x[0]}">${x[1]}</button></li>`).join("")}</ul>`;
+  }
+  function sideAct(k) {
+    const MJ = window.MissionJoin;
+    if (k === "book") openBook();
+    else if ((k === "dues" || k === "roster") && MJ) MJ.openRoster();
+    else if (k === "event") openEvent(null);
+    else if (k === "post") openPost(null);
+    else if (k === "off") openOfficers();
   }
 
   /* ───────── 1) 회원 ───────── */
@@ -882,7 +875,7 @@
     if (S.home) S.fy = S.home.current;
   }
   async function loadYear() { await Promise.all([loadMember(), loadOfficers(), loadEvents()]); }
-  function renderAll() { renderSide(); renderDesk(); renderMember(); renderReport(); renderOfficers(); renderEvents(); renderBoard(); renderPartners(); }
+  function renderAll() { renderSide(); renderMember(); renderReport(); renderOfficers(); renderEvents(); renderBoard(); renderPartners(); }
   async function refresh() {
     _admin = null;
     const r = await Promise.all([isAdmin(), loadHome(), loadPosts(), loadPartners()]);
@@ -899,5 +892,5 @@
   renderSide(); renderMember();
   refresh();
   window.addEventListener("church:auth", refresh);
-  window.ChurchMission = { refresh, state: S, book: B, renderSide, renderDesk };
+  window.ChurchMission = { refresh, state: S, book: B, renderSide };
 })();
