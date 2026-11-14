@@ -23,7 +23,7 @@ grant usage on schema public to anon, authenticated;
 create table public.admins (uid uuid primary key);
 create table public.app_settings (key text primary key, value text);
 create table public.member_links (user_id uuid primary key, member_status text default '정회원', member_key text, member_name text, can_finance boolean not null default false, spouse_key text);
-create table public.gyojeok (id serial primary key, name text, member_key text);
+create table public.gyojeok (id serial primary key, name text, member_key text, birth date, role text);
 create table public.offerings (id serial primary key, category text, offer_date date, amount bigint, member_key text, giver text);
 create or replace function public.my_member_keys() returns setof text language sql security definer stable set search_path = public as $$
   select member_key from public.member_links where user_id = auth.uid() and coalesce(member_key,'') <> '' $$;
@@ -38,6 +38,7 @@ insert into member_links (user_id, member_key, member_name) values
  ('${U.kim}', '김정회|19800101', '김정회'), ('${U.lee}', '', '');
 insert into gyojeok (name, member_key) values ('신회계','신회계|19700101'),('신서기','신서기|19710101'),('김정회','김정회|19800101'),
  ('박할머니','박할머니|19400101'),('최동명','최동명|19500101'),('최동명','최동명|19600101'),('이새신','이새신|19900101');
+update gyojeok set birth = to_date(split_part(member_key, '|', 2), 'YYYYMMDD'), role = '집사';
 `);
 for (const f of ["20261110_1900_mission_committee.sql", "20261113_1200_mission_officers_ledger.sql", "20261114_1500_mission_regular_members.sql"])
   await db.exec(fs.readFileSync(SUP + f, "utf8"));
@@ -113,7 +114,7 @@ const rows = (await db.query("select count(*)::int n from mission_dues")).rows[0
 ok(rows === 2, "해제해도 줄은 남음(지우지 않음)");
 ok(!!(await err(U.acct, `select mission_dues_set(${kimId}, ${fy}, '13', true)`)), "칸 이름 검사");
 // 임원 회비: 신회계를 명부에 올리면 2만
-ad = await one(U.pastor, "select mission_member_add('신회계')");
+ad = await one(U.pastor, "select mission_member_add('신회계')");  // 관리자
 cells = await one(U.acct, `select mission_dues_set(${ad.id}, ${fy}, '연납', true)`);
 ok(cells["연납"].amount === 240000, "임원 연납 기본 24만");
 cells = await one(U.acct, `select mission_dues_set(${kimId}, ${fy}, '연납', true)`);
@@ -173,5 +174,24 @@ let feed2 = await one(null, "select mission_dues_push_feed()");
 ok(feed2.length === 0, "납부일이 아직 안 지났으면(31일) 피드 없음");
 me = await one(U.acct, "select mission_join_set_due_day(null)");
 ok(me.member.due_day === null, "납부일 지우기");
+// 13) 실행위원 — 위원장 · 서기만, 교적에서 찾아 바로 세우기, 5인까지
+ok(!!(await err(U.acct, `select mission_member_set(${leeId}, null, true)`)), "회계는 실행위원을 못 정함");
+let found = await one(U.sec, "select mission_gyojeok_find('최동')");
+ok(found.length === 2 && found[0].born && !JSON.stringify(found).includes("|"), "교적 찾기: 동명이인 둘, 교적 키 없음");
+ok(!!(await err(U.kim, "select mission_gyojeok_find('최')")), "일반 성도는 교적 찾기 못 함");
+let ex = await one(U.sec, `select mission_member_add('', ${found[1].id}, true)`);
+ok(ex.linked === true && ex.existed === false, "교적에서 골라 실행위원으로 올림(동명이인도 연결)");
+ro = await one(U.sec, "select mission_roster(null)");
+ok(ro.can_exec === true && ro.members.filter((m) => m.exec).length === 1, "실행위원 1명");
+const yiId = (await db.query("select id from gyojeok where name='이새신'")).rows[0].id;
+ex = await one(U.sec, `select mission_member_add('', ${yiId}, true)`);
+ok(ex.existed === true, "이미 명부에 있는 분은 그 줄을 실행위원으로");
+ok(!!(await err(U.sec, `select mission_member_add('', ${yiId}, false)`)), "이미 정회원이면 그냥 올리기는 막힘");
+// 5인 제한
+for (const nm of ["가","나","다"]) { await db.query("insert into gyojeok (name, member_key) values ($1, $2)", ["실행" + nm, "실행" + nm + "|1"]); }
+for (const nm of ["가","나","다"]) { const gid = (await db.query("select id from gyojeok where name=$1", ["실행" + nm])).rows[0].id; await as(U.sec, `select mission_member_add('', ${gid}, true)`); }
+await db.query("insert into gyojeok (name, member_key) values ('실행라', '실행라|1')");
+const g6 = (await db.query("select id from gyojeok where name='실행라'")).rows[0].id;
+ok(!!(await err(U.sec, `select mission_member_add('', ${g6}, true)`)), "실행위원 6번째는 막힘");
 console.log(`pass ${pass}  fail ${fail}`);
 process.exit(fail ? 1 : 0);
