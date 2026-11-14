@@ -227,3 +227,4 @@ rect.ms-ch-out, i.ms-ch-out { fill: #B9B7B2; background: #B9B7B2; }
 .mj-add input { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 2px; font: inherit; }
 .mj-add .nt-status { flex-basis: 100%; }
 .mj-add .nt-f { flex: 1 1 220px; }
+.mj-vote { margin-top: 6px; font-size: .9rem; }

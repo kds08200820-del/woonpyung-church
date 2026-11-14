@@ -63,7 +63,8 @@
       <li>구제선교위원회 사업에 적극 참여합니다.</li>
       <li>경조사를 임원에게 알리고 함께 위로와 격려에 참여합니다.</li>
       <li>복음을 전하는 일에 적극 협력합니다.</li>
-    </ul>`;
+    </ul>
+    <p class="ms-form-hint">정회원은 탈퇴하지 않는 한 다음 회기에도 자동으로 이어집니다. 총회 의결권은 그 회기 회비를 총회 전까지 낸 정회원에게 있습니다. 일반회원은 언권회원으로 총회에서 발언할 수 있으나 표결에는 참여하지 않습니다.</p>`;
   function render() {
     if (!J.ok) { sec.hidden = true; sideRefresh(); return; }
     sec.hidden = false;
@@ -95,6 +96,8 @@
             <h4>${esc(me.year)}년도 회비 <small class="ms-names-who">(${dot(me.from)} ~ ${dot(me.to)} · 회계가 확인한 것)</small></h4>
             ${duesStrip(me.dues)}
             <p class="mj-sum">${s.full ? "한 해 회비를 모두 내셨습니다" : `낸 달 ${s.months}개월`} · 합계 ${won(s.total)}원 <span class="ms-form-hint">한 달 ${won(me.rate)}원${me.rate === 20000 ? "(임원)" : ""}</span></p>
+            <p class="mj-vote">총회 의결권: ${s.full ? "<b>있음</b>" : "이 회기 회비를 총회 전까지 내시면 생깁니다"}</p>
+            <p class="ms-form-hint">정회원은 탈퇴하지 않는 한 다음 회기에도 자동으로 이어집니다.</p>
             ${me.prev && Object.keys(me.prev).length ? `<details class="mj-prev"><summary>지난 회기(${me.year - 1}년도)</summary>${duesStrip(me.prev)}</details>` : ""}
           </div>
           <p><button type="button" class="ms-link" id="mjCancel">정회원 탈퇴</button></p>`;
@@ -167,11 +170,13 @@
           <span class="mj-acts"><button type="button" class="btn btn-solid ms-btn-s" data-ok="${m.id}">승인</button>
           <button type="button" class="ms-link" data-no="${m.id}">반려</button></span></li>`).join("")}</ul>`;
     }
-    h += `<h4 class="mj-h">정회원 ${reg.length}명 <small class="ms-names-who">실행위원 ${execN}명 / 5명</small></h4>`;
+    const voteN = reg.filter((x) => duesSummary(x.dues, x.rate).full).length;
+    h += `<h4 class="mj-h">정회원 ${reg.length}명 <small class="ms-names-who">실행위원 ${execN}명 / 5명 · 의결권(이 회기 회비 완납) ${voteN}명</small></h4>
+      <p class="ms-form-hint">정회원은 탈퇴하지 않는 한 다음 회기에도 명부에 그대로 남습니다. 의결권은 연납 또는 12달 회비를 모두 낸 분에게 표시됩니다.</p>`;
     if (R.can_dues) h += `<p class="ms-form-hint">회비 칸을 누르면 낸 것으로 체크합니다(금액은 한 달 1만 원, 임원 2만 원, 연납 10만 원 · 임원 24만 원으로 들어가며 바꿀 수 있습니다). 다시 누르면 체크를 풉니다.</p>`;
     if (!reg.length) h += `<p class="ms-empty">아직 정회원이 없습니다.</p>`;
     else {
-      h += `<div class="mj-table-wrap"><table class="mj-table"><thead><tr><th>이름</th><th>실행위원</th><th>연납</th>${PERIODS.map((p) => `<th>${mLabel(p)}</th>`).join("")}<th>합계</th><th></th></tr></thead><tbody>
+      h += `<div class="mj-table-wrap"><table class="mj-table"><thead><tr><th>이름</th><th>실행위원</th><th>연납</th>${PERIODS.map((p) => `<th>${mLabel(p)}</th>`).join("")}<th>합계</th><th>의결권</th><th></th></tr></thead><tbody>
         ${reg.map((m) => {
           const d = m.dues || {}, s = duesSummary(d, m.rate);
           const cell = (p) => {
@@ -183,6 +188,7 @@
             <td><input type="checkbox" data-exec="${m.id}" ${m.exec ? "checked" : ""} aria-label="${esc(m.name)} 실행위원" /></td>
             ${cell("연납")}${PERIODS.map(cell).join("")}
             <td class="mj-total">${won(s.total)}</td>
+            <td>${s.full ? "있음" : `<small class="mj-unlinked">회비 전</small>`}</td>
             <td><button type="button" class="ms-link" data-out="${m.id}">내리기</button></td></tr>`;
         }).join("")}</tbody></table></div>`;
     }
