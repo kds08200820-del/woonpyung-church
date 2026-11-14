@@ -115,6 +115,8 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
       /* 대시보드는 '나' 를 돌보는 곳 — 탭: 나의 신앙생활 / 자녀의 신앙생활 / 교사 생활 (자녀·교사 탭은 해당될 때만, 2026-09-29) */
       '<div id="dashTabs"></div>' +
       '<div class="dash-pane" data-pane="me">' +
+      /* 나의 대표기도 — 봉사위원 '이주의 기도' 차례가 있는 분께만 (2026-11-14) */
+      '<div id="myPrayer"></div>' +
       '<div id="dashQt" style="margin-bottom:22px;"></div>' +
       '<div id="bibleRead" style="margin-bottom:22px;"></div>' +
       '<div id="qtProgress" style="margin-bottom:22px;"></div>' +
@@ -144,6 +146,53 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
     loadFamily(me);
     loadMyForms();
     loadKids(me);
+    loadMyPrayer();
+  }
+
+  /* ================= 나의 대표기도 (2026-11-14 담임목사 지시) =================
+     설정 → 연간 봉사위원의 '이주의 기도'에서 내 차례(교적 이름으로 맞춤)를 my_rep_prayers() 로 받는다.
+     권사님 차례: 예배 매니저에 저장된 기도문, 아직 없으면 같은 생성기(js/rep-prayer.js)로 만든 글 — 절기·계절·그 주일 설교가 들어간다.
+     장로님 차례: 날짜만. 지난 기도문은 접어서. 차례가 없으면(대부분의 성도) 칸을 그리지 않는다. 함수가 없으면(SQL 실행 전) 조용히 숨긴다. */
+  var MP_GUIDE = ['예배 20분 전에 도착해 묵상하며 기도로 준비합니다.', '예배 10분 전, 강대상 왼편 기도자석에서 기도로 준비합니다.',
+    '주중에 기도문을 3번 이상 소리 내어 읽고, 3분을 넘기지 않습니다.', '준비한 기도문은 예배부위원의 안내를 따라 ‘파일’에 넣어 주세요.'];
+  function loadMyPrayer() {
+    var el = document.getElementById('myPrayer'); if (!el) return;
+    brFetch('rpc/my_rep_prayers', { method: 'POST', body: '{}' }).then(function (r) {
+      if (!r || !r.ok || !r.items || !r.items.length) { el.innerHTML = ''; return; }
+      var today = r.today || todayStr(), RP = window.RepPrayer;
+      var hist = r.items.filter(function (x) { return x.body; }).map(function (x) { return { sdate: x.sdate, body: x.body, source: x.source }; });
+      var up = r.items.filter(function (x) { return x.sdate >= today; }).sort(function (a, b) { return a.sdate < b.sdate ? -1 : 1; });
+      var past = r.items.filter(function (x) { return x.sdate < today && x.body; });
+      function textOf(x) {
+        if (x.body) return x.body;
+        if (RP && RP.needsPrayer(x.person)) return RP.generate({ date: x.sdate, person: x.person, title: x.title, scripture: x.scripture, history: hist });
+        return '';
+      }
+      function dayLabel(x) { var d = new Date(x.sdate + 'T00:00:00'); return (d.getMonth() + 1) + '월 ' + d.getDate() + '일' + (RP ? ' · ' + RP.sundayLabel(x.sdate).replace(/^\d+월 /, '') : ''); }
+      function dday(x) { var n = Math.round((new Date(x.sdate + 'T00:00:00') - new Date(today + 'T00:00:00')) / 864e5); return n === 0 ? '오늘' : 'D-' + n; }
+      var big = false; try { big = localStorage.getItem('wpc-mp-big') === '1'; } catch (e) { }
+      function para(t) { return '<div class="mp-text" style="white-space:pre-wrap;font-family:\'Noto Serif KR\',serif;line-height:1.95;font-size:' + (big ? '1.12rem' : '.98rem') + ';color:#2B2A28;background:#FBFAF8;border:1px solid #EFEDEA;border-radius:3px;padding:14px 16px;margin-top:8px">' + esc(t) + '</div>'; }
+      var anyText = past.length > 0 || up.some(function (x) { return !!textOf(x); });
+      var html = '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><h3 style="margin:0;font-size:1rem;color:var(--accent,#111111);">나의 대표기도</h3>' +
+        (anyText ? '<button type="button" id="mpBig" class="btn btn-line" style="padding:4px 10px;font-size:.8rem;min-height:32px">' + (big ? '글씨 작게' : '글씨 크게') + '</button>' : '') + '</div>';
+      html += up.map(function (x, k) {
+        var t = textOf(x), head = '<span style="font-weight:700;color:var(--accent,#111111)">' + esc(dayLabel(x)) + '</span> <span style="font-size:.8rem;color:#898885">주일 낮 예배 대표기도 · ' + dday(x) + '</span>';
+        var ser = x.title ? '<div style="font-size:.8rem;color:#6F6E6B;margin-top:4px">말씀 「' + esc(x.title) + '」' + (x.scripture ? ' ' + esc(x.scripture) : '') + '</div>' : '';
+        if (!t) return '<div style="padding:9px 0;border-top:1px solid #F4F3F0">' + head + ser + '</div>';
+        return '<details class="mp-item"' + (k === 0 ? ' open' : '') + ' style="padding:9px 0;border-top:1px solid #F4F3F0"><summary style="cursor:pointer;list-style-position:inside">' + head + '</summary>' + ser + para(t) + '</details>';
+      }).join('');
+      if (past.length) html += '<details style="padding:9px 0;border-top:1px solid #F4F3F0"><summary style="cursor:pointer;font-size:.88rem;color:#5B5A57">지난 기도문 ' + past.length + '편</summary>' +
+        past.map(function (x) { return '<details style="margin:6px 0 0 12px"><summary style="cursor:pointer;font-size:.86rem">' + esc(dayLabel(x)) + '</summary>' + para(x.body) + '</details>'; }).join('') + '</details>';
+      html += '<details style="padding:9px 0 0;border-top:1px solid #F4F3F0"><summary style="cursor:pointer;font-size:.86rem;color:#5B5A57">대표기도 안내</summary><ol style="margin:8px 0 0;padding-left:20px;font-size:.86rem;line-height:1.8;color:#3C3B39">' +
+        MP_GUIDE.map(function (g) { return '<li>' + esc(g) + '</li>'; }).join('') + '</ol></details></div>';
+      el.innerHTML = html;
+      if (el.querySelector('#mpBig')) el.querySelector('#mpBig').onclick = function () {
+        big = !big; try { localStorage.setItem('wpc-mp-big', big ? '1' : '0'); } catch (e) { }
+        this.textContent = big ? '글씨 작게' : '글씨 크게';
+        Array.prototype.forEach.call(el.querySelectorAll('.mp-text'), function (p) { p.style.fontSize = big ? '1.12rem' : '.98rem'; });
+      };
+    }).catch(function () { el.innerHTML = ''; });
   }
 
   /* ================= 신청서 (2026-10-10) — 헌금 바로 위 =================

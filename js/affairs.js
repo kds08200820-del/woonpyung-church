@@ -3788,6 +3788,7 @@ console.log('[affairs.js] v20261023th1');
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">' +
       '<button class="btn btn-solid" id="sm_start" style="padding:11px 22px;font-size:1rem">' + (worshipMode ? '🎼 예배 순서 작성' : '✍️ 설교 시작') + '</button></div></div>' +
       '<div id="sm_cal"></div>' +
+      (worshipMode ? '<div id="sm_rep"></div>' : '') +   // 대표기도 — 다가오는 주일의 기도자·기도문 (2026-11-14)
       '<div id="sm_list"><p class="qt-loading">불러오는 중…</p></div>';
     panel.querySelector('#sm_start').onclick = function () { sermonEditor(null); };
     if (pendingSermon) { var _pp = pendingSermon; pendingSermon = null; sermonEditor(_pp); }   // 설교 제안에서 넘어온 prefill
@@ -4133,13 +4134,19 @@ console.log('[affairs.js] v20261023th1');
 
     function loadList() {
       loadKk();
-      api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) { smRows = rows || []; renderView(); }).catch(function (e) {
+      api('GET', 'sermons?select=*&order=sermon_date.desc,created_at.desc').then(function (rows) { smRows = rows || []; renderView(); repAfterList(); }).catch(function (e) {
         var listBox = panel.querySelector('#sm_list');
         if (/42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test(e.message)) listBox.innerHTML = msgCard('테이블 준비 필요', 'Supabase → SQL Editor 에서 supabase/affairs_modules.sql 을 1회 실행해 주세요.');
         else listBox.innerHTML = msgCard('조회 실패', e.message);
       });
     }
     function renderView() { renderCalendar(); renderTable(); }
+    // 목록을 불러올 때마다: 다가오는 8주의 권사님 대표기도문(자동)을 맞추고, 예배 매니저면 '대표기도' 칸을 그린다 (2026-11-14)
+    function repAfterList() {
+      if (!repOk()) return;
+      var box = panel.querySelector('#sm_rep');
+      repSyncUpcoming(smRows).then(function () { if (box && document.body.contains(box)) repCard(box, smRows); });
+    }
     function deleteSermon(r) {
       if (!r) return;
       if (!confirm('「' + (r.title || '(제목없음)') + '」 ' + fmtD(r.sermon_date) + ' ' + (r.service || '') + '\n\n이 설교를 삭제할까요? 삭제하면 되돌릴 수 없습니다.')) return;
@@ -5218,8 +5225,9 @@ console.log('[affairs.js] v20261023th1');
         ov2.querySelector('#otm_save').onclick = function () { it.body = ov2.querySelector('#otm_ta').value; it.fixed = ov2.querySelector('#otm_fixed').checked; close(); renderOrder(); if (after) after(); };
       }
       function renderOrder() {
+        var repI = repItemIdx();
         var rowsHtml = order.map(function (it, i) {
-          var detailLine = it.detail ? '<div class="od-detail-view" style="font-size:.82rem;color:#5B5A57;margin-top:2px">' + esc(it.detail) + '</div>' : '';
+          var detailLine = (it.detail ? '<div class="od-detail-view" style="font-size:.82rem;color:#5B5A57;margin-top:2px">' + esc(it.detail) + '</div>' : '') + (i === repI ? repLine(it) : '');
           var bodyPrev = (it.body && !it._openBody) ? '<div style="font-size:.78rem;color:#898885;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ' + esc(it.body.replace(/\s+/g, ' ').slice(0, 40)) + (it.body.length > 40 ? '…' : '') + '</div>' : '';
           var badges = (it.fixed ? ' <span style="font-size:.64rem;background:#fff3d6;color:#6A6966;border-radius:4px;padding:1px 6px;font-weight:700">📌 고정</span>' : '') +
             (it.noexport ? ' <span style="font-size:.64rem;background:#FAF9F6;color:#969592;border-radius:4px;padding:1px 6px;font-weight:700">🚫 출력제외</span>' : '') +
@@ -5326,8 +5334,73 @@ console.log('[affairs.js] v20261023th1');
       // 예배 변경 시: 저장된 양식 우선, 없고 주일 낮 예배면 주보 표준 15순서 자동
       function autoFillOrder(svc) {
         if (order.length) return;
+        if (worshipMode) { wmAutoDone = false; wmAuto(); return; }   // 예배 매니저: 지난 순서가 먼저 (2026-11-14)
         if (loadTpl(svc, true)) return;
         if (svc === '주일 낮 예배') { order = sundayPresetOrder(); renderOrder(); }
+      }
+      // ── 예배 매니저: 순서가 빈 예배를 열면(새 날짜·순서 없는 설교) 같은 예배의 가장 최근 순서를 불러온다 (2026-11-14 담임목사 지시)
+      //    📌 고정 블록은 내용까지, 아닌 블록은 이름만(설교 매니저 sunBuild 와 같은 규칙). 지난 순서가 없으면 저장한 양식 → 주일 낮 예배 기본 순서.
+      //    '기도' 칸은 봉사위원 명단의 그 주 기도자로 바꾼다. 화면에만 넣고, 저장해야 반영된다.
+      var wmAutoDone = false;
+      function wmPrev(svc) {
+        var d = (ov.querySelector('#se_date') || {}).value || '';
+        if (!svc || !d) return Promise.resolve(null);
+        return api('GET', 'sermons?select=worship_order,sermon_date&service=eq.' + encodeURIComponent(svc) + '&sermon_date=lt.' + d + '&worship_order=not.is.null&order=sermon_date.desc&limit=6')
+          .then(function (rows) {
+            for (var i = 0; i < (rows || []).length; i++) {
+              var wo = []; try { wo = JSON.parse(rows[i].worship_order || '[]') || []; } catch (e) { wo = []; }
+              if (Array.isArray(wo) && wo.length) return { date: fmtD(rows[i].sermon_date), order: wo };
+            }
+            return null;
+          }).catch(function () { return null; });
+      }
+      function wmAuto() {
+        if (!worshipMode || wmAutoDone || order.length) return;
+        wmAutoDone = true;
+        var sv = (ov.querySelector('#se_service') || {}).value || '';
+        Promise.all([wmPrev(sv), repCom()]).then(function (res) {
+          var p = res[0];
+          if (order.length || ((ov.querySelector('#se_service') || {}).value || '') !== sv || !document.body.contains(ov)) return;   /* 기다리는 사이 직접 짰거나 예배를 바꿨으면 두지 않는다 */
+          if (p) { sunBuild(p.order); sunBuilt = true; tplMsg(p.date + ' 순서를 불러왔습니다', true); }
+          else if (!loadTpl(sv, true) && sv === '주일 낮 예배') order = sundayPresetOrder();
+          repFill(true); renderOrder();
+        });
+      }
+      // ── 대표기도(2026-11-14): 순서의 첫 '기도'(모두) 칸 = 대표기도. 명단의 기도자를 적고, 권사님이면 기도문 한 줄을 그 아래에 ──
+      function repItemIdx() { for (var i = 0; i < order.length; i++) if (audOf(order[i]) === 'all' && ordKey(order[i].label) === '기도') return i; return -1; }
+      function repEdDate() { return (ov.querySelector('#se_date') || {}).value || ''; }
+      function repEdOn() { return repOk() && ((ov.querySelector('#se_service') || {}).value || '') === REP_SVC; }
+      function repEdTitle() { return ((ov.querySelector('#se_title') || {}).value || '').trim(); }
+      function repEdScr() { return ((ov.querySelector('#se_scripture') || {}).value || '').trim(); }
+      function repFill(force) {   // '기도' 칸에 명단의 기도자 — force: 지난 순서에서 옮겨 온 이름도 바꾼다
+        if (!repEdOn()) return false;
+        var i = repItemIdx(), s = i >= 0 ? RepPrayer.scheduled(COMMITTEES, repEdDate()) : ''; if (!s) return false;
+        var it = order[i]; if ((!force && String(it.detail || '').trim()) || it.detail === s) return false;
+        it.detail = s; return true;
+      }
+      function repLine(it) {
+        if (!repEdOn()) return '';
+        var d = repEdDate(), p = repPerson(d, it.detail), sched = RepPrayer.scheduled(COMMITTEES, d);
+        var fix = sched && String(it.detail || '').trim() && !RepPrayer.samePerson(sched, it.detail)
+          ? ' <button type="button" class="rp-fix" title="봉사위원 명단의 기도자로 바꿉니다" style="border:1px solid #E3D3C4;background:#FBF6F1;color:#9C593C;border-radius:4px;padding:0 6px;font:inherit;font-size:.7rem;cursor:pointer">명단: ' + esc(sched) + '</button>' : '';
+        if (!p || !RepPrayer.needsPrayer(p)) return fix ? '<div class="rp-line" style="margin-top:3px;font-size:.74rem">' + fix + '</div>' : '';
+        var v = REP_ROWS ? repView(d, p, repEdTitle(), repEdScr()) : null;
+        var first = v ? v.text.split('\n').slice(1).join(' ').replace(/\s+/g, ' ').slice(0, 34) + '…' : '불러오는 중…';
+        return '<div class="rp-line" style="margin-top:3px;display:flex;align-items:center;gap:6px;min-width:0;font-size:.74rem">' +
+          '<button type="button" class="rp-open" title="대표기도문 보기·고치기" style="flex:none;border:1px solid #E3E2DF;background:#FAF9F6;border-radius:4px;padding:1px 7px;font:inherit;font-size:.72rem;cursor:pointer;color:var(--accent,#111111);user-select:none">🙏 대표기도문</button>' +
+          '<span style="color:#898885;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">' + esc(first) + '</span>' + fix + '</div>';
+      }
+      function repWire() {
+        Array.prototype.forEach.call(ov.querySelectorAll('.rp-open'), function (b) {
+          b.onclick = function (e) {
+            e.stopPropagation();
+            var i = repItemIdx(), d = repEdDate(); if (i < 0) return;
+            repModal({ date: d, person: repPerson(d, order[i].detail), title: repEdTitle(), scripture: repEdScr(), onSaved: function () { if (document.body.contains(ov)) renderOrder(); }, refocus: function () { return ov.querySelector('.rp-open'); } });
+          };
+        });
+        Array.prototype.forEach.call(ov.querySelectorAll('.rp-fix'), function (b) {
+          b.onclick = function (e) { e.stopPropagation(); if (repFill(true)) { renderOrder(); sunDirty(); } };
+        });
       }
       // '기타' 선택 시 새 분류 이름 입력칸 표시 — 저장하면 그 이름이 분류가 되어 다음부터 목록에 나타남
       var svcCustomInp = ov.querySelector('#se_svc_custom');
@@ -5344,7 +5417,7 @@ console.log('[affairs.js] v20261023th1');
         syncQt();
       });
       syncSvcCustom();
-      if (!rec.id) autoFillOrder(ov.querySelector('#se_service').value); // 새 설교 → 자동
+      if (!rec.id && !worshipMode) autoFillOrder(ov.querySelector('#se_service').value); // 새 설교 → 자동 (예배 매니저는 아래 wmAuto 가 지난 순서부터)
 
       // 교독문·찬송가 선택 → 예배 순서에 항목으로 추가(드래그·파일 가능)
       ov.querySelector('#se_gyodok').onclick = function () {
@@ -5912,6 +5985,7 @@ console.log('[affairs.js] v20261023th1');
         var sf = ov.querySelector('#bd_songs_field'); if (sf) sf.style.display = 'none';   /* 주일은 곡도 블록에서 고른다 */
         var warn = sunReady ? '' : '<div style="font-size:.74rem;color:#A33A2A;border:1px solid #f0c9c4;background:#fdf3f2;border-radius:2px;padding:6px 8px;margin-bottom:6px">목회자·반주자 블록을 넣으려면 먼저 SQL Editor 에서 supabase/20261009_1900_worship_roles.sql 을 실행해 주세요.</div>';
         if (order.filter(sunToPastor).length) setTimeout(sunDirty, 0);   /* 예전 순서의 모두 목회 기도·축도를 바꿨으면 저장되게 */
+        var repI = repItemIdx();
         box.innerHTML = warn + (order.length ? order.map(function (it, i) {
           var a = audOf(it), c = AUD_C[a], pub = a === 'all';
           return '<div class="sun-row" data-i="' + i + '" style="border:1px solid ' + AUD_BD[a] + ';border-left:4px solid ' + c + ';background:' + AUD_BG[a] + ';border-radius:2px;padding:5px 7px;margin-bottom:4px">' +
@@ -5922,7 +5996,7 @@ console.log('[affairs.js] v20261023th1');
                 ' <span style="font-weight:600;font-size:.62rem;color:' + c + ';border:1px solid ' + c + ';border-radius:4px;padding:0 4px;margin-left:2px">' + AUD_NAME[a] + '</span></div>' +
               '<div style="font-size:.7rem;color:#898885;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(sunSub(it)) + '</div></div>' +
             (ordCommunion(it.label) ? '' : '<button type="button" class="sun-fix" data-i="' + i + '" title="고정 — 다음 주에도 그대로" style="border:0;background:none;cursor:pointer;font-size:.82rem;opacity:' + (it.fixed ? '1' : '.28') + '">📌</button>') +
-            '<button type="button" class="sun-del" data-i="' + i + '" title="빼기" style="border:0;background:none;color:#A33A2A;cursor:pointer;font-size:.86rem">✕</button></div></div>';
+            '<button type="button" class="sun-del" data-i="' + i + '" title="빼기" style="border:0;background:none;color:#A33A2A;cursor:pointer;font-size:.86rem">✕</button></div>' + (i === repI ? repLine(it) : '') + '</div>';
         }).join('') : '<div style="font-size:.76rem;color:#A7A6A3;padding:6px 2px">아직 순서가 없습니다. ‘기본 순서로’를 누르거나 아래에서 블록을 더하세요.</div>');
         Array.prototype.forEach.call(box.querySelectorAll('.sun-open'), function (b) { b.onclick = function () { sunEdit(Number(b.dataset.i)); }; });
         Array.prototype.forEach.call(box.querySelectorAll('.sun-fix'), function (b) { b.onclick = function () { var it = order[Number(b.dataset.i)]; if (it) { it.fixed = !it.fixed; renderOrder(); sunDirty(); } }; });
@@ -6085,10 +6159,12 @@ console.log('[affairs.js] v20261023th1');
         if (!sunOn() || sunAutoDone) return;
         sunAutoDone = true;
         if (sunHasSermon()) return;
-        sunPrev().then(function (p) {
+        Promise.all([sunPrev(), repCom()]).then(function (res) {
+          var p = res[0];
           if (!sunOn() || sunHasSermon()) return;
           sunBuild(p ? p.order : sunDefault());
           var b = sunBulletin(); if (b) sunFill(b);
+          repFill(true);   /* 지난 주일에서 옮겨 온 기도자 → 이 주일 명단의 기도자 (2026-11-14) */
           sunBuilt = true; renderOrder();
         });
       }
@@ -6133,6 +6209,8 @@ console.log('[affairs.js] v20261023th1');
         };
       })();
       ['#se_service', '#se_date'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('change', function () { sunAutoDone = false; sunAuto(); paintSun(); }); });
+      // 대표기도 한 줄은 날짜·설교 제목·본문을 따라 바뀐다 — 날짜가 바뀌면 빈 '기도' 칸에 그 주 명단의 기도자
+      ['#se_date', '#se_title', '#se_scripture'].forEach(function (sel) { var el = ov.querySelector(sel); if (el) el.addEventListener('change', function () { if (sel === '#se_date') repFill(false); renderOrder(); }); });
       // ── 주보 넣기 (2026-10-10 목사님 요청): 한글(.hwpx) 주보 → 주일 낮 예배 칸(날짜·제목·본문·설교자·예배 순서) + 주보 제작 임시저장 ──
       //    읽기는 주보 제작과 같은 parseBulletinHwpx. 이미 적어 둔 제목·본문·설교자는 바꾸지 않고 알려만 준다.
       //    예배 순서는 빈 모두 블록만 주보의 같은 자리 줄로 채운다(sunFill). 블록이 없으면 지난 주일 순서(없으면 기본 순서)로 먼저 짠다.
@@ -6221,8 +6299,10 @@ console.log('[affairs.js] v20261023th1');
         drop.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
       })();
       var renderOrder0 = renderOrder;
-      renderOrder = function () { renderOrder0(); paintSongs(); paintConti(); paintSun(); };
-      paintSongs(); contiAuto(); paintConti(); sunAuto(); paintSun();
+      renderOrder = function () { renderOrder0(); paintSongs(); paintConti(); paintSun(); repWire(); };
+      paintSongs(); contiAuto(); paintConti(); sunAuto(); paintSun(); repWire(); wmAuto();
+      // 대표기도: 봉사위원 명단·저장된 기도문을 읽은 뒤 '기도' 칸(비어 있으면 명단의 기도자)과 기도문 한 줄을 다시 그린다
+      if (repOk()) Promise.all([repCom(), repLoadRows()]).then(function () { if (!document.body.contains(ov)) return; repFill(false); renderOrder(); });
       order.forEach(function (it) {   // 설교 관리에서 제목·본문을 고쳤어도 블록에 맞춘다
         if (it.sermon_id) api('GET', 'sermons?select=id,title,scripture&id=eq.' + encodeURIComponent(it.sermon_id) + '&limit=1').then(function (rows) { if (rows && rows[0] && document.body.contains(ov)) comSync(it, rows[0]); }).catch(function () { });
       });
@@ -6697,6 +6777,12 @@ console.log('[affairs.js] v20261023th1');
           return p.then(function (rows) {
             if (rows && rows[0]) rec.id = rows[0].id;
             if (editSeq === seq0) dirty = false;   // 요청 중에 또 고쳤으면 아직 미저장 상태로 둔다
+            // 주일 낮 예배를 저장하면 그 주 대표기도문(권사님 차례, 자동)도 이 설교 제목·본문으로 맞춘다 (2026-11-14) — 실패해도 저장은 그대로
+            if (data.service === REP_SVC && data.sermon_date && repOk()) {
+              var ri = repItemIdx();
+              repSync(data.sermon_date, repPerson(data.sermon_date, ri >= 0 ? order[ri].detail : ''), data.title || '', data.scripture || '')
+                .then(function (ch) { if (ch && document.body.contains(ov)) renderOrder(); });
+            }
             return rows;
           });
         }
@@ -9824,6 +9910,244 @@ console.log('[affairs.js] v20261023th1');
     }).catch(function () { COMMITTEES = []; return COMMITTEES; });
   }
   function committeeFor(ym) { if (!COMMITTEES) return null; for (var i = 0; i < COMMITTEES.length; i++) if (COMMITTEES[i].month === ym) return COMMITTEES[i]; return null; }
+  function repCom() { return COMMITTEES ? Promise.resolve(COMMITTEES) : loadCommittees(); }
+
+  // ═══════════ 주일 낮 예배 대표기도문 (2026-11-14 담임목사 지시) ═══════════
+  //  봉사위원 '이주의 기도'의 그 주일 기도자가 권사님이면 js/rep-prayer.js 로 기도문을 만들어(절기·계절·그 주일 설교) worship_prayers 에 둔다.
+  //  장로님 차례는 기도문을 만들지 않는다. 자동(auto)은 절기·설교·명단이 바뀌면 다시 맞추고,
+  //  목사님이 고친 것(edit)·문서에서 넣은 것(import)은 기도자가 같으면 그대로 둔다. 권사님은 대시보드에서 자기 것을 본다(my_rep_prayers).
+  //  표가 없으면(SQL 실행 전) 화면에만 보이고 저장하지 않는다.
+  var REP_SVC = '주일 낮 예배', REP_ROWS = null, repRowsP = null, repNoTable = false;
+  function repOk() { return !!window.RepPrayer; }
+  function repLoadRows(force) {
+    if (repRowsP && !force) return repRowsP;
+    repRowsP = api('GET', 'worship_prayers?select=sdate,person,body,source,variant,updated_at&service=eq.' + encodeURIComponent(REP_SVC) + '&order=sdate.desc')
+      .then(function (rows) { REP_ROWS = rows || []; repNoTable = false; return REP_ROWS; })
+      .catch(function (e) { REP_ROWS = []; repNoTable = /42P01|PGRST205|does not exist|schema cache|Could not find the table/i.test((e && e.message) || ''); return REP_ROWS; });
+    return repRowsP;
+  }
+  function repRow(date) { var a = REP_ROWS || []; for (var i = 0; i < a.length; i++) if (fmtD(a[i].sdate) === date) return a[i]; return null; }
+  function repHistory(person) { return (REP_ROWS || []).filter(function (r) { return RepPrayer.samePerson(r.person, person); }).map(function (r) { return { sdate: fmtD(r.sdate), body: r.body, source: r.source }; }); }
+  // 그 주일의 기도자 — 봉사위원 명단이 먼저, 명단에 없으면 예배 순서 '기도' 칸에 적힌 분
+  function repPerson(date, detail) {
+    var p = repOk() ? RepPrayer.scheduled(COMMITTEES, date) : ''; if (p) return p;
+    detail = String(detail || '').trim(); return /(권사|장로|집사)\s*님?$/.test(detail) ? detail : '';
+  }
+  function repAuto(date, person, title, scripture, variant) { return RepPrayer.generate({ date: date, person: person, title: title, scripture: scripture, variant: variant || 0, history: repHistory(person) }); }
+  // 보여 줄 기도문 — 같은 기도자의 고친 것·가져온 것이면 그것, 아니면 자동(저장된 변형 번호로 다시 만든 글)
+  function repView(date, person, title, scripture) {
+    var row = repRow(date), mine = row && RepPrayer.samePerson(row.person, person) && String(row.body || '').trim();
+    if (mine && row.source !== 'auto') return { text: row.body, source: row.source, variant: row.variant || 0, saved: true };
+    var v = mine ? (row.variant || 0) : 0, t = repAuto(date, person, title, scripture, v);
+    return { text: t, source: 'auto', variant: v, saved: !!(mine && row.body === t) };
+  }
+  function repSave(date, person, body, source, variant) {
+    if (repNoTable) return Promise.reject(new Error('SQL 실행 필요 (supabase/20261114_0930_worship_rep_prayers.sql)'));
+    var row = repRow(date);
+    if (row && row.person === person && row.body === body && row.source === source && (row.variant || 0) === (variant || 0)) return Promise.resolve(false);
+    var data = { sdate: date, service: REP_SVC, person: person, body: body, source: source, variant: variant || 0, updated_at: new Date().toISOString() };
+    return api('POST', 'worship_prayers?on_conflict=sdate,service', data, 'resolution=merge-duplicates,return=minimal').then(function () {
+      if (REP_ROWS) { var r = repRow(date); if (r) Object.assign(r, data); else REP_ROWS.unshift(data); }
+      return true;
+    });
+  }
+  // 자동 기도문 맞추기 — 권사님 차례만, 고친 것·가져온 것은 건드리지 않는다. 실패는 조용히
+  function repSync(date, person, title, scripture) {
+    if (!repOk() || !date || !RepPrayer.needsPrayer(person)) return Promise.resolve(false);
+    return repLoadRows().then(function () {
+      if (repNoTable) return false;
+      var v = repView(date, person, title, scripture);
+      return v.source === 'auto' && !v.saved ? repSave(date, person, v.text, 'auto', v.variant) : false;
+    }).catch(function () { return false; });
+  }
+  function repSermonOf(rows, date) {
+    for (var i = 0; i < (rows || []).length; i++) { var r = rows[i]; if (r.service === REP_SVC && fmtD(r.sermon_date) === date) return { title: r.title || '', scripture: r.scripture || '' }; }
+    return { title: '', scripture: '' };
+  }
+  function repSundays(n) { var d = today(), s = addDays(d, (7 - new Date(d + 'T00:00:00').getDay()) % 7), out = []; for (var k = 0; k < n; k++) out.push(addDays(s, k * 7)); return out; }
+  // 다가오는 8주의 자동 기도문을 맞춘다 — 예배·설교 관리 목록을 불러올 때. rows: sermons
+  function repSyncUpcoming(rows) {
+    if (!repOk()) return Promise.resolve();
+    return repCom().then(function () { return repLoadRows(true); }).then(function () {
+      if (repNoTable) return;
+      return repSundays(8).reduce(function (pr, sd) {
+        var p = RepPrayer.scheduled(COMMITTEES, sd), sm = repSermonOf(rows, sd);
+        return pr.then(function () { return repSync(sd, p, sm.title, sm.scripture); });
+      }, Promise.resolve());
+    }).catch(function () { });
+  }
+  // 대표기도 창 공통 — 배경(누르기·떼기 모두 배경일 때)·Esc(맨 위 창만)·닫기 단추로 닫힘, 뒤 화면 고정, 초점은 창 안에서만 돌고 닫으면 제자리로
+  function repDialog(ov, box, canClose, refocus) {   // refocus(): 연 단추가 다시 그려져 없어졌을 때 초점을 둘 곳
+    var opener = document.activeElement, bodyOv = document.body.style.overflow, down = false;
+    ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    ov.style.overscrollBehavior = 'contain';
+    document.body.style.overflow = 'hidden';
+    function onTop() { for (var n = ov.nextElementSibling; n; n = n.nextElementSibling) { var cs = getComputedStyle(n); if (cs.position === 'fixed' && cs.display !== 'none' && n.offsetWidth > window.innerWidth * 0.5) return false; } return true; }
+    function close() {
+      window.removeEventListener('keydown', onKey, true); ov.remove(); document.body.style.overflow = bodyOv;
+      var t = opener && document.body.contains(opener) ? opener : (refocus && refocus());
+      if (t && t.focus) { try { t.focus(); } catch (e) { } }
+    }
+    function tryClose() { if (canClose && canClose() === false) return; close(); }
+    function onKey(e) {
+      if (!document.body.contains(ov) || !onTop()) return;
+      if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); tryClose(); return; }
+      if (e.key !== 'Tab') return;
+      var f = Array.prototype.filter.call(box.querySelectorAll('button,textarea,input,select,a[href]'), function (x) { return !x.disabled && x.offsetParent !== null; });
+      if (!f.length) return;
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+      else if (!box.contains(document.activeElement)) { e.preventDefault(); f[0].focus(); }
+    }
+    window.addEventListener('keydown', onKey, true);
+    ov.addEventListener('mousedown', function (e) { down = e.target === ov; });
+    ov.addEventListener('click', function (e) { if (down && e.target === ov) tryClose(); down = false; });
+    return { close: close, tryClose: tryClose };
+  }
+  // 대표기도문 창 — o: { date, person, title, scripture, onSaved }
+  function repModal(o) {
+    if (!repOk()) { alert('기도문 모듈(rep-prayer.js)을 불러오지 못했습니다. 새로고침해 주세요.'); return; }
+    var ov = document.createElement('div'), st = { source: 'auto', variant: 0, loaded: '', saved: false }, busy = false;
+    var tags = RepPrayer.occasionTags(o.date).slice(0, 6); if (o.title) tags.push('설교 「' + o.title + '」');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(23,17,12,.5);z-index:9650;display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto';
+    ov.innerHTML = '<div class="rp-box" style="background:#fff;border-radius:4px;max-width:680px;width:100%;padding:18px 20px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><h3 style="margin:0;color:var(--accent,#111111);font-size:1.05rem">대표기도 · ' + esc(o.person) + '</h3>' +
+      '<div style="font-size:.8rem;color:#898885;margin-top:3px">' + esc(o.date + ' · ' + RepPrayer.sundayLabel(o.date)) + '</div></div>' +
+      '<button type="button" class="btn btn-line rp-x" style="padding:3px 11px;user-select:none">닫기</button></div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 8px">' + tags.map(function (t) { return '<span style="font-size:.7rem;border:1px solid #E3E2DF;border-radius:999px;padding:1px 8px;color:#6F6E6B">' + esc(t) + '</span>'; }).join('') + '</div>' +
+      '<textarea class="rp-ta" aria-label="기도문" style="width:100%;box-sizing:border-box;height:min(60vh,520px);padding:12px 14px;border:1px solid #ECEBE8;border-radius:3px;font:inherit;font-size:.96rem;line-height:1.9;font-family:\'Noto Serif KR\',serif;resize:vertical;overscroll-behavior:contain">불러오는 중…</textarea>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px"><span class="rp-state" style="font-size:.76rem;color:#898885"></span>' +
+      '<span style="display:flex;gap:6px;flex-wrap:wrap;user-select:none"><button type="button" class="btn btn-line rp-auto" style="padding:7px 12px;display:none">자동으로 되돌리기</button><button type="button" class="btn btn-line rp-new" style="padding:7px 12px">다시 만들기</button><button type="button" class="btn btn-solid rp-save" style="padding:7px 18px;font-weight:700">저장</button></span></div>' +
+      '<div class="rp-msg" style="font-size:.78rem;min-height:1.1em;margin-top:6px"></div></div>';
+    document.body.appendChild(ov);
+    function q(c) { return ov.querySelector(c); }
+    var box = q('.rp-box'), ta = q('.rp-ta');
+    function changed() { return ta.value !== st.loaded; }
+    var dlg = repDialog(ov, box, function () { return !changed() || confirm('저장하지 않은 기도문이 있습니다. 닫을까요?'); }, o.refocus);
+    q('.rp-x').onclick = dlg.tryClose;
+    function paint() {
+      var lab = { auto: '자동', edit: '고친 기도문', import: '문서에서 가져온 기도문' }[st.source] || '';
+      q('.rp-state').textContent = lab + ' · ' + ta.value.replace(/\s/g, '').length + '자' + (st.saved && !changed() ? '' : ' · 저장 안 됨');
+      q('.rp-auto').style.display = st.source === 'auto' ? 'none' : '';
+    }
+    function msg(t, c) { var e = q('.rp-msg'); e.style.color = c || '#898885'; e.textContent = t || ''; }
+    ta.addEventListener('input', paint);
+    ta.disabled = true;
+    repLoadRows(true).then(function () {
+      if (!document.body.contains(ov)) return;
+      var v = repView(o.date, o.person, o.title, o.scripture);
+      st.source = v.source; st.variant = v.variant; st.saved = v.saved; ta.value = st.loaded = v.text;
+      ta.disabled = false; paint(); ta.focus(); try { ta.setSelectionRange(0, 0); } catch (e) { } ta.scrollTop = 0;
+      if (repNoTable) { msg('저장하려면 먼저 supabase/20261114_0930_worship_rep_prayers.sql 을 실행해야 합니다.', '#A33A2A'); q('.rp-save').disabled = true; }
+    });
+    q('.rp-new').onclick = function () { st.variant = (st.variant || 0) + 1; st.source = 'auto'; st.saved = false; ta.value = repAuto(o.date, o.person, o.title, o.scripture, st.variant); paint(); };
+    q('.rp-auto').onclick = function () { st.variant = 0; st.source = 'auto'; st.saved = false; ta.value = repAuto(o.date, o.person, o.title, o.scripture, 0); paint(); };
+    q('.rp-save').onclick = function () {
+      if (busy || ta.disabled) return;
+      var body = ta.value.replace(/\s+$/, ''), b = this;
+      if (!body.trim()) { msg('기도문이 비어 있습니다.', '#A33A2A'); return; }
+      var src = body === repAuto(o.date, o.person, o.title, o.scripture, st.variant) ? 'auto' : 'edit';
+      busy = true; b.disabled = true; b.textContent = '저장 중…'; msg('');
+      repSave(o.date, o.person, body, src, st.variant).then(function () {
+        st.source = src; st.saved = true; st.loaded = ta.value; paint(); msg('저장했습니다.', 'green');
+        if (o.onSaved) o.onSaved();
+      }).catch(function (e) { msg('저장 실패: ' + e.message, '#A33A2A'); })
+        .then(function () { busy = false; b.disabled = repNoTable; b.textContent = '저장'; });
+    };
+  }
+  // 예배 매니저 목록 위 '대표기도' — 다가오는 6주의 기도자와 기도문
+  function repCard(box, rows) {
+    if (!box || !repOk()) return;
+    var list = repSundays(6).map(function (sd) { return { date: sd, person: RepPrayer.scheduled(COMMITTEES, sd), sm: repSermonOf(rows, sd) }; });
+    box.innerHTML = '<div class="fin-card rp-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><b style="color:var(--accent,#111111)">대표기도</b>' +
+      '<button type="button" class="btn btn-line rp-import" style="padding:5px 11px;font-size:.8rem">기도문 문서 넣기</button></div>' +
+      (repNoTable ? '<div style="font-size:.8rem;color:#A33A2A;margin-bottom:6px">저장하려면 supabase/20261114_0930_worship_rep_prayers.sql 실행이 필요합니다.</div>' : '') +
+      list.map(function (x, i) {
+        var r = repRow(x.date), st;
+        if (!x.person) st = '<span style="font-size:.78rem;color:#A7A6A3">봉사위원 명단에 없음</span>';
+        else if (!RepPrayer.needsPrayer(x.person)) st = '<span style="font-size:.78rem;color:#A7A6A3">기도문 없음</span>';
+        else st = '<button type="button" class="btn btn-line rp-open-i" data-i="' + i + '" style="padding:3px 10px;font-size:.78rem">기도문 보기</button>' +
+          '<span style="font-size:.72rem;color:#898885">' + ((r && RepPrayer.samePerson(r.person, x.person) && { edit: '고침', import: '문서' }[r.source]) || '자동') + '</span>';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #F4F3F0;flex-wrap:wrap">' +
+          '<span style="min-width:128px;font-size:.84rem">' + esc(x.date.slice(5).replace('-', '/')) + ' <span style="color:#898885">' + esc(RepPrayer.sundayLabel(x.date)) + '</span></span>' +
+          '<b style="min-width:96px;font-size:.88rem">' + esc(x.person || '—') + '</b>' + st + '</div>';
+      }).join('') + '</div>';
+    Array.prototype.forEach.call(box.querySelectorAll('.rp-open-i'), function (b) {
+      b.onclick = function () { var x = list[Number(b.dataset.i)]; repModal({ date: x.date, person: x.person, title: x.sm.title, scripture: x.sm.scripture, onSaved: function () { repCard(box, rows); }, refocus: function () { return box.querySelector('.rp-open-i[data-i="' + b.dataset.i + '"]'); } }); };
+    });
+    box.querySelector('.rp-import').onclick = function () { repImport(function () { repLoadRows(true).then(function () { repCard(box, rows); }); }); };
+  }
+  // 기존 기도문 문서(.docx) 넣기 — 기도자·날짜별로 나눠 보여 주고, 고른 것을 'import' 로 저장(날짜 없는 것은 그분의 지난 명단 날짜로 맞춘다)
+  function repImport(after) {
+    if (!window.JSZip) { alert('압축 해제 모듈(JSZip)이 없습니다. 새로고침 뒤 다시 해 주세요.'); return; }
+    var fi = document.createElement('input'); fi.type = 'file'; fi.accept = '.docx';
+    fi.onchange = function () {
+      var f = fi.files && fi.files[0]; if (!f) return;
+      f.arrayBuffer().then(function (buf) { return window.JSZip.loadAsync(buf); })
+        .then(function (zip) { var fe = zip.file('word/document.xml'); if (!fe) throw new Error('워드(.docx) 문서가 아닙니다'); return fe.async('string'); })
+        .then(function (xml) {
+          var W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main', doc = new DOMParser().parseFromString(xml, 'application/xml'), paras = [];
+          Array.prototype.forEach.call(doc.getElementsByTagNameNS(W, 'p'), function (p) {
+            var t = ''; Array.prototype.forEach.call(p.getElementsByTagNameNS(W, '*'), function (el) { if (el.localName === 't') t += el.textContent; else if (el.localName === 'tab') t += ' '; else if (el.localName === 'br') t += '\n'; });
+            t.split('\n').forEach(function (s) { paras.push(s); });
+          });
+          return Promise.all([repCom(), repLoadRows(true)]).then(function () { return RepPrayer.parseDoc(paras, today()); });
+        })
+        .then(function (items) {
+          if (!items.length) { alert('기도문을 찾지 못했습니다. "기도 인도: ○○○ 권사" 같은 줄이 있는 문서인지 확인해 주세요.'); return; }
+          var used = {}; items.forEach(function (it) { if (it.date) used[it.date] = 1; });
+          items.forEach(function (it) {   // 날짜 없는 기도문 → 그분이 명단에서 기도한 지난 날짜 중 비어 있는 가장 최근 날
+            if (it.date) return;
+            var c = RepPrayer.scheduledDates(COMMITTEES, it.person).filter(function (d) { var r = repRow(d); return d < today() && !used[d] && !(r && r.source !== 'auto' && String(r.body || '').trim()); });
+            if (c.length) { it.date = c[c.length - 1]; it.guess = true; used[it.date] = 1; }
+          });
+          repImportPreview(items, after);
+        })
+        .catch(function (e) { alert('문서를 읽지 못했습니다: ' + e.message); });
+    };
+    fi.click();
+  }
+  function repImportPreview(items, after) {
+    var ov = document.createElement('div'), busy = false;
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(23,17,12,.5);z-index:9650;display:flex;align-items:flex-start;justify-content:center;padding:30px 14px;overflow:auto';
+    ov.innerHTML = '<div class="rp-box" style="background:#fff;border-radius:4px;max-width:760px;width:100%;padding:18px 20px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><h3 style="margin:0;color:var(--accent,#111111);font-size:1.05rem">기도문 문서 넣기 · ' + items.length + '편</h3><button type="button" class="btn btn-line rp-x" style="padding:3px 11px">닫기</button></div>' +
+      '<div style="overflow:auto"><table class="fin-table" style="width:100%;min-width:600px;font-size:.84rem"><thead><tr><th style="width:28px"></th><th>날짜</th><th>기도자</th><th>첫 줄</th><th>지금</th></tr></thead><tbody>' +
+      items.map(function (it, i) {
+        var r = it.date ? repRow(it.date) : null, now = !r || !String(r.body || '').trim() ? '' : (RepPrayer.samePerson(r.person, it.person) ? ({ auto: '자동', edit: '고침', import: '문서' }[r.source] || '') : r.person) + ' 있음';
+        var on = !!it.date && !(r && r.source === 'edit');
+        return '<tr><td><input type="checkbox" class="rpi-on" data-i="' + i + '"' + (on ? ' checked' : '') + '></td>' +
+          '<td style="white-space:nowrap"><input type="date" class="rpi-d" data-i="' + i + '" value="' + esc(it.date || '') + '" style="font:inherit;font-size:.82rem;padding:3px 5px;border:1px solid #ECEBE8;border-radius:3px">' + (it.guess ? '<div style="font-size:.68rem;color:#9C593C">명단으로 맞춤</div>' : '') + '</td>' +
+          '<td style="white-space:nowrap">' + esc(it.person) + '</td>' +
+          '<td style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + esc(it.body.slice(0, 300)) + '">' + esc(it.body.split('\n')[0].slice(0, 40)) + '</td>' +
+          '<td style="white-space:nowrap;color:#898885">' + esc(now) + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      '<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:12px"><span class="rp-msg" style="font-size:.8rem;margin-right:auto"></span><button type="button" class="btn btn-line rp-cancel" style="padding:7px 14px">취소</button><button type="button" class="btn btn-solid rp-go" style="padding:7px 18px;font-weight:700">넣기</button></div></div>';
+    document.body.appendChild(ov);
+    var box = ov.querySelector('.rp-box'), dlg = repDialog(ov, box, function () { return !busy; });
+    ov.querySelector('.rp-x').onclick = dlg.tryClose; ov.querySelector('.rp-cancel').onclick = dlg.tryClose;
+    function msg(t, c) { var e = ov.querySelector('.rp-msg'); e.style.color = c || '#898885'; e.textContent = t; }
+    if (repNoTable) { msg('먼저 supabase/20261114_0930_worship_rep_prayers.sql 을 실행해야 합니다.', '#A33A2A'); ov.querySelector('.rp-go').disabled = true; }
+    ov.querySelector('.rp-go').onclick = function () {
+      if (busy) return;
+      var picks = [], seen = {}, bad = '';
+      Array.prototype.forEach.call(ov.querySelectorAll('.rpi-on'), function (c) {
+        if (!c.checked) return;
+        var i = Number(c.dataset.i), d = ov.querySelector('.rpi-d[data-i="' + i + '"]').value;
+        if (!d) { bad = '날짜가 없는 기도문이 있습니다 — 날짜를 넣거나 체크를 빼 주세요.'; return; }
+        if (new Date(d + 'T00:00:00').getDay() !== 0) { bad = d + ' 은 주일이 아닙니다.'; return; }
+        if (seen[d]) { bad = d + ' 에 두 편이 있습니다.'; return; }
+        seen[d] = 1; picks.push({ date: d, person: items[i].person, body: items[i].body });
+      });
+      if (bad) { msg(bad, '#A33A2A'); return; }
+      if (!picks.length) { msg('넣을 기도문을 골라 주세요.', '#A33A2A'); return; }
+      var b = this; busy = true; b.disabled = true; b.textContent = '넣는 중…';
+      var n = 0;
+      picks.reduce(function (pr, x) { return pr.then(function () { return repSave(x.date, x.person, x.body, 'import', 0).then(function () { n++; msg(n + ' / ' + picks.length); }); }); }, Promise.resolve())
+        .then(function () { busy = false; dlg.close(); if (after) after(); alert(n + '편을 넣었습니다.'); })
+        .catch(function (e) { busy = false; b.disabled = false; b.textContent = '넣기'; msg('넣는 중 오류(' + n + '편까지 들어감): ' + e.message, '#A33A2A'); });
+    };
+  }
 
   function renderBulletinAdmin(panel) {
     panel.innerHTML =
