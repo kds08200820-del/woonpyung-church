@@ -126,6 +126,8 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
       '<div id="myDocs" style="margin-bottom:22px;"></div>' +
       '<div id="familyTree" style="margin-bottom:22px;"></div>' +
       /* 신청서 — 헌금 바로 위 (2026-10-10 요청) */
+      /* 구제선교위원회 정회원 회비 — 정회원·신청한 분께만 (2026-11-14) */
+      '<div id="myMission"></div>' +
       '<div id="myForms" style="margin-bottom:22px;"></div>' +
       /* 헌금은 맨 밑(2026-09-29 요청) */
       '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><h3 style="margin:0 0 10px;font-size:1rem;color:var(--accent,#111111);">헌금</h3><div id="offeringList"><p class="qt-loading">불러오는 중…</p></div></div>' +
@@ -147,6 +149,7 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
     loadMyForms();
     loadKids(me);
     loadMyPrayer();
+    loadMyMission();
   }
 
   /* ================= 나의 대표기도 (2026-11-14 담임목사 지시) =================
@@ -192,6 +195,32 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
         this.textContent = big ? '글씨 작게' : '글씨 크게';
         Array.prototype.forEach.call(el.querySelectorAll('.mp-text'), function (p) { p.style.fontSize = big ? '1.12rem' : '.98rem'; });
       };
+    }).catch(function () { el.innerHTML = ''; });
+  }
+
+  /* ================= 구제선교위원회 정회원 회비 (2026-11-14 담임목사 지시) =================
+     rpc mission_join_me (supabase/20261114_1500) — 회계가 체크한 이번 회기 회비 칸. 정회원이거나 신청 중일 때만 그린다.
+     함수가 없으면(SQL 실행 전) 조용히 숨긴다. 칸: 연납 · 12월 ~ 11월(회기 12월 시작). */
+  function loadMyMission() {
+    var el = document.getElementById('myMission'); if (!el) return;
+    brFetch('rpc/mission_join_me', { method: 'POST', body: '{}' }).then(function (r) {
+      var m = r && r.member;
+      if (!m || (m.status !== '정회원' && m.status !== '신청')) { el.innerHTML = ''; return; }
+      var head = '<div class="form-card" style="margin-bottom:22px;padding:16px 18px;"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">' +
+        '<h3 style="margin:0;font-size:1rem;color:var(--accent,#111111);">구제선교위원회 회비</h3><a href="mission.html#join" style="font-size:.8rem;color:#6F6E6B">위원회 페이지 →</a></div>';
+      if (m.status === '신청') { el.innerHTML = head + '<p style="margin:0;font-size:.9rem;color:#3C3B39">정회원 가입을 신청하셨습니다. 임원이 확인하면 이곳에 회비 납부 내역이 보입니다.</p></div>'; return; }
+      var d = r.dues || {}, P = ['12', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'], year = !!d['연납'];
+      var total = 0; Object.keys(d).forEach(function (k) { total += Number(d[k].amount || 0); });
+      var months = 0; P.forEach(function (p) { if (d[p]) months++; });
+      function cell(lbl, on, tip) { return '<span title="' + esc(tip || '') + '" style="display:inline-block;min-width:3em;margin:0 4px 4px 0;padding:5px 6px;text-align:center;font-size:.8rem;border:1px solid ' + (on ? 'var(--accent,#111111)' : '#E6E5E1') + ';border-radius:2px;background:' + (on ? 'var(--accent,#111111)' : '#fff') + ';color:' + (on ? '#fff' : '#8A8A86') + '">' + lbl + '</span>'; }
+      function tip(x) { return x ? Number(x.amount || 0).toLocaleString('ko-KR') + '원 · ' + String(x.date || '').replace(/-/g, '.') : ''; }
+      var html = head + '<p style="margin:0 0 8px;font-size:.82rem;color:#6F6E6B">' + esc(r.year) + '년도 회기 · ' + String(r.from || '').replace(/-/g, '.') + ' ~ ' + String(r.to || '').replace(/-/g, '.') + (m.exec ? ' · 실행위원' : '') + '</p><div>' +
+        cell('연납', year, tip(d['연납'])) + P.map(function (p) { return cell(Number(p) + '월', year || !!d[p], tip(d[p])); }).join('') + '</div>' +
+        '<p style="margin:8px 0 0;font-size:.9rem">' + (year || months === 12 ? '한 해 회비를 모두 내셨습니다' : '낸 달 ' + months + '개월') + ' · 합계 ' + total.toLocaleString('ko-KR') + '원' +
+        ' <span style="font-size:.8rem;color:#8A8A86">한 달 ' + Number(r.rate || 10000).toLocaleString('ko-KR') + '원 · 회계가 확인한 것</span></p>' +
+        '<p style="margin:6px 0 0;font-size:.85rem;color:#3C3B39">총회 의결권: ' + (year || months === 12 ? '<b>있음</b>' : '이 회기 회비를 총회 전까지 내시면 생깁니다') + '</p>' +
+        '<p style="margin:6px 0 0;font-size:.82rem;color:#6F6E6B">' + (m.due_day ? '나의 납부일 매달 ' + m.due_day + '일 · ' : '') + '<a href="mission.html#join" style="color:inherit">회비 내기 · 납부일 정하기 →</a></p></div>';
+      el.innerHTML = html;
     }).catch(function () { el.innerHTML = ''; });
   }
 
