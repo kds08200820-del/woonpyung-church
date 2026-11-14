@@ -122,7 +122,7 @@
     const me = J.me;
     let h = "";
     if (!sess() || !me) {
-      h += `<p class="ms-member-rule">선교헌금을 드린 모든 성도는 일반회원입니다. 정회원은 홈페이지에서 가입 신청을 하고 임원의 확인을 받습니다.</p>${RULE}
+      h += `<p class="ms-member-rule">선교헌금을 드린 모든 성도는 일반회원입니다. 정회원은 홈페이지에서 가입하면 바로 정회원이 됩니다.</p>${RULE}
         <p><button type="button" class="btn btn-solid ms-btn-s" id="mjLogin">로그인하고 신청하기</button></p>`;
     } else {
       const m = me.member;
@@ -134,7 +134,7 @@
               : `<label class="nt-f"><span>이름</span><input type="text" id="mjName" maxlength="50" required autocomplete="name" /></label>
                  <p class="ms-form-hint">교적 인증을 아직 안 하셨으면 이름으로 신청됩니다. 임원이 교적과 이어 드립니다.</p>`}
             <label class="nt-f"><span>한마디 (선택)</span><input type="text" id="mjNote" maxlength="200" autocomplete="off" /></label>
-            <button type="submit" class="btn btn-solid nt-submit">정회원 가입 신청</button>
+            <button type="submit" class="btn btn-solid nt-submit">정회원 가입하기</button>
             <div class="nt-status" hidden></div>
           </form>`;
       } else if (m.status === "신청") {
@@ -142,6 +142,7 @@
           <p><button type="button" class="ms-link" id="mjCancel">신청 취소</button></p>`;
       } else {
         const s = duesSummary(me.dues, me.rate);
+        if (J.justJoined) h += `<div class="mj-welcome"><b>정회원으로 가입되었습니다.</b> 회비는 1년에 10만 원(월 1만 원)입니다. 아래 「회비 내기」에서 토스로 보내시거나 계좌로 보내 주세요. 납부일을 정해 두시면 날짜가 지났을 때 알려 드립니다.</div>`;
         h += `<p class="ms-member-me">구제선교위원회 정회원이십니다${m.exec ? " · 실행위원" : ""}.</p>
           <div class="mj-mine">
             <h4>${esc(me.year)}년도 회비 <small class="ms-names-who">(${dot(me.from)} ~ ${dot(me.to)} · 회계가 확인한 것)</small></h4>
@@ -184,9 +185,14 @@
     e.preventDefault();
     const f = e.target, st = f.querySelector(".nt-status"), btn = f.querySelector(".nt-submit");
     const name = f.querySelector("#mjName") ? f.querySelector("#mjName").value.trim() : null;
-    btn.disabled = true; st.hidden = false; st.textContent = "신청하는 중…";
-    try { J.me = await rpc("mission_join_apply", { p_name: name, p_note: f.querySelector("#mjNote").value.trim() }); await loadRoster(); render(); }
-    catch (er) { btn.disabled = false; st.textContent = "신청하지 못했습니다: " + er.message; }
+    btn.disabled = true; st.hidden = false; st.textContent = "가입하는 중…";
+    try {
+      J.me = await rpc("mission_join_apply", { p_name: name, p_note: f.querySelector("#mjNote").value.trim() });
+      J.justJoined = !!(J.me && J.me.member && J.me.member.status === "정회원");
+      await loadRoster(); render();
+      const wl = box.querySelector(".mj-welcome"); if (wl) wl.scrollIntoView({ block: "center" });
+    }
+    catch (er) { btn.disabled = false; st.textContent = "가입하지 못했습니다: " + er.message; }
   }
   async function cancel() {
     const m = J.me && J.me.member;
