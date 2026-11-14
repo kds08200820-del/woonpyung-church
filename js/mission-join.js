@@ -37,7 +37,11 @@
   }
   function openLogin() { const m = document.getElementById("authModal"); if (m) { m.hidden = false; document.body.style.overflow = "hidden"; } }
   const selYear = () => (window.ChurchMission && window.ChurchMission.state && window.ChurchMission.state.year) || null;
-  function sideRefresh() { if (window.ChurchMission && window.ChurchMission.renderSide) window.ChurchMission.renderSide(); }
+  function sideRefresh() {
+    const CM = window.ChurchMission;
+    if (CM && CM.renderSide) CM.renderSide();
+    if (CM && CM.renderDesk) CM.renderDesk();      // 임원 업무 칸의 '회원 관리' 단추는 이 파일이 준비된 뒤 켜진다
+  }
 
   const J = { me: null, roster: null, ok: false, busy: false };
 
@@ -348,5 +352,5 @@
   }
   load();
   window.addEventListener("church:auth", load);
-  window.MissionJoin = { reload: load, state: J };
+  window.MissionJoin = { reload: load, state: J, openRoster };
 })();

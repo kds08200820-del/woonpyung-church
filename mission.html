@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261111m19" />
-  <link rel="stylesheet" href="css/mission.css?v=20261114j1" />
+  <link rel="stylesheet" href="css/mission.css?v=20261114d1" />
 </head>
 <body>
 
@@ -39,6 +39,15 @@
   <div class="container ms-shell">
     <aside class="ms-side" id="msSide" aria-label="회기 메뉴"></aside>
     <div class="ms-main">
+
+      <!-- 임원 업무 (2026-11-14) — 그 회기 임원 · 관리자 · 재정 담당에게만. 회계 · 회원 · 일정 관리 단추를 한곳에 — js/mission.js renderDesk -->
+      <section id="desk" class="ms-sec" hidden>
+        <div class="block-head">
+          <span class="eyebrow2">OFFICERS' DESK</span>
+          <h2><span class="ms-y"></span> 임원 업무</h2>
+        </div>
+        <div id="msDesk"></div>
+      </section>
 
       <!-- 정회원 가입 · 회비 (2026-11-14) — js/mission-join.js. SQL(20261114_1500) 실행 전에는 숨는다 -->
       <section id="join" class="ms-sec" hidden>
@@ -83,6 +92,15 @@
           <p>구제선교위원회가 한 해 동안 섬긴 일과 후원하는 곳의 소식을 회기별로 알립니다.</p>
         </div>
         <div id="msBoard"><p class="ms-empty">불러오는 중…</p></div>
+      </section>
+
+      <!-- 회계 보고 (2026-11-14 활동과 동향 아래로 옮김) — 그 회기 회원 · 임원 · 관리자 · 재정 담당에게만. 자세한 표는 접어 둔다 -->
+      <section id="finance" class="ms-sec" hidden>
+        <div class="block-head">
+          <span class="eyebrow2">FINANCE</span>
+          <h2><span class="ms-y"></span> 회계 보고</h2>
+        </div>
+        <div id="msReport"></div>
       </section>
 
       <section id="partners" class="ms-sec">
@@ -264,7 +282,7 @@
   <script src="js/counsel.js?v=20260906fix"></script>
   <script src="js/main.js?v=20261111m2"></script>
   <script src="js/mission-ledger.js?v=20261113y1"></script>
-  <script src="js/mission.js?v=20261114j2"></script>
-  <script src="js/mission-join.js?v=20261114j2"></script>
+  <script src="js/mission.js?v=20261114d1"></script>
+  <script src="js/mission-join.js?v=20261114d1"></script>
 </body>
 </html>

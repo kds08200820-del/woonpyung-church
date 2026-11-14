@@ -79,28 +79,35 @@
     partners: null,
     kind: "all",            // 활동·동향 거르기
   };
+  // 회기 목록 + 다음 회기(준비) — 다음 회기 임원 · 일정을 미리 넣어 둘 수 있다. 12월 1일에 서버(mission_fy)가 새 회기를 '지금'으로 돌리면
+  // 그 회기가 저절로 맨 위 '지금'이 되고, 그다음 회기가 새로 '준비'로 붙는다(2026-11-14 담임목사 지시)
   function years() {
-    if (S.home && Array.isArray(S.home.years) && S.home.years.length) return S.home.years.slice().sort((a, b) => b - a);
-    const ys = []; for (let y = Math.max(S.fy, FIRST_YEAR); y >= FIRST_YEAR; y--) ys.push(y);
-    return ys;
+    let ys;
+    if (S.home && Array.isArray(S.home.years) && S.home.years.length) ys = S.home.years.slice();
+    else { ys = []; for (let y = Math.max(S.fy, FIRST_YEAR); y >= FIRST_YEAR; y--) ys.push(y); }
+    if (ys.indexOf(S.fy + 1) < 0) ys.push(S.fy + 1);
+    return ys.sort((a, b) => b - a);
   }
   function hasRole(role) { return !!(S.home && S.home.my && (S.home.my.roles || []).some((r) => r.year === S.year && r.role === role)); }
   const canSec = () => S.admin || hasRole("서기");                                       // 일정·활동·동향
+  // 그 회기 임원(직책 상관없이) · 관리자 · 재정 담당 — '임원 업무' 칸을 본다
+  const isStaff = () => !!S.home && (S.admin || !!(S.home.my && S.home.my.finance) || !!(S.home.my && (S.home.my.roles || []).some((r) => r.year === S.year)));
   const canBook = () => !!S.home && (S.admin || !!(S.home.my && S.home.my.finance) || hasRole("회계"));   // 회계 장부
 
   /* ───────── 왼쪽 메뉴 ───────── */
   function renderSide() {
     if (!boxSide) return;
     const links = [];
+    if (isStaff()) links.push(["desk", "임원 업무"]);
     const sj = $("join"); if (sj && !sj.hidden) links.push(["join", "정회원"]);
     links.push(["member", "회원"]);
     if (S.home) links.push(["officers", "임원"], ["schedule", "일정"]);
     links.push(["ministry", "활동과 동향"]);
-    if (S.rep && S.rep.doc) links.push(["report", "회계 보고"]);
+    if ((S.rep && S.rep.doc) || canBook()) links.push(["finance", "회계 보고"]);
     links.push(["partners", "후원하는 곳"], ["bylaws", "회칙"]);
     boxSide.innerHTML = `<nav class="ms-side-in" aria-label="회기와 차례">
       <p class="ms-side-h">회기</p>
-      <ul class="ms-side-years">${years().map((y) => `<li><button type="button" class="${y === S.year ? "on" : ""}" data-y="${y}">${y}년도${y === S.fy ? ` <small>지금</small>` : ""}</button></li>`).join("")}</ul>
+      <ul class="ms-side-years">${years().map((y) => `<li><button type="button" class="${y === S.year ? "on" : ""}" data-y="${y}">${y}년도${y === S.fy ? ` <small>지금</small>` : y > S.fy ? ` <small>준비</small>` : ""}</button></li>`).join("")}</ul>
       <p class="ms-side-h">${esc(S.year)}년도</p>
       <ul class="ms-side-links">${links.map((l) => `<li><a href="#${l[0]}">${l[1]}</a></li>`).join("")}</ul>
     </nav>`;
@@ -117,6 +124,42 @@
     renderSide();
     await loadYear();
     renderAll();
+  }
+
+
+  /* ───────── 0) 임원 업무 (2026-11-14) — 회계 관리 · 회원 관리 · 일정 관리를 한곳에 ───────── */
+  function renderDesk() {
+    const sec = $("desk"), box = $("msDesk");
+    if (!sec || !box) return;
+    if (!isStaff()) { sec.hidden = true; box.innerHTML = ""; return; }
+    sec.hidden = false;
+    const mine = (S.home.my.roles || []).filter((r) => r.year === S.year).map((r) => r.role);
+    const who = S.admin ? "관리자" : (S.home.my.finance ? "재정 담당" : "");
+    const MJ = window.MissionJoin, mjOk = !!(MJ && MJ.state && MJ.state.ok);
+    const btn = (id, label, ok, why) => ok ? `<button type="button" class="btn btn-line ms-btn-s" id="${id}">${label}</button>`
+      : `<span class="ms-desk-no" title="${esc(why)}">${label}<small>${esc(why)}</small></span>`;
+    const book = canBook(), secr = canSec();
+    box.innerHTML = `<p class="ms-member-me">${esc(S.year)}년도 회기 ${esc([...mine, who].filter(Boolean).join(" · ") || "임원")}(으)로 들어오셨습니다.</p>
+      <div class="ms-desk">
+        <div class="ms-desk-card"><h3>회계 관리</h3>
+          <p>통장 엑셀을 올려 장부를 만들고, 정회원 회비 납부를 체크하고, 회비 받는 계좌를 정합니다.</p>
+          <div class="ms-desk-btns">${btn("dkBook", "회계 장부 · 엑셀 올리기", book, "회계가 합니다")}${btn("dkDues", "회비 체크 · 회비 계좌", book && mjOk, "회계가 합니다")}</div></div>
+        <div class="ms-desk-card"><h3>회원 관리</h3>
+          <p>정회원 가입 신청을 승인하거나 반려하고, 교적에서 찾아 정회원으로 올립니다. 실행위원은 위원장 · 서기가 세웁니다.</p>
+          <div class="ms-desk-btns">${btn("dkRoster", "정회원 명부 · 가입 승인 · 실행위원", mjOk, "준비 중")}<a class="btn btn-line ms-btn-s" href="#member">일반회원(선교헌금) 보기</a></div></div>
+        <div class="ms-desk-card"><h3>일정 관리</h3>
+          <p>구제선교위원회의 회기 전체 일정을 넣고 고칩니다. 활동과 동향 글도 여기서 씁니다.</p>
+          <div class="ms-desk-btns">${btn("dkEvent", "일정 넣기", secr, "서기가 합니다")}${btn("dkPost", "활동 · 동향 글 쓰기", secr, "서기가 합니다")}<a class="btn btn-line ms-btn-s" href="#schedule">전체 일정 보기</a></div></div>
+        ${S.admin ? `<div class="ms-desk-card"><h3>임원 정하기</h3><p>회기마다 위원장 · 서기 · 회계를 교적에서 골라 넣으면 그 직책의 권한이 저절로 생깁니다.</p>
+          <div class="ms-desk-btns"><button type="button" class="btn btn-line ms-btn-s" id="dkOff">임원 정하기</button></div></div>` : ""}
+      </div>`;
+    const on = (id, fn) => { const b = $(id); if (b) b.addEventListener("click", fn); };
+    on("dkBook", openBook);
+    on("dkDues", () => MJ.openRoster());
+    on("dkRoster", () => MJ.openRoster());
+    on("dkEvent", () => openEvent(null));
+    on("dkPost", () => openPost(null));
+    on("dkOff", openOfficers);
   }
 
   /* ───────── 1) 회원 ───────── */
@@ -167,6 +210,7 @@
       ${d.intro ? `<p class="ms-report-intro">${esc(d.intro)}</p>` : ""}
       <h5>수입 지출 총괄 <small>(단위: 원)</small></h5>
       <table class="ms-report-t ms-report-sum-t"><tbody>${sum}</tbody></table>
+      <details class="ms-report-more"><summary>월별 · 항목별 · 날짜별 자세한 자료 펼쳐 보기</summary>
       <h5>월별 수입 지출</h5>
       ${barsMonthly(d.monthly || [])}
       <div class="ms-tscroll"><table class="ms-report-t"><thead><tr><th>월</th><th>수입</th><th>지출</th><th>수지</th><th>잔액</th></tr></thead><tbody>${mon}</tbody></table></div>
@@ -177,7 +221,24 @@
       <details class="ms-report-daily"><summary>날짜별 수입 지출 (${esc((d.daily || []).length)}일) 펼쳐 보기</summary>
         <div class="ms-tscroll"><table class="ms-report-t"><thead><tr><th>날짜</th><th>수입</th><th>지출</th><th>수지</th><th>잔액</th></tr></thead><tbody>${day}</tbody></table></div>
       </details>
+      </details>
     </div>`;
+  }
+  function renderReport() {
+    const sec = $("finance"), box = $("msReport");
+    if (!sec || !box) return;
+    const rp = S.rep, has = !!(rp && rp.doc && Array.isArray(rp.doc.summary));
+    if (!has && !canBook()) { sec.hidden = true; box.innerHTML = ""; return; }
+    sec.hidden = false;
+    let h = "";
+    if (canBook()) {
+      h += `<div class="ms-book-bar"><span>회계 장부 <small class="ms-names-who">(회계·관리자·재정 담당)</small></span>
+        <span class="ms-book-btns"><button type="button" class="btn btn-line ms-btn-s" id="msBookOpen">장부 열기 · 엑셀 올리기</button></span></div>`;
+    }
+    if (has) h += reportHtml(rp.doc);
+    else h += `<p class="ms-empty">이 회기의 회계 보고가 아직 없습니다. 장부에 거래를 넣거나 엑셀을 올리면 보고서 표가 만들어집니다.</p>`;
+    box.innerHTML = h;
+    const bo = $("msBookOpen"); if (bo) bo.addEventListener("click", openBook);
   }
   function renderMember() {
     if (!boxMember) return;
@@ -200,13 +261,6 @@
         ${m.names.length ? `<ul class="ms-name-list">${m.names.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : `<p class="ms-empty">이 회기 회원이 아직 없습니다.</p>`}
       </div>`;
     }
-    const rp = S.rep;
-    if (canBook()) {
-      h += `<div class="ms-book-bar"><span>회계 장부 <small class="ms-names-who">(회계·관리자·재정 담당)</small></span>
-        <span class="ms-book-btns"><button type="button" class="btn btn-line ms-btn-s" id="msBookOpen">장부 열기 · 엑셀 올리기</button></span></div>`;
-    }
-    if (rp && rp.doc && Array.isArray(rp.doc.summary)) h += reportHtml(rp.doc);
-    else if (canBook()) h += `<p class="ms-empty">이 회기의 회계 보고가 아직 없습니다. 장부에 거래를 넣거나 엑셀을 올리면 보고서 표가 만들어집니다.</p>`;
     if (m && S.admin) {
       h += `<div class="ms-vis"><label for="msVis">회원 공개 범위</label>
         <select id="msVis">${VIS.map((v) => `<option value="${v[0]}"${m.visibility === v[0] ? " selected" : ""}>${esc(v[1])}</option>`).join("")}</select>
@@ -219,7 +273,6 @@
       try { await api("POST", "rpc/mission_set_visibility", { p_visibility: sel.value }); await loadMember(); renderMember(); const s2 = $("msVisSt"); if (s2) s2.textContent = "저장했습니다."; }
       catch (e) { sel.disabled = false; st.textContent = "저장하지 못했습니다: " + e.message; }
     });
-    const bo = $("msBookOpen"); if (bo) bo.addEventListener("click", openBook);
   }
   async function loadMember() {
     if (!ready()) { S.mem = null; S.rep = null; return; }
@@ -715,7 +768,7 @@
       catch (e) { b.disabled = false; stat(bookM, "저장하지 못했습니다: " + e.message); }
     }));
   }
-  async function afterBookChange() { await loadBook(); renderBook(); await loadMember(); renderMember(); renderSide(); }
+  async function afterBookChange() { await loadBook(); renderBook(); await loadMember(); renderMember(); renderReport(); renderSide(); }
   function fillEntry(r) {
     const q = (s) => bookM.querySelector(s);
     B.editId = r ? r.id : null;
@@ -829,7 +882,7 @@
     if (S.home) S.fy = S.home.current;
   }
   async function loadYear() { await Promise.all([loadMember(), loadOfficers(), loadEvents()]); }
-  function renderAll() { renderSide(); renderMember(); renderOfficers(); renderEvents(); renderBoard(); renderPartners(); }
+  function renderAll() { renderSide(); renderDesk(); renderMember(); renderReport(); renderOfficers(); renderEvents(); renderBoard(); renderPartners(); }
   async function refresh() {
     _admin = null;
     const r = await Promise.all([isAdmin(), loadHome(), loadPosts(), loadPartners()]);
@@ -846,5 +899,5 @@
   renderSide(); renderMember();
   refresh();
   window.addEventListener("church:auth", refresh);
-  window.ChurchMission = { refresh, state: S, book: B, renderSide };
+  window.ChurchMission = { refresh, state: S, book: B, renderSide, renderDesk };
 })();
