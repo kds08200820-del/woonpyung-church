@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261111m19" />
-  <link rel="stylesheet" href="css/mission.css?v=20261114r1" />
+  <link rel="stylesheet" href="css/mission.css?v=20261114j1" />
 </head>
 <body>
 
@@ -49,6 +49,15 @@
         <div class="ms-member" id="msMember">
           <p class="ms-member-rule">회기는 매년 12월 1일에 시작해 이듬해 11월 30일에 끝납니다.</p>
         </div>
+      </section>
+
+      <!-- 정회원 가입 · 회비 (2026-11-14) — js/mission-join.js. SQL(20261114_1500) 실행 전에는 숨는다 -->
+      <section id="join" class="ms-sec" hidden>
+        <div class="block-head">
+          <span class="eyebrow2">REGULAR MEMBERS</span>
+          <h2>정회원 가입 · 회비</h2>
+        </div>
+        <div id="msJoin"></div>
       </section>
 
       <section id="officers" class="ms-sec" hidden>
@@ -255,6 +264,7 @@
   <script src="js/counsel.js?v=20260906fix"></script>
   <script src="js/main.js?v=20261111m2"></script>
   <script src="js/mission-ledger.js?v=20261113y1"></script>
-  <script src="js/mission.js?v=20261114r1"></script>
+  <script src="js/mission.js?v=20261114j1"></script>
+  <script src="js/mission-join.js?v=20261114j1"></script>
 </body>
 </html>

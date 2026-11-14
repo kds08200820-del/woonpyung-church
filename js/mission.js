@@ -92,6 +92,7 @@
   function renderSide() {
     if (!boxSide) return;
     const links = [["member", "회원"]];
+    const sj = $("join"); if (sj && !sj.hidden) links.push(["join", "정회원"]);
     if (S.home) links.push(["officers", "임원"], ["schedule", "일정"]);
     links.push(["ministry", "활동과 동향"]);
     if (S.rep && S.rep.doc) links.push(["report", "회계 보고"]);
@@ -844,5 +845,5 @@
   renderSide(); renderMember();
   refresh();
   window.addEventListener("church:auth", refresh);
-  window.ChurchMission = { refresh, state: S, book: B };
+  window.ChurchMission = { refresh, state: S, book: B, renderSide };
 })();
