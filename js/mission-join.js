@@ -237,7 +237,12 @@
           <span class="mj-acts"><button type="button" class="btn btn-solid ms-btn-s" data-ok="${m.id}">승인</button>
           <button type="button" class="ms-link" data-no="${m.id}">반려</button></span></li>`).join("")}</ul>`;
     }
-    const voteN = reg.filter((x) => duesSummary(x.dues, x.rate).full).length;
+    const voters = reg.filter((x) => duesSummary(x.dues, x.rate).full), voteN = voters.length;
+    // 의결권 있는 정회원 명단 — 그 회기 회비를 다 낸 정회원(연납 또는 12달). 총회 출석부로 쓴다
+    h = `<div class="mj-voters"><h4 class="mj-h">의결권 있는 정회원 ${voteN}명 <small class="ms-names-who">(${R.year}년도 회기 회비를 모두 낸 정회원 · 정회원 ${reg.length}명 가운데)</small></h4>
+      ${voteN ? `<ol class="mj-voter-list">${voters.map((m) => `<li>${esc(m.name)}${m.exec ? " <small>실행위원</small>" : ""}${m.officer ? " <small>임원</small>" : ""}</li>`).join("")}</ol>
+        <button type="button" class="ms-link" id="mjVoteCopy">명단 복사</button>`
+      : `<p class="ms-empty">아직 이 회기 회비를 모두 낸 정회원이 없습니다.</p>`}</div>` + h;
     h += `<h4 class="mj-h">정회원 ${reg.length}명 <small class="ms-names-who">실행위원 ${execN}명 (5인까지) · 의결권(이 회기 회비 완납) ${voteN}명</small></h4>
       <p class="ms-form-hint">정회원은 탈퇴하지 않는 한 다음 회기에도 명부에 그대로 남습니다. 의결권은 연납 또는 12달 회비를 모두 낸 분에게 표시됩니다.</p>`;
     if (R.can_dues) h += `<p class="ms-form-hint">회비 칸을 누르면 낸 것으로 체크합니다(금액은 한 달 1만 원, 임원 2만 원, 연납 10만 원 · 임원 24만 원으로 들어가며 바꿀 수 있습니다). 다시 누르면 체크를 풉니다.</p>`;
@@ -301,6 +306,12 @@
       if (!amt) { alert("금액을 숫자로 적어 주세요."); return; }
       run(() => rpc("mission_dues_set", { p_member_id: m.id, p_year: R.year, p_period: p, p_paid: true, p_amount: amt }));
     });
+    const vc = body.querySelector("#mjVoteCopy");
+    if (vc) vc.onclick = () => {
+      const t = voters.map((m, i) => `${i + 1}. ${m.name}`).join(String.fromCharCode(10));
+      const done = () => { vc.textContent = "복사했습니다"; };
+      if (navigator.clipboard) navigator.clipboard.writeText(t).then(done, () => prompt("명단", t)); else prompt("명단", t);
+    };
     const ps = body.querySelector("#mjPaySet");
     if (ps) ps.onsubmit = async (e) => {
       e.preventDefault();

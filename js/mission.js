@@ -140,7 +140,7 @@
     const items = [];
     if (book) items.push(["book", "회계 장부 · 엑셀"]);
     if (book && mjOk) items.push(["dues", "회비 체크 · 회비 계좌"]);
-    if (mjOk) items.push(["roster", "정회원 · 가입 승인 · 실행위원"]);
+    if (mjOk) items.push(["roster", "정회원 명부 · 의결권 명단 · 실행위원"]);
     if (secr) items.push(["event", "일정 넣기"], ["post", "활동 · 동향 글 쓰기"]);
     if (termReady()) items.push(["win", "회계 보고 공개 · 열람 기간"]);
     if (S.admin) items.push(["off", "임원 정하기"]);
