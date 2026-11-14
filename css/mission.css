@@ -249,3 +249,8 @@ rect.ms-ch-out, i.ms-ch-out { fill: #B9B7B2; background: #B9B7B2; }
 @media (max-width: 900px) { .ms-side-adm button { padding: 7px 12px; } }
 .ms-report-more { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; }
 .ms-report-more > summary { cursor: pointer; font-size: .9rem; color: var(--accent); padding: 4px 0; }
+.mj-welcome { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--accent); border-radius: 2px; font-size: .92rem; line-height: 1.7; }
+.ms-win-note { font-size: .86rem; }
+.ms-win-modes { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+.ms-win-modes legend { font-size: .85rem; margin-bottom: 6px; }
+.ms-win-modes small { color: var(--muted); }

@@ -142,6 +142,7 @@
     if (book && mjOk) items.push(["dues", "회비 체크 · 회비 계좌"]);
     if (mjOk) items.push(["roster", "정회원 · 가입 승인 · 실행위원"]);
     if (secr) items.push(["event", "일정 넣기"], ["post", "활동 · 동향 글 쓰기"]);
+    if (termReady()) items.push(["win", "회계 보고 공개 · 열람 기간"]);
     if (S.admin) items.push(["off", "임원 정하기"]);
     if (S.admin && termReady()) {
       if (S.year <= S.fy && !isClosed(S.year)) items.push(["close", `${S.year}년도 회기 마감`]);
@@ -161,8 +162,52 @@
     else if (k === "event") openEvent(null);
     else if (k === "post") openPost(null);
     else if (k === "off") openOfficers();
+    else if (k === "win") openWindow();
     else if (k === "close") closeTerm(S.year);
     else if (k === "reopen") reopenTerm(S.year);
+  }
+  // 회계 보고 공개 · 열람 기간 (그 회기 임원) — 자동(기간대로) / 지금 공개 / 지금 비공개
+  let winM = null;
+  function openWindow() {
+    const w = (S.rep && S.rep.window) || {};
+    if (!winM) {
+      winM = makeModal("회계 보고 공개", `<h3 class="m-title"></h3>
+        <p class="ms-form-hint">임원 · 관리자 · 재정 담당은 늘 봅니다. 회원(선교헌금을 드린 분 · 정회원)에게는 아래 방식대로 보입니다.</p>
+        <form class="nt-form ms-form ms-win-form">
+          <fieldset class="ms-win-modes"><legend>공개 방식</legend>
+            <label><input type="radio" name="wm" value="auto" /> 열람 기간에만 공개 <small>(기간이 지나면 저절로 비공개)</small></label>
+            <label><input type="radio" name="wm" value="open" /> 지금 공개</label>
+            <label><input type="radio" name="wm" value="closed" /> 지금 비공개 <small>(임원에게만)</small></label>
+          </fieldset>
+          <div class="ms-form-row">
+            <label class="nt-f"><span>열람 시작</span><input type="date" id="wFrom" /></label>
+            <label class="nt-f"><span>열람 끝</span><input type="date" id="wTo" /></label>
+          </div>
+          <p class="ms-form-hint">날짜를 비우면 기본값(그해 11월 셋째 주일 ~ 12월 첫째 주 토요일)입니다.</p>
+          <button type="submit" class="btn btn-solid nt-submit">저장</button>
+          <div class="nt-status" hidden></div>
+        </form>`);
+      winM.querySelector("form").addEventListener("submit", saveWindow);
+    }
+    winM.querySelector(".m-title").textContent = `${S.year}년도 회계 보고 공개`;
+    const mode = w.mode || "auto";
+    winM.querySelectorAll('input[name="wm"]').forEach((r) => { r.checked = r.value === mode; });
+    winM.querySelector("#wFrom").value = w.custom ? (w.from || "") : "";
+    winM.querySelector("#wTo").value = w.custom ? (w.to || "") : "";
+    winM.querySelector("#wFrom").placeholder = w.from || ""; winM.querySelector("#wTo").placeholder = w.to || "";
+    stat(winM, w.from ? `지금 기간: ${dot(w.from)} ~ ${dot(w.to)}${w.custom ? "" : " (기본값)"} · 회원에게 ${w.open ? "공개 중" : "비공개"}` : "");
+    openModal(winM);
+  }
+  async function saveWindow(e) {
+    e.preventDefault();
+    const q = (x) => winM.querySelector(x);
+    const mode = (winM.querySelector('input[name="wm"]:checked') || {}).value || "auto";
+    stat(winM, "저장 중…");
+    try {
+      const r = await api("POST", "rpc/mission_report_window_set", { p_year: S.year, p_from: q("#wFrom").value || null, p_to: q("#wTo").value || null, p_mode: mode });
+      await loadMember(); renderReport(); renderSide();
+      stat(winM, `저장했습니다. 기간 ${dot(r.from)} ~ ${dot(r.to)} · 회원에게 ${r.open ? "공개 중" : "비공개"}`);
+    } catch (er) { stat(winM, "저장하지 못했습니다: " + er.message); }
   }
   async function closeTerm(y) {
     if (!confirm(`${y}년도 회기를 마감할까요?\n\n마감하면 ${y + 1}년도가 '지금' 회기가 되고, ${y + 2}년도가 '준비' 회기로 새로 생깁니다.\n${y}년도 자료는 그대로 남고 왼쪽 회기 단추로 언제든 볼 수 있습니다.`)) return;
@@ -241,17 +286,20 @@
     const sec = $("finance"), box = $("msReport");
     if (!sec || !box) return;
     const rp = S.rep, has = !!(rp && rp.doc && Array.isArray(rp.doc.summary));
-    if (!has && !canBook()) { sec.hidden = true; box.innerHTML = ""; return; }
+    if (!has && !canBook() && !(rp && rp.window && rp.window.staff)) { sec.hidden = true; box.innerHTML = ""; return; }
     sec.hidden = false;
     let h = "";
     if (canBook()) {
       h += `<div class="ms-book-bar"><span>회계 장부 <small class="ms-names-who">(회계·관리자·재정 담당)</small></span>
         <span class="ms-book-btns"><button type="button" class="btn btn-line ms-btn-s" id="msBookOpen">장부 열기 · 엑셀 올리기</button></span></div>`;
     }
+    const w = rp && rp.window;
+    if (w && w.staff && w.from) h += `<p class="ms-member-me ms-win-note">회원 공개: ${w.mode === "open" ? "지금 공개" : w.mode === "closed" ? "지금 비공개(임원만)" : `열람 기간 ${esc(dot(w.from))} ~ ${esc(dot(w.to))}`} · 지금 회원에게 <b>${w.open ? "공개 중" : "비공개"}</b>${termReady() ? ` <button type="button" class="ms-link" id="msWinEdit">바꾸기</button>` : ""}</p>`;
     if (has) h += reportHtml(rp.doc);
     else h += `<p class="ms-empty">이 회기의 회계 보고가 아직 없습니다. 장부에 거래를 넣거나 엑셀을 올리면 보고서 표가 만들어집니다.</p>`;
     box.innerHTML = h;
     const bo = $("msBookOpen"); if (bo) bo.addEventListener("click", openBook);
+    const we = $("msWinEdit"); if (we) we.addEventListener("click", openWindow);
   }
   function renderMember() {
     if (!boxMember) return;
