@@ -13,6 +13,7 @@
 --  들어 있는 것 (모두 비파괴: CREATE TABLE · CREATE FUNCTION 뿐):
 --   1) mission_regular_members : 정회원 명부. 신청 → 정회원(승인) / 반려 / 탈퇴. 실행위원 표시.
 --                                교적 키(member_key)는 신청한 계정의 교적 연결(member_links)에서 가져온다.
+--   1-2) mission_pay_account   : 회비 받는 계좌 한 줄(은행 · 계좌번호 · 예금주 · 토스 송금 링크). 회계가 정한다.
 --   2) mission_dues            : 회비 납부 기록. 정회원 · 회기 · 칸(연납 또는 01~12월)마다 한 줄. 지우지 않고 paid 를 끈다.
 --   3) 함수(화면은 이 함수로만 읽고 쓴다 — 두 표는 RLS 만 켜고 정책이 없어 직접 읽을 수 없다):
 --        mission_join_me()            : 내 정회원 상태와 이번 회기 회비(대시보드 · 구제선교위원회 페이지)
@@ -22,6 +23,10 @@
 --        mission_member_add(이름)      : 홈페이지를 안 쓰는 분을 임원이 대신 올림(교적에서 같은 이름 한 분이면 연결)
 --        mission_member_link(id)       : 교적 연결 다시 시도(같은 이름 한 분일 때만)
 --        mission_dues_set(…)           : 회비 칸 체크 · 해제 — 그 회기 회계 · 관리자 · 재정 담당
+--        mission_join_set_due_day(일)  : 본인이 회비 납부일(매달 며칠)을 정한다
+--        mission_dues_push_feed()      : 납부일이 지났는데 이번 달(연납 포함) 회비가 체크되지 않은 정회원의 알림 열쇠 — 열쇠와 달만.
+--                                        apps-script/mission-dues-push.gs 가 하루 한 번 읽어 그 기기에 푸시(달마다 한 번)
+--        mission_pay_set(…)            : 회비 계좌 정하기 — 지금 회기 회계 · 관리자 · 재정 담당 (계좌는 mission_join_me 로 로그인한 성도에게 보인다)
 --
 --  회비 칸: 회기 2027 = 2026-12-01 ~ 2027-11-30. 칸 '12' 는 2026년 12월, '01' ~ '11' 은 2027년.
 --           '연납' 칸은 한 해 회비를 한 번에 낸 것.
@@ -33,9 +38,13 @@
 --            public.mission_roster(int), public.mission_member_set(bigint, text, boolean, text), public.mission_member_add(text),
 --            public.mission_member_link(bigint), public.mission_dues_set(bigint, int, text, boolean, bigint, date, text),
 --            public.mission_staff(int), public.mission_dues_rate(bigint, int), public.mission_dues_cells(bigint, int),
---            public.mission_gyojeok_key(text);
+--            public.mission_gyojeok_key(text), public.mission_pay_set(text, text, text, text), public.mission_pay_info(),
+--            public.mission_join_set_due_day(int), public.mission_dues_push_feed();
+--    · 칸: alter table public.mission_regular_members rename column due_day to due_day_archived;  (push_key 도 같은 방식)
+--    · Apps Script: 함수 목록에서 deleteMissionDuesPushTrigger 실행
 --    · 표: alter table public.mission_dues rename to mission_dues_archived;
---          alter table public.mission_regular_members rename to mission_regular_members_archived;   (DROP 하지 않는다)
+--          alter table public.mission_regular_members rename to mission_regular_members_archived;
+--          alter table public.mission_pay_account rename to mission_pay_account_archived;   (DROP 하지 않는다)
 -- ============================================================
 
 -- ── 1) 정회원 명부 ──────────────────────────────────────────
@@ -55,6 +64,10 @@ create table if not exists public.mission_regular_members (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+-- 회비 납부일(매달 며칠, 본인이 정함)과 알림 열쇠(기기 OneSignal 태그 md=<열쇠>, 무작위 32자 — 이름·교적 키가 아님)
+alter table public.mission_regular_members add column if not exists due_day int check (due_day between 1 and 31);
+alter table public.mission_regular_members add column if not exists push_key text;
+create unique index if not exists mission_regular_members_push_uq on public.mission_regular_members (push_key) where push_key is not null;
 create unique index if not exists mission_regular_members_user_uq on public.mission_regular_members (user_id) where user_id is not null;
 create index if not exists mission_regular_members_key_idx on public.mission_regular_members (member_key);
 alter table public.mission_regular_members enable row level security;     -- 정책 없음 = 함수로만
@@ -76,6 +89,27 @@ create table if not exists public.mission_dues (
 create unique index if not exists mission_dues_uq on public.mission_dues (member_id, fy_year, period);
 alter table public.mission_dues enable row level security;
 revoke all on public.mission_dues from anon, authenticated;
+
+-- ── 2-2) 회비 받는 계좌 (한 줄) ─────────────────────────────
+create table if not exists public.mission_pay_account (
+  id         int primary key default 1 check (id = 1),
+  bank       text not null default '' check (char_length(bank) <= 30),
+  account    text not null default '' check (char_length(account) <= 40),
+  holder     text not null default '' check (char_length(holder) <= 50),
+  toss_url   text not null default '' check (toss_url = '' or toss_url ~* '^https://'),   -- 예) https://toss.me/아이디
+  updated_by uuid references auth.users (id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+alter table public.mission_pay_account enable row level security;
+revoke all on public.mission_pay_account from anon, authenticated;
+
+create or replace function public.mission_pay_info()
+returns jsonb
+language sql stable security definer set search_path = public as $$
+  select (select jsonb_build_object('bank', a.bank, 'account', a.account, 'holder', a.holder, 'toss_url', a.toss_url, 'updated_at', a.updated_at)
+            from public.mission_pay_account a where a.id = 1 and (a.account <> '' or a.toss_url <> ''))
+$$;
+revoke all on function public.mission_pay_info() from public, anon, authenticated;
 
 -- ── 3) 권한: 그 회기 임원(직책 상관없이) · 관리자 · 재정 담당 ──
 create or replace function public.mission_staff(p_year int)
@@ -131,8 +165,10 @@ begin
     'linked', coalesce(v_key, '') <> '',
     'name', nullif(v_lname, ''),
     'member', case when m.id is null then null else jsonb_build_object(
-        'status', m.status, 'exec', m.exec_member, 'applied_at', m.applied_at, 'approved_at', m.approved_at, 'linked', m.member_key <> '') end,
+        'status', m.status, 'exec', m.exec_member, 'applied_at', m.applied_at, 'approved_at', m.approved_at, 'linked', m.member_key <> '',
+        'due_day', m.due_day, 'push_key', case when m.status = '정회원' then m.push_key end) end,
     'rate', case when m.id is null then 10000 else public.mission_dues_rate(m.id, v_fy) end,
+    'pay', public.mission_pay_info(),
     'dues', case when m.id is null then '{}'::jsonb else public.mission_dues_cells(m.id, v_fy) end,
     'prev', case when m.id is null then '{}'::jsonb else public.mission_dues_cells(m.id, v_fy - 1) end);
 end $$;
@@ -202,11 +238,12 @@ begin
   return jsonb_build_object(
     'year', v_fy,
     'can_dues', public.mission_can_book(v_fy),
+    'pay', public.mission_pay_info(),
     'members', coalesce((
       select jsonb_agg(jsonb_build_object(
                'id', m.id, 'name', m.name, 'status', m.status, 'exec', m.exec_member,
                'linked', m.member_key <> '', 'web', m.user_id is not null, 'src', m.src,
-               'note', m.note, 'staff_note', m.staff_note, 'applied_at', m.applied_at, 'approved_at', m.approved_at,
+               'note', m.note, 'staff_note', m.staff_note, 'applied_at', m.applied_at, 'approved_at', m.approved_at, 'due_day', m.due_day,
                'rate', public.mission_dues_rate(m.id, v_fy),
                'officer', public.mission_dues_rate(m.id, v_fy) = 20000,
                'dues', public.mission_dues_cells(m.id, v_fy))
@@ -317,9 +354,69 @@ end $$;
 revoke all on function public.mission_dues_set(bigint, int, text, boolean, bigint, date, text) from public, anon;
 grant execute on function public.mission_dues_set(bigint, int, text, boolean, bigint, date, text) to authenticated;
 
+-- ── 9) 회비 계좌 정하기 (지금 회기 회계 · 관리자 · 재정 담당) ─
+create or replace function public.mission_pay_set(p_bank text, p_account text, p_holder text, p_toss_url text default '')
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare v_fy int;  v_toss text := btrim(coalesce(p_toss_url, ''));
+begin
+  select f.fy into v_fy from public.mission_fy(null) f;
+  if not public.mission_can_book(v_fy) then raise exception '회비 계좌는 회계가 정합니다'; end if;
+  if v_toss <> '' and v_toss !~* '^https?://' then v_toss := 'https://' || v_toss; end if;
+  if v_toss ~* '^http://' then v_toss := regexp_replace(v_toss, '^http://', 'https://', 'i'); end if;
+  insert into public.mission_pay_account (id, bank, account, holder, toss_url, updated_by, updated_at)
+  values (1, left(btrim(coalesce(p_bank, '')), 30), left(btrim(coalesce(p_account, '')), 40), left(btrim(coalesce(p_holder, '')), 50), v_toss, auth.uid(), now())
+  on conflict (id) do update set bank = excluded.bank, account = excluded.account, holder = excluded.holder,
+         toss_url = excluded.toss_url, updated_by = excluded.updated_by, updated_at = now();
+  return public.mission_pay_info();
+end $$;
+revoke all on function public.mission_pay_set(text, text, text, text) from public, anon;
+grant execute on function public.mission_pay_set(text, text, text, text) to authenticated;
+
+-- ── 10) 회비 납부일 (본인) ──────────────────────────────────
+--   정하면 알림 열쇠도 함께 만든다. null 이면 납부일을 지운다(알림 없음).
+create or replace function public.mission_join_set_due_day(p_day int)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare v_uid uuid := auth.uid();  v_key text;  v_id bigint;
+begin
+  if v_uid is null then raise exception '로그인이 필요합니다'; end if;
+  if p_day is not null and (p_day < 1 or p_day > 31) then raise exception '납부일은 1일부터 31일 사이로 정해 주세요'; end if;
+  select coalesce(l.member_key, '') into v_key from public.member_links l where l.user_id = v_uid;
+  select r.id into v_id from public.mission_regular_members r
+   where (r.user_id = v_uid or (coalesce(v_key, '') <> '' and r.member_key = v_key)) and r.status = '정회원'
+   order by (r.user_id = v_uid) desc nulls last, r.id desc limit 1;
+  if v_id is null then raise exception '정회원만 납부일을 정할 수 있습니다'; end if;
+  update public.mission_regular_members
+     set due_day = p_day, push_key = coalesce(push_key, replace(gen_random_uuid()::text, '-', '')), updated_at = now()
+   where id = v_id;
+  return public.mission_join_me(null);
+end $$;
+revoke all on function public.mission_join_set_due_day(int) from public, anon;
+grant execute on function public.mission_join_set_due_day(int) to authenticated;
+
+-- ── 11) 납부일이 지난 정회원의 알림 열쇠 (Apps Script 가 공개 키로 읽는다) ─
+--   오늘(한국 시각)이 이번 달 납부일 다음 날 이후이고(말일보다 큰 납부일은 말일로), 이번 회기 연납도 이번 달 칸도 체크되지 않은 정회원.
+--   돌려주는 것: 열쇠와 'YYYY-MM' 뿐 — 이름 · 교적 키 · 금액 없음. 같은 달에 두 번 보내지 않는 것은 Apps Script 가 기억한다.
+create or replace function public.mission_dues_push_feed()
+returns jsonb
+language sql stable security definer set search_path = public as $$
+  with t as (select (now() at time zone 'Asia/Seoul')::date as d),
+       f as (select fy from public.mission_fy(null))
+  select coalesce(jsonb_agg(jsonb_build_object('key', m.push_key, 'ym', to_char(t.d, 'YYYY-MM'))), '[]'::jsonb)
+    from public.mission_regular_members m, t, f
+   where m.status = '정회원' and m.due_day is not null and m.push_key is not null
+     and extract(day from t.d)::int > least(m.due_day, extract(day from (date_trunc('month', t.d) + interval '1 month - 1 day'))::int)
+     and not exists (select 1 from public.mission_dues d
+                      where d.member_id = m.id and d.fy_year = f.fy and d.paid
+                        and d.period in ('연납', to_char(t.d, 'MM')))
+$$;
+revoke all on function public.mission_dues_push_feed() from public;
+grant execute on function public.mission_dues_push_feed() to anon, authenticated;
+
 -- ── 실행 후 확인(메타데이터 · 건수만) ───────────────────────
---   select table_name from information_schema.tables where table_name in ('mission_regular_members', 'mission_dues');   -- 2개
+--   select table_name from information_schema.tables where table_name in ('mission_regular_members', 'mission_dues', 'mission_pay_account');   -- 3개
 --   select count(*) from pg_proc where proname in ('mission_join_me','mission_join_apply','mission_join_cancel','mission_roster',
 --     'mission_member_set','mission_member_add','mission_member_link','mission_dues_set','mission_staff','mission_dues_rate',
---     'mission_dues_cells','mission_gyojeok_key');   -- 12
+--     'mission_dues_cells','mission_gyojeok_key','mission_pay_info','mission_pay_set','mission_join_set_due_day','mission_dues_push_feed');   -- 16
 --   select count(*) from public.mission_regular_members;   -- 처음에는 0
