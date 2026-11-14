@@ -228,3 +228,15 @@ rect.ms-ch-out, i.ms-ch-out { fill: #B9B7B2; background: #B9B7B2; }
 .mj-add .nt-status { flex-basis: 100%; }
 .mj-add .nt-f { flex: 1 1 220px; }
 .mj-vote { margin-top: 6px; font-size: .9rem; }
+.mj-pay { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.mj-pay h4 { font-size: .95rem; color: var(--accent-soft); margin: 0 0 10px; }
+.mj-pay-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.mj-acct { margin-top: 10px; font-size: .9rem; }
+.mj-due { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 14px; }
+.mj-due .nt-f span, .mj-payset .nt-f span { display: block; font-size: .85rem; margin-bottom: 4px; }
+.mj-due select, .mj-payset input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 2px; font: inherit; background: #fff; }
+.mj-due .ms-form-hint { flex: 1 1 240px; }
+.mj-payset { margin: 18px 0; padding-top: 4px; border-top: 1px solid var(--line); display: grid; gap: 10px; max-width: 640px; }
+.mj-payset-row { display: grid; grid-template-columns: 1fr 1.6fr 1.2fr; gap: 10px; }
+.mj-payset input { width: 100%; }
+@media (max-width: 640px) { .mj-payset-row { grid-template-columns: 1fr; } }

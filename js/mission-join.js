@@ -41,6 +41,53 @@
 
   const J = { me: null, roster: null, ok: false, busy: false };
 
+  /* 토스 송금 — js/forms.js 와 같은 규칙. toss.me 링크가 있으면 금액을 붙여 열고, 없으면 토스 앱 송금 화면(supertoss://) */
+  function tossMeUrl(u, amount) {
+    u = String(u || "").trim(); if (!u) return "";
+    if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+    let x; try { x = new URL(u); } catch (e) { return ""; }
+    if (!/^https?:$/.test(x.protocol)) return "";
+    if (/(^|\.)toss\.me$/i.test(x.hostname) && amount > 0) {
+      const parts = x.pathname.split("/").filter(Boolean);
+      if (parts.length > 1 && /^\d+$/.test(parts[parts.length - 1])) parts.pop();
+      if (parts.length) return x.origin + "/" + parts.join("/") + "/" + amount;
+    }
+    return x.href;
+  }
+  function tossApp(p, amount) {
+    const acct = String(p.account || "").replace(/[^0-9]/g, "");
+    if (!p.bank || !acct) return "";
+    return "supertoss://send?bank=" + encodeURIComponent(p.bank) + "&accountNo=" + acct + (amount > 0 ? "&amount=" + amount : "");
+  }
+  // 회비 내기: 한 달 / 연납 금액으로 토스 송금, 또는 계좌번호 복사
+  function payBox(me) {
+    const p = me.pay;
+    if (!p) return `<p class="ms-form-hint mj-pay">회비 받을 계좌를 회계가 정하고 있습니다. 정해지면 이곳에 계좌와 토스 송금 단추가 나옵니다.</p>`;
+    const rate = Number(me.rate || 10000), year = rate === 20000 ? 240000 : 100000;
+    const btn = (amt, lbl) => { const web = tossMeUrl(p.toss_url, amt), app = web ? "" : tossApp(p, amt); const u = web || app;
+      return u ? `<a class="btn btn-solid ms-btn-s mj-toss" href="${esc(u)}"${web ? ' target="_blank" rel="noopener"' : ""}>토스로 ${lbl} ${won(amt)}원 보내기</a>` : ""; };
+    return `<div class="mj-pay">
+      <h4>회비 내기</h4>
+      <div class="mj-pay-btns">${btn(rate, "한 달")}${btn(year, "연납")}</div>
+      ${p.account ? `<p class="mj-acct">${esc(p.bank)} ${esc(p.account)}${p.holder ? ` · 예금주 ${esc(p.holder)}` : ""}
+        <button type="button" class="ms-link" id="mjCopy" data-acct="${esc(String(p.account).replace(/[^0-9-]/g, ""))}">계좌번호 복사</button></p>` : ""}
+      <p class="ms-form-hint">보내는 분 이름은 본인 이름으로 해 주세요. 회계가 통장과 맞춰 본 뒤 위 칸에 체크합니다.${p.toss_url ? "" : " ‘토스로 보내기’는 토스 앱이 있는 휴대폰에서 송금 화면으로 열립니다. 다른 기기에서는 계좌번호를 복사해 보내 주세요."}</p>
+    </div>`;
+  }
+  function dueBox(me) {
+    const d = me.member && me.member.due_day;
+    return `<form class="mj-due" id="mjDue"><label class="nt-f"><span>나의 회비 납부일</span>
+        <select id="mjDueDay"><option value="">정하지 않음</option>${Array.from({ length: 31 }, (_, i) => i + 1).map((n) => `<option value="${n}"${d === n ? " selected" : ""}>매달 ${n}일</option>`).join("")}</select></label>
+      <span class="ms-form-hint" id="mjDueSt">${d ? "납부일이 지나도 이번 달 회비가 확인되지 않으면 알림을 드립니다(홈페이지 알림을 켠 기기)." : "납부일을 정하면, 그날이 지나도 회비가 확인되지 않을 때 알림을 드립니다."}</span></form>`;
+  }
+  // 이 기기에 알림 열쇠 태그(md) — apps-script/mission-dues-push.gs 가 이 태그가 붙은 기기에만 보낸다
+  function tagDevice(me) {
+    const k = me && me.member && me.member.due_day && me.member.push_key;
+    if (!k || !window.ONESIGNAL_APP_ID) return;
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async function (OneSignal) { try { await OneSignal.User.addTag("md", k); } catch (e) { } });
+  }
+
   // 회비 칸: 연납이면 한 해 완납. 아니면 낸 달 수
   function duesSummary(d, rate) {
     d = d || {};
@@ -98,6 +145,8 @@
             <p class="mj-sum">${s.full ? "한 해 회비를 모두 내셨습니다" : `낸 달 ${s.months}개월`} · 합계 ${won(s.total)}원 <span class="ms-form-hint">한 달 ${won(me.rate)}원${me.rate === 20000 ? "(임원)" : ""}</span></p>
             <p class="mj-vote">총회 의결권: ${s.full ? "<b>있음</b>" : "이 회기 회비를 총회 전까지 내시면 생깁니다"}</p>
             <p class="ms-form-hint">정회원은 탈퇴하지 않는 한 다음 회기에도 자동으로 이어집니다.</p>
+            ${payBox(me)}
+            ${dueBox(me)}
             ${me.prev && Object.keys(me.prev).length ? `<details class="mj-prev"><summary>지난 회기(${me.year - 1}년도)</summary>${duesStrip(me.prev)}</details>` : ""}
           </div>
           <p><button type="button" class="ms-link" id="mjCancel">정회원 탈퇴</button></p>`;
@@ -115,6 +164,16 @@
     if (q("#mjForm")) q("#mjForm").onsubmit = apply;
     if (q("#mjCancel")) q("#mjCancel").onclick = cancel;
     if (q("#mjRosterOpen")) q("#mjRosterOpen").onclick = openRoster;
+    if (q("#mjCopy")) q("#mjCopy").onclick = (e) => {
+      const a = e.target.dataset.acct, done = () => { e.target.textContent = "복사했습니다"; };
+      if (navigator.clipboard) navigator.clipboard.writeText(a).then(done, () => prompt("계좌번호", a)); else prompt("계좌번호", a);
+    };
+    if (q("#mjDueDay")) q("#mjDueDay").onchange = async (e) => {
+      const st = q("#mjDueSt"); e.target.disabled = true; st.textContent = "저장 중…";
+      try { J.me = await rpc("mission_join_set_due_day", { p_day: e.target.value ? Number(e.target.value) : null }); render(); }
+      catch (er) { e.target.disabled = false; st.textContent = "저장하지 못했습니다: " + er.message; }
+    };
+    tagDevice(me);
     sideRefresh();
   }
   async function apply(e) {
@@ -176,7 +235,7 @@
     if (R.can_dues) h += `<p class="ms-form-hint">회비 칸을 누르면 낸 것으로 체크합니다(금액은 한 달 1만 원, 임원 2만 원, 연납 10만 원 · 임원 24만 원으로 들어가며 바꿀 수 있습니다). 다시 누르면 체크를 풉니다.</p>`;
     if (!reg.length) h += `<p class="ms-empty">아직 정회원이 없습니다.</p>`;
     else {
-      h += `<div class="mj-table-wrap"><table class="mj-table"><thead><tr><th>이름</th><th>실행위원</th><th>연납</th>${PERIODS.map((p) => `<th>${mLabel(p)}</th>`).join("")}<th>합계</th><th>의결권</th><th></th></tr></thead><tbody>
+      h += `<div class="mj-table-wrap"><table class="mj-table"><thead><tr><th>이름</th><th>실행위원</th><th>연납</th>${PERIODS.map((p) => `<th>${mLabel(p)}</th>`).join("")}<th>합계</th><th>의결권</th><th>납부일</th><th></th></tr></thead><tbody>
         ${reg.map((m) => {
           const d = m.dues || {}, s = duesSummary(d, m.rate);
           const cell = (p) => {
@@ -189,12 +248,25 @@
             ${cell("연납")}${PERIODS.map(cell).join("")}
             <td class="mj-total">${won(s.total)}</td>
             <td>${s.full ? "있음" : `<small class="mj-unlinked">회비 전</small>`}</td>
+            <td>${m.due_day ? `${m.due_day}일` : ""}</td>
             <td><button type="button" class="ms-link" data-out="${m.id}">내리기</button></td></tr>`;
         }).join("")}</tbody></table></div>`;
     }
     h += `<form class="mj-add" id="mjAdd"><label class="nt-f"><span>홈페이지를 쓰지 않는 분 올리기</span>
         <input type="text" id="mjAddName" maxlength="50" placeholder="이름" autocomplete="off" required /></label>
         <button type="submit" class="btn btn-line ms-btn-s">정회원으로 올리기</button><div class="nt-status" hidden></div></form>`;
+    if (R.can_dues) {
+      const p = R.pay || {};
+      h += `<form class="mj-payset" id="mjPaySet"><h4 class="mj-h">회비 받는 계좌 <small class="ms-names-who">(회계가 정합니다 · 로그인한 정회원에게 보입니다)</small></h4>
+        <div class="mj-payset-row">
+          <label class="nt-f"><span>은행</span><input type="text" id="mpBank" maxlength="30" value="${esc(p.bank || "")}" placeholder="농협" /></label>
+          <label class="nt-f"><span>계좌번호</span><input type="text" id="mpAcct" maxlength="40" value="${esc(p.account || "")}" inputmode="numeric" /></label>
+          <label class="nt-f"><span>예금주</span><input type="text" id="mpHolder" maxlength="50" value="${esc(p.holder || "")}" placeholder="구제선교위원회" /></label>
+        </div>
+        <label class="nt-f"><span>토스 송금 링크 (선택 · 예: https://toss.me/아이디)</span><input type="text" id="mpToss" maxlength="200" value="${esc(p.toss_url || "")}" /></label>
+        <p class="ms-form-hint">토스 링크를 비워 두면 ‘토스로 보내기’가 토스 앱 송금 화면(은행 · 계좌번호 · 금액이 채워진 화면)으로 열립니다.</p>
+        <div><button type="submit" class="btn btn-line ms-btn-s">계좌 저장</button> <span class="ms-form-hint" id="mpSt"></span></div></form>`;
+    }
     if (out.length) h += `<details class="mj-prev"><summary>반려 · 탈퇴 ${out.length}명</summary><ul class="mj-wait">${out.map((m) => `<li><span class="mj-name">${esc(m.name)}</span> <small class="ms-form-hint">${esc(m.status)}</small>
         <span class="mj-acts"><button type="button" class="ms-link" data-ok="${m.id}">정회원으로</button></span></li>`).join("")}</ul></details>`;
     body.innerHTML = h;
@@ -219,6 +291,17 @@
       if (!amt) { alert("금액을 숫자로 적어 주세요."); return; }
       run(() => rpc("mission_dues_set", { p_member_id: m.id, p_year: R.year, p_period: p, p_paid: true, p_amount: amt }));
     });
+    const ps = body.querySelector("#mjPaySet");
+    if (ps) ps.onsubmit = async (e) => {
+      e.preventDefault();
+      const v = (id) => ps.querySelector(id).value.trim(), st = ps.querySelector("#mpSt");
+      if (!v("#mpToss") && !(v("#mpBank") && v("#mpAcct"))) { st.textContent = "은행과 계좌번호, 또는 토스 링크를 적어 주세요."; return; }
+      st.textContent = "저장 중…";
+      try {
+        const r = await rpc("mission_pay_set", { p_bank: v("#mpBank"), p_account: v("#mpAcct"), p_holder: v("#mpHolder"), p_toss_url: v("#mpToss") });
+        R.pay = r; if (J.me) J.me.pay = r; st.textContent = "저장했습니다.";
+      } catch (er) { st.textContent = "저장하지 못했습니다: " + er.message; }
+    };
     const add = body.querySelector("#mjAdd");
     add.onsubmit = (e) => {
       e.preventDefault();
