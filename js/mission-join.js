@@ -230,7 +230,7 @@
           <button type="button" class="ms-link" data-no="${m.id}">반려</button></span></li>`).join("")}</ul>`;
     }
     const voteN = reg.filter((x) => duesSummary(x.dues, x.rate).full).length;
-    h += `<h4 class="mj-h">정회원 ${reg.length}명 <small class="ms-names-who">실행위원 ${execN}명 / 5명 · 의결권(이 회기 회비 완납) ${voteN}명</small></h4>
+    h += `<h4 class="mj-h">정회원 ${reg.length}명 <small class="ms-names-who">실행위원 ${execN}명 (5인까지) · 의결권(이 회기 회비 완납) ${voteN}명</small></h4>
       <p class="ms-form-hint">정회원은 탈퇴하지 않는 한 다음 회기에도 명부에 그대로 남습니다. 의결권은 연납 또는 12달 회비를 모두 낸 분에게 표시됩니다.</p>`;
     if (R.can_dues) h += `<p class="ms-form-hint">회비 칸을 누르면 낸 것으로 체크합니다(금액은 한 달 1만 원, 임원 2만 원, 연납 10만 원 · 임원 24만 원으로 들어가며 바꿀 수 있습니다). 다시 누르면 체크를 풉니다.</p>`;
     if (!reg.length) h += `<p class="ms-empty">아직 정회원이 없습니다.</p>`;
@@ -244,7 +244,7 @@
             return `<td><button type="button" class="mj-dot${on ? " on" : ""}${cover ? " cover" : ""}" ${R.can_dues ? "" : "disabled"} data-m="${m.id}" data-p="${p}" title="${esc(t)}" aria-pressed="${on}" aria-label="${esc(m.name)} ${p === "연납" ? "연납" : mLabel(p)}">${on ? "✓" : cover ? "·" : ""}</button></td>`;
           };
           return `<tr><th scope="row"><span class="mj-name">${esc(m.name)}</span>${m.officer ? ` <small class="mj-tag">임원</small>` : ""}${m.linked ? "" : ` <button type="button" class="ms-link mj-unlinked" data-link="${m.id}" title="교적에서 같은 이름 한 분이면 연결합니다">교적 연결</button>`}</th>
-            <td><input type="checkbox" data-exec="${m.id}" ${m.exec ? "checked" : ""} aria-label="${esc(m.name)} 실행위원" /></td>
+            <td><input type="checkbox" data-exec="${m.id}" ${m.exec ? "checked" : ""} ${R.can_exec ? "" : "disabled"} aria-label="${esc(m.name)} 실행위원" /></td>
             ${cell("연납")}${PERIODS.map(cell).join("")}
             <td class="mj-total">${won(s.total)}</td>
             <td>${s.full ? "있음" : `<small class="mj-unlinked">회비 전</small>`}</td>
@@ -252,9 +252,11 @@
             <td><button type="button" class="ms-link" data-out="${m.id}">내리기</button></td></tr>`;
         }).join("")}</tbody></table></div>`;
     }
-    h += `<form class="mj-add" id="mjAdd"><label class="nt-f"><span>홈페이지를 쓰지 않는 분 올리기</span>
+    h += `<form class="mj-add" id="mjAdd"><label class="nt-f"><span>교적에서 찾아 올리기${R.can_exec ? " · 실행위원 세우기" : ""}</span>
         <input type="text" id="mjAddName" maxlength="50" placeholder="이름" autocomplete="off" required /></label>
-        <button type="submit" class="btn btn-line ms-btn-s">정회원으로 올리기</button><div class="nt-status" hidden></div></form>`;
+        <button type="submit" class="btn btn-line ms-btn-s">교적에서 찾기</button></form>
+      <div id="mjFound"></div>
+      ${R.can_exec ? "" : `<p class="ms-form-hint">실행위원은 위원장 · 서기가 세웁니다.</p>`}`;
     if (R.can_dues) {
       const p = R.pay || {};
       h += `<form class="mj-payset" id="mjPaySet"><h4 class="mj-h">회비 받는 계좌 <small class="ms-names-who">(회계가 정합니다 · 로그인한 정회원에게 보입니다)</small></h4>
@@ -302,13 +304,31 @@
         R.pay = r; if (J.me) J.me.pay = r; st.textContent = "저장했습니다.";
       } catch (er) { st.textContent = "저장하지 못했습니다: " + er.message; }
     };
-    const add = body.querySelector("#mjAdd");
-    add.onsubmit = (e) => {
+    const add = body.querySelector("#mjAdd"), found = body.querySelector("#mjFound");
+    add.onsubmit = async (e) => {
       e.preventDefault();
       const n = add.querySelector("#mjAddName").value.trim(); if (!n) return;
-      run(async () => {
-        const r = await rpc("mission_member_add", { p_name: n });
-        if (r && !r.linked) alert(`${n} 님을 올렸습니다. 교적에서 한 분으로 찾지 못해 교적과는 아직 연결되지 않았습니다.`);
+      found.innerHTML = `<p class="ms-form-hint">찾는 중…</p>`;
+      let list = [];
+      try { list = await rpc("mission_gyojeok_find", { p_name: n }) || []; }
+      catch (er) { found.innerHTML = `<p class="ms-form-hint">교적을 읽지 못했습니다: ${esc(er.message)}</p>`; return; }
+      const nameOnly = `<p class="ms-form-hint">교적에 없는 분이면 <button type="button" class="ms-link" id="mjNameOnly">「${esc(n)}」 이름으로만 정회원 올리기</button> (교적과 연결되지 않습니다)</p>`;
+      if (!list.length) { found.innerHTML = `<p class="ms-form-hint">교적에서 찾지 못했습니다.</p>${nameOnly}`; }
+      else {
+        found.innerHTML = `<ul class="mj-wait mj-found">${list.map((g, i) => `<li>
+            <span class="mj-name">${esc(g.name)}</span> <small class="ms-form-hint">${g.born ? esc(g.born) + "년생" : ""}${g.role ? " · " + esc(g.role) : ""}${g.status ? " · " + esc(g.status) + (g.exec ? " · 실행위원" : "") : ""}</small>
+            <span class="mj-acts">${g.status === "정회원" ? "" : `<button type="button" class="btn btn-line ms-btn-s" data-gadd="${i}">정회원으로</button>`}
+            ${R.can_exec && !g.exec ? `<button type="button" class="btn btn-solid ms-btn-s" data-gexec="${i}">실행위원으로</button>` : ""}</span></li>`).join("")}</ul>${nameOnly}`;
+      }
+      const go = (g, exec) => run(async () => {
+        await rpc("mission_member_add", { p_name: g.name, p_gyojeok_id: g.id, p_exec: exec });
+      });
+      found.querySelectorAll("[data-gadd]").forEach((b) => b.onclick = () => go(list[Number(b.dataset.gadd)], false));
+      found.querySelectorAll("[data-gexec]").forEach((b) => b.onclick = () => go(list[Number(b.dataset.gexec)], true));
+      const no = found.querySelector("#mjNameOnly");
+      if (no) no.onclick = () => run(async () => {
+        const r = await rpc("mission_member_add", { p_name: n, p_gyojeok_id: null, p_exec: false });
+        if (r && !r.linked) alert(`${n} 님을 올렸습니다. 교적과는 연결되지 않았습니다.`);
       });
     };
   }
