@@ -95,7 +95,7 @@
     if (S.home) links.push(["officers", "임원"], ["schedule", "일정"]);
     links.push(["ministry", "활동과 동향"]);
     if (S.rep && S.rep.doc) links.push(["report", "회계 보고"]);
-    links.push(["partners", "후원하는 곳"]);
+    links.push(["partners", "후원하는 곳"], ["bylaws", "회칙"]);
     boxSide.innerHTML = `<nav class="ms-side-in" aria-label="회기와 차례">
       <p class="ms-side-h">회기</p>
       <ul class="ms-side-years">${years().map((y) => `<li><button type="button" class="${y === S.year ? "on" : ""}" data-y="${y}">${y}년도${y === S.fy ? ` <small>지금</small>` : ""}</button></li>`).join("")}</ul>

@@ -109,6 +109,19 @@ rect.ms-ch-out, i.ms-ch-out { fill: #B9B7B2; background: #B9B7B2; }
 .ms-sec { padding: 0 0 72px; scroll-margin-top: 90px; }
 .ms-sec[hidden] { display: none !important; }
 .ms-sec:last-child { padding-bottom: 0; }
+
+/* 회칙 */
+.ms-bylaws { background: #FFFFFF; border: 1px solid var(--line); border-radius: 2px; }
+.ms-bylaws > summary { cursor: pointer; padding: 18px 24px; font-weight: 500; color: var(--ink); list-style-position: inside; }
+.ms-bylaws[open] > summary { border-bottom: 1px solid var(--line); }
+.ms-bylaws-body { padding: 8px 32px 30px; color: var(--ink-soft); line-height: 1.85; }
+.ms-bylaws-body h3 { font-size: 1.12rem; color: var(--ink); margin: 30px 0 6px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.ms-bylaws-body h4 { font-size: .98rem; color: var(--ink); font-weight: 500; margin: 16px 0 4px; }
+.ms-bylaws-body p { margin: 0 0 6px; }
+.ms-bylaws-body ol, .ms-bylaws-body ul { margin: 0 0 6px; padding-left: 1.4em; }
+.ms-bylaws-body ul { list-style: "- "; }
+.ms-bylaws-body li { margin: 2px 0; }
+@media (max-width: 640px) { .ms-bylaws-body { padding: 4px 18px 24px; } .ms-bylaws > summary { padding: 16px 18px; } }
 .ms-main .mission-grid { grid-template-columns: repeat(3, 1fr); }
 .ms-report { scroll-margin-top: 90px; }
 
