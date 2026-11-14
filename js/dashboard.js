@@ -218,8 +218,7 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
         cell('연납', year, tip(d['연납'])) + P.map(function (p) { return cell(Number(p) + '월', year || !!d[p], tip(d[p])); }).join('') + '</div>' +
         '<p style="margin:8px 0 0;font-size:.9rem">' + (year || months === 12 ? '한 해 회비를 모두 내셨습니다' : '낸 달 ' + months + '개월') + ' · 합계 ' + total.toLocaleString('ko-KR') + '원' +
         ' <span style="font-size:.8rem;color:#8A8A86">한 달 ' + Number(r.rate || 10000).toLocaleString('ko-KR') + '원 · 회계가 확인한 것</span></p>' +
-        '<p style="margin:6px 0 0;font-size:.85rem;color:#3C3B39">총회 의결권: ' + (year || months === 12 ? '<b>있음</b>' : '이 회기 회비를 총회 전까지 내시면 생깁니다') + '</p>' +
-        '<p style="margin:6px 0 0;font-size:.82rem;color:#6F6E6B">' + (m.due_day ? '나의 납부일 매달 ' + m.due_day + '일 · ' : '') + '<a href="mission.html#join" style="color:inherit">회비 내기 · 납부일 정하기 →</a></p></div>';
+                '<p style="margin:6px 0 0;font-size:.82rem;color:#6F6E6B">' + (m.due_day ? '나의 납부일 매달 ' + m.due_day + '일 · ' : '') + '<a href="mission.html#join" style="color:inherit">회비 내기 · 납부일 정하기 →</a></p></div>';
       el.innerHTML = html;
     }).catch(function () { el.innerHTML = ''; });
   }

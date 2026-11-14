@@ -115,7 +115,7 @@
       <li>경조사를 임원에게 알리고 함께 위로와 격려에 참여합니다.</li>
       <li>복음을 전하는 일에 적극 협력합니다.</li>
     </ul>
-    <p class="ms-form-hint">정회원은 탈퇴하지 않는 한 다음 회기에도 자동으로 이어집니다. 총회 의결권은 그 회기 회비를 총회 전까지 낸 정회원에게 있습니다. 일반회원은 언권회원으로 총회에서 발언할 수 있으나 표결에는 참여하지 않습니다.</p>`;
+    <p class="ms-form-hint">총회 의결권은 그 회기 회비를 총회 전까지 낸 정회원에게 있습니다. 일반회원은 언권회원으로 총회에서 발언할 수 있으나 표결에는 참여하지 않습니다.</p>`;
   function render() {
     if (!J.ok) { sec.hidden = true; sideRefresh(); return; }
     sec.hidden = false;
@@ -148,8 +148,6 @@
             <h4>${esc(me.year)}년도 회비 <small class="ms-names-who">(${dot(me.from)} ~ ${dot(me.to)} · 회계가 확인한 것)</small></h4>
             ${duesStrip(me.dues)}
             <p class="mj-sum">${s.full ? "한 해 회비를 모두 내셨습니다" : `낸 달 ${s.months}개월`} · 합계 ${won(s.total)}원 <span class="ms-form-hint">한 달 ${won(me.rate)}원${me.rate === 20000 ? "(임원)" : ""}</span></p>
-            <p class="mj-vote">총회 의결권: ${s.full ? "<b>있음</b>" : "이 회기 회비를 총회 전까지 내시면 생깁니다"}</p>
-            <p class="ms-form-hint">정회원은 탈퇴하지 않는 한 다음 회기에도 자동으로 이어집니다.</p>
             ${payBox(me)}
             ${dueBox(me)}
             ${me.prev && Object.keys(me.prev).length ? `<details class="mj-prev"><summary>지난 회기(${me.year - 1}년도)</summary>${duesStrip(me.prev)}</details>` : ""}
