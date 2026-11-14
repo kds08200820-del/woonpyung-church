@@ -5137,7 +5137,7 @@ console.log('[affairs.js] v20261023th1');
         '<div style="font-size:.72rem;color:#A7A6A3;margin-top:4px">저장하면 오늘의 예배에 악보로 나옵니다.</div></div>' +
         // ── 주일 예배 순서(블록): 주일 낮 예배의 모든 순서를 블록으로 짠다 — 오늘의 예배가 이 순서대로, 로그인한 사람의 권한대로 펼친다 (2026-10-09)
         '<div class="af-field" id="bd_sun_field" style="display:none"><label>주일 예배 순서 <span style="font-weight:400">(블록)</span></label>' +
-        '<div style="font-size:.72rem;color:#898885;margin:-2px 0 7px;line-height:1.55">블록을 ≡ 로 끌어 순서를 바꾸고, 누르면 곡·교독문·내용·기도문을 적습니다. 오늘의 예배가 이 순서대로 나옵니다. 성도는 <b>모두</b> 블록을, <b style="color:#555555">목회자</b>·<b style="color:#6D6C69">반주자</b>는 자기 블록까지 봅니다. 📌 고정한 블록은 다음 주에도 내용까지 그대로 들어갑니다.</div>' +
+        '<div style="font-size:.72rem;color:#898885;margin:-2px 0 7px;line-height:1.55">블록을 ≡ 로 끌어 순서를 바꾸고, 누르면 곡·교독문·내용·기도문을 적습니다. 오늘의 예배가 이 순서대로 나옵니다. 성도는 <b>모두</b> 블록을, <b style="color:#555555">목회자</b>·<b style="color:#6D6C69">반주자</b>는 자기 블록까지 봅니다. 📌 고정한 블록은 다음 주에도 내용까지 그대로 들어갑니다. 다만 경배와 찬양·송영·찬송·성경봉독·성가대 찬양·목회 기도·설교 전 기도·헌금 기도·축도는 자리만 남고 내용은 매주 비워서 시작합니다.</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:7px"><button type="button" class="btn btn-line" id="bd_sun_prev" style="padding:5px 2px;font-size:.72rem" title="지난 주일에 짠 순서를 가져옵니다 — 📌 고정한 블록은 내용까지">지난 주 순서로</button>' +
         '<button type="button" class="btn btn-line" id="bd_sun_def" style="padding:5px 2px;font-size:.72rem" title="경배와 찬양 → 목회 기도 → 입례송 → 송영 → … → 축도">기본 순서로</button>' +
         '<button type="button" class="btn btn-line" id="bd_sun_fill" style="padding:5px 2px;font-size:.72rem;grid-column:1/-1" title="이 날짜 주보가 있으면 비어 있는 블록(송영·교독문·기도자 …)을 주보 내용으로 채웁니다">주보로 빈칸 채우기</button>' +
@@ -6101,6 +6101,15 @@ console.log('[affairs.js] v20261023th1');
         order.splice(sunAddAt(label), 0, it); renderOrder(); sunDirty();
         sunEdit(order.indexOf(it));
       }
+      // 매주 새로 채우는 블록 (2026-11-14 담임목사 지시): 📌 고정이어도 다음 주에는 블록 자리만 남기고 곡·기도문·내용은 비운다
+      //   모두 — 경배와 찬양·송영·찬송·성경봉독·성가대 찬양 / 목회자 — 목회 기도·설교 전 기도·헌금 기도·축도
+      function sunWeekly(it) {
+        if (audOf(it) === 'pastor') return ordPastorKey(it.label) || /^(설교\s*전\s*기도|헌금\s*기도)$/.test(String(it.label || '').trim());
+        if (audOf(it) !== 'all') return false;
+        var k = ordKey(it.label);
+        return k === ordKey('경배와 찬양') || k === ordKey('성가대 찬양') || k === '송영' || k === '찬송' || k === '성경봉독';
+      }
+      function sunBlank(it) { it.detail = ''; it.body = ''; it.url = ''; delete it.items; delete it.jnos; delete it.hno; delete it.images; delete it.sermon_id; }
       function sunHas(it) { return !!(ordCommunion(it.label) || it.sermon_id || normItems(it.items || it.jnos).length || it.hno || String(it.body || '').trim() || it.url || (it.images || []).length || String(it.detail || '').trim()); }
       // 틀(tpl: 지난 주일 순서 또는 기본 순서)로 순서를 다시 짠다
       //   · 지금 순서에서 이미 고른 곡·적은 내용은 같은 이름의 자리로 옮긴다(같은 이름이 여럿이면 앞에서부터)
@@ -6117,7 +6126,7 @@ console.log('[affairs.js] v20261023th1');
           if (have) used.push(have);
           if (have && sunHas(have)) { nu.push(have); return; }
           if (ordCommunion(t.label)) return;   /* 지난 성찬식 주일의 블록은 틀로 삼지 않는다 — 성찬식은 그 주일에만 */
-          if (t.fixed) { var c = JSON.parse(JSON.stringify(t)); delete c._up; delete c._openBody; c.aud = a; nu.push(c); return; }
+          if (t.fixed) { var c = JSON.parse(JSON.stringify(t)); delete c._up; delete c._openBody; c.aud = a; if (sunWeekly(c)) sunBlank(c); nu.push(c); return; }
           if (a !== 'all' && !ordPastorKey(t.label)) { if (have) nu.push(have); return; }   /* 목회 기도·축도는 순서 칸이라 고정이 아니어도 빈 블록으로 둔다 */
           nu.push(have || { label: t.label, detail: '', url: '', aud: a });
         });
