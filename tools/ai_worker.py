@@ -11,6 +11,7 @@
   주보 편집기 · 표지 말씀 헤드라인    → kind = headline
   주보 편집기 · AI 주보 검수          → kind = review
   설교 매니저 · 설교 PDF → Drive      → kind = sermon_pdf  (Claude 가 아니라 Edge 로 PDF 를 찍는다)
+  설교 매니저 · 설교에 맞춰 순서 채우기 → kind = worship_fill (Opus — 찬송·교독문·기도문, 2026-11-14)
 
 흐름:
   브라우저 --ai_enqueue()--> ai_jobs(pending) --claim_ai_job()--> 이 워커
@@ -141,6 +142,7 @@ TIMEOUT = {             # 종류별 최대 생성 시간(초)
     "sermon_pdf": 240,
     "sermon_style": 600,
     "sermon_hymn": 240,
+    "worship_fill": 540,
 }
 
 # ── 설교 PDF → Google Drive (kind = sermon_pdf) ───────────────
@@ -412,6 +414,98 @@ def hymn_pick(material, timeout=240):
         if m and 1 <= int(m.group(1)) <= 645 and re.search(r"(?m)^%s " % int(m.group(1)), material):
             return str(int(m.group(1)))
     raise RuntimeError("찬송 번호를 고르지 못했습니다: " + text[:60])
+
+
+# ── 예배 순서 채우기 (2026-11-14, kind = worship_fill) ─────────────────────────
+#  설교 매니저의 '설교에 맞춰 순서 채우기'가 넣는 작업. 화면이 설교(제목·본문·원고·절기)·예배 순서·빈칸 목록·
+#  최근에 부른 찬송·지난 주 목회자 기도문·새찬송가/모두의 찬양/교독문 목록을 한 글로 보내면,
+#  Claude(Opus)가 빈칸 하나하나를 그 자리에 맞게 고르고(곡·교독문) 쓰고(기도문) 까닭을 붙여 JSON 으로 돌려준다.
+#  목록에 없는 번호는 받지 않는다(다시 묻는다). 화면은 빈칸에만 넣고, 저장은 목사님이 한다.
+MODEL_WORSHIP = _env("AI_MODEL_WORSHIP", "opus")
+
+WORSHIP_SYSTEM = """당신은 한국 장로교회(대한예수교장로회) 담임목사를 도와 주일 예배 순서를 준비하는 예배 담당 목회자다.
+목사님이 이번 주 설교 원고와 예배 순서를 보여 주며 비어 있는 칸을 채워 달라고 한다. 설교를 처음부터 끝까지 읽고, 칸 하나하나를 그 자리의 쓰임에 맞게 진지하게 채운다.
+
+칸의 종류와 고르는 법:
+- 경배와 찬양(예배 전 찬양): 예배를 여는 회중 찬양 2곡. 새찬송가(h) 또는 모두의 찬양(c)에서. 설교 주제로 마음을 모으되 부르기 쉬운 곡.
+- 송영: 새찬송가 송영(1~7장 등 하나님께 영광을 돌리는 짧은 곡) 한 곡.
+- 찬송: 새찬송가(h) 한 곡. 순서 안의 자리를 본다 — 기도·말씀 앞 찬송은 하나님을 찬양하고 말씀을 받을 마음을 여는 곡,
+  말씀·교회소식 뒤(축도 앞) 찬송은 설교의 결단·적용·파송에 응답하는 곡.
+- 성가대 찬양: 성가대가 말씀 앞에 부르는 곡 한 곡. 모두의 찬양(c) 또는 새찬송가(h)에서 설교 본문과 가장 가까운 곡.
+- 성시교독: 교독문(g) 한 편. 절기·특별 주일이면 그 교독문, 아니면 설교 본문·주제와 맞닿은 시편·본문.
+- 목회 기도(예배를 여는 기도, 사회자): 200~320자. 예배로 부르신 은혜, 이 주일의 때(절기·계절), 말씀을 사모하는 마음.
+- 설교 전 기도: 120~220자. 설교자가 말씀 앞에서 드리는 기도 — 이 설교의 본문·주제를 담아 말씀을 깨닫고 따르게 해 달라고.
+- 헌금 기도: 120~220자. 드림의 감사와 헌신, 설교의 결단과 이어지게.
+- 축도: 고린도후서 13:13 의 장로교 축도 형식. "이제는 …" 으로 시작해 이 설교의 결단을 한두 구절 담고
+  "…주 예수 그리스도의 은혜와 하나님의 사랑과 성령의 교통하심이 … 이제로부터 영원토록 함께하시기를 축원하옵나이다." 로 맺는다.
+
+지킬 것:
+- 곡·교독문 번호는 반드시 주어진 목록에 있는 것만 쓴다(목록의 머리글자 h·c·g 와 번호). 제목을 지어내지 않는다.
+- '최근에 부른 찬송'에 있는 곡은 되도록 다시 고르지 않는다. 한 예배 안에서 같은 곡을 두 번 고르지 않는다.
+- 절기 전용 곡(성탄·부활 등)은 그 절기일 때만 고른다. 회중이 널리 아는 곡을 먼저 생각한다.
+- 기도문은 목사님이 그대로 읽을 수 있는 경건한 문어체(…하옵소서, …하옵나이다)로, 이 설교의 내용과 이 주일에 맞게 쓴다.
+  '지난 주 목사님 기도문'이 있으면 그 말투·길이를 따른다. 교인의 이름이나 사적인 사정은 쓰지 않는다. 기도문 끝은 "예수님의 이름으로 기도드립니다. 아멘." 처럼 맺는다(축도는 제외).
+- 까닭(why)은 목사님이 읽고 판단할 수 있게 한두 문장으로, 설교의 어느 내용과 왜 맞는지 적는다.
+
+출력: 설명 없이 JSON 하나만 출력한다.
+{"fills":[{"slot":"s1","pick":[{"b":"h","n":301}],"why":"…"},{"slot":"s5","text":"기도문 …","why":"…"}],"note":"전체 흐름에 대한 한두 문장"}
+- 곡·교독문 칸은 "pick"(b 는 h·c·g 중 하나, n 은 번호), 기도 칸은 "text".
+- 받은 빈칸 목록의 slot 마다 하나씩, 빠짐없이."""
+
+
+def _json_obj(text):
+    text = str(text or "").strip()
+    a, b = text.find("{"), text.rfind("}")
+    if a < 0 or b <= a:
+        raise ValueError("JSON 없음")
+    return json.loads(text[a:b + 1])
+
+
+def worship_fill(material, timeout=540):
+    """설교·예배 순서·빈칸 목록 글을 받아 칸마다 고른 곡/교독문/기도문과 까닭을 JSON 문자열로 돌려준다."""
+    slots = re.findall(r"(?m)^\[?(s\d+)\]?\s", material.split("[새찬송가 목록", 1)[0])
+    have = set(re.findall(r"(?m)^([hcg]\d{1,3}) ", material))   # 목록에 실린 번호들
+    last_err = ""
+    for _ in range(2):
+        extra = ("\n[다시 할 일]\n앞 답에 문제가 있었습니다: " + last_err + "\n목록에 있는 번호만, JSON 하나만 다시 출력하세요.\n") if last_err else ""
+        text = run_claude(WORSHIP_SYSTEM, material + "\n[지금 할 일]\n빈칸마다 하나씩 채워 JSON 하나만 출력하세요.\n" + extra,
+                          MODEL_WORSHIP, timeout)
+        try:
+            obj = _json_obj(text)
+        except Exception as e:
+            last_err = f"JSON 을 읽지 못함({e})"
+            continue
+        out, bad = [], []
+        for f in obj.get("fills") or []:
+            if not isinstance(f, dict) or not f.get("slot"):
+                continue
+            picks = []
+            for p in f.get("pick") or []:
+                try:
+                    key = f"{p.get('b')}{int(p.get('n'))}"
+                except Exception:
+                    continue
+                if key in have:
+                    picks.append({"b": p["b"], "n": int(p["n"])})
+                else:
+                    bad.append(key)
+            item = {"slot": str(f["slot"]), "why": str(f.get("why") or "")[:400]}
+            if picks:
+                item["pick"] = picks
+            if f.get("text"):
+                item["text"] = str(f["text"]).strip()[:1500]
+            if picks or item.get("text"):
+                out.append(item)
+        if bad and not out:
+            last_err = "목록에 없는 번호 " + ", ".join(bad[:6])
+            continue
+        if not out:
+            last_err = "채운 칸이 없음"
+            continue
+        missing = [s for s in slots if s not in {o["slot"] for o in out}]
+        return json.dumps({"fills": out, "note": str(obj.get("note") or "")[:500], "missing": missing, "dropped": bad[:10]},
+                          ensure_ascii=False)
+    raise RuntimeError("예배 순서를 채우지 못했습니다: " + last_err)
 
 
 def style_system():
@@ -782,7 +876,8 @@ def _run_claude_once(args, prompt, workdir, timeout, env):
 
 LABEL = {"counsel": "말씀지기", "prayer": "마침 기도문",
          "headline": "표지 헤드라인", "review": "주보 검수", "sermon_pdf": "설교 PDF",
-         "sermon_style": "주중 설교 변환", "sermon_hymn": "새찬송가 선곡"}
+         "sermon_style": "주중 설교 변환", "sermon_hymn": "새찬송가 선곡",
+         "worship_fill": "예배 순서 채우기"}
 
 
 def process(job):
@@ -795,6 +890,11 @@ def process(job):
         text = style_convert(_clip(payload.get("content"), 16000), timeout=TIMEOUT["sermon_style"])
         print(f"   · 주중 설교 변환 완료 ({time.time() - started:.1f}초, {len(text)}자)")
         return text
+    if kind == "worship_fill":                    # 설교에 맞춰 예배 순서 빈칸(곡·교독문·기도문) — Opus
+        started = time.time()
+        res = worship_fill(_clip(payload.get("content"), 90000), timeout=TIMEOUT["worship_fill"])
+        print(f"   · 예배 순서 채우기 완료 ({time.time() - started:.1f}초)")
+        return res
     if kind == "sermon_hymn":                     # 설교에 맞는 새찬송가 한 곡(번호)
         n = hymn_pick(_clip(payload.get("content"), 40000), timeout=TIMEOUT["sermon_hymn"])
         print(f"   · 새찬송가 선곡: {n}장")
