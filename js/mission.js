@@ -91,8 +91,9 @@
   /* ───────── 왼쪽 메뉴 ───────── */
   function renderSide() {
     if (!boxSide) return;
-    const links = [["member", "회원"]];
+    const links = [];
     const sj = $("join"); if (sj && !sj.hidden) links.push(["join", "정회원"]);
+    links.push(["member", "회원"]);
     if (S.home) links.push(["officers", "임원"], ["schedule", "일정"]);
     links.push(["ministry", "활동과 동향"]);
     if (S.rep && S.rep.doc) links.push(["report", "회계 보고"]);
