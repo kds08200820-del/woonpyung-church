@@ -1,0 +1,58 @@
+/* 기관 보고서 · 예산 청원서 (org-report.html, 2026-11-15) — 모던 테마: 흰 바탕 · 먹색 · 각진 모양 */
+.or-wrap { max-width: 960px; margin: 0 auto; padding: 32px 16px 72px; }
+.or-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.or-lead { margin: 0; font-size: .92rem; color: var(--ink-soft, #5B5A57); flex: 1 1 380px; line-height: 1.7; }
+.or-empty { color: var(--muted, #8A8A86); padding: 18px 0; }
+.or-card { border: 1px solid var(--line, #E6E5E1); padding: 20px; }
+.or-list { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.or-list th, .or-list td { border-bottom: 1px solid var(--line, #E6E5E1); padding: 10px 6px; text-align: left; }
+.or-list thead th { color: var(--muted, #8A8A86); font-weight: 500; font-size: .82rem; }
+.or-link { border: 0; background: none; padding: 2px 0; font: inherit; color: var(--accent, #111); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.or-acts { white-space: nowrap; display: flex; gap: 10px; align-items: center; }
+.or-s { padding: 6px 12px; font-size: .84rem; }
+.or-st { display: inline-block; font-size: .78rem; padding: 2px 8px; border: 1px solid var(--line, #E6E5E1); }
+.or-st.sent { border-color: var(--accent, #111); }
+.or-st.ok { background: var(--accent, #111); color: #fff; border-color: var(--accent, #111); }
+.or-st.back { color: #A33A2A; border-color: #A33A2A; }
+.or-h { margin: 34px 0 10px; font-size: 1rem; }
+.or-h small { font-weight: 400; color: var(--muted, #8A8A86); font-size: .8rem; }
+.or-officers { list-style: none; padding: 0; margin: 0; font-size: .92rem; line-height: 2; }
+.or-officers b { display: inline-block; min-width: 8em; }
+.or-note { font-size: .82rem; color: var(--muted, #8A8A86); }
+.or-backnote { padding: 10px 12px; border: 1px solid #A33A2A; color: #A33A2A; font-size: .9rem; }
+.or-top { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.or-top #orPrint { margin-left: auto; }
+.or-sheet { border: 1px solid var(--line, #E6E5E1); padding: 22px 22px 18px; background: #fff; }
+.or-title { margin: 0 0 14px; font-size: 1.25rem; text-align: center; }
+.or-sheet h3 { margin: 20px 0 8px; font-size: .98rem; }
+.or-sheet input, .or-sheet textarea { width: 100%; box-sizing: border-box; padding: 7px 8px; border: 1px solid var(--line, #E6E5E1); border-radius: 0; font: inherit; font-size: .9rem; background: #fff; }
+.or-sheet input:disabled, .or-sheet textarea:disabled { background: #FAFAF8; color: var(--ink, #222); }
+.or-sheet .num { text-align: right; }
+.or-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.or-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.or-grid2 label, .or-grid4 label { font-size: .84rem; color: var(--ink-soft, #5B5A57); display: grid; gap: 4px; }
+.or-off { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.or-pair { display: grid; grid-template-columns: 5em 1fr; gap: 4px; }
+.or-t { width: 100%; border-collapse: collapse; }
+.or-t th { font-size: .8rem; font-weight: 500; color: var(--muted, #8A8A86); text-align: left; padding: 4px 2px; }
+.or-t td { padding: 2px; }
+#fBiz td:first-child, #fPlan td:first-child, #fBud td:first-child { width: 26%; }
+#fBiz td:last-child, #fBud td:nth-child(2) { width: 18%; }
+.or-t tfoot th { font-size: .9rem; color: var(--ink, #222); padding-top: 8px; }
+.or-add { font-size: .84rem; margin-top: 6px; }
+.or-save { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+.or-msg { font-size: .88rem; color: var(--ink-soft, #5B5A57); }
+@media (max-width: 640px) {
+  .or-grid2, .or-grid4 { grid-template-columns: 1fr 1fr; }
+  .or-list th:nth-child(4), .or-list td:nth-child(4), .or-list th:nth-child(5), .or-list td:nth-child(5) { display: none; }
+  .or-sheet { padding: 14px 10px; }
+}
+@media print {
+  header, footer, nav, .page-hero, .or-top, .or-save, .or-add, .or-note, #siteHeader, .site-header, .site-footer { display: none !important; }
+  .or-wrap { padding: 0; max-width: none; }
+  .or-sheet { border: 0; padding: 0; }
+  .or-sheet input, .or-sheet textarea { border: 0; border-bottom: 1px solid #999; padding: 2px 4px; font-size: 9.5pt; background: none; }
+  .or-sheet h3 { margin: 8px 0 4px; font-size: 10.5pt; }
+  .or-title { font-size: 14pt; margin-bottom: 8px; }
+  @page { size: A4; margin: 12mm; }
+}
