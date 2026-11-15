@@ -29,6 +29,7 @@
       { href: "story.html#album", label: "우리들 소식" },
       { href: "story.html#notice", label: "공지사항" },
       { href: "forms.html", label: "신청서" },   // 신청서(2026-10-10): 지금 받는 신청서 · 내 신청서 · 지난 신청서 — js/forms.js
+      { href: "org-report.html", label: "기관 보고" },   // 기관 보고서 · 예산 청원서(2026-11-15): 로그인한 성도 누구나 작성, 담임 승인 시 2027 기관 임원 반영 — js/org-report.js
       { href: "story.html#board", label: "게시판" },
       { href: "story.html#request", label: "기도 부탁" },
       { href: "story.html#thisweek", label: "이번 주 기도 제목" },
@@ -50,6 +51,7 @@
     { href: "finance.html", label: "교회행정", adminOnly: true, sub: [
       { href: "finance.html", label: "재정관리" },
       { href: "gyojeok.html", label: "교적관리" },
+      { href: "org-report.html", label: "기관 보고 · 임원" },
       // 증명서 발급(2026-10-25 담임목사): 목회자만 — 직분에 목사·전도사 또는 '목회자' 지명이면 아래에서 보이게 한다
       { href: "cert.html", label: "증명서 발급", id: "navCert", hidden: true },
     ] },
