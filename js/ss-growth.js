@@ -23,6 +23,7 @@ console.log('[ss-growth.js] v20260908pubonce');
   var STEP = 24;                      // '더 보기' 한 번에 늘려 보여줄 카드 수
   var PAGE = 60;                      // 서버에서 한 번에 받아오는 기록 수
   var rows = [], filterName = '', shownCount = SHOW, mission = null;
+  var streak = null;                  // 진행 중인 연속 QT 미션(없으면 null)
   var hasMore = true;                 // 서버에 아직 더 지난 기록이 남아 있는지
   var loadingMore = false;            // 이어 불러오는 중(버튼 중복 클릭 방지)
   var pagingOk = true;                // 서버 함수가 p_offset(페이지 넘김)을 지원하는지
@@ -60,6 +61,15 @@ console.log('[ss-growth.js] v20260908pubonce');
       (daily > 0
         ? '대시보드에서 하루 1장씩 인증샷을 올려 ' + daily + '일을 채우면 달란트를 한 번에 받아요'
         : '주중 언제든 한 번, 대시보드에서 인증샷' + (cnt > 1 ? ' ' + cnt + '장' : '') + '을 올리면 달란트가 지급돼요') + '</div></div>';
+  }
+  // 연속 QT 미션 안내 — 기간 동안 매일 QT 인증을 올리면 추가 달란트(SQL 20261115_1800)
+  function streakBanner() {
+    if (!streak || !streak.start_date || !streak.end_date) return '';
+    function md(x) { var d = new Date(x + 'T00:00:00'); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + '일월화수목금토'.charAt(d.getDay()) + ')'; }
+    return '<div style="max-width:620px;margin:0 auto 16px;text-align:center;border:1px solid #D1D0CD;background:#FBFAF7;border-radius:2px;padding:11px 16px;">' +
+      '<b style="color:#555451;font-size:.9rem;">연속 QT 미션</b> · <span style="font-size:.9rem;color:#4F4E4B;">' + md(streak.start_date) + ' ~ ' + md(streak.end_date) + '</span> ' +
+      '<span style="color:#6C6B68;font-weight:700;font-size:.86rem;">(추가 달란트 ' + (Number(streak.amount) || 0) + '개)</span>' +
+      '<div style="font-size:.74rem;color:#A7A6A3;margin-top:4px;">하루도 빠지지 않고 대시보드에서 QT 인증을 올리면 달란트를 더 받아요</div></div>';
   }
   function monthKey(d) { return String(d || '').slice(0, 7); }
 
@@ -260,7 +270,7 @@ console.log('[ss-growth.js] v20260908pubonce');
 
   function render() {
     if (!rows.length) {
-      body.innerHTML = missionBanner() +
+      body.innerHTML = missionBanner() + streakBanner() +
         '<div style="max-width:560px;margin:0 auto;text-align:center;border:1px dashed #D9D8D5;border-radius:2px;padding:34px 20px;background:#fafbfd;">' +
         '<div style="font-size:2rem;">🌱</div>' +
         '<p style="margin:10px 0 4px;font-weight:700;color:var(--accent,#111111);">아직 올라온 성장 기록이 없어요</p>' +
@@ -276,7 +286,7 @@ console.log('[ss-growth.js] v20260908pubonce');
     names.sort(function (a, b) { return a.localeCompare(b, 'ko'); });
     var list = filterName ? rows.filter(function (r) { return r.name === filterName; }) : rows;
     var shown = list.slice(0, shownCount);
-    body.innerHTML = missionBanner() +
+    body.innerHTML = missionBanner() + streakBanner() +
       '<p style="text-align:center;color:var(--ink-soft,#898885);font-size:.86rem;margin:0 0 14px;">함께 자라는 어린이 <b style="color:var(--accent,#111111);">' + names.length + '명</b> · 이번 달 QT <b>' + mQt + '회</b> · 필사 <b>' + mPil + '회</b>' + (mMs ? ' · 미션 <b>' + mMs + '회</b>' : '') + '</p>' +
       (names.length > 1 ?
         '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;">' +
@@ -360,11 +370,11 @@ console.log('[ss-growth.js] v20260908pubonce');
   var retries = 0;
   function load() {
     if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) { body.innerHTML = ''; return; }
-    Promise.all([fetchPage(0), rpc('ss_current_mission')])
+    Promise.all([fetchPage(0), rpc('ss_current_mission'), rpc('ss_qt_streak_current')])
       .then(function (res) {
         // 네트워크가 잠깐 막힌 경우 — 빈 화면으로 확정하지 말고 잠시 뒤 다시 시도
         if (res[0] === null && retries < 2) { retries++; setTimeout(load, 2000 * retries); return; }
-        rows = res[0] || []; mission = res[1] || null;
+        rows = res[0] || []; mission = res[1] || null; streak = res[2] || null;
         shownCount = SHOW;
         hasMore = pagingOk && rows.length >= PAGE;   // 첫 장이 덜 찼으면 그게 전부
         render();

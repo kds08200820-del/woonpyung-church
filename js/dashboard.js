@@ -2479,11 +2479,14 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
       Promise.all([
         brFetch('ss_submissions?select=*&member_key=eq.' + encodeURIComponent(subjKey) + '&order=sub_date.desc,id.desc&limit=300'),
         // 이번 주 미션(없으면 null) — SQL 미실행 등으로 RPC가 없으면 조용히 없는 것으로 처리
-        brFetch('rpc/ss_current_mission', { method: 'POST', body: '{}' }).catch(function () { return null; })
+        brFetch('rpc/ss_current_mission', { method: 'POST', body: '{}' }).catch(function () { return null; }),
+        // 진행 중인 연속 QT 미션(없으면 null, SQL 20261115_1800 미실행이면 조용히 없는 것으로)
+        brFetch('rpc/ss_qt_streak_current', { method: 'POST', body: '{}' }).catch(function () { return null; })
       ])
         .then(function (res) {
           var rows = res[0] || [];
           var mission = res[1] || null;
+          var streak = (res[2] && res[2].start_date && res[2].end_date) ? res[2] : null;
           var ym = monthKey(todayStr());
           var mQt = rows.filter(function (r) { return r.stype === 'QT' && monthKey(r.sub_date) === ym; }).length;
           var mPil = rows.filter(function (r) { return r.stype === '필사' && monthKey(r.sub_date) === ym; }).length;
@@ -2503,6 +2506,19 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
           var doneMission = !!(mission && (msDaily > 0 ? msMine.length >= msDaily : msMine.length > 0));
           // 미션 인증에 필요한 사진 장수(연속미션은 항상 하루 1장)
           var msCnt = msDaily > 0 ? 1 : (mission ? Math.min(5, Math.max(1, Number(mission.photo_count) || 1)) : 1);
+          // 연속 QT 미션 — 기간의 날짜마다 QT 인증이 있는지(●), 지난 날인데 없으면 빠진 날
+          var stDays = [], stDone = 0, stMissed = 0, stAmt = streak ? (Number(streak.amount) || 0) : 0;
+          if (streak) {
+            var sd = new Date(streak.start_date + 'T00:00:00'), ed = new Date(streak.end_date + 'T00:00:00');
+            for (var guard = 0; sd <= ed && guard < 62; guard++, sd.setDate(sd.getDate() + 1)) {
+              var sds = sd.getFullYear() + '-' + pad2(sd.getMonth() + 1) + '-' + pad2(sd.getDate());
+              var sdone = rows.filter(function (r) { return r.stype === 'QT' && r.sub_date === sds; }).length > 0;
+              if (sdone) stDone++; else if (sds < td) stMissed++;
+              stDays.push({ d: sds, day: sd.getDate(), dow: '일월화수목금토'.charAt(sd.getDay()), done: sdone, missed: !sdone && sds < td, today: sds === td });
+            }
+          }
+          var stAll = streak && stDays.length > 0 && stDone >= stDays.length;
+          function mdLabel(s) { return Number(s.slice(5, 7)) + '/' + Number(s.slice(8, 10)); }
           var calParts = certCalendarHtml();   // { cal: 달력, list: 인증 목록 }
           container.innerHTML =
             (opts.bare ? '<div>' : '<div class="form-card" style="padding:16px 18px;">') +
@@ -2536,6 +2552,25 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
                   '<button type="button" class="btn btn-solid" id="sscUpMs" style="padding:7px 15px;background:#777673;border-color:#777673;">' + (msDaily > 0 ? '오늘의 미션 인증 올리기' : '미션 인증 올리기' + (msCnt > 1 ? ' (사진 ' + msCnt + '장)' : '')) + '</button>')) +
               (doneMission || msDaily > 0 || msCnt <= 1 ? '' : '<div style="font-size:.76rem;color:#61605D;margin-top:5px;">사진을 고르는 창에서 <b>' + msCnt + '장을 한 번에</b> 선택해 주세요.</div>') +
               (msDaily > 0 && !doneMission ? '<div style="font-size:.76rem;color:#61605D;margin-top:5px;">하루에 <b>1장만</b> 올릴 수 있어요. ' + msDaily + '일을 다 채우면 달란트 ' + (Number(mission.amount) || 1) + '개를 한 번에 받아요!</div>' : '') +
+              '</div></div>' : '') +
+            (streak ?
+              '<div id="sscStreak" style="border:1px solid #D6D5D2;background:#FBFAF7;border-radius:2px;padding:12px 14px;margin-bottom:12px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">' +
+              '<b style="font-size:.92rem;color:#61605D;">연속 QT 미션 · ' + mdLabel(streak.start_date) + '(' + stDays[0].dow + ') ~ ' + mdLabel(streak.end_date) + '(' + stDays[stDays.length - 1].dow + ')</b>' +
+              '<span style="font-size:.78rem;background:#fff;border:1px solid #D6D5D2;border-radius:999px;padding:2px 10px;color:#777673;font-weight:700;">추가 달란트 ' + stAmt + '개</span></div>' +
+              '<div style="display:flex;align-items:center;gap:6px;margin-top:9px;flex-wrap:wrap;">' +
+              stDays.map(function (x) {
+                return '<span title="' + x.d + '" style="width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;' +
+                  (x.done ? 'background:#777673;color:#fff;border:1px solid #777673;'
+                    : x.missed ? 'background:#F3F2EF;color:#B5B4B1;border:1px solid #E1E0DD;text-decoration:line-through;'
+                      : 'background:#fff;color:#9C9B98;border:1px dashed ' + (x.today ? '#777673' : '#D6D5D2') + ';') + '">' +
+                  (x.done ? '✓' : x.dow) + '</span>';
+              }).join('') +
+              '<span style="font-size:.8rem;color:#61605D;font-weight:700;margin-left:2px;">' + stDone + '/' + stDays.length + '일</span></div>' +
+              '<div style="font-size:.8rem;color:#61605D;margin-top:7px;line-height:1.6;">' +
+              (stAll ? stDays.length + '일을 모두 채웠어요. 추가 달란트 ' + stAmt + '개를 받았어요.'
+                : stMissed > 0 ? '빠진 날이 있어 이번 추가 달란트는 받지 못해요. QT 인증은 계속 올릴 수 있어요.'
+                  : mdLabel(streak.end_date) + '(' + stDays[stDays.length - 1].dow + ')까지 <b>하루도 빠지지 않고</b> QT 인증을 올리면 달란트 <b>' + stAmt + '개</b>를 더 받아요.' + (doneQt ? '' : ' 오늘 QT 인증을 올려 주세요.')) +
               '</div></div>' : '') +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">' +
             '<button type="button" class="btn ' + (doneQt ? 'btn-line' : 'btn-solid') + '" id="sscUpQt" style="padding:8px 16px;' + (doneQt ? 'color:#555555;border-color:#E1E0DD;background:#FCFBF8;' : '') + '">' + (doneQt ? '✓ 오늘 QT 인증 완료' : 'QT 인증 올리기') + '</button>' +
@@ -2688,6 +2723,12 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
                 flash(true, got >= msDaily
                   ? '연속미션 ' + msDaily + '일 완료. 달란트 ' + (Number(mission.amount) || 1) + '개 지급 + 성장기 게시 완료'
                   : '✓ 오늘 미션 인증 완료! (' + got + '/' + msDaily + '일) ' + msDaily + '일을 다 채우면 달란트를 한 번에 받아요.');
+              } else if (curType === 'QT' && streak && stMissed === 0 && !doneQt) {
+                // 연속 QT 미션 진행 중 — 이번 것으로 며칠째인지, 다 채웠으면 추가 달란트 안내
+                var sGot = stDone + 1;
+                flash(true, sGot >= stDays.length
+                  ? '✓ QT 인증이 올라갔어요! 연속 QT 미션 ' + stDays.length + '일 완료 — 추가 달란트 ' + stAmt + '개 지급'
+                  : '✓ QT 인증이 올라갔어요! 달란트 지급 + 성장기 게시 완료 · 연속 QT 미션 ' + sGot + '/' + stDays.length + '일');
               } else {
                 flash(true, '✓ ' + curType + ' 인증이 올라갔어요! 달란트 지급 + 성장기 게시 완료');
               }
