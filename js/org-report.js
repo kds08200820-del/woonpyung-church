@@ -74,7 +74,7 @@
   function renderList() {
     const uid = (me() || {}).id;
     const list = (S.list || []).filter((r) => !r.hidden || S.admin);
-    let h = `<div class="or-bar"><p class="or-lead">${FY}년도 기관 보고서 · 예산 청원서 — 기관마다 한 장씩 씁니다. 임원 선출 결과는 담임목사님이 승인하면 ${FY}년 교회 행정에 반영됩니다.</p>
+    let h = `<div class="or-bar"><p class="or-lead">${FY}년도 기관 보고서 · 예산 청원서가 ${FY}년 교회 행정에 반영됩니다.</p>
       <button type="button" class="btn btn-solid" id="orNew">보고서 쓰기</button></div>`;
     if (!list.length) h += `<p class="or-empty">아직 올라온 보고서가 없습니다.</p>`;
     else h += `<table class="or-list"><thead><tr><th>기관</th><th>담당자</th><th>상태</th><th>쓴 사람</th><th>고친 날</th>${S.admin ? "<th></th>" : ""}</tr></thead><tbody>
