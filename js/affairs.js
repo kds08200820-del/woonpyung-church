@@ -1301,7 +1301,7 @@ console.log('[affairs.js] v20261023th1');
         kpi({ id: 'eduProgCard', label: '강의실 수강 중', numId: 'eduProgNum', subId: 'eduProgSub', sub: '진도·응시 현황' }) +
         kpi({ id: 'eduCertCard', label: '교인 증명서', numId: 'eduCertNum', subId: 'eduCertSub', sub: '학습·세례·입교·유아세례 · 발급 대장' }) +
         '</div>' +
-        '<div class="dsh-panel"><div class="dsh-ph"><b>교육 이수자 명단<small>강의실 · 최근 8명</small></b><button type="button" class="dsh-link" data-edu-open>전체 보기 →</button></div><div id="eduList"><p class="qt-loading" style="margin:0">불러오는 중…</p></div></div>' +
+        // 이수자 명단은 늘 펼쳐 두지 않고 '교육 이수자' 카드를 누르면 연다(2026-11-15 담임목사 지시) — edu-admin.js 는 #eduList 가 없으면 건너뛴다
         '<div class="dsh-sec">미디어 · 관리<small>눌러서 관리</small></div>' +
         '<div class="dsh-kpis">' +
         kpi({ id: 'videoMgrCard', label: 'QT 영상 관리', numId: 'videoMgrNum', subId: 'videoMgrSub', sub: '제작·검토·수정 · 눌러서 관리' }) +
