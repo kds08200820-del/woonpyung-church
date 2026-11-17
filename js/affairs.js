@@ -3811,11 +3811,11 @@ console.log('[affairs.js] v20261023th1');
     var BMAP2 = {'창세기':1,'창':1,'출애굽기':2,'출':2,'레위기':3,'레':3,'민수기':4,'민':4,'신명기':5,'신':5,'여호수아':6,'수':6,'사사기':7,'삿':7,'룻기':8,'룻':8,'사무엘상':9,'삼상':9,'사무엘하':10,'삼하':10,'열왕기상':11,'왕상':11,'열왕기하':12,'왕하':12,'역대상':13,'대상':13,'역대하':14,'대하':14,'에스라':15,'스':15,'느헤미야':16,'느':16,'에스더':17,'에':17,'욥기':18,'욥':18,'시편':19,'시':19,'잠언':20,'잠':20,'전도서':21,'전':21,'아가':22,'아':22,'이사야':23,'사':23,'예레미야':24,'렘':24,'예레미야애가':25,'애가':25,'애':25,'에스겔':26,'겔':26,'다니엘':27,'단':27,'호세아':28,'호':28,'요엘':29,'욜':29,'아모스':30,'암':30,'오바댜':31,'옵':31,'요나':32,'욘':32,'미가':33,'미':33,'나훔':34,'나':34,'하박국':35,'합':35,'스바냐':36,'습':36,'학개':37,'학':37,'스가랴':38,'슥':38,'말라기':39,'말':39,'마태복음':40,'마':40,'마가복음':41,'막':41,'누가복음':42,'눅':42,'요한복음':43,'요':43,'사도행전':44,'행':44,'로마서':45,'롬':45,'고린도전서':46,'고전':46,'고린도후서':47,'고후':47,'갈라디아서':48,'갈':48,'에베소서':49,'엡':49,'빌립보서':50,'빌':50,'골로새서':51,'골':51,'데살로니가전서':52,'살전':52,'데살로니가후서':53,'살후':53,'디모데전서':54,'딤전':54,'디모데후서':55,'딤후':55,'디도서':56,'딛':56,'빌레몬서':57,'몬':57,'히브리서':58,'히':58,'야고보서':59,'약':59,'베드로전서':60,'벧전':60,'베드로후서':61,'벧후':61,'요한일서':62,'요일':62,'요한이서':63,'요이':63,'요한삼서':64,'요삼':64,'유다서':65,'유':65,'요한계시록':66,'계':66,'계시록':66};
     function parseScripRef(ref) {
       var s = (ref || '').trim().replace(/\s+/g, ' ');
-      var m = s.match(/^([가-힣]+)\s*(\d+)\s*[:장]\s*(\d+)(?:\s*[-~]\s*(\d+))?/);
+      var m = s.match(/^([가-힣]+)\s*(\d+)\s*[:장]\s*(\d+)\s*절?(?:\s*[-~–—∼]\s*(?:(\d+)\s*[:장]\s*)?(\d+))?/);   // 8:11-14 · 8:11-9:6(장을 넘는 범위)
       if (!m) return null;
       var bid = BMAP2[m[1].replace(/\s/g, '')];
       if (!bid) return null;
-      return { bookId: bid, ch: parseInt(m[2], 10), from: parseInt(m[3], 10), to: m[4] ? parseInt(m[4], 10) : parseInt(m[3], 10) };
+      return { bookId: bid, ch: parseInt(m[2], 10), ch2: m[4] ? parseInt(m[4], 10) : parseInt(m[2], 10), from: parseInt(m[3], 10), to: m[5] ? parseInt(m[5], 10) : parseInt(m[3], 10) };
     }
     function bulkFillUrm() {
       var todo = smRows.filter(function (r) {
@@ -3838,9 +3838,12 @@ console.log('[affairs.js] v20261023th1');
           var p = parseScripRef(r.scripture);
           var key = p ? BKEYS[p.bookId - 1] : null;
           if (!p || !key) { skipped.push(r.scripture || '?'); next(); return; }
-          var chap = (urm[key] || [])[p.ch - 1] || [];
           var lines = [];
-          for (var vi = p.from; vi <= p.to; vi++) { var t = chap[vi - 1]; if (t) lines.push(vi + ' ' + t.trim()); }
+          for (var ci = p.ch; ci <= p.ch2; ci++) {   // 장을 넘는 범위: 첫 장은 from 부터 끝까지, 끝 장은 1절부터 to 까지
+            var chap = (urm[key] || [])[ci - 1] || [];
+            var v1 = ci === p.ch ? p.from : 1, v2 = ci === p.ch2 ? p.to : chap.length;
+            for (var vi = v1; vi <= v2; vi++) { var t = chap[vi - 1]; if (t) lines.push(vi + ' ' + t.trim()); }
+          }
           if (!lines.length) { skipped.push(r.scripture || '?'); next(); return; }
           var text = lines.join('\n');
           api('PATCH', 'sermons?id=eq.' + r.id, { qt_bible_text: text }, 'return=minimal')
@@ -6859,11 +6862,11 @@ console.log('[affairs.js] v20261023th1');
       };
       function parseRef(ref) {
         var s = (ref || '').trim().replace(/\s+/g, ' ');
-        var m = s.match(/^([가-힣]+)\s*(\d+)\s*[:장]\s*(\d+)(?:\s*[-~]\s*(\d+))?/);
+        var m = s.match(/^([가-힣]+)\s*(\d+)\s*[:장]\s*(\d+)\s*절?(?:\s*[-~–—∼]\s*(?:(\d+)\s*[:장]\s*)?(\d+))?/);   // 8:11-14 · 8:11-9:6(장을 넘는 범위)
         if (!m) return null;
         var bookId = BOOK_IDS[m[1].replace(/\s/g, '')];
         if (!bookId) return null;
-        return { bookId: bookId, ch: parseInt(m[2], 10), from: parseInt(m[3], 10), to: m[4] ? parseInt(m[4], 10) : parseInt(m[3], 10) };
+        return { bookId: bookId, ch: parseInt(m[2], 10), ch2: m[4] ? parseInt(m[4], 10) : parseInt(m[2], 10), from: parseInt(m[3], 10), to: m[5] ? parseInt(m[5], 10) : parseInt(m[3], 10) };
       }
       var fetchBtn = ov.querySelector('#se_fetch_btn');
       var scInp = ov.querySelector('#se_scripture');
@@ -6878,11 +6881,14 @@ console.log('[affairs.js] v20261023th1');
         if (bibleLoading) bibleLoading.textContent = '불러오는 중…';
         var bookKey = bk[2];
         function extractLines(data) {
-          var chap = (data[bookKey] || [])[p.ch - 1] || [];
           var lines = [];
-          for (var vi = p.from; vi <= p.to; vi++) {
-            var t = chap[vi - 1];
-            if (t) lines.push(vi + ' ' + t.trim());
+          for (var ci = p.ch; ci <= p.ch2; ci++) {   // 장을 넘는 범위(예: 8:11-9:6): 첫 장은 from 부터 끝까지, 끝 장은 1절부터 to 까지
+            var chap = (data[bookKey] || [])[ci - 1] || [];
+            var v1 = ci === p.ch ? p.from : 1, v2 = ci === p.ch2 ? p.to : chap.length;
+            for (var vi = v1; vi <= v2; vi++) {
+              var t = chap[vi - 1];
+              if (t) lines.push(vi + ' ' + t.trim());
+            }
           }
           return lines;
         }
