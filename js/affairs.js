@@ -3809,14 +3809,7 @@ console.log('[affairs.js] v20261023th1');
     // ── 우리말성경 일괄입력 헬퍼 ──
     var BKEYS = ['창','출','레','민','신','수','삿','룻','삼상','삼하','왕상','왕하','대상','대하','스','느','에','욥','시','잠','전','아','사','렘','애','겔','단','호','욜','암','옵','욘','미','나','합','습','학','슥','말','마','막','눅','요','행','롬','고전','고후','갈','엡','빌','골','살전','살후','딤전','딤후','딛','몬','히','약','벧전','벧후','요일','요이','요삼','유','계'];
     var BMAP2 = {'창세기':1,'창':1,'출애굽기':2,'출':2,'레위기':3,'레':3,'민수기':4,'민':4,'신명기':5,'신':5,'여호수아':6,'수':6,'사사기':7,'삿':7,'룻기':8,'룻':8,'사무엘상':9,'삼상':9,'사무엘하':10,'삼하':10,'열왕기상':11,'왕상':11,'열왕기하':12,'왕하':12,'역대상':13,'대상':13,'역대하':14,'대하':14,'에스라':15,'스':15,'느헤미야':16,'느':16,'에스더':17,'에':17,'욥기':18,'욥':18,'시편':19,'시':19,'잠언':20,'잠':20,'전도서':21,'전':21,'아가':22,'아':22,'이사야':23,'사':23,'예레미야':24,'렘':24,'예레미야애가':25,'애가':25,'애':25,'에스겔':26,'겔':26,'다니엘':27,'단':27,'호세아':28,'호':28,'요엘':29,'욜':29,'아모스':30,'암':30,'오바댜':31,'옵':31,'요나':32,'욘':32,'미가':33,'미':33,'나훔':34,'나':34,'하박국':35,'합':35,'스바냐':36,'습':36,'학개':37,'학':37,'스가랴':38,'슥':38,'말라기':39,'말':39,'마태복음':40,'마':40,'마가복음':41,'막':41,'누가복음':42,'눅':42,'요한복음':43,'요':43,'사도행전':44,'행':44,'로마서':45,'롬':45,'고린도전서':46,'고전':46,'고린도후서':47,'고후':47,'갈라디아서':48,'갈':48,'에베소서':49,'엡':49,'빌립보서':50,'빌':50,'골로새서':51,'골':51,'데살로니가전서':52,'살전':52,'데살로니가후서':53,'살후':53,'디모데전서':54,'딤전':54,'디모데후서':55,'딤후':55,'디도서':56,'딛':56,'빌레몬서':57,'몬':57,'히브리서':58,'히':58,'야고보서':59,'약':59,'베드로전서':60,'벧전':60,'베드로후서':61,'벧후':61,'요한일서':62,'요일':62,'요한이서':63,'요이':63,'요한삼서':64,'요삼':64,'유다서':65,'유':65,'요한계시록':66,'계':66,'계시록':66};
-    function parseScripRef(ref) {
-      var s = (ref || '').trim().replace(/\s+/g, ' ');
-      var m = s.match(/^([가-힣]+)\s*(\d+)\s*[:장]\s*(\d+)\s*절?(?:\s*[-~–—∼]\s*(?:(\d+)\s*[:장]\s*)?(\d+))?/);   // 8:11-14 · 8:11-9:6(장을 넘는 범위)
-      if (!m) return null;
-      var bid = BMAP2[m[1].replace(/\s/g, '')];
-      if (!bid) return null;
-      return { bookId: bid, ch: parseInt(m[2], 10), ch2: m[4] ? parseInt(m[4], 10) : parseInt(m[2], 10), from: parseInt(m[3], 10), to: m[5] ? parseInt(m[5], 10) : parseInt(m[3], 10) };
-    }
+    function parseScripRef(ref) { return wpScripRef(ref); }   // 책 이름·약어·장 넘는 범위 모두 (공용)
     function bulkFillUrm() {
       var todo = smRows.filter(function (r) {
         return !r.qt_bible_text && r.scripture;
@@ -3841,7 +3834,7 @@ console.log('[affairs.js] v20261023th1');
           var lines = [];
           for (var ci = p.ch; ci <= p.ch2; ci++) {   // 장을 넘는 범위: 첫 장은 from 부터 끝까지, 끝 장은 1절부터 to 까지
             var chap = (urm[key] || [])[ci - 1] || [];
-            var v1 = ci === p.ch ? p.from : 1, v2 = ci === p.ch2 ? p.to : chap.length;
+            var v1 = ci === p.ch ? p.from : 1, v2 = Math.min(ci === p.ch2 ? p.to : chap.length, chap.length);
             for (var vi = v1; vi <= v2; vi++) { var t = chap[vi - 1]; if (t) lines.push(vi + ' ' + t.trim()); }
           }
           if (!lines.length) { skipped.push(r.scripture || '?'); next(); return; }
@@ -5025,7 +5018,7 @@ console.log('[affairs.js] v20261023th1');
         // ── 리본 2줄째: 제목·본문(성경)·불러오기 + 용지·여백·배율 (예배 매니저에서는 제목·본문만) ──
         '<div class="sed-ribbon sed-ribbon2"><div class="sed-r2">' +
         '<input type="text" id="se_title" value="' + esc(rec.title || '') + '" placeholder="설교 제목" class="r2-title">' +
-        '<input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="본문(성경) — 예: 창1:1-5" class="r2-scrip">' +
+        '<input type="text" id="se_scripture" value="' + esc(rec.scripture || '') + '" placeholder="본문(성경) — 예: 창1:1-5 · 아모스 8:11-9:6" class="r2-scrip">' +
         '<button type="button" id="se_fetch_btn" class="r2-btn" title="입력한 구절의 개역개정 본문을 자동으로 불러옵니다">' + ic('download') + '불러오기</button>' +
         '<button type="button" id="se_pn_bible" class="r2-btn r2-sm" title="출력되는 성경 본문(개역개정·우리말) 열기/닫기">' + ic('book') + '본문 텍스트</button>' +
         '<button type="button" id="se_pn_prayer" class="r2-btn r2-sm" title="설교 후 기도문 열기/닫기">' + ic('hand') + '기도</button>' +
@@ -6860,14 +6853,7 @@ console.log('[affairs.js] v20261023th1');
         '요한일서':62,'요일':62,'요한이서':63,'요이':63,'요한삼서':64,'요삼':64,
         '유다서':65,'유':65,'요한계시록':66,'계':66,'계시록':66
       };
-      function parseRef(ref) {
-        var s = (ref || '').trim().replace(/\s+/g, ' ');
-        var m = s.match(/^([가-힣]+)\s*(\d+)\s*[:장]\s*(\d+)\s*절?(?:\s*[-~–—∼]\s*(?:(\d+)\s*[:장]\s*)?(\d+))?/);   // 8:11-14 · 8:11-9:6(장을 넘는 범위)
-        if (!m) return null;
-        var bookId = BOOK_IDS[m[1].replace(/\s/g, '')];
-        if (!bookId) return null;
-        return { bookId: bookId, ch: parseInt(m[2], 10), ch2: m[4] ? parseInt(m[4], 10) : parseInt(m[2], 10), from: parseInt(m[3], 10), to: m[5] ? parseInt(m[5], 10) : parseInt(m[3], 10) };
-      }
+      function parseRef(ref) { return wpScripRef(ref); }   // 책 이름·약어·장 넘는 범위 모두 (공용)
       var fetchBtn = ov.querySelector('#se_fetch_btn');
       var scInp = ov.querySelector('#se_scripture');
       var bibleLoading = ov.querySelector('#se_bible_loading');
@@ -6875,7 +6861,7 @@ console.log('[affairs.js] v20261023th1');
         var ref = scInp ? scInp.value.trim() : '';
         if (!ref) return;
         var p = parseRef(ref);
-        if (!p) { if (bibleLoading) bibleLoading.textContent = '구절 형식 오류 (예: 창1:1-5)'; return; }
+        if (!p) { if (bibleLoading) bibleLoading.textContent = '구절을 읽지 못했습니다 (예: 창1:1-5 · 아모스 8:11-9:6 · 시편 23편)'; return; }
         var bk = BBLK[p.bookId - 1];
         if (!bk) { if (bibleLoading) bibleLoading.textContent = '성경책을 찾을 수 없습니다'; return; }
         if (bibleLoading) bibleLoading.textContent = '불러오는 중…';
@@ -6884,7 +6870,7 @@ console.log('[affairs.js] v20261023th1');
           var lines = [];
           for (var ci = p.ch; ci <= p.ch2; ci++) {   // 장을 넘는 범위(예: 8:11-9:6): 첫 장은 from 부터 끝까지, 끝 장은 1절부터 to 까지
             var chap = (data[bookKey] || [])[ci - 1] || [];
-            var v1 = ci === p.ch ? p.from : 1, v2 = ci === p.ch2 ? p.to : chap.length;
+            var v1 = ci === p.ch ? p.from : 1, v2 = Math.min(ci === p.ch2 ? p.to : chap.length, chap.length);
             for (var vi = v1; vi <= v2; vi++) {
               var t = chap[vi - 1];
               if (t) lines.push(vi + ' ' + t.trim());
@@ -9512,14 +9498,40 @@ console.log('[affairs.js] v20261023th1');
   /* "역대상 21:9-17" · "역대상21:9–17절" · "시편 23편" · "역대상 10:13-11:3" · "창세기 1-2장" → {key, c1, v1, c2, v2} (v 가 0 이면 장 전체) */
   function pvParseRef(ref) {
     var s = String(ref || '').replace(/[–—~∼]/g, '-').replace(/\s+/g, ' ').trim();
-    var m = s.match(/^(요한[1-3]서|[가-힣]+)\s*(\d+)\s*(?:[:장편]\s*(\d+)?)?\s*절?(?:\s*-\s*(\d+)(?:\s*:\s*(\d+))?)?/);
+    var m = s.match(/^((?:요한|요)\s*[1-3]\s*서?|[가-힣]+(?:\s[가-힣]+)?)\s*(\d+)\s*(?:[:장편]\s*(\d+)?)?\s*절?(?:\s*-\s*(\d+)(?:\s*[:장]\s*(\d+))?)?/);
     if (!m) return null;
-    var key = PV_BOOK_KEY[m[1]]; if (!key) return null;
+    var _bid = wpBookId(m[1]), key = PV_BOOK_KEY[m[1]] || (_bid ? PV_BOOKS[_bid - 1][1] : ''); if (!key) return null;
     var c1 = +m[2], v1 = m[3] ? +m[3] : 0, c2 = c1, v2 = 0;
     if (m[4] && m[5]) { c2 = +m[4]; v2 = +m[5]; }
     else if (m[4]) { if (v1) v2 = +m[4]; else c2 = +m[4]; }
     else if (v1) v2 = v1;
     return { key: key, c1: c1, v1: v1, c2: c2, v2: v2 };
+  }
+  /* 책 이름 찾기 — 정식 이름(아모스)·약어(암)·앞부분(마태, 고린도전)·숫자 표기(요한1서)·띄어 쓴 이름(고린도 전서) 모두. 1~66, 못 찾으면 0 */
+  var WP_BOOK_ALIAS = { '애가': 25, '계시록': 66, '요한': 43, '시': 19, '출애굽': 2, '사무엘상서': 9, '사무엘하서': 10, '에스더서': 17, '아가서': 22, '잠': 20, '전도': 21, '사도': 44, '유다': 65, '행전': 44 };
+  function wpBookId(name) {
+    var n = String(name || '').replace(/\s+/g, '').replace(/1/g, '일').replace(/2/g, '이').replace(/3/g, '삼');
+    if (!n) return 0;
+    var i, hit = 0, cnt = 0;
+    for (i = 0; i < PV_BOOKS.length; i++) if (PV_BOOKS[i][0] === n || PV_BOOKS[i][1] === n) return i + 1;
+    if (WP_BOOK_ALIAS[n]) return WP_BOOK_ALIAS[n];
+    if (/서$/.test(n)) for (i = 0; i < PV_BOOKS.length; i++) if (PV_BOOKS[i][0] === n.slice(0, -1)) return i + 1;   /* 아모스서 → 아모스 */
+    for (i = 0; i < PV_BOOKS.length; i++) if (PV_BOOKS[i][0].indexOf(n) === 0) { hit = i + 1; cnt++; }             /* 앞부분이 한 권에만 맞을 때 */
+    return cnt === 1 ? hit : 0;
+  }
+  /* 본문(성경) 칸 읽기 → { bookId, ch, ch2, from, to }
+     "아모스 8:11-9:6" · "암8:11-14" · "암 8장 11절" · "암 8"(장 전체) · "시편 23편" · "창 1-2장" · "요한1서 4:7-12" · "고린도 전서 13:1" */
+  function wpScripRef(ref) {
+    var s = String(ref || '').replace(/[–—~∼]/g, '-').replace(/\s+/g, ' ').trim();
+    var m = s.match(/^((?:요한|요)\s*[1-3]\s*서?|[가-힣]+(?:\s[가-힣]+)?)\s*(\d+)\s*(?:[:장편]\s*(?:(\d+)\s*절?)?)?(?:\s*-\s*(?:(\d+)\s*[:장]\s*)?(\d+)\s*[절장]?)?/);
+    if (!m) return null;
+    var bookId = wpBookId(m[1]); if (!bookId) return null;
+    var c1 = +m[2], v1 = m[3] ? +m[3] : 0, c2 = c1, v2 = 0;
+    if (m[4]) { c2 = +m[4]; v2 = +m[5]; }                       /* 8:11-9:6 */
+    else if (m[5]) { if (v1) v2 = +m[5]; else c2 = +m[5]; }     /* 8:11-14  또는  1-2장 */
+    else if (v1) v2 = v1;                                       /* 8:11 */
+    if (c2 < c1) c2 = c1;
+    return { bookId: bookId, ch: c1, ch2: c2, from: v1 || 1, to: v2 || 999 };   /* 절이 없으면 장 전체 */
   }
   function pvSameRef(a, b) { return !!(a && b && a.key === b.key && a.c1 === b.c1 && a.v1 === b.v1 && a.c2 === b.c2 && a.v2 === b.v2); }
   function pvVerses(data, p) {
