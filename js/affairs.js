@@ -9756,7 +9756,8 @@ console.log('[affairs.js] v20261023th1');
       if (s.kind === 'h') {
         t = '<b>' + s.n + '장</b> ' + esc(s.title || ''); if (s.n >= 1 && s.n <= 645) src = 'modu/data/hymn/' + pad + '.webp';
         // 2026-11-13: 새찬송가 반주 — 악보로 만든 반주(js/hymn-mr.js, 로그인한 성도만). 유튜브 MR 은 간주 때문에 뺐다.
-        if (window.HymnMR && window.HymnMR.has(s.n)) t += ' <button type="button" class="mr-btn" data-mr="' + s.n + '" title="이 장의 반주를 틉니다">반주</button>';
+        // 2026-11-19: 창을 그릴 때 목록이 아직 안 왔거나 그 뒤에 올라온 장이면 단추가 빠졌다 → 새찬송가는 늘 숨겨 두고, 발표 창이 스스로 목록을 받아 보인다
+        if (s.n >= 1 && s.n <= 645) t += ' <button type="button" class="mr-btn" data-mr="' + s.n + '" title="이 장의 반주를 틉니다"' + (window.HymnMR && window.HymnMR.has(s.n) ? '' : ' hidden style="display:none"') + '>반주</button>';
       }
       else if (s.kind === 'c') { t = '<b>' + s.n + '번</b> ' + esc(s.title || '') + ' <small>모두의 찬양</small>'; if (s.n) src = 'modu/data/ccm/' + pad + '.webp'; }
       else t = esc(s.title || '');
@@ -10121,9 +10122,14 @@ console.log('[affairs.js] v20261023th1');
       'var tocBtn=document.getElementById("tocbtn");if(tocBtn)tocBtn.onclick=function(){goEl(document.getElementById("toc"));};' +
       /* 창 크기/회전 시 재분할 */
       'window.addEventListener("resize",function(){clearTimeout(reflowTimer);reflowTimer=setTimeout(reflow,150);});' +
-      /* 새찬송가 반주 — 악보 제목 옆 [반주] 를 누르면 오른쪽 아래 재생 창(이 창 안). 재생기는 이 창을 연 관리 화면의 HymnMR (2026-11-13) */
+      /* 새찬송가 반주 — 악보 제목 옆 [반주] 를 누르면 오른쪽 아래 재생 창(이 창 안).
+         2026-11-19: 재생기를 이 창이 직접 불러 쓴다(예전: 이 창을 연 관리 화면의 HymnMR — 히어로 '설교하기'로 연 창·관리 화면을 닫거나
+         새로 고친 창에서는 반주가 안 나왔다). 목록도 이 창에서 받아 반주가 있는 장의 단추만 보인다. */
+      'function mrH(){if(window.HymnMR)return window.HymnMR;try{return window.opener&&window.opener.HymnMR;}catch(x){return null;}}' +
+      'function mrShow(){var H=window.HymnMR;if(H&&H.reveal)H.reveal(document);}' +
+      'if(window.HymnMR)mrShow();else{var mrS=document.getElementById("hymnmr_js");if(mrS)mrS.addEventListener("load",mrShow);}' +
       'document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("[data-mr]");if(!t)return;e.preventDefault();e.stopPropagation();' +
-        'var H=null;try{H=window.opener&&window.opener.HymnMR;}catch(x){}if(!H){alert("관리 화면이 닫혀 반주를 틀 수 없습니다.");return;}' +
+        'var H=mrH();if(!H){alert("반주 재생기를 아직 불러오지 못했습니다. 잠시 뒤 다시 눌러 주세요.");return;}' +
         'var no=+t.getAttribute("data-mr");if(H.playing()===no){H.stop();return;}H.play(no,t,{doc:document,bottom:56,big:true});},true);' +
       /* 인쇄 */
       'document.getElementById("print").onclick=function(){window.print()};' +
@@ -10154,6 +10160,11 @@ console.log('[affairs.js] v20261023th1');
       '<div id="pnav"><span id="pnav_cur"></span><div id="pnav_seg" role="navigation" aria-label="쪽 이동"></div><span id="pnav_num"></span></div>' +
       '<div class="edge" id="edgeL"><span>‹</span></div><div class="edge" id="edgeR"><span>›</span></div>' +
       '<button id="exitfs">⊡ 도구 보기</button>' +
+      // 새찬송가 반주 재생기(2026-11-19): 이 창이 직접 불러 쓴다 — 주소·로그인 설정은 이 화면 것을 그대로 넘긴다
+      '<script>window.R2_UPLOAD_URL=' + JSON.stringify(window.R2_UPLOAD_URL || '') + ';window.SUPABASE_URL=' + JSON.stringify(window.SUPABASE_URL || '') +
+        ';window.SUPABASE_ANON_KEY=' + JSON.stringify(window.SUPABASE_ANON_KEY || '') + ';<\/script>' +
+      '<script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>' +
+      '<script id="hymnmr_js" src="' + esc(absUrl('js/hymn-mr.js?v=20261119mr')) + '"><\/script>' +
       '<script>' + js + '<\/script>' +
       '</body></html>';
     w.document.open(); w.document.write(html); w.document.close(); w.focus();   // 먼저 띄운 '불러오는 중' 화면을 갈아 끼운다

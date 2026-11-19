@@ -17,15 +17,26 @@
   var CREDIT = '오르간 Lars Palo · Piteå MHS (CC BY-SA) · 오케스트라 Virtual Playing Orchestra · 피아노 Salamander Grand Piano (CC BY) · 울림 OpenAIR, University of York (CC BY)';
   var FONT = '-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Noto Sans KR",sans-serif';
 
-  function load() {
-    if (have || loading) return loading;
-    loading = fetch(STORE + '/hymn-mr-have').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .catch(function () { setTimeout(function () { have = null; loading = null; }, 30000); return { nos: [] }; })   // 못 받으면 30초 뒤 다시
-      .then(function (j) { have = {}; (j.nos || []).forEach(function (n) { have[n] = 1; }); waiters.splice(0).forEach(function (f) { f(); }); });
+  // 2026-11-19: 목록을 브라우저·앱 저장소에 오래 두지 않는다 — 교회 PC 가 날마다 새 장을 올리는데,
+  //   처음 받은 목록이 남아 있으면 새로 올라온 장에 [반주] 단추가 안 보였다(발표자 모드·모두의 성경).
+  var loadedAt = 0, FRESH = 3 * 60 * 1000;
+  function load(force) {
+    if (loading) return loading;
+    if (have && !force) return Promise.resolve();
+    loading = fetch(STORE + '/hymn-mr-have?t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (j) { var h = {}; (j.nos || []).forEach(function (n) { h[n] = 1; }); have = h; loadedAt = Date.now(); },
+            function () { if (!have) have = {}; loadedAt = Date.now() - FRESH + 30000; })   // 못 받으면 30초 뒤 다시
+      .then(function () { loading = null; waiters.splice(0).forEach(function (f) { f(); }); });
     return loading;
   }
   function has(no) { return !!(have && have[+no]); }
-  function ready(f) { if (have) f(); else { waiters.push(f); load(); } }
+  // 목록이 있으면 바로 f, 3분이 지났으면 새로 받아 f 를 한 번 더(새로 올라온 장의 단추가 나타나게)
+  function ready(f) {
+    if (!have) { waiters.push(f); load(); return; }
+    f();
+    if (Date.now() - loadedAt > FRESH) { waiters.push(f); load(true); }
+  }
   function haveList() { return have ? Object.keys(have).map(Number).sort(function (a, b) { return a - b; }) : []; }
 
   function token() {
@@ -35,10 +46,31 @@
       if (!raw) return null;
       var s0 = JSON.parse(raw), s = s0 && s0.currentSession ? s0.currentSession : s0;
       if (!s || !s.access_token) return null;
-      if (s.expires_at && s.expires_at * 1000 < Date.now()) return null;
+      if (s.expires_at && s.expires_at * 1000 < Date.now() + 30000) return null;
       return s.access_token;
     } catch (e) { return null; }
   }
+  // 2026-11-19: 저장된 로그인 열쇠(1시간짜리)가 지났으면 — 앱을 오래 열어 두었거나 오랜만에 열었을 때 —
+  //   "로그인한 성도만" 이라고 막지 말고 Supabase 로 새 열쇠를 받는다(로그인 기록이 없으면 null).
+  var sbc = null;
+  function freshToken() {
+    var t = token();
+    if (t) return Promise.resolve(t);
+    try {
+      var url = window.SUPABASE_URL || (window.MODU && window.MODU.supabaseUrl);
+      var key = window.SUPABASE_ANON_KEY || (window.MODU && window.MODU.anonKey);
+      if (!window.supabase || !url || !key) return Promise.resolve(null);
+      var ref = new URL(url).hostname.split('.')[0];
+      if (!localStorage.getItem('sb-' + ref + '-auth-token')) return Promise.resolve(null);   // 로그인한 적 없음
+      sbc = sbc || window.supabase.createClient(url, key);
+      var got = sbc.auth.getSession().then(function (r) { var s = r && r.data && r.data.session; return (s && s.access_token) || token(); });
+      var late = new Promise(function (res) { setTimeout(function () { res(token()); }, 6000); });   // 잠금으로 멈추면 6초 뒤 포기
+      return Promise.race([got, late]).catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+  // 아이폰·아이패드(사파리)는 누른 그 순간에 소리를 시작하지 않으면, 주소를 받아 온 뒤의 재생을 막는다.
+  //   그래서 누를 때 아주 짧은 무음을 먼저 틀어 이 재생기를 '깨워' 둔다.
+  var SILENT = 'data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YaAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';   // 0.02초 무음
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   function esc(x) { return String(x).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -74,6 +106,8 @@
     var doc = opt.doc || document, win = doc.defaultView || window;
     no = +no; cur = no; btn = b || null; label(btn, true);
     var review = !!opt.review;
+    var pre = null;                                   // 누른 순간에 깨워 둔 재생기(아이폰·아이패드) — choose 에서 이어 쓴다
+    try { pre = doc.createElement('audio'); pre.src = SILENT; var pp = pre.play(); if (pp && pp.catch) pp.catch(function () {}); } catch (e) { pre = null; }
     // 재생 방식(이 기기에 기억). 예배 화면(opt.big)에서는 연속·랜덤을 처음엔 끈다 — 예배 중 다음 곡이 저절로 나오면 안 된다
     var M = { repeat: 'off', cont: false, shuffle: false };
     try { var sm = JSON.parse(lsGet(MODE_KEY) || '{}'); if (sm.repeat === 'one') M.repeat = 'one'; M.cont = !!sm.cont; M.shuffle = !!sm.shuffle; } catch (e) {}
@@ -485,7 +519,7 @@
       tSub.textContent = (review ? '검토용 · ' : '새찬송가 · ') + (k === 'piano' ? '피아노' : '오르간·오케스트라');
       var at = audio ? audio.currentTime : 0, was = audio ? !audio.paused : true;
       if (!audio) {
-        audio = doc.createElement('audio'); audio.preload = 'auto';
+        audio = pre || doc.createElement('audio'); pre = null; audio.preload = 'auto';
         audio.setAttribute('controlslist', 'nodownload');
         audio.addEventListener('loadedmetadata', function () { applyRate(); draw(); });
         audio.addEventListener('play', function () { paintPlay(); if (!raf) raf = win.requestAnimationFrame(tick); });
@@ -505,12 +539,14 @@
 
     paintModes(); paintPlay(); layout();
     if (opt.big) { full = true; layout(); }
-    var tk = token();
-    if (!tk) { msg.textContent = '찬송가 반주는 로그인한 성도만 들을 수 있습니다. 로그인한 뒤 다시 눌러 주세요.'; return true; }
-    fetch(STORE + '/hymn-mr-url', { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify(review ? { no: no, review: true } : { no: no }) })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._s = r.status; return j; }); })
+    freshToken().then(function (tk) {
+      if (myBox !== box) return null;
+      if (!tk) { msg.textContent = '찬송가 반주는 로그인한 성도만 들을 수 있습니다. 로그인한 뒤 다시 눌러 주세요.'; return null; }
+      return fetch(STORE + '/hymn-mr-url', { method: 'POST', headers: { Authorization: 'Bearer ' + tk, 'Content-Type': 'application/json' }, body: JSON.stringify(review ? { no: no, review: true } : { no: no }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { j._s = r.status; return j; }); });
+    })
       .then(function (j) {
-        if (myBox !== box) return;                       // 그사이 닫거나 다른 장을 눌렀다
+        if (!j || myBox !== box) return;                 // 로그인 없음, 또는 그사이 닫거나 다른 장을 눌렀다
         if (j._s === 401) { msg.textContent = '찬송가 반주는 로그인한 성도만 들을 수 있습니다. 다시 로그인해 주세요.'; return; }
         files = j.files || {};
         if (!files.orch && !files.piano) { msg.textContent = j.error || '이 장의 반주는 아직 준비 중입니다.'; return; }
@@ -533,6 +569,14 @@
     b.hidden = true; b.style.display = 'none';
     ready(show);
   }
-  window.HymnMR = { has: has, load: load, ready: ready, play: play, stop: stop, toggle: toggle, sync: sync, playing: function () { return cur; } };
+  // 2026-11-19 발표자 모드처럼 미리 그려 둔 화면: [data-mr] 단추를 모두 숨겼다가 반주가 있는 장만 보인다(목록이 새로 오면 다시)
+  function reveal(root) {
+    ready(function () {
+      Array.prototype.forEach.call((root || document).querySelectorAll('[data-mr]'), function (b) {
+        var ok = has(+b.getAttribute('data-mr')); b.hidden = !ok; b.style.display = ok ? '' : 'none';
+      });
+    });
+  }
+  window.HymnMR = { has: has, load: load, ready: ready, play: play, stop: stop, toggle: toggle, sync: sync, reveal: reveal, playing: function () { return cur; } };
   load();
 })();

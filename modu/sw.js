@@ -2,7 +2,7 @@
    · 앱 껍데기(html·css·js·글꼴)는 판(version)마다 새 저장소에 담고 옛것은 지운다
    · 큰 자료(R2 의 성경·사전·지도·주석)는 한 번 받으면 오래 둔다 (자료 판이 바뀌면 주소가 바뀐다)
    · Supabase(로그인·메모)는 늘 네트워크 */
-var VERSION = '1.0.99';
+var VERSION = '1.0.100';
 var SHELL = 'modu-shell-' + VERSION, DATA = 'modu-data-v2';   /* v2: crossOrigin 없이 받아 둔 불투명 응답을 버린다 */
 var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'worship-banner.js', 'mini.js', 'activity.js', 'compare.js', 'exeg-engine.js', 'exeg.js', 'hymn.js', 'hymn-data.js', 'hymn-mr.js', 'ccm-data.js', 'gyodok.js', 'icon.png', 'manifest.webmanifest',
   /* 1.0.83 파스텔 점토 바탕: 화면 글꼴(Pretendard subset 두 굵기)과 점토 아이콘 */
@@ -26,6 +26,8 @@ var STALE_URLS = STALE_DATA.map(function(u){ return new URL(u, self.location).hr
 self.addEventListener('activate', function(e){
   e.waitUntil(caches.keys().then(function(ks){ return Promise.all(ks.filter(function(k){ return (k.indexOf('modu-shell-') === 0 && k !== SHELL) || (k.indexOf('modu-data-') === 0 && k !== DATA); }).map(function(k){ return caches.delete(k); })); })
     .then(function(){ return caches.open(DATA).then(function(c){ return Promise.all(STALE_DATA.map(function(u){ return c.delete(u); })); }).catch(function(){}); })
+    /* 1.0.100: 예전 판이 담아 둔 찬송가 반주 목록·반주 소리를 지운다(아래 fetch 에서 이제 담지 않는다) */
+    .then(function(){ return caches.open(DATA).then(function(c){ return c.keys().then(function(ks){ return Promise.all(ks.filter(function(q){ return /\/hymn-mr/.test(q.url); }).map(function(q){ return c.delete(q); })); }); }).catch(function(){}); })
     .then(function(){ return self.clients.claim(); }));
 });
 self.addEventListener('message', function(e){ if(e.data && e.data.type === 'skip') self.skipWaiting(); });
@@ -34,6 +36,9 @@ self.addEventListener('fetch', function(e){
   var req = e.request, url = new URL(req.url);
   if(req.method !== 'GET') return;
   if(/supabase\.co|googleapis|gstatic|kakao/.test(url.host)) return;                 /* 로그인·메모·API 는 그대로 */
+  /* 1.0.100 찬송가 반주(저장소 워커 /hymn-mr-have·/hymn-mr/…)는 늘 네트워크로 — 담아 두면 ① 처음 받은 반주 목록이 영영 남아
+     새로 올라온 장에 [반주] 단추가 안 보였고 ② 소리 파일의 부분 요청(Range)에 통째 응답을 주어 아이폰에서 재생이 안 됐다 */
+  if(/\/hymn-mr/.test(url.pathname)) return;
   var isData = url.host.indexOf('r2.dev') >= 0 || url.host.indexOf('workers.dev') >= 0 || /\/data\//.test(url.pathname);   /* workers.dev: 2026-09-26 부터 자료 주소 */
   if(isData){
     e.respondWith(caches.open(DATA).then(function(c){
