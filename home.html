@@ -120,7 +120,7 @@
         <h2 style="margin-top:14px">나의 신앙정원</h2>
         <p class="hp-sub" style="color:#555">내가 가꾸는 믿음의 정원</p>
         <div class="hp-today">
-          <span data-go="worship" class="hp-wbox"><i>오늘의 예배</i><b id="hpGW">예배 안내</b><em id="hpGC" aria-live="off"></em><small id="hpGL"></small></span>
+          <span data-go="worship" class="hp-wbox"><i id="hpGWL">오늘의 예배</i><b id="hpGW">예배 안내</b><em id="hpGC" aria-live="off"></em><small id="hpGL"></small></span>
           <span data-go="qt" class="hp-qbox"><i>오늘의 QT</i><b id="hpGQ">오늘의 말씀 묵상</b><span class="hp-qgo" aria-hidden="true">묵상하기 →</span></span>
           <span data-go="qtvideo" class="hp-qbox" id="hpGV" hidden><i>오늘의 말씀 영상</i><b>오늘의 QT 를 영상으로</b><span class="hp-qgo" aria-hidden="true">영상 보기 →</span></span>
         </div>
@@ -292,10 +292,14 @@
       var now = new Date(), d = now.getDay(), mins = d * 1440 + now.getHours() * 60 + now.getMinutes();
       var list = WEEK.map(function (w) { var diff = w[0] * 1440 + w[1] * 60 + w[2] - mins; if (diff < -70) diff += 10080; return { wd: w[0], h: w[1], m: w[2], name: w[3], diff: diff }; }).sort(function (a, b) { return a.diff - b.diff; });
       var c = list[0], live = c.diff <= 0;
-      document.getElementById("hpNow").textContent = live ? "지금 드리는 예배" : "다음 예배 · " + (c.wd === d && c.diff < 1440 ? "오늘" : DAY[c.wd]);
+      /* 언제: 오늘 · 내일(요일) · 요일 — 2026-11-21 담임목사: 토요일에 '오늘의 예배 · 주일 1부'로 보여 오늘 예배로 오해 → 오늘이 아니면 '다음 예배'로 */
+      var today = c.wd === d && c.diff < 1440, tmr = !today && c.wd === (d + 1) % 7 && c.diff < 2880;
+      var when = today ? "오늘" : tmr ? "내일(" + DAY[c.wd] + ")" : DAY[c.wd];
+      document.getElementById("hpGWL").textContent = (live || today) ? "오늘의 예배" : "다음 예배";
+      document.getElementById("hpNow").textContent = live ? "지금 드리는 예배" : "다음 예배 · " + when;
       document.getElementById("hpTitle").textContent = c.name;
       hpNext = Date.now() + (c.diff * 60 - now.getSeconds()) * 1000; hpLive = live; hpLead = (c.name === "새벽기도회" ? 30 : 60) * 60;
-      document.getElementById("hpGW").textContent = (live ? "지금 · " : (c.wd === d && c.diff < 1440 ? "오늘 " : DAY[c.wd] + " ")) + c.name.replace(/^주일 /, "") + " " + hm(c.h, c.m);
+      document.getElementById("hpGW").textContent = (live ? "지금 · " : when + " ") + c.name.replace(/^주일 /, "") + " " + hm(c.h, c.m);
       document.getElementById("hpSub").textContent = hm(c.h, c.m) + (live ? " 시작" : c.diff < 60 ? " · " + c.diff + "분 뒤" : c.diff < 1440 ? " · " + Math.round(c.diff / 60) + "시간 뒤" : "");
       document.getElementById("hpRows").innerHTML = list.slice(0, 4).map(function (x, i) { return '<div class="' + (i === 0 ? "now" : "") + '"><span>' + DAY[x.wd] + " " + x.name.replace(/^주일 /, "") + "</span><span>" + hm(x.h, x.m) + "</span></div>"; }).join("");
     }
@@ -581,7 +585,7 @@
   </div>
 
   <script src="js/config.js?v=20260908lib"></script>
-  <script src="js/bulletins.js?v=20261115b1"></script>
+  <script src="js/bulletins.js?v=20261122b1"></script>
   <script src="js/bulletins-live.js?v=20261025jb1"></script>
   <script src="js/gyodok-data.js?v=20260926ws"></script>
   <script src="js/hymn-data.js?v=20260927meta"></script>
