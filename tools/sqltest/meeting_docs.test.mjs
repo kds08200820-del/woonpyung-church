@@ -23,12 +23,14 @@ create table storage.objects (id serial primary key, bucket_id text, name text);
 alter table storage.objects enable row level security;
 grant select, insert, update, delete on storage.objects to authenticated; grant usage on sequence storage.objects_id_seq to authenticated;
 create table public.admins (uid uuid primary key); grant select on public.admins to authenticated;
-create table public.member_links (user_id uuid primary key, member_status text not null default '준회원', member_key text);
+create table public.member_links (user_id uuid primary key, member_status text not null default '준회원', member_key text, member_name text, can_finance boolean default false, can_broadcast boolean default false, can_accompany boolean default false, can_pastor boolean default false, updated_at timestamptz);
+create table public.profiles (id uuid primary key, name text, email text);
 create table public.gyojeok (id serial primary key, name text, member_key text, role text, grade text, status text);
 insert into admins values ('${ADMIN}');
-insert into member_links values
- ('${PASTOR}','정회원','목사|1'), ('${ELDER}','정회원','장로|1'), ('${RETIRED}','정회원','은퇴|1'), ('${COOP}','정회원','협동|1'),
- ('${BAPT}','정회원','세례|1'), ('${INFANT}','정회원','유아|1'), ('${PLAIN}','준회원',null), ('${DEAD}','정회원','별세|1');
+insert into member_links (user_id, member_status, member_key, member_name) values
+ ('${PASTOR}','정회원','목사|1','김동석'), ('${ELDER}','정회원','장로|1',' 신용화'), ('${RETIRED}','정회원','은퇴|1','은퇴'), ('${COOP}','정회원','협동|1','협동'),
+ ('${BAPT}','정회원','세례|1','세례'), ('${INFANT}','정회원','유아|1','유아'), ('${PLAIN}','준회원',null,null), ('${DEAD}','정회원','별세|1','별세');
+insert into profiles (id, name) select user_id, member_name from member_links;
 insert into gyojeok (name, member_key, role, grade, status) values
  ('가','목사|1','담임목사','세례','재적'), ('나','장로|1','시무장로','세례','재적'), ('다','은퇴|1','은퇴장로','세례','재적'),
  ('라','협동|1','협동목사','세례','재적'), ('마','세례|1','집사','세례','재적'), ('바','유아|1','','유아세례','재적'),
@@ -45,7 +47,7 @@ async function err(uid, sql, p) { try { await as(uid, sql, p); return null; } ca
 const one = async (uid, sql, p) => Object.values((await as(uid, sql, p))[0] || {})[0];
 
 ok((await db.query("select count(*)::int n from storage.buckets where id = 'meeting-docs' and public = false")).rows[0].n === 1, "비공개 버킷");
-ok((await db.query("select count(*)::int n from public.meeting_session_keys()")).rows[0].n === 2, "당회원 열쇠 2개(담임목사·시무장로, 별세 제외)");
+ok((await db.query("select count(*)::int n from member_links where can_session")).rows[0].n === 2, "처음 당회원 2명 지명(김동석·신용화)");
 
 const acc = async (uid) => one(uid, "select meeting_access()");
 let a = await acc(PASTOR); ok(a.session && a.session_w && a.congregation && a.congregation_w && a.yoram, "담임목사: 전부");
@@ -56,7 +58,7 @@ a = await acc(BAPT);   ok(!a.session && a.congregation && !a.congregation_w && a
 a = await acc(INFANT); ok(!a.session && !a.congregation && a.yoram, "유아세례: 공동의회록 X, 요람 O");
 a = await acc(PLAIN);  ok(!a.session && !a.congregation && !a.yoram, "준회원: 다 X");
 a = await acc(ADMIN);  ok(!a.session && !a.congregation && a.congregation_w && a.yoram && a.yoram_w, "관리자(교적 없음): 당회록 X, 공동의회록 올리기·요람");
-a = await acc(DEAD);   ok(!a.session, "별세 교적은 당회원 아님");
+a = await acc(DEAD);   ok(!a.session && !a.congregation, "별세 교적은 세례교인으로 안 셈");
 ok(!!(await err(null, "select meeting_access()")), "비로그인: 권한 함수도 못 부름");
 
 // 목록 표
@@ -84,7 +86,19 @@ ok(!!(await err(BAPT, "insert into storage.objects (bucket_id, name) values ('me
 ok(!!(await err(ADMIN, "insert into storage.objects (bucket_id, name) values ('meeting-docs','session/2.pdf')")), "관리자 당회록 파일 올리기 X");
 await as(ELDER, "insert into storage.objects (bucket_id, name) values ('meeting-docs','session/2.pdf')");
 ok((await db.query("select count(*)::int n from storage.objects where name='session/2.pdf'")).rows[0].n === 1, "시무장로 당회록 파일 올리기 O");
-ok(!!(await err(BAPT, "select public.meeting_session_keys()")), "성도는 당회원 열쇠 함수 못 부름");
+// 지명 · 해제
+ok((await one(BAPT, `select set_worship_role('${RETIRED}', 'session', true)`)).ok === false, "성도는 당회원 지명 못 함");
+ok((await one(ADMIN, `select set_worship_role('${RETIRED}', 'session', true)`)).ok === true, "관리자가 당회원 지명");
+ok((await acc(RETIRED)).session === true, "지명되면 당회록 열람");
+await one(ADMIN, `select set_worship_role('${RETIRED}', 'session', false)`);
+ok((await acc(RETIRED)).session === false, "해제되면 당회록 잠김");
+const la = await one(ADMIN, "select list_access()");
+ok(la.filter((x) => x.canSession).length === 2, "권한 목록에 canSession");
+ok(!!(await err(BAPT, "update member_links set can_session = true")), "성도가 직접 칸을 못 고침");
+// 이름이 둘이면 지명 건너뜀
+await db.exec("update member_links set can_session = false; insert into member_links (user_id, member_status, member_name) values ('00000000-0000-0000-0000-000000000099','정회원','신용화')");
+await db.exec(rd("20261121_1500_meeting_docs.sql"));
+ok((await db.query("select count(*)::int n from member_links where can_session")).rows[0].n === 1, "같은 이름 계정이 둘이면 그 이름은 건너뜀");
 
 console.log(`pass ${pass}, fail ${fail}`);
 process.exit(fail ? 1 : 0);

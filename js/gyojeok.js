@@ -20,7 +20,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
   function fmtPhone(p) { p = String(p == null ? '' : p).replace(/[^0-9]/g, ''); if (!p) return ''; if (p.length === 10 && p.charAt(0) !== '0') p = '0' + p; if (p.length === 11) return p.slice(0, 3) + '-' + p.slice(3, 7) + '-' + p.slice(7); if (p.length === 10) return p.slice(0, 3) + '-' + p.slice(3, 6) + '-' + p.slice(6); return p; }
   function msgCard(t, x) { return '<div class="fin-card" style="text-align:center;padding:40px 18px;"><h3 style="margin:0 0 8px;color:var(--accent,#111111);">' + esc(t) + '</h3><p style="color:var(--ink-soft,#898885);">' + esc(x) + '</p></div>'; }
   function loading(el) { el.innerHTML = '<p class="qt-loading">불러오는 중…</p>'; }
-  var ROLES = [{ k: 'isAdmin', label: '관리자' }, { k: 'canFinance', label: '재정권한' }, { k: 'canBroadcast', label: '방송실 관리자' }, { k: 'canPastor', label: '목회자', role: 'pastor' }, { k: 'canAccompany', label: '반주자', role: 'accompany' }];
+  var ROLES = [{ k: 'isAdmin', label: '관리자' }, { k: 'canFinance', label: '재정권한' }, { k: 'canBroadcast', label: '방송실 관리자' }, { k: 'canPastor', label: '목회자', role: 'pastor' }, { k: 'canAccompany', label: '반주자', role: 'accompany' }, { k: 'canSession', label: '당회원', role: 'session' }];   /* 당회원(2026-11-21): 회의자료실 당회록 열람 — 20261121_1500 */
   function stPill(st) { return '<span class="fin-pill ' + (st === '정회원' ? 'in' : 'out') + '">' + (st === '정회원' ? '정회원' : '준회원') + '</span>'; }
   // 화면 안에서 사람을 가리키는 열쇠(파일 머리말 참고). 교적ID가 있으면 그것, 없으면 순번.
   function tagRids(list) { list.forEach(function (m, i) { m._rid = String(m['교적ID'] != null && m['교적ID'] !== '' ? m['교적ID'] : 'i' + i); }); return list; }

@@ -7,9 +7,10 @@
 --    파일 경로 첫 칸이 종류다:  session/…(당회록) · congregation/…(공동의회록) · yoram/…(요람)
 --    목록(meeting_docs 표)과 파일(storage.objects) 둘 다 같은 권한 함수로 막는다 → 주소를 알아도 권한 없으면 못 받는다.
 --  · 권한 (바꾸려면 아래 함수만 고치면 된다)
---      meeting_is_session()     당회원 = 내 계정과 이어진 교적(member_links → gyojeok)의 직책이
---                               담임목사 이거나 시무장로(직책에 '장로' — 은퇴·원로·협동·명예 제외)
---                               ※ 원로목사·협동목사·부목사·전도사·은퇴장로는 당회원이 아니다
+--      meeting_is_session()     당회원 = member_links.can_session (담임목사 · 시무장로)
+--                               교적 직책 칸에 장로·담임목사가 적혀 있지 않아(11/21 건수 확인) 직책으로는 못 가린다 →
+--                               관리자가 교적관리 > 권한 관리에서 '당회원'으로 지명한다(목회자 · 반주자와 같은 방식).
+--                               처음 두 분(신용화 장로 · 김동석 목사)은 이 파일이 지명한다 — 계정 이름이 꼭 하나일 때만.
 --      meeting_is_baptized()    세례교인 = 교적 신급이 '세례' 또는 '입교'(유아세례·학습·원입 제외) — 당회원은 늘 포함
 --      meeting_is_member()      요람 = 정회원(member_links.member_status = '정회원') 또는 관리자
 --      제적·별세·이명·탈퇴 상태의 교적은 세지 않는다.
@@ -17,14 +18,16 @@
 --  · meeting_access() : 화면이 쓸 내 권한 6가지(json)
 --
 -- 실행 뒤 확인(교인 자료 본문은 보지 않고 건수만):
---   select count(*) from public.meeting_session_keys();     -- 2 여야 한다(담임목사 1 + 시무장로 1)
+--   select count(*) from public.member_links where can_session;     -- 2 여야 한다(담임목사 1 + 시무장로 1)
 --   select count(*) from storage.buckets where id = 'meeting-docs';   -- 1
 --
 -- 되돌리기(파괴적이므로 사람이 직접, 자료가 있으면 먼저 내려받아 둘 것):
 --   alter table public.meeting_docs rename to meeting_docs_archived;
 --   drop policy ... on storage.objects (meeting_docs_* 4개);  drop function public.meeting_access(), public.meeting_can_read(text),
 --   public.meeting_can_write(text), public.meeting_is_session(), public.meeting_is_baptized(), public.meeting_is_member(),
---   public.meeting_session_keys();   버킷 'meeting-docs' 는 대시보드에서 비운 뒤 삭제
+--   public.meeting_my_rows();   버킷 'meeting-docs' 는 대시보드에서 비운 뒤 삭제
+--   list_access · set_worship_role 은 20261009_1900_worship_roles.sql 의 것을 다시 실행
+--   alter table public.member_links rename column can_session to can_session_archived;   (DROP 대신 RENAME)
 
 begin;
 
@@ -45,17 +48,13 @@ returns setof public.gyojeok language sql stable security definer set search_pat
 $$;
 revoke all on function public.meeting_my_rows() from public, anon, authenticated;
 
--- 당회원 직책인가 (한 곳에서만 판단)
-create or replace function public.meeting_role_is_session(p_role text)
-returns boolean language sql immutable set search_path = public as $$
-  select coalesce(p_role, '') ~ '담임목사'
-      or (coalesce(p_role, '') ~ '장로' and coalesce(p_role, '') !~ '(은퇴|원로|협동|명예)')
-$$;
+-- 당회원 지명 칸
+alter table public.member_links add column if not exists can_session boolean not null default false;
 
 create or replace function public.meeting_is_session()
 returns boolean language sql stable security definer set search_path = public as $$
   select auth.uid() is not null
-     and exists (select 1 from public.meeting_my_rows() g where public.meeting_role_is_session(g.role))
+     and coalesce((select l.can_session from public.member_links l where l.user_id = auth.uid()), false)
 $$;
 
 create or replace function public.meeting_is_baptized()
@@ -99,20 +98,64 @@ returns json language sql stable security definer set search_path = public as $$
     'yoram', public.meeting_can_read('yoram'),               'yoram_w', public.meeting_can_write('yoram'))
 $$;
 
--- 실행 뒤 확인용: 당회원 교적 열쇠(화면에서는 못 부른다, 건수만 본다)
-create or replace function public.meeting_session_keys()
-returns setof text language sql stable security definer set search_path = public as $$
-  select distinct g.member_key from public.gyojeok g
-    join public.member_links ml on ml.member_key = g.member_key
-   where public.meeting_role_is_session(g.role)
-     and coalesce(g.status, '') !~ '(제적|별세|소천|이명|탈퇴)'
-$$;
-
 revoke all on function public.meeting_is_session(), public.meeting_is_baptized(), public.meeting_is_member(),
   public.meeting_can_read(text), public.meeting_can_write(text), public.meeting_access() from public, anon;
 grant execute on function public.meeting_is_session(), public.meeting_is_baptized(), public.meeting_is_member(),
   public.meeting_can_read(text), public.meeting_can_write(text), public.meeting_access() to authenticated;
-revoke all on function public.meeting_session_keys() from public, anon, authenticated;
+
+-- 권한 관리(관리자만) — canSession 추가 (나머지는 20261009_1900 과 같다)
+create or replace function public.list_access()
+returns json language sql security definer set search_path = public as $$
+  select coalesce(json_agg(row), '[]'::json) from (
+    select json_build_object(
+      'uid', p.id, 'name', coalesce(l.member_name, p.name, ''), 'email', coalesce(p.email,''),
+      'status', coalesce(l.member_status,'준회원'), 'canFinance', coalesce(l.can_finance,false),
+      'canBroadcast', coalesce(l.can_broadcast,false),
+      'canAccompany', coalesce(l.can_accompany,false),
+      'canPastor', coalesce(l.can_pastor,false),
+      'canSession', coalesce(l.can_session,false),
+      'isAdmin', exists(select 1 from public.admins a where a.uid = p.id)
+    ) as row
+    from public.profiles p left join public.member_links l on l.user_id = p.id
+    where exists(select 1 from public.admins where uid = auth.uid())
+    order by exists(select 1 from public.admins a where a.uid = p.id) desc, coalesce(l.member_name, p.name)
+  ) t;
+$$;
+
+-- 반주자 · 목회자 · 당회원 지명/해제 (관리자만) — p_role: 'accompany' | 'pastor' | 'session'
+create or replace function public.set_worship_role(p_uid uuid, p_role text, p_on boolean)
+returns json language plpgsql security definer set search_path = public as $$
+begin
+  if not exists(select 1 from public.admins where uid = auth.uid()) then
+    return json_build_object('ok', false, 'error', '관리자만 지명할 수 있습니다.');
+  end if;
+  if p_role = 'accompany' then
+    insert into public.member_links(user_id, can_accompany, updated_at) values (p_uid, coalesce(p_on,false), now())
+    on conflict (user_id) do update set can_accompany = coalesce(p_on,false), updated_at = now();
+  elsif p_role = 'pastor' then
+    insert into public.member_links(user_id, can_pastor, updated_at) values (p_uid, coalesce(p_on,false), now())
+    on conflict (user_id) do update set can_pastor = coalesce(p_on,false), updated_at = now();
+  elsif p_role = 'session' then
+    insert into public.member_links(user_id, can_session, updated_at) values (p_uid, coalesce(p_on,false), now())
+    on conflict (user_id) do update set can_session = coalesce(p_on,false), updated_at = now();
+  else
+    return json_build_object('ok', false, 'error', '알 수 없는 권한입니다.');
+  end if;
+  return json_build_object('ok', true);
+end $$;
+revoke all on function public.set_worship_role(uuid, text, boolean) from public, anon;
+grant execute on function public.set_worship_role(uuid, text, boolean) to authenticated;
+
+-- 처음 당회원 두 분 지명 — 계정 이름(member_links.member_name)이 꼭 하나일 때만 (둘 이상이면 건너뛰고 화면에서 지명)
+do $$
+declare n text;
+begin
+  foreach n in array array['신용화', '김동석'] loop
+    if (select count(*) from public.member_links where btrim(member_name) = n) = 1 then
+      update public.member_links set can_session = true, updated_at = now() where btrim(member_name) = n;
+    end if;
+  end loop;
+end $$;
 
 -- 3) 목록 표
 create table if not exists public.meeting_docs (
