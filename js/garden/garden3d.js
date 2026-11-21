@@ -172,11 +172,13 @@ window.Garden3D = (function () {
     };
     closeBtn.onclick = function () { close(); };
     function onKey(e) {
-      if (e.key === 'Escape' && !document.fullscreenElement) { close(); return; }
+      if (e.key === 'Escape' && !document.fullscreenElement) { if (document.body.classList.contains('g-modal-open')) return; close(); return; }   // 스토어 등 창이 떠 있으면 Esc 는 그 창만
       if (R && R.key && !e.altKey && !e.ctrlKey && !e.metaKey && R.key(e.key)) e.preventDefault();
     }
     document.addEventListener('keydown', onKey);
-    function onPop() { pushed = false; close(true); }
+    /* 위에 뜬 창(달란트 스토어 등)이 닫히며 '뒤로'를 하면 이 popstate 가 같이 온다 — 그때는 아직 내 기록(g3d)에 서 있으므로 닫지 않는다.
+       (2026-11-21 담임목사 "달란트 스토어에서 닫기를 누르면 정원이 아니라 밖으로 나가집니다") */
+    function onPop() { if (history.state && history.state.g3d) return; pushed = false; close(true); }
     window.addEventListener('popstate', onPop);
 
     function close(fromPop) {
