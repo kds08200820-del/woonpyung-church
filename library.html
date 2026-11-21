@@ -25,13 +25,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261111m19" />
+  <link rel="stylesheet" href="css/meeting-docs.css?v=20261121md1" />
 </head>
 <body>
 
   <section class="page-hero">
     <p class="ph-eyebrow">RESOURCES</p>
     <h1>자료실</h1>
-    <p>교육·양육 자료를 한곳에 모았습니다. 로그인한 교인이 자유롭게 내려받을 수 있습니다.</p>
+    <p>교육 · 예배 자료와 회의록 · 요람을 한곳에 모았습니다. 로그인한 교인이 내려받을 수 있습니다.</p>
   </section>
 
   <!-- ===== 교육 자료실 (회원 전용) ===== -->
@@ -55,6 +56,37 @@
         <p>예배 순서지·주보·PPT·찬양 악보·음원·영상 등 예배 자료를 카테고리별로 올리고 내려받을 수 있습니다. (로그인한 교인 전용)</p>
       </div>
       <div id="resourceAreaWorship"><p class="qt-loading">불러오는 중…</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 회의자료실 (당회록: 당회원 / 공동의회록: 세례교인) — js/meeting-docs.js ===== -->
+  <section id="meeting" class="block">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">MINUTES</span>
+        <h2>회의자료실</h2>
+        <p>당회록과 공동의회록을 보관합니다. 당회록은 당회원(담임목사 · 시무장로)만, 공동의회록은 세례교인이 열람할 수 있습니다.</p>
+      </div>
+      <div class="md-box">
+        <h3 class="md-h">당회록</h3>
+        <div id="meetingSession"><p class="qt-loading">불러오는 중…</p></div>
+      </div>
+      <div class="md-box">
+        <h3 class="md-h">공동의회록</h3>
+        <div id="meetingCongregation"><p class="qt-loading">불러오는 중…</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 요람 (정회원) ===== -->
+  <section id="yoram" class="block block-alt">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">YEARBOOK</span>
+        <h2>요람</h2>
+        <p>교회 요람을 내려받을 수 있습니다. (교적이 확인된 정회원 전용)</p>
+      </div>
+      <div id="yoramArea"><p class="qt-loading">불러오는 중…</p></div>
     </div>
   </section>
 
@@ -129,10 +161,11 @@
   <script src="js/config.js?v=20260908lib"></script>
   <script src="js/bulletins.js?v=20261115b1"></script>
   <script src="js/bulletins-live.js?v=20261025jb1"></script>
-  <script src="js/layout.js?v=20261111m9"></script>
+  <script src="js/layout.js?v=20261121md1"></script>
   <script src="js/counsel.js?v=20260906fix"></script>
   <script src="js/main.js?v=20261111m2"></script>
   <script src="js/upload.js?v=20261025vid1"></script>
   <script src="js/resources.js?v=20261023lib1"></script>
+  <script src="js/meeting-docs.js?v=20261121md1"></script>
 </body>
 </html>

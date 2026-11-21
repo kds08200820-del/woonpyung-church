@@ -1,0 +1,24 @@
+/* 자료실 > 회의자료실 · 요람 (js/meeting-docs.js, 2026-11-21) — 모던 테마: 흰 바탕 · 먹색 · 가는 선 · 각진 모양 */
+.md-box { border: 1px solid var(--line); background: var(--paper, #fff); padding: 20px 22px; margin-bottom: 18px; }
+.md-h { font-size: 1.05rem; font-weight: 500; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.md-form { border: 1px solid var(--line); padding: 14px 16px; margin-bottom: 16px; background: var(--paper-alt); }
+.md-form-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; margin-bottom: 10px; }
+.md-form-row:last-of-type { margin-bottom: 0; }
+.md-form label { display: flex; flex-direction: column; gap: 4px; font-size: .82rem; color: var(--ink-soft); flex: 1 1 200px; }
+.md-form input[type=text], .md-form input[type=date] { font: inherit; font-size: .95rem; padding: 8px 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 0; }
+.md-form .md-file input { font-size: .88rem; }
+.md-msg { margin: 8px 0 0; font-size: .85rem; color: var(--ink-soft); min-height: 1em; }
+.md-msg.md-err { color: #A33A2A; }
+.md-list { border-top: 1px solid var(--line); }
+.md-item { display: flex; align-items: center; gap: 14px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+.md-date { flex: 0 0 96px; font-size: .85rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.md-title { flex: 1 1 auto; min-width: 0; font-size: .97rem; color: var(--ink); overflow-wrap: anywhere; }
+.md-title small { display: block; font-size: .78rem; color: var(--ink-soft); margin-top: 2px; }
+.md-acts { display: flex; gap: 6px; flex: 0 0 auto; }
+.md-acts .btn { padding: 5px 12px; font-size: .82rem; }
+@media (max-width: 640px) {
+  .md-box { padding: 16px 14px; }
+  .md-item { flex-wrap: wrap; gap: 4px 10px; }
+  .md-date { flex: 0 0 100%; }
+  .md-acts { flex: 0 0 100%; justify-content: flex-end; }
+}

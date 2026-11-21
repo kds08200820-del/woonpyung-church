@@ -46,6 +46,9 @@
     { href: "library.html", label: "자료실", sub: [
       { href: "library.html#edu", label: "교육 자료실" },
       { href: "library.html#worship", label: "예배 자료실" },
+      // 회의자료실(2026-11-21 담임목사): 당회록 = 당회원만 · 공동의회록 = 세례교인 / 요람 = 정회원 — js/meeting-docs.js
+      { href: "library.html#meeting", label: "회의자료실" },
+      { href: "library.html#yoram", label: "요람" },
       { href: "mahanaim.html", label: "마하나임 찬양단" },
     ] },
     { href: "finance.html", label: "교회행정", adminOnly: true, sub: [
