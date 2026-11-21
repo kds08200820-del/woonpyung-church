@@ -1227,3 +1227,8 @@ body.garden #header.scrolled .auth-btn { color: #fff !important; background: #11
 
 /* 정원 안에서는 예배 안내를 띄우지 않는다 — 예배 띠·방송실 전체화면·설교하기는 첫 화면(home.html)에서만 (2026-11-11 담임목사) */
 body.garden .g-banner, body.garden .g-preach, body.garden .g-bcast { display: none !important; }
+
+/* 왼쪽 서재(책장 · 오늘의 큐티 알림) 없앰 — 2026-11-21 담임목사 "책장과 큐티 알림을 삭제 하세요".
+   표시만 끈다(js 는 그대로 — 요소가 있어도 보이지 않음). 교회 그림은 fitChurch 가 서재 없이 가운데로 맞춘다. */
+#gStudy { display: none !important; }
+@media (min-width: 1001px) { .g-rotate { left: 16px; } }
