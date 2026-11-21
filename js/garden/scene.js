@@ -215,10 +215,12 @@ window.GardenScene = (function () {
     box.title = names.join(' · ');
     if (o.onOpen) {
       /* 눌러 보라는 안내 풍선 — 교회 상자(z 91, 밭 줄 사이) 밖에 따로 맨 위로 둔다. 안에 두면 믿음 나무·앞줄 밭이 글씨를 가린다(2026-10-25 담임목사 "건축헌금 글씨가 안 보입니다") */
-      var hn = el('button', 'g-church-hint'); hn.type = 'button'; hn.tabIndex = -1; hn.textContent = o.hint || o.label || '';
-      hn.style.left = CHURCH_AT.x + 'px'; hn.style.top = (CHURCH_AT.y - 34) + 'px';
-      hn.addEventListener('click', function (e) { e.stopPropagation(); o.onOpen(); });
-      S.el.plot.appendChild(hn); S.el.churchHint = hn;
+      if (o.hint !== false) {   // hint: false = 풍선 없음(다 지은 교회)
+        var hn = el('button', 'g-church-hint'); hn.type = 'button'; hn.tabIndex = -1; hn.textContent = o.hint || o.label || '';
+        hn.style.left = CHURCH_AT.x + 'px'; hn.style.top = (CHURCH_AT.y - 34) + 'px';
+        hn.addEventListener('click', function (e) { e.stopPropagation(); o.onOpen(); });
+        S.el.plot.appendChild(hn); S.el.churchHint = hn;
+      }
       box.classList.add('is-open'); box.setAttribute('role', 'button'); box.tabIndex = 0; box.setAttribute('aria-label', (o.label || '') + (names.length ? ' — ' + names.join(' · ') : ''));
       box.addEventListener('click', function (e) { e.stopPropagation(); o.onOpen(); });
       box.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onOpen(); } });

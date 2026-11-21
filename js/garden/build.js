@@ -211,7 +211,9 @@ window.GardenBuild = (function () {
   }
   function showChurch() {
     if (!SCENE || !SCENE.setChurch) return;
-    SCENE.setChurch(church3d(), { label: t('church.open'), hint: t('church.hint'), onOpen: function () { if (SHOP) SHOP.open('church'); } });
+    /* 건축헌금 안내 풍선은 짓는 중일 때만 — 다 지었으면 띄우지 않는다(2026-11-21 담임목사 "건축이 끝났는데 건축헌금하기가 나옵니다"). 교회를 누르면 여는 것은 그대로 */
+    var building = !!(B.church && B.church.current);
+    SCENE.setChurch(church3d(), { label: t('church.open'), hint: building ? t('church.hint') : false, onOpen: function () { if (SHOP) SHOP.open('church'); } });
   }
 
   function init(o) {
