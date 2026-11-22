@@ -2,7 +2,7 @@
    · 앱 껍데기(html·css·js·글꼴)는 판(version)마다 새 저장소에 담고 옛것은 지운다
    · 큰 자료(R2 의 성경·사전·지도·주석)는 한 번 받으면 오래 둔다 (자료 판이 바뀌면 주소가 바뀐다)
    · Supabase(로그인·메모)는 늘 네트워크 */
-var VERSION = '1.0.100';
+var VERSION = '1.0.101';
 var SHELL = 'modu-shell-' + VERSION, DATA = 'modu-data-v2';   /* v2: crossOrigin 없이 받아 둔 불투명 응답을 버린다 */
 var CORE = ['./', 'index.html', 'style.css', 'mobile.css', 'config.js', 'bridge.js', 'mobile.js', 'worship-banner.js', 'mini.js', 'activity.js', 'compare.js', 'exeg-engine.js', 'exeg.js', 'hymn.js', 'hymn-data.js', 'hymn-mr.js', 'ccm-data.js', 'gyodok.js', 'icon.png', 'manifest.webmanifest',
   /* 1.0.83 파스텔 점토 바탕: 화면 글꼴(Pretendard subset 두 굵기)과 점토 아이콘 */
@@ -28,6 +28,8 @@ self.addEventListener('activate', function(e){
     .then(function(){ return caches.open(DATA).then(function(c){ return Promise.all(STALE_DATA.map(function(u){ return c.delete(u); })); }).catch(function(){}); })
     /* 1.0.100: 예전 판이 담아 둔 찬송가 반주 목록·반주 소리를 지운다(아래 fetch 에서 이제 담지 않는다) */
     .then(function(){ return caches.open(DATA).then(function(c){ return c.keys().then(function(ks){ return Promise.all(ks.filter(function(q){ return /\/hymn-mr/.test(q.url); }).map(function(q){ return c.delete(q); })); }); }).catch(function(){}); })
+    /* 1.0.101 (2026-11-22): 모두의 찬양 악보를 제본용 PDF(B5 588쪽) 그림으로 바꿈 — 예전에 담아 둔 data/ccm/ 악보를 지워 새 그림을 받게 한다 */
+    .then(function(){ return caches.open(DATA).then(function(c){ return c.keys().then(function(ks){ return Promise.all(ks.filter(function(q){ return /\/data\/ccm\//.test(q.url); }).map(function(q){ return c.delete(q); })); }); }).catch(function(){}); })
     .then(function(){ return self.clients.claim(); }));
 });
 self.addEventListener('message', function(e){ if(e.data && e.data.type === 'skip') self.skipWaiting(); });
