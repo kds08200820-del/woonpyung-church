@@ -13500,7 +13500,63 @@ console.log('[affairs.js] v20261023th1');
       loadGeneral(); // 설립일(호수 주년 기준) 미리 로드
       render();
       maybeQtIncoming();
+      bdayTagDevice();
+      try { if (new URLSearchParams(location.search).get('bday')) bdayModal(); } catch (e) { /* noop */ }
     }).catch(function (e) { root.innerHTML = msgCard('오류', e.message); });
+  }
+
+  // ── 매주 월요일 생일자 알림 (2026-11-22 담임목사 지시, supabase/20261122_1200_birthday_week_push.sql) ──
+  //  관리자가 이 화면을 열면 그 기기에 OneSignal 태그 bk=<알림 열쇠>(무작위 32자)를 붙인다.
+  //  apps-script/birthday-week-push.gs 가 월요일 아침 이 태그 기기에 '이번 주 생일 N명' 푸시 → 누르면 affairs.html?bday=1 → 아래 창.
+  function bdayTagDevice() {
+    if (!window.ONESIGNAL_APP_ID) return;
+    api('POST', 'rpc/bday_my_push_key', {}).then(function (k) {
+      if (!k || typeof k !== 'string') return;
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function (OneSignal) { try { await OneSignal.User.addTag('bk', k); } catch (e) { } });
+    }).catch(function () { /* SQL 실행 전이면 조용히 건너뜀 */ });
+  }
+  function bdayModal() {
+    var WD = ['일', '월', '화', '수', '목', '금', '토'];
+    function ds(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+    var t = new Date(today() + 'T00:00:00'), dow = (t.getDay() + 6) % 7;
+    var ws = new Date(t); ws.setDate(t.getDate() - dow);
+    var we = new Date(ws); we.setDate(ws.getDate() + 6);
+    var ms = new Date(t.getFullYear(), t.getMonth(), 1), me = new Date(t.getFullYear(), t.getMonth() + 1, 0);
+    var R = { week: [ds(ws), ds(we), '이번 주'], month: [ds(ms), ds(me), (t.getMonth() + 1) + '월'] };
+    var prev = document.getElementById('bday_ov'); if (prev) prev.remove();
+    var ov = document.createElement('div');
+    ov.id = 'bday_ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(23,17,12,.5);z-index:9800;display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow:auto';
+    ov.innerHTML = '<div style="background:#fff;border-radius:2px;max-width:560px;width:100%;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.3)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h3 style="margin:0;color:var(--accent,#111111)">생일 맞는 교인</h3><button class="btn btn-line" id="bd_close" style="padding:3px 11px">닫기</button></div>' +
+      '<div style="display:flex;gap:6px;margin-bottom:12px"><button class="btn btn-solid" data-r="week" style="padding:5px 14px">이번 주</button><button class="btn btn-line" data-r="month" style="padding:5px 14px">' + R.month[2] + '</button></div>' +
+      '<div id="bd_body" style="font-size:.92rem">불러오는 중…</div>' +
+      '<p style="margin:12px 0 0;font-size:.74rem;color:#A7A6A3">교적부 생년월일(양력) 기준입니다. 음력 생일은 따로 챙겨 주세요.</p></div>';
+    document.body.appendChild(ov);
+    var close = pushBackClose(function () { ov.remove(); });
+    ov.querySelector('#bd_close').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    function show(key) {
+      Array.prototype.forEach.call(ov.querySelectorAll('[data-r]'), function (b) { b.className = 'btn ' + (b.dataset.r === key ? 'btn-solid' : 'btn-line'); });
+      var r = R[key], body = ov.querySelector('#bd_body');
+      body.textContent = '불러오는 중…';
+      api('POST', 'rpc/bday_list', { p_from: r[0], p_to: r[1] }).then(function (rows) {
+        rows = rows || [];
+        var head = '<div style="color:#73726F;margin-bottom:8px">' + r[2] + ' (' + r[0].slice(5).replace('-', '/') + '~' + r[1].slice(5).replace('-', '/') + ') · ' + rows.length + '명</div>';
+        if (!rows.length) { body.innerHTML = head + '<p style="color:#A7A6A3;margin:0">생일 맞는 교인이 없습니다.</p>'; return; }
+        body.innerHTML = head + '<table class="fin-table" style="width:100%"><thead><tr><th>날짜</th><th>이름</th><th>나이</th><th>직책 · 구역</th></tr></thead><tbody>' +
+          rows.map(function (x) {
+            var d = new Date(String(x.on_date).slice(0, 10) + 'T00:00:00');
+            var age = x.birth_year ? (d.getFullYear() - x.birth_year) + '세' : '';
+            return '<tr><td style="white-space:nowrap">' + (d.getMonth() + 1) + '/' + d.getDate() + ' (' + WD[d.getDay()] + ')</td><td><b>' + esc(x.name || '') + '</b></td><td>' + age + '</td><td style="color:#73726F">' + esc([x.role, x.groups].filter(Boolean).join(' · ')) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      }).catch(function (e) {
+        body.innerHTML = '<p style="color:#A33A2A;margin:0">' + (/bday_list|PGRST202|Could not find/i.test(e.message || '') ? '생일 알림 SQL(20261122_1200)이 아직 실행되지 않았습니다.' : esc(e.message || String(e))) + '</p>';
+      });
+    }
+    Array.prototype.forEach.call(ov.querySelectorAll('[data-r]'), function (b) { b.onclick = function () { show(b.dataset.r); }; });
+    show('week');
   }
 
   // 히어로 '설교하기'(worship.js preachRow) → affairs.html?present=sunday|wed|dawn&date=YYYY-MM-DD
