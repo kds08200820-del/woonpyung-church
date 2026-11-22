@@ -74,11 +74,61 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
     } catch (e) { return null; }
   }
 
+  // ── 만료된 로그인 새로 받기 (2026-11-22) ──
+  //  대시보드는 저장된 토큰을 그대로 읽는데, 오래 안 들어왔다가 열면 토큰이 이미 만료돼
+  //  "JWT expired" 로 멈췄다. 시작 전에 만료(1분 이내 포함)면 auth.js 의 클라이언트(window.__sb)로
+  //  getSession() 을 불러 새 토큰을 받고(저장소도 갱신됨), 그 클라이언트가 아직 없으면 직접 새로 받는다.
+  function sbStore() {
+    try {
+      var key = 'sb-' + new URL(window.SUPABASE_URL).hostname.split('.')[0] + '-auth-token';
+      var raw = localStorage.getItem(key); if (!raw) return null;
+      var st = JSON.parse(raw); return { key: key, st: st, cur: st.currentSession || st };
+    } catch (e) { return null; }
+  }
+  function tokenStale() {
+    var s = sbStore(); if (!s || !s.cur) return false;
+    var exp = Number(s.cur.expires_at) || 0;
+    return exp > 0 && exp * 1000 < Date.now() + 60000;
+  }
+  var _fresh = null;
+  function freshToken(force) {
+    if (!force && !tokenStale()) return Promise.resolve();
+    if (_fresh) return _fresh;
+    var waited = 0;
+    _fresh = new Promise(function (resolve) {
+      (function tryOnce() {
+        if (window.__sb && window.__sb.auth) {
+          var a = window.__sb.auth;   // 강제: 서버가 만료라 했으면 refreshSession, 아니면 getSession(필요할 때만 새로 받음)
+          (force && a.refreshSession ? a.refreshSession() : a.getSession()).then(function () { resolve(); }, function () { resolve(); });
+          return;
+        }
+        if ((waited += 200) < 3000) { setTimeout(tryOnce, 200); return; }
+        var s = sbStore(), rt = s && s.cur && s.cur.refresh_token;   // auth.js 가 끝내 안 뜨면 직접
+        if (!rt) { resolve(); return; }
+        fetch(window.SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+          method: 'POST', headers: { apikey: window.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: rt })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+          if (d && d.access_token) {
+            var t = s.cur; t.access_token = d.access_token; t.refresh_token = d.refresh_token || rt;
+            if (d.expires_at) t.expires_at = d.expires_at; else if (d.expires_in) t.expires_at = Math.floor(Date.now() / 1000) + Number(d.expires_in);
+            if (d.user) t.user = d.user;
+            localStorage.setItem(s.key, JSON.stringify(s.st));
+          }
+          resolve();
+        }, function () { resolve(); });
+      })();
+    });
+    _fresh.then(function () { _fresh = null; });
+    return _fresh;
+  }
+  // 대시보드를 오래 켜 둬도 끊기지 않게 4분마다 확인
+  setInterval(function () { freshToken(); }, 240000);
+
   // ── 로그인 대기 → 정회원 확인 ──
   var tries = 0;
   function waitLogin() {
     if (!window.FINANCE_API_URL) { showLocked('준비 중', '로그인 기능이 아직 설정되지 않았습니다.'); return; }
-    if (window.WPF && WPF.token()) { boot(); return; }
+    if (window.WPF && WPF.token()) { freshToken().then(boot); return; }
     if (tries++ < 20) { setTimeout(waitLogin, 400); return; }
     showLocked('로그인이 필요합니다', '대시보드는 정회원 로그인 후 이용할 수 있습니다.', true);
   }
@@ -97,12 +147,19 @@ console.log('[dashboard.js] v20261111dsh2 (진행중인 교육: 양육반 진도
     lock.appendChild(b);
   }
 
-  function boot() {
+  function boot(_retried) {
     root.innerHTML = '<p class="qt-loading">확인 중입니다…</p>';
     WPF.call('me').then(function (me) {
       if (me.status !== '정회원') { showLocked('정회원 전용 페이지입니다', '교적 인증 후 정회원이 되면 대시보드를 이용할 수 있습니다.'); return; }
       renderDashboard(me);
-    }).catch(function (e) { showLocked('오류가 발생했습니다', e.message); });
+    }).catch(function (e) {
+      // 그래도 만료로 거절되면 한 번만 새로 받고 다시
+      if (!_retried && /JWT expired|PGRST303|invalid JWT|token.*expired/i.test(e.message || '')) {
+        freshToken(true).then(function () { boot(true); });
+        return;
+      }
+      showLocked('오류가 발생했습니다', e.message);
+    });
   }
 
   function renderDashboard(me) {
