@@ -283,9 +283,9 @@ def make_project(cfg, plan, proj):
 
 # ─────────────────────────────── 4. 목소리 (교회 QT 목소리: GPT-SoVITS)
 
-def sovits_up(api):
+def sovits_up(api, timeout=15):
     try:
-        urllib.request.urlopen(api + "/control", timeout=4)
+        urllib.request.urlopen(api + "/control", timeout=timeout)
         return True
     except urllib.error.HTTPError:
         return True      # 응답은 온다(400 등) = 켜져 있음
@@ -293,18 +293,60 @@ def sovits_up(api):
         return False
 
 
+def sovits_port_open(api):
+    """서버 프로세스가 포트를 잡고 있는가(대답은 못 해도). GPT-SoVITS 는 녹음하는 동안 /control 에도 대답하지 않는다."""
+    import socket
+    u = urllib.parse.urlparse(api)
+    try:
+        socket.create_connection((u.hostname, u.port or 80), timeout=3).close()
+        return True
+    except Exception:
+        return False
+
+
+def kill_sovits():
+    """대답 없이 멈춘 GPT-SoVITS(api_v2.py)를 끈다 — QT 음성 워커(qt_tts_daily.mjs 의 killSovits)와 같은 방식."""
+    subprocess.run(["powershell", "-NoProfile", "-Command",
+                    "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -like '*api_v2.py*' } | "
+                    "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
+
+
 def ensure_sovits():
+    """QT 음성 서버가 대답할 때까지 기다리고, 꺼져 있으면 켜고, 멈춰 있으면 껐다 켠다.
+    2026-11-16 새벽 실패: 서버가 앞 영상이 버리고 간 녹음 요청을 처리하느라 /control 에 4초 안에 대답하지 못했는데,
+    꺼진 것으로 보고 하나를 더 켜려 했다(포트가 잡혀 있어 뜨지 못함) → '5분 안에 켜지지 않았습니다'로 다음 날짜들이 줄줄이 실패."""
     v = json.load(open(os.path.join(QT_HOME, "tts_config.json"), encoding="utf-8-sig"))
     api = v["api"].rstrip("/")
     if sovits_up(api):
         return
+    if sovits_port_open(api):
+        log("  QT 음성 서버가 다른 녹음을 하는 중 — 끝나기를 기다립니다(최대 15분)…")
+        for _ in range(90):
+            time.sleep(10)
+            if sovits_up(api):
+                return
+        log("  QT 음성 서버가 15분 동안 대답이 없어 껐다가 다시 켭니다…")
+        kill_sovits()
+        time.sleep(5)
     log("  QT 음성 서버를 켭니다…")
     subprocess.Popen(["cmd", "/c", v["start_bat"]], creationflags=0x00000008 | 0x00000200, close_fds=True)   # DETACHED | NEW_GROUP
-    for _ in range(60):
+    for _ in range(120):
         time.sleep(5)
         if sovits_up(api):
             return
-    raise RuntimeError("QT 음성 서버(GPT-SoVITS)가 5분 안에 켜지지 않았습니다.")
+    raise RuntimeError("QT 음성 서버(GPT-SoVITS)가 10분 안에 켜지지 않았습니다. " + v["start_bat"] + " 를 직접 켜 보세요.")
+
+
+def free_comfy_vram(cfg):
+    """녹음 전에 그림 서버(ComfyUI)가 그래픽카드에 올려 둔 모델을 내린다 — 8GB 를 나눠 쓰면 녹음이 몇 배 느려진다.
+    그림 단계에서 다시 올린다. 꺼져 있거나 안 되면 그냥 지나간다."""
+    try:
+        req = urllib.request.Request(cfg["comfy"].rstrip("/") + "/free", data=b'{"unload_models": true, "free_memory": true}',
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        urllib.request.urlopen(req, timeout=10)
+    except Exception:
+        pass
 
 
 def autocut(proj):
@@ -350,10 +392,14 @@ def autocut(proj):
 
 
 def make_voice(cfg, proj):
+    free_comfy_vram(cfg)
     ensure_sovits()
     port = str(cfg["bridge_port"])
     bridge = subprocess.Popen(["node", os.path.join(HERE, "sovits_bridge.mjs"), port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    env = {"FISH_API_URL": f"http://127.0.0.1:{port}/v1/tts", "FISH_API_KEY": "local"}
+    # 음성 서버는 한 번에 한 줄만 녹음한다 → 한 줄씩 보내고(FISH_CONCURRENCY=1), 한 줄 기다림을 3분→15분으로(FISH_TIMEOUT_MS).
+    # 예전엔 세 줄을 한꺼번에 보내 뒤 줄이 앞 줄을 기다리다 3분에 끊기고, 다시 보낸 요청까지 서버에 쌓여 'network error' (11/16).
+    env = {"FISH_API_URL": f"http://127.0.0.1:{port}/v1/tts", "FISH_API_KEY": "local",
+           "FISH_CONCURRENCY": "1", "FISH_TIMEOUT_MS": "900000"}
     try:
         time.sleep(2)
         run(["node", os.path.join(SCRIPTS, "tts.mjs"), proj, "--approved"], env=env, timeout=1800)

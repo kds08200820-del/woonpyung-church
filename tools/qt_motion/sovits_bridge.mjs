@@ -27,9 +27,15 @@ function sovits(text) {
     req.on('error', reject); req.setTimeout(600000, () => req.destroy(new Error('timeout'))); req.end(payload);
   });
 }
+// 음성 서버는 한 번에 한 줄만 녹음한다 → 다리도 한 줄씩 차례로 보낸다. 부른 쪽이 기다리다 끊은 요청은 보내지 않는다
+// (2026-11-16: 끊긴 요청이 서버에 쌓여 서버가 오래 대답을 못 했고, 다음 날짜 영상들이 줄줄이 실패했다).
+let turn = Promise.resolve();
 http.createServer((req, res) => {
   const ch = []; req.on('data', (c) => ch.push(c));
-  req.on('end', async () => {
+  let gone = false; res.on('close', () => { if (!res.writableEnded) gone = true; });
+  req.on('end', () => { turn = turn.then(() => handle()).catch(() => {}); });
+  async function handle() {
+    if (gone) { console.error('skip: caller gave up'); return; }
     try {
       const b = JSON.parse(Buffer.concat(ch).toString('utf8'));
       const text = String(b.text || '').replace(/\[[^\]]*\]/g, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();   // Fish 지시 꼬리표는 뺀다
@@ -40,6 +46,6 @@ http.createServer((req, res) => {
       if (ff.status !== 0) throw new Error('ffmpeg ' + ff.stderr);
       console.log(`${((Date.now() - t0) / 1000).toFixed(1)}s → ${(ff.stdout.length / 2 / (b.sample_rate || 44100)).toFixed(2)}s  ${text.slice(0, 30)}`);
       res.writeHead(200, { 'Content-Type': 'application/octet-stream' }); res.end(ff.stdout);
-    } catch (e) { console.error(String(e)); res.writeHead(500); res.end(String(e)); }
-  });
+    } catch (e) { console.error(String(e)); if (!gone) { res.writeHead(500); res.end(String(e)); } }
+  }
 }).listen(PORT, '127.0.0.1', () => console.log('bridge on', PORT));

@@ -26,6 +26,12 @@ $old = "const API = 'https://api.fish.audio/v1/tts';"
 $new = "const API = process.env.FISH_API_URL || 'https://api.fish.audio/v1/tts';"
 if ($t.Contains($old)) { [IO.File]::WriteAllText($f, $t.Replace($old, $new)) }
 
+# 고침 3: 한꺼번에 보내는 줄 수와 한 줄 기다림을 바꿀 수 있게(교회 음성 서버는 한 줄씩 · 느릴 수 있음, 2026-11-22)
+$t = [IO.File]::ReadAllText($f)
+$t = $t.Replace("takes = await mapLimit(cues, 3, takeFor);", "takes = await mapLimit(cues, Number(process.env.FISH_CONCURRENCY) || 3, takeFor);")
+$t = $t.Replace("signal: AbortSignal.timeout(180_000),", "signal: AbortSignal.timeout(Number(process.env.FISH_TIMEOUT_MS) || 180_000),")
+[IO.File]::WriteAllText($f, $t)
+
 Push-Location (Join-Path $skill 'scripts')
 npm install --ignore-scripts --no-audit --no-fund
 node setup_browser.mjs
