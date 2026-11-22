@@ -3564,7 +3564,7 @@ console.log('[affairs.js] v20261023th1');
     var i, m, date = '';
     for (i = 0; i < trim.length; i++) { m = trim[i].match(/(20\d{2})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/); if (m) { date = m[1] + '-' + pad2(m[2]) + '-' + pad2(m[3]); break; } }
     var scripture = '';
-    for (i = 0; i < trim.length; i++) { var mm = trim[i].match(/^([가-힣]+\s*\d+:\d+(?:[~\-]\d+)?)\s*$/); if (mm) { scripture = mm[1].replace(/~/g, '-').replace(/\s+/g, ' '); break; } }
+    for (i = 0; i < trim.length; i++) { var mm = trim[i].match(/^([가-힣]+\s*\d+:\d+(?:[~\-]\d+(?::\d+)?)?)\s*$/); /* 장을 넘는 본문(미가 4:6~5:1)도 */ if (mm) { scripture = mm[1].replace(/~/g, '-').replace(/\s+/g, ' '); break; } }
     var iGae = findEq('개역개정'), iWoo = -1, iNasb = -1, iSummary = findEq('오늘의 말씀 요약');
     if (iGae >= 0) { iWoo = findEq('우리말', iGae + 1); if (iWoo < 0) iWoo = findEq('우리말성경', iGae + 1); }
     if (iWoo >= 0) iNasb = findEq('NASB', iWoo + 1);
@@ -3593,7 +3593,7 @@ console.log('[affairs.js] v20261023th1');
       var sTitle = '', sScr = '', sBodyStart = -1, seen = 0;
       for (var si = iSunday + 1; si < trim.length; si++) {
         if (!trim[si]) continue;
-        var sm2 = trim[si].match(/^([가-힣]+\s*\d+:\d+(?:[~\-]\d+)?)\s*$/);
+        var sm2 = trim[si].match(/^([가-힣]+\s*\d+:\d+(?:[~\-]\d+(?::\d+)?)?)\s*$/);
         if (sm2) { sScr = sm2[1].replace(/~/g, '-').replace(/\s+/g, ' '); sBodyStart = si; break; }  // 성구 줄 = 본문
         seen++;
         if (seen === 1) sTitle = trim[si];            // 첫 줄 = 설교 제목
