@@ -9,7 +9,7 @@
  *    #disciple/c/<반>/s[/<날짜>] 인도자: 모임 찬양 고르기(모두의 찬양 — supabase/20261111_2100_edu_meeting_songs.sql). 반 화면에 '이번 모임 찬양'
  *  · 진도는 반마다 '강-대목'('3-4')으로 남고, 한 과를 여러 모임에 나누어 나갈 수 있다. 다음 모임은 못 다 나간 대목부터.
  */
-console.log('[disciple.js] v20261111g');
+console.log('[disciple.js] v20261123ld2');
 
 (function () {
   var D = window.WPC_DISCIPLE;
@@ -247,7 +247,6 @@ console.log('[disciple.js] v20261111g');
         var no = parseInt(rest[3], 10), l = D.lesson(no);
         if (!l) return go('#disciple/c/' + id);
         if (!canOpen(st, no)) return msg('<h2>' + no + '강은 아직 열리지 않았습니다</h2><p>우리 반이 앞 강을 마치면 열립니다.</p><div class="cr-acts"><a class="cr-line" href="#disciple/c/' + esc(id) + '">‹ 우리 반</a></div>');
-        if (isLeader(st)) return loadGuide().then(function () { renderLesson(st, l); });   // 인도자: 강의안·고쳐 쓴 질문을 먼저
         return renderLesson(st, l);
       }
       if (rest[2] === 'm' && isLeader(st)) return renderMeeting(st, rest[3] || '');
@@ -554,10 +553,11 @@ console.log('[disciple.js] v20261111g');
       '<textarea id="' + id + '" data-ak="' + key + '" rows="2" maxlength="2000" placeholder="' + esc(label || '교재에 적은 답이나 내 생각을 적어 두십시오') + '">' + esc(ax.mine[key] || '') + '</textarea></div>';
   }
   /* ── 인도자용 강의안·질문(2026-11-11 담임목사 "질문은 인도자에게만", "인도자용 강의안도", "페이지도 표시") ──
+       (2026-11-23 담임목사 "기존에 있는 인도자용은 강의실로 통합") 강 화면에는 두지 않고, [강의실 입장]으로 여는 강의 창(js/disciple-show.js)에만 나온다.
        기본 글: js/disciple-guide.js(교회가 새로 쓴 질문·답의 방향·대목 핵심 — 인도자일 때만 불러온다)
        인도자가 고쳐 쓴 질문(교재 문장 붙여 넣기 등): 표 edu_guide_texts(supabase/20261111_2340_edu_guide_texts.sql) — 인도자·관리자만 읽고 쓴다
        수강생 화면에는 문항의 짧은 주제·교재 쪽·성경 구절·내 답 칸만 있다. */
-  var GUIDE_SRC = 'js/disciple-guide.js?v=20261111a';
+  var GUIDE_SRC = 'js/disciple-guide.js?v=20261123a';
   var GTXT = null;         // {'3-a2': {body, at}} · 표가 아직 없으면 'none'
   function loadGuide() {
     var a = window.WPC_DISCIPLE_GUIDE ? null : new Promise(function (res) {
@@ -574,40 +574,12 @@ console.log('[disciple.js] v20261111g');
     var own = GTXT && GTXT !== 'none' ? GTXT[no + '-' + key] : null;
     return { q: own && own.body ? own.body : x.q || '', hint: x.hint || '', own: !!(own && own.body) };
   }
-  function ldQ(no, key) {
-    var x = gItem(no, key);
-    return '<span class="dc-ld-tag">' + (x.own ? '질문 · 고쳐 쓴 글' : '질문') + '</span><span class="dc-ld-qt">' + (x.q ? esc(x.q) : '<i>아직 질문이 없습니다. 아래에서 적어 두십시오.</i>') + '</span>';
-  }
-  function ldBox(no, key) {
-    var x = gItem(no, key), can = GTXT !== 'none' && GTXT !== null;
-    return '<div class="dc-ld" data-gk="' + esc(key) + '"><p class="dc-ld-q">' + ldQ(no, key) + '</p>' +
-      (x.hint ? '<details class="dc-ld-h"><summary>답의 방향</summary><p>' + esc(x.hint) + '</p></details>' : '') +
-      (can ? '<button type="button" class="dc-ld-edit" data-gedit>질문 고쳐 쓰기</button>' +
-        '<div class="dc-ld-form" hidden><label class="dc-ld-lab" for="dcG_' + esc(key) + '">이 문항의 질문</label>' +
-        '<textarea id="dcG_' + esc(key) + '" rows="3" maxlength="4000"></textarea>' +
-        '<div class="dc-ld-acts"><button type="button" class="cr-btn cr-sm" data-gsave>저장</button><button type="button" class="cr-line cr-sm" data-gcancel>취소</button>' +
-        '<button type="button" class="cr-line cr-sm" data-greset' + (x.own ? '' : ' hidden') + '>기본 질문으로</button></div><p class="dc-msg" role="status"></p></div>' : '') +
-      '</div>';
-  }
-  // (2026-11-12 담임목사 "학습 목표 등 정리된 것은 인도자용으로") 한 줄로·요약·학습 목표는 수강생 화면에서 빼고 이 강의안 칸 맨 앞에 둔다
-  function ldLesson(l) {
-    var g = guide(l.no);
-    var head = '<dt>한 줄로</dt><dd><p><b>' + esc(l.one) + '</b></p>' + l.summary.map(function (s) { return '<p>' + esc(s) + '</p>'; }).join('') + '</dd>' +
-      '<dt>학습 목표</dt><dd><ol>' + l.goals.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></dd>';
-    if (!g) return '<section class="dc-sec dc-ldl"><h3 class="cr-sub-h">인도자용 강의안</h3><dl class="dc-ldl-dl">' + head + '</dl><p class="cr-note">강의안을 불러오지 못했습니다. 쪽을 새로 고쳐 주십시오.</p></section>';
-    var C = window.WPC_DISCIPLE_GUIDE.common || [];
-    return '<section class="dc-sec dc-ldl"><h3 class="cr-sub-h">인도자용 강의안</h3>' +
-      '<dl class="dc-ldl-dl">' + head +
-      (g.plan ? '<dt>나누어 가기</dt><dd>' + esc(g.plan) + '</dd>' : '') +
-      (C.length ? '<dt>모임 순서</dt><dd><ol>' + C.map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') + '</ol></dd>' : '') +
-      (g.open ? '<dt>여는 말</dt><dd>' + esc(g.open) + '</dd>' : '') +
-      (g.close ? '<dt>마치는 말</dt><dd>' + esc(g.close) + '</dd>' : '') +
-      '</dl>' + (GTXT === null ? '<p class="cr-note">고쳐 쓴 질문을 불러오지 못했습니다. 기본 질문을 보여 드립니다.</p>' : '') + '</section>';
-  }
-  function ldPart(l, part) {
-    var g = guide(l.no), x = g && g.parts && g.parts[part];
-    if (!x) return '';
-    return '<div class="dc-ld-pt">' + (x.point ? '<p><b>핵심</b>' + esc(x.point) + '</p>' : '') + (x.tip ? '<p><b>요령</b>' + esc(x.tip) + '</p>' : '') + '</div>';
+  function guideSave(no, key, body) {
+    return X.rpc('edu_guide_text_save', { p_course: 'disciple', p_key: no + '-' + key, p_body: body }).then(function (r) {
+      if (!r || !r.ok) throw new Error(r && r.error || '');
+      if (GTXT && GTXT !== 'none') { if (r.body) GTXT[no + '-' + key] = { body: r.body, at: new Date().toISOString() }; else delete GTXT[no + '-' + key]; }
+      return r;
+    }, function (err) { throw new Error(X.notReady(err) ? '질문 저장을 아직 준비하고 있습니다' : err && err.message && err.message.charAt(0) !== '{' ? err.message : ''); });
   }
   function pgRange(items) {
     var a = items.map(function (it) { return it.pg; }).filter(Boolean);
@@ -615,54 +587,19 @@ console.log('[disciple.js] v20261111g');
     var lo = Math.min.apply(null, a), hi = Math.max.apply(null, a);
     return '교재 ' + lo + (hi !== lo ? '~' + hi : '') + '쪽';
   }
-  // 인도자: 문항마다 '질문 고쳐 쓰기' — 저장하면 그 칸만 고친다
-  function bindGuide(l) {
-    Array.prototype.forEach.call(lead().querySelectorAll('.dc-ld[data-gk]'), function (box) {
-      var key = box.dataset.gk, f = box.querySelector('.dc-ld-form'); if (!f) return;
-      var ta = f.querySelector('textarea'), out = f.querySelector('.dc-msg'), eb = box.querySelector('[data-gedit]'), busy = false;
-      function close() { f.hidden = true; eb.hidden = false; out.textContent = ''; eb.focus(); }
-      function save(body) {
-        if (busy) return; busy = true;
-        var bs = f.querySelectorAll('button'); Array.prototype.forEach.call(bs, function (b) { b.disabled = true; });
-        out.textContent = '저장 중…';
-        X.rpc('edu_guide_text_save', { p_course: 'disciple', p_key: l.no + '-' + key, p_body: body }).then(function (r) {
-          if (!r || !r.ok) throw new Error(r && r.error || '저장하지 못했습니다.');
-          if (GTXT && GTXT !== 'none') { if (r.body) GTXT[l.no + '-' + key] = { body: r.body, at: new Date().toISOString() }; else delete GTXT[l.no + '-' + key]; }
-          dirty = false;
-          box.querySelector('.dc-ld-q').innerHTML = ldQ(l.no, key);
-          f.querySelector('[data-greset]').hidden = !r.body;
-          close();
-        }).catch(function (err) {
-          out.textContent = X.notReady(err) ? '질문 저장을 아직 준비하고 있습니다. 잠시 뒤 다시 눌러 주십시오.' : '저장하지 못했습니다' + (err && err.message && err.message.charAt(0) !== '{' ? ': ' + err.message : '.');
-        }).then(function () { busy = false; Array.prototype.forEach.call(bs, function (b) { b.disabled = false; }); });
-      }
-      eb.onclick = function () { var x = gItem(l.no, key); ta.value = x.own ? x.q : ''; ta.placeholder = x.q ? '지금 질문: ' + x.q : ''; f.hidden = false; eb.hidden = true; ta.focus(); };
-      ta.addEventListener('input', function () { dirty = true; });
-      ta.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); dirty = false; close(); } });
-      f.querySelector('[data-gsave]').onclick = function () {
-        var v = ta.value.trim();
-        if (!v) { out.textContent = '질문을 적어 주십시오. 기본 질문으로 돌아가려면 [기본 질문으로]를 누르십시오.'; ta.focus(); return; }
-        save(v);
-      };
-      f.querySelector('[data-gcancel]').onclick = function () { dirty = false; close(); };
-      f.querySelector('[data-greset]').onclick = function () { save(''); };
-    });
-  }
-
-  // 교재 문항: 대목마다 문항(짧은 주제)·교재 쪽·성경 구절 — 질문 문장은 인도자에게만(ldBox)
+  // 교재 문항: 대목마다 문항(짧은 주제)·교재 쪽·성경 구절 — 질문 문장은 인도자의 강의 창에만
   function qsHTML(l, p, nextPart, ax) {
-    var qn = 0, ld = ax && ax.leader;
+    var qn = 0;
     return '<section class="dc-sec"><h3 class="cr-sub-h">교재 문항과 성경 구절 <small>교재 ' + esc(l.pages) + '쪽</small></h3>' +   // (2026-11-12 담임목사 "설명을 많이 하지 말 것") 쪽수만
       l.sections.map(function (sec) {
         var k = l.no + '-' + sec.part, done = p.set[k], here = nextPart === sec.part, pr = pgRange(sec.items);
         return '<div class="dc-qsec' + (done ? ' is-done' : here ? ' is-next' : '') + '"><h4><span class="n">' + sec.part + '</span>' + esc(l.parts[sec.part - 1] || '') +
           (pr ? ' <span class="dc-pg">' + pr + '</span>' : '') +
-          (done ? ' <em>우리 반 나감</em>' : here ? ' <em class="is-next">다음 모임은 여기부터</em>' : '') + '</h4>' + (ld ? ldPart(l, sec.part) : '') + '<ol class="dc-qs">' +
+          (done ? ' <em>우리 반 나감</em>' : here ? ' <em class="is-next">다음 모임은 여기부터</em>' : '') + '</h4><ol class="dc-qs">' +
           sec.items.map(function (it) {
             qn++;
             return '<li value="' + qn + '"><p class="dc-qt"><b>' + esc(it.t) + '</b>' + (it.kind === 'w' ? ' <small>내 생각 적기</small>' : it.kind === 't' ? ' <small>표 채우기</small>' : '') +
               (it.pg ? ' <span class="dc-pg">교재 ' + it.pg + '쪽</span>' : '') + '</p>' +
-              (ld ? ldBox(l.no, 'a' + qn) : '') +
               (it.refs && it.refs.length ? '<ul class="dc-verses">' + refRows(it.refs) + '</ul>' : '') +
               ansBox(ax, 'a' + qn, it.kind === 'w' ? '내 생각을 적어 보십시오' : it.kind === 't' ? '교재의 표에 채운 것을 적어 두십시오' : '') + '</li>';
           }).join('') + '</ol></div>';
@@ -737,12 +674,18 @@ console.log('[disciple.js] v20261111g');
     var seen = {}; return (sent || []).filter(function (k) { if (seen[k]) return false; seen[k] = 1; return !got[k]; });
   }
   function partLabel(k) { var a = String(k).split('-'), l = D.lesson(+a[0]); return a[0] + '강 ' + a[1] + (l && l.parts[a[1] - 1] ? '. ' + l.parts[a[1] - 1] : ''); }
-  function saveParts(st, keys) {
-    var id = st['class'].id, t = today(), mt = (st.meetings || []).filter(function (m) { return m.meet_date === t; })[0];
-    var set = {}; (mt ? mt.parts : []).concat(keys).forEach(function (k) { set[k] = 1; });
+  function todayMeet(st) { var t = today(); return (st.meetings || []).filter(function (m) { return m.meet_date === t; })[0] || null; }
+  function saveParts(st, keys, drop) {
+    var id = st['class'].id, t = today(), mt = todayMeet(st);
+    var set = {}; (mt && mt.parts || []).concat(keys || []).forEach(function (k) { set[k] = 1; });
+    (drop || []).forEach(function (k) { delete set[k]; });
     return X.rpc('edu_meeting_save', { p_edu: id, p_date: t, p_parts: Object.keys(set), p_memo: mt ? mt.memo : null, p_attend: null }).then(function (r) {
       if (!r || !r.ok) throw new Error(r && r.error || '저장하지 못했습니다.');
       CLS = null;
+      // 창을 닫지 않고 이어서 표시할 수 있게, 받은 대로 이 반의 상태를 고쳐 둔다
+      if (mt) { mt.parts = r.parts || []; mt.voided = false; } else (st.meetings = st.meetings || []).push({ meet_date: t, parts: r.parts || [], memo: null });
+      var all = {}; liveMeetings(st).forEach(function (m) { (m.parts || []).forEach(function (k) { all[k] = 1; }); });
+      st.done = Object.keys(all);
       var lost = lostParts(Object.keys(set), r);
       if (lost.length) throw new Error('대목 ' + lost.length + '개가 저장되지 않았습니다(' + lost.map(partLabel).join(', ') + '). 오늘 모임 기록에 대목이 너무 많습니다 — 출석·모임 기록에서 앞선 강을 지난 날짜로 나눠 적어 주십시오.');
       return r;
@@ -753,14 +696,23 @@ console.log('[disciple.js] v20261111g');
     var c = st['class'], id = c.id, l = D.lesson(no), p = prog(st.done);
     if (!l) return;
     if (btn) { if (btn.disabled) return; btn.disabled = true; btn.dataset.t = btn.textContent; btn.textContent = '들어가는 중…'; }
-    Promise.all([loadMaterials(id, no), Array.isArray(SONGS[id]) || SONGS[id] === 'none' ? null : loadSongs(id), withCcm()]).then(function (out) {
+    var ld = isLeader(st), changed = false;
+    Promise.all([loadMaterials(id, no), Array.isArray(SONGS[id]) || SONGS[id] === 'none' ? null : loadSongs(id), withCcm(), ld ? loadGuide() : null]).then(function (out) {
       if (btn) { btn.disabled = false; btn.textContent = btn.dataset.t; }
       var sn = songsNow(Array.isArray(SONGS[id]) ? SONGS[id] : []), t = today();
+      var tm = todayMeet(st), tset = {}; (tm && !tm.voided && tm.parts || []).forEach(function (k) { tset[k] = 1; });
       window.WPCDiscShow.open({
         lesson: l, className: className(c), refLabel: D.refLabel, bible: bibleLoad, materials: out[0],
         songs: sn && sn.meet_date >= t ? sn.songs : [], songsLabel: sn ? kd(sn.meet_date) + ' 모임 찬양' : '',
-        startPart: startPart || 1, done: p.set, leader: isLeader(st), hasNext: no < 13,
-        onStop: function (keys) { return saveParts(st, keys); },
+        startPart: startPart || 1, done: p.set, leader: ld, hasNext: no < 13,
+        // 인도자: 강의안과 대목 진도 표시
+        guide: ld ? guide(no) : null, common: ld && window.WPC_DISCIPLE_GUIDE ? window.WPC_DISCIPLE_GUIDE.common || [] : [],
+        gItem: function (key) { return gItem(no, key); }, canEdit: ld && GTXT !== 'none' && GTXT !== null,
+        onGuideSave: function (key, body) { return guideSave(no, key, body); },
+        today: tset,
+        onMark: function (key, on) { return saveParts(st, on ? [key] : [], on ? [] : [key]).then(function (r) { changed = true; return r; }); },
+        onClose: function () { if (changed) { changed = false; X.rerender(); } },
+        onStop: function (keys) { return saveParts(st, keys).then(function (r) { changed = false; return r; }); },
         afterStop: function () { X.rerender(); },
         onNext: function () {
           loadState(id, true).then(function (st2) { var p2 = prog(st2.done); enterClass(st2, no + 1, p2.next && p2.next.lesson === no + 1 ? p2.next.part : 1); }).catch(function () { X.rerender(); });
@@ -791,7 +743,6 @@ console.log('[disciple.js] v20261111g');
       '<header class="cr-l-head"><p class="cr-l-eye">' + esc(l.group) + ' · 제' + l.no + '강</p><h2>' + esc(l.title) + '</h2>' +
       '<p class="cr-l-meta">교재 ' + esc(l.pages) + '쪽 · 우리 반 ' + (lp.state === 'done' ? '마침' : lp.n ? lp.all + '대목 중 ' + lp.n + ' 나감' : '아직') + '</p>' +
       '<div class="cr-acts" style="margin-top:12px"><button type="button" class="cr-btn" data-enter>강의실 입장 ▶</button></div></header>' +
-      (lead_ ? ldLesson(l) : '') +   // 한 줄로·학습 목표는 인도자 강의안 안에만 (수강생 화면에는 없음)
       (l.sections && l.sections.length ? qsHTML(l, p, nextPart, ax) :
       '<section class="dc-sec"><h3 class="cr-sub-h">교재의 흐름 <small>우리 반 진도</small></h3><ol class="dc-flow">' + l.parts.map(function (x, i) {
         var k = l.no + '-' + (i + 1), done = p.set[k];
@@ -799,7 +750,7 @@ console.log('[disciple.js] v20261111g');
       }).join('') + '</ol></section>' +
       '<section class="dc-sec"><h3 class="cr-sub-h">예습 — 먼저 읽을 구절</h3><ul class="dc-verses">' + verseRows(l) + '</ul></section>') +
       '<aside class="cr-think"><h3 class="cr-sub-h">나눔과 적용</h3><ul>' + l.questions.map(function (q, i) { return '<li>' + esc(q) + ansBox(ax, 'q' + (i + 1), '나눌 내 이야기를 적어 두십시오') + '</li>'; }).join('') +
-        (l.apply || []).map(function (a, i) { return '<li>' + esc(a.t) + (a.refs && a.refs.length ? ' <small>(' + a.refs.map(D.refLabel).map(esc).join(', ') + ')</small>' : '') + (a.pg ? ' <span class="dc-pg">교재 ' + a.pg + '쪽</span>' : '') + (lead_ ? ldBox(l.no, 'p' + (i + 1)) : '') + ansBox(ax, 'p' + (i + 1), '내 생각과 다짐을 적어 두십시오') + '</li>'; }).join('') + '</ul>' +
+        (l.apply || []).map(function (a, i) { return '<li>' + esc(a.t) + (a.refs && a.refs.length ? ' <small>(' + a.refs.map(D.refLabel).map(esc).join(', ') + ')</small>' : '') + (a.pg ? ' <span class="dc-pg">교재 ' + a.pg + '쪽</span>' : '') + ansBox(ax, 'p' + (i + 1), '내 생각과 다짐을 적어 두십시오') + '</li>'; }).join('') + '</ul>' +
         (ax.leader ? '' : '<p class="dc-msg" id="dcAMsg" role="status"></p><p class="cr-note">적은 답은 나와 인도자만 봅니다.</p>') + '</aside>' +
       '<section class="dc-sec"><h3 class="cr-sub-h">삶의 과제</h3><ul class="dc-goals">' + l.tasks.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></section>' +
       '<aside class="cr-verse"><h3 class="cr-sub-h">암송 · ' + esc(D.refLabel(l.memory.ref)) + '</h3><p>“' + esc(l.memory.text) + '”</p>' + reciteHTML(chunk(l.memory.text)) + '</aside>' +
@@ -809,7 +760,7 @@ console.log('[disciple.js] v20261111g');
       '</article></div>';
     setHTML(html);
     bindRecite(); bindVerses(l); bindEnter(st, l);
-    if (lead_) { bindChecks(st, l); bindGuide(l); } else { bindWork(st, l); bindAnswers(st, l); }
+    if (lead_) bindChecks(st, l); else { bindWork(st, l); bindAnswers(st, l); }
   }
   function bindRecite() {
     Array.prototype.forEach.call(lead().querySelectorAll('.cr-recite'), function (box) {
