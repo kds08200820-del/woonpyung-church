@@ -94,19 +94,14 @@
     const u = S.units[S.cur];
     const sun = nextSunday(), sunTxt = `${sun.getMonth() + 1}월 ${sun.getDate()}일(주일)`;
     const tabs = S.units.length > 1 ? `<div class="pt-depts">${S.units.map((x, i) => `<button data-u="${i}"${i === S.cur ? ' class="on"' : ""}>${esc(x.label)}</button>`).join("")}</div>` : "";
+    // 2026-11-24 담임목사: "모든 예산을 다 보여주지 마세요. 자신이 선택한 계정의 예산만" → 예산 전체 표 없음. 고른 계정 하나만 아래 상자에.
     const fy = S.budgetList[0] || {};
-    const rows = S.budgetList.map((r) => {
-      const st = stat(r);
-      return `<tr><td>${esc(r.gwan)}</td><td><b>${esc(r.hang)}</b></td><td class="n hide-m">${won(st.budget)}</td><td class="n hide-m">${won(st.spent)}</td><td style="min-width:170px">${bar(st)}</td></tr>`;
-    }).join("");
-    const opts = S.budgetList.map((r) => `<option value="${esc(r.hang)}">${esc(r.gwan ? r.gwan + " · " : "")}${esc(r.hang)}</option>`).join("");
+    const has = S.budgetList.length > 0;
+    const opts = `<option value="">— 계정을 고르세요 —</option>` + S.budgetList.map((r) => `<option value="${esc(r.hang)}">${esc(r.gwan ? r.gwan + " · " : "")}${esc(r.hang)}</option>`).join("");
     const mine = S.mine.filter((p) => (u.dept ? p.dept === u.dept : true));
     const stName = { submitted: "확인 대기", approved: "확인됨", rejected: "돌려보냄", cancelled: "거둠" };
     root.innerHTML = tabs +
-      `<div class="pt-card"><h3>${esc(u.dept ? u.dept + " 예산" : "예산 계정")} <small style="font-weight:400;color:#898885">${fy.fy ? fy.fy + "년도 (" + esc(fy.d_from) + " ~ " + esc(fy.d_to) + ")" : ""}</small></h3>` +
-      (rows ? `<div style="overflow:auto"><table class="pt-t"><thead><tr><th>관</th><th>항(계정)</th><th class="n hide-m">연 예산</th><th class="n hide-m">집행</th><th>집행률 · 남은 예산</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="pt-help">청원할 수 있는 계정이 아직 정해지지 않았습니다. 재정부에 말씀해 주세요.</p>`) +
-      `<p class="pt-help" style="margin:8px 0 0">집행 = 장부에 적힌 지출. 남은 예산 = 연 예산 − 집행 − 청원 중(아직 장부에 오르지 않은 청원).</p></div>` +
-      (rows ? `<div class="pt-card"><h3>청원서 쓰기</h3><div class="pt-f">
+      (has ? `<div class="pt-card"><h3>청원서 쓰기 <small style="font-weight:400;color:#898885">${esc(u.dept ? u.dept : "")}${fy.fy ? (u.dept ? " · " : "") + fy.fy + "년도" : ""}</small></h3><div class="pt-f">
         <div><label>예산 계정</label><select id="ptHang">${opts}</select></div>
         <div><label>금액(원)</label><input id="ptAmt" inputmode="numeric" placeholder="예: 150,000"></div>
         <div class="full"><label>지출 내역</label><input id="ptItem" maxlength="200" placeholder="예: 성탄절 행사 간식"></div>
@@ -115,7 +110,7 @@
         <div class="pt-after" id="ptAfter"></div>
       </div>
       <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-solid" id="ptSend">청원 올리기</button><span class="pt-help">올린 청원은 <b>${esc(sunTxt)}</b> 지출결의서로 갑니다. 재정부가 확인하면 결의서에 들어갑니다.</span></div>
-      <div class="pt-msg" id="ptMsg"></div></div>` : "") +
+      <div class="pt-msg" id="ptMsg"></div></div>` : `<div class="pt-card"><p class="pt-help">청원할 수 있는 계정이 아직 정해지지 않았습니다. 재정부에 말씀해 주세요.</p></div>`) +
       `<div class="pt-card"><h3>내 청원</h3>` +
       (mine.length ? `<div style="overflow:auto"><table class="pt-t"><thead><tr><th>결의서</th><th>계정</th><th>내역</th><th class="n">금액</th><th>상태</th><th></th></tr></thead><tbody>` +
         mine.map((p) => `<tr><td>${esc(weekName(p.week_sunday))}</td><td>${esc(p.hang)}</td><td>${esc(p.item)}${(p.receipts || []).map((r, i) => ` <a href="${esc(r)}" target="_blank" rel="noopener" style="font-size:.78rem">영수증${(p.receipts || []).length > 1 ? i + 1 : ""}</a>`).join("")}${p.review_note ? `<div class="pt-help">${esc(p.review_note)}</div>` : ""}</td><td class="n">${won(p.amount)}</td><td><span class="pt-st ${esc(p.status)}">${esc(stName[p.status] || p.status)}</span></td><td>${p.status === "submitted" ? `<button class="btn btn-line" data-cancel="${p.id}" style="padding:3px 9px;font-size:.78rem">거두기</button>` : ""}</td></tr>`).join("") +
@@ -126,10 +121,13 @@
   function after() {
     const box = root.querySelector("#ptAfter"); if (!box) return;
     const hang = root.querySelector("#ptHang").value, amt = num(root.querySelector("#ptAmt").value);
-    const r = S.budget[hang]; if (!r) { box.innerHTML = ""; return; }
+    const r = S.budget[hang];
+    if (!r) { box.style.display = "none"; box.innerHTML = ""; return; }
+    box.style.display = "";
     const st = stat(r, amt);
-    box.innerHTML = `<b>${esc(hang)}</b> — 연 예산 ${won(st.budget)}원 · 집행 ${won(st.spent)}원${st.pend ? ` · 청원 중 ${won(st.pend)}원` : ""}<br>` +
-      (amt ? `이 청원(${won(amt)}원)까지 더하면 <b>집행률 ${pct(st.rateAll)}</b> · <b>남은 예산 ${pct(st.leftPct)} (${won(st.left)}원)</b>` : `지금 집행률 <b>${pct(st.rate)}</b> · 남은 예산 <b>${pct(stat(r).leftPct)}</b>`) +
+    box.innerHTML = `<b>${esc(hang)}</b> — 연 예산 ${won(st.budget)}원 · 집행 ${won(st.spent)}원${st.pend ? ` · 청원 중 ${won(st.pend)}원` : ""}` +
+      `<div style="margin:6px 0">${bar(st)}</div>` +
+      (amt ? `이 청원(${won(amt)}원)까지 더하면 <b>집행률 ${pct(st.rateAll)}</b>` : "") +
       (st.budget && st.left < 0 ? `<br><b style="color:#C62828">예산을 ${won(-st.left)}원 넘습니다. 그래도 올릴 수는 있지만 재정부가 따로 살핍니다.</b>` : "");
   }
   function drawFiles() {
@@ -167,6 +165,7 @@
     const u = S.units[S.cur], msg = root.querySelector("#ptMsg");
     const hang = root.querySelector("#ptHang").value, amount = num(root.querySelector("#ptAmt").value);
     const item = root.querySelector("#ptItem").value.trim(), memo = root.querySelector("#ptMemo").value.trim();
+    if (!hang) { msg.style.color = "#C62828"; msg.textContent = "예산 계정을 골라 주세요."; return; }
     if (!item) { msg.style.color = "#C62828"; msg.textContent = "지출 내역을 적어 주세요."; return; }
     if (!amount) { msg.style.color = "#C62828"; msg.textContent = "금액을 적어 주세요."; return; }
     if (!S.files.length && !confirm("영수증 없이 올릴까요? (나중에 재정부에 따로 내도 됩니다)")) return;
