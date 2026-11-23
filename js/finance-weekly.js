@@ -144,6 +144,10 @@ window.FinWeekly = (function () {
       '.wk-pet .rt{font-size:8.5pt}.wk-pet .rt.over{color:#C62828;font-weight:700}',
       '.wk-pet .att{font-size:7.5pt;color:#C62828}',
       '.wk-pet .rtnote{text-align:center;font-size:7.5pt;color:#777;margin-top:2mm}',
+      '.wk-pet .pays{margin-top:3mm;border-top:1pt solid #111;border-bottom:.5pt solid #BDBDBD;padding:1.5mm 1mm;font-size:8.5pt}',
+      '.wk-pet .pays b{display:block;font-size:9pt;margin-bottom:1mm}',
+      '.wk-pet .pays div{display:flex;justify-content:space-between;gap:4mm;line-height:1.55}',
+      '.wk-pet .pays div span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.wk-rcp .rh{font-size:11pt;font-weight:700;border-bottom:1.3pt solid #111;padding-bottom:2mm;margin-bottom:4mm}',
       '.wk-rcp .rb{height:124mm;display:flex;flex-direction:column;margin-bottom:4mm;border:.5pt solid #BDBDBD;padding:3mm}',
       '.wk-rcp .rb .cap{font-size:9pt;margin-bottom:2mm}.wk-rcp .rb .cap b{color:#C62828}',
@@ -542,7 +546,8 @@ window.FinWeekly = (function () {
     var rows = draftRows(X, state.sunday).slice();
     (online.approved || []).forEach(function (p) {
       rows.push({ gwan: p.gwan || '', hang: p.hang || '', text: p.item || '', amount: Number(p.amount) || 0,
-        note: (p.dept ? p.dept + ' ' : '') + (p.requester_name || ''), src: 'o:' + p.id, receipts: p.receipts || [], dept: p.dept });
+        note: (p.dept ? p.dept + ' ' : '') + (p.requester_name || ''), src: 'o:' + p.id, receipts: p.receipts || [], dept: p.dept,
+        pay: p.pay_account ? (p.pay_bank + ' ' + p.pay_account + ' (예금주 ' + p.pay_holder + ')') : '' });
     });
     return rows;
   }
@@ -622,11 +627,11 @@ window.FinWeekly = (function () {
         '<td><button class="wk-x" data-del="' + i + '" title="이 줄 지우기">✕</button></td></tr>';
     }
     var onl = (online.approved || []).map(function (p) {
-      return '<tr class="onl"><td>' + esc(p.gwan || '') + '</td><td>' + esc(p.hang || '') + '</td><td>' + esc(p.item || '') + ' <span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + rcpLinks(p, esc) + '</td><td class="n">' + won(p.amount) + '</td><td>' + esc(p.requester_name || '') + '</td><td class="rate" data-h="' + esc(p.hang || '') + '"></td><td><button class="wk-x" data-back="' + p.id + '" title="확인 취소(다시 대기로)">↺</button></td></tr>';
+      return '<tr class="onl"><td>' + esc(p.gwan || '') + '</td><td>' + esc(p.hang || '') + '</td><td>' + esc(p.item || '') + ' <span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + rcpLinks(p, esc) + payLine(p, esc) + '</td><td class="n">' + won(p.amount) + '</td><td>' + esc(p.requester_name || '') + '</td><td class="rate" data-h="' + esc(p.hang || '') + '"></td><td><button class="wk-x" data-back="' + p.id + '" title="확인 취소(다시 대기로)">↺</button></td></tr>';
     }).join('');
     var pend = (online.pending || []).map(function (p) {
       return '<div class="wk-pend"><div><b>' + esc(p.dept || '') + '</b> · ' + esc(p.requester_name || '') + ' · ' + esc(p.hang || '') + ' · ' + esc(p.item || '') + ' · <b>' + won(p.amount) + '원</b>' +
-        ' <span class="tag">' + esc(weekName(p.week_sunday)) + ' 결의서로</span>' + rcpLinks(p, esc) + (p.memo ? '<div class="memo">' + esc(p.memo) + '</div>' : '') + '</div>' +
+        ' <span class="tag">' + esc(weekName(p.week_sunday)) + ' 결의서로</span>' + rcpLinks(p, esc) + payLine(p, esc) + (p.memo ? '<div class="memo">' + esc(p.memo) + '</div>' : '') + '</div>' +
         '<div><button class="btn btn-solid" data-ok="' + p.id + '">확인</button> <button class="btn btn-line" data-no="' + p.id + '">돌려보냄</button></div></div>';
     }).join('');
     box.innerHTML = dl.html +
@@ -691,6 +696,9 @@ window.FinWeekly = (function () {
     };
     refreshRates();
   }
+  function payLine(p, esc) {
+    return p.pay_account ? '<div class="memo" style="font-size:.78rem;color:#565552">받는 계좌: ' + esc(p.pay_bank) + ' ' + esc(p.pay_account) + ' (예금주 ' + esc(p.pay_holder) + ')</div>' : '';
+  }
   function rcpLinks(p, esc) {
     var r = p.receipts || [];
     return r.length ? ' ' + r.map(function (u, i) { return '<a class="tag rcp" href="' + esc(u) + '" target="_blank" rel="noopener">영수증' + (r.length > 1 ? ' ' + (i + 1) : '') + '</a>'; }).join(' ') : '';
@@ -700,7 +708,8 @@ window.FinWeekly = (function () {
   function petitionPages(X, fyR, rows) {
     var won = X.won, esc = X.esc, sun = state.sunday, sd = dt(sun);
     var rt = rates(X, fyR, rows), total = rows.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
-    var PROWS = 22, pages = Math.max(1, Math.ceil(rows.length / PROWS)), html = '';
+    var pays = rows.filter(function (r) { return r.pay; });
+    var PROWS = Math.max(12, 22 - pays.length), pages = Math.max(1, Math.ceil(rows.length / PROWS)), html = '';
     for (var pp = 0; pp < pages; pp++) {
       var chunk = rows.slice(pp * PROWS, (pp + 1) * PROWS), last = pp === pages - 1, trs = '';
       for (var r = 0; r < PROWS; r++) {
@@ -719,6 +728,7 @@ window.FinWeekly = (function () {
         '<table class="wk-t"><colgroup><col style="width:21mm"><col style="width:34mm"><col><col style="width:22mm"><col style="width:14mm"><col style="width:31mm"></colgroup>' +
         '<thead><tr><th>관</th><th>항</th><th>지출내역</th><th>금액</th><th>집행률</th><th>비고</th></tr></thead><tbody>' + trs +
         '<tr class="tot"><td colspan="3" style="text-align:center">' + (pages > 1 ? '이 쪽 소계' : '합 계') + '</td><td class="n">' + won(pageSum) + '</td><td></td><td></td></tr></tbody></table>' +
+        (last && pays.length ? '<div class="pays"><b>지급 계좌</b>' + pays.map(function (r) { return '<div><span>' + esc(r.hang) + ' · ' + esc(r.text) + ' · ' + won(r.amount) + '원</span><span>' + esc(r.pay) + '</span></div>'; }).join('') + '</div>' : '') +
         (last ? '<div class="sumline">합 계 금 <b>' + won(total) + '</b> 원</div>' +
           '<div class="rtnote">집행률: 2027 예산 계정의 연 예산 대비 (회계연도 장부 지출 + 이 결의서) 비율</div>' +
           '<div class="plea">위와 같이 재정을 청원하나이다.<br>주후 ' + sd.getFullYear() + '년 ' + (sd.getMonth() + 1) + '월 ' + sd.getDate() + '일<div class="to">운평장로교회 당회장 귀하</div></div>' : '') +
@@ -735,7 +745,7 @@ window.FinWeekly = (function () {
       html += '<div class="wk-page wk-pet wk-rcp"><div class="rh">지출결의서 영수증 첨부 · ' + dt(state.sunday).getFullYear() + '년 ' + weekName(state.sunday) + '</div>' +
         items.slice(i, i + 2).map(function (it) {
           var isPdf = /\.pdf(\?|$)/i.test(it.u);
-          return '<div class="rb"><div class="cap">' + esc(it.r.dept || '') + ' · ' + esc(it.r.hang) + ' · ' + esc(it.r.text) + ' · <b>' + won(it.r.amount) + '원</b></div>' +
+          return '<div class="rb"><div class="cap">' + esc(it.r.dept || '') + ' · ' + esc(it.r.hang) + ' · ' + esc(it.r.text) + ' · <b>' + won(it.r.amount) + '원</b>' + (it.r.pay ? '<br>받는 계좌: ' + esc(it.r.pay) : '') + '</div>' +
             (isPdf ? '<div class="pdf">PDF 영수증: ' + esc(it.u) + '</div>' : '<img src="' + esc(it.u) + '" alt="영수증">') + '</div>';
         }).join('') + '<div class="wk-foot">운평장로교회 재정부 · 영수증 첨부</div></div>';
     }

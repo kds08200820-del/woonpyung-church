@@ -7,6 +7,8 @@
    · 계정을 고르면 연 예산 · 집행 · 청원 중 · 집행률 · 남은 예산(% · 원)을 보여 주고,
      이 청원을 더하면 집행률이 몇 %가 되는지도 미리 보여 준다.
    · 영수증 사진(또는 PDF)을 붙인다 — ChurchUpload(R2) 로 올리고 주소를 청원에 담는다.
+   · 받는 계좌(20261124_0900): 등록한 계좌를 고르거나, 다른 사람이 받을 때는 그때만 쓰는 계좌를 적는다.
+     「계좌번호 등록하기」를 고르면 다음에도 쓴다. 등록한 계좌는 지울 수 없다(고치려면 새로 등록).
    · 낸 청원은 돌아오는 주일의 지출결의서로 간다. 재정부가 「확인」하면 결의서에 들어가고 영수증이 첨부된다.
    ============================================================ */
 (function () {
@@ -42,6 +44,8 @@
     return data;
   }
   const rpc = (fn, args) => api("POST", "rpc/" + fn, args || {});
+  function myId() { const s = sess(); return (s && s.user && s.user.id) || ""; }
+  function accLabel(a) { return `${a.bank} ${a.account_no} (${a.holder})`; }
 
   // 청원 단위: 부서(부장) 또는 '' (재정 청원 권한자)
   const S = { units: [], cur: 0, budget: {}, mine: [], files: [], busy: false };
@@ -67,10 +71,14 @@
     const u = S.units[S.cur];
     root.innerHTML = `<p class="pt-empty">불러오는 중…</p>`;
     try {
-      const [b, mine] = await Promise.all([
+      const uid = encodeURIComponent(myId());
+      const [b, mine, accs] = await Promise.all([
         rpc("fin_dept_budget", { p_dept: u.dept }),
-        api("GET", "fin_petitions?select=*&order=id.desc&limit=60"),
+        api("GET", "fin_petitions?select=*&requester_uid=eq." + uid + "&order=id.desc&limit=60"),
+        api("GET", "fin_payee_accounts?select=id,holder,bank,account_no&owner_uid=eq." + uid + "&order=id.desc").catch(() => null),
       ]);
+      S.accounts = accs || [];
+      S.accMissing = accs == null;
       S.budget = {}; (b || []).forEach((r) => { S.budget[r.hang] = r; });
       S.budgetList = b || [];
       S.mine = mine || [];
@@ -106,6 +114,7 @@
         <div><label>금액(원)</label><input id="ptAmt" inputmode="numeric" placeholder="예: 150,000"></div>
         <div class="full"><label>지출 내역</label><input id="ptItem" maxlength="200" placeholder="예: 성탄절 행사 간식"></div>
         <div class="full"><label>메모 <small style="font-weight:400">(받는 분 · 계좌 · 까닭 등)</small></label><textarea id="ptMemo" rows="2"></textarea></div>
+        <div class="full pt-pay"><label>받는 계좌</label>${payHTML()}</div>
         <div class="full"><label>영수증 <small style="font-weight:400">(사진 또는 PDF, 10장까지)</small></label><input id="ptFile" type="file" accept="image/*,application/pdf" multiple><div class="pt-rcps" id="ptRcps"></div></div>
         <div class="pt-after" id="ptAfter"></div>
       </div>
@@ -113,11 +122,29 @@
       <div class="pt-msg" id="ptMsg"></div></div>` : `<div class="pt-card"><p class="pt-help">청원할 수 있는 계정이 아직 정해지지 않았습니다. 재정부에 말씀해 주세요.</p></div>`) +
       `<div class="pt-card"><h3>내 청원</h3>` +
       (mine.length ? `<div style="overflow:auto"><table class="pt-t"><thead><tr><th>결의서</th><th>계정</th><th>내역</th><th class="n">금액</th><th>상태</th><th></th></tr></thead><tbody>` +
-        mine.map((p) => `<tr><td>${esc(weekName(p.week_sunday))}</td><td>${esc(p.hang)}</td><td>${esc(p.item)}${(p.receipts || []).map((r, i) => ` <a href="${esc(r)}" target="_blank" rel="noopener" style="font-size:.78rem">영수증${(p.receipts || []).length > 1 ? i + 1 : ""}</a>`).join("")}${p.review_note ? `<div class="pt-help">${esc(p.review_note)}</div>` : ""}</td><td class="n">${won(p.amount)}</td><td><span class="pt-st ${esc(p.status)}">${esc(stName[p.status] || p.status)}</span></td><td>${p.status === "submitted" ? `<button class="btn btn-line" data-cancel="${p.id}" style="padding:3px 9px;font-size:.78rem">거두기</button>` : ""}</td></tr>`).join("") +
+        mine.map((p) => `<tr><td>${esc(weekName(p.week_sunday))}</td><td>${esc(p.hang)}</td><td>${esc(p.item)}${(p.receipts || []).map((r, i) => ` <a href="${esc(r)}" target="_blank" rel="noopener" style="font-size:.78rem">영수증${(p.receipts || []).length > 1 ? i + 1 : ""}</a>`).join("")}${p.pay_account ? `<div class="pt-help">받는 계좌: ${esc(p.pay_bank)} ${esc(p.pay_account)} (${esc(p.pay_holder)})</div>` : ""}${p.review_note ? `<div class="pt-help">${esc(p.review_note)}</div>` : ""}</td><td class="n">${won(p.amount)}</td><td><span class="pt-st ${esc(p.status)}">${esc(stName[p.status] || p.status)}</span></td><td>${p.status === "submitted" ? `<button class="btn btn-line" data-cancel="${p.id}" style="padding:3px 9px;font-size:.78rem">거두기</button>` : ""}</td></tr>`).join("") +
         `</tbody></table></div>` : `<p class="pt-help">아직 낸 청원이 없습니다.</p>`) + `</div>`;
     wire();
   }
 
+  function payHTML() {
+    if (S.accMissing) return `<div class="pt-help">계좌 등록 기능을 준비하고 있습니다. 메모 칸에 받는 분 · 계좌를 적어 주세요.</div>`;
+    const has = S.accounts.length > 0;
+    return `<div class="pt-pay-opt">
+        <label class="pt-r"><input type="radio" name="ptPay" value="saved"${has ? " checked" : " disabled"}> 등록한 계좌</label>
+        <label class="pt-r"><input type="radio" name="ptPay" value="new"${has ? "" : " checked"}> 계좌 직접 입력 <small>(다른 사람이 받을 때 등)</small></label>
+        <label class="pt-r"><input type="radio" name="ptPay" value="none"> 계좌 없음 <small>(현금 등)</small></label>
+      </div>
+      <div id="ptPaySaved"${has ? "" : ' style="display:none"'}><select id="ptAcc">${S.accounts.map((a) => `<option value="${a.id}">${esc(accLabel(a))}</option>`).join("")}</select>
+        <div class="pt-help" style="margin-top:4px">등록한 계좌는 지울 수 없습니다. 계좌가 바뀌면 「계좌 직접 입력」으로 새로 등록하세요.</div></div>
+      <div id="ptPayNew"${has ? ' style="display:none"' : ""} class="pt-pay-new">
+        <input id="ptBank" maxlength="30" placeholder="은행 (예: 농협)">
+        <input id="ptAccNo" maxlength="40" inputmode="numeric" placeholder="계좌번호 (숫자와 -)">
+        <input id="ptHolder" maxlength="40" placeholder="예금주">
+        <label class="pt-r" style="grid-column:1/-1"><input type="checkbox" id="ptSave"> 계좌번호 등록하기 <small>(다음 청원에도 고를 수 있게 남깁니다)</small></label>
+      </div>`;
+  }
+  function payMode() { const r = root.querySelector('input[name="ptPay"]:checked'); return r ? r.value : "none"; }
   function after() {
     const box = root.querySelector("#ptAfter"); if (!box) return;
     const hang = root.querySelector("#ptHang").value, amt = num(root.querySelector("#ptAmt").value);
@@ -156,6 +183,13 @@
       e.target.value = ""; drawFiles();
     };
     root.querySelector("#ptRcps").onclick = (e) => { const i = e.target.dataset && e.target.dataset.rm; if (i != null) { S.files.splice(Number(i), 1); drawFiles(); } };
+    root.querySelectorAll('input[name="ptPay"]').forEach((r) => {
+      r.onchange = () => {
+        const m = payMode(), a = root.querySelector("#ptPaySaved"), b = root.querySelector("#ptPayNew");
+        if (a) a.style.display = m === "saved" ? "" : "none";
+        if (b) b.style.display = m === "new" ? "" : "none";
+      };
+    });
     root.querySelector("#ptSend").onclick = send;
     drawFiles(); after();
   }
@@ -168,6 +202,17 @@
     if (!hang) { msg.style.color = "#C62828"; msg.textContent = "예산 계정을 골라 주세요."; return; }
     if (!item) { msg.style.color = "#C62828"; msg.textContent = "지출 내역을 적어 주세요."; return; }
     if (!amount) { msg.style.color = "#C62828"; msg.textContent = "금액을 적어 주세요."; return; }
+    const pm = S.accMissing ? "none" : payMode();
+    let pay = { p_account_id: null, p_bank: null, p_account: null, p_holder: null, p_save: false };
+    if (pm === "saved") {
+      const sel = root.querySelector("#ptAcc");
+      if (!sel || !sel.value) { msg.style.color = "#C62828"; msg.textContent = "등록한 계좌를 골라 주세요."; return; }
+      pay.p_account_id = Number(sel.value);
+    } else if (pm === "new") {
+      const bank = root.querySelector("#ptBank").value.trim(), no = root.querySelector("#ptAccNo").value.replace(/[^0-9-]/g, ""), holder = root.querySelector("#ptHolder").value.trim();
+      if (!bank || !holder || no.replace(/-/g, "").length < 4) { msg.style.color = "#C62828"; msg.textContent = "은행 · 계좌번호 · 예금주를 모두 적어 주세요."; return; }
+      pay = { p_account_id: null, p_bank: bank, p_account: no, p_holder: holder, p_save: !!root.querySelector("#ptSave").checked };
+    }
     if (!S.files.length && !confirm("영수증 없이 올릴까요? (나중에 재정부에 따로 내도 됩니다)")) return;
     S.busy = true; msg.style.color = "#565552";
     try {
@@ -179,7 +224,8 @@
         urls.push(r.url);
       }
       msg.textContent = "청원 올리는 중…";
-      await rpc("fin_petition_submit", { p_dept: u.dept, p_hang: hang, p_item: item, p_amount: amount, p_memo: memo, p_receipts: urls });
+      if (S.accMissing) await rpc("fin_petition_submit", { p_dept: u.dept, p_hang: hang, p_item: item, p_amount: amount, p_memo: memo, p_receipts: urls });
+      else await rpc("fin_petition_submit2", Object.assign({ p_dept: u.dept, p_hang: hang, p_item: item, p_amount: amount, p_memo: memo, p_receipts: urls }, pay));
       S.files = [];
       await loadUnit();
       const m2 = root.querySelector("#ptMsg"); if (m2) { m2.style.color = "#111"; m2.textContent = "✓ 청원을 올렸습니다. 재정부가 확인하면 지출결의서에 들어갑니다."; }
