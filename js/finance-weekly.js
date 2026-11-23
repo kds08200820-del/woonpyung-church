@@ -986,8 +986,8 @@ window.FinWeekly = (function () {
         '<table class="ap"><tr><td class="k" rowspan="2">결<br>재</td><td>담당</td><td>기관장</td><td>재정부장</td><td>당회장</td></tr><tr><td></td><td></td><td></td><td>' + (chairSeal(X) ? '<img class="seal" src="' + esc(chairSeal(X)) + '" alt="당회장 도장">' : '') + '</td></tr></table></div>' +
         '<table class="wk-t"><colgroup><col style="width:21mm"><col style="width:34mm"><col><col style="width:22mm"><col style="width:14mm"><col style="width:31mm"></colgroup>' +
         '<thead><tr><th>관</th><th>항</th><th>지출내역</th><th>금액</th><th>집행률</th><th>비고</th></tr></thead><tbody>' + trs +
-        // 2026-11-24 담임목사: "합계금은 표기하지 마세요. 수기로 추가 작성할 수 있기 때문" → 합계 칸은 비워 둔다
-        '<tr class="tot"><td colspan="3" style="text-align:center">' + (pages > 1 ? '이 쪽 소계' : '합 계') + '</td><td class="n"></td><td></td><td></td></tr></tbody></table>' +
+        // 2026-11-24 담임목사: 목록의 합계는 적는다(목록 금액을 쉽게 파악). 아래 「합 계 금」만 비워 둔다(수기로 더 적을 수 있게).
+        '<tr class="tot"><td colspan="3" style="text-align:center">' + (pages > 1 ? '이 쪽 소계' : '합 계') + '</td><td class="n">' + won(pageSum) + '</td><td></td><td></td></tr></tbody></table>' +
         (last && pays.length ? '<div class="pays"><b>지급 계좌</b>' + pays.map(function (r) { return '<div><span>' + esc(r.hang) + ' · ' + esc(r.text) + ' · ' + won(r.amount) + '원</span><span>' + esc(r.pay) + '</span></div>'; }).join('') + '</div>' : '') +
         (last ? '<div class="sumline">합 계 금 <b>&nbsp;</b> 원</div>' +
           '<div class="rtnote">집행률: 2027 예산 계정의 연 예산 대비 (회계연도 장부 지출 + 이 결의서) 비율</div>' +
