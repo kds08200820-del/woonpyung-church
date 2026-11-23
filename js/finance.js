@@ -303,7 +303,8 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
       imgLogo: s.rcp_img_logo || '',   // 교회 로고
       imgUid: s.rcp_img_uid || '',     // 고유번호증
       imgAssoc: s.rcp_img_assoc || '', // 총회소속증명서
-      imgSeal: s.rcp_img_seal || ''    // 직인
+      imgSeal: s.rcp_img_seal || '',   // 직인
+      imgChair: s.rcp_img_chair || ''  // 당회장 도장(지출결의서 결재란)
     };
   }
 
@@ -1814,7 +1815,8 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
             { key: 'rcp_img_logo', label: '교회 로고', url: o.imgLogo, hint: '영수증 상단에 교회명과 함께 출력 (투명 PNG 권장)' },
             { key: 'rcp_img_uid', label: '고유번호증', url: o.imgUid, hint: '영수증 출력 시 [붙임 1]로 첨부' },
             { key: 'rcp_img_assoc', label: '총회소속증명서', url: o.imgAssoc, hint: '영수증 출력 시 [붙임 2]로 첨부' },
-            { key: 'rcp_img_seal', label: '직인', url: o.imgSeal, hint: '운평장로교회 옆에 날인 (투명 PNG 권장)' }
+            { key: 'rcp_img_seal', label: '직인', url: o.imgSeal, hint: '운평장로교회 옆에 날인 (투명 PNG 권장)' },
+            { key: 'rcp_img_chair', label: '당회장 도장', url: o.imgChair, hint: '지출결의서 결재란 「당회장」 칸에 찍힘 (투명 PNG 권장)' }
           ];
           function slotHTML(s) {
             return '<div class="rcp-up" data-key="' + s.key + '" style="border:1px solid #F5F4F1;border-radius:2px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:center">' +
@@ -1827,7 +1829,7 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
               '<span class="rcp-up-msg" style="font-size:.78rem"></span></div></div></div>';
           }
           return '<div class="fin-card" style="max-width:560px">' +
-            '<h3 style="margin:0 0 6px;color:var(--accent,#111111)">기부금영수증 증빙 이미지</h3>' +
+            '<h3 style="margin:0 0 6px;color:var(--accent,#111111)">증빙 이미지 · 도장</h3>' +
             '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:14px">고유번호증·총회소속증명서·직인 이미지를 업로드하면 기부금영수증 출력 시 자동으로 반영됩니다. (고유번호증·총회소속증명서는 뒷장에 첨부, 직인은 교회명 옆에 날인)</p>' +
             slots.map(slotHTML).join('') +
             (window.ChurchUpload && ChurchUpload.isReady() ? '' : '<p style="color:#A33A2A;font-size:.8rem">⚠ 업로드 서버가 설정되지 않아 업로드를 사용할 수 없습니다.</p>') +
@@ -1912,7 +1914,7 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
       // 증빙 이미지 업로드/삭제
       Array.prototype.forEach.call(panel.querySelectorAll('.rcp-up'), function (slot) {
         var key = slot.dataset.key;
-        var seal = (key === 'rcp_img_seal' || key === 'rcp_img_logo'); // 직인·로고는 투명 PNG 보존(무압축)
+        var seal = (key === 'rcp_img_seal' || key === 'rcp_img_logo' || key === 'rcp_img_chair'); // 직인·로고·당회장 도장은 투명 PNG 보존(무압축)
         var prev = slot.querySelector('.rcp-up-prev');
         var msg = slot.querySelector('.rcp-up-msg');
         var file = slot.querySelector('input[type="file"]');

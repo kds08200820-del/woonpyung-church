@@ -11,7 +11,7 @@
 console.log('[finance-weekly.js] v20261124wk1 (주간 재정보고)');
 
 window.FinWeekly = (function () {
-  var state = { sunday: null, showZero: false, pet: {} };   // 고른 주(주일 날짜), 0원 계정 보이기, 주마다 고친 결의서 줄
+  var state = { sunday: null, showZero: false, fill: false, pet: {} };   // fill: 장부 숫자도 채워 인쇄(기본은 수기 양식)   // 고른 주(주일 날짜), 0원 계정 보이기, 주마다 고친 결의서 줄
   var LOGO = 'images/finance-logo-bw.png?v=20261124wk1';
   var DOW = ['주일', '월', '화', '수', '목', '금', '토'];
 
@@ -106,7 +106,23 @@ window.FinWeekly = (function () {
       '.wk-pet .ap td{border:.5pt solid #999;text-align:center;width:19mm;font-size:8.5pt}',
       '.wk-pet .ap td.k{width:7mm;background:#F2F2F2;font-weight:700;line-height:1.5}',
       '.wk-pet .ap tr:first-child td{height:6mm;background:#F2F2F2;font-weight:700}',
-      '.wk-pet .ap tr:last-child td{height:17mm}',
+      '.wk-pet .ap tr:last-child td{height:17mm;padding:0;vertical-align:middle}',
+      '.wk-pet .ap img.seal{display:block;margin:0 auto;max-width:16mm;max-height:15mm;object-fit:contain}',
+      // 수기 양식(Word 와 같게)
+      '.wk-form .wk-in td{height:var(--rh,5.6mm)}',
+      '.wk-form .wk-sum td.amt.blank{color:#777;font-size:10pt}',
+      '.wk-form .wk-sum tr.last td.amt.blank{color:#C62828;font-weight:700}',
+      '.wk-form .wk-sum td.amt.filled{font-weight:700;font-size:12pt}',
+      '.wk-form .wk-sum td{height:11.5mm}',
+      '.wk-form .wk-memo td{height:6.2mm}',
+      '.wk-form .wk-exf .wk-t td{height:var(--rh,4.25mm);font-size:8.5pt;padding-top:0;padding-bottom:0}',
+      '.wk-form .wk-exf .wk-t td.g{background:#F2F2F2;font-weight:700}',
+      '.wk-form .wk-exf .wk-t td.it{padding-left:4.5mm}',
+      '.wk-form .wk-extotf{justify-content:flex-end;gap:3mm}',
+      '.wk-form .wk-extotf small{font-weight:700;font-size:9.5pt}',
+      '.wk-form .wk-extotf .box{display:inline-block;width:30mm;height:100%;border-left:.5pt solid #BDBDBD;margin-right:-3mm}',
+      '.wk-form .wk-ofhint{font-size:8pt;color:#777;margin:-1.5mm 0 2mm}',
+      '.wk-form .wk-off .wk-t td{height:4.7mm}',
       '.wk-pet .wk-t td{height:6.7mm;font-size:9.5pt}',
       '.wk-pet .wk-t th{height:7mm;font-size:9.5pt}',
       '.wk-pet .tot td{height:8.5mm}',
@@ -225,7 +241,8 @@ window.FinWeekly = (function () {
       '<select id="wkSel">' + opts + '</select>' +
       '<button class="btn btn-line wk-nav" id="wkNext" title="다음 주">▶</button>' +
       '<button class="btn btn-line" id="wkThis">이번 주</button>' +
-      '<label><input type="checkbox" id="wkZero"' + (state.showZero ? ' checked' : '') + '> 0원 계정도 보기</label>' +
+      '<label title="끄면 Word 양식처럼 이월금만 채운 수기 작성용으로 나옵니다"><input type="checkbox" id="wkFill"' + (state.fill ? ' checked' : '') + '> 장부 숫자도 채우기</label>' +
+      (state.fill ? '<label><input type="checkbox" id="wkZero"' + (state.showZero ? ' checked' : '') + '> 0원 계정도 보기</label>' : '') +
       '<button class="btn btn-line wk-print" id="wkPrint" title="주간 재정보고서만 가로 A4로 인쇄">🖨 보고서 인쇄</button>' +
       '<button class="btn btn-line" id="wkPrintPet" title="지출결의서(청원서)만 세로 A4로 인쇄">청원서 인쇄</button>' +
       '<button class="btn btn-solid" id="wkPrintAll" title="보고서와 청원서를 한 번에 인쇄">📚 일괄 출력</button>' +
@@ -241,11 +258,12 @@ window.FinWeekly = (function () {
       if (t < fyR.from || t > fyR.to) { alert('이번 주는 지금 고른 회계연도(' + fyR.from + ' ~ ' + fyR.to + ')에 들어 있지 않습니다. 위에서 회계연도를 바꿔 주세요.'); return; }
       pick(thisSun);
     };
-    panel.querySelector('#wkZero').onchange = function (e) { state.showZero = e.target.checked; render(panel, X); };
+    var zEl = panel.querySelector('#wkZero'); if (zEl) zEl.onchange = function (e) { state.showZero = e.target.checked; render(panel, X); };
+    panel.querySelector('#wkFill').onchange = function (e) { state.fill = e.target.checked; render(panel, X); };
 
     var scaler = panel.querySelector('#wkScaler');
     X.load().then(function () { return loadOnline(X, state.sunday); }).then(function (online) {
-      var rep = build(X, fyR);
+      var rep = state.fill ? build(X, fyR) : buildForm(X, fyR);
       panel.querySelector('#wkNote').innerHTML = rep.note;
       var pet = document.createElement('div'); pet.id = 'wkPet';
       scaler.parentNode.insertBefore(pet, scaler);
@@ -260,7 +278,7 @@ window.FinWeekly = (function () {
       }
       function preview() {
         var rows = petRows(X, online);
-        scaler.innerHTML = '<div class="wk-doc"><div class="wk-sec">주간 재정보고서 (가로 A4)</div>' + rep.html +
+        scaler.innerHTML = '<div class="wk-doc"><div class="wk-sec">주간 재정보고서 (가로 A4' + (state.fill ? ' · 장부 숫자 채움' : ' · 수기 작성용, 이월금만 채움') + ')</div>' + rep.html +
           '<div class="wk-sec">청원서 · 지출결의서 (세로 A4)</div>' + petitionPages(X, fyR, rows) + receiptPages(X, rows) + '</div>';
         docEl = scaler.querySelector('.wk-doc');
         fit();
@@ -275,6 +293,102 @@ window.FinWeekly = (function () {
     }).catch(function (e) {
       scaler.innerHTML = '<div class="fin-card" style="color:#A33A2A">불러오지 못했습니다: ' + esc(e.message) + '</div>';
     });
+  }
+
+  // =====================================================================
+  //  수기 작성용 주간 재정보고서 (2027예결산/2027_주간_재정보고서_양식.docx 와 같은 모양)
+  //  2026-11-24 담임목사: "재정보고서를 출력하는 이유는 이월금이 표기된 금주 재정보고서를 수기로 작성하기 위함"
+  //  → 계정은 모두 적고 금액 칸은 비운다. 년·월·주와 전주 이월금만 채운다(이월금은 장부로 자동).
+  //  1쪽 수입 항목(현금·온라인·합계) + 금주 재정 요약 + 특이사항 + 확인
+  //  2쪽 지출(분류 줄 오른쪽 칸 = 소계, 3단)
+  //  3~4쪽 헌금 내역서(이름 / (항목) · 헌금액, 4단 × 30줄)
+  // =====================================================================
+  function buildForm(X, fyR) {
+    var won = X.won, esc = X.esc, M = X.M;
+    var sun = state.sunday, from = sun < fyR.from ? fyR.from : sun;
+    var opening = X.balanceBefore(from);
+    var year = dt(sun).getFullYear(), wname = weekName(sun);
+    var pageNo = 0;
+    function head(kind, side) {
+      return '<div class="wk-head"><img src="' + LOGO + '" alt="운평장로교회 로고"><div class="org">운평장로교회 재정부</div>' +
+        '<div class="ttl">' + year + '년 ' + wname + ' ' + kind + '</div>' +
+        '<div class="side"><b>' + side + '</b><span>보고일&nbsp; ' + year + '.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.</span></div></div>';
+    }
+    function page(kind, side, body) {
+      pageNo++;
+      return '<div class="wk-page wk-land wk-form">' + head(kind, side) + body + '<div class="wk-foot">운평장로교회 재정부 · <b>' + pageNo + '</b></div></div>';
+    }
+    // 예산·계정 표의 계정(관 → 항), 이월금 계정은 뺀다
+    function accTree(gubun) {
+      var all = (M.budget || []).filter(function (b) { return String(b['구분']) === gubun; });
+      var gs = all.filter(function (b) { return String(b['계정코드']).slice(-4) === '0000'; }).sort(function (a, b) { return String(a['계정코드']).localeCompare(String(b['계정코드'])); });
+      return gs.map(function (g) {
+        var p3 = String(g['계정코드']).slice(0, 3);
+        var items = all.filter(function (b) { var c = String(b['계정코드']); return c.slice(0, 3) === p3 && c.slice(-4) !== '0000' && !/이월금/.test(b['계정이름']); })
+          .sort(function (a, b) { return String(a['계정코드']).localeCompare(String(b['계정코드'])); }).map(function (b) { return b['계정이름']; });
+        return { name: g['계정이름'], items: items };
+      }).filter(function (g) { return g.items.length; });
+    }
+
+    // ── 1쪽 ──
+    var inTree = accTree('수입'), inRows = '';
+    inTree.forEach(function (g) {
+      g.items.forEach(function (nm, i) {
+        inRows += '<tr>' + (i === 0 ? '<td class="grp" rowspan="' + g.items.length + '">' + esc(g.name) + '</td>' : '') +
+          '<td>' + esc(nm) + '</td><td></td><td></td><td class="sumcol"></td></tr>';
+      });
+    });
+    var nIn = inTree.reduce(function (s, g) { return s + g.items.length; }, 0);
+    var rowH = nIn > 26 ? 4.6 : 5.6;   // 계정이 많으면 줄 높이를 줄여 한 쪽에
+    var inTable = '<div class="wk-sub">수입 항목</div><table class="wk-t wk-in" style="--rh:' + rowH + 'mm"><colgroup><col style="width:23mm"><col style="width:41mm"><col><col><col></colgroup>' +
+      '<thead><tr><th>분류</th><th>항목</th><th>현금</th><th>온라인</th><th class="sumcol">합계</th></tr></thead><tbody>' + inRows +
+      '<tr class="tot"><td colspan="2" style="text-align:center">수입 합계</td><td></td><td></td><td class="sumcol"></td></tr></tbody></table>';
+    var sumTable = '<div class="wk-sub">금주 재정 요약</div><table class="wk-t wk-sum"><colgroup><col style="width:9mm"><col style="width:44mm"><col></colgroup>' +
+      '<thead><tr><th></th><th>구분</th><th>금액</th></tr></thead><tbody>' +
+      '<tr><td class="sym"></td><td class="lab"><b>전주 이월금</b><span>지난주 차인 잔액</span></td><td class="amt filled">' + won(opening) + ' 원</td></tr>' +
+      '<tr><td class="sym">+</td><td class="lab"><b class="red">금주 수입</b><span>왼쪽 수입 합계</span></td><td class="amt blank">원</td></tr>' +
+      '<tr><td class="sym">−</td><td class="lab"><b>금주 지출</b><span>2쪽 지출 합계</span></td><td class="amt blank">원</td></tr>' +
+      '<tr class="last"><td class="sym">=</td><td class="lab"><b class="red">차인 잔액</b><span>다음 주 이월금</span></td><td class="amt blank red">원</td></tr>' +
+      '<tr class="cash"><td colspan="3">금주 수입 중&nbsp;&nbsp; 현금 ____________ 원&nbsp;&nbsp; · &nbsp;&nbsp;온라인 ____________ 원</td></tr>' +
+      '</tbody></table>';
+    var memo = '<div class="wk-gap"></div><div class="wk-sub">특이사항</div><table class="wk-t wk-memo"><tbody><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr></tbody></table>';
+    var sign = '<div class="wk-gap"></div><div class="wk-sub">확인</div><table class="wk-t wk-sign"><thead><tr><th>작성</th><th>확인</th><th>보고</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>';
+    var html = page('재정보고서', '수입 · 요약', '<div class="wk-p1"><div>' + inTable + '</div><div>' + sumTable + memo + sign + '</div></div>');
+
+    // ── 2쪽: 지출 3단 ──
+    var exTree = accTree('지출');
+    var sizes = exTree.map(function (g) { return 1 + g.items.length; }), total = sizes.reduce(function (a, b) { return a + b; }, 0);
+    var cols = [[], [], []], cur = 0, acc = 0;
+    exTree.forEach(function (g, i) { if (cur < 2 && acc + sizes[i] / 2 > total / 3 * (cur + 1)) cur++; cols[cur].push(g); acc += sizes[i]; });
+    var nrows = Math.max.apply(null, cols.map(function (c) { return c.reduce(function (s, g) { return s + 1 + g.items.length; }, 0); }));
+    var exH = nrows > 36 ? Math.max(3.4, Math.floor(150 / nrows * 10) / 10) : 4.25;
+    function exCol(list) {
+      var rows = '', n = 0;
+      list.forEach(function (g) {
+        rows += '<tr><td class="g">' + esc(g.name) + '</td><td class="g"></td></tr>'; n++;
+        g.items.forEach(function (nm) { rows += '<tr><td class="it">' + esc(nm) + '</td><td></td></tr>'; n++; });
+      });
+      for (; n < nrows; n++) rows += '<tr><td></td><td></td></tr>';
+      return '<table class="wk-t"><colgroup><col><col style="width:30mm"></colgroup><thead><tr><th>계정</th><th>금액</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+    var exBody = '<div class="wk-ex wk-exf" style="--rh:' + exH + 'mm">' + cols.map(exCol).join('') + '</div>' +
+      '<div class="wk-extot wk-extotf">지출 합계 &nbsp;<small>(분류 줄 오른쪽 칸 = 소계)</small><span class="box"></span></div>';
+    html += page('재정보고서', '지출', exBody);
+
+    // ── 3~4쪽: 헌금 내역서(빈 칸) ──
+    for (var pg = 1; pg <= 2; pg++) {
+      var blocks = '';
+      for (var b = 0; b < 4; b++) {
+        var trs = '';
+        for (var r = 0; r < 30; r++) trs += '<tr><td></td><td></td></tr>';
+        blocks += '<table class="wk-t"><colgroup><col><col style="width:25.5mm"></colgroup><thead><tr><th>이름 / (항목)</th><th>헌금액</th></tr></thead><tbody>' + trs + '</tbody></table>';
+      }
+      html += page('헌금 내역서', '헌금 내역 ' + pg,
+        '<div class="wk-ofhint">항목이 바뀌는 곳은 이름 칸에 ( 십일조 ) 처럼 항목을 적고, 그 아래 줄부터 이름과 금액을 적습니다.</div><div class="wk-of wk-off">' + blocks + '</div>');
+    }
+    var note = year + '년 ' + wname + '(' + md(from) + ' ~ ' + md(addDays(sun, 6)) + ') 수기 작성용 양식입니다. 전주 이월금 <b>' + won(opening) + '원</b>은 장부로 자동 계산해 채웠습니다' +
+      '(회계연도 시작 이월금 + ' + md(fyR.from) + '부터 이번 주 직전까지의 수입·지출). 나머지 금액 칸은 비워 둡니다. 「보고서 인쇄」 = 가로 A4 4쪽.';
+    return { html: html, note: note };
   }
 
   // ── 보고서 만들기 ──
@@ -642,6 +756,7 @@ window.FinWeekly = (function () {
       '<div style="overflow:auto"><table class="fin-table wk-pet-ed"><thead><tr><th style="width:120px">관</th><th style="width:170px">항(예산 계정)</th><th>지출내역</th><th style="width:110px" class="num">금액</th><th style="width:120px">비고</th><th style="width:150px">예산 집행률</th><th style="width:34px"></th></tr></thead><tbody>' +
       rows.map(rowHTML).join('') + onl + '</tbody><tfoot><tr><td colspan="3" style="text-align:right"><b>합계</b></td><td class="num"><b id="wkPetSum"></b></td><td colspan="3"></td></tr></tfoot></table></div>' +
       '<div class="wk-pe-b"><button class="btn btn-line" id="wkAdd">+ 줄 더하기</button><button class="btn btn-line" id="wkRefill">정기 청구로 다시 채우기</button><button class="btn btn-solid" id="wkSave">💾 이 주 결의서 저장</button>' +
+      (chairSeal(X) ? '' : '<span class="wk-note" style="margin:0;color:#C62828">당회장 도장 그림이 아직 없습니다 — 재정관리 ▸ 설정 ▸ 「당회장 도장」에서 올려 주세요.</span>') +
       '<span class="wk-note" style="margin:0">관·항은 2027 예산 계정에서 고릅니다. 집행률 = (회계연도 장부 지출 + 이 결의서) ÷ 연 예산. 저장하지 않아도 인쇄됩니다.</span></div></div>';
 
     function refreshRates() {
@@ -696,6 +811,8 @@ window.FinWeekly = (function () {
     };
     refreshRates();
   }
+  // 당회장 도장: 재정관리 ▸ 설정 ▸ 「당회장 도장」(app_settings.rcp_img_chair). 지출결의서 결재란 당회장 칸에 찍는다.
+  function chairSeal(X) { return (X.M.settings || {}).rcp_img_chair || ''; }
   function payLine(p, esc) {
     return p.pay_account ? '<div class="memo" style="font-size:.78rem;color:#565552">받는 계좌: ' + esc(p.pay_bank) + ' ' + esc(p.pay_account) + ' (예금주 ' + esc(p.pay_holder) + ')</div>' : '';
   }
@@ -724,12 +841,13 @@ window.FinWeekly = (function () {
       html += '<div class="wk-page wk-pet">' +
         '<div class="ph"><div><div class="org"><img src="' + LOGO + '" alt="운평장로교회 로고">운평장로교회 재정부</div>' +
         '<h1>지출결의서</h1><div class="wk">' + sd.getFullYear() + '년 ' + weekName(sun) + (pages > 1 ? ' (' + (pp + 1) + '/' + pages + ')' : '') + '</div></div>' +
-        '<table class="ap"><tr><td class="k" rowspan="2">결<br>재</td><td>담당</td><td>기관장</td><td>재정부장</td><td>당회장</td></tr><tr><td></td><td></td><td></td><td></td></tr></table></div>' +
+        '<table class="ap"><tr><td class="k" rowspan="2">결<br>재</td><td>담당</td><td>기관장</td><td>재정부장</td><td>당회장</td></tr><tr><td></td><td></td><td></td><td>' + (chairSeal(X) ? '<img class="seal" src="' + esc(chairSeal(X)) + '" alt="당회장 도장">' : '') + '</td></tr></table></div>' +
         '<table class="wk-t"><colgroup><col style="width:21mm"><col style="width:34mm"><col><col style="width:22mm"><col style="width:14mm"><col style="width:31mm"></colgroup>' +
         '<thead><tr><th>관</th><th>항</th><th>지출내역</th><th>금액</th><th>집행률</th><th>비고</th></tr></thead><tbody>' + trs +
-        '<tr class="tot"><td colspan="3" style="text-align:center">' + (pages > 1 ? '이 쪽 소계' : '합 계') + '</td><td class="n">' + won(pageSum) + '</td><td></td><td></td></tr></tbody></table>' +
+        // 2026-11-24 담임목사: "합계금은 표기하지 마세요. 수기로 추가 작성할 수 있기 때문" → 합계 칸은 비워 둔다
+        '<tr class="tot"><td colspan="3" style="text-align:center">' + (pages > 1 ? '이 쪽 소계' : '합 계') + '</td><td class="n"></td><td></td><td></td></tr></tbody></table>' +
         (last && pays.length ? '<div class="pays"><b>지급 계좌</b>' + pays.map(function (r) { return '<div><span>' + esc(r.hang) + ' · ' + esc(r.text) + ' · ' + won(r.amount) + '원</span><span>' + esc(r.pay) + '</span></div>'; }).join('') + '</div>' : '') +
-        (last ? '<div class="sumline">합 계 금 <b>' + won(total) + '</b> 원</div>' +
+        (last ? '<div class="sumline">합 계 금 <b>&nbsp;</b> 원</div>' +
           '<div class="rtnote">집행률: 2027 예산 계정의 연 예산 대비 (회계연도 장부 지출 + 이 결의서) 비율</div>' +
           '<div class="plea">위와 같이 재정을 청원하나이다.<br>주후 ' + sd.getFullYear() + '년 ' + (sd.getMonth() + 1) + '월 ' + sd.getDate() + '일<div class="to">운평장로교회 당회장 귀하</div></div>' : '') +
         '<div class="wk-foot">운평장로교회 재정부 · 청원서' + (pages > 1 ? ' <b>' + (pp + 1) + '</b>' : '') + '</div></div>';
