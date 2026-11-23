@@ -479,7 +479,7 @@ window.FinWeekly = (function () {
       '<tr class="cash"><td colspan="3">금주 수입 중&nbsp;&nbsp; 현금 ____________ 원&nbsp;&nbsp; · &nbsp;&nbsp;온라인 ____________ 원</td></tr>' +
       '</tbody></table>';
     var memo = '<div class="wk-gap"></div><div class="wk-sub">특이사항</div><table class="wk-t wk-memo"><tbody><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr></tbody></table>';
-    var sign = '<div class="wk-gap"></div><div class="wk-sub">확인</div><table class="wk-t wk-sign"><thead><tr><th>작성</th><th>확인</th><th>보고</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>';
+    var sign = '<div class="wk-gap"></div><div class="wk-sub">확인</div><table class="wk-t wk-sign"><thead><tr><th>작성자</th><th>재정부장</th><th>당회장</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>';
     var html = page('재정보고서', '수입 · 요약', '<div class="wk-p1"><div>' + inTable + '</div><div>' + sumTable + memo + sign + '</div></div>');
 
     // ── 2쪽: 지출 3단 ──
@@ -618,7 +618,7 @@ window.FinWeekly = (function () {
       '</tbody></table>' +
       '<div class="wk-fy">' + fy + '년도 누계(' + md(fyR.from) + ' ~ ' + md(to) + '): 수입 ' + won(cumIn) + '원 · 지출 ' + won(cumEx) + '원<br>회계연도 시작 이월금 ' + won(fyCarry.value) + '원</div>';
     var memo = '<div class="wk-gap"></div><div class="wk-sub">특이사항</div><table class="wk-t wk-memo"><tbody><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr></tbody></table>';
-    var sign = '<div class="wk-gap"></div><div class="wk-sub">확인</div><table class="wk-t wk-sign"><thead><tr><th>작성</th><th>확인</th><th>보고</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>';
+    var sign = '<div class="wk-gap"></div><div class="wk-sub">확인</div><table class="wk-t wk-sign"><thead><tr><th>작성자</th><th>재정부장</th><th>당회장</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>';
     var html = page('재정보고서', '수입 · 요약', '<div class="wk-p1"><div>' + inTable + '</div><div>' + sumTable + memo + sign + '</div></div>');
 
     // ── 2쪽: 지출 (분류 소계 + 계정, 3단) ──
