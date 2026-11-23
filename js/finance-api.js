@@ -268,6 +268,21 @@ window.WPF = (function () {
       }
       case 'cancelReceipt':
         return rest('PATCH', 'donation_receipts?id=eq.' + encodeURIComponent(params.id), { status: 'cancelled', cancelled_at: new Date().toISOString() }, 'return=minimal').then(function () { return { ok: true }; });
+      // ── 부서 부장 온라인 청원 (supabase/20261124_0800_fin_petitions.sql) ──
+      case 'listPetitions': {   // 확인 대기 전부 + 그 주일 결의서로 확인된 것
+        var sun = String(params.sunday || '').slice(0, 10);
+        return rest('GET', 'fin_petitions?select=*&or=(status.eq.submitted,and(status.eq.approved,week_sunday.eq.' + encodeURIComponent(sun) + '))&order=id&limit=500')
+          .then(function (rows) { return { ok: true, rows: rows || [] }; });
+      }
+      case 'reviewPetition':
+        return rpc('fin_petition_review', { p_id: Number(params.id), p_status: params.status, p_note: params.note || '' }).then(function () { return { ok: true }; });
+      case 'listDeptHeads':
+        return rest('GET', 'fin_dept_heads?select=*&order=dept,id&limit=500').then(function (rows) { return { ok: true, rows: rows || [] }; });
+      case 'saveDeptHead': {
+        var dh = params.row || {}, body2 = { dept: dh.dept, head_name: dh.head_name || '', member_key: dh.member_key || null, accounts: dh.accounts || [], active: dh.active !== false, updated_at: new Date().toISOString() };
+        if (dh.id) return rest('PATCH', 'fin_dept_heads?id=eq.' + encodeURIComponent(dh.id), body2, 'return=minimal').then(function () { return { ok: true }; });
+        return rest('POST', 'fin_dept_heads', body2, 'return=minimal').then(function () { return { ok: true }; });
+      }
       case 'exportSermonPdf':
         return appsScript('exportSermonPdf', params);
       default:

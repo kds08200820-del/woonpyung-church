@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>재정 청원 | 운평장로교회</title>
+  <meta name="robots" content="noindex" />
+  <link rel="manifest" href="manifest.json?v=20261023lib1" />
+  <meta name="theme-color" content="#FFFFFF" />
+  <link rel="icon" href="images/favicon-32.png?v=20260906lib13" />
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=20260906lib13" />
+  <meta name="apple-mobile-web-app-title" content="운평장로교회" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20261111m19" />
+  <style>
+    .pt-wrap{max-width:900px;margin:0 auto;padding:0 18px 60px}
+    .pt-card{background:#fff;border:1px solid #EEEDEA;border-radius:2px;padding:18px;margin-bottom:16px}
+    .pt-card h3{margin:0 0 10px;font-size:1.05rem}
+    .pt-empty{text-align:center;color:#898885;padding:40px 10px}
+    .pt-depts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+    .pt-depts button{border:1px solid #D9D8D5;background:#fff;padding:7px 14px;border-radius:2px;cursor:pointer;font:inherit;font-weight:700}
+    .pt-depts button.on{background:#111;color:#fff;border-color:#111}
+    .pt-t{width:100%;border-collapse:collapse;font-size:.9rem}
+    .pt-t th,.pt-t td{padding:8px 7px;border-bottom:1px solid #F2F1EE;text-align:left}
+    .pt-t .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .pt-bar{position:relative;height:18px;background:#F2F2F2;border-radius:2px;overflow:hidden;min-width:120px}
+    .pt-bar i{position:absolute;left:0;top:0;bottom:0;background:#9E9E9E}
+    .pt-bar i.p{background:#E0B4B4}
+    .pt-bar.over i{background:#C62828}
+    .pt-bar b{position:relative;font-size:.76rem;padding-left:6px;line-height:18px}
+    .pt-left{font-size:.8rem;color:#565552;margin-top:3px}
+    .pt-left.low{color:#C62828;font-weight:700}
+    .pt-f{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .pt-f label{display:block;font-size:.85rem;font-weight:700;margin-bottom:4px}
+    .pt-f input,.pt-f select,.pt-f textarea{width:100%;padding:9px 10px;border:1px solid #D9D8D5;border-radius:2px;font:inherit;background:#fff;box-sizing:border-box}
+    .pt-f .full{grid-column:1/-1}
+    .pt-after{grid-column:1/-1;background:#FDFCF9;border-left:3px solid #C62828;padding:9px 12px;font-size:.9rem}
+    .pt-rcps{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .pt-rcps div{position:relative;width:90px;height:110px;border:1px solid #E5E4E1;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#898885;overflow:hidden;background:#fafafa}
+    .pt-rcps img{max-width:100%;max-height:100%}
+    .pt-rcps button{position:absolute;top:2px;right:2px;border:0;background:rgba(0,0,0,.55);color:#fff;border-radius:2px;cursor:pointer;font-size:.75rem}
+    .pt-st{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:700;background:#F2F2F2;color:#555}
+    .pt-st.approved{background:#111;color:#fff}.pt-st.rejected{background:#FBEDEA;color:#A33A2A}.pt-st.cancelled{color:#AAA}
+    .pt-msg{font-size:.88rem;margin-top:8px}
+    .pt-help{font-size:.84rem;color:#898885;line-height:1.6}
+    @media (max-width:640px){.pt-f{grid-template-columns:1fr}.pt-t .hide-m{display:none}}
+  </style>
+</head>
+<body>
+
+  <section class="page-hero">
+    <p class="ph-eyebrow">FINANCE REQUEST</p>
+    <h1>재정 청원</h1>
+    <p>각 부서 부장님이 예산 안에서 지출을 청원합니다. 영수증을 붙이면 지출결의서에 함께 들어갑니다.</p>
+  </section>
+
+  <!-- 부서 부장 온라인 청원 (2026-11-24) — js/fin-petition.js · supabase/20261124_0800_fin_petitions.sql -->
+  <div class="pt-wrap"><div id="ptRoot"><p class="pt-empty">불러오는 중…</p></div></div>
+
+  <script src="js/config.js?v=20260908lib"></script>
+  <script src="js/bulletins.js?v=20261122s1"></script>
+  <script src="js/bulletins-live.js?v=20261025jb1"></script>
+  <script src="js/layout.js?v=20261124pt1"></script>
+  <script src="js/counsel.js?v=20260906fix"></script>
+  <script src="js/main.js?v=20261111m2"></script>
+  <script src="js/upload.js?v=20261025vid1"></script>
+  <script src="js/fin-petition.js?v=20261124pt1"></script>
+</body>
+</html>

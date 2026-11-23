@@ -55,6 +55,8 @@
       { href: "finance.html", label: "재정관리" },
       { href: "gyojeok.html", label: "교적관리" },
       { href: "org-report.html", label: "기관 보고 · 임원" },
+      // 재정 청원(2026-11-24 담임목사 "교회 행정의 재정청원 항목에서", "권한이 있는 사람만"): 관리자 · 재정 청원 권한자 · 부서 부장만 보인다 — js/fin-petition.js
+      { href: "petition.html", label: "재정 청원", id: "navPetition" },
       // 증명서 발급(2026-10-25 담임목사): 목회자만 — 직분에 목사·전도사 또는 '목회자' 지명이면 아래에서 보이게 한다
       { href: "cert.html", label: "증명서 발급", id: "navCert", hidden: true },
     ] },
@@ -484,6 +486,15 @@
             if (!a) return;
             roleText = [a.canBroadcast && "방송실 관리자", a.canPastor && !a.isAdmin && "목회자", a.canAccompany && "반주자"].filter(Boolean).join(" · ");
             if (a.canPastor) { const nc = document.getElementById("navCert"); if (nc) nc.style.display = ""; }
+            if ((a.canPetition || a.isDeptHead) && !a.isAdmin) {
+              // 관리자가 아닌 청원자(재정 청원 권한·부서 부장): 교회행정 메뉴를 열되 「재정 청원」만 남긴다
+              const g = document.getElementById("navAdmin");
+              if (g) {
+                g.style.display = "";
+                g.querySelectorAll(".nav-dropdown a").forEach((x) => { if (x.id !== "navPetition") x.style.display = "none"; });
+                const top = g.querySelector(":scope > a"); if (top) top.setAttribute("href", "petition.html");
+              }
+            }
             markBroadcast();
           })
           .catch(() => {});

@@ -1,7 +1,7 @@
 /* finance.js — 재정관리(오직 스타일): 전표입력·장부관리·결산보고서·예산
  * 콘솔: [finance.js] v20260701di
  */
-console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마감)');
+console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마감·주간 재정보고)');
 
 (function () {
   var root = document.getElementById('finRoot');
@@ -311,7 +311,7 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     ['home', '🏠 홈'], ['offering', '헌금입력'], ['bulk', '엑셀 자동입력'], ['expense', '지출입력'], ['ledger', '거래장부'],
     ['givers', '헌금자통계'], ['gl', '총계정원장'], ['report', '결산보고서'],
     ['finrep', '재정보고서'], ['bulletin', '헌금명단'], ['receipt', '기부금영수증'], ['receiptlog', '영수증 발급대장'],
-    ['budget', '예산'], ['settings', '설정']
+    ['budget', '예산'], ['recurring', '정기 청구·할부'], ['depts', '부서·부장 청원'], ['settings', '설정'], ['weekly', '주간 재정보고']
   ];
   var tab = 'home';
   function fyBar() {
@@ -330,8 +330,9 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     { label: '전표입력', items: ['offering', 'bulk', 'expense'] },
     { label: '장부관리', items: ['ledger', 'givers', 'gl', 'bulletin'] },
     { label: '결산·보고서', items: ['report', 'finrep', 'receipt', 'receiptlog'] },
-    { label: '예산·계정', items: ['budget'] },
-    { label: '설정', tab: 'settings' }
+    { label: '예산·계정', items: ['budget', 'recurring', 'depts'] },
+    { label: '설정', tab: 'settings' },
+    { label: '주간 재정보고', tab: 'weekly' }
   ];
   function tabLabel(k) { for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === k) return TABS[i][1]; return k; }
   var menuBound = false;
@@ -380,6 +381,20 @@ console.log('[finance.js] v20261110fy5 (회계 기수 공유·자동 이월·마
     else if (tab === 'receiptlog') renderReceiptLog(p);
     else if (tab === 'budget') renderBudget(p);
     else if (tab === 'settings') renderSettings(p);
+    else if (tab === 'weekly') renderWeekly(p);
+    else if (tab === 'recurring') renderWeekly(p, 'renderRecurring');
+    else if (tab === 'depts') renderWeekly(p, 'renderDepts');
+  }
+
+  /* ── 주간 재정보고 (js/finance-weekly.js) ── */
+  function renderWeekly(panel, fn) {
+    if (!window.FinWeekly) { panel.innerHTML = msgCard('불러오기 실패', '주간 재정보고 화면 파일을 읽지 못했습니다. 새로고침해 주세요.'); return; }
+    window.FinWeekly[fn || 'render'](panel, {
+      M: M, fy: function () { return M.fy; }, fyRange: fyRange, carryInfo: carryInfo, balanceBefore: balanceBefore,
+      fmtD: fmtD, today: today, won: won, esc: esc, call: function (a, p) { return WPF.call(a, p); },
+      save: function (k, v) { return WPF.call('setSetting', { key: k, value: v }).then(function () { M.settings[k] = v; }); },
+      load: function () { return Promise.all([ensureVouchers(), ensureBudget(), ensureSettings()]); }
+    });
   }
 
   /* ── 홈 대시보드 ── */
