@@ -312,7 +312,7 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
     ['home', '🏠 홈'], ['offering', '헌금입력'], ['bulk', '엑셀 자동입력'], ['expense', '지출입력'], ['ledger', '거래장부'],
     ['givers', '헌금자통계'], ['gl', '총계정원장'], ['report', '결산보고서'],
     ['finrep', '재정보고서'], ['bulletin', '헌금명단'], ['receipt', '기부금영수증'], ['receiptlog', '영수증 발급대장'],
-    ['budget', '예산'], ['recurring', '정기 청구·할부'], ['depts', '부서·부장 청원'], ['settings', '설정'], ['weekly', '주간 재정보고']
+    ['budget', '예산'], ['recurring', '정기 청구·할부'], ['depts', '부서·부장 청원'], ['settings', '설정'], ['weekly', '주간 재정보고 · 지출결의서']
   ];
   var tab = 'home';
   function fyBar() {
@@ -331,9 +331,9 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
     { label: '전표입력', items: ['offering', 'bulk', 'expense'] },
     { label: '장부관리', items: ['ledger', 'givers', 'gl', 'bulletin'] },
     { label: '결산·보고서', items: ['report', 'finrep', 'receipt', 'receiptlog'] },
-    { label: '예산·계정', items: ['budget', 'recurring', 'depts'] },
+    { label: '예산·계정', items: ['budget', 'depts'] },   // 정기 지출 · 할부 등록은 「주간 재정보고」 왼쪽 메뉴(지출결의서)로 옮김
     { label: '설정', tab: 'settings' },
-    { label: '주간 재정보고', tab: 'weekly' }
+    { label: '주간 재정보고 · 지출결의서', tab: 'weekly' }
   ];
   function tabLabel(k) { for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === k) return TABS[i][1]; return k; }
   var menuBound = false;

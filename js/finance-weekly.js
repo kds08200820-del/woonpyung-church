@@ -11,7 +11,7 @@
 console.log('[finance-weekly.js] v20261124wk1 (주간 재정보고)');
 
 window.FinWeekly = (function () {
-  var state = { sunday: null, showZero: false, fill: false, pet: {} };   // fill: 장부 숫자도 채워 인쇄(기본은 수기 양식)   // 고른 주(주일 날짜), 0원 계정 보이기, 주마다 고친 결의서 줄
+  var state = { sunday: null, showZero: false, fill: false, pet: {}, view: 'report' };   // fill: 장부 숫자도 채워 인쇄(기본은 수기 양식)   // 고른 주(주일 날짜), 0원 계정 보이기, 주마다 고친 결의서 줄
   var LOGO = 'images/finance-logo-bw.png?v=20261124wk1';
   var DOW = ['주일', '월', '화', '수', '목', '금', '토'];
 
@@ -122,7 +122,7 @@ window.FinWeekly = (function () {
       '.wk-form .wk-extotf small{font-weight:700;font-size:9.5pt}',
       '.wk-form .wk-extotf .box{display:inline-block;width:30mm;height:100%;border-left:.5pt solid #BDBDBD;margin-right:-3mm}',
       '.wk-form .wk-ofhint{font-size:8pt;color:#777;margin:-1.5mm 0 2mm}',
-      '.wk-form .wk-off .wk-t td{height:4.7mm}',
+      '.wk-form .wk-off .wk-t td{height:6.6mm;font-size:10pt}',   // 2026-11-24 담임목사: "헌금자 명단 입력하는 칸이 너무 작다" → 손으로 쓰기 좋게 줄 높이 6.6mm
       '.wk-pet .wk-t td{height:6.7mm;font-size:9.5pt}',
       '.wk-pet .wk-t th{height:7mm;font-size:9.5pt}',
       '.wk-pet .tot td{height:8.5mm}',
@@ -170,6 +170,38 @@ window.FinWeekly = (function () {
       '.wk-rcp .rb img{flex:1;min-height:0;width:100%;object-fit:contain}',
       '.wk-rcp .rb .pdf{font-size:9pt;color:#555;word-break:break-all}',
       // ── 인쇄: 보고서 쪽만, 가로 A4 ──
+      // 왼쪽 메뉴 + 본문
+      '.wk-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:18px;align-items:start}',
+      '.wk-side{position:sticky;top:120px;background:#fff;border:1px solid var(--line,#F5F4F1);border-radius:2px;padding:8px}',
+      '.wk-side-g{font-size:.74rem;font-weight:700;color:#A7A6A3;letter-spacing:.06em;padding:10px 10px 4px}',
+      '.wk-side button{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;padding:9px 10px;font:inherit;font-size:.92rem;cursor:pointer;color:#111}',
+      '.wk-side button:hover{background:#FDFCF9}',
+      '.wk-side button.on{border-left-color:#C62828;background:#FBFAF7;font-weight:700}',
+      '.wk-badge{background:#C62828;color:#fff;border-radius:999px;font-size:.7rem;font-weight:700;padding:1px 7px}',
+      '.wk-hide{display:none}',
+      '.wk-carry{border-left:4px solid #C62828}',
+      '.wk-carry-l{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow:auto;font-size:.9rem}',
+      '.wk-carry-l label{display:flex;gap:6px;align-items:center;cursor:pointer}',
+      '@media (max-width:860px){.wk-layout{grid-template-columns:1fr}.wk-side{position:static;display:flex;flex-wrap:wrap;gap:4px}.wk-side-g{width:100%}.wk-side button{width:auto;border-left:0;border-bottom:3px solid transparent}.wk-side button.on{border-bottom-color:#C62828}}',
+      // 금주 청구 내역
+      '.wk-claim{border:1px solid #EEEDEA;border-left:4px solid #BDBDBD;border-radius:2px;margin:10px 0;background:#fff}',
+      '.wk-claim.submitted{border-left-color:#C62828}.wk-claim.approved{border-left-color:#111}.wk-claim.rejected{opacity:.7}',
+      '.wk-claim .ch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 12px;border-bottom:1px solid #F2F1EE;background:#FDFCF9}',
+      '.wk-claim .ch .when{margin-left:auto;font-size:.76rem;color:#A7A6A3}',
+      '.wk-claim .pill{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#F2F2F2;color:#555}',
+      '.wk-claim .pill.submitted{background:#FBEDEA;color:#C62828}.wk-claim .pill.approved{background:#111;color:#fff}',
+      '.wk-claim .cb{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;padding:10px 12px}',
+      '.wk-claim .row{display:flex;gap:10px;align-items:baseline;padding:3px 0;font-size:.9rem}',
+      '.wk-claim .row>span:first-child{flex:0 0 78px;color:#898885;font-size:.8rem}',
+      '.wk-claim .row .amt{color:#C62828}.wk-claim .row small{color:#898885;margin-left:6px}',
+      '.wk-claim .row .memo{white-space:pre-wrap}',
+      '.wk-claim .acts{display:flex;gap:8px;margin-top:8px}.wk-claim .acts .btn{padding:6px 12px}',
+      '.wk-claim .cr{display:flex;gap:6px;flex-wrap:wrap;align-content:flex-start}',
+      '.wk-claim .cr .rc{display:block;width:140px;height:170px;border:1px solid #E5E4E1;border-radius:2px;overflow:hidden;background:#FAFAFA}',
+      '.wk-claim .cr .rc img{width:100%;height:100%;object-fit:contain}',
+      '.wk-claim .cr .rc.pdf{display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#C62828;text-decoration:none;height:60px}',
+      '.wk-claim .norc{font-size:.82rem;color:#A7A6A3;padding:8px}',
+      '@media (max-width:700px){.wk-claim .cb{grid-template-columns:1fr}}',
       '#wkPrintHost{display:none}',
       '@media print{',
       ' body.wk-printing>*:not(#wkPrintHost){display:none!important}',
@@ -216,16 +248,51 @@ window.FinWeekly = (function () {
     });
   }
 
+  // =====================================================================
+  //  화면 짜임 (2026-11-24 담임목사: "왼쪽에 메뉴를 만들어 지출결의서와 재정보고서를 분리,
+  //  할부 등록 · 정기지출 등록 등을 지출결의서에, 금주 청구된 내역으로 각 부가 올린 청원서와 영수증을 볼 수 있도록")
+  //   왼쪽 메뉴: 재정보고서 / 지출결의서(작성·인쇄 · 금주 청구 내역 · 정기 지출 등록 · 할부 등록)
+  // =====================================================================
+  var VIEWS = [
+    { grp: '재정보고서' },
+    { k: 'report', label: '주간 재정보고서' },
+    { grp: '지출결의서' },
+    { k: 'petition', label: '지출결의서 작성 · 인쇄' },
+    { k: 'claims', label: '금주 청구 내역', badge: true },
+    { k: 'regular', label: '정기 지출 등록' },
+    { k: 'inst', label: '할부 등록' }
+  ];
   function render(panel, X) {
     injectCSS();
-    var won = X.won, esc = X.esc;
+    if (!state.view) state.view = 'report';
+    panel.innerHTML = '<div class="wk-layout"><nav class="wk-side">' + VIEWS.map(function (v) {
+      if (v.grp) return '<div class="wk-side-g">' + v.grp + '</div>';
+      return '<button data-view="' + v.k + '"' + (state.view === v.k ? ' class="on"' : '') + '>' + v.label + (v.badge ? ' <span class="wk-badge" id="wkBadge" hidden></span>' : '') + '</button>';
+    }).join('') + '</nav><div class="wk-main" id="wkMain"></div></div>';
+    Array.prototype.forEach.call(panel.querySelectorAll('.wk-side [data-view]'), function (b) {
+      b.onclick = function () { state.view = b.getAttribute('data-view'); render(panel, X); };
+    });
+    // 다른 화면으로 가는 단추(예: 결의서 화면의 「금주 청구 내역 보기」)
+    if (!panel.__wkGoto) {
+      panel.__wkGoto = true;
+      panel.addEventListener('click', function (e) {
+        var g = e.target.closest && e.target.closest('[data-goto]');
+        if (g) { state.view = g.getAttribute('data-goto'); render(panel, X); }
+      });
+    }
+    var main = panel.querySelector('#wkMain');
+    if (state.view === 'regular') return renderRecurring(main, X, 'regular');
+    if (state.view === 'inst') return renderRecurring(main, X, 'inst');
+    renderWeek(main, X, panel);
+  }
+
+  function renderWeek(main, X, panel) {
+    var won = X.won, esc = X.esc, view = state.view;
     var fyR = X.fyRange(X.fy());
     // 고른 주가 이 회계연도에 없으면: 오늘이 회계연도 안이면 이번 주, 아니면 회계연도 마지막 주
     var t = X.today();
     function inFYweek(sun) { return sun && addDays(sun, 6) >= fyR.from && sun <= fyR.to; }
     if (!inFYweek(state.sunday)) state.sunday = (t >= fyR.from && t <= fyR.to) ? sundayOf(t) : sundayOf(fyR.to);
-
-    // 회계연도 안의 주 목록 (주일 기준)
     var weeks = [], s = sundayOf(fyR.from);
     while (s <= fyR.to) { weeks.push(s); s = addDays(s, 7); }
     var thisSun = sundayOf(t);
@@ -233,66 +300,126 @@ window.FinWeekly = (function () {
       var a = w < fyR.from ? fyR.from : w, b = addDays(w, 6); if (b > fyR.to) b = fyR.to;
       return '<option value="' + w + '"' + (w === state.sunday ? ' selected' : '') + '>' + dt(w).getFullYear() + '년 ' + weekName(w) + ' (' + md(a) + ' ~ ' + md(b) + ')' + (w === thisSun ? ' · 이번 주' : '') + '</option>';
     }).reverse().join('');
-
-    panel.innerHTML =
+    var btns = '';
+    if (view === 'report') {
+      btns = '<label title="끄면 Word 양식처럼 이월금만 채운 수기 작성용으로 나옵니다"><input type="checkbox" id="wkFill"' + (state.fill ? ' checked' : '') + '> 장부 숫자도 채우기</label>' +
+        (state.fill ? '<label><input type="checkbox" id="wkZero"' + (state.showZero ? ' checked' : '') + '> 0원 계정도 보기</label>' : '') +
+        '<button class="btn btn-solid wk-print" id="wkPrint" title="주간 재정보고서를 가로 A4로 인쇄">🖨 재정보고서 인쇄</button>';
+    } else {
+      btns = '<button class="btn btn-solid wk-print" id="wkPrintPet" title="지출결의서와 영수증을 세로 A4로 인쇄">🖨 지출결의서 인쇄</button>';
+    }
+    btns += '<button class="btn btn-line" id="wkPrintAll" title="재정보고서와 지출결의서·영수증을 한 번에 인쇄">📚 일괄 출력</button>';
+    var title = { report: '주간 재정보고서', petition: '지출결의서 작성 · 인쇄', claims: '금주 청구 내역' }[view];
+    main.innerHTML =
       '<div class="fin-card"><div class="wk-bar">' +
-      '<b style="color:var(--accent,#111)">주 선택</b>' +
+      '<b style="color:var(--accent,#111)">' + title + '</b>' +
       '<button class="btn btn-line wk-nav" id="wkPrev" title="앞 주">◀</button>' +
       '<select id="wkSel">' + opts + '</select>' +
       '<button class="btn btn-line wk-nav" id="wkNext" title="다음 주">▶</button>' +
-      '<button class="btn btn-line" id="wkThis">이번 주</button>' +
-      '<label title="끄면 Word 양식처럼 이월금만 채운 수기 작성용으로 나옵니다"><input type="checkbox" id="wkFill"' + (state.fill ? ' checked' : '') + '> 장부 숫자도 채우기</label>' +
-      (state.fill ? '<label><input type="checkbox" id="wkZero"' + (state.showZero ? ' checked' : '') + '> 0원 계정도 보기</label>' : '') +
-      '<button class="btn btn-line wk-print" id="wkPrint" title="주간 재정보고서만 가로 A4로 인쇄">🖨 보고서 인쇄</button>' +
-      '<button class="btn btn-line" id="wkPrintPet" title="지출결의서(청원서)만 세로 A4로 인쇄">청원서 인쇄</button>' +
-      '<button class="btn btn-solid" id="wkPrintAll" title="보고서와 청원서를 한 번에 인쇄">📚 일괄 출력</button>' +
+      '<button class="btn btn-line" id="wkThis">이번 주</button>' + btns +
       '</div><p class="wk-note" id="wkNote"></p></div>' +
-      '<div class="wk-scaler" id="wkScaler"><p class="qt-loading">불러오는 중…</p></div>';
-
-    var sel = panel.querySelector('#wkSel');
-    function pick(sun) { state.sunday = sun; render(panel, X); }
+      '<div id="wkBody"></div>' +
+      '<div class="wk-scaler" id="wkScaler"' + (view === 'claims' ? ' style="position:absolute;left:-99999px;top:0;width:1200px"' : '') + '><p class="qt-loading">불러오는 중…</p></div>';
+    var sel = main.querySelector('#wkSel');
+    function again() { render(panel, X); }
+    function pick(sun) { state.sunday = sun; again(); }
     sel.onchange = function () { pick(sel.value); };
-    panel.querySelector('#wkPrev').onclick = function () { var i = weeks.indexOf(state.sunday); if (i > 0) pick(weeks[i - 1]); };
-    panel.querySelector('#wkNext').onclick = function () { var i = weeks.indexOf(state.sunday); if (i >= 0 && i < weeks.length - 1) pick(weeks[i + 1]); };
-    panel.querySelector('#wkThis').onclick = function () {
+    main.querySelector('#wkPrev').onclick = function () { var i = weeks.indexOf(state.sunday); if (i > 0) pick(weeks[i - 1]); };
+    main.querySelector('#wkNext').onclick = function () { var i = weeks.indexOf(state.sunday); if (i >= 0 && i < weeks.length - 1) pick(weeks[i + 1]); };
+    main.querySelector('#wkThis').onclick = function () {
       if (t < fyR.from || t > fyR.to) { alert('이번 주는 지금 고른 회계연도(' + fyR.from + ' ~ ' + fyR.to + ')에 들어 있지 않습니다. 위에서 회계연도를 바꿔 주세요.'); return; }
       pick(thisSun);
     };
-    var zEl = panel.querySelector('#wkZero'); if (zEl) zEl.onchange = function (e) { state.showZero = e.target.checked; render(panel, X); };
-    panel.querySelector('#wkFill').onchange = function (e) { state.fill = e.target.checked; render(panel, X); };
+    var zEl = main.querySelector('#wkZero'); if (zEl) zEl.onchange = function (e) { state.showZero = e.target.checked; again(); };
+    var fEl = main.querySelector('#wkFill'); if (fEl) fEl.onchange = function (e) { state.fill = e.target.checked; again(); };
 
-    var scaler = panel.querySelector('#wkScaler');
+    var scaler = main.querySelector('#wkScaler'), body = main.querySelector('#wkBody');
     X.load().then(function () { return loadOnline(X, state.sunday); }).then(function (online) {
+      var badge = panel.querySelector('#wkBadge');
+      if (badge && online.pending && online.pending.length) { badge.hidden = false; badge.textContent = online.pending.length; }
       var rep = state.fill ? build(X, fyR) : buildForm(X, fyR);
-      panel.querySelector('#wkNote').innerHTML = rep.note;
-      var pet = document.createElement('div'); pet.id = 'wkPet';
-      scaler.parentNode.insertBefore(pet, scaler);
       var docEl = null;
       function fit() {
         if (!scaler.isConnected) { window.removeEventListener('resize', fit); return; }
-        if (!docEl) return;
+        if (!docEl || view === 'claims') return;
         var w = scaler.clientWidth || 1, natW = docEl.scrollWidth || 1123;
         var k = Math.min(1, w / natW);
         docEl.style.transform = 'scale(' + k + ')';
         scaler.style.height = Math.ceil(docEl.scrollHeight * k) + 'px';
       }
+      // 미리보기: 화면마다 자기 쪽만 보이고, 나머지 쪽은 숨긴 채 두어 「일괄 출력」이 함께 찍는다
       function preview() {
         var rows = petRows(X, online);
-        scaler.innerHTML = '<div class="wk-doc"><div class="wk-sec">주간 재정보고서 (가로 A4' + (state.fill ? ' · 장부 숫자 채움' : ' · 수기 작성용, 이월금만 채움') + ')</div>' + rep.html +
-          '<div class="wk-sec">청원서 · 지출결의서 (세로 A4)</div>' + petitionPages(X, fyR, rows) + receiptPages(X, rows) + '</div>';
+        scaler.innerHTML = '<div class="wk-doc">' +
+          '<div class="' + (view === 'report' ? '' : 'wk-hide') + '"><div class="wk-sec">주간 재정보고서 (가로 A4' + (state.fill ? ' · 장부 숫자 채움' : ' · 수기 작성용, 이월금만 채움') + ')</div>' + rep.html + '</div>' +
+          '<div class="' + (view === 'petition' ? '' : 'wk-hide') + '"><div class="wk-sec">지출결의서 (세로 A4)</div>' + petitionPages(X, fyR, rows) + receiptPages(X, rows) + '</div>' +
+          '</div>';
         docEl = scaler.querySelector('.wk-doc');
         fit();
       }
-      editor(pet, X, fyR, online, preview, function () { render(panel, X); });
+      if (view === 'report') main.querySelector('#wkNote').innerHTML = rep.note;
+      else if (view === 'petition') {
+        main.querySelector('#wkNote').innerHTML = '정기 지출 · 할부는 그 달 그 주에 저절로 들어갑니다(왼쪽 「정기 지출 등록」 · 「할부 등록」). 확인한 부서 청원은 영수증과 함께 붙습니다.';
+        editor(body, X, fyR, online, preview, again);
+      } else {
+        main.querySelector('#wkNote').innerHTML = '이 주(' + weekName(state.sunday) + ') 지출결의서로 올라온 부서 · 청원자의 청원입니다. 「확인」한 청원만 결의서에 들어갑니다.';
+        claimsView(body, X, fyR, online, again);
+      }
       preview();
       window.addEventListener('resize', fit);
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
-      panel.querySelector('#wkPrint').onclick = function () { printPages(docEl, 'report'); };
-      panel.querySelector('#wkPrintPet').onclick = function () { printPages(docEl, 'petition'); };
-      panel.querySelector('#wkPrintAll').onclick = function () { printPages(docEl, 'all'); };
+      var pr = main.querySelector('#wkPrint'); if (pr) pr.onclick = function () { printPages(docEl, 'report'); };
+      var pp = main.querySelector('#wkPrintPet'); if (pp) pp.onclick = function () { printPages(docEl, 'petition'); };
+      main.querySelector('#wkPrintAll').onclick = function () { printPages(docEl, 'all'); };
     }).catch(function (e) {
       scaler.innerHTML = '<div class="fin-card" style="color:#A33A2A">불러오지 못했습니다: ' + esc(e.message) + '</div>';
     });
+  }
+
+  // ── 금주 청구 내역: 이 주 결의서로 올라온 청원 + 다른 주의 확인 대기 ──
+  function claimsView(box, X, fyR, online, reload) {
+    var won = X.won, esc = X.esc, sun = state.sunday;
+    if (online.missing) { box.innerHTML = '<div class="fin-card">온라인 청원 표가 아직 없습니다.</div>'; return; }
+    var stName = { submitted: '확인 대기', approved: '확인함 · 결의서에 들어감', rejected: '돌려보냄' };
+    var week = (online.week || []).slice().sort(function (a, b) { return (a.status === 'submitted' ? 0 : 1) - (b.status === 'submitted' ? 0 : 1) || a.id - b.id; });
+    var other = (online.pending || []).filter(function (p) { return p.week_sunday !== sun; });
+    var rt = rates(X, fyR, petRows(X, online));
+    function card(p) {
+      var recs = p.receipts || [];
+      var o = rt[p.hang];
+      return '<div class="wk-claim ' + esc(p.status) + '">' +
+        '<div class="ch"><b>' + esc(p.dept || '재정 청원') + '</b> · ' + esc(p.requester_name || '') + '<span class="pill ' + esc(p.status) + '">' + esc(stName[p.status] || p.status) + '</span>' +
+        (p.week_sunday !== sun ? '<span class="tag">' + esc(weekName(p.week_sunday)) + ' 결의서</span>' : '') + '<span class="when">' + esc(String(p.created_at || '').slice(0, 16).replace('T', ' ')) + '</span></div>' +
+        '<div class="cb"><div class="cl">' +
+        '<div class="row"><span>관 · 항</span><b>' + esc(p.gwan || '') + ' · ' + esc(p.hang || '') + '</b></div>' +
+        '<div class="row"><span>지출 내역</span><b>' + esc(p.item || '') + '</b></div>' +
+        '<div class="row"><span>금액</span><b class="amt">' + won(p.amount) + '원</b>' + (o && o.budget != null ? '<small>예산 집행률 ' + pct(o.rate) + '</small>' : '') + '</div>' +
+        (p.pay_account ? '<div class="row"><span>받는 계좌</span><b>' + esc(p.pay_bank) + ' ' + esc(p.pay_account) + ' (예금주 ' + esc(p.pay_holder) + ')</b></div>' : '<div class="row"><span>받는 계좌</span><i>없음</i></div>') +
+        (p.memo ? '<div class="row"><span>메모</span><span class="memo">' + esc(p.memo) + '</span></div>' : '') +
+        (p.review_note ? '<div class="row"><span>돌려보낸 까닭</span><span class="memo">' + esc(p.review_note) + '</span></div>' : '') +
+        '<div class="acts">' +
+        (p.status === 'submitted' ? '<button class="btn btn-solid" data-ok="' + p.id + '">확인 → 결의서에 넣기</button><button class="btn btn-line" data-no="' + p.id + '">돌려보냄</button>' :
+          '<button class="btn btn-line" data-back="' + p.id + '">다시 확인 대기로</button>') + '</div>' +
+        '</div><div class="cr">' + (recs.length ? recs.map(function (u, i) {
+          return /\.pdf(\?|$)/i.test(u) ? '<a class="rc pdf" href="' + esc(u) + '" target="_blank" rel="noopener">PDF 영수증 ' + (i + 1) + '</a>'
+            : '<a class="rc" href="' + esc(u) + '" target="_blank" rel="noopener" title="크게 보기"><img src="' + esc(u) + '" alt="영수증 ' + (i + 1) + '" loading="lazy"></a>';
+        }).join('') : '<div class="norc">영수증 없음</div>') + '</div></div></div>';
+    }
+    var tot = week.filter(function (p) { return p.status === 'approved'; }).reduce(function (s, p) { return s + (Number(p.amount) || 0); }, 0);
+    box.innerHTML =
+      '<div class="fin-card"><div class="wk-pe-h"><b>' + dt(sun).getFullYear() + '년 ' + weekName(sun) + ' 결의서로 올라온 청원 ' + week.length + '건</b>' +
+      '<span class="wk-st">확인한 청원 합계 ' + won(tot) + '원</span></div>' +
+      (week.length ? week.map(card).join('') : '<p class="wk-note" style="margin:0">이 주 결의서로 올라온 청원이 없습니다.</p>') + '</div>' +
+      (other.length ? '<div class="fin-card"><div class="wk-pe-h"><b>다른 주의 확인 대기 ' + other.length + '건</b></div>' + other.map(card).join('') + '</div>' : '');
+    box.addEventListener('click', function (e) {
+      var t = e.target;
+      if (t.getAttribute('data-ok')) review(t.getAttribute('data-ok'), 'approved');
+      else if (t.getAttribute('data-no')) { var why = prompt('돌려보내는 까닭을 적어 주세요(청원자에게 보입니다).', ''); if (why != null) review(t.getAttribute('data-no'), 'rejected', why); }
+      else if (t.getAttribute('data-back')) review(t.getAttribute('data-back'), 'submitted');
+    });
+    function review(id, status, why) {
+      X.call('reviewPetition', { id: id, status: status, note: why || '' }).then(reload).catch(function (er) { alert('바꾸지 못했습니다: ' + er.message); });
+    }
   }
 
   // =====================================================================
@@ -301,7 +428,7 @@ window.FinWeekly = (function () {
   //  → 계정은 모두 적고 금액 칸은 비운다. 년·월·주와 전주 이월금만 채운다(이월금은 장부로 자동).
   //  1쪽 수입 항목(현금·온라인·합계) + 금주 재정 요약 + 특이사항 + 확인
   //  2쪽 지출(분류 줄 오른쪽 칸 = 소계, 3단)
-  //  3~4쪽 헌금 내역서(이름 / (항목) · 헌금액, 4단 × 30줄)
+  //  3~5쪽 헌금 내역서(이름 / (항목) · 헌금액, 4단 × 22줄 — 손으로 쓰기 좋게 칸을 키움)
   // =====================================================================
   function buildForm(X, fyR) {
     var won = X.won, esc = X.esc, M = X.M;
@@ -376,18 +503,18 @@ window.FinWeekly = (function () {
     html += page('재정보고서', '지출', exBody);
 
     // ── 3~4쪽: 헌금 내역서(빈 칸) ──
-    for (var pg = 1; pg <= 2; pg++) {
+    for (var pg = 1; pg <= 3; pg++) {
       var blocks = '';
       for (var b = 0; b < 4; b++) {
         var trs = '';
-        for (var r = 0; r < 30; r++) trs += '<tr><td></td><td></td></tr>';
-        blocks += '<table class="wk-t"><colgroup><col><col style="width:25.5mm"></colgroup><thead><tr><th>이름 / (항목)</th><th>헌금액</th></tr></thead><tbody>' + trs + '</tbody></table>';
+        for (var r = 0; r < 22; r++) trs += '<tr><td></td><td></td></tr>';
+        blocks += '<table class="wk-t"><colgroup><col><col style="width:28mm"></colgroup><thead><tr><th>이름 / (항목)</th><th>헌금액</th></tr></thead><tbody>' + trs + '</tbody></table>';
       }
       html += page('헌금 내역서', '헌금 내역 ' + pg,
         '<div class="wk-ofhint">항목이 바뀌는 곳은 이름 칸에 ( 십일조 ) 처럼 항목을 적고, 그 아래 줄부터 이름과 금액을 적습니다.</div><div class="wk-of wk-off">' + blocks + '</div>');
     }
     var note = year + '년 ' + wname + '(' + md(from) + ' ~ ' + md(addDays(sun, 6)) + ') 수기 작성용 양식입니다. 전주 이월금 <b>' + won(opening) + '원</b>은 장부로 자동 계산해 채웠습니다' +
-      '(회계연도 시작 이월금 + ' + md(fyR.from) + '부터 이번 주 직전까지의 수입·지출). 나머지 금액 칸은 비워 둡니다. 「보고서 인쇄」 = 가로 A4 4쪽.';
+      '(회계연도 시작 이월금 + ' + md(fyR.from) + '부터 이번 주 직전까지의 수입·지출). 나머지 금액 칸은 비워 둡니다. 「재정보고서 인쇄」 = 가로 A4 5쪽(헌금 내역서 3쪽).';
     return { html: html, note: note };
   }
 
@@ -606,10 +733,21 @@ window.FinWeekly = (function () {
     { kind: '할부', week: 4, gwan: '시설관리비', hang: '수리 및 공사비', text: '전기차 충전 설비 설치', amount: 188350, note: '담임목사', start: '2025-12', total: 12 },
     { kind: '정기', week: 4, gwan: '사무 관리비', hang: '프로그램 및 IT 서비스 사용 비용', text: '구글 One drive 구독료', amount: 29600, note: '담임목사' }
   ];
+  // 2026-11-24 담임목사: "정기등록은 매월 몇째 주 등록되고, 한 회기 동안 운영된다. 할부는 회기와 무관하게 할부 개월 수만큼
+  //   계속 청원된다. 정기등록은 다음 회기가 되면, 삭제하지 않는 한, 이월한다는 선택과 함께 이월되도록."
+  //   → 정기 지출(정기 · 선교)은 fy(회기)를 가진다. 그 회기의 주에만 들어간다. 다음 회기로는 「정기 지출 이월」로 옮긴다.
+  //     할부는 fy 가 없고 1회차 연월 ~ 총 회차까지 이어진다.
+  //   fy 가 없는 예전 줄 · 기본값은 2026 청원서에서 가져온 것이므로 2026년도 정기 지출로 본다.
+  var LEGACY_FY = 2026;
+  function isReg(c) { return c.kind !== '할부'; }
+  function withFy(list) { list.forEach(function (c) { if (isReg(c) && !c.fy) c.fy = LEGACY_FY; }); return list; }
+  function defaultClaims(fy) {
+    return DEFAULT_CLAIMS.map(function (c, i) { var o = JSON.parse(JSON.stringify(c)); o.id = 'd' + (i + 1); o.on = true; if (isReg(o)) o.fy = fy || LEGACY_FY; return o; });
+  }
   function getClaims(X) {
     var raw = (X.M.settings || {}).recurring_claims;
-    if (raw) { try { var a = JSON.parse(raw); if (Array.isArray(a)) return a; } catch (e) { /* 아래 기본값 */ } }
-    return DEFAULT_CLAIMS.map(function (c, i) { var o = JSON.parse(JSON.stringify(c)); o.id = 'd' + (i + 1); o.on = true; return o; });
+    if (raw) { try { var a = JSON.parse(raw); if (Array.isArray(a)) return withFy(a); } catch (e) { /* 아래 기본값 */ } }
+    return defaultClaims();
   }
   function claimsSaved(X) { return !!(X.M.settings || {}).recurring_claims; }
   function ymIndex(ym) { var p = String(ym || '').split('-'); return Number(p[0]) * 12 + Number(p[1]) - 1; }
@@ -634,6 +772,7 @@ window.FinWeekly = (function () {
     var ym = ymOf(sun), wn = weekNo(sun), mon = Number(ym.slice(5, 7)), out = [];
     getClaims(X).forEach(function (c) {
       if (c.on === false) return;
+      if (isReg(c) && Number(c.fy) !== Number(X.fy())) return;   // 정기 지출은 그 회기에만
       if (Number(c.week) !== 0 && Number(c.week) !== wn) return;
       var st = claimState(c, ym); if (!st.active) return;
       var text = String(c.text || ''), amt = Number(c.amount) || 0;
@@ -672,7 +811,8 @@ window.FinWeekly = (function () {
       var all = r.rows || [];
       return {
         approved: all.filter(function (p) { return p.status === 'approved' && p.week_sunday === sun; }),
-        pending: all.filter(function (p) { return p.status === 'submitted'; })
+        pending: all.filter(function (p) { return p.status === 'submitted'; }),
+        week: all.filter(function (p) { return p.week_sunday === sun && p.status !== 'cancelled'; })
       };
     }).catch(function () { return { approved: [], pending: [], missing: true }; });
   }
@@ -748,10 +888,12 @@ window.FinWeekly = (function () {
         ' <span class="tag">' + esc(weekName(p.week_sunday)) + ' 결의서로</span>' + rcpLinks(p, esc) + payLine(p, esc) + (p.memo ? '<div class="memo">' + esc(p.memo) + '</div>' : '') + '</div>' +
         '<div><button class="btn btn-solid" data-ok="' + p.id + '">확인</button> <button class="btn btn-line" data-no="' + p.id + '">돌려보냄</button></div></div>';
     }).join('');
+    var fyNow = Number(X.fy()), hasReg = getClaims(X).some(function (c) { return isReg(c) && Number(c.fy) === fyNow; });
     box.innerHTML = dl.html +
+      (hasReg ? '' : '<div class="wk-pends">' + fyNow + '년도 정기 지출이 아직 없습니다. 지난 회기의 정기 지출을 이월하거나 새로 등록하세요. <button class="btn btn-line" data-goto="regular" style="padding:3px 10px;font-size:.8rem;margin-left:6px">정기 지출 등록 · 이월</button></div>') +
       '<div class="fin-card wk-pe"><div class="wk-pe-h"><b>지출결의서 작성 · ' + dt(sun).getFullYear() + '년 ' + weekName(sun) + '</b>' +
       '<span class="wk-st">' + (savedAt ? '저장됨 ' + esc(savedAt) : '아직 저장 안 함 — 정기 청구로 채운 상태') + '</span></div>' +
-      (pend ? '<div class="wk-pends"><b>확인 기다리는 온라인 청원 ' + online.pending.length + '건</b> — 확인하면 그 주 결의서에 들어갑니다.' + pend + '</div>' : '') +
+      (pend ? '<div class="wk-pends"><b>확인 기다리는 청원 ' + online.pending.length + '건</b> — 확인하면 그 주 결의서에 들어갑니다. <button class="btn btn-line" data-goto="claims" style="padding:3px 10px;font-size:.8rem;margin-left:6px">금주 청구 내역에서 보기</button></div>' : '') +
       (online.missing ? '<p class="wk-note">온라인 청원 표가 아직 없습니다(데이터베이스 준비 전). 정기 청구와 직접 적은 줄만 나옵니다.</p>' : '') +
       '<div style="overflow:auto"><table class="fin-table wk-pet-ed"><thead><tr><th style="width:120px">관</th><th style="width:170px">항(예산 계정)</th><th>지출내역</th><th style="width:110px" class="num">금액</th><th style="width:120px">비고</th><th style="width:150px">예산 집행률</th><th style="width:34px"></th></tr></thead><tbody>' +
       rows.map(rowHTML).join('') + onl + '</tbody><tfoot><tr><td colspan="3" style="text-align:right"><b>합계</b></td><td class="num"><b id="wkPetSum"></b></td><td colspan="3"></td></tr></tfoot></table></div>' +
@@ -873,7 +1015,10 @@ window.FinWeekly = (function () {
   // =====================================================================
   //  「정기 청구」 관리 화면 (예산·계정 ▸ 정기 청구)
   // =====================================================================
-  function renderRecurring(panel, X) {
+  // mode: 'regular' = 정기 지출 등록, 'inst' = 할부 등록 (지출결의서 왼쪽 메뉴), 없으면 모두
+  function renderRecurring(panel, X, mode) {
+    var FY = Number(X.fy());
+    function shown(c) { return mode === 'inst' ? c.kind === '할부' : (mode === 'regular' ? (isReg(c) && Number(c.fy) === FY) : true); }
     injectCSS();
     var won = X.won, esc = X.esc;
     panel.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
@@ -908,7 +1053,7 @@ window.FinWeekly = (function () {
       }
       function compare() {
         var by = {};
-        list.forEach(function (c) { if (!c.hang || c.kind === '선교') return; var o = by[c.hang] = by[c.hang] || { gwan: c.gwan, plan: 0 }; o.plan += yearly(c); });
+        list.forEach(function (c) { if (!c.hang || c.kind === '선교' || !shown(c)) return; var o = by[c.hang] = by[c.hang] || { gwan: c.gwan, plan: 0 }; o.plan += yearly(c); });
         var rows = Object.keys(by).map(function (h) {
           var o = by[h], b = budgetOf(X, h, o.gwan), sp = spentBefore(X, fyR, h, addDays(X.today(), 1)), diff = b == null ? null : b - o.plan;
           var flag = b == null ? '<span class="bad">예산 계정 없음</span>' : (o.plan > b ? '<span class="bad">예산보다 ' + won(o.plan - b) + '원 많음</span>' : (diff > 0 ? '남는 예산 ' + won(diff) + '원(그때그때 지출용)' : '예산과 같음'));
@@ -917,18 +1062,46 @@ window.FinWeekly = (function () {
         return '<div class="fin-card"><b>예산과 비교 (' + X.fy() + '년도)</b><p class="wk-note" style="margin:4px 0 8px">정기 청구로 한 해 동안 나갈 금액과 예산을 계정마다 견줍니다. 빨간 글씨는 확인이 필요한 곳입니다. 집행은 장부에 적힌 지출입니다.</p>' +
           '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>관</th><th>항</th><th class="num">정기 청구 연간</th><th class="num">연 예산</th><th>견줌</th><th class="num">장부 집행</th><th class="num">집행률</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
       }
+      // 지난 회기 정기 지출 가운데 아직 이 회기로 옮기지 않은 것
+      function carryable() {
+        return list.filter(function (c) { return isReg(c) && Number(c.fy) === FY - 1 && !list.some(function (d) { return isReg(d) && Number(d.fy) === FY && d.from === c.id; }); });
+      }
+      function carryBox() {
+        if (mode !== 'regular') return '';
+        var cs = carryable(); if (!cs.length) return '';
+        return '<div class="fin-card wk-carry"><div class="wk-pe-h"><b>정기 지출 이월 — ' + (FY - 1) + '년도 → ' + FY + '년도</b><span class="wk-st">' + cs.length + '건</span></div>' +
+          '<p class="wk-note" style="margin:0 0 8px">지난 회기의 정기 지출입니다. 이월할 것만 고른 뒤 「이월하기」를 누르세요. 고르지 않은 것은 옮기지 않습니다(지난 회기 기록은 그대로 남습니다). 옮긴 뒤 금액 · 주는 아래에서 고칠 수 있습니다.</p>' +
+          '<div class="wk-carry-l">' + cs.map(function (c) {
+            return '<label><input type="checkbox" data-carry="' + esc(c.id) + '"' + (c.on === false ? '' : ' checked') + '> ' + (Number(c.week) ? c.week + '주' : '매주') + ' · ' + esc(c.hang || '') + ' · ' + esc(c.text || '') + (c.kind === '선교' ? ' (선교헌금 자동)' : ' · ' + won(c.amount) + '원') + '</label>';
+          }).join('') + '</div>' +
+          '<div class="wk-pe-b"><button class="btn btn-solid" id="rcCarry">선택한 정기 지출 이월하기</button></div></div>';
+      }
       function draw() {
-        var order = list.map(function (c, i) { return { c: c, i: i }; }).sort(function (a, b) { return (Number(a.c.week) - Number(b.c.week)) || (a.i - b.i); });
+        var order = list.map(function (c, i) { return { c: c, i: i }; }).filter(function (o) { return shown(o.c); }).sort(function (a, b) { return (Number(a.c.week) - Number(b.c.week)) || (a.i - b.i); });
         panel.innerHTML = dl.html +
-          '<div class="fin-card wk-pe"><div class="wk-pe-h"><b>정기 청구 목록</b><span class="wk-st">' + (claimsSaved(X) ? '저장된 목록' : '기본값(2026 청원서에서 가져옴) — 저장하면 확정됩니다') + '</span></div>' +
-          '<p class="wk-note" style="margin:0 0 8px">주를 고르면 그 달 그 주의 줄이 지출결의서에 저절로 들어갑니다. 할부는 1회차 연월과 총 회차로 회차를 매달 1씩 올리고, 마지막 회차 다음 달부터 빠집니다(「끝남」). 지출내역에 {월} 을 쓰면 그 달 숫자가 들어갑니다.</p>' +
+          carryBox() +
+          '<div class="fin-card wk-pe"><div class="wk-pe-h"><b>' + (mode === 'inst' ? '할부 등록 (회기와 상관없이 총 회차까지)' : (mode === 'regular' ? FY + '년도 정기 지출 등록' : '정기 청구 목록')) + '</b><span class="wk-st">' + (claimsSaved(X) ? '저장된 목록' : '기본값(2026 청원서에서 가져옴) — 저장하면 확정됩니다') + '</span></div>' +
+          '<p class="wk-note" style="margin:0 0 8px">' + (mode === 'inst'
+            ? '할부는 그 달 「주」에 「이름 (회차/총 회차)」로 지출결의서에 저절로 들어갑니다. 1회차 연월과 총 회차로 회차를 매달 1씩 올리고, 마지막 회차 다음 달부터 빠집니다(「끝남」). 끝이 없는 적립은 총 회차를 비워 두세요.'
+            : '주를 고르면 그 달 그 주에 지출결의서에 저절로 들어갑니다(매주 = 주마다). 지출내역에 {월} 을 쓰면 그 달 숫자가, 선교헌금 줄은 지난주 선교헌금 전액이 들어갑니다. 달마다 금액이 다르면 「다른 금액 달」에 적습니다.') + '</p>' +
           '<div style="overflow:auto"><table class="fin-table wk-pet-ed wk-rc"><thead><tr><th>사용</th><th>종류</th><th>주</th><th>관</th><th>항(예산 계정)</th><th>지출내역</th><th class="num">금액</th><th>비고</th><th>할부 회차 / 다른 금액 달</th><th></th></tr></thead><tbody>' +
           order.map(function (o) { return rowHTML(o.c, o.i); }).join('') + '</tbody></table></div>' +
-          '<div class="wk-pe-b"><button class="btn btn-line" id="rcAdd">+ 정기 지출</button><button class="btn btn-line" id="rcInst">+ 할부 등록</button><button class="btn btn-solid" id="rcSave">💾 저장</button><button class="btn btn-line" id="rcReset" style="margin-left:auto">기본값으로 되돌리기</button><span id="rcMsg" class="wk-note" style="margin:0"></span></div></div>' +
+          '<div class="wk-pe-b">' + (mode !== 'inst' ? '<button class="btn btn-line" id="rcAdd">+ 정기 지출 더하기</button>' : '') + (mode !== 'regular' ? '<button class="btn btn-line" id="rcInst">+ 할부 등록</button>' : '') + '<button class="btn btn-solid" id="rcSave">💾 저장</button><button class="btn btn-line" id="rcReset" style="margin-left:auto">기본값으로 되돌리기</button><span id="rcMsg" class="wk-note" style="margin:0"></span></div></div>' +
           compare();
         wire();
       }
       function wire() {
+        var cb = panel.querySelector('#rcCarry');
+        if (cb) cb.onclick = function () {
+          var ids = Array.prototype.filter.call(panel.querySelectorAll('[data-carry]'), function (x) { return x.checked; }).map(function (x) { return x.getAttribute('data-carry'); });
+          if (!ids.length) { alert('이월할 정기 지출을 고르세요.'); return; }
+          list.filter(function (c) { return ids.indexOf(String(c.id)) >= 0; }).forEach(function (c, k) {
+            var o = JSON.parse(JSON.stringify(c)); o.id = 'c' + Date.now().toString(36) + k; o.fy = FY; o.from = c.id; o.on = true; list.push(o);
+          });
+          list.forEach(function (c) { if (!c.id) c.id = 'c' + Math.random().toString(36).slice(2, 9); });
+          X.save('recurring_claims', JSON.stringify(list)).then(function () { state.pet = {}; draw(); panel.querySelector('#rcMsg').textContent = ids.length + '건을 ' + FY + '년도로 이월해 저장했습니다.'; })
+            .catch(function (er) { alert('저장하지 못했습니다: ' + er.message); });
+        };
         var tb = panel.querySelector('.wk-rc tbody');
         tb.addEventListener('input', function (e) {
           var inp = e.target, tr = inp.closest('tr[data-i]'); if (!tr) return;
@@ -945,8 +1118,8 @@ window.FinWeekly = (function () {
         tb.addEventListener('change', function (e) { var k = e.target.getAttribute('data-k'); if (k === 'on' || k === 'week' || k === 'start' || k === 'total') draw(); });
         tb.addEventListener('click', function (e) { var d = e.target.getAttribute('data-del'); if (d != null && confirm('이 줄을 목록에서 뺄까요? (저장해야 확정됩니다)')) { list.splice(Number(d), 1); draw(); } });
         function nid() { return 'c' + Date.now().toString(36); }
-        panel.querySelector('#rcAdd').onclick = function () { list.push({ id: nid(), kind: '정기', week: 1, gwan: '', hang: '', text: '', amount: 0, note: '', on: true }); draw(); };
-        panel.querySelector('#rcInst').onclick = function () {
+        var rcAdd = panel.querySelector('#rcAdd'); if (rcAdd) rcAdd.onclick = function () { list.push({ id: nid(), kind: '정기', week: 1, gwan: '', hang: '', text: '', amount: 0, note: '', on: true, fy: FY }); draw(); };
+        var rcInst = panel.querySelector('#rcInst'); if (rcInst) rcInst.onclick = function () {
           var nm = prompt('할부 이름 (예: 스타리아 할부)'); if (!nm) return;
           var cur = prompt('지금(' + curYm + ') 몇 회차인가요? 예: 36/60  (적립처럼 끝이 없으면 12 처럼 회차만)', '1/12'); if (!cur) return;
           var m = /^\s*(\d+)\s*(?:\/\s*(\d+))?\s*$/.exec(cur); if (!m) { alert('36/60 처럼 적어 주세요.'); return; }
@@ -960,8 +1133,11 @@ window.FinWeekly = (function () {
             .catch(function (er) { alert('저장하지 못했습니다: ' + er.message); });
         };
         panel.querySelector('#rcReset').onclick = function () {
-          if (!confirm('목록을 기본값(2026 청원서 기준)으로 되돌릴까요? 저장해야 확정됩니다.')) return;
-          list = DEFAULT_CLAIMS.map(function (c, i) { var o = JSON.parse(JSON.stringify(c)); o.id = 'd' + (i + 1); o.on = true; return o; }); draw();
+          if (!confirm((mode === 'inst' ? '할부 목록' : FY + '년도 정기 지출') + '을 기본값(2026 청원서 기준)으로 되돌릴까요? 저장해야 확정됩니다.')) return;
+          var keep = list.filter(function (c) { return !shown(c); });
+          var add = defaultClaims(FY).filter(function (c) { return mode === 'inst' ? !isReg(c) : (mode === 'regular' ? isReg(c) : true); });
+          add.forEach(function (c, k) { c.id = 'r' + Date.now().toString(36) + k; });
+          list = keep.concat(add); draw();
         };
       }
       draw();
