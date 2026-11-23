@@ -74,7 +74,7 @@
       const uid = encodeURIComponent(myId());
       const [b, mine, accs] = await Promise.all([
         rpc("fin_dept_budget", { p_dept: u.dept }),
-        api("GET", "fin_petitions?select=*&requester_uid=eq." + uid + "&order=id.desc&limit=60"),
+        api("GET", "fin_petitions?select=*&requester_uid=eq." + uid + "&order=id.desc&limit=300"),
         api("GET", "fin_payee_accounts?select=id,holder,bank,account_no&owner_uid=eq." + uid + "&order=id.desc").catch(() => null),
       ]);
       S.accounts = accs || [];
@@ -108,11 +108,15 @@
     const opts = `<option value="">— 계정을 고르세요 —</option>` + S.budgetList.map((r) => `<option value="${esc(r.hang)}">${esc(r.gwan ? r.gwan + " · " : "")}${esc(r.hang)}</option>`).join("");
     const mine = S.mine.filter((p) => (u.dept ? p.dept === u.dept : true));
     const stName = { submitted: "확인 대기", approved: "확인됨", rejected: "돌려보냄", cancelled: "거둠" };
+    S.sug = suggestions(mine);
+    const sugHTML = S.sug.length ? `<div class="pt-sug"><div class="pt-sug-h">전에 청원한 항목 <small>— 누르면 계정 · 내역 · 금액 · 계좌가 채워집니다. 금액은 고칠 수 있습니다.</small></div><div class="pt-sug-l">` +
+      S.sug.slice(0, 8).map((g, i) => `<button type="button" data-sug="${i}">${esc(g.item)}<small>${esc(g.hang)} · ${won(g.amount)}원${g.count > 1 ? ` · ${g.count}번` : ""}</small></button>`).join("") + `</div></div>` : "";
+    const itemList = `<datalist id="ptItemList">${S.sug.map((g) => `<option value="${esc(g.item)}">`).join("")}</datalist>`;
     root.innerHTML = tabs +
-      (has ? `<div class="pt-card"><h3>청원서 쓰기 <small style="font-weight:400;color:#898885">${esc(u.dept ? u.dept : "")}${fy.fy ? (u.dept ? " · " : "") + fy.fy + "년도" : ""}</small></h3><div class="pt-f">
+      (has ? `<div class="pt-card"><h3>청원서 쓰기 <small style="font-weight:400;color:#898885">${esc(u.dept ? u.dept : "")}${fy.fy ? (u.dept ? " · " : "") + fy.fy + "년도" : ""}</small></h3>${sugHTML}<div class="pt-f">
         <div><label>예산 계정</label><select id="ptHang">${opts}</select></div>
         <div><label>금액(원)</label><input id="ptAmt" inputmode="numeric" placeholder="예: 150,000"></div>
-        <div class="full"><label>지출 내역</label><input id="ptItem" maxlength="200" placeholder="예: 성탄절 행사 간식"></div>
+        <div class="full"><label>지출 내역</label><input id="ptItem" maxlength="200" list="ptItemList" autocomplete="off" placeholder="예: 성탄절 행사 간식">${itemList}</div>
         <div class="full"><label>메모 <small style="font-weight:400">(받는 분 · 계좌 · 까닭 등)</small></label><textarea id="ptMemo" rows="2"></textarea></div>
         <div class="full pt-pay"><label>받는 계좌</label>${payHTML()}</div>
         <div class="full"><label>영수증 <small style="font-weight:400">(사진 또는 PDF, 10장까지)</small></label><input id="ptFile" type="file" accept="image/*,application/pdf" multiple><div class="pt-rcps" id="ptRcps"></div></div>
@@ -121,10 +125,38 @@
       <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-solid" id="ptSend">청원 올리기</button><span class="pt-help">올린 청원은 <b>${esc(sunTxt)}</b> 지출결의서로 갑니다. 재정부가 확인하면 결의서에 들어갑니다.</span></div>
       <div class="pt-msg" id="ptMsg"></div></div>` : `<div class="pt-card"><p class="pt-help">청원할 수 있는 계정이 아직 정해지지 않았습니다. 재정부에 말씀해 주세요.</p></div>`) +
       `<div class="pt-card"><h3>내 청원</h3>` +
-      (mine.length ? `<div style="overflow:auto"><table class="pt-t"><thead><tr><th>결의서</th><th>계정</th><th>내역</th><th class="n">금액</th><th>상태</th><th></th></tr></thead><tbody>` +
-        mine.map((p) => `<tr><td>${esc(weekName(p.week_sunday))}</td><td>${esc(p.hang)}</td><td>${esc(p.item)}${(p.receipts || []).map((r, i) => ` <a href="${esc(r)}" target="_blank" rel="noopener" style="font-size:.78rem">영수증${(p.receipts || []).length > 1 ? i + 1 : ""}</a>`).join("")}${p.pay_account ? `<div class="pt-help">받는 계좌: ${esc(p.pay_bank)} ${esc(p.pay_account)} (${esc(p.pay_holder)})</div>` : ""}${p.review_note ? `<div class="pt-help">${esc(p.review_note)}</div>` : ""}</td><td class="n">${won(p.amount)}</td><td><span class="pt-st ${esc(p.status)}">${esc(stName[p.status] || p.status)}</span></td><td>${p.status === "submitted" ? `<button class="btn btn-line" data-cancel="${p.id}" style="padding:3px 9px;font-size:.78rem">거두기</button>` : ""}</td></tr>`).join("") +
+      (mine.length ? `<p class="pt-help" style="margin:-4px 0 8px">「지급 완료」는 당회장 결재가 끝난 지출결의서가 나와 지급 절차에 들어갔다는 뜻입니다. <b>통장에 들어오기까지 1~2일 걸릴 수 있습니다.</b></p>` +
+        `<div style="overflow:auto"><table class="pt-t"><thead><tr><th>결의서</th><th>계정</th><th>내역</th><th class="n">금액</th><th>상태</th><th></th></tr></thead><tbody>` +
+        mine.slice(0, 60).map((p) => `<tr><td>${esc(weekName(p.week_sunday))}</td><td>${esc(p.hang)}</td><td>${esc(p.item)}${(p.receipts || []).map((r, i) => ` <a href="${esc(r)}" target="_blank" rel="noopener" style="font-size:.78rem">영수증${(p.receipts || []).length > 1 ? i + 1 : ""}</a>`).join("")}${p.pay_account ? `<div class="pt-help">받는 계좌: ${esc(p.pay_bank)} ${esc(p.pay_account)} (${esc(p.pay_holder)})</div>` : ""}${p.review_note ? `<div class="pt-help">${esc(p.review_note)}</div>` : ""}</td><td class="n">${won(p.amount)}</td><td>${p.status === "approved" && p.paid_at ? `<span class="pt-st paid">지급 완료</span><div class="pt-help" style="white-space:nowrap">${esc(String(p.paid_at).slice(5, 10).replace("-", "/"))} · 입금까지 1~2일</div>` : `<span class="pt-st ${esc(p.status)}">${esc(stName[p.status] || p.status)}</span>`}</td><td>${p.status === "submitted" ? `<button class="btn btn-line" data-cancel="${p.id}" style="padding:3px 9px;font-size:.78rem">거두기</button>` : ""}</td></tr>`).join("") +
         `</tbody></table></div>` : `<p class="pt-help">아직 낸 청원이 없습니다.</p>`) + `</div>`;
     wire();
+  }
+
+  // 전에 낸 청원(거둔 것 · 돌려보낸 것 빼고)을 「계정 + 내역」으로 묶어 자주 · 최근 순으로. 올해 고를 수 있는 계정만.
+  function suggestions(mine) {
+    const by = {}, list = [];
+    mine.forEach((p) => {   // mine 은 최근 것이 앞
+      if (p.status === "cancelled" || p.status === "rejected" || !S.budget[p.hang]) return;
+      const item = String(p.item || "").trim(); if (!item) return;
+      const k = p.hang + "|" + item;
+      if (!by[k]) { by[k] = { hang: p.hang, item, amount: Number(p.amount) || 0, memo: p.memo || "", pay_bank: p.pay_bank || "", pay_account: p.pay_account || "", pay_holder: p.pay_holder || "", count: 0, order: list.length }; list.push(by[k]); }
+      by[k].count++;
+    });
+    return list.sort((a, b) => b.count - a.count || a.order - b.order);
+  }
+  function applySug(g, onlyEmpty) {
+    const $ = (s) => root.querySelector(s);
+    if (!onlyEmpty || !$("#ptHang").value) $("#ptHang").value = g.hang;
+    if (!onlyEmpty || !$("#ptItem").value.trim()) $("#ptItem").value = g.item;
+    if (!onlyEmpty || !num($("#ptAmt").value)) $("#ptAmt").value = g.amount ? won(g.amount) : "";
+    if (!onlyEmpty || !$("#ptMemo").value.trim()) $("#ptMemo").value = g.memo;
+    if (g.pay_account && !S.accMissing && !onlyEmpty) {
+      const acc = S.accounts.find((a) => a.account_no === g.pay_account && a.bank === g.pay_bank);
+      const pick = (v) => { const r = root.querySelector(`input[name="ptPay"][value="${v}"]`); if (r && !r.disabled) { r.checked = true; r.onchange(); return true; } return false; };
+      if (acc && pick("saved")) $("#ptAcc").value = String(acc.id);
+      else if (pick("new")) { $("#ptBank").value = g.pay_bank; $("#ptAccNo").value = g.pay_account; $("#ptHolder").value = g.pay_holder; }
+    }
+    after();
   }
 
   function payHTML() {
@@ -190,6 +222,18 @@
         if (b) b.style.display = m === "new" ? "" : "none";
       };
     });
+    root.querySelectorAll("[data-sug]").forEach((b) => {
+      b.onclick = () => {
+        applySug(S.sug[Number(b.dataset.sug)], false);
+        const m = root.querySelector("#ptMsg"); m.style.color = "#565552"; m.textContent = "전에 청원한 내용으로 채웠습니다. 금액 · 영수증을 확인하고 올려 주세요.";
+        const a = root.querySelector("#ptAmt"); a.focus(); a.select();
+      };
+    });
+    // 내역을 전에 쓴 것과 똑같이 적으면 빈 칸(계정 · 금액 · 메모)만 채워 준다
+    root.querySelector("#ptItem").onchange = (e) => {
+      const v = e.target.value.trim(), g = S.sug.find((x) => x.item === v);
+      if (g) applySug(g, true);
+    };
     root.querySelector("#ptSend").onclick = send;
     drawFiles(); after();
   }

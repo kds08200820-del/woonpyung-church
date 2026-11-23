@@ -216,7 +216,7 @@ window.FinWeekly = (function () {
 
   // 인쇄: 보고서는 가로 A4, 청원서는 세로 A4(이름 붙인 @page). @page 는 인쇄하는 동안만 붙였다가 뗀다(다른 인쇄에 영향 없게).
   // which: 'report' | 'petition' | 'all'
-  function printPages(docEl, which) {
+  function printPages(docEl, which, onDone) {
     var host = document.getElementById('wkPrintHost');
     if (host) host.remove();
     host = document.createElement('div'); host.id = 'wkPrintHost';
@@ -236,6 +236,7 @@ window.FinWeekly = (function () {
       if (host.parentNode) host.remove();
       if (ps.parentNode) ps.remove();
       window.removeEventListener('afterprint', cleanup);
+      if (onDone) onDone();
     }
     window.addEventListener('afterprint', cleanup);
     // 로고 그림이 다 읽힌 뒤 인쇄
@@ -369,8 +370,16 @@ window.FinWeekly = (function () {
       window.addEventListener('resize', fit);
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
       var pr = main.querySelector('#wkPrint'); if (pr) pr.onclick = function () { printPages(docEl, 'report'); };
-      var pp = main.querySelector('#wkPrintPet'); if (pp) pp.onclick = function () { printPages(docEl, 'petition'); };
-      main.querySelector('#wkPrintAll').onclick = function () { printPages(docEl, 'all'); };
+      // 당회장 도장이 찍힌 지출결의서를 인쇄하면 그 결의서의 (확인된) 온라인 청원을 「지급 완료」로 적는다(청원자 화면에 보임)
+      function markPaid() {
+        if (!chairSeal(X)) return;
+        var ids = (online.approved || []).filter(function (p) { return !p.paid_at; }).map(function (p) { return p.id; });
+        if (!ids.length) return;
+        X.call('markPetitionsPaid', { ids: ids }).then(function () { (online.approved || []).forEach(function (p) { if (ids.indexOf(p.id) >= 0) p.paid_at = new Date().toISOString(); }); })
+          .catch(function (er) { if (/fin_petition_mark_paid|schema cache|404/i.test(String(er && er.message))) return; alert('청원을 지급 완료로 적지 못했습니다: ' + er.message); });
+      }
+      var pp = main.querySelector('#wkPrintPet'); if (pp) pp.onclick = function () { printPages(docEl, 'petition', markPaid); };
+      main.querySelector('#wkPrintAll').onclick = function () { printPages(docEl, 'all', markPaid); };
     }).catch(function (e) {
       scaler.innerHTML = '<div class="fin-card" style="color:#A33A2A">불러오지 못했습니다: ' + esc(e.message) + '</div>';
     });
@@ -881,7 +890,7 @@ window.FinWeekly = (function () {
         '<td><button class="wk-x" data-del="' + i + '" title="이 줄 지우기">✕</button></td></tr>';
     }
     var onl = (online.approved || []).map(function (p) {
-      return '<tr class="onl"><td>' + esc(p.gwan || '') + '</td><td>' + esc(p.hang || '') + '</td><td>' + esc(p.item || '') + ' <span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + rcpLinks(p, esc) + payLine(p, esc) + '</td><td class="n">' + won(p.amount) + '</td><td>' + esc(p.requester_name || '') + '</td><td class="rate" data-h="' + esc(p.hang || '') + '"></td><td><button class="wk-x" data-back="' + p.id + '" title="확인 취소(다시 대기로)">↺</button></td></tr>';
+      return '<tr class="onl"><td>' + esc(p.gwan || '') + '</td><td>' + esc(p.hang || '') + '</td><td>' + esc(p.item || '') + ' <span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + (p.paid_at ? ' <span class="tag">지급 완료</span>' : '') + rcpLinks(p, esc) + payLine(p, esc) + '</td><td class="n">' + won(p.amount) + '</td><td>' + esc(p.requester_name || '') + '</td><td class="rate" data-h="' + esc(p.hang || '') + '"></td><td><button class="wk-x" data-back="' + p.id + '" title="확인 취소(다시 대기로)">↺</button></td></tr>';
     }).join('');
     var pend = (online.pending || []).map(function (p) {
       return '<div class="wk-pend"><div><b>' + esc(p.dept || '') + '</b> · ' + esc(p.requester_name || '') + ' · ' + esc(p.hang || '') + ' · ' + esc(p.item || '') + ' · <b>' + won(p.amount) + '원</b>' +
