@@ -892,14 +892,14 @@ window.FinWeekly = (function () {
     box.innerHTML = dl.html +
       (hasReg ? '' : '<div class="wk-pends">' + fyNow + '년도 정기 지출이 아직 없습니다. 지난 회기의 정기 지출을 이월하거나 새로 등록하세요. <button class="btn btn-line" data-goto="regular" style="padding:3px 10px;font-size:.8rem;margin-left:6px">정기 지출 등록 · 이월</button></div>') +
       '<div class="fin-card wk-pe"><div class="wk-pe-h"><b>지출결의서 작성 · ' + dt(sun).getFullYear() + '년 ' + weekName(sun) + '</b>' +
-      '<span class="wk-st">' + (savedAt ? '저장됨 ' + esc(savedAt) : '아직 저장 안 함 — 정기 청구로 채운 상태') + '</span></div>' +
+      '<span class="wk-st">' + (savedAt ? '저장됨 ' + esc(savedAt) : '정기 청구로 채운 상태 — 고치면 저절로 저장됩니다') + '</span></div>' +
       (pend ? '<div class="wk-pends"><b>확인 기다리는 청원 ' + online.pending.length + '건</b> — 확인하면 그 주 결의서에 들어갑니다. <button class="btn btn-line" data-goto="claims" style="padding:3px 10px;font-size:.8rem;margin-left:6px">금주 청구 내역에서 보기</button></div>' : '') +
       (online.missing ? '<p class="wk-note">온라인 청원 표가 아직 없습니다(데이터베이스 준비 전). 정기 청구와 직접 적은 줄만 나옵니다.</p>' : '') +
       '<div style="overflow:auto"><table class="fin-table wk-pet-ed"><thead><tr><th style="width:120px">관</th><th style="width:170px">항(예산 계정)</th><th>지출내역</th><th style="width:110px" class="num">금액</th><th style="width:120px">비고</th><th style="width:150px">예산 집행률</th><th style="width:34px"></th></tr></thead><tbody>' +
       rows.map(rowHTML).join('') + onl + '</tbody><tfoot><tr><td colspan="3" style="text-align:right"><b>합계</b></td><td class="num"><b id="wkPetSum"></b></td><td colspan="3"></td></tr></tfoot></table></div>' +
-      '<div class="wk-pe-b"><button class="btn btn-line" id="wkAdd">+ 줄 더하기</button><button class="btn btn-line" id="wkRefill">정기 청구로 다시 채우기</button><button class="btn btn-solid" id="wkSave">💾 이 주 결의서 저장</button>' +
+      '<div class="wk-pe-b"><button class="btn btn-line" id="wkAdd">+ 줄 더하기</button><button class="btn btn-line" id="wkRefill">정기 청구로 다시 채우기</button>' +
       (chairSeal(X) ? '' : '<span class="wk-note" style="margin:0;color:#C62828">당회장 도장 그림이 아직 없습니다 — 재정관리 ▸ 설정 ▸ 「당회장 도장」에서 올려 주세요.</span>') +
-      '<span class="wk-note" style="margin:0">관·항은 2027 예산 계정에서 고릅니다. 집행률 = (회계연도 장부 지출 + 이 결의서) ÷ 연 예산. 저장하지 않아도 인쇄됩니다.</span></div></div>';
+      '<span class="wk-note" style="margin:0">관·항은 2027 예산 계정에서 고릅니다. 집행률 = (회계연도 장부 지출 + 이 결의서) ÷ 연 예산. 고친 내용은 저절로 저장됩니다.</span></div></div>';
 
     function refreshRates() {
       var all = petRows(X, online), rt = rates(X, fyR, all), sum = 0;
@@ -913,45 +913,65 @@ window.FinWeekly = (function () {
         td.innerHTML = '<span class="wk-rt' + (o.rate > 100 ? ' over' : '') + '"><i style="width:' + w + '%"></i><b>' + pct(o.rate) + '</b></span><small>' + won(o.spent + o.pet) + ' / ' + won(o.budget) + '</small>';
       });
     }
-    var timer = null;
-    function changed() { refreshRates(); clearTimeout(timer); timer = setTimeout(preview, 250); box.querySelector('.wk-st').textContent = '고친 내용이 아직 저장 안 됨'; }
-    box.addEventListener('input', function (e) {
-      var inp = e.target, tr = inp.closest && inp.closest('tr[data-i]'); if (!tr) return;
-      var r = rows[Number(tr.getAttribute('data-i'))], k = inp.getAttribute('data-k'); if (!r || !k) return;
-      if (k === 'amount') { r.amount = Number(String(inp.value).replace(/[^\d-]/g, '')) || 0; }
-      else r[k] = inp.value;
-      if (k === 'gwan') tr.querySelector('[data-k=hang]').setAttribute('list', hangListId(dl.tree, r.gwan));
-      if (k === 'hang') {
-        tr.querySelector('td.rate').setAttribute('data-h', r.hang);
-        if (!r.gwan) { var g = gwanOf(dl.tree, r.hang); if (g) { r.gwan = g; tr.querySelector('[data-k=gwan]').value = g; } }
-      }
-      changed();
-    });
-    box.addEventListener('focusout', function (e) { if (e.target.getAttribute && e.target.getAttribute('data-k') === 'amount') { var v = Number(String(e.target.value).replace(/[^\d-]/g, '')) || 0; e.target.value = v ? won(v) : ''; } });
-    box.addEventListener('click', function (e) {
-      var t = e.target;
-      if (t.getAttribute('data-del') != null) { rows.splice(Number(t.getAttribute('data-del')), 1); editor(box, X, fyR, online, preview, reload); preview(); }
-      else if (t.getAttribute('data-ok')) review(t.getAttribute('data-ok'), 'approved');
-      else if (t.getAttribute('data-no')) { var why = prompt('돌려보내는 까닭을 적어 주세요(부장에게 보입니다).', ''); if (why != null) review(t.getAttribute('data-no'), 'rejected', why); }
-      else if (t.getAttribute('data-back')) review(t.getAttribute('data-back'), 'submitted');
-    });
-    function review(id, status, why) {
-      X.call('reviewPetition', { id: id, status: status, note: why || '' }).then(reload).catch(function (er) { alert('바꾸지 못했습니다: ' + er.message); });
+    // 고치면 잠시 뒤 저절로 저장한다(저장 단추 없음). 같은 box 를 다시 그려도 이벤트는 한 번만 붙인다.
+    var ctx = box._wk = { rows: rows, sun: sun, X: X, dl: dl, refreshRates: refreshRates, preview: preview,
+      rerender: function () { editor(box, X, fyR, online, preview, reload); }, reload: reload };
+    if (!box._wkBound) {
+      box._wkBound = true;
+      box.addEventListener('input', function (e) {
+        var c = box._wk, inp = e.target, tr = inp.closest && inp.closest('tr[data-i]'); if (!tr) return;
+        var r = c.rows[Number(tr.getAttribute('data-i'))], k = inp.getAttribute('data-k'); if (!r || !k) return;
+        if (k === 'amount') { r.amount = Number(String(inp.value).replace(/[^\d-]/g, '')) || 0; }
+        else r[k] = inp.value;
+        if (k === 'gwan') tr.querySelector('[data-k=hang]').setAttribute('list', hangListId(c.dl.tree, r.gwan));
+        if (k === 'hang') {
+          tr.querySelector('td.rate').setAttribute('data-h', r.hang);
+          if (!r.gwan) { var g = gwanOf(c.dl.tree, r.hang); if (g) { r.gwan = g; tr.querySelector('[data-k=gwan]').value = g; } }
+        }
+        c.refreshRates(); clearTimeout(box._wkPv); box._wkPv = setTimeout(c.preview, 250);
+        autoSave(box, 800);
+      });
+      box.addEventListener('focusout', function (e) { if (e.target.getAttribute && e.target.getAttribute('data-k') === 'amount') { var v = Number(String(e.target.value).replace(/[^\d-]/g, '')) || 0; e.target.value = v ? box._wk.X.won(v) : ''; } });
+      box.addEventListener('click', function (e) {
+        var c = box._wk, t = e.target;
+        if (t.getAttribute('data-del') != null) { c.rows.splice(Number(t.getAttribute('data-del')), 1); autoSave(box, 0); c.rerender(); c.preview(); }
+        else if (t.getAttribute('data-ok')) review(t.getAttribute('data-ok'), 'approved');
+        else if (t.getAttribute('data-no')) { var why = prompt('돌려보내는 까닭을 적어 주세요(부장에게 보입니다).', ''); if (why != null) review(t.getAttribute('data-no'), 'rejected', why); }
+        else if (t.getAttribute('data-back')) review(t.getAttribute('data-back'), 'submitted');
+        function review(id, status, why) {
+          flushSave(box);
+          c.X.call('reviewPetition', { id: id, status: status, note: why || '' }).then(c.reload).catch(function (er) { alert('바꾸지 못했습니다: ' + er.message); });
+        }
+      });
+      window.addEventListener('pagehide', function () { flushSave(box); });
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flushSave(box); });
     }
-    box.querySelector('#wkAdd').onclick = function () { rows.push({ gwan: '', hang: '', text: '', amount: 0, note: '', src: 'm' }); editor(box, X, fyR, online, preview, reload); var ins = box.querySelectorAll('tr[data-i] [data-k=gwan]'); if (ins.length) ins[ins.length - 1].focus(); };
+    box.querySelector('#wkAdd').onclick = function () { rows.push({ gwan: '', hang: '', text: '', amount: 0, note: '', src: 'm' }); autoSave(box, 0); ctx.rerender(); var ins = box.querySelectorAll('tr[data-i] [data-k=gwan]'); if (ins.length) ins[ins.length - 1].focus(); };
     box.querySelector('#wkRefill').onclick = function () {
       if (!confirm('이 주 결의서를 정기 청구 목록으로 다시 채울까요? 직접 적은 줄은 남깁니다.')) return;
       var keep = rows.filter(function (r) { return r.src === 'm'; });
       state.pet[sun] = autoRows(X, sun).concat(keep);
-      editor(box, X, fyR, online, preview, reload); preview();
-    };
-    box.querySelector('#wkSave').onclick = function () {
-      var at = X.today() + ' ' + new Date().toTimeString().slice(0, 5);
-      X.save('petition_' + sun, JSON.stringify({ rows: rows, at: at })).then(function () {
-        box.querySelector('.wk-st').textContent = '저장됨 ' + at;
-      }).catch(function (er) { alert('저장하지 못했습니다: ' + er.message); });
+      ctx.rerender(); autoSave(box, 0); preview();
     };
     refreshRates();
+  }
+  // ── 결의서 자동 저장 ──
+  function autoSave(box, ms) {
+    var c = box._wk; if (!c) return;
+    box._wkDirty = { sun: c.sun, rows: c.rows, X: c.X };
+    var st = box.querySelector('.wk-st'); if (st) st.textContent = '저장 중…';
+    clearTimeout(box._wkSv); box._wkSv = setTimeout(function () { flushSave(box); }, ms);
+  }
+  function flushSave(box) {
+    clearTimeout(box._wkSv);
+    var d = box._wkDirty; if (!d) return; box._wkDirty = null;
+    var at = d.X.today() + ' ' + new Date().toTimeString().slice(0, 5);
+    d.X.save('petition_' + d.sun, JSON.stringify({ rows: d.rows, at: at })).then(function () {
+      var st = box.querySelector('.wk-st'); if (st && box._wk && box._wk.sun === d.sun && !box._wkDirty) st.textContent = '저장됨 ' + at;
+    }).catch(function (er) {
+      var st = box.querySelector('.wk-st'); if (st) st.textContent = '저장하지 못했습니다 — 다시 고치면 다시 저장합니다';
+      alert('지출결의서를 저장하지 못했습니다: ' + er.message);
+    });
   }
   // 당회장 도장: 재정관리 ▸ 설정 ▸ 「당회장 도장」(app_settings.rcp_img_chair). 지출결의서 결재란 당회장 칸에 찍는다.
   function chairSeal(X) { return (X.M.settings || {}).rcp_img_chair || ''; }
