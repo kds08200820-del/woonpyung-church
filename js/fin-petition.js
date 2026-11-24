@@ -105,7 +105,8 @@
     // 2026-11-24 담임목사: "모든 예산을 다 보여주지 마세요. 자신이 선택한 계정의 예산만" → 예산 전체 표 없음. 고른 계정 하나만 아래 상자에.
     const fy = S.budgetList[0] || {};
     const has = S.budgetList.length > 0;
-    const opts = `<option value="">— 계정을 고르세요 —</option>` + S.budgetList.map((r) => `<option value="${esc(r.hang)}">${esc(r.gwan ? r.gwan + " · " : "")}${esc(r.hang)}</option>`).join("");
+    // 2026-11-24 담임목사: 계정을 고르기도 하고 직접 입력해서도 고를 수 있게 → 입력칸 + 목록(datalist)
+    const opts = S.budgetList.map((r) => `<option value="${esc(r.hang)}" label="${esc(r.gwan || "")}"></option>`).join("");
     const mine = S.mine.filter((p) => (u.dept ? p.dept === u.dept : true));
     const stName = { submitted: "확인 대기", approved: "확인됨", rejected: "돌려보냄", cancelled: "거둠" };
     S.sug = suggestions(mine);
@@ -114,7 +115,7 @@
     const itemList = `<datalist id="ptItemList">${S.sug.map((g) => `<option value="${esc(g.item)}">`).join("")}</datalist>`;
     root.innerHTML = tabs +
       (has ? `<div class="pt-card"><h3>청원서 쓰기 <small style="font-weight:400;color:#898885">${esc(u.dept ? u.dept : "")}${fy.fy ? (u.dept ? " · " : "") + fy.fy + "년도" : ""}</small></h3>${sugHTML}<div class="pt-f">
-        <div><label>예산 계정</label><select id="ptHang">${opts}</select></div>
+        <div><label>예산 계정 <small style="font-weight:400">(적거나 목록에서 고르세요)</small></label><input id="ptHang" list="ptHangList" autocomplete="off" placeholder="예: ${esc((S.budgetList[0] || {}).hang || "계정 이름")}"><datalist id="ptHangList">${opts}</datalist><div class="pt-help" id="ptHangHint" style="display:none;color:#C62828"></div></div>
         <div><label>금액(원)</label><input id="ptAmt" inputmode="numeric" placeholder="예: 150,000"></div>
         <div class="full"><label>지출 내역</label><input id="ptItem" maxlength="200" list="ptItemList" autocomplete="off" placeholder="예: 성탄절 행사 간식">${itemList}</div>
         <div class="full"><label>메모 <small style="font-weight:400">(받는 분 · 계좌 · 까닭 등)</small></label><textarea id="ptMemo" rows="2"></textarea></div>
@@ -159,6 +160,21 @@
     after();
   }
 
+  // 적은 계정 이름 → 고를 수 있는 계정(없으면 ""). 띄어쓰기 무시, 「관 · 항」 꼴도 받음.
+  function hangVal() {
+    const el = root.querySelector("#ptHang"); if (!el) return "";
+    const v = el.value.trim(); if (!v) return "";
+    if (S.budget[v]) return v;
+    const tail = v.split(/[·>\/]/).pop().trim(), k = tail.replace(/\s+/g, "");
+    const r = S.budgetList.find((x) => x.hang.replace(/\s+/g, "") === k);
+    return r ? r.hang : "";
+  }
+  function hint(on, near) {
+    const el = root.querySelector("#ptHangHint"); if (!el) return;
+    el.style.display = on ? "" : "none";
+    el.textContent = on ? "목록에 없는 계정입니다." + (near && near.length ? " 혹시: " + near.join(", ") : " 칸을 눌러 목록에서 골라 주세요.") : "";
+  }
+
   function payHTML() {
     if (S.accMissing) return `<div class="pt-help">계좌 등록 기능을 준비하고 있습니다. 메모 칸에 받는 분 · 계좌를 적어 주세요.</div>`;
     const has = S.accounts.length > 0;
@@ -179,7 +195,7 @@
   function payMode() { const r = root.querySelector('input[name="ptPay"]:checked'); return r ? r.value : "none"; }
   function after() {
     const box = root.querySelector("#ptAfter"); if (!box) return;
-    const hang = root.querySelector("#ptHang").value, amt = num(root.querySelector("#ptAmt").value);
+    const hang = hangVal(), amt = num(root.querySelector("#ptAmt").value);
     const r = S.budget[hang];
     if (!r) { box.style.display = "none"; box.innerHTML = ""; return; }
     box.style.display = "";
@@ -204,7 +220,18 @@
     });
     const hang = root.querySelector("#ptHang"); if (!hang) return;
     const amt = root.querySelector("#ptAmt");
-    hang.onchange = after;
+    hang.oninput = () => { hint(false); after(); };
+    hang.onchange = () => {   // 띄어쓰기 · 「관 · 항」 꼴로 적어도 맞는 계정으로 바로잡고, 하나뿐인 부분 일치면 그것으로
+      const v = hang.value.trim(); if (!v) { hint(false); after(); return; }
+      let h = hangVal();
+      if (!h) {
+        const k = v.replace(/\s+/g, ""), hits = S.budgetList.filter((r) => r.hang.replace(/\s+/g, "").indexOf(k) >= 0);
+        if (hits.length === 1) h = hits[0].hang;
+      }
+      if (h) { hang.value = h; hint(false); }
+      else hint(true, S.budgetList.filter((r) => r.hang.replace(/\s+/g, "").indexOf(v.replace(/\s+/g, "").slice(0, 2)) >= 0).map((r) => r.hang).slice(0, 5));
+      after();
+    };
     amt.oninput = after;
     amt.onblur = () => { const v = num(amt.value); amt.value = v ? won(v) : ""; };
     root.querySelector("#ptFile").onchange = (e) => {
@@ -241,9 +268,9 @@
   async function send() {
     if (S.busy) return;
     const u = S.units[S.cur], msg = root.querySelector("#ptMsg");
-    const hang = root.querySelector("#ptHang").value, amount = num(root.querySelector("#ptAmt").value);
+    const hang = hangVal(), amount = num(root.querySelector("#ptAmt").value);
     const item = root.querySelector("#ptItem").value.trim(), memo = root.querySelector("#ptMemo").value.trim();
-    if (!hang) { msg.style.color = "#C62828"; msg.textContent = "예산 계정을 골라 주세요."; return; }
+    if (!hang) { msg.style.color = "#C62828"; msg.textContent = root.querySelector("#ptHang").value.trim() ? "목록에 있는 예산 계정을 적거나 골라 주세요." : "예산 계정을 적거나 골라 주세요."; return; }
     if (!item) { msg.style.color = "#C62828"; msg.textContent = "지출 내역을 적어 주세요."; return; }
     if (!amount) { msg.style.color = "#C62828"; msg.textContent = "금액을 적어 주세요."; return; }
     const pm = S.accMissing ? "none" : payMode();
