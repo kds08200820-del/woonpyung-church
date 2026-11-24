@@ -79,6 +79,7 @@ window.FinWeekly = (function () {
       '.wk-fy{font-size:8pt;color:#777;margin-top:1.6mm;line-height:1.45}',
       '.wk-memo td{height:6.2mm}',
       '.wk-sign td{height:12mm}',
+      '.wk-sign td.sl{padding:0;text-align:center;vertical-align:middle}.wk-sign img.seal{display:block;margin:0 auto;max-width:17mm;max-height:11mm;object-fit:contain}',
       '.wk-gap{height:5mm}',
       // 2쪽: 지출 3단
       '.wk-ex{display:grid;grid-template-columns:repeat(3,1fr);column-gap:5mm;align-items:start}',
@@ -527,7 +528,7 @@ window.FinWeekly = (function () {
       '<tr class="cash"><td colspan="3">금주 수입 중&nbsp;&nbsp; 현금 ____________ 원&nbsp;&nbsp; · &nbsp;&nbsp;온라인 ____________ 원</td></tr>' +
       '</tbody></table>';
     var memo = '<div class="wk-gap"></div><div class="wk-sub">특이사항</div><table class="wk-t wk-memo"><tbody><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr></tbody></table>';
-    var sign = '<div class="wk-gap"></div><div class="wk-sub">확인</div><table class="wk-t wk-sign"><thead><tr><th>작성자</th><th>재정부장</th><th>당회장</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>';
+    var sign = signBox(X);
     var html = page('재정보고서', '수입 · 요약', '<div class="wk-p1"><div>' + inTable + '</div><div>' + sumTable + memo + sign + '</div></div>');
 
     // ── 2쪽: 지출 3단 ──
@@ -665,7 +666,7 @@ window.FinWeekly = (function () {
       '</tbody></table>' +
       '<div class="wk-fy">' + fy + '년도 누계(' + md(fyR.from) + ' ~ ' + md(cumTo) + '): 수입 ' + won(cumIn) + '원 · 지출 ' + won(cumEx) + '원<br>회계연도 시작 이월금 ' + won(fyCarry.value) + '원</div>';
     var memo = '<div class="wk-gap"></div><div class="wk-sub">특이사항</div><table class="wk-t wk-memo"><tbody><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr></tbody></table>';
-    var sign = '<div class="wk-gap"></div><div class="wk-sub">확인</div><table class="wk-t wk-sign"><thead><tr><th>작성자</th><th>재정부장</th><th>당회장</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>';
+    var sign = signBox(X);
     var html = page('재정보고서', '수입 · 요약', '<div class="wk-p1"><div>' + inTable + '</div><div>' + sumTable + memo + sign + '</div></div>');
 
     // ── 2쪽: 지출 (분류 소계 + 계정, 3단) ──
@@ -1069,6 +1070,12 @@ window.FinWeekly = (function () {
   }
   // 당회장 도장: 재정관리 ▸ 설정 ▸ 「당회장 도장」(app_settings.rcp_img_chair). 지출결의서 결재란 당회장 칸에 찍는다.
   function chairSeal(X) { return (X.M.settings || {}).rcp_img_chair || ''; }
+  // 재정보고서 확인란 — 당회장 칸에 도장(2026-11-25 담임목사 지시)
+  function signBox(X) {
+    var seal = chairSeal(X);
+    return '<div class="wk-gap"></div><div class="wk-sub">확인</div><table class="wk-t wk-sign"><thead><tr><th>작성자</th><th>재정부장</th><th>당회장</th></tr></thead>' +
+      '<tbody><tr><td></td><td></td><td class="sl">' + (seal ? '<img class="seal" src="' + X.esc(seal) + '" alt="당회장 도장">' : '') + '</td></tr></tbody></table>';
+  }
   function payLine(p, esc) {
     return p.pay_account ? '<div class="memo" style="font-size:.78rem;color:#565552">받는 계좌: ' + esc(p.pay_bank) + ' ' + esc(p.pay_account) + ' (예금주 ' + esc(p.pay_holder) + ')</div>' : '';
   }
