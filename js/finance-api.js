@@ -291,6 +291,8 @@ window.WPF = (function () {
         return rpc('fin_petition_review', { p_id: Number(params.id), p_status: params.status, p_note: params.note || '' }).then(function () { return { ok: true }; });
       case 'markPetitionsPaid':   // 당회장 도장 찍힌 지출결의서 인쇄 → 지급 완료 (supabase/20261124_1000_fin_petition_paid.sql)
         return rpc('fin_petition_mark_paid', { p_ids: (params.ids || []).map(Number) }).then(function (n) { return { ok: true, count: n }; });
+      case 'unmarkPetitionsPaid':   // 잘못 적힌 지급 완료 지우기 (supabase/20261125_0900_fin_petition_unpay.sql)
+        return rpc('fin_petition_unpay', { p_ids: (params.ids || []).map(Number) }).then(function (n) { return { ok: true, count: n }; });
       case 'listDeptHeads':
         return rest('GET', 'fin_dept_heads?select=*&order=dept,id&limit=500').then(function (rows) { return { ok: true, rows: rows || [] }; });
       case 'saveDeptHead': {

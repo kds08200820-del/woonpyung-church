@@ -377,6 +377,7 @@ window.FinWeekly = (function () {
       // 당회장 도장이 찍힌 지출결의서를 인쇄하면 그 결의서의 (확인된) 온라인 청원을 「지급 완료」로 적는다(청원자 화면에 보임)
       function markPaid() {
         if (!chairSeal(X)) return;
+        if (state.sunday > X.today()) return;   // 그 주가 오기 전에 미리 인쇄한 것은 지급으로 보지 않는다(2026-11-25)
         var todo = (online.approved || []).filter(function (p) { return !p.paid_at; }), ids = todo.map(function (p) { return p.id; });
         if (!ids.length) return;
         Promise.all(todo.filter(function (p) { return p.status === 'submitted'; }).map(function (p) { return X.call('reviewPetition', { id: p.id, status: 'approved', note: '' }).then(function () { p.status = 'approved'; }); }))
@@ -426,7 +427,7 @@ window.FinWeekly = (function () {
         (p.review_note ? '<div class="row"><span>돌려보낸 까닭</span><span class="memo">' + esc(p.review_note) + '</span></div>' : '') +
         '<div class="acts">' +
         (p.status === 'rejected' ? '<button class="btn btn-line" data-ok="' + p.id + '">다시 결의서에 넣기</button>' :
-          (p.paid_at ? '<span class="wk-note" style="margin:0">지급 완료</span>' : (canEdit ? '<button class="btn btn-line" data-edit="' + p.id + '">✎ 수정</button>' : '') + '<button class="btn btn-line" data-no="' + p.id + '">✕ 삭제</button>')) + '</div>' +
+          (p.paid_at ? '<span class="wk-note" style="margin:0">지급 완료</span><button class="btn btn-line" data-unpay="' + p.id + '">지급 완료 취소</button>' : (canEdit ? '<button class="btn btn-line" data-edit="' + p.id + '">✎ 수정</button>' : '') + '<button class="btn btn-line" data-no="' + p.id + '">✕ 삭제</button>')) + '</div>' +
         '</div><div class="cr">' + (recs.length ? recs.map(function (u, i) {
           return /\.pdf(\?|$)/i.test(u) ? '<a class="rc pdf" href="' + esc(u) + '" target="_blank" rel="noopener">PDF 영수증 ' + (i + 1) + '</a>'
             : '<a class="rc" href="' + esc(u) + '" target="_blank" rel="noopener" title="크게 보기"><img src="' + esc(u) + '" alt="영수증 ' + (i + 1) + '" loading="lazy"></a>';
@@ -462,6 +463,12 @@ window.FinWeekly = (function () {
         return;
       }
       if (t.getAttribute('data-ok')) review(t.getAttribute('data-ok'), 'approved');
+      if (t.getAttribute('data-unpay')) {
+        if (!confirm('이 청원의 「지급 완료」 표시를 지울까요? 청원자 화면에서도 「결의서에 들어감」으로 돌아갑니다.')) return;
+        X.call('unmarkPetitionsPaid', { ids: [t.getAttribute('data-unpay')] }).then(reload)
+          .catch(function (er) { alert(/fin_petition_unpay|schema cache|404/i.test(String(er && er.message)) ? '데이터베이스 준비가 아직 안 됐습니다(fin_petition_unpay).' : '지우지 못했습니다: ' + er.message); });
+        return;
+      }
       else if (t.getAttribute('data-no')) { var why = prompt('이 청원을 삭제할까요? (결의서에서 빠지고, 청원자에게 「결의서에서 뺌」으로 보입니다. 아래 「다시 결의서에 넣기」로 되돌릴 수 있습니다.)\n까닭을 적어 주세요(비워 둬도 됩니다).', ''); if (why != null) review(t.getAttribute('data-no'), 'rejected', why); }
     });
     function review(id, status, why) {
