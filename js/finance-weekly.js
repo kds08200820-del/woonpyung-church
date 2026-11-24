@@ -79,7 +79,7 @@ window.FinWeekly = (function () {
       '.wk-fy{font-size:8pt;color:#777;margin-top:1.6mm;line-height:1.45}',
       '.wk-memo td{height:6.2mm}',
       '.wk-sign td{height:12mm}',
-      '.wk-sign td.sl{padding:0;text-align:center;vertical-align:middle}.wk-sign img.seal{display:block;margin:0 auto;max-width:17mm;max-height:11mm;object-fit:contain}',
+      '.wk-sign tbody td{height:17mm}.wk-sign td.sl{padding:0;text-align:center;vertical-align:middle}.wk-sign img.seal{display:block;margin:0 auto;width:15mm;height:15mm;object-fit:contain}',
       '.wk-gap{height:5mm}',
       // 2쪽: 지출 3단
       '.wk-ex{display:grid;grid-template-columns:repeat(3,1fr);column-gap:5mm;align-items:start}',
@@ -108,7 +108,7 @@ window.FinWeekly = (function () {
       '.wk-pet .ap td.k{width:7mm;background:#F2F2F2;font-weight:700;line-height:1.5}',
       '.wk-pet .ap tr:first-child td{height:6mm;background:#F2F2F2;font-weight:700}',
       '.wk-pet .ap tr:last-child td{height:17mm;padding:0;vertical-align:middle}',
-      '.wk-pet .ap img.seal{display:block;margin:0 auto;max-width:16mm;max-height:15mm;object-fit:contain}',
+      '.wk-pet .ap img.seal{display:block;margin:0 auto;width:15mm;height:15mm;object-fit:contain}',   // 당회장 도장: 결의서 · 보고서 모두 15mm(2026-11-25)
       // 수기 양식(Word 와 같게)
       '.wk-form .wk-in td{height:var(--rh,5.6mm)}',
       '.wk-form .wk-sum td.amt.blank{color:#777;font-size:10pt}',
