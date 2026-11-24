@@ -104,7 +104,7 @@ window.FinWeekly = (function () {
       '.wk-pet .ph h1{font-size:22pt;letter-spacing:.55em;margin:0;font-weight:700}',
       '.wk-pet .ph .wk{font-size:11pt;font-weight:700;color:#C62828;margin-top:2.5mm}',
       '.wk-pet .ap{border-collapse:collapse;border:1pt solid #111}',
-      '.wk-pet .ap td{border:.5pt solid #999;text-align:center;width:19mm;font-size:8.5pt}',
+      '.wk-pet .ap td{border:.5pt solid #999;text-align:center;width:22mm;font-size:8.5pt}',   // 결재란: 재정부장 · 당회장만(2026-11-25)
       '.wk-pet .ap td.k{width:7mm;background:#F2F2F2;font-weight:700;line-height:1.5}',
       '.wk-pet .ap tr:first-child td{height:6mm;background:#F2F2F2;font-weight:700}',
       '.wk-pet .ap tr:last-child td{height:17mm;padding:0;vertical-align:middle}',
@@ -1104,7 +1104,7 @@ window.FinWeekly = (function () {
       html += '<div class="wk-page wk-pet">' +
         '<div class="ph"><div><div class="org"><img src="' + LOGO + '" alt="운평장로교회 로고">운평장로교회 재정부</div>' +
         '<h1>지출결의서</h1><div class="wk">' + sd.getFullYear() + '년 ' + weekName(sun) + (pages > 1 ? ' (' + (pp + 1) + '/' + pages + ')' : '') + '</div></div>' +
-        '<table class="ap"><tr><td class="k" rowspan="2">결<br>재</td><td>담당</td><td>기관장</td><td>재정부장</td><td>당회장</td></tr><tr><td></td><td></td><td></td><td>' + (chairSeal(X) ? '<img class="seal" src="' + esc(chairSeal(X)) + '" alt="당회장 도장">' : '') + '</td></tr></table></div>' +
+        '<table class="ap"><tr><td class="k" rowspan="2">결<br>재</td><td>재정부장</td><td>당회장</td></tr><tr><td></td><td>' + (chairSeal(X) ? '<img class="seal" src="' + esc(chairSeal(X)) + '" alt="당회장 도장">' : '') + '</td></tr></table></div>' +
         '<table class="wk-t"><colgroup><col style="width:21mm"><col style="width:34mm"><col><col style="width:22mm"><col style="width:14mm"><col style="width:31mm"></colgroup>' +
         '<thead><tr><th>관</th><th>항</th><th>지출내역</th><th>금액</th><th>집행률</th><th>비고</th></tr></thead><tbody>' + trs +
         // 2026-11-24 담임목사: 목록의 합계는 적는다(목록 금액을 쉽게 파악). 아래 「합 계 금」만 비워 둔다(수기로 더 적을 수 있게).
