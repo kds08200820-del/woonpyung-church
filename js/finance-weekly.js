@@ -298,7 +298,7 @@ window.FinWeekly = (function () {
     while (s <= fyR.to) { weeks.push(s); s = addDays(s, 7); }
     var thisSun = sundayOf(t);
     var opts = weeks.map(function (w) {
-      var a = w < fyR.from ? fyR.from : w, b = addDays(w, 6); if (b > fyR.to) b = fyR.to;
+      var a = w, b = addDays(w, 6);   // 한 주 = 주일 ~ 토요일(회계연도 경계에서도 자르지 않음)
       return '<option value="' + w + '"' + (w === state.sunday ? ' selected' : '') + '>' + dt(w).getFullYear() + '년 ' + weekName(w) + ' (' + md(a) + ' ~ ' + md(b) + ')' + (w === thisSun ? ' · 이번 주' : '') + '</option>';
     }).reverse().join('');
     var btns = '';
@@ -441,7 +441,7 @@ window.FinWeekly = (function () {
   // =====================================================================
   function buildForm(X, fyR) {
     var won = X.won, esc = X.esc, M = X.M;
-    var sun = state.sunday, from = sun < fyR.from ? fyR.from : sun;
+    var sun = state.sunday, from = sun;   // 한 주 = 주일 ~ 토요일
     var opening = X.balanceBefore(from);
     var year = dt(sun).getFullYear(), wname = weekName(sun);
     var pageNo = 0;
@@ -530,8 +530,7 @@ window.FinWeekly = (function () {
   // ── 보고서 만들기 ──
   function build(X, fyR) {
     var won = X.won, esc = X.esc, M = X.M;
-    var sun = state.sunday, from = sun < fyR.from ? fyR.from : sun, to = addDays(sun, 6);
-    if (to > fyR.to) to = fyR.to;
+    var sun = state.sunday, from = sun, to = addDays(sun, 6);   // 한 주 = 주일 ~ 토요일
     var showZero = state.showZero;
     function isGrp(c) { return String(c || '').slice(-4) === '0000'; }
     function parOf(c) { return String(c || '').slice(0, 3) + '0000'; }
@@ -582,8 +581,8 @@ window.FinWeekly = (function () {
     // 이월금 (매주 자동): 회계연도 시작 이월금 + 회계연도 시작 ~ 이번 주 직전 수입·지출
     var opening = X.balanceBefore(from), closing = opening + incT - expT;
     var fy = X.fy(), fyCarry = X.carryInfo(fy);
-    var cumIn = 0, cumEx = 0;
-    (M.vouchers || []).forEach(function (v) { var d = X.fmtD(v['일자']); if (d >= fyR.from && d <= to) { var a = Number(v['금액']) || 0; if (String(v['구분']) === '수입') cumIn += a; else cumEx += a; } });
+    var cumIn = 0, cumEx = 0, cumTo = to > fyR.to ? fyR.to : to;   // 누계는 회계연도 안에서만
+    (M.vouchers || []).forEach(function (v) { var d = X.fmtD(v['일자']); if (d >= fyR.from && d <= cumTo) { var a = Number(v['금액']) || 0; if (String(v['구분']) === '수입') cumIn += a; else cumEx += a; } });
 
     var year = dt(sun).getFullYear(), wname = weekName(sun);   // 주 이름은 주일 날짜로(2026 청원서와 같게)
     var period = md(from) + '(' + DOW[dt(from).getDay()] + ') ~ ' + md(to) + '(' + DOW[dt(to).getDay()] + ')';
@@ -625,7 +624,7 @@ window.FinWeekly = (function () {
       '<tr class="last"><td class="sym">=</td><td class="lab"><b class="red">차인 잔액</b><span>다음 주 이월금</span></td><td class="amt">' + won(closing) + ' 원</td></tr>' +
       '<tr class="cash"><td colspan="3">금주 수입 중&nbsp; 현금 <b>' + won(cashT) + '</b> 원 &nbsp;·&nbsp; 온라인 <b>' + won(onT) + '</b> 원</td></tr>' +
       '</tbody></table>' +
-      '<div class="wk-fy">' + fy + '년도 누계(' + md(fyR.from) + ' ~ ' + md(to) + '): 수입 ' + won(cumIn) + '원 · 지출 ' + won(cumEx) + '원<br>회계연도 시작 이월금 ' + won(fyCarry.value) + '원</div>';
+      '<div class="wk-fy">' + fy + '년도 누계(' + md(fyR.from) + ' ~ ' + md(cumTo) + '): 수입 ' + won(cumIn) + '원 · 지출 ' + won(cumEx) + '원<br>회계연도 시작 이월금 ' + won(fyCarry.value) + '원</div>';
     var memo = '<div class="wk-gap"></div><div class="wk-sub">특이사항</div><table class="wk-t wk-memo"><tbody><tr><td></td></tr><tr><td></td></tr><tr><td></td></tr></tbody></table>';
     var sign = '<div class="wk-gap"></div><div class="wk-sub">확인</div><table class="wk-t wk-sign"><thead><tr><th>작성자</th><th>재정부장</th><th>당회장</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table>';
     var html = page('재정보고서', '수입 · 요약', '<div class="wk-p1"><div>' + inTable + '</div><div>' + sumTable + memo + sign + '</div></div>');
@@ -841,7 +840,7 @@ window.FinWeekly = (function () {
     return t;
   }
   function rates(X, fyR, rows) {
-    var from = state.sunday < fyR.from ? fyR.from : state.sunday, by = {};
+    var from = state.sunday, by = {};
     rows.forEach(function (r) {
       if (!r.hang) return;
       var o = by[r.hang] = by[r.hang] || { budget: budgetOf(X, r.hang, r.gwan), spent: spentBefore(X, fyR, r.hang, from), pet: 0 };
