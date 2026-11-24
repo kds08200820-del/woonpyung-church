@@ -95,10 +95,21 @@ function doGet() {
   return json_({ ok: true, service: '운평재정 API', time: new Date().toISOString() });
 }
 
+// 더 받지 않는 옛 기능(구글시트 교적 · 재정 장부 · 예산을 읽고 쓰던 것) — doPost 맨 앞에서 돌려보낸다
+var RETIRED_ACTIONS = {
+  match: 1, me: 1, myOfferings: 1, masters: 1, budget: 1, updateBudget: 1, listAccess: 1, setAccess: 1,
+  listGyojeok: 1, addGyojeok: 1, updateGyojeok: 1,
+  listVouchers: 1, addVoucher: 1, addVouchersBulk: 1, updateVoucher: 1, deleteVoucher: 1, clearVouchers: 1
+};
+
 function doPost(e) {
   try {
     var req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     var action = req.action;
+    // 교적 · 재정은 홈페이지가 Supabase 를 직접 읽고 쓴다. 여기 남은 구글시트 기능은 더 쓰지 않으므로 받지 않는다(2026-11-24).
+    //   지금 쓰는 것은 둘뿐: exportSermonPdf(설교 매니저) · saveSermonPdf(당회실 PC 워커)
+    //   ※ 이 파일을 고친 뒤 Apps Script 편집기에서 「배포 → 배포 관리 → 새 버전」으로 다시 배포해야 반영된다.
+    if (RETIRED_ACTIONS[action]) return json_({ ok: false, error: '이 기능은 홈페이지로 옮겼습니다. (' + action + ')' });
     if (action === 'match') return json_(actionMatch_(req));
     if (action === 'me') return json_(actionMe_(req));
     if (action === 'myOfferings') return json_(actionMyOfferings_(req));
