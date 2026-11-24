@@ -4,7 +4,7 @@
  *  edu-print.html?cert=<증명서 번호>  : 증명서 (관리자·본인만 — RLS)
  *  인쇄 창에서 'PDF로 저장' 을 고르면 PDF 가 된다. 자료실(member_files)의 강의실 항목이 이 주소로 연결된다.
  */
-console.log('[edu-print.js] v20261026pr1');
+console.log('[edu-print.js] v20261124sl1 (교회 직인: 설정에 올린 그림)');
 
 (function () {
   var C = window.WPC_CATECHISM || { courses: {}, church: {} };
@@ -94,16 +94,18 @@ console.log('[edu-print.js] v20261026pr1');
 
   /* ── 증명서 ── */
   // 도장 두 개(2026-10-25 담임목사): 교회 직인은 '운평장로교회' 의 끝 글자 '회' 에 반쯤 걸쳐 찍고,
-  //   '담임목사 김동석 (인)' 자리에는 당회장 도장(목회행정 > 교인 증명서 > 도장 설정에서 올린 이미지, app_settings 'edu_img_pastor_seal')을 찍는다.
-  //   당회장 도장은 관리자(교적·재정 권한)만 읽을 수 있어, 성도 본인이 열면 '(인)' 만 보인다.
-  function certHTML(c, res, pastorSeal) {
+  //   '담임목사 김동석 (인)' 자리에는 당회장 도장을 찍는다. 둘 다 목회행정 > 교인 증명서 > 도장 설정에서 올린 이미지
+  //   (app_settings 'edu_img_church_seal' — 없으면 재정 설정의 직인 'rcp_img_seal' · 'edu_img_pastor_seal').
+  //   도장은 관리자(교적·재정 권한)만 읽을 수 있어, 성도 본인이 열면 도장 없이 '(인)' 만 보인다.
+  //   (2026-11-24: 교회 직인도 당회장 도장과 같은 방식으로 바꿈)
+  function certHTML(c, res, pastorSeal, churchSeal) {
     var kind = c.kind, church = c.church || CH.name || '운평장로교회', inf = kind === '유아세례';
     var dayLabel = kind === '학습' ? '학습받은 날' : kind === '입교' ? '입교한 날' : '세례받은 날';
     var verb = kind === '학습' ? '학습을 받았음을' : kind === '세례' ? '세례를 받았음을' : '입교하였음을';
     var course = kind === '학습' ? '학습' : '세례(입교)';
     var blank = '<span class="blank"></span>';
     var row = function (l, v) { return '<tr><td class="l">' + esc(l) + '</td><td class="v">' + (v ? esc(v) : blank) + '</td></tr>'; };
-    var seal = 'images/' + encodeURIComponent('운평장로교회직인.png'), chName = CH.name || '운평장로교회';
+    var chName = CH.name || '운평장로교회';
     return '<div class="page cert"><div class="frame"><div class="frame-in">' +
       (c.voided_at ? '<div class="void"><span>취 소</span></div>' : '') +
       '<div class="c-no">제 ' + esc(c.cert_no) + ' 호</div>' +
@@ -118,7 +120,7 @@ console.log('[edu-print.js] v20261026pr1');
       (res ? '<p class="c-edu">' + (inf ? '부모 교육 이수: ' : '교육 이수: ') + esc(CH.name || '운평장로교회') + ' 강의실 ' + esc(COURSE_T[res.course] || '') + ' (' + esc(dotdate(res.created_at)) + (inf ? '' : ' · ' + esc(res.score) + '점') + ')</p>' : '') +
       '<p class="c-date">' + esc(kdate(c.issued_on)) + '</p>' +
       '<div class="c-sign"><div class="dn">' + esc(CH.denom || '대한예수교장로회(합동)') + ' ' + esc(CH.presbytery || '') + '</div>' +
-      '<div class="ch">' + esc(chName.slice(0, -1)) + '<span class="last">' + esc(chName.slice(-1)) + '<img src="' + seal + '" alt="교회 직인"></span></div>' +
+      '<div class="ch">' + esc(chName.slice(0, -1)) + '<span class="last">' + esc(chName.slice(-1)) + (churchSeal ? '<img src="' + esc(churchSeal) + '" alt="교회 직인">' : '') + '</span></div>' +
       '<div class="ps">담임목사 ' + esc((CH.pastor || '').split('').join(' ')) + '<span class="in">(인)' + (pastorSeal ? '<img src="' + esc(pastorSeal) + '" alt="당회장 도장">' : '') + '</span></div></div>' +
       (c.memo ? '<p class="c-edu" style="margin-top:8mm">' + esc(c.memo) + '</p>' : '') +
       '</div></div></div>';
@@ -148,10 +150,10 @@ console.log('[edu-print.js] v20261026pr1');
       var c = rows && rows[0];
       if (!c) return message('볼 수 없는 증명서입니다', '본인의 증명서이거나 관리자일 때만 볼 수 있습니다.');
       var p = c.result_id ? get('edu_exam_results?id=eq.' + c.result_id + '&select=id,course,score,created_at').then(function (x) { return x && x[0]; }, function () { return null; }) : Promise.resolve(null);
-      var ps = get('app_settings?key=eq.edu_img_pastor_seal&select=value').then(function (x) { return (x && x[0] && x[0].value) || ''; }, function () { return ''; });
+      var ps = get('app_settings?key=in.(edu_img_pastor_seal,edu_img_church_seal,rcp_img_seal)&select=key,value').then(function (x) { var s = {}; (x || []).forEach(function (r) { s[r.key] = r.value || ''; }); return s; }, function () { return {}; });
       return Promise.all([p, ps]).then(function (two) {
-        var res = two[0];
-        doc.innerHTML = certHTML(c, res, two[1]);
+        var res = two[0], st = two[1] || {};
+        doc.innerHTML = certHTML(c, res, st.edu_img_pastor_seal || '', st.edu_img_church_seal || st.rcp_img_seal || '');
         certPage();
         ready(c.member_name + ' ' + certTitle(c));
       });

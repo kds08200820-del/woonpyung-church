@@ -128,29 +128,13 @@ function doPost(e) {
  * 액션들
  * ============================================================ */
 
-// 교적 매칭(이름+생년월일) → 정/준회원 기록
+// 교적 매칭(이름+생년월일) — 껐다(2026-11-24).
+//   교적 인증은 홈페이지(Supabase match_member — 신청만 남기고 관리자가 권한 관리 화면에서 승인)로만 받는다.
+//   supabase/20261124_2330_member_match_approval.sql
+//   ※ 이 파일을 고친 뒤 Apps Script 편집기에서 「배포 → 배포 관리 → 새 버전」으로 다시 배포해야 실제로 꺼진다.
 function actionMatch_(req) {
-  var user = verifyUser_(req.token);            // 토큰 검증(본인 확인)
-  var name = String(req.name || '').trim();
-  var birth = String(req.birth || '').replace(/[^0-9]/g, ''); // YYYYMMDD
-  if (!name || birth.length !== 8) return { ok: false, error: '이름과 생년월일(YYYYMMDD)을 정확히 입력하세요.' };
-  var key = name + '|' + birth;
-
-  var hit = findGyojeokByKey_(key);
-  if (hit) {
-    upsertLink_(user.id, {
-      member_status: '정회원', member_key: key,
-      member_id: hit['교적ID'] ? Number(hit['교적ID']) : null,
-      member_name: name, matched_at: new Date().toISOString(), updated_at: new Date().toISOString()
-    });
-    return { ok: true, status: '정회원', name: name };
-  } else {
-    upsertLink_(user.id, {
-      member_status: '준회원', member_key: key, member_name: name,
-      note: '교적 자동매칭 실패 — 관리자 승인 대기', updated_at: new Date().toISOString()
-    });
-    return { ok: true, status: '준회원', message: '교적에서 이름+생년월일이 일치하지 않습니다. 관리자 승인 후 정회원이 됩니다.' };
-  }
+  verifyUser_(req.token);                       // 토큰 검증(본인 확인)
+  return { ok: false, error: '교적 인증은 홈페이지 「내 정보」에서 신청해 주세요. 관리자가 확인하면 정회원이 됩니다.' };
 }
 
 // 내 상태(정/준회원, 재정권한) + 본인/배우자 매칭키

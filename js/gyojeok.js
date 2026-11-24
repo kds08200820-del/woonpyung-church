@@ -8,7 +8,7 @@
  *  비어 있어 아무것도 안 열린다). 그래서 화면 안에서는 항상 rid(=교적ID,
  *  없으면 불러온 순번)로 사람을 찾는다.
  */
-console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남은 달란트·인증도 잇기)');
+console.log('[gyojeok.js] v20261124mm1 (권한 관리: 교적 인증 신청 승인 · 돌려보냄)');
 
 (function () {
   var root = document.getElementById('gjRoot');
@@ -51,7 +51,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
     Promise.all([WPF.call('listAccess'), WPF.call('listGyojeok')]).then(function (res) {
       var users = (res[0].users || []).sort(function (a, b) { return (b.isAdmin - a.isAdmin) || (b.canFinance - a.canFinance) || String(a.name).localeCompare(String(b.name), 'ko'); });
       var gj = tagRids((res[1].members || []).filter(function (m) { return m['이름']; }));
-      panel.innerHTML = '<div class="fin-card"><p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">홈페이지에 가입한 회원입니다. <b>회원</b> 칸에서 정/준회원을 바꿀 수 있고, <b>정회원</b>으로 바꾸면 교적과 연결됩니다(헌금조회·가정합산 연동). <b>권한</b> 칸에서 ‘+ 권한 추가’로 하나씩 줄 수 있고 여러 개를 함께 가질 수 있습니다(뺄 때는 ×). <b>관리자</b>는 교적관리·전체 기능, <b>재정권한</b>은 재정관리, <b>방송실 관리자</b>는 첫 화면의 예배 전 카운트를 전체 화면으로 띄웁니다. <b>목회자</b>는 오늘의 예배에서 설교 매니저에 적은 기도문(목회 기도·설교 전 기도·헌금 기도·축도)을, <b>반주자</b>는 반주용 악보(기도송·헌금송·폐회송)를 함께 봅니다. 다른 성도에게는 보이지 않습니다.</p>' +
+      panel.innerHTML = '<div id="gjReq"></div><div class="fin-card"><p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">홈페이지에 가입한 회원입니다. <b>회원</b> 칸에서 정/준회원을 바꿀 수 있고, <b>정회원</b>으로 바꾸면 교적과 연결됩니다(헌금조회·가정합산 연동). <b>권한</b> 칸에서 ‘+ 권한 추가’로 하나씩 줄 수 있고 여러 개를 함께 가질 수 있습니다(뺄 때는 ×). <b>관리자</b>는 교적관리·전체 기능, <b>재정권한</b>은 재정관리, <b>방송실 관리자</b>는 첫 화면의 예배 전 카운트를 전체 화면으로 띄웁니다. <b>목회자</b>는 오늘의 예배에서 설교 매니저에 적은 기도문(목회 기도·설교 전 기도·헌금 기도·축도)을, <b>반주자</b>는 반주용 악보(기도송·헌금송·폐회송)를 함께 봅니다. 다른 성도에게는 보이지 않습니다.</p>' +
         '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>이름</th><th>이메일</th><th>회원</th><th>권한</th></tr></thead><tbody>' +
         users.map(function (u) {
           return '<tr data-uid="' + esc(u.uid) + '"><td><b>' + esc(u.name || '(이름없음)') + '</b></td><td style="color:var(--ink-soft)">' + esc(u.email) + '</td>' +
@@ -62,6 +62,7 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
         }).join('') + '</tbody></table></div><p class="help" id="gj_msg" style="margin-top:10px"></p></div>';
       var msg = panel.querySelector('#gj_msg');
       function flash(ok, txt) { msg.style.color = ok ? 'green' : '#A33A2A'; msg.textContent = txt; }
+      drawMatchRequests(panel.querySelector('#gjReq'));
       // set_access / admin_set_member 는 거부돼도 HTTP 200 + {ok:false,error} 로 돌아온다.
       // 그대로 두면 저장 실패인데도 '✓ 저장됨'이 떠서, 새로고침하면 원래 값으로 돌아간다.
       function assertOk(r) { if (r && r.ok === false) throw new Error(r.error || '저장이 거부되었습니다.'); return r; }
@@ -116,6 +117,51 @@ console.log('[gyojeok.js] v20261003link2 (계정 연결 점검: 옛 키에 남�
       else if (e.message.indexOf('관리자') >= 0) root.innerHTML = msgCard('접근 권한이 없습니다', '교적관리는 관리자만 이용할 수 있습니다.');
       else root.innerHTML = msgCard('오류', e.message);
     });
+  }
+
+  /* ── 교적 인증 신청(2026-11-24): 회원이 내 정보에서 넣은 이름+생년월일은 신청으로만 남고, 여기서 승인해야 정회원이 된다 ──
+       supabase/20261124_2330_member_match_approval.sql. SQL 실행 전이거나 기다리는 신청이 없으면 상자를 그리지 않는다 */
+  function drawMatchRequests(box) {
+    if (!box) return;
+    WPF.call('listMatchRequests').then(function (r) {
+      var list = (r && r.requests) || [];
+      if (!list.length) { box.innerHTML = ''; return; }
+      function bd(s) { s = String(s || ''); return s.length === 8 ? s.slice(0, 4) + '-' + s.slice(4, 6) + '-' + s.slice(6) : s; }
+      function day(iso) { var d = new Date(iso); return isNaN(d) ? '' : (d.getMonth() + 1) + '월 ' + d.getDate() + '일'; }
+      box.innerHTML = '<div class="fin-card" style="margin-bottom:14px"><h3 style="margin:0 0 6px;font-size:1rem">교적 인증 신청 ' + list.length + '건</h3>' +
+        '<p style="color:var(--ink-soft);font-size:.88rem;margin-bottom:12px">회원이 내 정보 화면에서 넣은 이름과 생년월일입니다. 본인이 맞는지 확인하고 승인하면 정회원으로 연결됩니다. 교적에 없는 신청은 아래 표의 <b>회원</b> 칸에서 교적을 골라 연결해 주세요.</p>' +
+        '<div style="overflow:auto"><table class="fin-table"><thead><tr><th>가입한 계정</th><th>신청한 이름 · 생년월일</th><th>교적</th><th>신청일</th><th></th></tr></thead><tbody>' +
+        list.map(function (q) {
+          var linked = Number(q.linked) || 0;
+          return '<tr data-id="' + esc(q.id) + '"><td><b>' + esc(q.signupName || '(이름없음)') + '</b><br><span style="color:var(--ink-soft);font-size:.84rem">' + esc(q.email) + '</span></td>' +
+            '<td><b>' + esc(q.name) + '</b> · ' + esc(bd(q.birth)) + '</td>' +
+            '<td>' + (q.matched ? '<span class="fin-pill in">교적에 있음</span>' : '<span class="fin-pill out">교적에 없음</span>') +
+              (linked ? '<br><span style="color:#A33A2A;font-size:.84rem">이미 연결된 계정 ' + linked + '개</span>' : '') + '</td>' +
+            '<td style="white-space:nowrap">' + esc(day(q.at)) + '</td>' +
+            '<td style="text-align:right;white-space:nowrap">' + (q.matched ? '<button type="button" class="btn btn-solid" data-ok="1" style="padding:5px 12px;font-size:.84rem">승인</button> ' : '') +
+              '<button type="button" class="btn btn-line" data-ok="0" style="padding:5px 12px;font-size:.84rem">돌려보냄</button></td></tr>';
+        }).join('') + '</tbody></table></div><p class="help" id="gjReqMsg" style="margin-top:8px"></p></div>';
+      var note = box.querySelector('#gjReqMsg');
+      Array.prototype.forEach.call(box.querySelectorAll('button[data-ok]'), function (b) {
+        b.onclick = function () {
+          var tr = b.closest('tr'), id = tr.getAttribute('data-id'), approve = b.getAttribute('data-ok') === '1';
+          var q = list.filter(function (x) { return String(x.id) === id; })[0] || {};
+          var ask = approve
+            ? ((Number(q.linked) || 0) ? '이 교적에는 이미 다른 계정 ' + q.linked + '개가 연결돼 있습니다.\n' : '') + (q.signupName || q.email || '이 계정') + ' 을(를) 교적의 ' + q.name + ' 님으로 연결할까요?'
+            : q.name + ' 이름으로 낸 신청을 돌려보낼까요?';
+          if (!confirm(ask)) return;
+          var btns = tr.querySelectorAll('button'); Array.prototype.forEach.call(btns, function (x) { x.disabled = true; });
+          note.style.color = 'var(--ink-soft)'; note.textContent = '저장 중…';
+          WPF.call('decideMatchRequest', { id: Number(id), approve: approve }).then(function (res) {
+            if (res && res.ok === false) throw new Error(res.error || '저장이 거부되었습니다.');
+            render();   // 승인하면 아래 표의 회원 칸도 바뀌므로 권한 관리 전체를 다시 그린다
+          }).catch(function (e) {
+            Array.prototype.forEach.call(btns, function (x) { x.disabled = false; });
+            note.style.color = '#A33A2A'; note.textContent = '저장 실패: ' + e.message;
+          });
+        };
+      });
+    }).catch(function () { box.innerHTML = ''; });
   }
 
   // 교적에서 인물 선택 팝업(정회원 연결용). prefill = 가입 이름(미리 검색해 둔다)

@@ -1,9 +1,10 @@
 /* finance-member.js — 내 정보(admin.html)의 "교적 인증 · 진행중인 교육" 섹션
- * 로그인한 회원이 이름+생년월일로 교적 인증(정/준회원).
+ * 로그인한 회원이 이름+생년월일로 교적 인증을 신청한다. 정회원은 관리자가 승인해야 된다
+ *   (2026-11-24: 이름+생년월일만으로 그 자리에서 정회원이 되던 것을 막음 — supabase/20261124_2330_member_match_approval.sql).
  * 헌금 내역·가계도는 대시보드(dashboard.html)로 이동되었습니다.
- * 콘솔: [finance-member.js] v20260701dj
+ * 콘솔: [finance-member.js] v20261124mm1
  */
-console.log('[finance-member.js] v20260701dj');
+console.log('[finance-member.js] v20261124mm1 (교적 인증: 신청 → 관리자 승인)');
 
 (function () {
   var box = document.getElementById('offeringBox');
@@ -36,34 +37,52 @@ console.log('[finance-member.js] v20260701dj');
   function loadMe() {
     loading();
     WPF.call('me').then(function (me) {
-      if (me.status === '정회원') renderMember(me);
-      else renderMatchForm(me);
+      if (me.status === '정회원') { renderMember(me); return; }
+      // 내 신청 상태(대기 · 돌려보냄). 서버에 아직 없으면(SQL 실행 전) 빈 상태로 본다
+      return WPF.call('myMatchRequest').then(function (q) { return q || {}; }, function () { return {}; })
+        .then(function (q) { renderMatchForm(me, q); });
     }).catch(function (e) { errBox('불러오기에 실패했습니다: ' + e.message); });
   }
 
-  // 준회원/미인증 → 인증 폼
-  function renderMatchForm(me) {
-    var pending = me.status === '준회원' && me.memberName;
-    body.innerHTML =
-      (pending ? '<p style="color:var(--accent-soft);font-size:.92rem;margin-bottom:12px;">현재 <b>준회원</b>입니다. 교적에서 자동 인증되지 않아 관리자 승인을 기다리고 있거나, 아래에서 다시 인증할 수 있습니다.</p>' : '') +
+  function kday(iso) { var d = new Date(iso); return isNaN(d) ? '' : (d.getMonth() + 1) + '월 ' + d.getDate() + '일'; }
+
+  // 준회원/미인증 → 신청 폼 (기다리는 신청이 있으면 그 사실을 먼저 보인다)
+  function renderMatchForm(me, req) {
+    req = req || {};
+    var note = '';
+    if (req.status === '대기') {
+      note = '<p style="font-size:.92rem;margin-bottom:12px;"><b>' + esc(req.name) + '</b> 이름으로 교적 인증을 신청했습니다' + (kday(req.at) ? ' (' + esc(kday(req.at)) + ')' : '') + '. 관리자가 확인하면 정회원이 됩니다.</p>' +
+        '<p style="color:var(--ink-soft);font-size:.86rem;margin-bottom:12px;">이름이나 생년월일을 잘못 적었으면 아래에서 다시 신청해 주세요.</p>';
+    } else if (req.status === '돌려보냄') {
+      note = '<p style="color:var(--accent-soft);font-size:.92rem;margin-bottom:12px;"><b>' + esc(req.name) + '</b> 이름으로 낸 신청이 승인되지 않았습니다. 이름과 생년월일을 확인해 다시 신청하거나 교회에 문의해 주세요.</p>';
+    } else if (me.status === '준회원' && me.memberName) {
+      note = '<p style="color:var(--accent-soft);font-size:.92rem;margin-bottom:12px;">현재 <b>준회원</b>입니다. 관리자 승인을 기다리고 있거나, 아래에서 다시 신청할 수 있습니다.</p>';
+    }
+    body.innerHTML = note +
       '<div class="form-grid">' +
       '  <div class="form-field"><label>이름</label><input type="text" id="mm_name" maxlength="40" placeholder="교적에 등록된 이름" /></div>' +
       '  <div class="form-field"><label>생년월일</label><input type="text" id="mm_birth" maxlength="10" placeholder="예: 1981-08-19" inputmode="numeric" /></div>' +
       '</div>' +
       '<div class="form-actions" style="margin-top:14px;display:flex;gap:10px;align-items:center;">' +
-      '  <button type="button" class="btn btn-solid" id="mm_btn">교적 인증</button>' +
+      '  <button type="button" class="btn btn-solid" id="mm_btn">' + (req.status === '대기' ? '다시 신청' : '교적 인증 신청') + '</button>' +
       '  <span class="profile-msg" id="mm_msg"></span>' +
       '</div>';
-    document.getElementById('mm_btn').onclick = function () {
+    var btn = document.getElementById('mm_btn');
+    btn.onclick = function () {
       var name = document.getElementById('mm_name').value.trim();
       var birth = document.getElementById('mm_birth').value.replace(/[^0-9]/g, '');
       var msg = document.getElementById('mm_msg');
       if (!name || birth.length !== 8) { msg.textContent = '이름과 생년월일 8자리를 정확히 입력하세요.'; msg.style.color = 'var(--accent-soft)'; return; }
-      msg.style.color = 'var(--ink-soft)'; msg.textContent = '확인 중…';
+      if (btn.disabled) return;
+      btn.disabled = true;   // 두 번 눌러 신청이 두 번 들어가지 않게
+      msg.style.color = 'var(--ink-soft)'; msg.textContent = '보내는 중…';
       WPF.call('match', { name: name, birth: birth }).then(function (r) {
-        if (r.status === '정회원') { msg.style.color = 'green'; msg.textContent = '✓ 정회원 인증 완료'; setTimeout(loadMe, 700); }
-        else { msg.style.color = 'var(--accent-soft)'; msg.textContent = r.message || '교적에서 일치하는 정보를 찾지 못했습니다.'; }
-      }).catch(function (e) { msg.style.color = 'var(--accent-soft)'; msg.textContent = '오류: ' + e.message; });
+        r = r || {};
+        if (r.ok === false) { btn.disabled = false; msg.style.color = 'var(--accent-soft)'; msg.textContent = r.error || '신청하지 못했습니다.'; }
+        else if (r.status === '정회원') { msg.style.color = 'green'; msg.textContent = '✓ 정회원입니다'; setTimeout(loadMe, 700); }
+        else if (r.status === '승인대기') { msg.style.color = 'green'; msg.textContent = '✓ ' + (r.message || '신청을 받았습니다.'); setTimeout(loadMe, 1200); }
+        else { btn.disabled = false; msg.style.color = 'var(--accent-soft)'; msg.textContent = r.message || '교적에서 일치하는 정보를 찾지 못했습니다.'; }
+      }).catch(function (e) { btn.disabled = false; msg.style.color = 'var(--accent-soft)'; msg.textContent = '오류: ' + e.message; });
     };
   }
 

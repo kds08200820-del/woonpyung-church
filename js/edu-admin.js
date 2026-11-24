@@ -11,7 +11,7 @@
  *    교적에서 골라 같은 양식의 증명서를 발급하고 그 성도의 자료실(member_files)에 넣는다. 강의실 이수 기록이 있으면 저절로 잇는다.
  *    서버: supabase/20261025_2000_edu_cert_pastor.sql (edu_is_pastor · 목회자만 발급)
  */
-console.log('[edu-admin.js] v20261026rt1');
+console.log('[edu-admin.js] v20261124sl1');
 
 (function () {
   if (window.WPCEduAdmin) return;
@@ -180,21 +180,31 @@ console.log('[edu-admin.js] v20261026rt1');
     body.querySelector('#eduTf').onchange = function () { only = this.value; paint(); };
     paint();
   }
-  /* ── 도장 설정: 교회 직인(images/운평장로교회직인.png, '회' 자에 반쯤 걸침) · 당회장 인('(인)' 자리) ──
-       당회장 인은 저장소(공개)에 넣지 않고 교회 파일 서버(R2)에 올려 주소만 app_settings 'edu_img_pastor_seal' 에 둔다(관리자·재정권한자만 읽음).
+  /* ── 도장 설정: 교회 직인('회' 자에 반쯤 걸침) · 당회장 인('(인)' 자리) ──
+       두 도장 모두 저장소(공개)에 넣지 않는다. 교회 파일 서버(R2)에 올려 주소만 app_settings 에 둔다(관리자·재정권한자만 읽음).
+         교회 직인 'edu_img_church_seal' — 없으면 재정 설정에 올린 직인('rcp_img_seal')을 쓴다
+         당회장 인 'edu_img_pastor_seal'
+       (2026-11-24: 교회 직인도 당회장 인과 같은 방식으로 바꿈)
        흰 바탕 사진도 올릴 수 있게 밝은 바탕을 투명하게 바꾼 PNG 로 올린다 */
-  var PS_KEY = 'edu_img_pastor_seal';
+  var SEALS = [
+    { id: 'cs', key: 'edu_img_church_seal', alt: 'rcp_img_seal', file: 'church-seal.png', label: '교회 직인',
+      desc: function () { return '‘' + esc(CH.name || '운평장로교회') + '’ 의 끝 글자 ‘회’ 에 반쯤 걸쳐 찍힙니다.'; },
+      gone: function (st) { return st.rcp_img_seal ? '재정 설정에 올린 직인을 대신 씁니다' : '증명서에 직인이 찍히지 않습니다'; } },
+    { id: 'ps', key: 'edu_img_pastor_seal', file: 'pastor-seal.png', label: '당회장 인',
+      desc: function () { return '‘담임목사 ' + esc(CH.pastor || '') + ' (인)’ 자리에 찍힙니다.'; },
+      gone: function () { return '증명서에는 ‘(인)’ 만 남습니다'; } }
+  ];
   function sealsHTML() {
     return '<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;border:1px solid #DFDEDB;border-radius:4px;padding:12px 14px;background:#FDFCF9;margin-bottom:12px">' +
-      '<div style="display:flex;gap:10px;align-items:center;min-width:240px;flex:1"><img src="images/' + encodeURIComponent('운평장로교회직인.png') + '" alt="교회 직인" style="width:58px;height:58px;object-fit:contain">' +
-      '<div style="font-size:.8rem;color:#646360;line-height:1.55"><b style="color:#111111">교회 직인</b><br>‘' + esc(CH.name || '운평장로교회') + '’ 의 끝 글자 ‘회’ 에 반쯤 걸쳐 찍힙니다.</div></div>' +
-      '<div style="display:flex;gap:10px;align-items:center;min-width:280px;flex:1.4"><span id="psPrev" style="width:58px;height:58px;display:inline-flex;align-items:center;justify-content:center;border:1px dashed #D5D4D1;border-radius:4px;font-size:.72rem;color:#A7A6A3;flex:none">불러오는 중</span>' +
-      '<div style="font-size:.8rem;color:#646360;line-height:1.55"><b style="color:#111111">당회장 인</b><br>‘담임목사 ' + esc(CH.pastor || '') + ' (인)’ 자리에 찍힙니다. 흰 바탕 사진도 됩니다(바탕을 투명하게 바꿔 저장).' +
-      '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap"><input type="file" id="psFile" accept="image/*" hidden><button type="button" class="btn btn-line" id="psUp" style="padding:3px 11px;font-size:.78rem">도장 이미지 올리기</button>' +
-      '<button type="button" class="btn btn-line" id="psDel" style="padding:3px 11px;font-size:.78rem;color:#A33A2A" hidden>지우기</button><span id="psMsg" style="font-size:.78rem"></span></div></div></div></div>';
+      SEALS.map(function (s) {
+        return '<div data-seal="' + s.id + '" style="display:flex;gap:10px;align-items:center;min-width:280px;flex:1"><span class="sl-prev" style="width:58px;height:58px;display:inline-flex;align-items:center;justify-content:center;border:1px dashed #D5D4D1;border-radius:4px;font-size:.72rem;color:#A7A6A3;flex:none">불러오는 중</span>' +
+          '<div style="font-size:.8rem;color:#646360;line-height:1.55"><b style="color:#111111">' + s.label + '</b><br>' + s.desc() + ' 흰 바탕 사진도 됩니다(바탕을 투명하게 바꿔 저장).' +
+          '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap"><input type="file" class="sl-file" accept="image/*" hidden><button type="button" class="btn btn-line sl-up" style="padding:3px 11px;font-size:.78rem">도장 이미지 올리기</button>' +
+          '<button type="button" class="btn btn-line sl-del" style="padding:3px 11px;font-size:.78rem;color:#A33A2A" hidden>지우기</button><span class="sl-msg" style="font-size:.78rem"></span></div></div></div>';
+      }).join('') + '</div>';
   }
   // 밝은 바탕(흰색·누런 종이)을 투명하게 — 붉은 인주만 남긴다. 최대 600px PNG
-  function sealToPng(file) {
+  function sealToPng(file, name) {
     return new Promise(function (resolve, reject) {
       var img = new Image(), url = URL.createObjectURL(file);
       img.onload = function () {
@@ -209,35 +219,45 @@ console.log('[edu-admin.js] v20261026rt1');
         }
         g.putImageData(d, 0, 0);
         URL.revokeObjectURL(url);
-        cv.toBlob(function (blob) { blob ? resolve(new File([blob], 'pastor-seal.png', { type: 'image/png' })) : reject(new Error('이미지를 바꾸지 못했습니다')); }, 'image/png');
+        cv.toBlob(function (blob) { blob ? resolve(new File([blob], name || 'seal.png', { type: 'image/png' })) : reject(new Error('이미지를 바꾸지 못했습니다')); }, 'image/png');
       };
       img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('이미지를 읽지 못했습니다')); };
       img.src = url;
     });
   }
   function bindSeals(body) {
-    var prev = body.querySelector('#psPrev'), msg = body.querySelector('#psMsg'), fi = body.querySelector('#psFile'), del = body.querySelector('#psDel');
-    function show(u) {
-      prev.innerHTML = u ? '<img src="' + esc(u) + '" alt="당회장 인" style="width:56px;height:56px;object-fit:contain">' : '미등록';
-      del.hidden = !u;
+    var boxes = SEALS.map(function (s) {
+      var el = body.querySelector('[data-seal="' + s.id + '"]');
+      return { s: s, prev: el.querySelector('.sl-prev'), msg: el.querySelector('.sl-msg'), fi: el.querySelector('.sl-file'), up: el.querySelector('.sl-up'), del: el.querySelector('.sl-del') };
+    });
+    if (!window.WPF) { boxes.forEach(function (b) { b.prev.textContent = '–'; b.msg.style.color = '#A33A2A'; b.msg.textContent = '설정 저장소를 쓸 수 없습니다'; }); return; }
+    function bind(b, st) {
+      var s = b.s;
+      function say(ok, t) { b.msg.style.color = ok ? 'green' : '#A33A2A'; b.msg.textContent = t; }
+      function show() {
+        var own = st[s.key] || '', alt = (s.alt && st[s.alt]) || '', u = own || alt;
+        b.prev.innerHTML = u ? '<img src="' + esc(u) + '" alt="' + s.label + '" style="width:56px;height:56px;object-fit:contain">' : '미등록';
+        b.del.hidden = !own;
+        b.msg.style.color = '#898885'; b.msg.textContent = (!own && alt) ? '재정 설정에 올린 직인을 쓰고 있습니다' : '';
+      }
+      show();
+      b.up.onclick = function () { b.fi.click(); };
+      b.fi.onchange = function () {
+        var f = b.fi.files && b.fi.files[0]; b.fi.value = '';
+        if (!f) return;
+        if (!(window.ChurchUpload && ChurchUpload.isReady())) { say(false, '업로드 서버가 설정되지 않았습니다'); return; }
+        b.msg.style.color = '#898885'; b.msg.textContent = '올리는 중…';
+        sealToPng(f, s.file).then(function (png) { return ChurchUpload.upload(png, { folder: 'church/seal', compress: false }); })
+          .then(function (res) { return WPF.call('setSetting', { key: s.key, value: res.url }).then(function () { st[s.key] = res.url; show(); say(true, '✓ 저장했습니다. 이제 증명서에 찍힙니다.'); }); })
+          .catch(function (e) { say(false, '실패: ' + (e.message || e)); });
+      };
+      b.del.onclick = function () {
+        if (!confirm(s.label + ' 이미지를 지울까요? (' + s.gone(st) + ')')) return;
+        WPF.call('setSetting', { key: s.key, value: '' }).then(function () { st[s.key] = ''; show(); if (!b.msg.textContent) say(true, '지웠습니다'); }, function (e) { say(false, '실패: ' + e.message); });
+      };
     }
-    function say(ok, t) { msg.style.color = ok ? 'green' : '#A33A2A'; msg.textContent = t; }
-    if (!window.WPF) { prev.textContent = '–'; say(false, '설정 저장소를 쓸 수 없습니다'); return; }
-    WPF.call('getSettings').then(function (r) { show((r && r.settings && r.settings[PS_KEY]) || ''); }, function () { show(''); });
-    body.querySelector('#psUp').onclick = function () { fi.click(); };
-    fi.onchange = function () {
-      var f = fi.files && fi.files[0]; fi.value = '';
-      if (!f) return;
-      if (!(window.ChurchUpload && ChurchUpload.isReady())) { say(false, '업로드 서버가 설정되지 않았습니다'); return; }
-      say(true, ''); msg.style.color = '#898885'; msg.textContent = '올리는 중…';
-      sealToPng(f).then(function (png) { return ChurchUpload.upload(png, { folder: 'church/seal', compress: false }); })
-        .then(function (res) { return WPF.call('setSetting', { key: PS_KEY, value: res.url }).then(function () { show(res.url); say(true, '✓ 저장했습니다. 이제 증명서에 찍힙니다.'); }); })
-        .catch(function (e) { say(false, '실패: ' + (e.message || e)); });
-    };
-    del.onclick = function () {
-      if (!confirm('당회장 인 이미지를 지울까요? (증명서에는 ‘(인)’ 만 남습니다)')) return;
-      WPF.call('setSetting', { key: PS_KEY, value: '' }).then(function () { show(''); say(true, '지웠습니다'); }, function (e) { say(false, '실패: ' + e.message); });
-    };
+    WPF.call('getSettings').then(function (r) { return (r && r.settings) || {}; }, function () { return {}; })
+      .then(function (st) { boxes.forEach(function (b) { bind(b, st); }); });
   }
   function drawCerts(body, redraw) {
     body.innerHTML = sealsHTML() + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><button type="button" class="btn btn-solid" id="eduNewCert" style="padding:7px 14px">＋ 증명서 직접 발급</button>' +

@@ -253,6 +253,13 @@ window.WPF = (function () {
         return rest('POST', 'app_settings?on_conflict=key', { key: params.key, value: String(params.value == null ? '' : params.value), updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal').then(function () { return { ok: true }; });
       case 'adminSetMember':
         return rpc('admin_set_member', { p_uid: params.uid, p_status: params.status, p_member_key: params.memberKey || '', p_member_name: params.memberName || '' });
+      // 교적 인증 신청 → 관리자 승인 (20261124_2330_member_match_approval.sql). SQL 실행 전에는 404 → 부르는 쪽이 조용히 넘어간다
+      case 'myMatchRequest':
+        return rpc('my_match_request');
+      case 'listMatchRequests':
+        return rpc('list_match_requests').then(function (arr) { return { ok: true, requests: arr || [] }; });
+      case 'decideMatchRequest':
+        return rpc('decide_match_request', { p_id: params.id, p_approve: !!params.approve });
       case 'listReceipts':
         return restAll('donation_receipts?select=*&order=id').then(function (rows) { return { ok: true, receipts: (rows || []).map(recOut) }; });
       case 'addReceipt': {
