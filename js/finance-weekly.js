@@ -89,7 +89,7 @@ window.FinWeekly = (function () {
       '.wk-omit{font-size:7.8pt;color:#777;margin-top:2.2mm;line-height:1.45}',
       // 3쪽~: 헌금 내역 4단
       '.wk-of{display:grid;grid-template-columns:repeat(4,1fr);column-gap:5mm;align-items:start}',
-      '.wk-of .wk-t td{height:4.75mm;font-size:8.5pt}',
+      '.wk-of .wk-t td{height:var(--ofh,4.75mm);font-size:var(--off,8.5pt);padding-top:0;padding-bottom:0}',
       '.wk-of .wk-t td.oh{background:#F2F2F2;font-weight:700}',
       '.wk-of .wk-t td.oh span{float:right;font-weight:700;font-variant-numeric:tabular-nums}',
       '.wk-of .wk-t td.nm{padding-left:3mm}',
@@ -474,8 +474,10 @@ window.FinWeekly = (function () {
   //  → 계정은 모두 적고 금액 칸은 비운다. 년·월·주와 전주 이월금만 채운다(이월금은 장부로 자동).
   //  1쪽 수입 항목(현금·온라인·합계) + 금주 재정 요약 + 특이사항 + 확인
   //  2쪽 지출(분류 줄 오른쪽 칸 = 소계, 3단)
-  //  3~5쪽 헌금 내역서(이름 / (항목) · 헌금액, 4단 × 22줄 — 손으로 쓰기 좋게 칸을 키움)
+  //  3~4쪽 헌금 내역서(이름 / (항목) · 헌금액, 4단 × ROWS_F줄 — 손으로 쓰기 좋게 칸을 키움)
+  //  2026-11-25 담임목사: 재정보고서는 A4 양면 2장(4쪽)으로
   // =====================================================================
+  var ROWS_F = 23;   // 빈 양식 헌금 내역서 한 단의 줄 수(2쪽 × 4단)
   function buildForm(X, fyR) {
     var won = X.won, esc = X.esc, M = X.M;
     var sun = state.sunday, from = sun;   // 한 주 = 주일 ~ 토요일
@@ -549,18 +551,18 @@ window.FinWeekly = (function () {
     html += page('재정보고서', '지출', exBody);
 
     // ── 3~4쪽: 헌금 내역서(빈 칸) ──
-    for (var pg = 1; pg <= 3; pg++) {
+    for (var pg = 1; pg <= 2; pg++) {
       var blocks = '';
       for (var b = 0; b < 4; b++) {
         var trs = '';
-        for (var r = 0; r < 22; r++) trs += '<tr><td></td><td></td></tr>';
+        for (var r = 0; r < ROWS_F; r++) trs += '<tr><td></td><td></td></tr>';
         blocks += '<table class="wk-t"><colgroup><col><col style="width:28mm"></colgroup><thead><tr><th>이름 / (항목)</th><th>헌금액</th></tr></thead><tbody>' + trs + '</tbody></table>';
       }
       html += page('헌금 내역서', '헌금 내역 ' + pg,
         '<div class="wk-ofhint">항목이 바뀌는 곳은 이름 칸에 ( 십일조 ) 처럼 항목을 적고, 그 아래 줄부터 이름과 금액을 적습니다.</div><div class="wk-of wk-off">' + blocks + '</div>');
     }
     var note = year + '년 ' + wname + '(' + md(from) + ' ~ ' + md(addDays(sun, 6)) + ') 수기 작성용 양식입니다. 전주 이월금 <b>' + won(opening) + '원</b>은 장부로 자동 계산해 채웠습니다' +
-      '(회계연도 시작 이월금 + ' + md(fyR.from) + '부터 이번 주 직전까지의 수입·지출). 나머지 금액 칸은 비워 둡니다. 「재정보고서 인쇄」 = 가로 A4 5쪽(헌금 내역서 3쪽).';
+      '(회계연도 시작 이월금 + ' + md(fyR.from) + '부터 이번 주 직전까지의 수입·지출). 나머지 금액 칸은 비워 둡니다. 「재정보고서 인쇄」 = 가로 A4 4쪽(양면 2장, 헌금 내역서 2쪽).';
     return { html: html, note: note };
   }
 
@@ -711,7 +713,10 @@ window.FinWeekly = (function () {
       lines.push({ h: true, name: a, amt: list.reduce(function (s, x) { return s + x.amt; }, 0), n: list.length });
       list.forEach(function (x) { lines.push({ name: x.name, amt: x.amt }); });
     });
-    var ROWS = 31, PER = ROWS * 4, pages = [];
+    // 헌금 내역은 2쪽(4단 × 2) 안에 — 많으면 줄 높이·글자를 줄여 맞춘다(A4 양면 2장)
+    var ROWS = Math.max(31, Math.ceil(lines.length / 8)), PER = ROWS * 4, pages = [];
+    var ofH = Math.min(4.75, 146 / (ROWS + 1)), ofF = ofH >= 4.4 ? 8.5 : ofH >= 3.6 ? 7.5 : 6.5;
+    var ofStyle = ' style="--ofh:' + ofH.toFixed(2) + 'mm;--off:' + ofF + 'pt"';
     for (var i = 0; i < lines.length; i += PER) pages.push(lines.slice(i, i + PER));
     if (!pages.length) pages.push([]);
     pages.forEach(function (pl, pi) {
@@ -724,7 +729,7 @@ window.FinWeekly = (function () {
         var start = pi * PER + ci * rowsHere;
         for (var k = start - 1; k >= 0; k--) if (lines[k].h) { col.unshift({ h: true, cont: true, name: lines[k].name }); break; }
       });
-      var body = pl.length ? '<div class="wk-of">' + c4.map(function (col) {
+      var body = pl.length ? '<div class="wk-of"' + ofStyle + '>' + c4.map(function (col) {
         if (!col.length) return '<div></div>';
         return '<table class="wk-t"><colgroup><col><col style="width:24mm"></colgroup><thead><tr><th>이름</th><th>헌금액</th></tr></thead><tbody>' +
           col.map(function (x) {
