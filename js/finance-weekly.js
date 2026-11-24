@@ -56,13 +56,13 @@ window.FinWeekly = (function () {
       '.wk-t{width:100%;border-collapse:collapse;table-layout:fixed;border-top:1pt solid #111;border-bottom:1pt solid #111}',
       '.wk-t th{background:#F2F2F2;font-size:8.5pt;font-weight:700;text-align:center;height:5.5mm;padding:0 1.6mm;border-bottom:.5pt solid #BDBDBD}',
       '.wk-t td{height:5.6mm;padding:0 1.6mm;border-bottom:.5pt solid #BDBDBD;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-      '.wk-t th+th,.wk-t td+td{border-left:.5pt solid #BDBDBD}',
+      '.wk-t th,.wk-t td{border-right:.5pt solid #BDBDBD}.wk-t th:last-child,.wk-t td:last-child{border-right:0}',   // 세로선 굵기 일정(2026-11-25)
       '.wk-t tr:last-child td{border-bottom:0}',
       '.wk-t .n{text-align:right;font-variant-numeric:tabular-nums}',
       '.wk-t .z{color:#B0B0B0}',
       '.wk-t .g{background:#F2F2F2;font-weight:700}',
       '.wk-t .tot td{background:#E4E4E4;font-weight:700;font-size:9.5pt;height:6.6mm;border-top:.5pt solid #BDBDBD}',
-      '.wk-t td.sumcol,.wk-t th.sumcol{border-left:1pt solid #BDBDBD}',
+      '.wk-t td.sumcol,.wk-t th.sumcol{}',
       // 1쪽: 수입(왼쪽) + 요약(오른쪽)
       '.wk-p1{display:grid;grid-template-columns:166mm 95mm;column-gap:6mm}',
       '.wk-in td.grp{text-align:center;font-weight:700;font-size:8.5pt;background:#F2F2F2;white-space:normal}',
