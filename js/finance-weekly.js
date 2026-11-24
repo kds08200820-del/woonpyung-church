@@ -261,7 +261,8 @@ window.FinWeekly = (function () {
     { k: 'petition', label: '지출결의서 작성 · 인쇄' },
     { k: 'claims', label: '금주 청구 내역', badge: true },
     { k: 'regular', label: '정기 지출 등록' },
-    { k: 'inst', label: '할부 등록' }
+    { k: 'inst', label: '할부 등록' },
+    { k: 'rcpts', label: '영수증 모아보기' }
   ];
   function render(panel, X) {
     injectCSS();
@@ -284,6 +285,7 @@ window.FinWeekly = (function () {
     var main = panel.querySelector('#wkMain');
     if (state.view === 'regular') return renderRecurring(main, X, 'regular');
     if (state.view === 'inst') return renderRecurring(main, X, 'inst');
+    if (state.view === 'rcpts') return renderReceipts(main, X);
     renderWeek(main, X, panel);
   }
 
@@ -802,11 +804,25 @@ window.FinWeekly = (function () {
     if (raw) { try { var o = JSON.parse(raw); if (o && Array.isArray(o.rows)) return (state.pet[sun] = o.rows); } catch (e) { /* 자동으로 */ } }
     return (state.pet[sun] = autoRows(X, sun));
   }
+  function ovrOf(X, sun) {
+    state.ovr = state.ovr || {};
+    if (state.ovr[sun]) return state.ovr[sun];
+    var o = {}; try { var raw = (X.M.settings || {})['petition_' + sun]; if (raw) o = JSON.parse(raw).over || {}; } catch (e) { o = {}; }
+    return (state.ovr[sun] = o);
+  }
+  // 온라인 청원 한 줄 = 청원 내용 + 재정부가 고친 것
+  function onlRow(X, sun, p) {
+    var v = ovrOf(X, sun)[p.id] || {};
+    function g(k, d) { return v[k] != null ? v[k] : d; }
+    return { gwan: g('gwan', p.gwan || ''), hang: g('hang', p.hang || ''), text: g('text', p.item || ''), amount: Number(g('amount', p.amount)) || 0,
+      note: g('note', (p.dept ? p.dept + ' ' : '') + (p.requester_name || '')), edited: !!Object.keys(v).length };
+  }
   function petRows(X, online) {
     var rows = draftRows(X, state.sunday).slice();
     (online.approved || []).forEach(function (p) {
-      rows.push({ gwan: p.gwan || '', hang: p.hang || '', text: p.item || '', amount: Number(p.amount) || 0,
-        note: (p.dept ? p.dept + ' ' : '') + (p.requester_name || ''), src: 'o:' + p.id, receipts: p.receipts || [], dept: p.dept,
+      var e = onlRow(X, state.sunday, p);
+      rows.push({ gwan: e.gwan, hang: e.hang, text: e.text, amount: e.amount,
+        note: e.note, src: 'o:' + p.id, receipts: p.receipts || [], dept: p.dept,
         pay: p.pay_account ? (p.pay_bank + ' ' + p.pay_account + ' (예금주 ' + p.pay_holder + ')') : '' });
     });
     return rows;
@@ -891,7 +907,13 @@ window.FinWeekly = (function () {
         '<td><button class="wk-x" data-del="' + i + '" title="이 줄 지우기">✕</button></td></tr>';
     }
     var onl = (online.approved || []).map(function (p) {
-      return '<tr class="onl"><td>' + esc(p.gwan || '') + '</td><td>' + esc(p.hang || '') + '</td><td>' + esc(p.item || '') + ' <span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + (p.paid_at ? ' <span class="tag">지급 완료</span>' : '') + rcpLinks(p, esc) + payLine(p, esc) + '</td><td class="n">' + won(p.amount) + '</td><td>' + esc(p.requester_name || '') + '</td><td class="rate" data-h="' + esc(p.hang || '') + '"></td><td>' + (p.paid_at ? '' : '<button class="wk-x" data-drop="' + p.id + '" title="이 청원을 결의서에서 빼기">✕</button>') + '</td></tr>';
+      var e = onlRow(X, sun, p);   // 재정부가 고칠 수 있다(청원 원래 내용은 그대로 두고 이 결의서에만)
+      return '<tr class="onl" data-o="' + p.id + '">' +
+        '<td><input data-k="gwan" list="wkGwanList" value="' + esc(e.gwan) + '"></td>' +
+        '<td><input data-k="hang" list="' + hangListId(dl.tree, e.gwan) + '" value="' + esc(e.hang) + '"></td>' +
+        '<td><input data-k="text" value="' + esc(e.text) + '"><div style="margin-top:3px"><span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + (e.edited ? ' <span class="tag" title="청원 원래 내용: ' + esc((p.hang || '') + ' · ' + (p.item || '') + ' · ' + won(p.amount) + '원') + '">고침</span>' : '') + (p.paid_at ? ' <span class="tag">지급 완료</span>' : '') + rcpLinks(p, esc) + '</div>' + payLine(p, esc) + '</td>' +
+        '<td><input data-k="amount" class="n" inputmode="numeric" value="' + (e.amount ? won(e.amount) : '') + '"></td>' +
+        '<td><input data-k="note" value="' + esc(e.note) + '"></td><td class="rate" data-h="' + esc(e.hang) + '"></td><td>' + (p.paid_at ? '' : '<button class="wk-x" data-drop="' + p.id + '" title="이 청원을 결의서에서 빼기">✕</button>') + '</td></tr>';
     }).join('');
     var pend = (online.pending || []).map(function (p) {
       return '<div class="wk-pend"><div><b>' + esc(p.dept || '') + '</b> · ' + esc(p.requester_name || '') + ' · ' + esc(p.hang || '') + ' · ' + esc(p.item || '') + ' · <b>' + won(p.amount) + '원</b>' +
@@ -929,8 +951,11 @@ window.FinWeekly = (function () {
     if (!box._wkBound) {
       box._wkBound = true;
       box.addEventListener('input', function (e) {
-        var c = box._wk, inp = e.target, tr = inp.closest && inp.closest('tr[data-i]'); if (!tr) return;
-        var r = c.rows[Number(tr.getAttribute('data-i'))], k = inp.getAttribute('data-k'); if (!r || !k) return;
+        var c = box._wk, inp = e.target, tr = inp.closest && inp.closest('tr[data-i],tr[data-o]'); if (!tr) return;
+        var k = inp.getAttribute('data-k'), oid = tr.getAttribute('data-o'), r;
+        if (oid) { var ov = ovrOf(c.X, c.sun); r = ov[oid] = ov[oid] || {}; if (r.gwan == null) { var cur = {}; Array.prototype.forEach.call(tr.querySelectorAll('[data-k]'), function (x) { cur[x.getAttribute('data-k')] = x.value; }); r.gwan = cur.gwan; r.hang = cur.hang; r.text = cur.text; r.note = cur.note; r.amount = Number(String(cur.amount).replace(/[^\d-]/g, '')) || 0; } }
+        else r = c.rows[Number(tr.getAttribute('data-i'))];
+        if (!r || !k) return;
         if (k === 'amount') { r.amount = Number(String(inp.value).replace(/[^\d-]/g, '')) || 0; }
         else r[k] = inp.value;
         if (k === 'gwan') tr.querySelector('[data-k=hang]').setAttribute('list', hangListId(c.dl.tree, r.gwan));
@@ -968,7 +993,7 @@ window.FinWeekly = (function () {
   // ── 결의서 자동 저장 ──
   function autoSave(box, ms) {
     var c = box._wk; if (!c) return;
-    box._wkDirty = { sun: c.sun, rows: c.rows, X: c.X };
+    box._wkDirty = { sun: c.sun, rows: c.rows, X: c.X, over: ovrOf(c.X, c.sun) };
     var st = box.querySelector('.wk-st'); if (st) st.textContent = '저장 중…';
     clearTimeout(box._wkSv); box._wkSv = setTimeout(function () { flushSave(box); }, ms);
   }
@@ -976,7 +1001,7 @@ window.FinWeekly = (function () {
     clearTimeout(box._wkSv);
     var d = box._wkDirty; if (!d) return; box._wkDirty = null;
     var at = d.X.today() + ' ' + new Date().toTimeString().slice(0, 5);
-    d.X.save('petition_' + d.sun, JSON.stringify({ rows: d.rows, at: at })).then(function () {
+    d.X.save('petition_' + d.sun, JSON.stringify({ rows: d.rows, at: at, over: d.over || {} })).then(function () {
       var st = box.querySelector('.wk-st'); if (st && box._wk && box._wk.sun === d.sun && !box._wkDirty) st.textContent = '저장됨 ' + at;
     }).catch(function (er) {
       var st = box.querySelector('.wk-st'); if (st) st.textContent = '저장하지 못했습니다 — 다시 고치면 다시 저장합니다';
@@ -1046,6 +1071,85 @@ window.FinWeekly = (function () {
   //  「정기 청구」 관리 화면 (예산·계정 ▸ 정기 청구)
   // =====================================================================
   // mode: 'regular' = 정기 지출 등록, 'inst' = 할부 등록 (지출결의서 왼쪽 메뉴), 없으면 모두
+  // =====================================================================
+  //   영수증 모아보기 (2026-11-24 담임목사: 「영수증을 청구 항목과 날짜 별로 볼 수 있도록」)
+  //   온라인 청원에 붙은 영수증을 회계연도(또는 고른 기간) 안에서 결의서 주(날짜)별 / 청구 항목(관 · 항)별로 묶어 본다.
+  // =====================================================================
+  function renderReceipts(main, X) {
+    var won = X.won, esc = X.esc, fyR = X.fyRange(X.fy());
+    var R = state.rc = state.rc || {};
+    if (R.fy !== X.fy()) { R.fy = X.fy(); R.from = fyR.from; R.to = fyR.to; R.hang = ''; }
+    if (!R.by) R.by = 'date';
+    if (R.only == null) R.only = true;
+    main.innerHTML = '<style>' +
+      '.rc-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.rc-bar label{font-size:.86rem;color:#565552;display:inline-flex;gap:5px;align-items:center}' +
+      '.rc-bar input[type=date],.rc-bar select{padding:6px 8px;border:1px solid #D9D8D5;border-radius:2px;font:inherit}' +
+      '.rc-seg{display:inline-flex;border:1px solid #111;border-radius:2px;overflow:hidden}.rc-seg button{border:0;background:#fff;padding:6px 14px;font:inherit;font-weight:700;cursor:pointer}.rc-seg button.on{background:#111;color:#fff}' +
+      '.rc-g{margin-bottom:18px}.rc-gh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:2px solid #111;padding:6px 0;margin-bottom:8px}.rc-gh b{font-size:1rem}.rc-gh span{font-size:.86rem;color:#565552}' +
+      '.rc-it{display:grid;grid-template-columns:minmax(220px,1fr) 2fr;gap:12px;padding:10px 0;border-bottom:1px solid #EEEDEA}' +
+      '.rc-it .t{font-size:.9rem;line-height:1.6}.rc-it .t b{font-size:.95rem}.rc-it .t small{color:#898885}.rc-it .amt{font-weight:700;color:#A33A2A}' +
+      '.rc-th{display:flex;gap:8px;flex-wrap:wrap}.rc-th a{display:block;width:110px;height:140px;border:1px solid #E5E4E1;background:#fafafa;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#565552;text-decoration:none}' +
+      '.rc-th img{max-width:100%;max-height:100%}.rc-none{font-size:.82rem;color:#A7A6A3}.rc-tag{display:inline-block;font-size:.72rem;padding:1px 7px;border-radius:999px;background:#F2F2F2;margin-left:4px}.rc-tag.paid{background:#2E7D32;color:#fff}.rc-tag.out{background:#FBEDEA;color:#A33A2A}' +
+      '@media (max-width:700px){.rc-it{grid-template-columns:1fr}}' +
+      '</style>' +
+      '<div class="fin-card"><div class="rc-bar">' +
+      '<b style="margin-right:6px">영수증 모아보기</b>' +
+      '<span class="rc-seg"><button data-by="date"' + (R.by === 'date' ? ' class="on"' : '') + '>날짜별</button><button data-by="hang"' + (R.by === 'hang' ? ' class="on"' : '') + '>청구 항목별</button></span>' +
+      '<label>기간 <input type="date" id="rcFrom" value="' + esc(R.from) + '"> ~ <input type="date" id="rcTo" value="' + esc(R.to) + '"></label>' +
+      '<label>청구 항목 <select id="rcHang"><option value="">전체</option></select></label>' +
+      '<label><input type="checkbox" id="rcOnly"' + (R.only ? ' checked' : '') + '> 영수증 있는 것만</label>' +
+      '</div><p class="wk-note" style="margin:8px 0 0">부서 · 청원자가 온라인 청원에 붙인 영수증입니다. 날짜는 들어간 지출결의서의 주(주일 ~ 토요일)이고, 올린 날은 줄마다 따로 적었습니다. 그림을 누르면 크게 봅니다.</p></div>' +
+      '<div class="fin-card" id="rcBody"><p class="qt-loading">불러오는 중…</p></div>';
+    var body = main.querySelector('#rcBody');
+    function load() {
+      body.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
+      if (!X.call) { body.innerHTML = '<p class="wk-note">불러올 수 없습니다.</p>'; return; }
+      X.call('listPetitionReceipts', { from: R.from, to: R.to }).then(function (r) { R.rows = r.rows || []; draw(); })
+        .catch(function (er) { body.innerHTML = '<p class="wk-note">불러오지 못했습니다: ' + esc(er.message) + '</p>'; });
+    }
+    function draw() {
+      var all = R.rows || [];
+      var hs = {}; all.forEach(function (p) { if (p.hang) hs[p.hang] = p.gwan || ''; });
+      var sel = main.querySelector('#rcHang');
+      sel.innerHTML = '<option value="">전체</option>' + Object.keys(hs).sort().map(function (h) { return '<option value="' + esc(h) + '"' + (R.hang === h ? ' selected' : '') + '>' + esc(hs[h] ? hs[h] + ' · ' : '') + esc(h) + '</option>'; }).join('');
+      var rows = all.filter(function (p) { return (!R.hang || p.hang === R.hang) && (!R.only || (p.receipts || []).length); });
+      if (!rows.length) { body.innerHTML = '<p class="wk-note" style="margin:0">' + (all.length ? '고른 조건에 맞는 영수증이 없습니다.' : '이 기간에 올라온 청원이 없습니다.') + '</p>'; return; }
+      var groups = [], idx = {};
+      rows.forEach(function (p) {
+        var k = R.by === 'hang' ? (p.hang || '(항목 없음)') : p.week_sunday;
+        if (!idx[k]) { idx[k] = { k: k, gwan: p.gwan || '', items: [], sum: 0, n: 0 }; groups.push(idx[k]); }
+        var g = idx[k]; g.items.push(p); g.sum += Number(p.amount) || 0; g.n += (p.receipts || []).length;
+      });
+      if (R.by === 'hang') groups.sort(function (a, b) { return a.k.localeCompare(b.k); });
+      var tot = rows.reduce(function (a, p) { return a + (Number(p.amount) || 0); }, 0);
+      body.innerHTML = '<div class="wk-pe-h" style="margin-bottom:10px"><b>' + rows.length + '건 · 영수증 ' + rows.reduce(function (a, p) { return a + (p.receipts || []).length; }, 0) + '장</b><span class="wk-st">합계 ' + won(tot) + '원</span></div>' +
+        groups.map(function (g) {
+          var head = R.by === 'hang' ? esc(g.gwan ? g.gwan + ' · ' : '') + esc(g.k)
+            : dt(g.k).getFullYear() + '년 ' + weekName(g.k) + ' 결의서 <small style="font-weight:400;color:#898885">(' + md(g.k) + ' ~ ' + md(addDays(g.k, 6)) + ')</small>';
+          return '<div class="rc-g"><div class="rc-gh"><b>' + head + '</b><span>' + g.items.length + '건 · 영수증 ' + g.n + '장 · ' + won(g.sum) + '원</span></div>' +
+            g.items.map(function (p) {
+              var recs = p.receipts || [];
+              var st = p.status === 'rejected' ? '<span class="rc-tag out">결의서에서 뺌</span>' : p.paid_at ? '<span class="rc-tag paid">지급 완료</span>' : '';
+              return '<div class="rc-it"><div class="t"><b>' + esc(p.item || '') + '</b>' + st + '<br>' +
+                (R.by === 'hang' ? esc(weekName(p.week_sunday)) + ' 결의서 · ' : esc(p.gwan ? p.gwan + ' · ' : '') + esc(p.hang || '') + ' · ') +
+                esc(p.dept || '재정 청원') + ' ' + esc(p.requester_name || '') + '<br><span class="amt">' + won(p.amount) + '원</span> <small>올린 날 ' + esc(String(p.created_at || '').slice(0, 10)) + '</small></div>' +
+                '<div class="rc-th">' + (recs.length ? recs.map(function (u, i) {
+                  return /\.pdf(\?|$)/i.test(u) ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">PDF 영수증 ' + (i + 1) + '</a>'
+                    : '<a href="' + esc(u) + '" target="_blank" rel="noopener" title="크게 보기"><img src="' + esc(u) + '" alt="영수증 ' + (i + 1) + '" loading="lazy"></a>';
+                }).join('') : '<span class="rc-none">영수증 없음</span>') + '</div></div>';
+            }).join('') + '</div>';
+        }).join('');
+    }
+    Array.prototype.forEach.call(main.querySelectorAll('[data-by]'), function (b) {
+      b.onclick = function () { R.by = b.getAttribute('data-by'); Array.prototype.forEach.call(main.querySelectorAll('[data-by]'), function (x) { x.classList.toggle('on', x === b); }); draw(); };
+    });
+    main.querySelector('#rcFrom').onchange = function (e) { if (e.target.value) { R.from = e.target.value; load(); } };
+    main.querySelector('#rcTo').onchange = function (e) { if (e.target.value) { R.to = e.target.value; load(); } };
+    main.querySelector('#rcHang').onchange = function (e) { R.hang = e.target.value; draw(); };
+    main.querySelector('#rcOnly').onchange = function (e) { R.only = e.target.checked; draw(); };
+    load();
+  }
+
   function renderRecurring(panel, X, mode) {
     var FY = Number(X.fy());
     function shown(c) { return mode === 'inst' ? c.kind === '할부' : (mode === 'regular' ? (isReg(c) && Number(c.fy) === FY) : true); }

@@ -274,6 +274,12 @@ window.WPF = (function () {
         return rest('GET', 'fin_petitions?select=*&or=(status.eq.submitted,week_sunday.eq.' + encodeURIComponent(sun) + ',and(status.eq.approved,paid_at.is.null))&order=id&limit=500')
           .then(function (rows) { return { ok: true, rows: rows || [] }; });
       }
+      case 'listPetitionReceipts': {   // 영수증 모아보기: 기간 안 결의서의 청원(거둔 것 빼고)
+        var f0 = String(params.from || '').slice(0, 10), t0 = String(params.to || '').slice(0, 10);
+        return rest('GET', 'fin_petitions?select=id,dept,requester_name,gwan,hang,item,amount,receipts,week_sunday,status,paid_at,created_at' +
+          '&week_sunday=gte.' + encodeURIComponent(f0) + '&week_sunday=lte.' + encodeURIComponent(t0) + '&status=neq.cancelled&order=week_sunday.desc,id.desc&limit=3000')
+          .then(function (rows) { return { ok: true, rows: rows || [] }; });
+      }
       case 'reviewPetition':
         return rpc('fin_petition_review', { p_id: Number(params.id), p_status: params.status, p_note: params.note || '' }).then(function () { return { ok: true }; });
       case 'markPetitionsPaid':   // 당회장 도장 찍힌 지출결의서 인쇄 → 지급 완료 (supabase/20261124_1000_fin_petition_paid.sql)
