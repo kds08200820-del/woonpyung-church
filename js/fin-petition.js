@@ -125,7 +125,7 @@
       </div>
       <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-solid" id="ptSend">청원 올리기</button><span class="pt-help">올린 청원은 <b>${esc(sunTxt)}</b> 지출결의서로 갑니다. 재정부가 확인하면 결의서에 들어갑니다.</span></div>
       <div class="pt-msg" id="ptMsg"></div></div>` : `<div class="pt-card"><p class="pt-help">청원할 수 있는 계정이 아직 정해지지 않았습니다. 재정부에 말씀해 주세요.</p></div>`) +
-      `<div class="pt-card"><h3>내 청원</h3>` +
+      `<div class="pt-card"><h3>내 청원</h3>` + sumHTML(mine, fy) +
       (mine.length ? `<p class="pt-help" style="margin:-4px 0 8px">「지급 완료」는 당회장 결재가 끝난 지출결의서가 나와 지급 절차에 들어갔다는 뜻입니다. <b>통장에 들어오기까지 1~2일 걸릴 수 있습니다.</b></p>` +
         `<div style="overflow:auto"><table class="pt-t"><thead><tr><th>결의서</th><th>계정</th><th>내역</th><th class="n">금액</th><th>상태</th><th></th></tr></thead><tbody>` +
         mine.slice(0, 60).map((p) => `<tr><td>${esc(weekName(p.week_sunday))}</td><td>${esc(p.hang)}</td><td>${esc(p.item)}${(p.receipts || []).map((r, i) => ` <a href="${esc(r)}" target="_blank" rel="noopener" style="font-size:.78rem">영수증${(p.receipts || []).length > 1 ? i + 1 : ""}</a>`).join("")}${p.pay_account ? `<div class="pt-help">받는 계좌: ${esc(p.pay_bank)} ${esc(p.pay_account)} (${esc(p.pay_holder)})</div>` : ""}${p.review_note ? `<div class="pt-help">${esc(p.review_note)}</div>` : ""}</td><td class="n">${won(p.amount)}</td><td>${p.status === "approved" && p.paid_at ? `<span class="pt-st paid">지급 완료</span><div class="pt-help" style="white-space:nowrap">${esc(String(p.paid_at).slice(5, 10).replace("-", "/"))} · 입금까지 1~2일</div>` : `<span class="pt-st ${esc(p.status)}">${esc(stName[p.status] || p.status)}</span>`}</td><td>${p.status === "submitted" ? `<button class="btn btn-line" data-cancel="${p.id}" style="padding:3px 9px;font-size:.78rem">거두기</button>` : ""}</td></tr>`).join("") +
@@ -160,6 +160,17 @@
     after();
   }
 
+  // 회기(회계연도) 안에 내가 청원한 금액 합계 — 거둔 것 · 돌려보낸 것은 빼고, 상태별로 나눠 보인다
+  function sumHTML(mine, fy) {
+    if (!fy.d_from || !fy.d_to) return "";
+    const inFy = mine.filter((p) => p.week_sunday >= fy.d_from && p.week_sunday <= fy.d_to && p.status !== "cancelled" && p.status !== "rejected");
+    const s = (f) => inFy.filter(f).reduce((a, p) => a + (Number(p.amount) || 0), 0);
+    const all = s(() => true), paid = s((p) => p.status === "approved" && p.paid_at), ok = s((p) => p.status === "approved" && !p.paid_at), wait = s((p) => p.status === "submitted");
+    const d = (x) => String(x).slice(2).replace(/-/g, ".");
+    return `<div class="pt-sum"><div class="pt-sum-t">${esc(fy.fy || "")}년도 회기 청원 총액 <small>(${d(fy.d_from)} ~ ${d(fy.d_to)} · ${inFy.length}건)</small><b>${won(all)}원</b></div>` +
+      `<div class="pt-sum-l"><span>지급 완료 <b>${won(paid)}</b>원</span><span>확인됨 · 지급 전 <b>${won(ok)}</b>원</span><span>확인 대기 <b>${won(wait)}</b>원</span></div>` +
+      `<div class="pt-help" style="font-size:.78rem">거둔 청원 · 돌려보낸 청원은 뺀 금액입니다.</div></div>`;
+  }
   // 적은 계정 이름 → 고를 수 있는 계정(없으면 ""). 띄어쓰기 무시, 「관 · 항」 꼴도 받음.
   function hangVal() {
     const el = root.querySelector("#ptHang"); if (!el) return "";
