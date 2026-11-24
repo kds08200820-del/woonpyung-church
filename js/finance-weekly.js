@@ -365,7 +365,7 @@ window.FinWeekly = (function () {
         main.querySelector('#wkNote').innerHTML = '정기 지출 · 할부는 그 달 그 주에 저절로 들어갑니다(왼쪽 「정기 지출 등록」 · 「할부 등록」). 확인한 부서 청원은 영수증과 함께 붙습니다.';
         editor(body, X, fyR, online, preview, again);
       } else {
-        main.querySelector('#wkNote').innerHTML = '부서 · 청원자가 올린 청원은 확인 없이 바로 그 주 지출결의서에 들어갑니다. 빼야 할 청원은 「✕ 결의서에서 빼기」를 누르세요.';
+        main.querySelector('#wkNote').innerHTML = '부서 · 청원자가 올린 청원은 확인 없이 바로 그 주 지출결의서에 들어갑니다. 고칠 청원은 「✎ 수정」, 뺄 청원은 「✕ 삭제」를 누르세요.';
         claimsView(body, X, fyR, online, again);
       }
       preview();
@@ -395,22 +395,36 @@ window.FinWeekly = (function () {
     var stName = { submitted: '결의서에 들어감', approved: '결의서에 들어감', rejected: '결의서에서 뺌' };
     var week = (online.week || []).concat(online.open || []).slice().sort(function (a, b) { return (a.status === 'submitted' ? 0 : 1) - (b.status === 'submitted' ? 0 : 1) || a.id - b.id; });
     var rt = rates(X, fyR, petRows(X, online));
+    var dl = datalists(X, esc);
     function card(p) {
       var recs = p.receipts || [];
-      var o = rt[p.hang];
+      var e = onlRow(X, p.week_sunday, p);   // 재정부가 고친 내용(그 주 결의서에 저장)
+      var o = rt[e.hang];
+      var canEdit = p.status !== 'rejected' && !p.paid_at;
       return '<div class="wk-claim ' + esc(p.status) + '">' +
         '<div class="ch"><b>' + esc(p.dept || '재정 청원') + '</b> · ' + esc(p.requester_name || '') + '<span class="pill ' + esc(p.status) + '">' + esc(stName[p.status] || p.status) + '</span>' +
         (p.week_sunday !== sun ? '<span class="tag">' + esc(weekName(p.week_sunday)) + ' 결의서</span>' : '') + '<span class="when">' + esc(String(p.created_at || '').slice(0, 16).replace('T', ' ')) + '</span></div>' +
         '<div class="cb"><div class="cl">' +
-        '<div class="row"><span>관 · 항</span><b>' + esc(p.gwan || '') + ' · ' + esc(p.hang || '') + '</b></div>' +
-        '<div class="row"><span>지출 내역</span><b>' + esc(p.item || '') + '</b></div>' +
-        '<div class="row"><span>금액</span><b class="amt">' + won(p.amount) + '원</b>' + (o && o.budget != null ? '<small>예산 집행률 ' + pct(o.rate) + '</small>' : '') + '</div>' +
+        '<div class="cv" data-v="' + p.id + '">' +
+        '<div class="row"><span>관 · 항</span><b>' + esc(e.gwan) + ' · ' + esc(e.hang) + '</b>' + (e.edited ? '<span class="tag" title="청원 원래 내용: ' + esc((p.gwan || '') + ' · ' + (p.hang || '') + ' · ' + (p.item || '') + ' · ' + won(p.amount) + '원') + '">수정함</span>' : '') + '</div>' +
+        '<div class="row"><span>지출 내역</span><b>' + esc(e.text) + '</b></div>' +
+        '<div class="row"><span>금액</span><b class="amt">' + won(e.amount) + '원</b>' + (o && o.budget != null ? '<small>예산 집행률 ' + pct(o.rate) + '</small>' : '') + '</div>' +
+        '<div class="row"><span>비고</span><b>' + esc(e.note) + '</b></div></div>' +
+        // 수정 칸(처음엔 숨김)
+        '<div class="ce" data-e="' + p.id + '" hidden>' +
+        '<div class="row"><span>관</span><input data-f="gwan" list="wkGwanList" value="' + esc(e.gwan) + '"></div>' +
+        '<div class="row"><span>항</span><input data-f="hang" list="' + hangListId(dl.tree, e.gwan) + '" value="' + esc(e.hang) + '"></div>' +
+        '<div class="row"><span>지출 내역</span><input data-f="text" value="' + esc(e.text) + '"></div>' +
+        '<div class="row"><span>금액</span><input data-f="amount" inputmode="numeric" value="' + (e.amount ? won(e.amount) : '') + '"></div>' +
+        '<div class="row"><span>비고</span><input data-f="note" value="' + esc(e.note) + '"></div>' +
+        '<div class="acts"><button class="btn btn-solid" data-esave="' + p.id + '" data-wk="' + esc(p.week_sunday) + '">저장</button><button class="btn btn-line" data-ecancel="' + p.id + '">취소</button>' +
+        (e.edited ? '<button class="btn btn-line" data-ereset="' + p.id + '" data-wk="' + esc(p.week_sunday) + '">청원 원래대로</button>' : '') + '</div></div>' +
         (p.pay_account ? '<div class="row"><span>받는 계좌</span><b>' + esc(p.pay_bank) + ' ' + esc(p.pay_account) + ' (예금주 ' + esc(p.pay_holder) + ')</b></div>' : '<div class="row"><span>받는 계좌</span><i>없음</i></div>') +
         (p.memo ? '<div class="row"><span>메모</span><span class="memo">' + esc(p.memo) + '</span></div>' : '') +
         (p.review_note ? '<div class="row"><span>돌려보낸 까닭</span><span class="memo">' + esc(p.review_note) + '</span></div>' : '') +
         '<div class="acts">' +
         (p.status === 'rejected' ? '<button class="btn btn-line" data-ok="' + p.id + '">다시 결의서에 넣기</button>' :
-          (p.paid_at ? '<span class="wk-note" style="margin:0">지급 완료</span>' : '<button class="btn btn-line" data-no="' + p.id + '">✕ 결의서에서 빼기</button>')) + '</div>' +
+          (p.paid_at ? '<span class="wk-note" style="margin:0">지급 완료</span>' : (canEdit ? '<button class="btn btn-line" data-edit="' + p.id + '">✎ 수정</button>' : '') + '<button class="btn btn-line" data-no="' + p.id + '">✕ 삭제</button>')) + '</div>' +
         '</div><div class="cr">' + (recs.length ? recs.map(function (u, i) {
           return /\.pdf(\?|$)/i.test(u) ? '<a class="rc pdf" href="' + esc(u) + '" target="_blank" rel="noopener">PDF 영수증 ' + (i + 1) + '</a>'
             : '<a class="rc" href="' + esc(u) + '" target="_blank" rel="noopener" title="크게 보기"><img src="' + esc(u) + '" alt="영수증 ' + (i + 1) + '" loading="lazy"></a>';
@@ -421,11 +435,32 @@ window.FinWeekly = (function () {
       '<div class="fin-card"><div class="wk-pe-h"><b>' + dt(sun).getFullYear() + '년 ' + weekName(sun) + ' 금주 청구 내역 ' + week.length + '건</b>' +
       '<span class="wk-st">이 주 결의서에 확인한 청원 ' + won(tot) + '원</span></div>' +
       '<p class="wk-note" style="margin:0 0 8px">이 주 결의서의 청원과, 다른 주 결의서로 간 청원 중 아직 지급 전인 것을 함께 보입니다. 다른 주 것은 「○월 ○주 결의서」 표시가 붙습니다.</p>' +
-      (week.length ? week.map(card).join('') : '<p class="wk-note" style="margin:0">올라온 청원이 없습니다.</p>') + '</div>';
+      (week.length ? week.map(card).join('') : '<p class="wk-note" style="margin:0">올라온 청원이 없습니다.</p>') + '</div>' + dl.html +
+      '<style>.wk-claim .ce .row input{flex:1;padding:6px 8px;border:1px solid #D9D8D5;border-radius:2px;font:inherit;max-width:420px}.wk-claim .acts .btn{margin-right:6px}</style>';
+    function cardOf(id) { return box.querySelector('[data-e="' + id + '"]'); }
+    box.addEventListener('input', function (e) {
+      var t = e.target; if (t.getAttribute('data-f') !== 'gwan') return;
+      var h = t.closest('.ce').querySelector('[data-f=hang]'); h.setAttribute('list', hangListId(dl.tree, t.value));
+    });
     box.addEventListener('click', function (e) {
       var t = e.target;
+      if (t.getAttribute('data-edit')) { var id = t.getAttribute('data-edit'), ce = cardOf(id); ce.hidden = false; box.querySelector('[data-v="' + id + '"]').hidden = true; t.hidden = true; ce.querySelector('[data-f=text]').focus(); return; }
+      if (t.getAttribute('data-ecancel')) { reload(); return; }
+      if (t.getAttribute('data-esave') || t.getAttribute('data-ereset')) {
+        var id2 = t.getAttribute('data-esave') || t.getAttribute('data-ereset'), wk = t.getAttribute('data-wk'), ov = ovrOf(X, wk);
+        if (t.getAttribute('data-ereset')) delete ov[id2];
+        else {
+          var f = {}; Array.prototype.forEach.call(cardOf(id2).querySelectorAll('[data-f]'), function (x) { f[x.getAttribute('data-f')] = x.value.trim(); });
+          var amt = Number(String(f.amount).replace(/[^\d]/g, '')) || 0;
+          if (!f.hang || !f.text || !amt) { alert('항 · 지출 내역 · 금액을 모두 적어 주세요.'); return; }
+          if (!f.gwan) f.gwan = gwanOf(dl.tree, f.hang);
+          ov[id2] = { gwan: f.gwan, hang: f.hang, text: f.text, amount: amt, note: f.note };
+        }
+        saveOver(X, wk).then(reload).catch(function (er) { alert('저장하지 못했습니다: ' + er.message); });
+        return;
+      }
       if (t.getAttribute('data-ok')) review(t.getAttribute('data-ok'), 'approved');
-      else if (t.getAttribute('data-no')) { var why = prompt('이 청원을 결의서에서 뺄까요? 까닭을 적어 주세요(청원자에게 「결의서에서 뺌」으로 보입니다. 비워 둬도 됩니다).', ''); if (why != null) review(t.getAttribute('data-no'), 'rejected', why); }
+      else if (t.getAttribute('data-no')) { var why = prompt('이 청원을 삭제할까요? (결의서에서 빠지고, 청원자에게 「결의서에서 뺌」으로 보입니다. 아래 「다시 결의서에 넣기」로 되돌릴 수 있습니다.)\n까닭을 적어 주세요(비워 둬도 됩니다).', ''); if (why != null) review(t.getAttribute('data-no'), 'rejected', why); }
     });
     function review(id, status, why) {
       X.call('reviewPetition', { id: id, status: status, note: why || '' }).then(reload).catch(function (er) { alert('바꾸지 못했습니다: ' + er.message); });
@@ -816,6 +851,13 @@ window.FinWeekly = (function () {
     function g(k, d) { return v[k] != null ? v[k] : d; }
     return { gwan: g('gwan', p.gwan || ''), hang: g('hang', p.hang || ''), text: g('text', p.item || ''), amount: Number(g('amount', p.amount)) || 0,
       note: g('note', (p.dept ? p.dept + ' ' : '') + (p.requester_name || '')), edited: !!Object.keys(v).length };
+  }
+  function saveOver(X, sun) {
+    var o = {}; try { o = JSON.parse((X.M.settings || {})['petition_' + sun] || '{}') || {}; } catch (e) { o = {}; }
+    var rows = state.pet[sun] || (Array.isArray(o.rows) ? o.rows : null);
+    var body = { at: X.today() + ' ' + new Date().toTimeString().slice(0, 5), over: ovrOf(X, sun) };
+    if (rows) body.rows = rows;
+    return X.save('petition_' + sun, JSON.stringify(body));
   }
   function petRows(X, online) {
     var rows = draftRows(X, state.sunday).slice();
