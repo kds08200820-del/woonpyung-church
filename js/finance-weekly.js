@@ -363,7 +363,7 @@ window.FinWeekly = (function () {
         main.querySelector('#wkNote').innerHTML = '정기 지출 · 할부는 그 달 그 주에 저절로 들어갑니다(왼쪽 「정기 지출 등록」 · 「할부 등록」). 확인한 부서 청원은 영수증과 함께 붙습니다.';
         editor(body, X, fyR, online, preview, again);
       } else {
-        main.querySelector('#wkNote').innerHTML = '이 주(' + weekName(state.sunday) + ') 지출결의서로 올라온 부서 · 청원자의 청원입니다. 「확인」한 청원만 결의서에 들어갑니다.';
+        main.querySelector('#wkNote').innerHTML = '부서 · 청원자가 올린 청원은 확인 없이 바로 그 주 지출결의서에 들어갑니다. 빼야 할 청원은 「✕ 결의서에서 빼기」를 누르세요.';
         claimsView(body, X, fyR, online, again);
       }
       preview();
@@ -373,9 +373,10 @@ window.FinWeekly = (function () {
       // 당회장 도장이 찍힌 지출결의서를 인쇄하면 그 결의서의 (확인된) 온라인 청원을 「지급 완료」로 적는다(청원자 화면에 보임)
       function markPaid() {
         if (!chairSeal(X)) return;
-        var ids = (online.approved || []).filter(function (p) { return !p.paid_at; }).map(function (p) { return p.id; });
+        var todo = (online.approved || []).filter(function (p) { return !p.paid_at; }), ids = todo.map(function (p) { return p.id; });
         if (!ids.length) return;
-        X.call('markPetitionsPaid', { ids: ids }).then(function () { (online.approved || []).forEach(function (p) { if (ids.indexOf(p.id) >= 0) p.paid_at = new Date().toISOString(); }); })
+        Promise.all(todo.filter(function (p) { return p.status === 'submitted'; }).map(function (p) { return X.call('reviewPetition', { id: p.id, status: 'approved', note: '' }).then(function () { p.status = 'approved'; }); }))
+          .then(function () { return X.call('markPetitionsPaid', { ids: ids }); }).then(function () { (online.approved || []).forEach(function (p) { if (ids.indexOf(p.id) >= 0) p.paid_at = new Date().toISOString(); }); })
           .catch(function (er) { if (/fin_petition_mark_paid|schema cache|404/i.test(String(er && er.message))) return; alert('청원을 지급 완료로 적지 못했습니다: ' + er.message); });
       }
       var pp = main.querySelector('#wkPrintPet'); if (pp) pp.onclick = function () { printPages(docEl, 'petition', markPaid); };
@@ -389,7 +390,7 @@ window.FinWeekly = (function () {
   function claimsView(box, X, fyR, online, reload) {
     var won = X.won, esc = X.esc, sun = state.sunday;
     if (online.missing) { box.innerHTML = '<div class="fin-card">온라인 청원 표가 아직 없습니다.</div>'; return; }
-    var stName = { submitted: '확인 대기', approved: '확인함 · 결의서에 들어감', rejected: '돌려보냄' };
+    var stName = { submitted: '결의서에 들어감', approved: '결의서에 들어감', rejected: '결의서에서 뺌' };
     var week = (online.week || []).concat(online.open || []).slice().sort(function (a, b) { return (a.status === 'submitted' ? 0 : 1) - (b.status === 'submitted' ? 0 : 1) || a.id - b.id; });
     var rt = rates(X, fyR, petRows(X, online));
     function card(p) {
@@ -406,24 +407,23 @@ window.FinWeekly = (function () {
         (p.memo ? '<div class="row"><span>메모</span><span class="memo">' + esc(p.memo) + '</span></div>' : '') +
         (p.review_note ? '<div class="row"><span>돌려보낸 까닭</span><span class="memo">' + esc(p.review_note) + '</span></div>' : '') +
         '<div class="acts">' +
-        (p.status === 'submitted' ? '<button class="btn btn-solid" data-ok="' + p.id + '">확인 → 결의서에 넣기</button><button class="btn btn-line" data-no="' + p.id + '">돌려보냄</button>' :
-          '<button class="btn btn-line" data-back="' + p.id + '">다시 확인 대기로</button>') + '</div>' +
+        (p.status === 'rejected' ? '<button class="btn btn-line" data-ok="' + p.id + '">다시 결의서에 넣기</button>' :
+          (p.paid_at ? '<span class="wk-note" style="margin:0">지급 완료</span>' : '<button class="btn btn-line" data-no="' + p.id + '">✕ 결의서에서 빼기</button>')) + '</div>' +
         '</div><div class="cr">' + (recs.length ? recs.map(function (u, i) {
           return /\.pdf(\?|$)/i.test(u) ? '<a class="rc pdf" href="' + esc(u) + '" target="_blank" rel="noopener">PDF 영수증 ' + (i + 1) + '</a>'
             : '<a class="rc" href="' + esc(u) + '" target="_blank" rel="noopener" title="크게 보기"><img src="' + esc(u) + '" alt="영수증 ' + (i + 1) + '" loading="lazy"></a>';
         }).join('') : '<div class="norc">영수증 없음</div>') + '</div></div></div>';
     }
-    var tot = week.filter(function (p) { return p.status === 'approved' && p.week_sunday === sun; }).reduce(function (s, p) { return s + (Number(p.amount) || 0); }, 0);
+    var tot = week.filter(function (p) { return (p.status === 'approved' || p.status === 'submitted') && p.week_sunday === sun; }).reduce(function (s, p) { return s + (Number(p.amount) || 0); }, 0);
     box.innerHTML =
       '<div class="fin-card"><div class="wk-pe-h"><b>' + dt(sun).getFullYear() + '년 ' + weekName(sun) + ' 금주 청구 내역 ' + week.length + '건</b>' +
       '<span class="wk-st">이 주 결의서에 확인한 청원 ' + won(tot) + '원</span></div>' +
-      '<p class="wk-note" style="margin:0 0 8px">이 주 결의서의 청원과, 다른 주 결의서로 간 청원 중 아직 끝나지 않은 것(확인 대기 · 지급 전)을 함께 보입니다. 다른 주 것은 「○월 ○주 결의서」 표시가 붙습니다.</p>' +
+      '<p class="wk-note" style="margin:0 0 8px">이 주 결의서의 청원과, 다른 주 결의서로 간 청원 중 아직 지급 전인 것을 함께 보입니다. 다른 주 것은 「○월 ○주 결의서」 표시가 붙습니다.</p>' +
       (week.length ? week.map(card).join('') : '<p class="wk-note" style="margin:0">올라온 청원이 없습니다.</p>') + '</div>';
     box.addEventListener('click', function (e) {
       var t = e.target;
       if (t.getAttribute('data-ok')) review(t.getAttribute('data-ok'), 'approved');
-      else if (t.getAttribute('data-no')) { var why = prompt('돌려보내는 까닭을 적어 주세요(청원자에게 보입니다).', ''); if (why != null) review(t.getAttribute('data-no'), 'rejected', why); }
-      else if (t.getAttribute('data-back')) review(t.getAttribute('data-back'), 'submitted');
+      else if (t.getAttribute('data-no')) { var why = prompt('이 청원을 결의서에서 뺄까요? 까닭을 적어 주세요(청원자에게 「결의서에서 뺌」으로 보입니다. 비워 둬도 됩니다).', ''); if (why != null) review(t.getAttribute('data-no'), 'rejected', why); }
     });
     function review(id, status, why) {
       X.call('reviewPetition', { id: id, status: status, note: why || '' }).then(reload).catch(function (er) { alert('바꾸지 못했습니다: ' + er.message); });
@@ -817,8 +817,9 @@ window.FinWeekly = (function () {
     return X.call('listPetitions', { sunday: sun }).then(function (r) {
       var all = r.rows || [];
       return {
-        approved: all.filter(function (p) { return p.status === 'approved' && p.week_sunday === sun; }),
-        pending: all.filter(function (p) { return p.status === 'submitted'; }),
+        // 2026-11-24 담임목사: 확인할 필요 없이 결의서에 자동으로 → 올라온(submitted) 청원도 결의서에 들어간 것으로 본다
+        approved: all.filter(function (p) { return (p.status === 'approved' || p.status === 'submitted') && p.week_sunday === sun; }),
+        pending: [],
         week: all.filter(function (p) { return p.week_sunday === sun && p.status !== 'cancelled'; }),
         // 다른 주 결의서로 간 청원 중 아직 끝나지 않은 것(확인 대기 · 확인됨-지급 전) — 4주 · 5주 상관없이 금주 청구 내역에 보인다
         open: all.filter(function (p) { return p.week_sunday !== sun && (p.status === 'submitted' || (p.status === 'approved' && !p.paid_at)); })
@@ -890,7 +891,7 @@ window.FinWeekly = (function () {
         '<td><button class="wk-x" data-del="' + i + '" title="이 줄 지우기">✕</button></td></tr>';
     }
     var onl = (online.approved || []).map(function (p) {
-      return '<tr class="onl"><td>' + esc(p.gwan || '') + '</td><td>' + esc(p.hang || '') + '</td><td>' + esc(p.item || '') + ' <span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + (p.paid_at ? ' <span class="tag">지급 완료</span>' : '') + rcpLinks(p, esc) + payLine(p, esc) + '</td><td class="n">' + won(p.amount) + '</td><td>' + esc(p.requester_name || '') + '</td><td class="rate" data-h="' + esc(p.hang || '') + '"></td><td><button class="wk-x" data-back="' + p.id + '" title="확인 취소(다시 대기로)">↺</button></td></tr>';
+      return '<tr class="onl"><td>' + esc(p.gwan || '') + '</td><td>' + esc(p.hang || '') + '</td><td>' + esc(p.item || '') + ' <span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + (p.paid_at ? ' <span class="tag">지급 완료</span>' : '') + rcpLinks(p, esc) + payLine(p, esc) + '</td><td class="n">' + won(p.amount) + '</td><td>' + esc(p.requester_name || '') + '</td><td class="rate" data-h="' + esc(p.hang || '') + '"></td><td>' + (p.paid_at ? '' : '<button class="wk-x" data-drop="' + p.id + '" title="이 청원을 결의서에서 빼기">✕</button>') + '</td></tr>';
     }).join('');
     var pend = (online.pending || []).map(function (p) {
       return '<div class="wk-pend"><div><b>' + esc(p.dept || '') + '</b> · ' + esc(p.requester_name || '') + ' · ' + esc(p.hang || '') + ' · ' + esc(p.item || '') + ' · <b>' + won(p.amount) + '원</b>' +
@@ -946,7 +947,7 @@ window.FinWeekly = (function () {
         if (t.getAttribute('data-del') != null) { c.rows.splice(Number(t.getAttribute('data-del')), 1); autoSave(box, 0); c.rerender(); c.preview(); }
         else if (t.getAttribute('data-ok')) review(t.getAttribute('data-ok'), 'approved');
         else if (t.getAttribute('data-no')) { var why = prompt('돌려보내는 까닭을 적어 주세요(부장에게 보입니다).', ''); if (why != null) review(t.getAttribute('data-no'), 'rejected', why); }
-        else if (t.getAttribute('data-back')) review(t.getAttribute('data-back'), 'submitted');
+        else if (t.getAttribute('data-drop')) { var why2 = prompt('이 청원을 결의서에서 뺄까요? 까닭을 적어 주세요(청원자에게 「결의서에서 뺌」으로 보입니다. 비워 둬도 됩니다).', ''); if (why2 != null) review(t.getAttribute('data-drop'), 'rejected', why2); }
         function review(id, status, why) {
           flushSave(box);
           c.X.call('reviewPetition', { id: id, status: status, note: why || '' }).then(c.reload).catch(function (er) { alert('바꾸지 못했습니다: ' + er.message); });
@@ -1209,7 +1210,7 @@ window.FinWeekly = (function () {
       function draw(msg) {
         panel.innerHTML = lists + '<div class="fin-card wk-pe"><div class="wk-pe-h"><b>부서 · 부장 · 청원할 수 있는 예산 계정</b><span class="wk-st">' + esc(msg || '') + '</span></div>' +
           '<p class="wk-note" style="margin:0 0 8px">부장을 교적에서 고르면, 그분이 홈페이지에 로그인했을 때 「재정 청원」 화면에서 고른 계정으로 청원할 수 있습니다(로그인 계정이 교적과 연결되어 있어야 합니다). ' +
-          '올라온 청원은 「주간 재정보고」에서 확인하면 돌아오는 주일의 지출결의서에 들어갑니다. 부장이 바뀌면 줄을 끄고(사용 해제) 새 줄을 만드세요.</p>' +
+          '올라온 청원은 확인 없이 바로 돌아오는 주일의 지출결의서에 들어갑니다(「주간 재정보고」에서 뺄 수 있습니다). 부장이 바뀌면 줄을 끄고(사용 해제) 새 줄을 만드세요.</p>' +
           '<div style="overflow:auto"><table class="fin-table wk-pet-ed wk-dh"><thead><tr><th>사용</th><th style="width:150px">부서</th><th style="width:240px">부장(교적)</th><th>청원할 수 있는 예산 계정(항)</th><th></th></tr></thead><tbody>' +
           rows.map(rowHTML).join('') + '</tbody></table></div>' +
           '<div class="wk-pe-b"><button class="btn btn-line" id="dhAdd">+ 부서 더하기</button></div></div>' +

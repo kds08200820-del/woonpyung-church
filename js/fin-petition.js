@@ -108,14 +108,14 @@
     // 2026-11-24 담임목사: 계정을 고르기도 하고 직접 입력해서도 고를 수 있게 → 입력칸 + 목록(datalist)
     const opts = S.budgetList.map((r) => `<option value="${esc(r.hang)}" label="${esc(r.gwan || "")}"></option>`).join("");
     const mine = S.mine.filter((p) => (u.dept ? p.dept === u.dept : true));
-    const stName = { submitted: "확인 대기", approved: "확인됨", rejected: "돌려보냄", cancelled: "거둠" };
+    const stName = { submitted: "결의서에 들어감", approved: "결의서에 들어감", rejected: "결의서에서 뺌", cancelled: "거둠" };
     S.sug = suggestions(mine);
     const sugHTML = S.sug.length ? `<div class="pt-sug"><div class="pt-sug-h">전에 청원한 항목 <small>— 누르면 계정 · 내역 · 금액 · 계좌가 채워집니다. 금액은 고칠 수 있습니다.</small></div><div class="pt-sug-l">` +
       S.sug.slice(0, 8).map((g, i) => `<button type="button" data-sug="${i}">${esc(g.item)}<small>${esc(g.hang)} · ${won(g.amount)}원${g.count > 1 ? ` · ${g.count}번` : ""}</small></button>`).join("") + `</div></div>` : "";
     const itemList = `<datalist id="ptItemList">${S.sug.map((g) => `<option value="${esc(g.item)}">`).join("")}</datalist>`;
     root.innerHTML = tabs +
       (has ? `<div class="pt-card"><h3>청원서 쓰기 <small style="font-weight:400;color:#898885">${esc(u.dept ? u.dept : "")}${fy.fy ? (u.dept ? " · " : "") + fy.fy + "년도" : ""}</small></h3>${sugHTML}<div class="pt-f">
-        <div><label>예산 계정 <small style="font-weight:400">(적거나 목록에서 고르세요)</small></label><input id="ptHang" list="ptHangList" autocomplete="off" placeholder="예: ${esc((S.budgetList[0] || {}).hang || "계정 이름")}"><datalist id="ptHangList">${opts}</datalist><div class="pt-help" id="ptHangHint" style="display:none;color:#C62828"></div></div>
+        <div><label>예산 계정 <small style="font-weight:400">(적거나 목록에서 고르세요)</small> <button type="button" id="ptHangClr" class="pt-clr" title="계정 지우기">지우기</button></label><input id="ptHang" list="ptHangList" autocomplete="off" placeholder="예: ${esc((S.budgetList[0] || {}).hang || "계정 이름")}"><datalist id="ptHangList">${opts}</datalist><div class="pt-help" id="ptHangHint" style="display:none;color:#C62828"></div></div>
         <div><label>금액(원)</label><input id="ptAmt" inputmode="numeric" placeholder="예: 150,000"></div>
         <div class="full"><label>지출 내역</label><input id="ptItem" maxlength="200" list="ptItemList" autocomplete="off" placeholder="예: 성탄절 행사 간식">${itemList}</div>
         <div class="full"><label>메모 <small style="font-weight:400">(받는 분 · 계좌 · 까닭 등)</small></label><textarea id="ptMemo" rows="2"></textarea></div>
@@ -123,12 +123,12 @@
         <div class="full"><label>영수증 <small style="font-weight:400">(사진 또는 PDF, 10장까지)</small></label><input id="ptFile" type="file" accept="image/*,application/pdf" multiple><div class="pt-rcps" id="ptRcps"></div></div>
         <div class="pt-after" id="ptAfter"></div>
       </div>
-      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-solid" id="ptSend">청원 올리기</button><span class="pt-help">올린 청원은 <b>${esc(sunTxt)}</b> 지출결의서로 갑니다. 재정부가 확인하면 결의서에 들어갑니다.</span></div>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn btn-solid" id="ptSend">청원 올리기</button><span class="pt-help">올린 청원은 <b>${esc(sunTxt)}</b> 지출결의서에 바로 들어갑니다. 지급 전에는 아래 「내 청원」에서 거둘 수 있습니다.</span></div>
       <div class="pt-msg" id="ptMsg"></div></div>` : `<div class="pt-card"><p class="pt-help">청원할 수 있는 계정이 아직 정해지지 않았습니다. 재정부에 말씀해 주세요.</p></div>`) +
       `<div class="pt-card"><h3>내 청원</h3>` + sumHTML(mine, fy) +
       (mine.length ? `<p class="pt-help" style="margin:-4px 0 8px">「지급 완료」는 당회장 결재가 끝난 지출결의서가 나와 지급 절차에 들어갔다는 뜻입니다. <b>통장에 들어오기까지 1~2일 걸릴 수 있습니다.</b></p>` +
         `<div style="overflow:auto"><table class="pt-t"><thead><tr><th>결의서</th><th>계정</th><th>내역</th><th class="n">금액</th><th>상태</th><th></th></tr></thead><tbody>` +
-        mine.slice(0, 60).map((p) => `<tr><td>${esc(weekName(p.week_sunday))}</td><td>${esc(p.hang)}</td><td>${esc(p.item)}${(p.receipts || []).map((r, i) => ` <a href="${esc(r)}" target="_blank" rel="noopener" style="font-size:.78rem">영수증${(p.receipts || []).length > 1 ? i + 1 : ""}</a>`).join("")}${p.pay_account ? `<div class="pt-help">받는 계좌: ${esc(p.pay_bank)} ${esc(p.pay_account)} (${esc(p.pay_holder)})</div>` : ""}${p.review_note ? `<div class="pt-help">${esc(p.review_note)}</div>` : ""}</td><td class="n">${won(p.amount)}</td><td>${p.status === "approved" && p.paid_at ? `<span class="pt-st paid">지급 완료</span><div class="pt-help" style="white-space:nowrap">${esc(String(p.paid_at).slice(5, 10).replace("-", "/"))} · 입금까지 1~2일</div>` : `<span class="pt-st ${esc(p.status)}">${esc(stName[p.status] || p.status)}</span>`}</td><td>${p.status === "submitted" ? `<button class="btn btn-line" data-cancel="${p.id}" style="padding:3px 9px;font-size:.78rem">거두기</button>` : ""}</td></tr>`).join("") +
+        mine.slice(0, 60).map((p) => `<tr><td>${esc(weekName(p.week_sunday))}</td><td>${esc(p.hang)}</td><td>${esc(p.item)}${(p.receipts || []).map((r, i) => ` <a href="${esc(r)}" target="_blank" rel="noopener" style="font-size:.78rem">영수증${(p.receipts || []).length > 1 ? i + 1 : ""}</a>`).join("")}${p.pay_account ? `<div class="pt-help">받는 계좌: ${esc(p.pay_bank)} ${esc(p.pay_account)} (${esc(p.pay_holder)})</div>` : ""}${p.review_note ? `<div class="pt-help">${esc(p.review_note)}</div>` : ""}</td><td class="n">${won(p.amount)}</td><td>${p.status === "approved" && p.paid_at ? `<span class="pt-st paid">지급 완료</span><div class="pt-help" style="white-space:nowrap">${esc(String(p.paid_at).slice(5, 10).replace("-", "/"))} · 입금까지 1~2일</div>` : `<span class="pt-st ${esc(p.status)}">${esc(stName[p.status] || p.status)}</span>`}</td><td>${(p.status === "submitted" || p.status === "approved") && !p.paid_at ? `<button class="btn btn-line" data-cancel="${p.id}" style="padding:3px 9px;font-size:.78rem">거두기</button>` : ""}</td></tr>`).join("") +
         `</tbody></table></div>` : `<p class="pt-help">아직 낸 청원이 없습니다.</p>`) + `</div>`;
     wire();
   }
@@ -165,11 +165,11 @@
     if (!fy.d_from || !fy.d_to) return "";
     const inFy = mine.filter((p) => p.week_sunday >= fy.d_from && p.week_sunday <= fy.d_to && p.status !== "cancelled" && p.status !== "rejected");
     const s = (f) => inFy.filter(f).reduce((a, p) => a + (Number(p.amount) || 0), 0);
-    const all = s(() => true), paid = s((p) => p.status === "approved" && p.paid_at), ok = s((p) => p.status === "approved" && !p.paid_at), wait = s((p) => p.status === "submitted");
+    const all = s(() => true), paid = s((p) => p.status === "approved" && p.paid_at), ok = s((p) => (p.status === "approved" || p.status === "submitted") && !p.paid_at);
     const d = (x) => String(x).slice(2).replace(/-/g, ".");
     return `<div class="pt-sum"><div class="pt-sum-t">${esc(fy.fy || "")}년도 회기 청원 총액 <small>(${d(fy.d_from)} ~ ${d(fy.d_to)} · ${inFy.length}건)</small><b>${won(all)}원</b></div>` +
-      `<div class="pt-sum-l"><span>지급 완료 <b>${won(paid)}</b>원</span><span>확인됨 · 지급 전 <b>${won(ok)}</b>원</span><span>확인 대기 <b>${won(wait)}</b>원</span></div>` +
-      `<div class="pt-help" style="font-size:.78rem">거둔 청원 · 돌려보낸 청원은 뺀 금액입니다.</div></div>`;
+      `<div class="pt-sum-l"><span>지급 완료 <b>${won(paid)}</b>원</span><span>결의서에 들어감 · 지급 전 <b>${won(ok)}</b>원</span></div>` +
+      `<div class="pt-help" style="font-size:.78rem">거둔 청원 · 결의서에서 뺀 청원은 뺀 금액입니다.</div></div>`;
   }
   // 적은 계정 이름 → 고를 수 있는 계정(없으면 ""). 띄어쓰기 무시, 「관 · 항」 꼴도 받음.
   function hangVal() {
@@ -225,13 +225,25 @@
     root.querySelectorAll("[data-u]").forEach((b) => { b.onclick = () => { S.cur = Number(b.dataset.u); S.files = []; loadUnit(); }; });
     root.querySelectorAll("[data-cancel]").forEach((b) => {
       b.onclick = async () => {
-        if (!confirm("이 청원을 거둘까요?")) return;
+        if (!confirm("이 청원을 거둘까요? 지출결의서에서도 빠집니다.")) return;
         try { await rpc("fin_petition_cancel", { p_id: Number(b.dataset.cancel) }); await loadUnit(); } catch (e) { alert(e.message); }
       };
     });
     const hang = root.querySelector("#ptHang"); if (!hang) return;
     const amt = root.querySelector("#ptAmt");
     hang.oninput = () => { hint(false); after(); };
+    // 이미 고른 계정이 있으면 칸을 누를 때 잠시 비워 전체 목록이 다시 보이게 한다(아무것도 안 고르고 나가면 원래 계정으로 돌아감)
+    hang.onfocus = () => {
+      if (!hang.value) return;
+      hang.dataset.prev = hang.value; hang.dataset.ph = hang.placeholder;
+      hang.placeholder = hang.value + " — 다른 계정을 고르거나 적으세요"; hang.value = "";
+    };
+    hang.onblur = () => {
+      if (!hang.value.trim() && hang.dataset.prev) hang.value = hang.dataset.prev;
+      if (hang.dataset.ph) hang.placeholder = hang.dataset.ph;
+      hang.dataset.prev = ""; hang.dataset.ph = ""; after();
+    };
+    root.querySelector("#ptHangClr").onclick = () => { hang.dataset.prev = ""; hang.value = ""; hint(false); after(); hang.focus(); };
     hang.onchange = () => {   // 띄어쓰기 · 「관 · 항」 꼴로 적어도 맞는 계정으로 바로잡고, 하나뿐인 부분 일치면 그것으로
       const v = hang.value.trim(); if (!v) { hint(false); after(); return; }
       let h = hangVal();
@@ -310,7 +322,7 @@
       else await rpc("fin_petition_submit2", Object.assign({ p_dept: u.dept, p_hang: hang, p_item: item, p_amount: amount, p_memo: memo, p_receipts: urls }, pay));
       S.files = [];
       await loadUnit();
-      const m2 = root.querySelector("#ptMsg"); if (m2) { m2.style.color = "#111"; m2.textContent = "✓ 청원을 올렸습니다. 재정부가 확인하면 지출결의서에 들어갑니다."; }
+      const m2 = root.querySelector("#ptMsg"); if (m2) { m2.style.color = "#111"; m2.textContent = "✓ 청원을 올렸습니다. 지출결의서에 들어갔습니다."; }
     } catch (e) {
       msg.style.color = "#C62828"; msg.textContent = "올리지 못했습니다: " + e.message;
     } finally { S.busy = false; }
