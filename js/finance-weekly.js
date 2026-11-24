@@ -191,6 +191,7 @@ window.FinWeekly = (function () {
       '.wk-claim .pill{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#F2F2F2;color:#555}',
       '.wk-claim .pill.submitted{background:#FBEDEA;color:#C62828}.wk-claim .pill.approved{background:#111;color:#fff}',
       '.wk-claim .cb{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;padding:10px 12px}',
+      '.wk-rp{display:inline-flex;align-items:center;gap:3px;font-size:.75rem;color:#565552;margin-left:6px;cursor:pointer;white-space:nowrap}.wk-rp input{width:auto!important;margin:0}' +
       '.wk-claim .row{display:flex;gap:10px;align-items:baseline;padding:3px 0;font-size:.9rem}',
       '.wk-claim .row>span:first-child{flex:0 0 78px;color:#898885;font-size:.8rem}',
       '.wk-claim .row .amt{color:#C62828}.wk-claim .row small{color:#898885;margin-left:6px}',
@@ -850,7 +851,8 @@ window.FinWeekly = (function () {
     var v = ovrOf(X, sun)[p.id] || {};
     function g(k, d) { return v[k] != null ? v[k] : d; }
     return { gwan: g('gwan', p.gwan || ''), hang: g('hang', p.hang || ''), text: g('text', p.item || ''), amount: Number(g('amount', p.amount)) || 0,
-      note: g('note', (p.dept ? p.dept + ' ' : '') + (p.requester_name || '')), edited: !!Object.keys(v).length };
+      note: g('note', (p.dept ? p.dept + ' ' : '') + (p.requester_name || '')),
+      edited: Object.keys(v).some(function (k) { return k !== 'noRcpt'; }), noRcpt: !!v.noRcpt };
   }
   function saveOver(X, sun) {
     var o = {}; try { o = JSON.parse((X.M.settings || {})['petition_' + sun] || '{}') || {}; } catch (e) { o = {}; }
@@ -864,7 +866,7 @@ window.FinWeekly = (function () {
     (online.approved || []).forEach(function (p) {
       var e = onlRow(X, state.sunday, p);
       rows.push({ gwan: e.gwan, hang: e.hang, text: e.text, amount: e.amount,
-        note: e.note, src: 'o:' + p.id, receipts: p.receipts || [], dept: p.dept,
+        note: e.note, noRcpt: e.noRcpt, src: 'o:' + p.id, receipts: p.receipts || [], dept: p.dept,
         pay: p.pay_account ? (p.pay_bank + ' ' + p.pay_account + ' (예금주 ' + p.pay_holder + ')') : '' });
     });
     return rows;
@@ -953,7 +955,8 @@ window.FinWeekly = (function () {
       return '<tr class="onl" data-o="' + p.id + '">' +
         '<td><input data-k="gwan" list="wkGwanList" value="' + esc(e.gwan) + '"></td>' +
         '<td><input data-k="hang" list="' + hangListId(dl.tree, e.gwan) + '" value="' + esc(e.hang) + '"></td>' +
-        '<td><input data-k="text" value="' + esc(e.text) + '"><div style="margin-top:3px"><span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + (e.edited ? ' <span class="tag" title="청원 원래 내용: ' + esc((p.hang || '') + ' · ' + (p.item || '') + ' · ' + won(p.amount) + '원') + '">고침</span>' : '') + (p.paid_at ? ' <span class="tag">지급 완료</span>' : '') + rcpLinks(p, esc) + '</div>' + payLine(p, esc) + '</td>' +
+        '<td><input data-k="text" value="' + esc(e.text) + '"><div style="margin-top:3px"><span class="tag">온라인 청원 · ' + esc(p.dept || '') + '</span>' + (e.edited ? ' <span class="tag" title="청원 원래 내용: ' + esc((p.hang || '') + ' · ' + (p.item || '') + ' · ' + won(p.amount) + '원') + '">고침</span>' : '') + (p.paid_at ? ' <span class="tag">지급 완료</span>' : '') + rcpLinks(p, esc) +
+        ((p.receipts || []).length ? ' <label class="wk-rp" title="끄면 이 청원의 영수증은 인쇄하지 않습니다"><input type="checkbox" data-rp="' + p.id + '"' + (e.noRcpt ? '' : ' checked') + '> 영수증 인쇄</label>' : '') + '</div>' + payLine(p, esc) + '</td>' +
         '<td><input data-k="amount" class="n" inputmode="numeric" value="' + (e.amount ? won(e.amount) : '') + '"></td>' +
         '<td><input data-k="note" value="' + esc(e.note) + '"></td><td class="rate" data-h="' + esc(e.hang) + '"></td><td>' + (p.paid_at ? '' : '<button class="wk-x" data-drop="' + p.id + '" title="이 청원을 결의서에서 빼기">✕</button>') + '</td></tr>';
     }).join('');
@@ -995,6 +998,7 @@ window.FinWeekly = (function () {
       box.addEventListener('input', function (e) {
         var c = box._wk, inp = e.target, tr = inp.closest && inp.closest('tr[data-i],tr[data-o]'); if (!tr) return;
         var k = inp.getAttribute('data-k'), oid = tr.getAttribute('data-o'), r;
+        if (!k) return;
         if (oid) { var ov = ovrOf(c.X, c.sun); r = ov[oid] = ov[oid] || {}; if (r.gwan == null) { var cur = {}; Array.prototype.forEach.call(tr.querySelectorAll('[data-k]'), function (x) { cur[x.getAttribute('data-k')] = x.value; }); r.gwan = cur.gwan; r.hang = cur.hang; r.text = cur.text; r.note = cur.note; r.amount = Number(String(cur.amount).replace(/[^\d-]/g, '')) || 0; } }
         else r = c.rows[Number(tr.getAttribute('data-i'))];
         if (!r || !k) return;
@@ -1007,6 +1011,13 @@ window.FinWeekly = (function () {
         }
         c.refreshRates(); clearTimeout(box._wkPv); box._wkPv = setTimeout(c.preview, 250);
         autoSave(box, 800);
+      });
+      box.addEventListener('change', function (e) {   // 영수증 인쇄 켜고 끄기
+        var t = e.target, id = t.getAttribute && t.getAttribute('data-rp'); if (!id) return;
+        var c = box._wk, ov = ovrOf(c.X, c.sun); ov[id] = ov[id] || {};
+        if (t.checked) delete ov[id].noRcpt; else ov[id].noRcpt = true;
+        if (!Object.keys(ov[id]).length) delete ov[id];
+        autoSave(box, 0); c.preview();
       });
       box.addEventListener('focusout', function (e) { if (e.target.getAttribute && e.target.getAttribute('data-k') === 'amount') { var v = Number(String(e.target.value).replace(/[^\d-]/g, '')) || 0; e.target.value = v ? box._wk.X.won(v) : ''; } });
       box.addEventListener('click', function (e) {
@@ -1096,7 +1107,7 @@ window.FinWeekly = (function () {
   // ── 영수증 첨부 쪽(세로 A4, 한 쪽에 2장) ──
   function receiptPages(X, rows) {
     var won = X.won, esc = X.esc, items = [];
-    rows.forEach(function (r) { (r.receipts || []).forEach(function (u) { items.push({ u: u, r: r }); }); });
+    rows.forEach(function (r) { if (r.noRcpt) return; (r.receipts || []).forEach(function (u) { items.push({ u: u, r: r }); }); });   // 「영수증 인쇄」를 끈 줄은 뺀다
     var html = '';
     for (var i = 0; i < items.length; i += 2) {
       html += '<div class="wk-page wk-pet wk-rcp"><div class="rh">지출결의서 영수증 첨부 · ' + dt(state.sunday).getFullYear() + '년 ' + weekName(state.sunday) + '</div>' +
