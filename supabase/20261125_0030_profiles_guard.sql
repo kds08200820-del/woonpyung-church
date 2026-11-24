@@ -71,8 +71,8 @@ begin
   return jsonb_populate_record(new, v_new);
 end $$;
 
-drop trigger if exists profiles_guard_biu on public.profiles;
-create trigger profiles_guard_biu before insert or update on public.profiles
+-- 지우고 다시 만들지 않고 바로 바꿔 끼운다(create or replace trigger — PostgreSQL 14 이상)
+create or replace trigger profiles_guard_biu before insert or update on public.profiles
   for each row execute function public.profiles_guard();
 
 -- ── 3) 교적 인증 신청 목록: 메일은 로그인 계정의 것으로 ───────
