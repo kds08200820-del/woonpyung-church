@@ -871,11 +871,12 @@ window.FinWeekly = (function () {
     });
     return rows;
   }
+  // 영수증은 청원자와 재정 담당자만 — 저장소 워커의 서명 주소로 바꿔서 보인다(js/upload.js)
+  function signRows(rows) { return (window.ChurchUpload && window.ChurchUpload.signReceiptRows) ? window.ChurchUpload.signReceiptRows(rows).catch(function () { return rows; }) : Promise.resolve(rows); }
   // 온라인 청원 읽기(표가 아직 없으면 빈 목록)
   function loadOnline(X, sun) {
     if (!X.call) return Promise.resolve({ approved: [], pending: [] });
-    return X.call('listPetitions', { sunday: sun }).then(function (r) {
-      var all = r.rows || [];
+    return X.call('listPetitions', { sunday: sun }).then(function (r) { return signRows(r.rows || []); }).then(function (all) {
       return {
         // 2026-11-24 담임목사: 확인할 필요 없이 결의서에 자동으로 → 올라온(submitted) 청원도 결의서에 들어간 것으로 본다
         approved: all.filter(function (p) { return (p.status === 'approved' || p.status === 'submitted') && p.week_sunday === sun; }),
@@ -1157,7 +1158,7 @@ window.FinWeekly = (function () {
     function load() {
       body.innerHTML = '<p class="qt-loading">불러오는 중…</p>';
       if (!X.call) { body.innerHTML = '<p class="wk-note">불러올 수 없습니다.</p>'; return; }
-      X.call('listPetitionReceipts', { from: R.from, to: R.to }).then(function (r) { R.rows = r.rows || []; draw(); })
+      X.call('listPetitionReceipts', { from: R.from, to: R.to }).then(function (r) { return signRows(r.rows || []); }).then(function (rows) { R.rows = rows; draw(); })
         .catch(function (er) { body.innerHTML = '<p class="wk-note">불러오지 못했습니다: ' + esc(er.message) + '</p>'; });
     }
     function draw() {

@@ -110,5 +110,45 @@ window.ChurchUpload = (function () {
     } catch (e) { return false; }
   }
 
-  return { isReady, compressImage, upload, remove };
+  // ── 재정 청원 영수증: 청원자와 재정 담당자만 (2026-11-24) ──
+  //   저장된 주소(…/f/fin-receipts/…)를 저장소 워커의 6시간짜리 서명 주소로 바꾼다.
+  //   워커가 아직 이 기능을 모르면(배포 전) 원래 주소를 그대로 쓴다.
+  const rcptCache = {};
+  function rcptKey(u) {
+    const m = String(u || "").match(/\/f\/(fin-receipts\/[^?#]+)/);
+    if (!m) return null;
+    try { return m[1].split("/").map(decodeURIComponent).join("/"); } catch (e) { return null; }
+  }
+  async function receiptUrls(urls) {
+    const now = Date.now();
+    const need = [...new Set((urls || []).map(rcptKey).filter(Boolean))].filter((k) => !rcptCache[k] || rcptCache[k].exp < now + 60000);
+    if (need.length && isReady() && token()) {
+      try {
+        const res = await fetch(base() + "/fin-rcpt-urls", {
+          method: "POST",
+          headers: { Authorization: "Bearer " + token(), "Content-Type": "application/json" },
+          body: JSON.stringify({ keys: need }),
+        });
+        if (res.ok) {
+          const d = await res.json();
+          Object.keys((d && d.urls) || {}).forEach((k) => { rcptCache[k] = { url: d.urls[k], exp: now + 5.5 * 3600 * 1000 }; });
+        }
+      } catch (e) { /* 원래 주소로 */ }
+    }
+    const out = {};
+    (urls || []).forEach((u) => { const k = rcptKey(u); out[u] = (k && rcptCache[k] && rcptCache[k].url) || u; });
+    return out;
+  }
+  // 청원 줄들의 receipts 를 서명 주소로 바꿔 돌려준다(원래 주소는 receipts_raw 에)
+  async function signReceiptRows(rows) {
+    rows = rows || [];
+    const all = [];
+    rows.forEach((p) => { (p.receipts || []).forEach((u) => all.push(u)); });
+    if (!all.length) return rows;
+    const map = await receiptUrls(all);
+    rows.forEach((p) => { if ((p.receipts || []).length) { p.receipts_raw = p.receipts; p.receipts = p.receipts.map((u) => map[u] || u); } });
+    return rows;
+  }
+
+  return { isReady, compressImage, upload, remove, receiptUrls, signReceiptRows };
 })();

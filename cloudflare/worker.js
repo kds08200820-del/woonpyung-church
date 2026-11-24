@@ -139,6 +139,23 @@ async function isAdmin(user, token, env) {
   }
 }
 
+// 재정 청원 영수증 폴더 — 공개 /f/ 로 나가지 않는다(청원자 본인 · 재정 권한자만, 서명 주소로).
+const RCPT_PREFIX = "fin-receipts/";
+// 재정 권한자인지 — 데이터베이스 함수 can_access_finance() 를 본인 토큰으로 부른다.
+async function canFinance(token, env) {
+  try {
+    const r = await fetch(env.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/rpc/can_access_finance", {
+      method: "POST",
+      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!r.ok) return false;
+    return (await r.json()) === true;
+  } catch (e) {
+    return false;
+  }
+}
+
 // 정회원인지 확인 — member_links 의 본인 행을 본인 토큰으로 읽어 판단한다.
 // (member_links_select 정책 덕분에 본인 행은 본인 토큰으로 읽을 수 있다)
 async function isFullMember(user, token, env) {
@@ -288,6 +305,26 @@ export default {
       return new Response(obj.body, { status, headers: h });
     }
 
+    // ----- 재정 청원 영수증 보기 (2026-11-24: 청원자와 재정 담당자만) -----
+    //   /fin-rcpt-urls 가 발급한 6시간짜리 서명으로만 연다. 공개 /f/ 로는 막는다.
+    if (req.method === "GET" && url.pathname.startsWith("/fin-rcpt/")) {
+      const key = decodeURIComponent(url.pathname.slice("/fin-rcpt/".length));
+      const exp = parseInt(url.searchParams.get("e") || "0", 10);
+      const sig = url.searchParams.get("s") || "";
+      if (!key.startsWith(RCPT_PREFIX) || key.includes("..")) return json({ error: "파일 이름이 올바르지 않습니다." }, 400, req);
+      if (!exp || exp * 1000 < Date.now()) return json({ error: "보기 시간이 지났습니다. 화면을 새로고침해 주세요." }, 401, req);
+      const want = await bookSign("rcpt:" + key, exp, env);
+      if (!want || !sameSig(want, sig)) return json({ error: "영수증을 볼 권한을 확인할 수 없습니다." }, 403, req);
+      const obj = await env.BUCKET.get(key);
+      if (!obj) return new Response("Not found", { status: 404, headers: corsHeaders(req) });
+      const h = new Headers(corsHeaders(req));
+      obj.writeHttpMetadata(h);
+      h.set("etag", obj.httpEtag);
+      h.set("Cache-Control", "private, max-age=3600");   // 중간 서버(CDN)에 남기지 않는다
+      h.set("Content-Length", String(obj.size));
+      return new Response(obj.body, { status: 200, headers: h });
+    }
+
     // ----- 새찬송가 반주가 준비된 장 번호 목록 (공개 — 번호만, 소리는 없음) -----
     if (req.method === "GET" && url.pathname === "/hymn-mr-have") {
       const nos = [...new Set((await listAll(env.BUCKET, HYMN_PREFIX))
@@ -309,6 +346,9 @@ export default {
       }
       if (key.startsWith(HYMN_PREFIX)) {
         return json({ error: "찬송가 반주는 로그인한 성도만 들을 수 있습니다." }, 403, req);
+      }
+      if (key.startsWith(RCPT_PREFIX)) {
+        return json({ error: "영수증은 청원자와 재정 담당자만 볼 수 있습니다. 재정 청원 · 재정관리 화면에서 보세요." }, 403, req);
       }
       const obj = await env.BUCKET.get(key, { range: req.headers, onlyIf: req.headers });
       if (!obj) return new Response("Not found", { status: 404, headers: corsHeaders(req) });
@@ -550,6 +590,31 @@ export default {
     }
 
     // ----- 업로드 -----
+    // ----- 재정 청원 영수증 보기 열쇠 발급 -----
+    //   키는 fin-receipts/<올린 사람 uid>/... 꼴(/upload 가 그렇게 만든다).
+    //   본인이 올린 것은 본인에게, 나머지는 재정 권한(can_access_finance)이 있을 때만.
+    if (req.method === "POST" && url.pathname === "/fin-rcpt-urls") {
+      if (!user) return json({ error: "로그인이 필요합니다." }, 401, req);
+      let body = {};
+      try { body = await req.json(); } catch (e) {}
+      const keys = Array.isArray(body.keys) ? body.keys.slice(0, 300).map(String) : [];
+      let fin = null;   // 필요할 때 한 번만 묻는다
+      const exp = Math.floor(Date.now() / 1000) + 6 * 3600;
+      const urls = {};
+      for (const key of keys) {
+        if (!key.startsWith(RCPT_PREFIX) || key.includes("..")) continue;
+        const mine = key.startsWith(RCPT_PREFIX + user.id + "/");
+        if (!mine) {
+          if (fin === null) fin = await canFinance(token, env);
+          if (!fin) continue;
+        }
+        const sig = await bookSign("rcpt:" + key, exp, env);
+        if (!sig) return json({ error: "서명 열쇠(BOOK_AUDIO_SECRET)가 설정되지 않았습니다." }, 500, req);
+        urls[key] = `${url.origin}/fin-rcpt/${key.split("/").map(encodeURIComponent).join("/")}?e=${exp}&s=${sig}`;
+      }
+      return json({ ok: true, urls }, 200, req);
+    }
+
     if (req.method === "POST" && url.pathname === "/upload") {
       const folder = (req.headers.get("x-folder") || "uploads").replace(/[^a-zA-Z0-9_-]/g, "") || "uploads";
       let origName = req.headers.get("x-filename") || "file";

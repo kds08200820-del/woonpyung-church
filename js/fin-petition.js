@@ -82,6 +82,8 @@
       S.budget = {}; (b || []).forEach((r) => { S.budget[r.hang] = r; });
       S.budgetList = b || [];
       S.mine = mine || [];
+      // 영수증은 본인과 재정 담당자만 — 저장소 워커의 서명 주소로(js/upload.js)
+      if (window.ChurchUpload && window.ChurchUpload.signReceiptRows) { try { await window.ChurchUpload.signReceiptRows(S.mine); } catch (e) { /* 원래 주소로 */ } }
     } catch (e) { root.innerHTML = `<p class="pt-empty">불러오지 못했습니다: ${esc(e.message)}</p>`; return; }
     draw();
   }
