@@ -372,6 +372,23 @@
           if (Array.isArray(ids)) ids.forEach(function (id) { try { OneSignal.User.addTag("bt_" + id, "1"); } catch (e2) {} });
         }
       } catch (e) { /* 알림 태그는 없어도 사이트는 정상 */ }
+      // 교적 인증 신청 알림을 받을 관리자 기기에 태그를 붙인다 — apps-script/member-match-push.gs 가 태그 mm=<열쇠> 가 있는 기기에 '신청이 들어왔습니다' 를 보낸다.
+      // 열쇠는 서버(member_match_admin_push_key)가 관리자에게만 내주고, 관리자가 아니면 태그를 뗀다. 창을 여는 동안 한 번만 묻는다. SQL 전·로그인 전에는 조용히 건너뛴다.
+      try {
+        const ref2 = new URL(window.SUPABASE_URL).hostname.split(".")[0];
+        const raw2 = localStorage.getItem("sb-" + ref2 + "-auth-token");
+        const s2 = raw2 && JSON.parse(raw2), c2 = (s2 && s2.currentSession) || s2;
+        const tok2 = c2 && c2.access_token, uid2 = c2 && c2.user && c2.user.id;
+        const memo = "wp_mm_tag_" + uid2;
+        if (tok2 && uid2 && !sessionStorage.getItem(memo)) {
+          const r2 = await fetch(window.SUPABASE_URL + "/rest/v1/rpc/member_match_admin_push_key", { method: "POST", headers: { apikey: window.SUPABASE_ANON_KEY, Authorization: "Bearer " + tok2, "Content-Type": "application/json" }, body: "{}" });
+          if (r2.ok) {
+            const a = await r2.json();
+            if (a && a.ok && a.key) OneSignal.User.addTag("mm", String(a.key)); else OneSignal.User.removeTag("mm");
+            sessionStorage.setItem(memo, "1");
+          }
+        }
+      } catch (e) { /* 알림 태그는 없어도 사이트는 정상 */ }
     });
   }
 

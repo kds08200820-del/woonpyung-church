@@ -45,6 +45,13 @@ await db.exec(`delete from public.member_links where user_id = '${U(8)}'`);
 const mig = fs.readFileSync(repo + '/supabase/20261124_2330_member_match_approval.sql', 'utf8');
 await db.exec(mig); await db.exec(mig);
 ok(true, 'migration x2');
+// 알림 마이그레이션(20261124_2355)이 match_member · my_match_request 를 다시 정의한다 — 있으면 그 위에서 아래 시험을 그대로 돌린다
+const pushMig = repo + '/supabase/20261124_2355_member_match_push.sql';
+if (fs.existsSync(pushMig)) {
+  await db.exec(`create table if not exists public.app_settings(key text primary key, value text, updated_at timestamptz default now())`);
+  const pm = fs.readFileSync(pushMig, 'utf8'); await db.exec(pm); await db.exec(pm);
+  ok(true, 'push migration x2');
+}
 ok((await q(`select member_status s, member_key k from member_links where user_id='${U(4)}'`)).rows[0].s === '정회원', '이미 정회원인 계정은 그대로');
 
 // 1) 로그인 없이 · 틀린 입력

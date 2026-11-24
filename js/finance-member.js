@@ -2,9 +2,9 @@
  * 로그인한 회원이 이름+생년월일로 교적 인증을 신청한다. 정회원은 관리자가 승인해야 된다
  *   (2026-11-24: 이름+생년월일만으로 그 자리에서 정회원이 되던 것을 막음 — supabase/20261124_2330_member_match_approval.sql).
  * 헌금 내역·가계도는 대시보드(dashboard.html)로 이동되었습니다.
- * 콘솔: [finance-member.js] v20261124mm1
+ * 콘솔: [finance-member.js] v20261124mm2
  */
-console.log('[finance-member.js] v20261124mm1 (교적 인증: 신청 → 관리자 승인)');
+console.log('[finance-member.js] v20261124mm2 (교적 인증: 신청 → 관리자 승인)');
 
 (function () {
   var box = document.getElementById('offeringBox');
@@ -46,12 +46,24 @@ console.log('[finance-member.js] v20261124mm1 (교적 인증: 신청 → 관리�
 
   function kday(iso) { var d = new Date(iso); return isNaN(d) ? '' : (d.getMonth() + 1) + '월 ' + d.getDate() + '일'; }
 
+  // 결과 알림: 이 기기에 태그 mq=<신청의 알림 열쇠> 를 붙여 둔다 — apps-script/member-match-push.gs 가 승인 · 돌려보냄을 이 기기에 알린다
+  //   (supabase/20261124_2355_member_match_push.sql. 열쇠는 무작위 글자이고 이름이 아니다. 알림을 켠 기기만 받는다)
+  function tagForResult(key) {
+    try {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(function (OneSignal) { try { OneSignal.User.addTag('mq', String(key)); } catch (e) { } });
+    } catch (e) { }
+  }
+  function pushOn() { try { return ('Notification' in window) && Notification.permission === 'granted'; } catch (e) { return false; } }
+
   // 준회원/미인증 → 신청 폼 (기다리는 신청이 있으면 그 사실을 먼저 보인다)
   function renderMatchForm(me, req) {
     req = req || {};
     var note = '';
     if (req.status === '대기') {
-      note = '<p style="font-size:.92rem;margin-bottom:12px;"><b>' + esc(req.name) + '</b> 이름으로 교적 인증을 신청했습니다' + (kday(req.at) ? ' (' + esc(kday(req.at)) + ')' : '') + '. 관리자가 확인하면 정회원이 됩니다.</p>' +
+      if (req.pushKey) tagForResult(req.pushKey);
+      note = '<p style="font-size:.92rem;margin-bottom:12px;"><b>' + esc(req.name) + '</b> 이름으로 교적 인증을 신청했습니다' + (kday(req.at) ? ' (' + esc(kday(req.at)) + ')' : '') + '. 관리자가 확인하면 정회원이 됩니다.' +
+        (req.pushKey ? (pushOn() ? ' 결과는 이 기기에 알림으로 알려 드립니다.' : ' 이 기기에서 알림을 켜 두시면 결과를 알림으로 알려 드립니다.') : '') + '</p>' +
         '<p style="color:var(--ink-soft);font-size:.86rem;margin-bottom:12px;">이름이나 생년월일을 잘못 적었으면 아래에서 다시 신청해 주세요.</p>';
     } else if (req.status === '돌려보냄') {
       note = '<p style="color:var(--accent-soft);font-size:.92rem;margin-bottom:12px;"><b>' + esc(req.name) + '</b> 이름으로 낸 신청이 승인되지 않았습니다. 이름과 생년월일을 확인해 다시 신청하거나 교회에 문의해 주세요.</p>';

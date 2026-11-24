@@ -35,6 +35,17 @@ const MEMBER_BODY = '<div id="offeringBox" hidden><div id="offeringBody"></div><
   const t = w.document.getElementById('offeringBody').textContent;
   ok(/홍길동/.test(t) && /신청했습니다/.test(t) && /관리자가 확인하면 정회원/.test(t), '내 정보: 기다리는 신청 표시');
   ok(w.document.getElementById('mm_btn').textContent === '다시 신청', '내 정보: 단추는 「다시 신청」');
+  ok(!w.OneSignalDeferred && !/알림/.test(t), '내 정보: 알림 열쇠가 없으면(알림 SQL 실행 전) 태그 · 알림 안내 없음');
+}
+{ // (가-2) 알림 열쇠가 오면 이 기기에 태그 mq 를 붙이고, 알림을 켰는지에 따라 안내가 달라진다
+  for (const perm of ['granted', 'default']) {
+    const w = win(MEMBER_BODY); w.Notification = { permission: perm };
+    wpf(w, { me: { ok: true, status: '준회원', memberName: '' }, myMatchRequest: { status: '대기', name: '홍길동', at: '2026-11-24T10:00:00Z', pushKey: 'abc123' } });
+    w.eval(src('finance-member.js')); await wait(4);
+    const tags = []; (w.OneSignalDeferred || []).forEach(fn => fn({ User: { addTag: (k, v) => tags.push(k + '=' + v) } }));
+    const t = w.document.getElementById('offeringBody').textContent;
+    ok(tags.join() === 'mq=abc123' && (perm === 'granted' ? /결과는 이 기기에 알림으로/.test(t) : /알림을 켜 두시면/.test(t)), '내 정보: 결과 알림 태그 mq · 안내(' + perm + ')');
+  }
 }
 { // (나) 서버에 함수가 아직 없어도(SQL 실행 전) 양식은 그대로, 옛 답도 그대로 보인다
   const w = win(MEMBER_BODY); wpf(w, { me: { ok: true, status: '준회원', memberName: '' }, match: { ok: true, status: '준회원', message: '옛 안내' } });
