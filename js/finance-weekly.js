@@ -390,8 +390,7 @@ window.FinWeekly = (function () {
     var won = X.won, esc = X.esc, sun = state.sunday;
     if (online.missing) { box.innerHTML = '<div class="fin-card">온라인 청원 표가 아직 없습니다.</div>'; return; }
     var stName = { submitted: '확인 대기', approved: '확인함 · 결의서에 들어감', rejected: '돌려보냄' };
-    var week = (online.week || []).slice().sort(function (a, b) { return (a.status === 'submitted' ? 0 : 1) - (b.status === 'submitted' ? 0 : 1) || a.id - b.id; });
-    var other = (online.pending || []).filter(function (p) { return p.week_sunday !== sun; });
+    var week = (online.week || []).concat(online.open || []).slice().sort(function (a, b) { return (a.status === 'submitted' ? 0 : 1) - (b.status === 'submitted' ? 0 : 1) || a.id - b.id; });
     var rt = rates(X, fyR, petRows(X, online));
     function card(p) {
       var recs = p.receipts || [];
@@ -414,12 +413,12 @@ window.FinWeekly = (function () {
             : '<a class="rc" href="' + esc(u) + '" target="_blank" rel="noopener" title="크게 보기"><img src="' + esc(u) + '" alt="영수증 ' + (i + 1) + '" loading="lazy"></a>';
         }).join('') : '<div class="norc">영수증 없음</div>') + '</div></div></div>';
     }
-    var tot = week.filter(function (p) { return p.status === 'approved'; }).reduce(function (s, p) { return s + (Number(p.amount) || 0); }, 0);
+    var tot = week.filter(function (p) { return p.status === 'approved' && p.week_sunday === sun; }).reduce(function (s, p) { return s + (Number(p.amount) || 0); }, 0);
     box.innerHTML =
-      '<div class="fin-card"><div class="wk-pe-h"><b>' + dt(sun).getFullYear() + '년 ' + weekName(sun) + ' 결의서로 올라온 청원 ' + week.length + '건</b>' +
-      '<span class="wk-st">확인한 청원 합계 ' + won(tot) + '원</span></div>' +
-      (week.length ? week.map(card).join('') : '<p class="wk-note" style="margin:0">이 주 결의서로 올라온 청원이 없습니다.</p>') + '</div>' +
-      (other.length ? '<div class="fin-card"><div class="wk-pe-h"><b>다른 주의 확인 대기 ' + other.length + '건</b></div>' + other.map(card).join('') + '</div>' : '');
+      '<div class="fin-card"><div class="wk-pe-h"><b>' + dt(sun).getFullYear() + '년 ' + weekName(sun) + ' 금주 청구 내역 ' + week.length + '건</b>' +
+      '<span class="wk-st">이 주 결의서에 확인한 청원 ' + won(tot) + '원</span></div>' +
+      '<p class="wk-note" style="margin:0 0 8px">이 주 결의서의 청원과, 다른 주 결의서로 간 청원 중 아직 끝나지 않은 것(확인 대기 · 지급 전)을 함께 보입니다. 다른 주 것은 「○월 ○주 결의서」 표시가 붙습니다.</p>' +
+      (week.length ? week.map(card).join('') : '<p class="wk-note" style="margin:0">올라온 청원이 없습니다.</p>') + '</div>';
     box.addEventListener('click', function (e) {
       var t = e.target;
       if (t.getAttribute('data-ok')) review(t.getAttribute('data-ok'), 'approved');
@@ -820,7 +819,9 @@ window.FinWeekly = (function () {
       return {
         approved: all.filter(function (p) { return p.status === 'approved' && p.week_sunday === sun; }),
         pending: all.filter(function (p) { return p.status === 'submitted'; }),
-        week: all.filter(function (p) { return p.week_sunday === sun && p.status !== 'cancelled'; })
+        week: all.filter(function (p) { return p.week_sunday === sun && p.status !== 'cancelled'; }),
+        // 다른 주 결의서로 간 청원 중 아직 끝나지 않은 것(확인 대기 · 확인됨-지급 전) — 4주 · 5주 상관없이 금주 청구 내역에 보인다
+        open: all.filter(function (p) { return p.week_sunday !== sun && (p.status === 'submitted' || (p.status === 'approved' && !p.paid_at)); })
       };
     }).catch(function () { return { approved: [], pending: [], missing: true }; });
   }

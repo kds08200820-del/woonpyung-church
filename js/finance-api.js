@@ -271,7 +271,7 @@ window.WPF = (function () {
       // ── 부서 부장 온라인 청원 (supabase/20261124_0800_fin_petitions.sql) ──
       case 'listPetitions': {   // 확인 대기 전부 + 그 주일 결의서로 올라온 것 전부(금주 청구 내역)
         var sun = String(params.sunday || '').slice(0, 10);
-        return rest('GET', 'fin_petitions?select=*&or=(status.eq.submitted,week_sunday.eq.' + encodeURIComponent(sun) + ')&order=id&limit=500')
+        return rest('GET', 'fin_petitions?select=*&or=(status.eq.submitted,week_sunday.eq.' + encodeURIComponent(sun) + ',and(status.eq.approved,paid_at.is.null))&order=id&limit=500')
           .then(function (rows) { return { ok: true, rows: rows || [] }; });
       }
       case 'reviewPetition':
