@@ -35,14 +35,16 @@ export function objectsOf(sql) {
     const cre = new RegExp("add\\s+column\\s+(?:if\\s+not\\s+exists\\s+)?" + id, "g");
     let c; while ((c = cre.exec(m[2]))) out.columns.add(m[1] + "." + c[1]);
   }
-  const gre = new RegExp("create\\s+(?:or\\s+replace\\s+)?(?:constraint\\s+)?trigger\\s+" + id, "g");
-  while ((m = gre.exec(s))) out.triggers.add(m[1]);
-  const pre = /create\s+policy\s+"([^"]+)"\s+on\s+(?:public\.)?"?([a-z_][a-z0-9_]*)"?/g;
-  while ((m = pre.exec(s))) out.policies.add(m[2] + "." + m[1]);
-  const pre2 = new RegExp("create\\s+policy\\s+([a-z_][a-z0-9_]*)\\s+on\\s+(?:public\\.)?" + id, "g");
-  while ((m = pre2.exec(s))) out.policies.add(m[2] + "." + m[1]);
-  const ire = new RegExp("create\\s+(?:unique\\s+)?index\\s+(?:concurrently\\s+)?(?:if\\s+not\\s+exists\\s+)?" + id, "g");
-  while ((m = ire.exec(s))) out.indexes.add(m[1]);
+  // 대상 표가 public 이 아닌 것(storage · auth 의 정책 · 트리거 등)은 이 목록에 없으므로 빼고 본다
+  const pub = (schema) => !schema || schema === "public";
+  const gre = /create\s+(?:or\s+replace\s+)?(?:constraint\s+)?trigger\s+"?([a-z_][a-z0-9_]*)"?[\s\S]*?\son\s+(?:"?([a-z_]+)"?\.)?"?[a-z_][a-z0-9_]*/g;
+  while ((m = gre.exec(s))) if (pub(m[2])) out.triggers.add(m[1]);
+  const pre = /create\s+policy\s+"([^"]+)"\s+on\s+(?:"?([a-z_]+)"?\.)?"?([a-z_][a-z0-9_]*)"?/g;
+  while ((m = pre.exec(s))) if (pub(m[2]) && !m[1].includes("%")) out.policies.add(m[3] + "." + m[1]);
+  const pre2 = /create\s+policy\s+([a-z_][a-z0-9_]*)\s+on\s+(?:"?([a-z_]+)"?\.)?"?([a-z_][a-z0-9_]*)"?/g;
+  while ((m = pre2.exec(s))) if (pub(m[2])) out.policies.add(m[3] + "." + m[1]);
+  const ire = /create\s+(?:unique\s+)?index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?"?([a-z_][a-z0-9_]*)"?\s+on\s+(?:only\s+)?(?:"?([a-z_]+)"?\.)?/g;
+  while ((m = ire.exec(s))) if (pub(m[2])) out.indexes.add(m[1]);
   return out;
 }
 
