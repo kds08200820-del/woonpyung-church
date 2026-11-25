@@ -1,0 +1,56 @@
+# 운평장로교회 — 올릴 때마다 자동 검사 (2026-11-25)
+#   1) 화면 스크립트(js/ · modu/ · cloudflare/ · apps-script/) 문법 검사
+#   2) 워커 파이썬 문법 검사
+#   3) tools/sqltest 시험 전부(가짜 자료 · PGlite · jsdom — 실제 DB 에는 아무것도 보내지 않는다)
+#   실패하면 GitHub 의 Actions 탭과 메일로 알린다. 사이트 배포(GitHub Pages)를 막지는 않는다.
+name: check
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 시험 도구 설치(저장소 package.json 은 건드리지 않음)
+        run: |
+          mkdir -p "$RUNNER_TEMP/deps" && cd "$RUNNER_TEMP/deps"
+          npm init -y >/dev/null
+          npm i --no-audit --no-fund @electric-sql/pglite@0.2 jsdom@25 >/dev/null
+          ln -s "$RUNNER_TEMP/deps/node_modules" "$GITHUB_WORKSPACE/node_modules"
+      - name: 스크립트 문법 검사
+        run: |
+          set -e
+          n=0
+          for f in js/*.js js/**/*.js modu/*.js; do
+            case "$f" in *당회실PC*|*동석이네집*|*-2.js) continue;; esac
+            [ -f "$f" ] || continue
+            node --check "$f"; n=$((n+1))
+          done
+          for f in apps-script/*.gs; do cp "$f" "$RUNNER_TEMP/gs.js"; node --check "$RUNNER_TEMP/gs.js" || { echo "문법 오류: $f"; exit 1; }; n=$((n+1)); done
+          cp cloudflare/worker.js "$RUNNER_TEMP/worker.mjs" && node --check "$RUNNER_TEMP/worker.mjs"
+          echo "검사한 파일 $n 개"
+      - name: 파이썬 문법 검사
+        run: |
+          python - <<'PY'
+          import ast, glob, sys
+          bad = 0
+          for f in sorted(glob.glob('tools/*.py')):
+              if '당회실PC' in f: continue
+              try: ast.parse(open(f, encoding='utf-8').read(), f)
+              except SyntaxError as e: print('문법 오류', f, e); bad += 1
+          sys.exit(1 if bad else 0)
+          PY
+      - name: 시험
+        run: node tools/sqltest/run-all.mjs
