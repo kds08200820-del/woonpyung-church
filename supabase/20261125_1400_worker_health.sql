@@ -8,7 +8,8 @@
 --                                → 목회행정 대시보드 「해야 할 일」에 「교회 PC 워커 확인」이 뜬다
 --   · worker_health_push_feed(): (공개) 멈춘 워커 이름과 관리자 알림 열쇠만 — apps-script/worker-health-push.gs 가 읽어
 --                                관리자 기기에 알린다(교적 인증 신청 알림과 같은 기기 태그 mm)
---  멈춤 기준: 마지막 확인이 40분 넘게 지남. 한 번도 기록이 없는 워커(아직 새 코드로 켜지 않은 것)는 알리지 않는다.
+--  멈춤 기준: AI · 주일 자료 워커는 마지막 확인이 40분 넘게, 카카오톡 워커는 아침에만 돌므로 26시간 넘게(하루를 건너뜀) 지남.
+--  한 번도 기록이 없는 워커(아직 새 코드로 켜지 않은 것)는 알리지 않는다.
 --  들어 있는 것: CREATE OR REPLACE FUNCTION 둘(비파괴). 필요한 것: church_settings.sql · 20261124_2355_member_match_push.sql
 --
 --  ── 되돌리는 방법 (사람이 직접) ──
@@ -23,10 +24,10 @@ returns json language sql stable security definer set search_path = public as $$
            'host', s.data ->> 'host',
            'state', coalesce(s.data ->> 'state', s.data ->> 'kakao'),
            'minutes', case when s.data ? 'last_seen' then floor(extract(epoch from (now() - (s.data ->> 'last_seen')::timestamptz)) / 60)::int end,
-           'stale', coalesce((s.data ->> 'last_seen')::timestamptz < now() - interval '40 minutes', false)
+           'stale', coalesce((s.data ->> 'last_seen')::timestamptz < now() - make_interval(mins => w.lim), false)
          ) order by w.ord), '[]'::json)
-    from (values (1, 'ai', 'worker_ai', 'AI 답변 · 설교 PDF'), (2, 'worship', 'worker_worship', '주일 예배 자료'), (3, 'kakao', 'kakao_worker', '카카오톡 QT 발송'))
-         as w(ord, name, k, label)
+    from (values (1, 'ai', 'worker_ai', 'AI 답변 · 설교 PDF', 40), (2, 'worship', 'worker_worship', '주일 예배 자료', 40), (3, 'kakao', 'kakao_worker', '카카오톡 QT 발송', 1560))
+         as w(ord, name, k, label, lim)
     left join public.church_settings s on s.key = w.k
    where exists (select 1 from public.admins a where a.uid = auth.uid())
 $$;
@@ -41,12 +42,12 @@ returns json language sql stable security definer set search_path = public as $$
     'stale', coalesce((
       select json_agg(json_build_object('name', w.name, 'label', w.label,
                                         'minutes', floor(extract(epoch from (now() - (s.data ->> 'last_seen')::timestamptz)) / 60)::int) order by w.ord)
-        from (values (1, 'ai', 'worker_ai', 'AI 답변 · 설교 PDF'), (2, 'worship', 'worker_worship', '주일 예배 자료'), (3, 'kakao', 'kakao_worker', '카카오톡 QT 발송'))
-             as w(ord, name, k, label)
+        from (values (1, 'ai', 'worker_ai', 'AI 답변 · 설교 PDF', 40), (2, 'worship', 'worker_worship', '주일 예배 자료', 40), (3, 'kakao', 'kakao_worker', '카카오톡 QT 발송', 1560))
+             as w(ord, name, k, label, lim)
         join public.church_settings s on s.key = w.k
        where s.data ? 'last_seen'
          and coalesce(s.data ->> 'state', '') <> 'stopped'
-         and (s.data ->> 'last_seen')::timestamptz < now() - interval '40 minutes'), '[]'::json));
+         and (s.data ->> 'last_seen')::timestamptz < now() - make_interval(mins => w.lim)), '[]'::json));
 $$;
 revoke all on function public.worker_health_push_feed() from public;
 grant execute on function public.worker_health_push_feed() to anon, authenticated;

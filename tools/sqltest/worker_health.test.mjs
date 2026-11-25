@@ -28,9 +28,14 @@ await db.exec(`insert into public.app_settings values ('member_match_push_key', 
 insert into public.church_settings(key, data) values
   ('worker_ai', '{"worker":"ai","host":"church-pc","last_seen":"${ago(5)}","state":"running"}'),
   ('worker_worship', '{"worker":"worship","host":"church-pc","last_seen":"${ago(90)}","state":"running"}'),
-  ('kakao_worker', '{"worker":"church-pc","last_seen":"${ago(300)}","kakao":"ok"}');`);
+  ('kakao_worker', '{"worker":"church-pc","last_seen":"${ago(1600)}","kakao":"ok"}'),
+  ('worker_x', '{}');`);
 let h = (await as('authenticated', ADMIN, 'select public.worker_health() r'))[0].r;
 ok(h.length === 3 && h[0].name === 'ai' && h[0].stale === false && h[1].stale === true && h[2].stale === true && h[1].minutes >= 89, '관리자: 워커 셋 · 몇 분 · 멈춤 여부');
+await db.exec(`update public.church_settings set data = jsonb_set(data, '{last_seen}', to_jsonb('${ago(480)}'::text)) where key = 'kakao_worker';`);
+h = (await as('authenticated', ADMIN, 'select public.worker_health() r'))[0].r;
+ok(h[2].stale === false, '카카오톡 워커는 아침에만 돌므로 8시간 끊김은 멈춤이 아님(26시간 기준)');
+await db.exec(`update public.church_settings set data = jsonb_set(data, '{last_seen}', to_jsonb('${ago(1600)}'::text)) where key = 'kakao_worker';`);
 ok((await as('authenticated', MEM, 'select public.worker_health() r'))[0].r.length === 0, '보통 회원은 빈 목록');
 let f = (await as('anon', null, 'select public.worker_health_push_feed() r'))[0].r;
 ok(f.key === 'K32' && f.stale.map((x) => x.name).join() === 'worship,kakao' && !JSON.stringify(f).includes('church-pc'), '공개 피드: 멈춘 워커 이름 · 몇 분 · 열쇠만(PC 이름 없음)');
