@@ -164,7 +164,13 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
       '<div class="noprint" style="text-align:center;margin-top:22px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#272623;color:#fff;border-radius:2px">🖨 인쇄 / PDF 저장</button></div>' +
       '<scr' + 'ipt>window.addEventListener("load",function(){setTimeout(function(){try{window.print()}catch(e){}},450)});</scr' + 'ipt>' +
       '</div></body></html>';
-    w.document.write(html); w.document.close(); w.focus();
+    writePrintWin(w, html);
+  }
+  // 인쇄 창에 쓰기 — 재정 그림(로고 · 직인 · 고유번호증 등)은 공개 주소로 열리지 않으므로 서명 주소로 바꿔 쓴다(2026-11-25)
+  function writePrintWin(w, html) {
+    function put(h) { try { w.document.write(h); w.document.close(); w.focus(); } catch (e) { } }
+    if (window.ChurchUpload && ChurchUpload.signHtml) ChurchUpload.signHtml(html).then(put, function () { put(html); });
+    else put(html);
   }
   // 선택 일괄 삭제
   function bulkDelete(ids, after) {
@@ -1595,7 +1601,7 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
       '<div class="noprint" style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:9px 24px;font-size:14px;cursor:pointer;border:0;background:#272623;color:#fff;border-radius:2px">🖨 인쇄 / PDF 저장</button></div>' +
       '<scr' + 'ipt>window.addEventListener("load",function(){setTimeout(function(){try{window.print()}catch(e){}},500)});</scr' + 'ipt>' +
       '</div></body></html>';
-    w.document.write(html); w.document.close(); w.focus();
+    writePrintWin(w, html);
   }
 
   /* ── 기부금영수증 발급대장 ── */

@@ -2,7 +2,12 @@
  * 운평장로교회 — 파일 업로드 중계 Worker (Cloudflare Workers + R2)
  * --------------------------------------------------------------
  *  - POST   /upload        로그인 교인이 파일 업로드 → R2 저장 → { url, key } 반환
- *  - GET    /f/<key>       저장된 파일 보기/다운로드 (공개, 1년 캐시)
+ *                          (2026-11-25: 웹 페이지 · 스크립트 · 실행 파일은 받지 않음, 관리자 폴더는 관리자 · 재정 권한자만,
+ *                           보통 회원은 폴더마다 하루 60개 · 400MB)
+ *  - GET    /f/<key>       저장된 파일 보기/다운로드 (공개, 1년 캐시) — 지키는 폴더는 막는다
+ *  - POST   /sign-urls     지키는 폴더(교적 사진 · 문서 첨부 · 성도별 자료 · 자료실 · 재정 그림 · 증명서 도장)의
+ *                          6시간짜리 서명 주소 발급(데이터베이스 file_access 가 볼 수 있는 사람을 정한다)
+ *  - GET    /p/<key>       위 서명 주소로 보기(중간 서버에 남기지 않음)
  *  - DELETE /f/<key>       본인이 올린 파일 삭제
  *
  *  - POST   /qt-audio-list       QT 낭독 음원 목록      (관리자)
@@ -255,6 +260,71 @@ function safeExt(name) {
   return m ? m[0] : "";
 }
 
+// ── 지켜야 하는 폴더 (2026-11-25) ─────────────────────────────
+//   교적 사진 · 문서 첨부 · 성도별 자료 · 자료실 · 재정 그림(영수증 그림 · 직인 · 고유번호증) · 증명서 도장.
+//   공개 경로 /f/ 로 내보내지 않는다. /sign-urls 가 볼 수 있는 사람인지 데이터베이스(file_access)에 물어
+//   6시간짜리 서명 주소(/p/…)를 내준다. 폴더 이름은 올릴 때 '/' 가 빠진 모양이다(affairs/documents → affairsdocuments).
+const PROTECTED_FOLDERS = {
+  gyojeok: 1, financereceipt: 1, churchseal: 1, affairsdocuments: 1, archive: 1, resources: 1,
+};
+function isProtectedKey(key) {
+  return !!PROTECTED_FOLDERS[String(key || "").split("/")[0]];
+}
+// 관리자 · 재정 권한자만 올리는 폴더 = 지키는 폴더(화면에서도 이들만 올린다). 무인 워커 키는 예전처럼 올릴 수 있다.
+const STAFF_FOLDERS = PROTECTED_FOLDERS;
+// 어느 폴더에도 받지 않는 형식 — 웹 페이지 · 스크립트 · 실행 파일(교회 주소로 남을 속이는 데 쓰일 수 있다)
+const BLOCKED_EXT = new Set([
+  ".html", ".htm", ".xhtml", ".shtml", ".svg", ".svgz", ".xml", ".js", ".mjs", ".hta", ".php",
+  ".exe", ".msi", ".bat", ".cmd", ".com", ".scr", ".ps1", ".vbs", ".vbe", ".wsf", ".jar", ".apk", ".dll", ".sh", ".lnk", ".reg",
+]);
+function blockedType(ext, ct) {
+  if (BLOCKED_EXT.has(ext)) return true;
+  return /(text\/html|xhtml|image\/svg|javascript|ecmascript|application\/xml|text\/xml|x-msdownload|x-msdos|x-sh\b)/i.test(ct || "");
+}
+// 보통 회원의 하루 한도(폴더마다, 한국 시간 하루) — 관리자 · 재정 권한자 · 무인 워커는 한도 없음
+const DAY_MAX_FILES = 60;
+const DAY_MAX_BYTES = 400 * 1024 * 1024;
+function kstDayStartMs() {
+  const KST = 9 * 3600 * 1000;
+  return Math.floor((Date.now() + KST) / 86400000) * 86400000 - KST;
+}
+async function todayUsage(bucket, folder, owner) {
+  const prefix = `${folder}/${owner}/`;
+  const startAfter = prefix + String(kstDayStartMs());   // 키 = folder/owner/<13자리 시각>-… 이라 글자 순서 = 시간 순서
+  let n = 0, bytes = 0, cursor;
+  for (let i = 0; i < 5; i++) {
+    const r = await bucket.list({ prefix, startAfter, cursor, limit: 1000 });
+    for (const o of r.objects || []) { n++; bytes += o.size || 0; }
+    if (!r.truncated) break;
+    cursor = r.cursor;
+  }
+  return { n, bytes };
+}
+// 받은 파일을 내보낼 때: 웹 페이지처럼 열리는 형식은 내려받기로만
+function safeServeHeaders(h) {
+  h.set("X-Content-Type-Options", "nosniff");
+  const ct = h.get("Content-Type") || "";
+  if (/(text\/html|application\/xhtml|image\/svg|javascript|ecmascript|^\s*application\/xml|^\s*text\/xml|\+xml)/i.test(ct)) {
+    h.set("Content-Type", "application/octet-stream");
+    h.set("Content-Disposition", "attachment");
+  }
+}
+// 데이터베이스에 묻는다: 이 사람이 이 파일들을 볼 수 있는가(file_access — 본인 토큰으로)
+async function fileAccess(keys, token, env) {
+  try {
+    const r = await fetch(env.SUPABASE_URL.replace(/\/$/, "") + "/rest/v1/rpc/file_access", {
+      method: "POST",
+      headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_keys: keys }),
+    });
+    if (!r.ok) return [];
+    const out = await r.json();
+    return Array.isArray(out) ? out.map(String) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -325,6 +395,37 @@ export default {
       return new Response(obj.body, { status: 200, headers: h });
     }
 
+    // ----- 지키는 폴더의 파일 보기 (2026-11-25: /sign-urls 가 발급한 6시간짜리 서명으로만) -----
+    if (req.method === "GET" && url.pathname.startsWith("/p/")) {
+      let key = "";
+      try { key = decodeURIComponent(url.pathname.slice(3)); } catch (e) { key = ""; }
+      const exp = parseInt(url.searchParams.get("e") || "0", 10);
+      const sig = url.searchParams.get("s") || "";
+      if (!key || key.includes("..") || !isProtectedKey(key)) return json({ error: "파일 이름이 올바르지 않습니다." }, 400, req);
+      if (!exp || exp * 1000 < Date.now()) return json({ error: "보기 시간이 지났습니다. 화면을 새로고침해 주세요." }, 401, req);
+      const want = await bookSign("p:" + key, exp, env);
+      if (!want || !sameSig(want, sig)) return json({ error: "이 파일을 볼 권한을 확인할 수 없습니다." }, 403, req);
+      const obj = await env.BUCKET.get(key, { range: req.headers, onlyIf: req.headers });
+      if (!obj) return new Response("Not found", { status: 404, headers: corsHeaders(req) });
+      const h = new Headers(corsHeaders(req));
+      obj.writeHttpMetadata(h);
+      h.set("etag", obj.httpEtag);
+      h.set("Accept-Ranges", "bytes");
+      h.set("Cache-Control", "private, max-age=3600");   // 중간 서버(CDN)에 남기지 않는다
+      safeServeHeaders(h);
+      const asked = req.headers.get("range") !== null;
+      let status = obj.body ? 200 : 304;
+      if (obj.body && asked && obj.range && typeof obj.range.offset === "number" && typeof obj.range.length === "number") {
+        const start = obj.range.offset;
+        h.set("Content-Range", `bytes ${start}-${start + obj.range.length - 1}/${obj.size}`);
+        h.set("Content-Length", String(obj.range.length));
+        status = 206;
+      } else if (obj.body) {
+        h.set("Content-Length", String(obj.size));
+      }
+      return new Response(obj.body, { status, headers: h });
+    }
+
     // ----- 새찬송가 반주가 준비된 장 번호 목록 (공개 — 번호만, 소리는 없음) -----
     if (req.method === "GET" && url.pathname === "/hymn-mr-have") {
       const nos = [...new Set((await listAll(env.BUCKET, HYMN_PREFIX))
@@ -350,6 +451,9 @@ export default {
       if (key.startsWith(RCPT_PREFIX)) {
         return json({ error: "영수증은 청원자와 재정 담당자만 볼 수 있습니다. 재정 청원 · 재정관리 화면에서 보세요." }, 403, req);
       }
+      if (isProtectedKey(key)) {
+        return json({ error: "이 파일은 로그인한 뒤 홈페이지 화면에서 열 수 있습니다." }, 403, req);
+      }
       const obj = await env.BUCKET.get(key, { range: req.headers, onlyIf: req.headers });
       if (!obj) return new Response("Not found", { status: 404, headers: corsHeaders(req) });
       const h = new Headers(corsHeaders(req));
@@ -357,6 +461,7 @@ export default {
       h.set("etag", obj.httpEtag);
       h.set("Cache-Control", "public, max-age=31536000, immutable");
       h.set("Accept-Ranges", "bytes");
+      safeServeHeaders(h);
       // 206(부분 응답)은 브라우저가 Range 를 실제로 요청했을 때만 준다.
       // (R2 는 Range 가 없어도 obj.range 를 채워 주므로 헤더로 판단해야 한다)
       const asked = req.headers.get("range") !== null;
@@ -615,6 +720,30 @@ export default {
       return json({ ok: true, urls }, 200, req);
     }
 
+    // ----- 지키는 폴더의 서명 주소 발급 (2026-11-25) -----
+    //   body { keys: ["gyojeok/<uid>/….jpg", …] } → { ok, urls: { key: "…/p/key?e=…&s=…" } }
+    //   볼 수 있는지는 데이터베이스 file_access 가 정한다(교적 사진 · 재정 그림 = 재정 권한, 문서 첨부 = 관리자,
+    //   성도별 자료 = 관리자 또는 그 자료의 본인, 자료실 = 로그인한 성도, 그리고 올린 사람 본인).
+    if (req.method === "POST" && url.pathname === "/sign-urls") {
+      if (!user) return json({ error: "로그인이 필요합니다." }, 401, req);
+      let body = {};
+      try { body = await req.json(); } catch (e) {}
+      const keys = [...new Set((Array.isArray(body.keys) ? body.keys : []).slice(0, 300).map(String))]
+        .filter((k) => k && !k.includes("..") && k.length <= 300 && isProtectedKey(k));
+      const urls = {};
+      if (keys.length) {
+        const allowed = await fileAccess(keys, token, env);
+        const exp = Math.floor(Date.now() / 1000) + 6 * 3600;
+        for (const key of keys) {
+          if (!allowed.includes(key)) continue;
+          const sig = await bookSign("p:" + key, exp, env);
+          if (!sig) return json({ error: "서명 열쇠(BOOK_AUDIO_SECRET)가 설정되지 않았습니다." }, 500, req);
+          urls[key] = `${url.origin}/p/${key.split("/").map(encodeURIComponent).join("/")}?e=${exp}&s=${sig}`;
+        }
+      }
+      return json({ ok: true, urls }, 200, req);
+    }
+
     if (req.method === "POST" && url.pathname === "/upload") {
       const folder = (req.headers.get("x-folder") || "uploads").replace(/[^a-zA-Z0-9_-]/g, "") || "uploads";
       let origName = req.headers.get("x-filename") || "file";
@@ -626,6 +755,18 @@ export default {
       const maxMB = Math.round(MAX_BYTES / 1024 / 1024);
       if (len > MAX_BYTES) return json({ error: "파일이 너무 큽니다(최대 " + maxMB + "MB)." }, 413, req);
       if (!req.body || len === 0) return json({ error: "빈 파일입니다." }, 400, req);
+      if (blockedType(ext, ct)) return json({ error: "이 형식의 파일은 올릴 수 없습니다. 그림 · PDF · 문서 · 음성 · 영상 파일을 올려 주세요." }, 415, req);
+      // 관리자 · 재정 권한자만 올리는 폴더 / 보통 회원은 하루 한도 (2026-11-25)
+      if (user) {
+        const staff = (await isAdmin(user, token, env)) || (await canFinance(token, env));
+        if (!staff && STAFF_FOLDERS[folder]) return json({ error: "이 자리에는 관리자만 파일을 올릴 수 있습니다." }, 403, req);
+        if (!staff) {
+          const u = await todayUsage(env.BUCKET, folder, user.id);
+          if (u.n >= DAY_MAX_FILES || u.bytes + len > DAY_MAX_BYTES) {
+            return json({ error: "오늘 올릴 수 있는 양을 넘었습니다. 내일 다시 올려 주세요." }, 429, req);
+          }
+        }
+      }
       // 무인 워커가 올린 것은 사람 파일과 섞이지 않게 system 아래 둔다.
       const owner = user ? user.id : "system";
       const key = `${folder}/${owner}/${Date.now()}-${rand()}${ext}`;
