@@ -52,9 +52,22 @@ def token_usable():
     return bool(read_token()) and (not _token_failed or _bad_token_mtime != _token_mtime())
 
 
+# Claude 쪽에 넘기지 않는 환경변수 (2026-11-25)
+#   워커(파이썬)는 DB 관리자 키 · 워커 비밀값 등을 환경변수로 받는데, 예전에는 그것을 통째로 Claude 실행에도 넘겼다.
+#   Claude 는 글만 쓰면 되므로 이름에 KEY · SECRET · TOKEN · PASSWORD 등이 든 값은 빼고 넘긴다.
+#   (Claude 로그인에 쓰는 값만 남긴다)
+_KEEP_ENV = {"CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"}
+_SECRET_ENV_RE = re.compile(r"(KEY|SECRET|TOKEN|PASSWORD|PASSWD|CREDENTIAL|SERVICE_ROLE|COOKIE|SESSION_ID)", re.I)
+
+
+def safe_env():
+    """os.environ 에서 비밀처럼 보이는 값을 뺀 사본."""
+    return {k: v for k, v in os.environ.items() if k.upper() in _KEEP_ENV or not _SECRET_ENV_RE.search(k)}
+
+
 def env_for(mode):
     """mode: 'token' = 장기 토큰으로, 'shared' = 이 PC 의 공용 로그인(~/.claude)으로."""
-    env = dict(os.environ)
+    env = safe_env()
     if mode == "token":
         env["CLAUDE_CODE_OAUTH_TOKEN"] = read_token()
     else:

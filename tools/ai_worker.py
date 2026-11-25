@@ -813,6 +813,24 @@ def build_prompt(kind, payload):
 
 # ── Claude 실행 ──────────────────────────────────────────────
 
+_TOOLS_FLAG = None
+
+
+def tools_off_flag():
+    """도구를 '허용 목록 = 비어 있음'으로 끄는 옵션(--tools "") — 이 PC 의 Claude CLI 가 알 때만 (2026-11-25).
+    막을 도구를 이름으로 나열하는 방식(--disallowed-tools)은 새 도구가 생기면 빈틈이 되므로, 아예 하나도 주지 않는다.
+    옛 CLI 라 모르면 빈 목록을 돌려주고 예전 방식(--disallowed-tools)만 쓴다."""
+    global _TOOLS_FLAG
+    if _TOOLS_FLAG is None:
+        try:
+            h = subprocess.run([find_claude(), "--help"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+            txt = (h.stdout + h.stderr).decode("utf-8", "replace")
+            _TOOLS_FLAG = ["--tools", ""] if re.search(r"^\s*--tools\b", txt, re.M) else []
+        except Exception:
+            _TOOLS_FLAG = []
+    return list(_TOOLS_FLAG)
+
+
 def run_claude(system, prompt, model, timeout):
     """빈 임시 폴더에서 도구를 모두 막고 Claude 를 호출해 답변 텍스트만 받는다."""
     workdir = tempfile.mkdtemp(prefix="wpai_")
@@ -831,7 +849,7 @@ def run_claude(system, prompt, model, timeout):
         "--strict-mcp-config",
         "--disable-slash-commands",
         "--no-session-persistence",
-    ]
+    ] + tools_off_flag()   # 도구를 하나도 주지 않는다(허용 목록 비움) — 위 금지 목록은 옛 CLI 용 이중 안전장치
     # 로그인 자동 복구: 장기 토큰 → 공용 로그인 순서로, 로그인 오류면 즉시 다음 방법으로 다시 시도한다.
     try:
         last = None
