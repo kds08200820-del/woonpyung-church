@@ -249,7 +249,7 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
   }
   function ensureSettings() {
     if (M._s) return Promise.resolve();
-    return WPF.call('getSettings').then(function (r) { M.settings = r.settings || {}; M._s = true; }).catch(function () { M.settings = {}; M._s = true; });
+    return WPF.call('getSettings').then(function (r) { M.settings = r.settings || {}; M.settingsAt = r.at || {}; M._s = true; }).catch(function () { M.settings = {}; M.settingsAt = {}; M._s = true; });
   }
   // ── 전기 이월금 (오직 방식) ──
   // 1) 저장된 이월금(결산 후 이월한 값 또는 직접 넣은 값)이 있으면 그 값.
@@ -393,13 +393,33 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
     else if (tab === 'depts') renderWeekly(p, 'renderDepts');
   }
 
+  // 설정 저장 — 지출결의서(petition_<주일>)는 「내가 읽은 뒤 남이 고쳤으면 저장하지 않음」(2026-11-25).
+  //   두 분이 같은 주를 열어 두면 나중에 저장한 쪽이 먼저 넣은 줄을 지우던 것을 막는다.
+  //   DB 함수(setting_save_if)가 아직 없으면 예전처럼 그냥 저장한다.
+  function saveSetting(k, v) {
+    function plain() { return WPF.call('setSetting', { key: k, value: v }).then(function () { M.settings[k] = v; }); }
+    if (!/^petition_/.test(k)) return plain();
+    M.settingsAt = M.settingsAt || {};
+    return WPF.call('saveSettingIf', { key: k, value: v, base: M.settingsAt[k] || null }).then(function (r) {
+      if (r && r.conflict) {
+        M._s = false;   // 다음에 다시 불러오게
+        var e = new Error('다른 분이 이 주 지출결의서를 먼저 고쳤습니다. 최신 내용을 다시 불러옵니다. 방금 고친 것은 다시 넣어 주세요.');
+        e.conflict = true; throw e;
+      }
+      M.settings[k] = v; if (r && r.updated_at) M.settingsAt[k] = r.updated_at;
+    }, function (er) {
+      if (/setting_save_if|PGRST202|schema cache|404/i.test(String(er && er.message))) return plain();
+      throw er;
+    });
+  }
+
   /* ── 주간 재정보고 (js/finance-weekly.js) ── */
   function renderWeekly(panel, fn) {
     if (!window.FinWeekly) { panel.innerHTML = msgCard('불러오기 실패', '주간 재정보고 화면 파일을 읽지 못했습니다. 새로고침해 주세요.'); return; }
     window.FinWeekly[fn || 'render'](panel, {
       M: M, fy: function () { return M.fy; }, fyRange: fyRange, carryInfo: carryInfo, balanceBefore: balanceBefore,
       fmtD: fmtD, today: today, won: won, esc: esc, call: function (a, p) { return WPF.call(a, p); },
-      save: function (k, v) { return WPF.call('setSetting', { key: k, value: v }).then(function () { M.settings[k] = v; }); },
+      save: function (k, v) { return saveSetting(k, v); },
       load: function () { return Promise.all([ensureVouchers(), ensureBudget(), ensureSettings()]); }
     });
   }
@@ -1512,6 +1532,7 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
       var btnP = ov.querySelector('#rc_print'), btnD = ov.querySelector('#rc_pdf');
       btnP.disabled = btnD.disabled = true; ov.querySelector('#rc_msg').style.color = '#898885'; ov.querySelector('#rc_msg').textContent = '발급 기록 중…';
       WPF.call('addReceipt', { receipt: rec }).then(function (res) {
+        if (res && res.receipt && res.receipt.no) rec.no = res.receipt.no;   // 번호는 DB 가 매긴 것으로(2026-11-25 — 동시에 발급해도 겹치지 않게)
         printReceipt(rec, orgInfo(), g.rows);
         M._rc = false;
         ensureReceipts().then(function () { close(); if (after) after(); });
@@ -1521,7 +1542,7 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
     ov.querySelector('#rc_pdf').onclick = function () { issue('pdf'); };
   }
 
-  // 다음 일련번호 (회계연도-순번4자리)
+  // 다음 일련번호 (회계연도-순번4자리) — 화면에 미리 보이는 값. 실제 번호는 DB 가 발급할 때 매긴다(donation_receipts_no_trg)
   function nextReceiptNo() {
     var pre = M.fy + '-';
     var max = 0;

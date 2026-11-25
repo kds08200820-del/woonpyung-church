@@ -223,12 +223,8 @@ window.WPF = (function () {
         var tbl = did.charAt(0) === 'E' ? 'expenses' : 'offerings';
         return rest('DELETE', tbl + '?id=eq.' + did.slice(1), null, 'return=minimal').then(function () { return { ok: true }; });
       }
-      case 'clearVouchers': {
-        var tbl2 = params.type === '지출' ? 'expenses' : 'offerings';
-        return fetch(SB() + '/rest/v1/' + tbl2 + '?id=gt.0', { method: 'DELETE', headers: headers('return=representation') })
-          .then(function (r) { if (!r.ok) return r.text().then(function (t) { throw new Error(t); }); return r.text().then(function (t) { return t ? JSON.parse(t) : []; }); })
-          .then(function (rows) { return { ok: true, deleted: (rows || []).length }; });
-      }
+      case 'clearVouchers':   // 전체 삭제 — 지우기 전에 DB 가 보관 표에 옮겨 둔다(2026-11-25, supabase/20261125_1200_fin_db_guards.sql)
+        return rpc('fin_clear_vouchers', { p_type: params.type === '지출' ? '지출' : '수입' }).then(function (r) { r = r || {}; return { ok: true, deleted: r.deleted || 0, kept: r.kept }; });
       case 'budget':
         return rest('GET', 'budget?select=*&order=code&limit=5000').then(function (rows) { return { ok: true, budget: (rows || []).map(budOut) }; });
       case 'updateBudget':
@@ -246,9 +242,12 @@ window.WPF = (function () {
       case 'setWorshipRole':   // 반주자(accompany)·목회자(pastor) — 20261009_1900_worship_roles.sql
         return rpc('set_worship_role', { p_uid: params.targetUid, p_role: params.role, p_on: !!params.on });
       case 'getSettings':
-        return rest('GET', 'app_settings?select=key,value&limit=2000').then(function (rows) {
-          var s = {}; (rows || []).forEach(function (r) { s[r.key] = r.value; }); return { ok: true, settings: s };
+        return rest('GET', 'app_settings?select=key,value,updated_at&limit=2000').then(function (rows) {
+          var s = {}, at = {}; (rows || []).forEach(function (r) { s[r.key] = r.value; at[r.key] = r.updated_at || null; }); return { ok: true, settings: s, at: at };
         });
+      // 읽은 뒤 남이 고치지 않았을 때만 저장(2026-11-25, supabase/20261125_1100_fin_save_guard.sql) → { ok, updated_at } 또는 { ok:false, conflict:true }
+      case 'saveSettingIf':
+        return rpc('setting_save_if', { p_key: params.key, p_value: String(params.value == null ? '' : params.value), p_base: params.base || null });
       case 'setSetting':
         return rest('POST', 'app_settings?on_conflict=key', { key: params.key, value: String(params.value == null ? '' : params.value), updated_at: new Date().toISOString() }, 'resolution=merge-duplicates,return=minimal').then(function () { return { ok: true }; });
       case 'adminSetMember':

@@ -91,8 +91,11 @@ function setup() {
  *   - 홈페이지는 fetch(POST, Content-Type: text/plain) 로 호출(프리플라이트 회피)
  *   - body = JSON 문자열 { action, token, ... }
  * ============================================================ */
+// 배포 판 번호 — 고쳐 배포할 때마다 올린다. 웹앱 주소를 그냥 열면(GET) 보인다(2026-11-25)
+var API_VERSION = '20261125sv2';
+
 function doGet() {
-  return json_({ ok: true, service: '운평재정 API', time: new Date().toISOString() });
+  return json_({ ok: true, service: '운평재정 API', version: API_VERSION, time: new Date().toISOString() });
 }
 
 // 더 받지 않는 옛 기능(구글시트 교적 · 재정 장부 · 예산을 읽고 쓰던 것) — doPost 맨 앞에서 돌려보낸다

@@ -138,6 +138,10 @@ store.set(`community/${MEM}/${Date.now() - 2 * 86400000}-old.jpg`, { bytes: new 
 for (let i = 0; i < 70; i++) store.set(`community/${ADMIN}/${Date.now() + i}-${i}.jpg`, { bytes: new Uint8Array(1), ct: 'image/jpeg' });
 r = await up('tok-' + ADMIN, 'community', 'admin.jpg', 'image/jpeg');
 ok(r.status === 200, '관리자는 한도 없음');
+// 판 번호
+r = await call('GET', '/version');
+d = await jsonOf(r);
+ok(r.status === 200 && /^\d{8}/.test(d.version || ''), 'GET /version → 판 번호');
 // 7) 예전 길은 그대로
 r = await call('GET', `/fin-rcpt/fin-receipts/${MEM}/x.jpg?e=9999999999&s=${'0'.repeat(40)}`);
 ok(r.status === 403, '재정 청원 영수증 길은 그대로(서명 틀리면 403)');

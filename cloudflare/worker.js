@@ -9,6 +9,7 @@
  *                          6시간짜리 서명 주소 발급(데이터베이스 file_access 가 볼 수 있는 사람을 정한다)
  *  - GET    /p/<key>       위 서명 주소로 보기(중간 서버에 남기지 않음)
  *  - DELETE /f/<key>       본인이 올린 파일 삭제
+ *  - GET    /version       배포 판 번호(WORKER_VERSION) — 배포본이 저장소와 같은 판인지 확인용
  *
  *  - POST   /qt-audio-list       QT 낭독 음원 목록      (관리자)
  *  - POST   /qt-audio-delete     QT 낭독 음원 삭제      (관리자, x-qt-name)
@@ -80,6 +81,8 @@ const ALLOW_ORIGINS = [
   "http://localhost:8099",
   "http://127.0.0.1:8099",
 ];
+// 배포 판 번호 — 고쳐 올릴 때마다 올린다. GET /version 으로 배포본이 어느 판인지 본다(2026-11-25)
+const WORKER_VERSION = "20261125ops1";
 const MAX_BYTES = 100 * 1024 * 1024; // 1건 최대 100MB (Cloudflare 무료 플랜 요청 본문 상한)
 
 function corsHeaders(req) {
@@ -331,6 +334,11 @@ export default {
 
     if (req.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders(req) });
+    }
+
+    // ----- 배포 판 번호(공개 — 판 번호만) -----
+    if (req.method === "GET" && url.pathname === "/version") {
+      return json({ ok: true, version: WORKER_VERSION }, 200, req);
     }
 
     // ----- 오디오북 재생 (열쇠 서명 확인 · Range 지원) -----

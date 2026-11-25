@@ -8,7 +8,7 @@
  * 모양은 2027예결산/2027_주간_재정보고서_양식.docx(make_weekly.py)와 같게: 흑백 + 빨강 포인트, 로고 하나.
  * finance.js 가 window.FinWeekly.render(panel, ctx) 를 부른다.
  */
-console.log('[finance-weekly.js] v20261124wk1 (주간 재정보고)');
+console.log('[finance-weekly.js] v20261125sv1 (주간 재정보고 · 저장 충돌 막기 · 지급 완료 따로)');
 
 window.FinWeekly = (function () {
   var state = { sunday: null, showZero: false, fill: false, pet: {}, view: 'report' };   // fill: 장부 숫자도 채워 인쇄(기본은 수기 양식)   // 고른 주(주일 날짜), 0원 계정 보이기, 주마다 고친 결의서 줄
@@ -311,7 +311,8 @@ window.FinWeekly = (function () {
         (state.fill ? '<label><input type="checkbox" id="wkZero"' + (state.showZero ? ' checked' : '') + '> 0원 계정도 보기</label>' : '') +
         '<button class="btn btn-solid wk-print" id="wkPrint" title="주간 재정보고서를 가로 A4로 인쇄">🖨 재정보고서 인쇄</button>';
     } else {
-      btns = '<button class="btn btn-solid wk-print" id="wkPrintPet" title="지출결의서와 영수증을 세로 A4로 인쇄">🖨 지출결의서 인쇄</button>';
+      btns = '<button class="btn btn-solid wk-print" id="wkPrintPet" title="지출결의서와 영수증을 세로 A4로 인쇄">🖨 지출결의서 인쇄</button>' +
+        '<button class="btn btn-line" id="wkPayDone" title="이 주 결의서의 온라인 청원을 실제로 보낸 뒤 지급 완료로 적습니다(청원자 화면에 보임)">💳 지급 완료로 적기</button>';
     }
     btns += '<button class="btn btn-line" id="wkPrintAll" title="재정보고서와 지출결의서·영수증을 한 번에 인쇄">📚 일괄 출력</button>';
     var title = { report: '주간 재정보고서', petition: '지출결의서 작성 · 인쇄', claims: '금주 청구 내역' }[view];
@@ -374,18 +375,24 @@ window.FinWeekly = (function () {
       window.addEventListener('resize', fit);
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
       var pr = main.querySelector('#wkPrint'); if (pr) pr.onclick = function () { printPages(docEl, 'report'); };
-      // 당회장 도장이 찍힌 지출결의서를 인쇄하면 그 결의서의 (확인된) 온라인 청원을 「지급 완료」로 적는다(청원자 화면에 보임)
-      function markPaid() {
-        if (!chairSeal(X)) return;
-        if (state.sunday > X.today()) return;   // 그 주가 오기 전에 미리 인쇄한 것은 지급으로 보지 않는다(2026-11-25)
+      // 「지급 완료로 적기」(2026-11-25): 인쇄와 따로, 실제로 보낸 뒤 사람이 눌러 적는다 — 건수 · 합계를 보여 주고 확인을 받는다.
+      //   (예전에는 당회장 도장이 찍힌 결의서를 인쇄하면 묻지 않고 적었다. 미리 보려고 인쇄해도 청원자 화면에 「지급 완료」가 떴다)
+      //   누가 언제 적었는지는 DB(fin_petitions.paid_by · paid_at)에 남는다.
+      function payNow(btn) {
+        if (state.sunday > X.today()) { alert('아직 오지 않은 주입니다. 그 주에 실제로 보낸 뒤 적어 주세요.'); return; }
         var todo = (online.approved || []).filter(function (p) { return !p.paid_at; }), ids = todo.map(function (p) { return p.id; });
-        if (!ids.length) return;
+        if (!ids.length) { alert('이 주 결의서에 지급 완료로 적을 온라인 청원이 없습니다.'); return; }
+        var sum = todo.reduce(function (a, p) { return a + (Number(onlRow(X, state.sunday, p).amount) || 0); }, 0);
+        if (!confirm(weekName(state.sunday) + ' 결의서의 온라인 청원 ' + ids.length + '건, 합계 ' + X.won(sum) + '원을 「지급 완료」로 적습니다.\n청원자 화면에 지급 완료로 보입니다. 실제로 보내셨습니까?')) return;
+        btn.disabled = true;
         Promise.all(todo.filter(function (p) { return p.status === 'submitted'; }).map(function (p) { return X.call('reviewPetition', { id: p.id, status: 'approved', note: '' }).then(function () { p.status = 'approved'; }); }))
-          .then(function () { return X.call('markPetitionsPaid', { ids: ids }); }).then(function () { (online.approved || []).forEach(function (p) { if (ids.indexOf(p.id) >= 0) p.paid_at = new Date().toISOString(); }); })
-          .catch(function (er) { if (/fin_petition_mark_paid|schema cache|404/i.test(String(er && er.message))) return; alert('청원을 지급 완료로 적지 못했습니다: ' + er.message); });
+          .then(function () { return X.call('markPetitionsPaid', { ids: ids }); })
+          .then(function (r) { alert('지급 완료로 적었습니다' + (r && r.count != null ? ' (' + r.count + '건)' : '') + '.'); again(); })
+          .catch(function (er) { btn.disabled = false; alert('지급 완료로 적지 못했습니다: ' + er.message); });
       }
-      var pp = main.querySelector('#wkPrintPet'); if (pp) pp.onclick = function () { printPages(docEl, 'petition', markPaid); };
-      main.querySelector('#wkPrintAll').onclick = function () { printPages(docEl, 'all', markPaid); };
+      var pd = main.querySelector('#wkPayDone'); if (pd) pd.onclick = function () { payNow(pd); };
+      var pp = main.querySelector('#wkPrintPet'); if (pp) pp.onclick = function () { printPages(docEl, 'petition'); };
+      main.querySelector('#wkPrintAll').onclick = function () { printPages(docEl, 'all'); };
     }).catch(function (e) {
       scaler.innerHTML = '<div class="fin-card" style="color:#A33A2A">불러오지 못했습니다: ' + esc(e.message) + '</div>';
     });
@@ -459,7 +466,7 @@ window.FinWeekly = (function () {
           if (!f.gwan) f.gwan = gwanOf(dl.tree, f.hang);
           ov[id2] = { gwan: f.gwan, hang: f.hang, text: f.text, amount: amt, note: f.note };
         }
-        saveOver(X, wk).then(reload).catch(function (er) { alert('저장하지 못했습니다: ' + er.message); });
+        saveOver(X, wk).then(reload).catch(function (er) { if (er && er.conflict) { forgetWeek(wk); alert(er.message); reload(); return; } alert('저장하지 못했습니다: ' + er.message); });
         return;
       }
       if (t.getAttribute('data-ok')) review(t.getAttribute('data-ok'), 'approved');
@@ -867,6 +874,8 @@ window.FinWeekly = (function () {
       note: g('note', (p.dept ? p.dept + ' ' : '') + (p.requester_name || '')),
       edited: Object.keys(v).some(function (k) { return k !== 'noRcpt'; }), noRcpt: !!v.noRcpt };
   }
+  // 저장이 다른 분과 겹쳤을 때 그 주의 화면 기억을 지워 최신 저장본으로 다시 그리게 한다
+  function forgetWeek(sun) { if (state.pet) delete state.pet[sun]; if (state.ovr) delete state.ovr[sun]; }
   function saveOver(X, sun) {
     var o = {}; try { o = JSON.parse((X.M.settings || {})['petition_' + sun] || '{}') || {}; } catch (e) { o = {}; }
     var rows = state.pet[sun] || (Array.isArray(o.rows) ? o.rows : null);
@@ -1071,7 +1080,14 @@ window.FinWeekly = (function () {
     d.X.save('petition_' + d.sun, JSON.stringify({ rows: d.rows, at: at, over: d.over || {} })).then(function () {
       var st = box.querySelector('.wk-st'); if (st && box._wk && box._wk.sun === d.sun && !box._wkDirty) st.textContent = '저장됨 ' + at;
     }).catch(function (er) {
-      var st = box.querySelector('.wk-st'); if (st) st.textContent = '저장하지 못했습니다 — 다시 고치면 다시 저장합니다';
+      var st = box.querySelector('.wk-st');
+      if (er && er.conflict) {   // 남이 먼저 고침 → 내 것은 저장하지 않고 최신을 다시 불러온다(2026-11-25)
+        if (st) st.textContent = '다른 분이 먼저 고쳐 다시 불러왔습니다';
+        forgetWeek(d.sun); alert(er.message);
+        if (box._wk && box._wk.reload) box._wk.reload();
+        return;
+      }
+      if (st) st.textContent = '저장하지 못했습니다 — 다시 고치면 다시 저장합니다';
       alert('지출결의서를 저장하지 못했습니다: ' + er.message);
     });
   }
