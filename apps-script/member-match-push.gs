@@ -94,8 +94,8 @@ function pollMemberMatch() {
     // 관리자 기기가 아직 하나도 등록되지 않았다 — 기준 번호를 넘기지 않고 다음 확인 때 다시 본다
     Logger.log("새 신청 " + n + "건 — 관리자 알림 열쇠가 아직 없습니다(관리자가 로그인해 홈페이지를 한 번 열면 생깁니다).");
   } else {
-    if (n > 0) osPushMemberMatch_("mm", feed.key, "교적 인증 신청", "교적 인증 신청 " + n + "건이 들어왔습니다. 권한 관리에서 확인해 주세요.", "gyojeok.html");
-    if (maxId > after) props.setProperty("memberMatchAfter", String(maxId));
+    const okAdmin = n > 0 ? osPushMemberMatch_("mm", feed.key, "교적 인증 신청", "교적 인증 신청 " + n + "건이 들어왔습니다. 권한 관리에서 확인해 주세요.", "gyojeok.html") : true;
+    if (okAdmin && maxId > after) props.setProperty("memberMatchAfter", String(maxId));   // 못 보냈으면 다음 확인 때 다시
   }
 
   // (2) 난 결과 → 신청한 사람의 기기 (한 신청에 한 번)
@@ -103,14 +103,16 @@ function pollMemberMatch() {
   try { sent = JSON.parse(props.getProperty("memberMatchDecided") || "[]"); } catch (e) { sent = []; }
   const decided = feed.decided || [];
   let m = 0;
+  const done = [];
   decided.forEach(function (d) {
-    if (!d || !d.key || sent.indexOf(Number(d.id)) >= 0) return;
-    if (d.ok) osPushMemberMatch_("mq", d.key, "교적 인증", "정회원으로 승인되었습니다.", "dashboard.html");
-    else osPushMemberMatch_("mq", d.key, "교적 인증", "교적 인증 신청이 승인되지 않았습니다. 내 정보에서 확인해 주세요.", "admin.html");
-    m++;
+    if (!d) return;
+    if (!d.key || sent.indexOf(Number(d.id)) >= 0) { done.push(Number(d.id)); return; }
+    const okOne = d.ok ? osPushMemberMatch_("mq", d.key, "교적 인증", "정회원으로 승인되었습니다.", "dashboard.html")
+                       : osPushMemberMatch_("mq", d.key, "교적 인증", "교적 인증 신청이 승인되지 않았습니다. 내 정보에서 확인해 주세요.", "admin.html");
+    if (okOne) { done.push(Number(d.id)); m++; }   // 못 보낸 것은 다음 확인 때 다시
   });
-  // 피드에 아직 남아 있는 번호만 기억한다(하루 지나 피드에서 빠진 번호는 지운다)
-  props.setProperty("memberMatchDecided", JSON.stringify(decided.map(function (d) { return Number(d.id); })));
+  // 피드에 아직 남아 있고 보낸(또는 보낼 것 없는) 번호만 기억한다(하루 지나 피드에서 빠진 번호는 지운다)
+  props.setProperty("memberMatchDecided", JSON.stringify(done));
   Logger.log("확인 완료: 새 신청 " + n + "건, 결과 알림 " + m + "건, 기준 번호=" + maxId);
 }
 
@@ -140,4 +142,5 @@ function osPushMemberMatch_(tag, key, title, body, path) {
     muteHttpExceptions: true,
   });
   Logger.log("OneSignal 응답(" + tag + "): " + res.getResponseCode() + " " + res.getContentText());
+  return res.getResponseCode() === 200;   // 보냈을 때만 true(2026-11-25)
 }

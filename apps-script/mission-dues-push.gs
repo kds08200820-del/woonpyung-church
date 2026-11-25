@@ -61,7 +61,7 @@ function pollMissionDues() {
   let n = 0;
   feed.forEach(function (r) {
     if (!r || !r.key || sent[r.key] === r.ym) return;
-    osPushMissionDues_(r.key);
+    if (!osPushMissionDues_(r.key)) return;   // 못 보낸 것은 '보냄'으로 적지 않는다(내일 다시)
     sent[r.key] = r.ym; n++;
   });
   props.setProperty("missionDuesSent", JSON.stringify(sent));
@@ -94,4 +94,5 @@ function osPushMissionDues_(key) {
     muteHttpExceptions: true,
   });
   Logger.log("OneSignal 응답: " + res.getResponseCode() + " " + res.getContentText());
+  return res.getResponseCode() === 200;   // 보냈을 때만 true — 부르는 쪽이 이것을 보고 '보냄'으로 적는다(2026-11-25)
 }

@@ -79,15 +79,17 @@ function pollNewPosts() {
 
   if (!fresh.length) { Logger.log("새 글 없음 (lastSeen=" + lastSeen + ")"); return; }
 
+  let sentOk = true;
   if (fresh.length > POST_CONFIG.MAX_PUSH) {
-    osPush_("📝 나눔터 새 글", fresh.length + "개의 새 글이 올라왔습니다. 확인해 보세요!");
+    sentOk = osPush_("📝 나눔터 새 글", fresh.length + "개의 새 글이 올라왔습니다. 확인해 보세요!");
   } else {
     fresh.forEach(function (p) {
       const who = (p.author_name || "성도") + "님";
       const what = p.title ? (" · " + p.title) : " 글을 남겼어요";
-      osPush_("📝 나눔터 새 글", who + what);
+      if (!osPush_("📝 나눔터 새 글", who + what)) sentOk = false;
     });
   }
+  if (!sentOk) { Logger.log("보내지 못한 알림이 있어 기준 id 를 그대로 둡니다(다음 확인 때 다시)"); return; }
 
   props.setProperty("lastPostId", String(maxId));
   Logger.log("발송 완료: 새 글 " + fresh.length + "건, 기준 id=" + maxId);
@@ -130,4 +132,5 @@ function osPush_(title, body) {
     muteHttpExceptions: true,
   });
   Logger.log("OneSignal 응답: " + res.getResponseCode() + " " + res.getContentText());
+  return res.getResponseCode() === 200;   // 보냈을 때만 true — 부르는 쪽이 이것을 보고 '보냄'으로 적는다(2026-11-25)
 }

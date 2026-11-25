@@ -74,8 +74,7 @@ function pollBaptismForms() {
   const fresh = forms.filter(function (f) { return f.kind === "baptism" && notified.indexOf(Number(f.id)) < 0; });
   if (!fresh.length) { Logger.log("새 학습·세례 신청서 없음"); return; }
   fresh.forEach(function (f) {
-    osPushBapt_(f);
-    notified.push(Number(f.id));
+    if (osPushBapt_(f)) notified.push(Number(f.id));   // 보낸 것만 '보냄'으로 — 못 보낸 것은 다음 확인 때 다시
   });
   props.setProperty("baptNotified", JSON.stringify(notified));
 }
@@ -121,4 +120,5 @@ function osPushBapt_(f) {
     muteHttpExceptions: true,
   });
   Logger.log("OneSignal 응답(" + f.id + "번): " + res.getResponseCode() + " " + res.getContentText());
+  return res.getResponseCode() === 200;   // 보냈을 때만 true(2026-11-25)
 }

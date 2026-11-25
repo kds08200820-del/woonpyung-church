@@ -59,6 +59,7 @@ import subprocess
 import tempfile
 
 import claude_auth          # 워커 전용 장기 토큰 + 공용 로그인 자동 전환 (tools/claude_auth.py)
+import worker_heartbeat     # 5분에 한 번 '살아 있음' 기록 (tools/worker_heartbeat.py)
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -1018,6 +1019,7 @@ def main():
     last_job = time.time()                   # 켠 직후도 '방금 작업한 것'처럼 바짝 확인
     while True:
         try:
+            worker_heartbeat.beat("ai")      # 5분에 한 번 '살아 있음' 기록(대시보드 · 관리자 푸시가 본다)
             if run_once():
                 idle_since = last_job = time.time()
             else:

@@ -84,10 +84,11 @@ function pollSsCerts() {
   fresh.forEach(function (r) { kinds[r.stype] = (kinds[r.stype] || 0) + 1; });
   const kindTxt = Object.keys(kinds).map(function (k) { return k + " " + kinds[k] + "건"; }).join(" · ");
 
-  osPushSs_(
+  const sentOk = osPushSs_(
     "📖 주일학교 인증 도착",
     "새 인증 " + n + "건이 올라왔어요" + (kindTxt ? " (" + kindTxt + ")" : "") + ". 확인하고 ❤·✔ 눌러 주세요!"
   );
+  if (!sentOk) { Logger.log("보내지 못해 기준 id 를 그대로 둡니다(다음 확인 때 다시)"); return; }
   props.setProperty("lastSsCertId", String(maxId));
   Logger.log("발송 완료: 새 인증 " + n + "건, 기준 id=" + maxId);
 }
@@ -131,4 +132,5 @@ function osPushSs_(title, body) {
     muteHttpExceptions: true,
   });
   Logger.log("OneSignal 응답: " + res.getResponseCode() + " " + res.getContentText());
+  return res.getResponseCode() === 200;   // 보냈을 때만 true — 부르는 쪽이 이것을 보고 '보냄'으로 적는다(2026-11-25)
 }

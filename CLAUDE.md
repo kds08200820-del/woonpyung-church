@@ -44,3 +44,7 @@
 - 스키마 변경 여부 (있으면 마이그레이션 파일 경로)
 - 로컬 테스트 결과
 - 사람이 해야 할 다음 행동
+
+## 운영 절차 (2026-11-25)
+- 배포 · 되돌리기 · SQL 실행 기록(schema_log) · 교회 PC 워커 갱신: `docs/운영-절차.md`
+- 백업과 복구: `docs/백업과-복구.md` · 시험 전부: `node tools/sqltest/run-all.mjs` · 실행 안 된 SQL 찾기: `node tools/schema-check.mjs`

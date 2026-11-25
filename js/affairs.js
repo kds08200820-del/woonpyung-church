@@ -2,7 +2,7 @@
  * 데이터는 Supabase(visitations/counsels/memos 등, 관리자 RLS)에 저장.
  * 콘솔: [affairs.js] v20260712memo
  */
-console.log('[affairs.js] v20261023th1');
+console.log('[affairs.js] v20261125wk1');
 
 (function () {
   var root = document.getElementById('afRoot');
@@ -1178,7 +1178,7 @@ console.log('[affairs.js] v20261023th1');
   // ── 설교 대시보드: 통계 + 성경 권별 커버리지 ──
   function renderSermonDashboard(panel) {
     // ── 오른쪽 '알림 · 해야 할 일' — draw()·load*() 가 note(key, html, 단추, 동작, 카드id) 로 올리고(html 비우면 내림) ──
-    var NOTES = {}, NOTE_ORDER = ['sun', 'edu', 'video', 'forms', 'wpjobs'];
+    var NOTES = {}, NOTE_ORDER = ['workers', 'sun', 'edu', 'video', 'forms', 'wpjobs'];
     function note(key, html, btn, fn, cardId) {
       if (html) NOTES[key] = { html: html, btn: btn, fn: fn }; else delete NOTES[key];
       var c = cardId && panel.querySelector('#' + cardId);
@@ -1362,6 +1362,7 @@ console.log('[affairs.js] v20261023th1');
       loadHymnMr(panel);
       loadBookProgress(panel);
       loadWorshipJobs(panel);
+      loadWorkerHealth();
       loadAppForms(panel);
       loadEduClassroom(panel);
       loadAppLicenses(panel);
@@ -1781,6 +1782,17 @@ console.log('[affairs.js] v20261023th1');
       if (window.WPCEduAdmin) { go(); return; }
       function add(src, next) { var s = document.createElement('script'); s.src = src; s.onload = next; s.onerror = function () { var b = panel.querySelector('#eduList'); if (b) b.innerHTML = '<p style="color:#92918E;font-size:.86rem;margin:0">강의실 화면을 불러오지 못했습니다.</p>'; }; document.body.appendChild(s); }
       add('js/catechism-data.js?v=20261025inf1', function () { add('js/edu-admin.js?v=20261124sl1', function () { if (window.WPCEduAdmin) go(); }); });
+    }
+    // 교회 PC 워커(AI 답변 · 주일 자료 · 카카오톡) 마지막 확인이 40분 넘게 지났으면 「해야 할 일」에 올린다(2026-11-25)
+    //   supabase/20261125_1400_worker_health.sql — 실행 전이거나 기록이 없으면 조용히 넘어간다
+    function loadWorkerHealth() {
+      api('POST', 'rpc/worker_health', {}).then(function (rows) {
+        var bad = (rows || []).filter(function (w) { return w && w.stale && w.state !== 'stopped'; });
+        if (!bad.length) { note('workers', ''); return; }
+        var ago = function (m) { m = Number(m) || 0; return m >= 1440 ? Math.floor(m / 1440) + '일' : m >= 120 ? Math.floor(m / 60) + '시간' : m + '분'; };
+        note('workers', '교회 PC 워커가 멈춘 것 같습니다: ' + bad.map(function (w) { return '<b>' + esc(w.label) + '</b>(' + ago(w.minutes) + '째 응답 없음)'; }).join(', ') +
+          '. 당회실 PC 가 켜져 있는지, 워커 창이 떠 있는지 확인해 주세요.');
+      }).catch(function () { /* 실행 전 · 권한 없음 */ });
     }
     function loadWorshipJobs(panel) {
       var numEl = panel.querySelector('#wpJobsNum'), subEl = panel.querySelector('#wpJobsSub');
@@ -9206,6 +9218,7 @@ console.log('[affairs.js] v20261023th1');
       '<div style="flex:1"></div>' +
       '<button class="btn btn-solid" id="kk_go" style="padding:9px 22px;font-weight:700">⏰ 예약하기</button>' +
       '</div>' +
+      '<div id="kk_wk" style="font-size:.78rem;color:#898885;margin:0 0 6px"></div>' +
       '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 6px;padding:8px 12px;background:#fff5f8;border:1px solid #f8d7e3;border-radius:4px;font-size:.82rem;color:#2F2E2B">' +
       '<label style="display:flex;align-items:center;gap:6px;font-weight:700;cursor:pointer"><input type="checkbox" id="kk_heart"> 💗 댓글에 하트 달기</label>' +
       '<span>— 글 보낸 뒤</span>' +
@@ -9282,6 +9295,16 @@ console.log('[affairs.js] v20261023th1');
     m.querySelector('#kk_q1').onclick = function () { var d = new Date(date + 'T06:00:00'); if (!isNaN(d)) atEl.value = kkLocal(d); };
     m.querySelector('#kk_q2').onclick = function () { var d = new Date(); d.setDate(d.getDate() + 1); d.setHours(6, 0, 0, 0); atEl.value = kkLocal(d); };
     m.querySelector('#kk_q3').onclick = function () { var d = new Date(Date.now() + 3600000); d.setSeconds(0, 0); atEl.value = kkLocal(d); };
+    // 카카오톡 워커(교회 PC)가 지금 돌고 있는지 — 꺼져 있으면 정한 시각에 나가지 않는다(2026-11-25)
+    api('GET', 'church_settings?key=eq.kakao_worker&select=data').then(function (rows) {
+      var el = m.querySelector('#kk_wk'), d = rows && rows[0] && rows[0].data, t = d && d.last_seen && new Date(d.last_seen);
+      if (!el || !t || isNaN(t)) return;
+      var min = Math.max(0, Math.round((Date.now() - t.getTime()) / 60000));
+      if (min <= 40) { el.textContent = '카카오톡 워커 마지막 확인: ' + (min ? min + '분 전' : '방금'); return; }
+      el.style.color = '#A33A2A';
+      el.textContent = '카카오톡 워커가 ' + (min >= 1440 ? Math.floor(min / 1440) + '일' : min >= 120 ? Math.floor(min / 60) + '시간' : min + '분') +
+        '째 확인되지 않습니다. 교회 PC 워커가 꺼져 있으면 정한 시각에 나가지 않고, 켜진 뒤 ' + (d.max_late_hours || 6) + '시간 안의 예약만 보냅니다.';
+    }).catch(function () { });
 
     // ── 채널 목록 ──
     var CH = [];

@@ -80,10 +80,12 @@ function pollGardenGuestbook() {
   const feed = fetchGardenGbFeed_(lastSeen);
   if (!feed) return;
   const keys = feed.keys || [];
+  let sentOk = true;
   keys.forEach(function (k) {
     if (!k || !k.key) return;
-    osPushGardenGb_(k.key, "신앙 정원 방명록", "내 정원 방명록에 새 글 " + Number(k.n || 1) + "개가 있습니다.");
+    if (!osPushGardenGb_(k.key, "신앙 정원 방명록", "내 정원 방명록에 새 글 " + Number(k.n || 1) + "개가 있습니다.")) sentOk = false;
   });
+  if (!sentOk) { Logger.log("보내지 못한 알림이 있어 기준 번호를 그대로 둡니다(다음 확인 때 다시)"); return; }
   if (Number(feed.max_id || 0) > lastSeen) props.setProperty("lastGardenGbId", String(Number(feed.max_id)));
   Logger.log("확인 완료: 알림 " + keys.length + "곳, 기준 번호=" + Number(feed.max_id || 0));
 }
@@ -118,4 +120,5 @@ function osPushGardenGb_(key, title, body) {
     muteHttpExceptions: true,
   });
   Logger.log("OneSignal 응답: " + res.getResponseCode() + " " + res.getContentText());
+  return res.getResponseCode() === 200;   // 보냈을 때만 true — 부르는 쪽이 이것을 보고 '보냄'으로 적는다(2026-11-25)
 }
