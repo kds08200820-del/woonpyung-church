@@ -67,6 +67,26 @@ async function cachePut(path: string, wav: Uint8Array): Promise<void> {
   } catch { /* 캐시 저장 실패는 무시(재생은 정상) */ }
 }
 // 생성 기록(관리자 대시보드 열람용). 실패해도 재생엔 영향 없음.
+// (2026-11-25) 관리자가 아닌 사람이 새 음성을 만들 수 있는 범위
+const VOICES = new Set(["Kore", "Aoede", "Leda", "Puck", "Charon", "Fenrir", "Zephyr", "Callirrhoe", "Despina", "Erinome", "Laomedeia"]);
+function nearToday(d: string): boolean {
+  const KST = 9 * 3600 * 1000;
+  const today = Math.floor((Date.now() + KST) / 86400000);
+  const day = Math.floor(Date.parse(d + "T00:00:00Z") / 86400000);
+  return Number.isFinite(day) && day >= today - 3 && day <= today + 1;   // 사흘 전 ~ 내일
+}
+// 그 QT 날짜로 지난 하루 동안 새로 만든 횟수(tts_log)
+async function recentGens(d: string): Promise<number> {
+  if (!SUPABASE_URL || !SERVICE_KEY) return 0;
+  try {
+    const since = new Date(Date.now() - 86400000).toISOString();
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/tts_log?select=id&qt_date=eq.${d}&created_at=gt.${encodeURIComponent(since)}`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Prefer: "count=exact", Range: "0-0" },
+    });
+    const m = (r.headers.get("content-range") || "").match(/\/(\d+)$/);
+    return m ? Number(m[1]) : 0;
+  } catch { return 0; }
+}
 async function logGen(row: Record<string, unknown>) {
   if (!SUPABASE_URL || !SERVICE_KEY) return;
   try {
@@ -195,17 +215,25 @@ Deno.serve(async (req) => {
     const clean = String(text ?? "").trim();
     if (!clean) return json({ error: "text 없음" }, 400);
     const capped = clean.slice(0, 12000); // 사실상 제한 없음(QT는 최대 ~4천 자). 폭주 방지용 안전 상한만.
-    const voiceName = String(voice || DEFAULT_VOICE);
+    const voiceName = String(voice || DEFAULT_VOICE).slice(0, 40);
 
-    // 1) 캐시 확인 — 날짜(+내용지문 sig)가 오면 qt-<날짜>-<sig>.wav(프런트가 이 경로로 스트리밍).
-    //    sig가 내용에 따라 바뀌므로 QT를 수정하면 새 파일이 만들어져 옛 음성을 재사용하지 않는다.
+    // 1) 캐시 확인 — 날짜가 오면 qt-<날짜>-<내용지문>.wav.
+    //    (2026-11-25) 지문은 서버가 글 내용으로 직접 만든다. 예전처럼 부르는 쪽이 보낸 sig 로 이름을 정하면,
+    //    남이 엉뚱한 글에 진짜 QT 의 sig 를 붙여 보내 그 날짜 자리에 엉뚱한 음성을 넣을 수 있었다.
     const dateOk = typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date);
-    const sigOk = typeof sig === "string" && /^[a-z0-9]{1,12}$/.test(sig);
-    const path = dateOk
-      ? (sigOk ? `qt-${date}-${sig}.wav` : `qt-${date}.wav`)
-      : (await sha256hex(voiceName + "|" + capped)) + ".wav";
+    const digest = await sha256hex(voiceName + "|" + capped);
+    const path = dateOk ? `qt-${date}-h${digest.slice(0, 12)}.wav` : digest + ".wav";
     const cached = await cacheGet(path);
     if (cached) return new Response(cached, { headers: { ...wavHeaders, "X-TTS-Cache": "hit" } });
+
+    // 1-1) 새로 만드는 것은 관리자는 그대로, 그 밖에는 QT 낭독만 · 하루 몇 번까지(교회 AI 요금 보호, 2026-11-25)
+    //      — 날짜가 붙은 글(QT)만, 오늘 앞뒤 며칠, 8천 자까지, 같은 날짜는 하루 6번까지
+    if (!(await isAdminCaller(req))) {
+      if (!dateOk || !nearToday(date)) return json({ error: "음성은 관리자가 미리 만들어 둡니다(이 글은 지금 만들 수 없습니다)." }, 403);
+      if (!VOICES.has(voiceName)) return json({ error: "지원하지 않는 목소리" }, 400);
+      if (capped.length > 8000) return json({ error: "글이 너무 깁니다." }, 413);
+      if ((await recentGens(date)) >= 6) return json({ error: "오늘은 더 만들 수 없습니다. 잠시 뒤 다시 들어 주세요." }, 429);
+    }
 
     // 2) 없으면 Gemini로 생성 — 긴 본문은 문장 단위로 나눠 '병렬'로 생성(속도·안정성↑) 후 이어붙인다.
     //    (한 번에 긴 본문을 요청하면 느리고 빈응답 버그가 잦음 → 짧은 조각 여러 개를 동시에 생성)
