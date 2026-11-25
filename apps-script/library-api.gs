@@ -18,8 +18,9 @@ var FOLDER_MIME = 'application/vnd.google-apps.folder';
 
 function doGet(e) {
   try {
-    var fid = (e && e.parameter && e.parameter.folderId) || FOLDER_ID;
-    var books = listBooks_(resolveFolderId_(fid));
+    // 정해 둔 '나의 도서관' 폴더만 본다(2026-11-25). 예전에는 요청에 적힌 폴더 번호 · 이름을 그대로 받아,
+    // 주소를 아는 누구나 이 드라이브의 다른 폴더 파일 이름까지 볼 수 있었다. (사이트가 넘기는 folderId 는 무시한다)
+    var books = listBooks_(FOLDER_ID);
     return json_({ ok: true, count: books.length, books: books });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
