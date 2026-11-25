@@ -1116,7 +1116,7 @@ console.log('[finance.js] v20261124wk1 (회계 기수 공유·자동 이월·마
         M.loaded = false; clearBtn.disabled = false;
       }).catch(function (e) {
         clearBtn.disabled = false;
-        if (/unknown action/i.test(e.message)) { cm.style.color = '#A33A2A'; cm.textContent = '이 기능은 Apps Script 새 버전에 있습니다. 재배포 후 사용하세요.'; }
+        if (/fin_clear_vouchers|PGRST202|schema cache/i.test(e.message)) { cm.style.color = '#A33A2A'; cm.textContent = '전체 삭제는 아직 준비되지 않았습니다(supabase/20261125_1210_fin_clear_vouchers.sql 실행 필요).'; }
         else { cm.style.color = '#A33A2A'; cm.textContent = '삭제 실패: ' + e.message; }
       });
     };

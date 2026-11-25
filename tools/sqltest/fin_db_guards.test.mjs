@@ -30,7 +30,9 @@ insert into public.member_links(user_id, member_status, can_finance) values ('${
 insert into public.donation_receipts(receipt_no, fy, donor_name) values ('2026-0001', 2026, '가짜1'), ('2026-0002', 2026, '가짜2'), ('2025-0007', 2025, '가짜3');`);
 // 마이그레이션 전 트리거 없이 넣은 위 줄은 클라이언트 번호 그대로
 const mig = fs.readFileSync(repo + '/supabase/20261125_1200_fin_db_guards.sql', 'utf8');
-await db.exec(mig); await db.exec(mig);
+const mig2 = fs.readFileSync(repo + '/supabase/20261125_1210_fin_clear_vouchers.sql', 'utf8');
+ok(!/delete\s+from/i.test(mig.replace(/--[^\n]*/g, '')), '1200 파일에는 지우는 문장이 없음(SQL 편집기 확인 창 없이 실행)');
+await db.exec(mig); await db.exec(mig); await db.exec(mig2); await db.exec(mig2);
 ok(true, 'migration x2');
 ok((await q(`select count(*)::int n from pg_indexes where indexname='donation_receipts_fy_no_uniq'`)).rows[0].n === 1, '겹친 번호가 없으면 겹침 막기를 건다');
 const as = async (uid, sql, p) => { await db.exec(`select set_config('t.uid','${uid}',false)`); await db.exec('set role authenticated'); try { return (await q(sql, p)).rows; } finally { await db.exec('reset role'); } };
@@ -74,7 +76,7 @@ ok(r[0].r.deleted === n0 && r[0].r.kept === 1 && (await q('select count(*)::int 
 const kept = (await q(`select count(*)::int n, min(src) s, bool_and(cleared_by = '${FIN}') b from fin_cleared_vouchers`)).rows[0];
 ok(kept.n === n0 && kept.s === 'offerings' && kept.b === true, '지운 전표는 보관 표에 그대로(누가 지웠는지 포함)');
 ok((await as(MEM, 'select count(*)::int n from fin_cleared_vouchers'))[0].n === 0 && (await as(FIN, 'select count(*)::int n from fin_cleared_vouchers'))[0].n === n0, '보관 표는 재정 권한자만 봄');
-ok((await q(`select count(*)::int n from schema_log where file='20261125_1200_fin_db_guards.sql'`)).rows[0].n === 1, '실행 기록 남김');
+ok((await q(`select count(*)::int n from schema_log where file in ('20261125_1200_fin_db_guards.sql', '20261125_1210_fin_clear_vouchers.sql')`)).rows[0].n === 2, '실행 기록 남김');
 
 // 4) 겹친 번호가 이미 있으면 겹침 막기는 걸지 않고 알린다
 const db2 = new PGlite();

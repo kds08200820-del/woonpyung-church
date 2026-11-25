@@ -7,13 +7,13 @@
 --  2) 재정 마감(설정 ▸ 마감일)이 켜져 있으면 마감일 이전 헌금 · 지출 전표의 추가 · 수정 · 삭제를 DB 가 거절한다.
 --     (지금까지는 화면에서만 막아, 마감 전에 열어 둔 화면에서는 고쳐졌다) 고쳐야 하면 설정에서 마감일을 바꾼다.
 --     SQL 편집기 · 서버 함수는 그대로 고칠 수 있다(화면에서 직접 고칠 때만 본다).
---  3) 헌금 · 지출 전표 「전체 삭제」는 fin_clear_vouchers 함수로만 한다 — 지우기 전에 보관 표에 통째로 옮겨 둔다.
---     화면에서 한 번에 20건 넘게 직접 지우는 것은 DB 가 거절한다.
+--  3) 화면에서 한 번에 20건 넘게 전표를 직접 지우는 것은 DB 가 거절한다.
+--     「전체 삭제」는 보관 표에 옮긴 뒤 지우는 함수(fin_clear_vouchers)로 하는데, 그 함수는 지우는 문장이 들어 있어
+--     따로 떼어 두었다 → supabase/20261125_1210_fin_clear_vouchers.sql (사람이 직접 실행)
 --
 --  들어 있는 것 (모두 비파괴: CREATE TABLE · CREATE INDEX · CREATE OR REPLACE FUNCTION · CREATE OR REPLACE TRIGGER 뿐):
 --   donation_receipts_no_trg · donation_receipts_fy_no_uniq(겹친 번호가 없을 때만)
 --   fin_lock_guard_trg(offerings · expenses) · fin_bulk_delete_guard_trg(offerings · expenses)
---   fin_cleared_vouchers(지운 전표 보관 표, 재정 권한자만 읽음) · fin_clear_vouchers(p_type)
 --   필요한 것: donation_receipts.sql · offerings.sql · finance_migration.sql(expenses · is_finance) · app_settings.sql
 --
 --  ── 되돌리는 방법 (사람이 직접 — 트리거를 지우면 예전처럼 움직인다) ──
@@ -21,7 +21,7 @@
 --    drop trigger if exists fin_lock_guard_trg on public.offerings;   drop trigger if exists fin_lock_guard_trg on public.expenses;
 --    drop trigger if exists fin_bulk_delete_guard_trg on public.offerings;   drop trigger if exists fin_bulk_delete_guard_trg on public.expenses;
 --    drop index if exists public.donation_receipts_fy_no_uniq;
---    (보관 표 · 함수는 남겨 두어도 해가 없다)
+--    (fin_lock_date · 함수들은 남겨 두어도 해가 없다)
 -- ============================================================
 
 -- ── 1) 영수증 일련번호 ────────────────────────────────────────
@@ -81,45 +81,6 @@ create or replace trigger fin_lock_guard_trg before insert or update or delete o
   for each row execute function public.fin_lock_guard();
 
 -- ── 3) 전체 삭제는 보관한 뒤에만 ───────────────────────────────
--- 지운 전표를 통째로(jsonb) 보관 — 표에 칸이 늘어도 그대로 담긴다
-create table if not exists public.fin_cleared_vouchers (
-  id         bigint generated always as identity primary key,
-  src        text not null,          -- offerings | expenses
-  row_data   jsonb not null,         -- 지우기 전 전표 한 줄 그대로
-  cleared_at timestamptz not null default now(),
-  cleared_by uuid
-);
-create index if not exists fin_cleared_vouchers_at_idx on public.fin_cleared_vouchers (cleared_at desc);
-alter table public.fin_cleared_vouchers enable row level security;
-revoke all on public.fin_cleared_vouchers from anon, authenticated;
-grant select on public.fin_cleared_vouchers to authenticated;
-do $$ begin
-  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'fin_cleared_vouchers' and policyname = 'fin_cleared_vouchers_read') then
-    create policy fin_cleared_vouchers_read on public.fin_cleared_vouchers for select using (public.is_finance());
-  end if;
-end $$;
-
--- p_type: '수입'(헌금) | '지출'. 마감이 켜져 있으면 하지 않는다. 돌려주는 것: 지운(=보관한) 건수
-create or replace function public.fin_clear_vouchers(p_type text)
-returns json language plpgsql volatile security definer set search_path = public as $$
-declare n int; kept int;
-begin
-  if not public.is_finance() then raise exception '재정 권한이 필요합니다.' using errcode = '42501'; end if;
-  if public.fin_lock_date() is not null then raise exception '재정 마감이 켜져 있어 전체 삭제를 할 수 없습니다. 설정에서 마감을 끈 뒤 하세요.'; end if;
-  if p_type = '지출' then
-    insert into public.fin_cleared_vouchers (src, row_data, cleared_by) select 'expenses', to_jsonb(e), auth.uid() from public.expenses e;
-    delete from public.expenses where true; get diagnostics n = row_count;
-    select count(*) into kept from public.offerings;
-  else
-    insert into public.fin_cleared_vouchers (src, row_data, cleared_by) select 'offerings', to_jsonb(o), auth.uid() from public.offerings o;
-    delete from public.offerings where true; get diagnostics n = row_count;
-    select count(*) into kept from public.expenses;
-  end if;
-  return json_build_object('ok', true, 'deleted', n, 'kept', kept);
-end $$;
-revoke all on function public.fin_clear_vouchers(text) from public, anon;
-grant execute on function public.fin_clear_vouchers(text) to authenticated;
-
 -- 화면에서 직접(REST) 한 번에 20건 넘게 지우는 것은 거절 — 전체 삭제는 위 함수로
 create or replace function public.fin_bulk_delete_guard()
 returns trigger language plpgsql set search_path = public as $$
