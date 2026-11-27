@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>지역과 세상 속에서 | 운평장로교회</title>
-  <meta name="description" content="운평장로교회의 지역 사역, 연합과 섬김, 구제선교위원회 이야기. 교회 안에만 머물지 않습니다." />
+  <title>세상을 향하여 | 운평장로교회</title>
+  <meta name="description" content="운평장로교회의 지역 사역, 연합과 섬김, 구제선교위원회, 오늘의 이슈 고민. 교회 안에만 머물지 않습니다." />
 
   <!-- Open Graph (카카오톡·SNS 미리보기) -->
   <meta property="og:type" content="website" />
@@ -25,12 +25,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261111m19" />
+  <link rel="stylesheet" href="css/issues-feed.css?v=20261127if1" />
 </head>
 <body>
 
   <section class="page-hero">
     <p class="ph-eyebrow">IN THE WORLD</p>
-    <h1>지역과 세상 속에서</h1>
+    <h1>세상을 향하여</h1>
     <p>우리는 교회 안에만 머물지 않습니다. 받은 은혜를 지역과 세상으로 흘려보냅니다.</p>
   </section>
 
@@ -63,8 +64,20 @@
     </div>
   </section>
 
+  <!-- ===== 오늘의 이슈 고민 (2026-11-27: 나의 서재 정기 구독 — js/issues-feed.js) ===== -->
+  <section id="issues" class="block block-alt">
+    <div class="container">
+      <div class="block-head">
+        <span class="eyebrow2">TODAY'S ISSUE</span>
+        <h2>오늘의 이슈 고민</h2>
+        <p>오늘 우리 사회의 이슈를 말씀 안에서 함께 고민합니다. 생각을 넓혀 줄 책도 함께 소개합니다.</p>
+      </div>
+      <div data-issue-feed></div>
+    </div>
+  </section>
+
   <!-- ===== 구제선교위원회 (2026-11-10: 선교 → 구제선교위원회, 자세한 내용은 mission.html) ===== -->
-  <section id="mission" class="block block-alt">
+  <section id="mission" class="block">
     <div class="container">
       <div class="block-head">
         <span class="eyebrow2">RELIEF &amp; MISSION</span>
@@ -103,8 +116,9 @@
   <script src="js/config.js?v=20260908lib"></script>
   <script src="js/bulletins.js?v=20261122s1"></script>
   <script src="js/bulletins-live.js?v=20261025jb1"></script>
-  <script src="js/layout.js?v=20261124pt1"></script>
+  <script src="js/layout.js?v=20261127if1"></script>
   <script src="js/counsel.js?v=20260906fix"></script>
   <script src="js/main.js?v=20261111m2"></script>
+  <script src="js/issues-feed.js?v=20261127if1"></script>
 </body>
 </html>

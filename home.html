@@ -64,6 +64,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600;700&family=Cormorant+Garamond:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=20261113hv" />
+  <link rel="stylesheet" href="css/issues-feed.css?v=20261127if1" />
   <link rel="stylesheet" href="css/worship.css?v=20261111m18" />
   <!-- 구조화 데이터(교회 정보) — 구글 검색 이해도 향상 -->
   <style>
@@ -455,6 +456,17 @@
     </div>
   </section>
 
+  <!-- ===== 오늘의 이슈 추천 책 (2026-11-27 담임목사: 나의 서재 '오늘의 이슈'가 고른 책 — 정기 구독, js/issues-feed.js · 없으면 숨김) ===== -->
+  <section class="section" id="homeIssue" hidden>
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">TODAY'S ISSUE · BOOKS</span>
+        <h2>오늘의 이슈 추천 책</h2>
+      </div>
+      <div data-issue-feed data-compact></div>
+    </div>
+  </section>
+
   <!-- ===== 김동석 목사 저서 ===== -->
   <section class="section">
     <div class="container">
@@ -538,7 +550,7 @@
         </a>
         <a class="entry-card" href="world.html">
           <span class="entry-num">06</span>
-          <h3>지역과 세상 속에서</h3>
+          <h3>세상을 향하여</h3>
           <p>교회가 지역과 열방을 섬기는 이야기를 읽을 수 있습니다.</p>
           <span class="entry-go">섬김 보기 →</span>
         </a>
@@ -591,7 +603,8 @@
   <script src="js/hymn-data.js?v=20260927meta"></script>
   <script src="modu/ccm-data.js?v=20260928ccm2"></script>
   <script src="js/worship.js?v=20261119mr"></script>
-  <script src="js/layout.js?v=20261124pt1"></script>
+  <script src="js/layout.js?v=20261127if1"></script>
+  <script src="js/issues-feed.js?v=20261127if1"></script>
   <script src="js/counsel.js?v=20260906fix"></script>
   <script src="js/main.js?v=20261113v1"></script>
   <script src="js/forms.js?v=20261111m1"></script>

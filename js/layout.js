@@ -39,8 +39,10 @@
       { href: "story.html#history", label: "교회 연혁" },
       { href: "story.html#communities", label: "그리스도의 몸 된 지체들" },
     ] },
-    { href: "world.html", label: "지역과 세상", also: ["mission.html"], sub: [
+    // 2026-11-27 담임목사: 지역과 세상 → 세상을 향하여 · 오늘의 이슈 고민(나의 서재 정기 구독 — js/issues-feed.js)
+    { href: "world.html", label: "세상을 향하여", also: ["mission.html"], sub: [
       { href: "world.html#local", label: "지역 연합사역" },
+      { href: "world.html#issues", label: "오늘의 이슈 고민" },
       { href: "mission.html", label: "구제선교위원회" },   // 2026-11-10 담임목사: 선교 → 구제선교위원회(회원·연간 사역·후원처) — js/mission.js
     ] },
     { href: "library.html", label: "자료실", sub: [
