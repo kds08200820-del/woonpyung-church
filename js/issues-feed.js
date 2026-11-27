@@ -17,7 +17,7 @@
    ============================================================ */
 (function () {
   "use strict";
-  console.log("[issues-feed.js] v20261127wk3");
+  console.log("[issues-feed.js] v20261127wk4");
   var FEED = "https://library-api.preacherlibrary.com/feed/issues";
   var KEY = "f_u4D69qgxAnkAYayG7UmMCuV8";   // 구독 열쇠 — 나의 서재 서버에서 받은 값 (공개돼도 이 추천만 읽을 수 있다)
   var LOCAL_PICK = null;   // 로컬 시험용: ?pick=local 이면 고른 것을 이 브라우저(localStorage)에만 둔다
@@ -89,6 +89,8 @@
       });
     });
   }
+  var weekOnce = null;   // 첫 화면은 두 곳(정원 칸 상자 · 저서 위 구역)이 같은 것을 쓴다 — 한 번만 받는다
+  function loadWeekOnce() { return weekOnce || (weekOnce = loadWeek()); }
 
   function bookHtml(b) {
     var c = coverOf(b);
@@ -117,7 +119,7 @@
     var sec = el.closest("section") || el;
     function hide() { sec.hidden = true; }
     if (!KEY) return hide();
-    loadWeek().then(function (w) {
+    loadWeekOnce().then(function (w) {
       if (!w) return hide();
       el.innerHTML = '<div class="if-home">' + headHtml(w) + topicHtml(w.topic, 3) +
         '<a class="btn btn-line if-more" href="world.html#issues">한 주간의 이슈 고민 보기 →</a></div>';
@@ -218,6 +220,12 @@
     }
   }
 
-  function init() { document.querySelectorAll("[data-issue-feed]").forEach(mount); }
+  // 첫 화면 정원 칸의 「한 주간의 이슈 고민」 상자 (home.html #hpGI) — 이번 주 이슈 제목. 없으면 숨긴 그대로
+  function gardenBox() {
+    var box = document.getElementById("hpGI"), t = document.getElementById("hpGIT");
+    if (!box || !t || !KEY) return;
+    loadWeekOnce().then(function (w) { if (w && w.topic && w.topic.theme) { t.textContent = w.topic.theme; box.hidden = false; } }).catch(function () { /* 숨긴 그대로 */ });
+  }
+  function init() { document.querySelectorAll("[data-issue-feed]").forEach(mount); gardenBox(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
