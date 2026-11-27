@@ -64,3 +64,37 @@
 .if-adm-foot { text-align: right; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 .if-adm-close { border: 1px solid var(--ink); background: #fff; color: var(--ink); font: inherit; font-size: .84rem; padding: 6px 16px; cursor: pointer; }
 .if-adm-foot[hidden] { display: none; }
+/* 책 요약 창 (2026-11-27) */
+.if-book[data-book] { cursor: pointer; border-radius: 2px; transition: background .15s; padding: 6px; margin: -6px; }
+.if-book[data-book]:hover, .if-book[data-book]:focus-visible { background: rgba(0,0,0,.04); outline: none; }
+.if-book[data-book] h4 { text-decoration: underline; text-decoration-color: #ccc; text-underline-offset: 4px; }
+.if-hint { color: var(--muted); letter-spacing: 0; }
+html.if-lock { overflow: hidden; }
+.if-modal { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.if-modal[hidden] { display: none; }
+.if-modal-bg { position: absolute; inset: 0; background: rgba(17,17,17,.55); }
+.if-modal-box { position: relative; background: #fff; width: min(720px, 100%); max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.if-modal-x { position: absolute; top: 8px; right: 10px; border: 0; background: none; font-size: 1.8rem; line-height: 1; cursor: pointer; color: var(--ink); padding: 4px 10px; z-index: 1; }
+.if-modal-body { overflow-y: auto; padding: 30px 32px 34px; word-break: keep-all; }
+.if-bk-head { display: grid; grid-template-columns: 96px 1fr; gap: 18px; align-items: start; padding-right: 30px; }
+.if-bk-head img { width: 96px; box-shadow: 0 6px 16px rgba(0,0,0,.16); }
+.if-bk-head h3 { font-size: 1.35rem; line-height: 1.4; margin: 0 0 4px; }
+.if-bk-sub { color: var(--ink-soft); margin: 0 0 6px; font-size: .92rem; }
+.if-bk-meta { color: var(--muted); font-size: .85rem; margin: 0; }
+.if-bk-one { margin: 22px 0 0; padding: 14px 16px; background: var(--paper-alt); border-left: 3px solid var(--ink); line-height: 1.75; }
+.if-modal-body h4 { font-size: .95rem; letter-spacing: .04em; margin: 26px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
+.if-bk-keys, .if-bk-q { margin: 0; padding-left: 22px; }
+.if-bk-keys li, .if-bk-q li { margin: 0 0 9px; line-height: 1.75; color: var(--ink-soft); }
+.if-bk-full { margin-top: 28px; border: 1px dashed #bdb7ab; padding: 4px 18px 18px; }
+.if-bk-adm { margin: 14px 0 0; font-size: .8rem; color: var(--muted); }
+.if-bk-full h4:first-of-type { border-top: 0; padding-top: 0; margin-top: 14px; }
+.if-bk-over p { margin: 0 0 12px; line-height: 1.85; color: var(--ink-soft); }
+.if-bk-ch { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+.if-bk-ch summary { cursor: pointer; font-weight: 600; font-size: .95rem; }
+.if-bk-ch div { margin-top: 14px; }
+.if-bk-ch b { font-size: .92rem; }
+.if-bk-ch p { margin: 4px 0 0; font-size: .88rem; line-height: 1.75; color: var(--ink-soft); }
+@media (max-width: 560px) { .if-modal { padding: 0; align-items: flex-end; } .if-modal-box { max-height: 92vh; } .if-modal-body { padding: 26px 20px 28px; } .if-bk-head { grid-template-columns: 72px 1fr; } .if-bk-head img { width: 72px; } }
+.if-bk-head.nc { grid-template-columns: 1fr; }
+.if-bk-keys { list-style: decimal; }
+.if-bk-q { list-style: disc; }

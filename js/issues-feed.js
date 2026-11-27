@@ -17,18 +17,19 @@
    ============================================================ */
 (function () {
   "use strict";
-  console.log("[issues-feed.js] v20261127wk5");
+  console.log("[issues-feed.js] v20261127bk2");
   var FEED = "https://library-api.preacherlibrary.com/feed/issues";
   var KEY = "f_u4D69qgxAnkAYayG7UmMCuV8";   // 구독 열쇠 — 나의 서재 서버에서 받은 값 (공개돼도 이 추천만 읽을 수 있다)
   var LOCAL_PICK = null;   // 로컬 시험용: ?pick=local 이면 고른 것을 이 브라우저(localStorage)에만 둔다
   // 로컬 시험: localhost 에서만 ?feed=<주소>&key=<열쇠>[&pick=local][&admin=1] 로 바꿔 볼 수 있다
-  var TEST_ADMIN = false;
+  var TEST_ADMIN = false, TEST_FULL = "";
   try {
     var q = new URLSearchParams(location.search), h = location.hostname;
     if (h === "localhost" || h === "127.0.0.1") {
       if (q.get("feed")) { FEED = q.get("feed"); KEY = q.get("key") || KEY; }
       if (q.get("pick") === "local") LOCAL_PICK = "wpc-weekly-issue-test";
       TEST_ADMIN = q.get("admin") === "1";
+      if (q.get("fullkey")) TEST_FULL = q.get("fullkey");
     }
   } catch (e) { /* 옛 브라우저 */ }
 
@@ -95,7 +96,8 @@
   function bookHtml(b) {
     var c = coverOf(b);
     var cover = c ? '<img src="' + esc(c) + '" alt="' + esc(b.title) + ' 표지" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;if-ph&quot;></div>\'" />' : '<div class="if-ph">' + esc(b.title) + "</div>";
-    return '<li class="if-book"><div class="if-cover">' + cover + "</div><div class=\"if-binfo\">" +
+    var ok = /^[A-Za-z0-9]{6,40}$/.test(b.id || "");
+    return '<li class="if-book"' + (ok ? ' data-book="' + esc(b.id) + '" role="button" tabindex="0" title="눌러서 이 책의 요약 보기"' : "") + '><div class="if-cover">' + cover + "</div><div class=\"if-binfo\">" +
       "<h4>『" + esc(b.title) + "』</h4>" + (names(b.authors) ? '<p class="if-au">' + esc(names(b.authors)) + "</p>" : "") +
       (b.reason ? '<p class="if-reason">' + esc(b.reason) + "</p>" : "") +
       (b.one_line ? '<p class="if-one">' + esc(String(b.one_line).split("**").join("")) + "</p>" : "") + "</div></li>";
@@ -106,7 +108,7 @@
       (t.issue ? '<p class="if-issue"><span>이슈</span>' + esc(t.issue) + (t.source ? ' <em>(' + esc(t.source) + ")</em>" : "") + "</p>" : "") +
       "<h3>" + esc(t.theme) + "</h3>" +
       (t.why ? '<p class="if-why">' + esc(t.why) + "</p>" : "") +
-      '<p class="if-with">함께 읽을 책 ' + bs.length + "권</p>" +
+      '<p class="if-with">함께 읽을 책 ' + bs.length + '권 <span class="if-hint">· 책을 누르면 요약과 핵심 내용을 볼 수 있습니다</span></p>' +
       '<ul class="if-books">' + bs.map(bookHtml).join("") + "</ul></article>";
   }
   function headHtml(w) {
@@ -221,6 +223,67 @@
   }
 
   // 첫 화면 정원 칸의 「한 주간의 이슈 고민」 상자 (home.html #hpGI) — 이번 주 이슈 제목. 없으면 숨긴 그대로
+  // ── 책 요약 창 (2026-11-27 담임목사 "책을 클릭 하면 그 책에 대한 요약과 핵심 내용을 간단하게 볼 수 있도록",
+  //    "만일 공개가 저작권 떄문에 어렵다면 관리자인 내가 혼자라도 볼 수 있게") ──
+  //   나의 서재 서버 /feed/issues/book/<책>. 누구나: 한 줄 · 핵심 내용 · 함께 생각할 질문.
+  //   관리자: church_settings 'issue_feed_full' 의 관리자 열쇠(관리자만 읽힘)로 받아 요약(개요) · 장별 요약까지
+  function rich(s) { return esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").split("**").join(""); }
+  function paras(s) { return String(s || "").split(/\n{2,}/).filter(function (x) { return x.trim(); }).map(function (x) { return "<p>" + rich(x.trim()) + "</p>"; }).join(""); }
+  var fullKeyP = null;
+  function fullKey() {
+    if (TEST_FULL) return Promise.resolve(TEST_FULL);
+    return fullKeyP || (fullKeyP = isAdmin().then(function (yes) {
+      if (!yes) return "";
+      return sb("GET", "church_settings?key=eq.issue_feed_full&select=data").then(function (r) { return (r && r[0] && r[0].data && r[0].data.key) || ""; }).catch(function () { return ""; });
+    }));
+  }
+  var bookCache = {}, lastFocus = null;
+  function closeBook() {
+    var m = document.getElementById("ifBook"); if (!m) return;
+    m.hidden = true; document.documentElement.classList.remove("if-lock");
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  function openBook(id) {
+    lastFocus = document.activeElement;
+    var m = document.getElementById("ifBook");
+    if (!m) {
+      m = document.createElement("div"); m.id = "ifBook"; m.className = "if-modal"; m.hidden = true;
+      m.innerHTML = '<div class="if-modal-bg" data-close></div><div class="if-modal-box" role="dialog" aria-modal="true" aria-label="책 요약"><button type="button" class="if-modal-x" data-close aria-label="닫기">&times;</button><div class="if-modal-body"></div></div>';
+      document.body.appendChild(m);
+      m.addEventListener("click", function (e) { if (e.target.closest("[data-close]")) closeBook(); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !m.hidden) closeBook(); });
+    }
+    var body = m.querySelector(".if-modal-body");
+    body.innerHTML = '<p class="if-msg">책 요약을 불러오는 중…</p>';
+    m.hidden = false; document.documentElement.classList.add("if-lock");
+    m.querySelector(".if-modal-x").focus();
+    (bookCache[id] || (bookCache[id] = fullKey().then(function (fk) {
+      return get(FEED + "/book/" + id + "?key=" + encodeURIComponent(fk || KEY)).catch(function (e) { if (fk) return get(url("/book/" + id)); throw e; });
+    }))).then(function (b) {
+      var meta = [names(b.authors), b.translator && b.translator.length ? names(b.translator) + " 옮김" : "", b.publisher, b.year, b.pages ? b.pages + "쪽" : ""].filter(Boolean).join(" · ");
+      var adminOnly = b.full ? '<p class="if-bk-adm">아래 요약과 장별 요약은 관리자에게만 보입니다.</p>' : "";
+      body.innerHTML =
+        '<div class="if-bk-head' + (b.cover ? "" : " nc") + '">' + (b.cover ? '<img src="' + esc(b.cover) + '" alt="' + esc(b.title) + ' 표지" />' : "") +
+          "<div><h3>『" + esc(b.title) + "』</h3>" + (b.subtitle ? '<p class="if-bk-sub">' + esc(b.subtitle) + "</p>" : "") +
+          (meta ? '<p class="if-bk-meta">' + esc(meta) + "</p>" : "") + "</div></div>" +
+        (b.one_line ? '<p class="if-bk-one">' + rich(b.one_line) + "</p>" : "") +
+        ((b.key_points || []).length ? '<h4>핵심 내용</h4><ol class="if-bk-keys">' + b.key_points.map(function (x) { return "<li>" + rich(x) + "</li>"; }).join("") + "</ol>" : "") +
+        ((b.questions || []).length ? '<h4>함께 생각할 질문</h4><ul class="if-bk-q">' + b.questions.map(function (x) { return "<li>" + rich(x) + "</li>"; }).join("") + "</ul>" : "") +
+        (b.overview || (b.chapters || []).length ? '<div class="if-bk-full">' + adminOnly +
+          (b.overview ? '<h4>요약</h4><div class="if-bk-over">' + paras(b.overview) + "</div>" : "") +
+          ((b.chapters || []).length ? '<details class="if-bk-ch"><summary>장별 요약 (' + b.chapters.length + ")</summary>" + b.chapters.map(function (c) { return "<div><b>" + esc(c.title) + "</b>" + (c.summary ? "<p>" + rich(c.summary) + "</p>" : "") + "</div>"; }).join("") + "</details>" : "") + "</div>" : "") +
+        (!b.one_line && !(b.key_points || []).length && !b.overview ? '<p class="if-msg">이 책은 아직 요약이 없습니다.</p>' : "");
+      body.scrollTop = 0;
+    }).catch(function () { delete bookCache[id]; body.innerHTML = '<p class="if-msg">책 요약을 불러오지 못했습니다.</p>'; });
+  }
+  document.addEventListener("click", function (e) {
+    var li = e.target.closest && e.target.closest(".if-book[data-book]");
+    if (li) { e.preventDefault(); openBook(li.getAttribute("data-book")); }
+  });
+  document.addEventListener("keydown", function (e) {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".if-book[data-book]")) { e.preventDefault(); openBook(e.target.getAttribute("data-book")); }
+  });
+
   function gardenBox() {
     var box = document.getElementById("hpGI"), t = document.getElementById("hpGIT");
     if (!box || !t || !KEY) return;
