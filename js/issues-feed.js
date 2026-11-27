@@ -17,7 +17,7 @@
    ============================================================ */
 (function () {
   "use strict";
-  console.log("[issues-feed.js] v20261127wk4");
+  console.log("[issues-feed.js] v20261127wk5");
   var FEED = "https://library-api.preacherlibrary.com/feed/issues";
   var KEY = "f_u4D69qgxAnkAYayG7UmMCuV8";   // 구독 열쇠 — 나의 서재 서버에서 받은 값 (공개돼도 이 추천만 읽을 수 있다)
   var LOCAL_PICK = null;   // 로컬 시험용: ?pick=local 이면 고른 것을 이 브라우저(localStorage)에만 둔다
@@ -111,7 +111,7 @@
   }
   function headHtml(w) {
     return '<p class="if-day"><strong>' + esc(weekText(w.week)) + "</strong> 주간" +
-      (w.day ? ' <span class="if-from">· ' + esc(dayText(w.day)) + " 나의 서재 추천에서</span>" : "") + "</p>";
+      (w.day ? ' <span class="if-from">· ' + esc(dayText(w.day)) + "</span>" : "") + "</p>";
   }
 
   // 첫 화면(home.html, 저서 위): 이번 주 이슈와 책 3권까지, 없으면 구역째 숨긴다
