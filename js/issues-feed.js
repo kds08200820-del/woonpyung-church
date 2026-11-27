@@ -8,7 +8,7 @@
    ============================================================ */
 (function () {
   "use strict";
-  console.log("[issues-feed.js] v20261127if1");
+  console.log("[issues-feed.js] v20261127if2");
   var FEED = "https://library-api.preacherlibrary.com/feed/issues";
   var KEY = "f_u4D69qgxAnkAYayG7UmMCuV8";   // 구독 열쇠 — 나의 서재 서버에서 받은 값 (공개돼도 이 추천만 읽을 수 있다)
   // 로컬 시험: localhost 에서만 ?feed=<주소>&key=<열쇠> 로 바꿔 볼 수 있다
@@ -33,7 +33,7 @@
     return '<li class="if-book"><div class="if-cover">' + cover + "</div><div class=\"if-binfo\">" +
       "<h4>『" + esc(b.title) + "』</h4>" + (names(b.authors) ? '<p class="if-au">' + esc(names(b.authors)) + "</p>" : "") +
       (b.reason ? '<p class="if-reason">' + esc(b.reason) + "</p>" : "") +
-      (b.one_line ? '<p class="if-one">' + esc(b.one_line) + "</p>" : "") + "</div></li>";
+      (b.one_line ? '<p class="if-one">' + esc(String(b.one_line).split("**").join("")) + "</p>" : "") + "</div></li>";
   }
   function topicHtml(t, i) {
     return '<article class="if-topic">' +

@@ -22,7 +22,7 @@
 .if-binfo h4 { font-size: 1rem; margin: 0 0 2px; word-break: keep-all; }
 .if-au { font-size: .82rem; color: var(--muted); margin: 0 0 6px; }
 .if-reason { font-size: .9rem; color: var(--ink-soft); line-height: 1.65; margin: 0; word-break: keep-all; }
-.if-one { font-size: .82rem; color: var(--muted); margin: 6px 0 0; line-height: 1.6; }
+.if-one { font-size: .82rem; color: var(--muted); margin: 6px 0 0; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .if-src { margin-top: 22px; font-size: .82rem; color: var(--muted); }
 .if-src a { color: var(--ink); }
 @media (max-width: 560px) { .if-books { grid-template-columns: 1fr; } .if-book { grid-template-columns: 76px 1fr; } .if-cover img, .if-ph { width: 76px; } }
