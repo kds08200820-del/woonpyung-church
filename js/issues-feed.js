@@ -17,7 +17,7 @@
    ============================================================ */
 (function () {
   "use strict";
-  console.log("[issues-feed.js] v20261127wk1");
+  console.log("[issues-feed.js] v20261127wk2");
   var FEED = "https://library-api.preacherlibrary.com/feed/issues";
   var KEY = "f_u4D69qgxAnkAYayG7UmMCuV8";   // 구독 열쇠 — 나의 서재 서버에서 받은 값 (공개돼도 이 추천만 읽을 수 있다)
   var LOCAL_PICK = null;   // 로컬 시험용: ?pick=local 이면 고른 것을 이 브라우저(localStorage)에만 둔다
@@ -134,8 +134,7 @@
       body.innerHTML = '<p class="if-msg">불러오는 중…</p>';
       loadWeek().then(function (w) {
         if (!w) { body.innerHTML = '<p class="if-msg">이번 주에는 아직 올라온 이슈가 없습니다.</p>'; return; }
-        body.innerHTML = headHtml(w) + topicHtml(w.topic) +
-          '<p class="if-src">한 주에 한 가지 이슈를 <a href="https://preacherlibrary.com/" target="_blank" rel="noopener">나의 서재</a>의 추천에서 골라 함께 고민합니다.</p>';
+        body.innerHTML = headHtml(w) + topicHtml(w.topic);   // 2026-11-27 담임목사: 아래 안내 문구 삭제
         adm.setAttribute("data-state", w.picked ? "picked" : "auto");
         var st = adm.querySelector(".if-adm-state");
         if (st) st.textContent = w.picked ? "관리자가 고른 이슈가 걸려 있습니다." : "고른 이슈가 없어 이번 주 월요일 추천의 1번 이슈가 걸려 있습니다.";
