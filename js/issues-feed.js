@@ -17,19 +17,18 @@
    ============================================================ */
 (function () {
   "use strict";
-  console.log("[issues-feed.js] v20261127bk2");
+  console.log("[issues-feed.js] v20261127bk3");
   var FEED = "https://library-api.preacherlibrary.com/feed/issues";
   var KEY = "f_u4D69qgxAnkAYayG7UmMCuV8";   // 구독 열쇠 — 나의 서재 서버에서 받은 값 (공개돼도 이 추천만 읽을 수 있다)
   var LOCAL_PICK = null;   // 로컬 시험용: ?pick=local 이면 고른 것을 이 브라우저(localStorage)에만 둔다
   // 로컬 시험: localhost 에서만 ?feed=<주소>&key=<열쇠>[&pick=local][&admin=1] 로 바꿔 볼 수 있다
-  var TEST_ADMIN = false, TEST_FULL = "";
+  var TEST_ADMIN = false;
   try {
     var q = new URLSearchParams(location.search), h = location.hostname;
     if (h === "localhost" || h === "127.0.0.1") {
       if (q.get("feed")) { FEED = q.get("feed"); KEY = q.get("key") || KEY; }
       if (q.get("pick") === "local") LOCAL_PICK = "wpc-weekly-issue-test";
       TEST_ADMIN = q.get("admin") === "1";
-      if (q.get("fullkey")) TEST_FULL = q.get("fullkey");
     }
   } catch (e) { /* 옛 브라우저 */ }
 
@@ -226,17 +225,10 @@
   // ── 책 요약 창 (2026-11-27 담임목사 "책을 클릭 하면 그 책에 대한 요약과 핵심 내용을 간단하게 볼 수 있도록",
   //    "만일 공개가 저작권 떄문에 어렵다면 관리자인 내가 혼자라도 볼 수 있게") ──
   //   나의 서재 서버 /feed/issues/book/<책>. 누구나: 한 줄 · 핵심 내용 · 함께 생각할 질문.
-  //   관리자: church_settings 'issue_feed_full' 의 관리자 열쇠(관리자만 읽힘)로 받아 요약(개요) · 장별 요약까지
+  //   2026-11-27 담임목사 "관리자와 성도가 같은 내용을 보도록" → 관리자도 같은 것만 (관리자 전용 열쇠는 나의 서재 서버에서 끊음).
+  //   서버가 개요 · 장별 요약을 보내면(전체 열쇠일 때만) 아래 if-bk-full 칸에 보인다 — 지금은 쓰지 않는다
   function rich(s) { return esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").split("**").join(""); }
   function paras(s) { return String(s || "").split(/\n{2,}/).filter(function (x) { return x.trim(); }).map(function (x) { return "<p>" + rich(x.trim()) + "</p>"; }).join(""); }
-  var fullKeyP = null;
-  function fullKey() {
-    if (TEST_FULL) return Promise.resolve(TEST_FULL);
-    return fullKeyP || (fullKeyP = isAdmin().then(function (yes) {
-      if (!yes) return "";
-      return sb("GET", "church_settings?key=eq.issue_feed_full&select=data").then(function (r) { return (r && r[0] && r[0].data && r[0].data.key) || ""; }).catch(function () { return ""; });
-    }));
-  }
   var bookCache = {}, lastFocus = null;
   function closeBook() {
     var m = document.getElementById("ifBook"); if (!m) return;
@@ -257,11 +249,8 @@
     body.innerHTML = '<p class="if-msg">책 요약을 불러오는 중…</p>';
     m.hidden = false; document.documentElement.classList.add("if-lock");
     m.querySelector(".if-modal-x").focus();
-    (bookCache[id] || (bookCache[id] = fullKey().then(function (fk) {
-      return get(FEED + "/book/" + id + "?key=" + encodeURIComponent(fk || KEY)).catch(function (e) { if (fk) return get(url("/book/" + id)); throw e; });
-    }))).then(function (b) {
+    (bookCache[id] || (bookCache[id] = get(url("/book/" + id)))).then(function (b) {
       var meta = [names(b.authors), b.translator && b.translator.length ? names(b.translator) + " 옮김" : "", b.publisher, b.year, b.pages ? b.pages + "쪽" : ""].filter(Boolean).join(" · ");
-      var adminOnly = b.full ? '<p class="if-bk-adm">아래 요약과 장별 요약은 관리자에게만 보입니다.</p>' : "";
       body.innerHTML =
         '<div class="if-bk-head' + (b.cover ? "" : " nc") + '">' + (b.cover ? '<img src="' + esc(b.cover) + '" alt="' + esc(b.title) + ' 표지" />' : "") +
           "<div><h3>『" + esc(b.title) + "』</h3>" + (b.subtitle ? '<p class="if-bk-sub">' + esc(b.subtitle) + "</p>" : "") +
@@ -269,7 +258,7 @@
         (b.one_line ? '<p class="if-bk-one">' + rich(b.one_line) + "</p>" : "") +
         ((b.key_points || []).length ? '<h4>핵심 내용</h4><ol class="if-bk-keys">' + b.key_points.map(function (x) { return "<li>" + rich(x) + "</li>"; }).join("") + "</ol>" : "") +
         ((b.questions || []).length ? '<h4>함께 생각할 질문</h4><ul class="if-bk-q">' + b.questions.map(function (x) { return "<li>" + rich(x) + "</li>"; }).join("") + "</ul>" : "") +
-        (b.overview || (b.chapters || []).length ? '<div class="if-bk-full">' + adminOnly +
+        (b.overview || (b.chapters || []).length ? '<div class="if-bk-full">' +
           (b.overview ? '<h4>요약</h4><div class="if-bk-over">' + paras(b.overview) + "</div>" : "") +
           ((b.chapters || []).length ? '<details class="if-bk-ch"><summary>장별 요약 (' + b.chapters.length + ")</summary>" + b.chapters.map(function (c) { return "<div><b>" + esc(c.title) + "</b>" + (c.summary ? "<p>" + rich(c.summary) + "</p>" : "") + "</div>"; }).join("") + "</details>" : "") + "</div>" : "") +
         (!b.one_line && !(b.key_points || []).length && !b.overview ? '<p class="if-msg">이 책은 아직 요약이 없습니다.</p>' : "");
