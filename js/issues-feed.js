@@ -17,7 +17,7 @@
    ============================================================ */
 (function () {
   "use strict";
-  console.log("[issues-feed.js] v20261127wk2");
+  console.log("[issues-feed.js] v20261127wk3");
   var FEED = "https://library-api.preacherlibrary.com/feed/issues";
   var KEY = "f_u4D69qgxAnkAYayG7UmMCuV8";   // 구독 열쇠 — 나의 서재 서버에서 받은 값 (공개돼도 이 추천만 읽을 수 있다)
   var LOCAL_PICK = null;   // 로컬 시험용: ?pick=local 이면 고른 것을 이 브라우저(localStorage)에만 둔다
@@ -151,11 +151,15 @@
   function picker(adm, refresh) {
     adm.hidden = false;
     adm.innerHTML = '<div class="if-adm-top"><span class="if-adm-tag">관리자</span><span class="if-adm-state"></span>' +
-      '<button type="button" class="if-adm-open">이번 주 이슈 고르기</button></div><div class="if-cal" hidden></div>';
-    var cal = adm.querySelector(".if-cal"), days = null, view = null, sel = null;
-    adm.querySelector(".if-adm-open").onclick = function () {
-      if (!cal.hidden) { cal.hidden = true; return; }
-      cal.hidden = false;
+      '<button type="button" class="if-adm-open">이번 주 이슈 고르기</button></div><div class="if-cal" hidden></div>' +
+      '<div class="if-adm-foot" hidden><button type="button" class="if-adm-close">닫기</button></div>';
+    var cal = adm.querySelector(".if-cal"), openBtn = adm.querySelector(".if-adm-open"), foot = adm.querySelector(".if-adm-foot"), days = null, view = null, sel = null;
+    // 2026-11-27 담임목사 "관리자 창을 닫을 수 없습니다. 닫기 버튼 만드세요": 위 버튼은 열림/닫기로 바뀌고, 아래에도 닫기
+    function closeCal() { cal.hidden = true; foot.hidden = true; openBtn.textContent = "이번 주 이슈 고르기"; }
+    adm.querySelector(".if-adm-close").onclick = closeCal;
+    openBtn.onclick = function () {
+      if (!cal.hidden) { closeCal(); return; }
+      cal.hidden = false; foot.hidden = false; openBtn.textContent = "닫기";
       cal.innerHTML = '<p class="if-msg">나의 서재 달력을 불러오는 중…</p>';
       get(url("/days")).then(function (d) {
         days = (d && d.days) || [];
