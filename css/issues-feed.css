@@ -32,3 +32,32 @@
 .if-home-issue { color: var(--ink-soft); }
 .if-home .if-books { margin-top: 26px; }
 .if-more { margin-top: 30px; display: inline-block; }
+/* 한 주간의 이슈 (2026-11-27) — 주간 머리 · 관리자 달력 고르기 */
+.if-day strong { color: var(--ink); font-weight: 600; }
+.if-from { color: var(--muted); }
+.if-admin { border: 1px dashed #bdb7ab; background: #fff; padding: 14px 16px; margin-bottom: 26px; }
+.if-adm-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.if-adm-tag { font-size: .72rem; letter-spacing: .12em; background: var(--ink); color: #fff; padding: 2px 8px; }
+.if-adm-state { font-size: .86rem; color: var(--ink-soft); flex: 1; min-width: 200px; }
+.if-adm-open, .if-pick button, .if-pick-clear { border: 1px solid var(--ink); background: var(--ink); color: #fff; font: inherit; font-size: .84rem; padding: 6px 12px; cursor: pointer; }
+.if-pick-clear { background: #fff; color: var(--ink); margin-top: 12px; }
+.if-cal { display: grid; grid-template-columns: 280px 1fr; gap: 26px; margin-top: 16px; align-items: start; }
+.if-cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.if-cal-head button { border: 0; background: none; font-size: 1.3rem; cursor: pointer; padding: 0 8px; }
+.if-cal-week, .if-cal-days { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+.if-cal-week span { font-size: .75rem; color: var(--muted); padding: 4px 0; }
+.if-cal-days > * { font: inherit; font-size: .85rem; height: 34px; display: flex; align-items: center; justify-content: center; color: #bbb; border: 0; background: none; position: relative; }
+.if-cal-days .wk { background: var(--paper-alt); }
+.if-cal-days button.has { color: var(--ink); cursor: pointer; font-weight: 600; }
+.if-cal-days button.has::after { content: ""; position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: var(--ink); }
+.if-cal-days button.on { background: var(--ink); color: #fff; }
+.if-cal-days button.on::after { background: #fff; }
+.if-cal-note { font-size: .75rem; color: var(--muted); margin-top: 8px; }
+.if-cal-day { font-size: .85rem; color: var(--muted); margin-bottom: 8px; }
+.if-pick { display: grid; grid-template-columns: 26px 1fr auto; gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--line); }
+.if-pick-n { font-weight: 700; color: var(--muted); }
+.if-pick strong { display: block; word-break: keep-all; }
+.if-pick p { margin: 4px 0 0; font-size: .82rem; color: var(--ink-soft); word-break: keep-all; }
+.if-pick .if-pick-books { color: var(--muted); }
+.if-pick-msg { font-size: .85rem; color: var(--ink-soft); margin-top: 8px; }
+@media (max-width: 720px) { .if-cal { grid-template-columns: 1fr; } .if-pick { grid-template-columns: 22px 1fr; } .if-pick button { grid-column: 2; justify-self: start; } }
