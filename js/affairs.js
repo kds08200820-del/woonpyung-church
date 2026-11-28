@@ -5404,20 +5404,30 @@ console.log('[affairs.js] v20261125wk1');
       function repEdOn() { return repOk() && ((ov.querySelector('#se_service') || {}).value || '') === REP_SVC; }
       function repEdTitle() { return ((ov.querySelector('#se_title') || {}).value || '').trim(); }
       function repEdScr() { return ((ov.querySelector('#se_scripture') || {}).value || '').trim(); }
+      //   (2026-11-28) 목사님이 '기도' 칸에 직접 적은 기도자(it.rpManual)는 명단보다 앞선다 — 창·기도문·주보가 그 이름을 따른다.
+      //   명단에서 채운 이름(it.rpAuto)은 명단이 바뀌면 따라 바뀐다. force(또는 '명단:' 단추)는 직접 적은 것도 명단으로 되돌린다.
       function repFill(force) {   // '기도' 칸에 명단의 기도자 — force: 지난 순서에서 옮겨 온 이름도 바꾼다
         if (!repEdOn()) return false;
         var i = repItemIdx(), s = i >= 0 ? RepPrayer.scheduled(COMMITTEES, repEdDate()) : ''; if (!s) return false;
-        var it = order[i]; if ((!force && String(it.detail || '').trim()) || it.detail === s) return false;
-        it.detail = s; return true;
+        var it = order[i], cur = String(it.detail || '').trim();
+        if (!force && cur && (it.rpManual || !it.rpAuto || cur !== it.rpAuto)) return false;
+        if (it.detail === s && !it.rpManual) { it.rpAuto = s; return false; }
+        it.detail = s; it.rpAuto = s; delete it.rpManual; return true;
+      }
+      function repMark(it, before) {   // '기도'(모두) 칸의 이름을 손으로 바꾸면 '직접 적음' 표시 — 지우면 다시 명단을 따른다
+        if (!it || audOf(it) !== 'all' || ordKey(it.label) !== '기도') return;
+        var now = String(it.detail || '').trim(); if (now === String(before || '').trim()) return;
+        if (now) it.rpManual = true; else { delete it.rpManual; delete it.rpAuto; }
       }
       function repLine(it) {
         if (!repEdOn()) return '';
-        var d = repEdDate(), p = repPerson(d, it.detail), sched = RepPrayer.scheduled(COMMITTEES, d);
+        var d = repEdDate(), p = repPerson(d, it.detail, it.rpManual), sched = RepPrayer.scheduled(COMMITTEES, d);
         var fix = sched && String(it.detail || '').trim() && !RepPrayer.samePerson(sched, it.detail)
           ? ' <button type="button" class="rp-fix" title="봉사위원 명단의 기도자로 바꿉니다" style="border:1px solid #E3D3C4;background:#FBF6F1;color:#9C593C;border-radius:4px;padding:0 6px;font:inherit;font-size:.7rem;cursor:pointer">명단: ' + esc(sched) + '</button>' : '';
-        if (!p || !RepPrayer.needsPrayer(p)) return fix ? '<div class="rp-line" style="margin-top:3px;font-size:.74rem">' + fix + '</div>' : '';
+        if (!p) return fix ? '<div class="rp-line" style="margin-top:3px;font-size:.74rem">' + fix + '</div>' : '';
         var v = REP_ROWS ? repView(d, p, repEdTitle(), repEdScr()) : null;
-        var first = v ? v.text.split('\n').slice(1).join(' ').replace(/\s+/g, ' ').slice(0, 34) + '…' : '불러오는 중…';
+        var first = !RepPrayer.needsPrayer(p) && !(v && v.saved) ? p + ' — 필요하면 눌러 만드세요'
+          : v ? v.text.split('\n').slice(1).join(' ').replace(/\s+/g, ' ').slice(0, 34) + '…' : '불러오는 중…';
         return '<div class="rp-line" style="margin-top:3px;display:flex;align-items:center;gap:6px;min-width:0;font-size:.74rem">' +
           '<button type="button" class="rp-open" title="대표기도문 보기·고치기" style="flex:none;border:1px solid #E3E2DF;background:#FAF9F6;border-radius:4px;padding:1px 7px;font:inherit;font-size:.72rem;cursor:pointer;color:var(--accent,#111111);user-select:none">🙏 대표기도문</button>' +
           '<span style="color:#898885;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">' + esc(first) + '</span>' + fix + '</div>';
@@ -5427,7 +5437,7 @@ console.log('[affairs.js] v20261125wk1');
           b.onclick = function (e) {
             e.stopPropagation();
             var i = repItemIdx(), d = repEdDate(); if (i < 0) return;
-            repModal({ date: d, person: repPerson(d, order[i].detail), title: repEdTitle(), scripture: repEdScr(), onSaved: function () { if (document.body.contains(ov)) renderOrder(); }, refocus: function () { return ov.querySelector('.rp-open'); } });
+            repModal({ date: d, person: repPerson(d, order[i].detail, order[i].rpManual), title: repEdTitle(), scripture: repEdScr(), onSaved: function () { if (document.body.contains(ov)) renderOrder(); }, refocus: function () { return ov.querySelector('.rp-open'); } });
           };
         });
         Array.prototype.forEach.call(ov.querySelectorAll('.rp-fix'), function (b) {
@@ -5811,7 +5821,7 @@ console.log('[affairs.js] v20261125wk1');
         };
         function close() {
           var memo = m.querySelector('#acm_memo').value.trim(), fx = m.querySelector('#acm_fixed').checked;
-          if (memo !== (it.detail || '') || fx !== !!it.fixed) { it.detail = memo; it.fixed = fx; sunDirty(); }
+          if (memo !== (it.detail || '') || fx !== !!it.fixed) { var was = it.detail; it.detail = memo; it.fixed = fx; repMark(it, was); sunDirty(); }
           delete it._modalPaint; m.remove(); renderOrder();
         }
         m.querySelector('#acm_close').onclick = close; m.querySelector('#acm_ok').onclick = close;
@@ -5985,7 +5995,7 @@ console.log('[affairs.js] v20261125wk1');
         m.querySelector('#spm_ok').onclick = function () {
           var lb = m.querySelector('#spm_label').value.trim();
           if (lb) it.label = lb;
-          it.detail = m.querySelector('#spm_detail').value.trim();
+          var was = it.detail; it.detail = m.querySelector('#spm_detail').value.trim(); repMark(it, was);
           var bd = m.querySelector('#spm_body'); if (bd) it.body = bd.value;
           it.fixed = m.querySelector('#spm_fixed').checked;
           close(); renderOrder(); sunDirty();
@@ -6343,7 +6353,8 @@ console.log('[affairs.js] v20261125wk1');
       renderOrder = function () { renderOrder0(); paintSongs(); paintConti(); paintSun(); repWire(); };
       paintSongs(); contiAuto(); paintConti(); sunAuto(); paintSun(); repWire(); wmAuto();
       // 대표기도: 봉사위원 명단·저장된 기도문을 읽은 뒤 '기도' 칸(비어 있으면 명단의 기도자)과 기도문 한 줄을 다시 그린다
-      if (repOk()) Promise.all([repCom(), repLoadRows()]).then(function () { if (!document.body.contains(ov)) return; repFill(false); renderOrder(); });
+      //   (2026-11-28) 봉사위원 명단은 창을 열 때마다 새로 읽는다 — 다른 창에서 명단을 고쳐도 바로 따라오게
+      if (repOk()) Promise.all([loadCommittees(), repLoadRows()]).then(function () { if (!document.body.contains(ov)) return; repFill(false); renderOrder(); });
       order.forEach(function (it) {   // 설교 관리에서 제목·본문을 고쳤어도 블록에 맞춘다
         if (it.sermon_id) api('GET', 'sermons?select=id,title,scripture&id=eq.' + encodeURIComponent(it.sermon_id) + '&limit=1').then(function (rows) { if (rows && rows[0] && document.body.contains(ov)) comSync(it, rows[0]); }).catch(function () { });
       });
@@ -7090,7 +7101,7 @@ console.log('[affairs.js] v20261125wk1');
           file_url: ov.querySelector('#se_file').value || null,
           gyodok: ov.querySelector('#se_gyodok_v').value || null,
           hymns: ov.querySelector('#se_hymns_v').value || null,
-          worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, items: (function () { var it = normItems(o.items || o.jnos); return it.length ? it : undefined; })(),   /* 저장할 때 옛 번호도 모두의 찬양 번호로 */ body: o.body || '', fixed: !!o.fixed, noexport: !!o.noexport, images: (o.images && o.images.length) ? o.images : undefined, aud: sunAudOut(o), sermon_id: o.sermon_id || undefined }; })) : null),
+          worship_order: (order.length ? JSON.stringify(order.map(function (o) { return { label: o.label, detail: o.detail, url: o.url || '', hno: o.hno, items: (function () { var it = normItems(o.items || o.jnos); return it.length ? it : undefined; })(),   /* 저장할 때 옛 번호도 모두의 찬양 번호로 */ body: o.body || '', fixed: !!o.fixed, noexport: !!o.noexport, images: (o.images && o.images.length) ? o.images : undefined, aud: sunAudOut(o), sermon_id: o.sermon_id || undefined, rpManual: o.rpManual ? true : undefined, rpAuto: o.rpAuto || undefined }; })) : null),
           // 설교 매니저 확장(supabase/sermons_manager.sql): 시리즈·키워드·요약·상태
           series: seriesArr.length ? seriesArr.join(', ') : null,
           keywords: (function () { var el = ov.querySelector('#se_keywords'); if (!el) return null; var a = el.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean).slice(0, 3); return a.join(', ') || null; })(),
@@ -10329,9 +10340,22 @@ console.log('[affairs.js] v20261125wk1');
   function repRow(date) { var a = REP_ROWS || []; for (var i = 0; i < a.length; i++) if (fmtD(a[i].sdate) === date) return a[i]; return null; }
   function repHistory(person) { return (REP_ROWS || []).filter(function (r) { return RepPrayer.samePerson(r.person, person); }).map(function (r) { return { sdate: fmtD(r.sdate), body: r.body, source: r.source }; }); }
   // 그 주일의 기도자 — 봉사위원 명단이 먼저, 명단에 없으면 예배 순서 '기도' 칸에 적힌 분
-  function repPerson(date, detail) {
+  //   (2026-11-28) manual: 목사님이 '기도' 칸에 직접 적은 이름이면 그 이름이 명단보다 앞선다(예: 명단은 권사님인데 원로장로님이 기도하실 때)
+  var REP_TITLED = /(권사|장로|집사|목사|전도사)\s*님?$/;
+  function repPerson(date, detail, manual) {
+    detail = String(detail || '').trim();
+    if (manual && REP_TITLED.test(detail)) return detail;
     var p = repOk() ? RepPrayer.scheduled(COMMITTEES, date) : ''; if (p) return p;
-    detail = String(detail || '').trim(); return /(권사|장로|집사)\s*님?$/.test(detail) ? detail : '';
+    return REP_TITLED.test(detail) ? detail : '';
+  }
+  // 그 주일 설교의 예배 순서 '기도'(모두) 칸을 보고 정한 기도자 — 순서가 없으면 명단
+  function repPersonOf(rows, date) {
+    for (var i = 0; i < (rows || []).length; i++) {
+      var r = rows[i]; if (r.service !== REP_SVC || fmtD(r.sermon_date) !== date || !r.worship_order) continue;
+      var wo = []; try { wo = typeof r.worship_order === 'string' ? JSON.parse(r.worship_order || '[]') : (r.worship_order || []); } catch (e) { wo = []; }
+      for (var j = 0; j < (wo || []).length; j++) { var it = wo[j]; if (it && audOf(it) === 'all' && ordKey(it.label) === '기도') return repPerson(date, it.detail, it.rpManual); }
+    }
+    return repPerson(date, '', false);
   }
   function repAuto(date, person, title, scripture, variant) { return RepPrayer.generate({ date: date, person: person, title: title, scripture: scripture, variant: variant || 0, history: repHistory(person) }); }
   // 보여 줄 기도문 — 같은 기도자의 고친 것·가져온 것이면 그것, 아니면 자동(저장된 변형 번호로 다시 만든 글)
@@ -10352,8 +10376,15 @@ console.log('[affairs.js] v20261125wk1');
     });
   }
   // 자동 기도문 맞추기 — 권사님 차례만, 고친 것·가져온 것은 건드리지 않는다. 실패는 조용히
+  //   (2026-11-28) 기도자가 권사님이 아니게 바뀌었는데 예전 기도자의 '자동' 기도문이 남아 있으면 비워 둔다(새 기도자 이름으로) —
+  //   예전 기도자의 대시보드에 남의 주일 기도문이 뜨지 않게. 고친 것·가져온 것은 지우지 않는다.
   function repSync(date, person, title, scripture) {
-    if (!repOk() || !date || !RepPrayer.needsPrayer(person)) return Promise.resolve(false);
+    if (!repOk() || !date || !person) return Promise.resolve(false);
+    if (!RepPrayer.needsPrayer(person)) return repLoadRows().then(function () {
+      var row = repRow(date);
+      if (repNoTable || !row || RepPrayer.samePerson(row.person, person) || row.source !== 'auto' || !String(row.body || '').trim()) return false;
+      return repSave(date, person, '', 'auto', 0);
+    }).catch(function () { return false; });
     return repLoadRows().then(function () {
       if (repNoTable) return false;
       var v = repView(date, person, title, scripture);
@@ -10371,7 +10402,7 @@ console.log('[affairs.js] v20261125wk1');
     return repCom().then(function () { return repLoadRows(true); }).then(function () {
       if (repNoTable) return;
       return repSundays(8).reduce(function (pr, sd) {
-        var p = RepPrayer.scheduled(COMMITTEES, sd), sm = repSermonOf(rows, sd);
+        var p = repPersonOf(rows, sd), sm = repSermonOf(rows, sd);
         return pr.then(function () { return repSync(sd, p, sm.title, sm.scripture); });
       }, Promise.resolve());
     }).catch(function () { });
@@ -10458,14 +10489,15 @@ console.log('[affairs.js] v20261125wk1');
   // 예배 매니저 목록 위 '대표기도' — 다가오는 6주의 기도자와 기도문
   function repCard(box, rows) {
     if (!box || !repOk()) return;
-    var list = repSundays(6).map(function (sd) { return { date: sd, person: RepPrayer.scheduled(COMMITTEES, sd), sm: repSermonOf(rows, sd) }; });
+    var list = repSundays(6).map(function (sd) { return { date: sd, person: repPersonOf(rows, sd), sm: repSermonOf(rows, sd) }; });
     box.innerHTML = '<div class="fin-card rp-card"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px"><b style="color:var(--accent,#111111)">대표기도</b>' +
       '<button type="button" class="btn btn-line rp-import" style="padding:5px 11px;font-size:.8rem">기도문 문서 넣기</button></div>' +
       (repNoTable ? '<div style="font-size:.8rem;color:#A33A2A;margin-bottom:6px">저장하려면 supabase/20261114_0930_worship_rep_prayers.sql 실행이 필요합니다.</div>' : '') +
       list.map(function (x, i) {
         var r = repRow(x.date), st;
         if (!x.person) st = '<span style="font-size:.78rem;color:#A7A6A3">봉사위원 명단에 없음</span>';
-        else if (!RepPrayer.needsPrayer(x.person)) st = '<span style="font-size:.78rem;color:#A7A6A3">기도문 없음</span>';
+        else if (!RepPrayer.needsPrayer(x.person) && !(r && RepPrayer.samePerson(r.person, x.person) && String(r.body || '').trim()))
+          st = '<button type="button" class="btn btn-line rp-open-i" data-i="' + i + '" style="padding:3px 10px;font-size:.78rem">기도문 만들기</button><span style="font-size:.72rem;color:#A7A6A3">필요할 때만</span>';
         else st = '<button type="button" class="btn btn-line rp-open-i" data-i="' + i + '" style="padding:3px 10px;font-size:.78rem">기도문 보기</button>' +
           '<span style="font-size:.72rem;color:#898885">' + ((r && RepPrayer.samePerson(r.person, x.person) && { edit: '고침', import: '문서' }[r.source]) || '자동') + '</span>';
         return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #F4F3F0;flex-wrap:wrap">' +
@@ -11396,7 +11428,7 @@ console.log('[affairs.js] v20261125wk1');
       else nextPr = prayerOf(cur.prayer, nth + 1);
       // 이번 주 기도자 → 예배 순서에서 라벨이 '기도'인 첫 항목의 내용/담당
       if (thisPr && thisPr.person) {
-        for (var oi = 0; oi < order.length; oi++) { if (order[oi].label === '기도') { order[oi].detail = thisPr.person; break; } }
+        for (var oi = 0; oi < order.length; oi++) { if (order[oi].label === '기도') { if (!(order[oi].rpManual && String(order[oi].detail || '').trim())) order[oi].detail = thisPr.person; break; } }   /* 예배 순서에 직접 적은 기도자는 그대로(2026-11-28) */
         renderBOrder();
       }
       // 다음 주 기도자 → ⑥ 봉사위원 '다음 주 기도'
@@ -11443,7 +11475,7 @@ console.log('[affairs.js] v20261125wk1');
           if (sun.preacher) ov.querySelector('#bt_preacher').value = sun.preacher;
           var wo = []; try { wo = JSON.parse(sun.worship_order || '[]') || []; } catch (e) { wo = []; }
           wo = wo.filter(function (it) { return it && (audOf(it) === 'all' || ordPastorSlot(it)); });   /* 목회자·반주자 블록(기도문·반주 악보)은 주보에 넣지 않는다 — 목회 기도·축도는 순서 칸이라 이름·맡은 분만 넣는다 */
-          if (wo.length) { order = wo.map(function (it) { return { name: it.label || '', detail: it.detail || '' }; }); renderBOrder(); }
+          if (wo.length) { order = wo.map(function (it) { return { name: it.label || '', detail: it.detail || '', rpManual: !!(it.rpManual && audOf(it) === 'all') }; }); renderBOrder(); }
           n++;
         }
         if (wed) { if (wed.title) ov.querySelector('#bt_wed_title').value = wed.title; ov.querySelector('#bt_wed_line').value = [fmtD(wed.sermon_date), wed.scripture, wed.preacher].filter(Boolean).join(' · '); n++; }
