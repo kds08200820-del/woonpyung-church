@@ -1138,7 +1138,8 @@ window.FinWeekly = (function () {
     var c = box._wk; if (!c) return;
     var keys = Array.prototype.map.call(box.querySelectorAll('.wk-pet-ed tbody tr[data-key]'), function (tr) { return tr.getAttribute('data-key'); });
     state.ord = state.ord || {}; state.ord[c.sun] = keys;
-    autoSave(box, 0); c.preview();
+    // ▲▼ 를 잇달아 눌러도 한 번에 저장되게 잠깐 기다린다(2026-11-28: 바로바로 저장하다 저장끼리 부딪혀 순서가 되돌아가던 것)
+    autoSave(box, 600); c.preview();
   }
   // ── 결의서 자동 저장 ──
   function autoSave(box, ms) {
@@ -1147,15 +1148,28 @@ window.FinWeekly = (function () {
     var st = box.querySelector('.wk-st'); if (st) st.textContent = '저장 중…';
     clearTimeout(box._wkSv); box._wkSv = setTimeout(function () { flushSave(box); }, ms);
   }
+  // 같은 주의 저장은 한 번에 하나씩(2026-11-28). 앞 저장이 끝나기 전에 다음 저장이 나가면, 서버가 「남이 먼저 고쳤다」로 보고
+  //   되돌려 버렸다(빠르게 ▲▼ 를 누를 때). 저장 중이면 기다렸다가, 끝나면 그동안 고친 최신 내용을 이어서 저장한다.
+  var saving = {};
   function flushSave(box) {
     clearTimeout(box._wkSv);
-    var d = box._wkDirty; if (!d) return; box._wkDirty = null;
+    var d = box._wkDirty; if (!d) return;
+    if (saving[d.sun]) { saving[d.sun].again = box; return; }   // 고친 내용(_wkDirty)은 남겨 두고 앞 저장 뒤에
+    box._wkDirty = null;
+    var lock = saving[d.sun] = {};
     var at = d.X.today() + ' ' + new Date().toTimeString().slice(0, 5);
+    function next() {
+      delete saving[d.sun];
+      var b = lock.again; if (b && b._wkDirty) flushSave(b);
+    }
     d.X.save('petition_' + d.sun, JSON.stringify({ rows: d.rows, at: at, over: d.over || {}, order: d.order || [] })).then(function () {
-      var st = box.querySelector('.wk-st'); if (st && box._wk && box._wk.sun === d.sun && !box._wkDirty) st.textContent = '저장됨 ' + at;
+      var st = box.querySelector('.wk-st'); if (st && box._wk && box._wk.sun === d.sun && !box._wkDirty && !lock.again) st.textContent = '저장됨 ' + at;
+      next();
     }).catch(function (er) {
       var st = box.querySelector('.wk-st');
       if (er && er.conflict) {   // 남이 먼저 고침 → 내 것은 저장하지 않고 최신을 다시 불러온다(2026-11-25)
+        if (lock.again) lock.again._wkDirty = null;   // 기다리던 저장도 버린다(최신을 다시 불러오므로)
+        delete saving[d.sun];
         if (st) st.textContent = '다른 분이 먼저 고쳐 다시 불러왔습니다';
         forgetWeek(d.sun); alert(er.message);
         if (box._wk && box._wk.reload) box._wk.reload();
@@ -1163,6 +1177,7 @@ window.FinWeekly = (function () {
       }
       if (st) st.textContent = '저장하지 못했습니다 — 다시 고치면 다시 저장합니다';
       alert('지출결의서를 저장하지 못했습니다: ' + er.message);
+      next();
     });
   }
   // 당회장 도장: 재정관리 ▸ 설정 ▸ 「당회장 도장」(app_settings.rcp_img_chair). 지출결의서 결재란 당회장 칸에 찍는다.
