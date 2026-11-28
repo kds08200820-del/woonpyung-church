@@ -130,7 +130,9 @@
   }
   // R2에 저장된 파일을 원본 파일명으로 내려받기(인라인 표시 대신 다운로드)
   async function downloadR2(url, title) {
-    const res = await withTimeout(fetch(url), 30000);
+    const signer = window.ChurchUpload;
+    const urls = signer && typeof signer.signUrls === "function" ? await signer.signUrls([url]) : {};
+    const res = await withTimeout(fetch(urls[url] || url), 30000);
     if (!res.ok) throw new Error("HTTP " + res.status);
     const blob = await res.blob();
     const obj = URL.createObjectURL(blob);
